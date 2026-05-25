@@ -1,5 +1,7 @@
 import type {BrainSurfaceState} from '../../agentbuddy-ui/brain/brainTypes';
 
+const baseTime = Date.UTC(2026, 4, 25, 14, 34, 18);
+
 export const brainSurfaceState: BrainSurfaceState = {
   canGoBack: false,
   events: [
@@ -27,8 +29,10 @@ export const brainSurfaceState: BrainSurfaceState = {
                   status: 'ready',
                 },
               },
-              startedAt: '10:34:21 AM',
+              completedAt: baseTime + 5400,
+              startedAt: baseTime + 3000,
               status: 'completed',
+              stepNodeType: 'action',
             },
             {
               children: [
@@ -36,21 +40,25 @@ export const brainSurfaceState: BrainSurfaceState = {
                   id: 'notify-team',
                   kind: 'action',
                   label: 'Notify release team',
-                  startedAt: '10:34:25 AM',
+                  startedAt: baseTime + 7000,
                   status: 'active',
+                  stepNodeType: 'action',
                 },
               ],
               id: 'run-publish-flow',
               kind: 'flow',
               label: 'Run publish workflow',
               status: 'active',
+              stepNodeType: 'flow',
             },
           ],
           exits: ['report', 'publish'],
           id: 'branch-published',
           kind: 'listener',
           label: 'Branch published',
-          startedAt: '10:34:18 AM',
+          completedAt: baseTime + 1800,
+          eventType: 'code.branch.published',
+          startedAt: baseTime,
           status: 'completed',
           subtitle: 'code.branch.published',
         },

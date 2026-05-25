@@ -3,6 +3,11 @@ import type {FlowNodeState} from './flowTypes';
 export const FLOW_NODE_GEOMETRY = {
   defaultHeight: 50,
   defaultWidth: 200,
+  switch: {
+    bottomPadding: 10,
+    headerOffset: 43,
+    rowHeight: 26,
+  },
   trigger: {
     bottomPadding: 10,
     eventTypeHeight: 29,
@@ -12,7 +17,16 @@ export const FLOW_NODE_GEOMETRY = {
 } as const;
 
 export function isTriggerNode(node: FlowNodeState) {
-  return node.kind === 'entry' || node.kind === 'listener' || node.kind === 'schedule' || Boolean(node.exits?.length);
+  return node.kind === 'entry' || node.kind === 'listener' || node.kind === 'schedule';
+}
+
+export function isSwitchNode(node: FlowNodeState) {
+  return node.kind === 'switch';
+}
+
+export function flowNodeExitCount(node: FlowNodeState) {
+  if (isSwitchNode(node)) return node.branches?.length ?? node.exits?.length ?? 0;
+  return node.exits?.length ?? 0;
 }
 
 export function flowNodeWidth(node: FlowNodeState) {
@@ -24,14 +38,25 @@ export function triggerHeaderOffset(node: FlowNodeState) {
 }
 
 export function flowNodeHeight(node: FlowNodeState) {
-  if (!isTriggerNode(node) || !node.exits?.length || node.exits.length <= 1) {
+  const exitCount = flowNodeExitCount(node);
+
+  if (isSwitchNode(node)) {
+    return Math.max(
+      FLOW_NODE_GEOMETRY.defaultHeight,
+      FLOW_NODE_GEOMETRY.switch.headerOffset
+        + exitCount * FLOW_NODE_GEOMETRY.switch.rowHeight
+        + FLOW_NODE_GEOMETRY.switch.bottomPadding,
+    );
+  }
+
+  if (!isTriggerNode(node) || exitCount <= 1) {
     return FLOW_NODE_GEOMETRY.defaultHeight;
   }
 
   return Math.max(
     FLOW_NODE_GEOMETRY.defaultHeight,
     triggerHeaderOffset(node)
-      + node.exits.length * FLOW_NODE_GEOMETRY.trigger.rowHeight
+      + exitCount * FLOW_NODE_GEOMETRY.trigger.rowHeight
       + FLOW_NODE_GEOMETRY.trigger.bottomPadding,
   );
 }
@@ -39,6 +64,14 @@ export function flowNodeHeight(node: FlowNodeState) {
 export function flowNodePort(node: FlowNodeState, side: 'left' | 'right', exit?: number) {
   const width = flowNodeWidth(node);
   const x = node.x + (side === 'right' ? width / 2 : -width / 2);
+
+  if (side === 'right' && isSwitchNode(node) && typeof exit === 'number') {
+    const top = node.y - flowNodeHeight(node) / 2;
+    return {
+      x,
+      y: top + FLOW_NODE_GEOMETRY.switch.headerOffset + (exit + 0.5) * FLOW_NODE_GEOMETRY.switch.rowHeight,
+    };
+  }
 
   if (side === 'right' && isTriggerNode(node) && typeof exit === 'number') {
     const top = node.y - flowNodeHeight(node) / 2;

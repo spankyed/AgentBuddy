@@ -3,7 +3,7 @@ import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import './LogsPluginSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('LogsPluginSettings');
-const commonExclusions = ['app-events', 'xstate.*', 'debug.*', 'trace.*'];
+const commonExclusions = ['app-events', 'xstate.*', 'debug.*', 'trace.*', 'verbose.*', 'system.*'];
 
 export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 1000}: {
   excludedSources?: string[];
@@ -14,11 +14,11 @@ export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 
       <CollapsiblePluginSection label="Maximum Logs">
         <div className={styles.row}>
           <span className={styles.text}>Keep the last</span>
-          <input className={styles.number} readOnly value={maxLogs} />
+          <input className={styles.number} readOnly type="number" min={100} max={10000} step={100} value={maxLogs} />
           <span className={styles.text}>logs</span>
           <span className={styles.small}>• Older logs are automatically removed</span>
         </div>
-        <input className={styles.range} readOnly type="range" min={100} max={10000} step={100} value={maxLogs} />
+        <input className={styles.range} type="range" min={100} max={10000} step={100} value={maxLogs} onChange={() => undefined} />
         <div className={styles.ticks}>
           <button type="button">100</button>
           <button type="button">500</button>

@@ -17,7 +17,7 @@ const styles = makeStyles('PluginsSettingsTab');
 const iconByPlugin = {
   threads: Icons.Threads,
   notes: Icons.NotebookText,
-  code: Icons.Code,
+  code: Icons.Code2,
   library: Icons.Library,
   flows: Icons.Flows,
   actions: Icons.Play,
@@ -43,7 +43,11 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
           <>
             <div className={styles.titleRow}>
               <h2 className={styles.title}>{selected.label} Settings</h2>
-              {selected.id !== 'settings' ? <Icons.ExternalLink size={16} /> : null}
+              {selected.id !== 'settings' ? (
+                <button className={styles.goToPlugin} title="Go to plugin" type="button">
+                  <Icons.ExternalLink size={16} />
+                </button>
+              ) : null}
             </div>
             <SelectedPluginSettings selected={selected.id} state={state} />
             <SaveStatus status={state.saveStatus} />
@@ -83,7 +87,7 @@ function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem
     case 'actions':
       return <ActionsPluginSettings categories={state.selectedPluginSettings?.actions?.categories} />;
     case 'brain':
-      return <BrainPluginSettings />;
+      return <BrainPluginSettings settings={state.selectedPluginSettings?.brain} />;
     case 'code':
       return <CodePluginSettings settings={state.selectedPluginSettings?.code} projects={state.projects} />;
     case 'database':
@@ -116,7 +120,15 @@ function PluginRow({plugin, selected}: {plugin: PluginSettingsItem; selected: bo
   return (
     <div className={styles.pluginRow}>
       <button className={styles.pluginButton} data-active={selected} type="button"><Icon size={16} />{plugin.label}</button>
-      <span className={styles.visibility} data-visible={plugin.visible}><VisibilityIcon size={16} /></span>
+      <button
+        className={styles.visibility}
+        data-visible={plugin.visible}
+        disabled={plugin.id === 'settings'}
+        title={plugin.id === 'settings' ? 'Settings must remain visible' : plugin.visible ? 'Hide from toolbar' : 'Show in toolbar'}
+        type="button"
+      >
+        <VisibilityIcon size={16} />
+      </button>
     </div>
   );
 }

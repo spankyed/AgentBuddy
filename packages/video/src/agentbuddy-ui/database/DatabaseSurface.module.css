@@ -25,6 +25,10 @@
   cursor: col-resize;
 }
 
+.DatabaseSurface_schemaResizeHandle:hover {
+  background: rgb(82 82 82 / 20%);
+}
+
 .DatabaseSurface_schemaResizeHandle div {
   position: absolute;
   inset-block: 0;
@@ -63,6 +67,10 @@
   left: 0;
   height: 4px;
   cursor: row-resize;
+}
+
+.DatabaseSurface_queryResizeHandle:hover {
+  background: rgb(82 82 82 / 20%);
 }
 
 .DatabaseSurface_queryResizeHandle div {

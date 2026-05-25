@@ -30,12 +30,18 @@
   gap: 12px;
 }
 
-.CategoryImportExportSettings_colorSwatch {
+.CategoryImportExportSettings_colorPickerTrigger {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
   border: 1px solid rgb(64 64 64);
   border-radius: 6px;
+  padding: 0;
+  transition: border-color 160ms ease;
+}
+
+.CategoryImportExportSettings_colorPickerTrigger:hover {
+  border-color: rgb(82 82 82);
 }
 
 .CategoryImportExportSettings_input,
@@ -63,6 +69,17 @@
 .CategoryImportExportSettings_input::placeholder,
 .CategoryImportExportSettings_directoryInput::placeholder {
   color: rgb(82 82 82);
+}
+
+.CategoryImportExportSettings_input:hover,
+.CategoryImportExportSettings_directoryInput:hover {
+  border-color: rgb(82 82 82);
+}
+
+.CategoryImportExportSettings_input:focus,
+.CategoryImportExportSettings_directoryInput:focus {
+  border-color: rgb(59 130 246 / 50%);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
 }
 
 .CategoryImportExportSettings_iconButton,
@@ -95,9 +112,20 @@
   cursor: not-allowed;
 }
 
+.CategoryImportExportSettings_iconButton:hover:not(:disabled) {
+  border-color: rgb(239 68 68 / 50%);
+  color: rgb(248 113 113);
+}
+
 .CategoryImportExportSettings_secondaryButton {
   padding: 8px 16px;
   font-weight: 500;
+}
+
+.CategoryImportExportSettings_secondaryButton:hover:not(:disabled) {
+  border-color: rgb(82 82 82);
+  background: rgb(64 64 64);
+  color: white;
 }
 
 .CategoryImportExportSettings_addButton {
@@ -108,6 +136,11 @@
   padding: 6px 12px;
   font-size: 14px;
   transition: background-color 160ms ease, color 160ms ease;
+}
+
+.CategoryImportExportSettings_addButton:hover {
+  background: rgb(38 38 38 / 50%);
+  color: white;
 }
 
 .CategoryImportExportSettings_directoryRow {

@@ -17,7 +17,7 @@ export function SettingsSurface({state}: {state: SettingsSurfaceState}) {
     <div className={styles.root}>
       <div className={styles.tabs}>
         {tabs.map(tab => (
-          <button className={styles.tab} data-active={state.activeTab === tab.id} key={tab.id} type="button">
+          <button className={styles.tab} data-active={state.activeTab === tab.id} data-onboarding-id={`settings-${tab.id}-tab`} key={tab.id} type="button">
             {tab.label}
           </button>
         ))}

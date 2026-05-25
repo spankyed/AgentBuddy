@@ -1,17 +1,22 @@
 import type {ActionsSurfaceState} from './actionTypes';
 import {ActionDetail} from './ActionDetail';
 import {ActionsList} from './ActionsList';
+import './ActionsSurface.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+
+const styles = makeStyles('ActionsSurface');
 
 type ActionsSurfaceProps = {
   state: ActionsSurfaceState;
 };
 
 export function ActionsSurface({state}: ActionsSurfaceProps) {
+  let content = null;
   if (state.view === 'detail' || state.view === 'create') {
-    return <ActionDetail state={state} />;
+    content = <ActionDetail state={state} />;
   }
   if (state.view === 'list') {
-    return <ActionsList state={state} />;
+    content = <ActionsList state={state} />;
   }
-  return null;
+  return <div className={styles.root}>{content}</div>;
 }

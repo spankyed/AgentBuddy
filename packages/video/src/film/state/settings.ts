@@ -2,7 +2,7 @@ import type {SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTy
 
 const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> = {
   faqs: [
-    {answer: 'AgentBuddy stores local configuration on this device and uses it to drive workflows, plugin state, and launch-film demos.', expanded: true, id: 'faq-local', question: 'Where are settings stored?'},
+    {answer: 'AgentBuddy stores local configuration on this device and uses it to drive workflows, plugin state, and launch-film demos.', id: 'faq-local', question: 'Where are settings stored?'},
     {answer: 'Providers can be configured from the General > Providers view. Keys are masked once saved.', id: 'faq-providers', question: 'How do provider keys work?'},
     {answer: 'Setup packs import compiled actions, prompts, flows, library docs, and notes.', id: 'faq-setup', question: 'What is a setup pack?'},
   ],
@@ -45,6 +45,12 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
         {name: 'utility', color: '#A855F7'},
       ],
     },
+    brain: {
+      brainIsDead: false,
+      inspectEnabled: false,
+      needsRestart: false,
+      runningRootFlowId: 'root-flow',
+    },
     code: {
       autoFetchIntervalSeconds: 180,
       autoFetchRemote: true,
@@ -76,11 +82,13 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     },
     flows: {
       enableFlowPreview: true,
+      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Flows',
       flows: [
         {id: 'root-flow', label: 'Root Flow'},
         {id: 'launch-release', label: 'Launch Release'},
         {id: 'run-onboarding', label: 'Run Onboarding'},
       ],
+      needsRestart: true,
       rootFlowId: 'root-flow',
     },
     library: {

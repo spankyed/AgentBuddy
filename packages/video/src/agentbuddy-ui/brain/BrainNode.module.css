@@ -1,8 +1,9 @@
 .BrainNode_status {
   position: absolute;
   z-index: 2;
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(38 38 38 / 50%);
   border-radius: 999px;
 }
 

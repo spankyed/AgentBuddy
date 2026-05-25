@@ -1,17 +1,22 @@
 import {PromptDetail} from './PromptDetail';
 import {PromptsList} from './PromptsList';
 import type {PromptsSurfaceState} from './promptTypes';
+import './PromptsSurface.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+
+const styles = makeStyles('PromptsSurface');
 
 type PromptsSurfaceProps = {
   state: PromptsSurfaceState;
 };
 
 export function PromptsSurface({state}: PromptsSurfaceProps) {
+  let content = null;
   if (state.view === 'detail' || state.view === 'create') {
-    return <PromptDetail state={state} />;
+    content = <PromptDetail state={state} />;
   }
   if (state.view === 'list') {
-    return <PromptsList state={state} />;
+    content = <PromptsList state={state} />;
   }
-  return null;
+  return <div className={styles.root}>{content}</div>;
 }

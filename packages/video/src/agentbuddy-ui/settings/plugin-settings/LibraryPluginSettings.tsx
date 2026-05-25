@@ -23,7 +23,7 @@ export function LibraryPluginSettings({settings}: LibraryPluginSettingsProps) {
         <div className={styles.tagGroup}>
           {tags.map((tag, index) => (
             <div className={styles.tagRow} key={`${tag.name}-${index}`}>
-              <span className={styles.colorSwatch} style={{backgroundColor: tag.color}} />
+              <button className={styles.colorPickerTrigger} style={{backgroundColor: tag.color}} title="Change color" type="button" />
               <input className={styles.input} readOnly type="text" value={tag.name} placeholder="Tag name" />
               <button className={styles.iconButton} disabled={tags.length <= 1} title="Remove tag" type="button">
                 <Icons.X size={16} />

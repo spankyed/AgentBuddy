@@ -22,7 +22,7 @@ export function QueryEditorActions({isDisabled, isLoading, mode}: QueryEditorAct
         <span>{mode === 'query' ? 'Query' : 'Transaction'}</span>
       </button>
       <div className={styles.divider} />
-      <button className={styles.executeButton} data-disabled={isDisabled || isLoading} type="button">
+      <button className={styles.executeButton} data-disabled={isDisabled || isLoading} disabled={isDisabled || isLoading} type="button">
         <ExecuteIcon className={isLoading ? styles.spinner : undefined} size={14} />
         <span>{isLoading ? 'Running...' : 'Execute'}</span>
       </button>

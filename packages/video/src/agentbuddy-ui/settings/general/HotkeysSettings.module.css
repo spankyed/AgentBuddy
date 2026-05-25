@@ -62,4 +62,10 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.HotkeysSettings_add:hover {
+  border-color: rgb(82 82 82);
+  color: rgb(212 212 212);
 }

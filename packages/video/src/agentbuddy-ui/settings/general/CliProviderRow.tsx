@@ -10,6 +10,7 @@ export type CliProviderRowState = {
   label: string;
   placeholder: string;
   status?: 'success' | 'error' | 'testing';
+  error?: string;
   value?: string;
 };
 
@@ -20,9 +21,9 @@ export function CliProviderRow({provider}: {provider: CliProviderRowState}) {
         <div className={styles.labelWrap}>
           <span className={styles.label}>{provider.label}</span>
           {provider.status === 'success' ? <Icons.CircleCheck className={styles.successIcon} size={14} /> : null}
-          {provider.status === 'error' ? <Icons.X className={styles.errorIcon} size={14} /> : null}
+          {provider.status === 'error' ? <Icons.CircleX className={styles.errorIcon} size={14} /> : null}
         </div>
-        <button className={styles.testButton} data-status={provider.status} type="button">
+        <button className={styles.testButton} data-status={provider.status} disabled={provider.status === 'testing'} title="Test if CLI is available" type="button">
           {provider.status === 'testing' ? <Icons.Loader2 className={styles.spinner} size={14} /> : 'Test'}
         </button>
       </div>
@@ -33,6 +34,8 @@ export function CliProviderRow({provider}: {provider: CliProviderRowState}) {
         <span>{provider.installHint}</span>
         <code className={styles.command}>{provider.installCmd}</code>
       </div>
+
+      {provider.status === 'error' && provider.error ? <div className={styles.errorMessage}>{provider.error}</div> : null}
     </div>
   );
 }

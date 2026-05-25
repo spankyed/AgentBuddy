@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import type {SettingsSurfaceState, ThreadModeSettings} from '../settingsTypes';
 import './ThreadsPluginSettings.module.css';
@@ -64,7 +65,7 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
             {(selectedMode?.phases ?? []).map(phase => (
               <div className={styles.phaseCard} key={phase.id}>
                 <div className={styles.modeRow}>
-                  <span className={styles.colorSwatch} style={{backgroundColor: phase.color ?? '#737373'}} />
+                  <button className={styles.colorPickerTrigger} style={{backgroundColor: phase.color ?? '#737373'}} title="Change color" type="button" />
                   <input className={`${styles.input} ${styles.modeName}`} readOnly value={phase.name} placeholder="Phase name" />
                   <input className={`${styles.input} ${styles.flexInput}`} readOnly value={phase.description} placeholder="Description of this phase" />
                   <button className={styles.iconButton} type="button" title="Remove phase"><Icons.X size={16} /></button>
@@ -126,7 +127,7 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
 
       <CollapsiblePluginSection label="Thread Tags">
         <p className={styles.copy}>Manage the tags available for organizing threads</p>
-        <OptionsList items={value.tags} addLabel="Add Tag" placeholder="Tag name" field="name" />
+        <OptionsList items={value.tags} addLabel="Add Tag" placeholder="Tag name" field="name" onboardingId="settings-thread-tags" />
       </CollapsiblePluginSection>
 
       <CollapsiblePluginSection label="Chat State Indicators" defaultOpen={false}>
@@ -134,7 +135,7 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
         <div className={styles.compactStack}>
           {value.chatStates.map(chatState => (
             <div className={styles.optionRow} key={chatState.id}>
-              <span className={styles.colorSwatch} style={{backgroundColor: chatState.color}} />
+              <button className={styles.colorPickerTrigger} style={{backgroundColor: chatState.color}} title="Change color" type="button" />
               <input className={`${styles.input} ${styles.flexInput}`} readOnly value={chatState.label} />
               <button className={styles.busyButton} data-active={Boolean(chatState.busy)} type="button">✦</button>
               <span className={styles.stateId}>{chatState.id}</span>
@@ -169,9 +170,9 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
           <div className={styles.stack}>
             <div className={styles.directoryRow}>
               <input className={`${styles.input} ${styles.directoryInput}`} readOnly value={value.exportDirectory ?? ''} placeholder="Select output directory..." />
-              <button className={styles.secondaryButton} type="button"><Icons.FolderOpen size={16} />Browse</button>
-            </div>
-            <button className={styles.secondaryButton} type="button"><Icons.Download size={16} />Export</button>
+            <button className={styles.secondaryButton} type="button"><Icons.FolderOpen size={16} />Browse</button>
+          </div>
+            <button className={styles.secondaryButton} disabled={!value.exportDirectory} type="button"><Icons.Download size={16} />Export</button>
           </div>
         </CollapsiblePluginSection>
       </Divider>
@@ -185,18 +186,18 @@ function ModeRow({mode, removeDisabled}: {mode: ThreadModeSettings; removeDisabl
     <div className={styles.modeRow}>
       <input className={`${styles.input} ${styles.modeName}`} readOnly value={mode.name} placeholder="Mode name" />
       <input className={`${styles.input} ${styles.flexInput}`} readOnly value={mode.description} placeholder="Description of this mode" />
-      <button className={styles.iconButton} type="button" title={mode.disabled ? 'Enable mode' : 'Disable mode'}><VisibilityIcon size={16} /></button>
+      <button className={`${styles.iconButton} ${styles.neutralIconButton}`} type="button" title={mode.disabled ? 'Enable mode' : 'Disable mode'}><VisibilityIcon size={16} /></button>
       <button className={styles.iconButton} disabled={removeDisabled} type="button" title="Remove mode"><Icons.X size={16} /></button>
     </div>
   );
 }
 
-function OptionsList({addLabel, field, items, placeholder}: {addLabel: string; field: 'label' | 'name'; items: ThreadsSettings['statuses']; placeholder: string}) {
+function OptionsList({addLabel, field, items, onboardingId, placeholder}: {addLabel: string; field: 'label' | 'name'; items: ThreadsSettings['statuses']; onboardingId?: string; placeholder: string}) {
   return (
-    <div className={styles.compactStack}>
+    <div className={styles.compactStack} data-onboarding-id={onboardingId}>
       {items.map((item, index) => (
         <div className={styles.optionRow} key={`${item.color}-${index}`}>
-          <span className={styles.colorSwatch} style={{backgroundColor: item.color}} />
+          <button className={styles.colorPickerTrigger} style={{backgroundColor: item.color}} title="Change color" type="button" />
           <input className={`${styles.input} ${styles.flexInput}`} readOnly value={(field === 'label' ? item.label : item.name) ?? ''} placeholder={placeholder} />
           <button className={styles.iconButton} disabled={items.length <= 1} type="button" title="Remove"><Icons.X size={16} /></button>
         </div>
@@ -261,8 +262,7 @@ function SelectStart({copy, title, value}: {copy: string; title: string; value: 
 function Hotkey({copy, label, value}: {copy: string; label: string; value?: string}) {
   return (
     <div>
-      <label className={styles.fieldLabel}>{label}</label>
-      <input className={styles.hotkeyInput} readOnly value={value ?? ''} placeholder="Not set" />
+      <KeyboardShortcutInput label={label} value={value ?? undefined} />
       <p className={styles.help}>{copy}</p>
     </div>
   );

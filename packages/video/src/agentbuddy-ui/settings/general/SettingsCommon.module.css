@@ -87,6 +87,19 @@
   font: inherit;
   font-size: 14px;
   padding: 10px 16px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.SettingsCommon_input:hover,
+.SettingsCommon_textarea:hover {
+  border-color: rgb(82 82 82);
+}
+
+.SettingsCommon_input:focus,
+.SettingsCommon_textarea:focus {
+  border-color: rgb(59 130 246 / 50%);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 30%);
 }
 
 .SettingsCommon_primaryButton,
@@ -99,14 +112,29 @@
   font-weight: 500;
   margin-top: 16px;
   padding: 8px 16px;
+  transition: background-color 160ms ease, opacity 160ms ease;
 }
 
 .SettingsCommon_primaryButton {
   background: rgb(37 99 235);
 }
 
+.SettingsCommon_primaryButton:hover {
+  background: rgb(59 130 246);
+}
+
 .SettingsCommon_dangerButton {
   background: rgb(220 38 38);
+}
+
+.SettingsCommon_dangerButton:hover {
+  background: rgb(239 68 68);
+}
+
+.SettingsCommon_primaryButton:disabled,
+.SettingsCommon_dangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .SettingsCommon_textarea {

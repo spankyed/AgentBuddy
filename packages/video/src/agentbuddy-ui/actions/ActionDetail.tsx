@@ -21,7 +21,7 @@ export function ActionDetail({state}: ActionDetailProps) {
   return (
     <div className={styles.root}>
       <NameSaveHeader isEditing={isEditing} isValid={isValid}>
-        <input className={styles.nameInput} data-onboarding-id="action-label-input" readOnly type="text" value={state.formData.label} />
+        <input className={styles.nameInput} data-onboarding-id="action-label-input" placeholder="Enter action name" readOnly type="text" value={state.formData.label} />
         <select className={styles.categorySelect} value={state.formData.category ?? ''}>
           <option value="">No Category</option>
           {state.categories.map(category => (
@@ -64,7 +64,7 @@ export function ActionDetail({state}: ActionDetailProps) {
 
           <div className={styles.section}>
             <CollapsibleSection label="Description" open={false}>
-              <textarea className={styles.descriptionBox} data-onboarding-id="action-description-input" readOnly rows={3} value={state.formData.description ?? ''} />
+              <textarea className={styles.descriptionBox} data-onboarding-id="action-description-input" placeholder="Describe what this action does..." readOnly rows={3} value={state.formData.description ?? ''} />
             </CollapsibleSection>
           </div>
 

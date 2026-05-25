@@ -1,7 +1,11 @@
 .Toolbar_root {
+  --toolbar-width: 4.5rem;
+
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
+  width: var(--toolbar-width);
+  min-width: var(--toolbar-width);
   height: 100%;
   border-right: 1px solid rgb(38 38 38);
   color: white;

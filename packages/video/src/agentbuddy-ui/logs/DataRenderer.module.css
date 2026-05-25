@@ -103,6 +103,12 @@
   color: rgb(163 163 163);
   padding: 2px 4px;
   font-size: 12px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.LogsDataRenderer_toggle:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .LogsDataRenderer_openChevron {

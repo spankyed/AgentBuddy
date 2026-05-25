@@ -24,3 +24,8 @@
   font-weight: 500;
   transition: border-color 200ms ease, color 200ms ease;
 }
+
+.ActionsParametersEditor_addButton:hover {
+  border-color: rgb(82 82 82);
+  color: rgb(212 212 212);
+}

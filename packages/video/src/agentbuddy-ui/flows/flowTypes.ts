@@ -1,4 +1,4 @@
-export type FlowNodeKind = 'action' | 'create' | 'keep_alive' | 'listener' | 'schedule' | 'llm' | 'flow' | 'switch' | 'fire' | 'kill' | 'entry';
+export type FlowNodeKind = 'action' | 'create' | 'keep_alive' | 'listener' | 'schedule' | 'llm' | 'flow' | 'switch' | 'fire' | 'kill' | 'entry' | 'event';
 
 export type FlowPaletteItemState = {
   disabled?: boolean;
@@ -7,6 +7,7 @@ export type FlowPaletteItemState = {
 };
 
 export type FlowNodeState = {
+  branches?: Array<{isElse?: boolean; label?: string}>;
   id: string;
   kind: FlowNodeKind;
   label: string;

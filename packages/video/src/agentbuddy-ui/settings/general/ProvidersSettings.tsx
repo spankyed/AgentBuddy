@@ -66,7 +66,7 @@ function ProviderRow({provider}: {provider: ProviderKeyState}) {
       <div className={styles.actions}>
         {provider.hasKey ? (
           <>
-            <button className={styles.iconButton} type="button"><Icons.Edit3 size={14} /></button>
+            <button className={styles.iconButton} type="button"><Icons.Edit2 size={14} /></button>
             <button className={styles.iconButton} data-danger type="button"><Icons.Trash2 size={14} /></button>
           </>
         ) : null}
@@ -84,7 +84,7 @@ function CustomProviderRow({provider}: {provider: CustomProviderKeyState}) {
       </div>
       <div>{provider.hasKey ? <span className={styles.masked}>••••••••</span> : <input className={styles.providerInput} readOnly value="" placeholder="Enter API key" />}</div>
       <div className={styles.actions}>
-        <button className={styles.iconButton} type="button"><Icons.Edit3 size={14} /></button>
+        <button className={styles.iconButton} type="button"><Icons.Edit2 size={14} /></button>
         <button className={styles.iconButton} data-danger type="button"><Icons.Trash2 size={14} /></button>
       </div>
     </>

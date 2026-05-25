@@ -40,12 +40,24 @@
   outline: none;
 }
 
+.DatabaseSchemaPanel_searchBox input:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+
 .DatabaseSchemaPanel_clearSearch,
 .DatabaseSchemaPanel_refreshButton {
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: rgb(163 163 163);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.DatabaseSchemaPanel_clearSearch:hover,
+.DatabaseSchemaPanel_refreshButton:hover,
+.DatabaseSchemaPanel_footer button:hover {
+  background: rgb(64 64 64);
 }
 
 .DatabaseSchemaPanel_clearSearch {
@@ -228,4 +240,5 @@
   color: rgb(163 163 163);
   padding: 8px 12px;
   font-size: 14px;
+  transition: background-color 160ms ease;
 }

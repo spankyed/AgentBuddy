@@ -13,10 +13,11 @@ export type BrainNodeState = {
     flowId: string;
     nodeId: string;
   };
-  completedAt?: string;
+  completedAt?: number;
   nodeAttributes?: Record<string, unknown>;
-  startedAt?: string;
+  startedAt?: number;
   status?: BrainNodeStatus;
+  stepNodeType?: string;
   subtitle?: string;
   x?: number;
   y?: number;

@@ -22,7 +22,7 @@ type ToolbarProps = {
 };
 
 const toolbarPlugins = [
-  {id: 'threads', label: 'Threads', icon: Icons.Threads, isPinned: false},
+  {id: 'threads', label: 'Threads', icon: Icons.BotMessageSquare, isPinned: false},
   {id: 'notes', label: 'Notes', icon: Icons.NotebookText, isPinned: false},
   {id: 'code', label: 'Code', icon: Icons.Code2, isPinned: false},
   {id: 'library', label: 'Library', icon: Icons.Library, isPinned: false},
@@ -35,23 +35,23 @@ const toolbarPlugins = [
   {id: 'settings', label: 'Settings', icon: Icons.Settings, isPinned: true},
 ] as const;
 
+const mainToolbarPlugins = toolbarPlugins.filter(item => !item.isPinned);
+const pinnedToolbarPlugins = toolbarPlugins.filter(item => item.isPinned);
+
 // Mirrors packages/renderer/src/core/components/layout/toolbar.vue.
 export function Toolbar({activePlugin}: ToolbarProps) {
-  const pluginItems = toolbarPlugins.filter(item => !item.isPinned);
-  const pinnedItems = toolbarPlugins.filter(item => item.isPinned);
-
   return (
     <aside className={styles.root} data-onboarding-id="toolbar">
       <div className={styles.windowControlsArea} />
       <div className={styles.scrollArea}>
         <div className={styles.buttonStack}>
-          {pluginItems.map(item => (
+          {mainToolbarPlugins.map(item => (
             <ToolbarButton key={item.id} id={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
           ))}
         </div>
       </div>
       <div className={styles.pinnedArea}>
-        {pinnedItems.map(item => (
+        {pinnedToolbarPlugins.map(item => (
           <ToolbarButton key={item.id} id={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
         ))}
       </div>

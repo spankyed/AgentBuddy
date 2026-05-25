@@ -1,3 +1,4 @@
+import {MonacoCodeViewer} from '../../code/MonacoCodeViewer';
 import './SettingsCommon.module.css';
 import './JsonSettingsEditor.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
@@ -17,7 +18,7 @@ export function JsonSettingsEditor({value}: {value: string}) {
         </div>
       </header>
       <div className={styles.editorFrame}>
-        <textarea className={styles.editor} readOnly value={value} />
+        <MonacoCodeViewer filePath="settings.json" language="json" lineNumbers="off" value={value} />
       </div>
     </div>
   );

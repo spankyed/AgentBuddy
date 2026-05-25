@@ -21,7 +21,14 @@ export function PromptDetail({state}: PromptDetailProps) {
   return (
     <div className={styles.root}>
       <NameSaveHeader isEditing={isEditing} isValid={isValid}>
-        <input className={styles.nameInput} data-onboarding-id="prompt-name-input" readOnly type="text" value={state.formData.label} />
+        <input
+          className={styles.nameInput}
+          data-onboarding-id="prompt-name-input"
+          placeholder="Enter prompt name"
+          readOnly
+          type="text"
+          value={state.formData.label}
+        />
         <select className={styles.categorySelect} value={state.formData.category ?? ''}>
           <option value="">No Category</option>
           {state.categories.map(category => (
@@ -64,7 +71,13 @@ export function PromptDetail({state}: PromptDetailProps) {
 
           <div className={styles.section}>
             <CollapsibleSection label="Description" open={false}>
-              <textarea className={styles.descriptionBox} readOnly rows={3} value={state.formData.description ?? ''} />
+              <textarea
+                className={styles.descriptionBox}
+                placeholder="Describe what this prompt template does..."
+                readOnly
+                rows={3}
+                value={state.formData.description ?? ''}
+              />
             </CollapsibleSection>
           </div>
 

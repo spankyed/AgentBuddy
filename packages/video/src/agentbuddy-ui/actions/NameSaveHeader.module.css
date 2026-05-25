@@ -39,6 +39,11 @@
   transition: background-color 200ms ease, color 200ms ease;
 }
 
+.ActionsNameSaveHeader_backButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
 .ActionsNameSaveHeader_backIcon {
   width: 14px;
   height: 14px;

@@ -71,6 +71,12 @@
   border: 0;
   border-radius: 0.25rem;
   background: transparent;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.CodePanelToolbar_refresh:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .CodePanelToolbar_panelRow {
@@ -105,9 +111,20 @@
   border-radius: 0.25rem;
   background: transparent;
   color: rgb(163 163 163);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.CodePanelToolbar_panelButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .CodePanelToolbar_activePanelButton {
+  background: rgb(29 78 216);
+  color: rgb(245 245 245);
+}
+
+.CodePanelToolbar_activePanelButton:hover {
   background: rgb(29 78 216);
   color: rgb(245 245 245);
 }

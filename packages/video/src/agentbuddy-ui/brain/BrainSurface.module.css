@@ -28,6 +28,7 @@
 }
 
 .BrainSurface_leftTitle {
+  margin: 0;
   color: rgb(115 115 115);
   font-size: 12px;
   font-weight: 600;
@@ -66,6 +67,11 @@
   font-size: 12px;
   font-weight: 500;
   padding: 2px 8px;
+  transition: background-color 160ms ease;
+}
+
+.BrainSurface_resume:hover {
+  background: rgb(217 119 6 / 60%);
 }
 
 .BrainSurface_stopped {
@@ -117,4 +123,9 @@
   font-size: 14px;
   font-weight: 500;
   padding: 6px 16px;
+  transition: background-color 160ms ease;
+}
+
+.BrainSurface_startButton:hover {
+  background: rgb(21 128 61);
 }

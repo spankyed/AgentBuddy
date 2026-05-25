@@ -40,6 +40,11 @@
   transition: background-color 160ms ease, color 160ms ease;
 }
 
+.DatabaseQueryEditorHeader_iconButton:hover {
+  background: rgb(64 64 64);
+  color: rgb(229 229 229);
+}
+
 .DatabaseQueryEditorHeader_aiActive {
   background: rgb(245 158 11 / 15%);
   color: rgb(251 191 36);

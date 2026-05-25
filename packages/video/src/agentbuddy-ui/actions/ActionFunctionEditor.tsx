@@ -11,7 +11,7 @@ type ActionFunctionEditorProps = {
 export function ActionFunctionEditor({value}: ActionFunctionEditorProps) {
   return (
     <div className={styles.root} data-onboarding-id="action-function-editor">
-      <MonacoCodeViewer filePath="action-template.ts" height="100%" language="typescript" lineNumbers="off" value={value} />
+      <MonacoCodeViewer filePath="action-template.ts" fontSize={14} height="100%" language="typescript" lineNumbers="off" value={value} wordWrap="on" />
     </div>
   );
 }

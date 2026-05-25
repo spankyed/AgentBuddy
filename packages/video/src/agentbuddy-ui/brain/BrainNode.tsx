@@ -10,10 +10,13 @@ export function BrainNode({connectedExits, node, selected}: {
   node: BrainNodeState & {x: number; y: number};
   selected?: boolean;
 }) {
+  const width = flowNodeWidth(node);
+  const height = flowNodeHeight(node);
   const statusStyle = {
-    left: `${node.x + flowNodeWidth(node) / 2 - 4}px`,
-    top: `${node.y - flowNodeHeight(node) / 2 - 4}px`,
+    left: `${node.x + width / 2 - 7}px`,
+    top: `${node.y - height / 2 - 7}px`,
   };
+  const showStatus = node.kind !== 'event' && Boolean(node.status);
 
   return (
     <>
@@ -30,7 +33,7 @@ export function BrainNode({connectedExits, node, selected}: {
         }}
         selected={selected}
       />
-      {node.status ? <span className={styles.status} data-status={node.status} style={statusStyle} /> : null}
+      {showStatus ? <span className={styles.status} data-status={node.status} style={statusStyle} /> : null}
     </>
   );
 }

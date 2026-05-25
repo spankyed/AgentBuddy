@@ -28,7 +28,7 @@ export function BrainEventsList({events, pulsingEventType}: {events: BrainEventS
             key={event.id}
           >
             <div className={styles.inner}>
-              <div>
+              <div className={styles.copy}>
                 <div className={styles.title}>{event.label}</div>
                 <div className={styles.meta}>
                   <span className={styles.eventType}>{event.eventType}</span>

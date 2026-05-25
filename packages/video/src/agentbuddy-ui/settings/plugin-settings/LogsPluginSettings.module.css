@@ -24,6 +24,13 @@
   font-size: 14px;
   padding: 4px 8px;
   text-align: center;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.LogsPluginSettings_number:focus,
+.LogsPluginSettings_input:focus {
+  border-color: rgb(82 82 82);
+  outline: none;
 }
 
 .LogsPluginSettings_small {
@@ -50,6 +57,11 @@
   font: inherit;
   font-size: 12px;
   padding: 0;
+  transition: color 150ms ease;
+}
+
+.LogsPluginSettings_ticks button:hover {
+  color: rgb(163 163 163);
 }
 
 .LogsPluginSettings_copy {
@@ -105,6 +117,11 @@
   font: inherit;
   font-size: 14px;
   padding: 6px 12px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.LogsPluginSettings_input::placeholder {
+  color: rgb(82 82 82);
 }
 
 .LogsPluginSettings_add {

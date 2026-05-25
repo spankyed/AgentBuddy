@@ -30,6 +30,19 @@ export function FlowsPluginSettings({settings}: {settings?: FlowsSettings}) {
               ))}
             </select>
           </div>
+          {value.needsRestart && value.rootFlowId ? (
+            <div className={styles.restartNotice}>
+              <Icons.AlertTriangle className={styles.restartIcon} size={20} />
+              <div className={styles.restartBody}>
+                <div className={styles.restartTitle}>Root flow changed - Brain restart required</div>
+                <p className={styles.restartCopy}>The root flow has been updated. Please restart the application from Brain settings to apply the changes.</p>
+                <button className={styles.restartButton} type="button">
+                  <Icons.Brain size={16} />
+                  Go to Brain Settings
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </CollapsiblePluginSection>
 
@@ -60,13 +73,13 @@ export function FlowsPluginSettings({settings}: {settings?: FlowsSettings}) {
         <p className={styles.copy}>Export all flows to a DSL JSON file</p>
         <div className={styles.stack}>
           <div className={styles.directoryRow}>
-            <input className={styles.directoryInput} readOnly type="text" placeholder="Select output directory..." />
+            <input className={styles.directoryInput} readOnly type="text" value={value.exportDirectory ?? ''} placeholder="Select output directory..." />
             <button className={styles.secondaryButton} type="button">
               <Icons.FolderOpen size={16} />
               Browse
             </button>
           </div>
-          <button className={styles.secondaryButton} disabled type="button">
+          <button className={styles.secondaryButton} disabled={!value.exportDirectory} type="button">
             <Icons.Download size={16} />
             Export
           </button>

@@ -51,9 +51,21 @@
   backdrop-filter: blur(4px);
 }
 
+.BrainCanvas_backButton,
+.BrainCanvas_fitButton {
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.BrainCanvas_backButton:hover,
+.BrainCanvas_fitButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
 .BrainCanvas_backButton {
   top: 16px;
   left: 16px;
+  border: 1px solid rgb(38 38 38);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -69,6 +81,7 @@
   display: grid;
   width: 32px;
   height: 32px;
+  padding: 0;
   place-items: center;
 }
 

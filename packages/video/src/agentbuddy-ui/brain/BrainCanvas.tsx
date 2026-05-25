@@ -40,7 +40,7 @@ export function BrainCanvas({state}: {state: BrainSurfaceState}) {
   }
 
   return (
-    <section className={styles.root}>
+    <section className={styles.root} data-onboarding-id="brain-flow-graph">
       <div className={styles.viewport}>
         <svg className={styles.edges}>
           <defs>
@@ -67,7 +67,7 @@ export function BrainCanvas({state}: {state: BrainSurfaceState}) {
         ))}
       </div>
       {state.canGoBack ? <button className={styles.backButton} type="button"><Icons.ArrowLeft size={15} />Back</button> : null}
-      <span className={styles.fitButton}><Icons.Maximize size={16} /></span>
+      <button className={styles.fitButton} title="Jump to latest" type="button"><Icons.Maximize size={16} /></button>
       {state.flowTNodeId ? <div className={styles.currentLabel}>{state.flowTNodeId}</div> : null}
     </section>
   );

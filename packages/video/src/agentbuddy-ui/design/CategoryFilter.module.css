@@ -18,6 +18,10 @@
   transition: color 200ms ease;
 }
 
+.CategoryFilter_button:hover {
+  color: rgb(229 229 229);
+}
+
 .CategoryFilter_count {
   display: inline-flex;
   width: 20px;

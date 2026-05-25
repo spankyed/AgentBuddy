@@ -25,6 +25,10 @@
   background: rgb(29 78 216);
 }
 
+.ActionsButton_primary:active {
+  background: rgb(37 99 235);
+}
+
 .ActionsButton_secondary {
   background: rgb(209 213 219);
   color: rgb(31 41 55);
@@ -32,6 +36,10 @@
 
 .ActionsButton_secondary:hover {
   background: rgb(229 231 235);
+}
+
+.ActionsButton_secondary:active {
+  background: rgb(96 165 250);
 }
 
 .ActionsButton_transparent,
@@ -53,6 +61,10 @@
 
 .ActionsButton_danger:hover {
   background: rgb(185 28 28);
+}
+
+.ActionsButton_danger:active {
+  background: rgb(153 27 27);
 }
 
 .ActionsButton_disabled_primary,

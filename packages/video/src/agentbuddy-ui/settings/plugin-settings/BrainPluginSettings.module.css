@@ -2,11 +2,26 @@
   max-width: 768px;
 }
 
+.BrainPluginSettings_stack {
+  display: grid;
+  gap: 16px;
+}
+
 .BrainPluginSettings_card {
   border: 1px solid rgb(64 64 64 / 50%);
   border-radius: 8px;
   background: rgb(23 23 23 / 50%);
   padding: 16px;
+}
+
+.BrainPluginSettings_card[data-state="stopped"] {
+  border-color: rgb(82 82 82 / 30%);
+  background: rgb(38 38 38 / 50%);
+}
+
+.BrainPluginSettings_card[data-state="restart"] {
+  border-color: rgb(180 83 9 / 50%);
+  background: rgb(120 53 15 / 20%);
 }
 
 .BrainPluginSettings_statusRow {
@@ -16,11 +31,36 @@
   margin-bottom: 12px;
 }
 
+.BrainPluginSettings_statusIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.BrainPluginSettings_card[data-state="running"] .BrainPluginSettings_statusIcon {
+  color: rgb(34 197 94);
+}
+
+.BrainPluginSettings_card[data-state="stopped"] .BrainPluginSettings_statusIcon {
+  color: rgb(115 115 115);
+}
+
+.BrainPluginSettings_card[data-state="restart"] .BrainPluginSettings_statusIcon {
+  color: rgb(245 158 11);
+}
+
 .BrainPluginSettings_statusTitle {
   color: rgb(74 222 128);
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 4px;
+}
+
+.BrainPluginSettings_card[data-state="stopped"] .BrainPluginSettings_statusTitle {
+  color: rgb(163 163 163);
+}
+
+.BrainPluginSettings_card[data-state="restart"] .BrainPluginSettings_statusTitle {
+  color: rgb(251 191 36);
 }
 
 .BrainPluginSettings_statusCopy {
@@ -41,6 +81,10 @@
   border-top: 1px solid rgb(64 64 64 / 30%);
   margin-top: 16px;
   padding-top: 12px;
+}
+
+.BrainPluginSettings_card[data-state="restart"] .BrainPluginSettings_lowerBlock {
+  border-top-color: rgb(180 83 9 / 30%);
 }
 
 .BrainPluginSettings_caution {
@@ -66,6 +110,7 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: background-color 150ms ease;
 }
 
 .BrainPluginSettings_button[data-tone="warning"] {
@@ -82,6 +127,14 @@
 
 .BrainPluginSettings_button[data-tone="danger"]:hover {
   background: rgb(185 28 28);
+}
+
+.BrainPluginSettings_button[data-tone="success"] {
+  background: rgb(22 163 74);
+}
+
+.BrainPluginSettings_button[data-tone="success"]:hover {
+  background: rgb(21 128 61);
 }
 
 .BrainPluginSettings_toggleRow {
@@ -107,4 +160,20 @@
   font-size: 14px;
   font-weight: 500;
   padding: 6px 12px;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.BrainPluginSettings_toggle:hover {
+  background: rgb(64 64 64);
+  color: rgb(212 212 216);
+}
+
+.BrainPluginSettings_toggle[data-enabled="true"] {
+  border-color: transparent;
+  background: rgb(37 99 235);
+  color: white;
+}
+
+.BrainPluginSettings_toggle[data-enabled="true"]:hover {
+  background: rgb(29 78 216);
 }

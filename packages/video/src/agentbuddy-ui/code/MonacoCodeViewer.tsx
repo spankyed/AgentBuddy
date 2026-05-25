@@ -12,6 +12,7 @@ let workersConfigured = false;
 
 type MonacoCodeViewerProps = {
   filePath?: string;
+  fontSize?: number;
   height?: number | string;
   language?: string;
   lineNumberStart?: number;
@@ -19,12 +20,14 @@ type MonacoCodeViewerProps = {
   modified?: string;
   original?: string;
   value?: string;
+  wordWrap?: 'off' | 'on';
 };
 
 // Shared read-only Monaco surface for film replicas. Mirrors the renderer's
 // UnifiedMonacoEditor readonly/simple and readonly/inline-diff modes.
 export function MonacoCodeViewer({
   filePath,
+  fontSize = 12,
   height = '100%',
   language,
   lineNumberStart = 1,
@@ -32,6 +35,7 @@ export function MonacoCodeViewer({
   modified,
   original,
   value = '',
+  wordWrap = 'off',
 }: MonacoCodeViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDiff = original !== undefined || modified !== undefined;
@@ -50,7 +54,7 @@ export function MonacoCodeViewer({
       domReadOnly: true,
       folding: false,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      fontSize: 12,
+      fontSize,
       glyphMargin: false,
       lineDecorationsWidth: 0,
       lineHeight: 20,
@@ -68,6 +72,7 @@ export function MonacoCodeViewer({
         vertical: 'hidden',
       },
       scrollBeyondLastLine: false,
+      wordWrap,
       theme: 'film-dark',
     };
 

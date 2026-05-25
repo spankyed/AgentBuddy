@@ -41,12 +41,18 @@
   font-size: 14px;
   font-weight: 500;
   padding: 6px 12px;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }
 
 .NotesPluginSettings_segment[data-active='true'] {
-  border-color: rgb(37 99 235);
+  border-color: transparent;
   background: rgb(37 99 235);
   color: white;
+}
+
+.NotesPluginSettings_segment:not([data-active='true']):hover {
+  background: rgb(64 64 64);
+  color: rgb(212 212 216);
 }
 
 .NotesPluginSettings_formatToggle {
@@ -67,12 +73,17 @@
   font: inherit;
   font-size: 14px;
   padding: 6px 12px;
+  transition: color 150ms ease, background-color 150ms ease;
 }
 
 .NotesPluginSettings_formatButton[data-active='true'] {
   background: rgb(64 64 64);
   color: white;
   font-weight: 500;
+}
+
+.NotesPluginSettings_formatButton:not([data-active='true']):hover {
+  color: rgb(212 212 212);
 }
 
 .NotesPluginSettings_directoryRow {
@@ -109,9 +120,16 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
 }
 
 .NotesPluginSettings_secondaryButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.NotesPluginSettings_secondaryButton:not(:disabled):hover {
+  border-color: rgb(82 82 82);
+  background: rgb(64 64 64);
+  color: white;
 }

@@ -78,6 +78,12 @@ export type SettingsSurfaceState = {
     actions?: {
       categories: SettingsCategory[];
     };
+    brain?: {
+      brainIsDead?: boolean;
+      inspectEnabled?: boolean;
+      needsRestart?: boolean;
+      runningRootFlowId?: string;
+    };
     database?: {
       executeQueryShortcut: string;
     };
@@ -106,7 +112,9 @@ export type SettingsSurfaceState = {
     };
     flows?: {
       enableFlowPreview: boolean;
+      exportDirectory?: string;
       flows: Array<{id: string; label: string}>;
+      needsRestart?: boolean;
       rootFlowId?: string;
     };
     library?: {

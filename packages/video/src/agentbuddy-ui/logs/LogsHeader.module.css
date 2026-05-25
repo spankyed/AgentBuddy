@@ -42,6 +42,14 @@
   transition: border-color 160ms ease;
 }
 
+.LogsHeader_searchBox[data-has-search="true"] input {
+  border-color: rgb(82 82 82);
+}
+
+.LogsHeader_searchBox:not([data-has-search="true"]) input:focus {
+  border-color: rgb(82 82 82);
+}
+
 .LogsHeader_searchBox input::placeholder {
   color: rgb(115 115 115);
 }
@@ -178,6 +186,10 @@
 
 .LogsHeader_appEventsActive {
   background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
+.LogsHeader_appEventsActive:hover {
   color: rgb(245 245 245);
 }
 

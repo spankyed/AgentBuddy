@@ -4,6 +4,11 @@
   border-radius: 8px;
   background: rgb(23 23 23 / 30%);
   padding: 12px;
+  transition: border-color 160ms ease;
+}
+
+.CliProviderRow_root:hover {
+  border-color: rgb(64 64 64 / 80%);
 }
 
 .CliProviderRow_header {
@@ -46,12 +51,24 @@
   font-size: 12px;
   font-weight: 500;
   padding: 4px 10px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.CliProviderRow_testButton:hover {
+  background: rgb(64 64 64);
+  color: white;
 }
 
 .CliProviderRow_testButton[data-status="testing"] {
+  background: rgb(38 38 38);
   border-color: transparent;
   color: rgb(115 115 115);
   cursor: not-allowed;
+}
+
+.CliProviderRow_testButton[data-status="testing"]:hover {
+  background: rgb(38 38 38);
+  color: rgb(115 115 115);
 }
 
 .CliProviderRow_spinner {
@@ -67,11 +84,22 @@
   color: white;
   font: inherit;
   font-size: 12px;
+  outline: none;
   padding: 6px 12px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .CliProviderRow_input::placeholder {
   color: rgb(82 82 82);
+}
+
+.CliProviderRow_input:hover {
+  border-color: rgb(82 82 82);
+}
+
+.CliProviderRow_input:focus {
+  border-color: rgb(59 130 246 / 50%);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
 }
 
 .CliProviderRow_helper {
@@ -91,6 +119,12 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   padding: 2px 6px;
+}
+
+.CliProviderRow_errorMessage {
+  margin-top: 8px;
+  color: rgb(248 113 113 / 70%);
+  font-size: 12px;
 }
 
 @keyframes CliProviderRow_spin {

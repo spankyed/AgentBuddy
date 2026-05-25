@@ -19,6 +19,16 @@
   transition: border-color 200ms ease;
 }
 
+.ActionDetail_nameInput:focus,
+.ActionDetail_descriptionBox:focus {
+  border-color: rgb(59 130 246);
+}
+
+.ActionDetail_nameInput::placeholder,
+.ActionDetail_descriptionBox::placeholder {
+  color: rgb(115 115 115);
+}
+
 .ActionDetail_categorySelect {
   flex-shrink: 0;
   border: 1px solid rgb(64 64 64);
@@ -32,12 +42,37 @@
   transition: border-color 200ms ease;
 }
 
+.ActionDetail_categorySelect:hover {
+  border-color: rgb(82 82 82);
+}
+
+.ActionDetail_categorySelect:focus {
+  border-color: rgb(59 130 246);
+}
+
 .ActionDetail_contentScroll {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
   scrollbar-color: #525252 #171717;
   scrollbar-width: thin;
+}
+
+.ActionDetail_contentScroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ActionDetail_contentScroll::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+.ActionDetail_contentScroll::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: #525252;
+}
+
+.ActionDetail_contentScroll::-webkit-scrollbar-thumb:hover {
+  background-color: #737373;
 }
 
 .ActionDetail_content {
@@ -86,6 +121,11 @@
   padding: 2px 6px;
   font-size: 12px;
   transition: background-color 200ms ease, color 200ms ease;
+}
+
+.ActionDetail_openEditorButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(212 212 212);
 }
 
 .ActionDetail_servicesInfo {

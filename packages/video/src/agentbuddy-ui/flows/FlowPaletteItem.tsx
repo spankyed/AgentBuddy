@@ -16,6 +16,7 @@ const iconByKind = {
   fire: Icons.Zap,
   kill: Icons.Plug,
   entry: Icons.Radio,
+  event: Icons.Radio,
 };
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/components/NodePalette.vue.

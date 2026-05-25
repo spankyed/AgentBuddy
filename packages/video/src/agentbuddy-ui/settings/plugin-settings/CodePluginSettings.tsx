@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import {CodeDirectorySelect} from './CodeDirectorySelect';
 import type {SettingsSurfaceState} from '../settingsTypes';
@@ -110,6 +111,7 @@ export function CodePluginSettings({settings, projects = []}: {settings?: CodeSe
               <input className={styles.scriptCommand} readOnly placeholder="Command" />
               <button className={styles.iconButton} disabled type="button" title="Add script"><Icons.Plus size={16} /></button>
             </div>
+            {value.terminalScripts.length === 0 ? <p className={styles.help}>No scripts saved. Add one above.</p> : null}
           </div>
         </CollapsiblePluginSection>
       </Divider>
@@ -169,8 +171,7 @@ function NumberSetting({checkbox = false, copy, title, value}: {checkbox?: boole
 function Hotkey({copy, label, value}: {copy?: string; label: string; value?: string}) {
   return (
     <div className={styles.hotkeyGroup}>
-      <span className={styles.hotkeyLabel}>{label}</span>
-      <input className={styles.hotkeyInput} readOnly value={value ?? ''} placeholder="Not set" />
+      <KeyboardShortcutInput label={label} value={value ?? undefined} />
       {copy ? <p className={styles.help}>{copy}</p> : null}
     </div>
   );

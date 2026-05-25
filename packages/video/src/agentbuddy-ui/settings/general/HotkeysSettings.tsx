@@ -13,14 +13,14 @@ export function HotkeysSettings() {
       </header>
       <div className={styles.group}>
         <div className={styles.row}>
-          <KeyboardShortcutInput label="Previous Plugin" value="⌘ ↑" />
-          <KeyboardShortcutInput label="Next Plugin" value="⌘ ↓" />
+          <KeyboardShortcutInput label="Previous Plugin" showResetButton={false} value="⌘ ↑" />
+          <KeyboardShortcutInput label="Next Plugin" showResetButton={false} value="⌘ ↓" />
         </div>
         <p className={styles.hint}>Navigate between plugins using keyboard shortcuts</p>
       </div>
       <div className={styles.group}>
         <div className={styles.row}>
-          <KeyboardShortcutInput label="Toggle Inspection Panel" value="⌘ I" />
+          <KeyboardShortcutInput label="Toggle Inspection Panel" showResetButton={false} value="⌘ I" />
           <div style={{flex: 1}} />
         </div>
         <p className={styles.hint}>Show or hide the inspection panel</p>

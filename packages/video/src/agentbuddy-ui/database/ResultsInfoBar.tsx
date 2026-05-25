@@ -1,5 +1,5 @@
-import {makeStyles} from '../primitives/makeStyles';
 import {Icons} from '../primitives/Icon';
+import {makeStyles} from '../primitives/makeStyles';
 import './ResultsInfoBar.module.css';
 
 const styles = makeStyles('DatabaseResultsInfoBar');
@@ -41,7 +41,7 @@ export function ResultsInfoBar({executionTime, hasResult, resultCount, resultTyp
         {executionTime !== null ? (
           <div className={styles.time}>
             <Icons.Clock size={14} />
-            <span>{formatExecutionTime(executionTime)}</span>
+            <span className={executionTimeClass(executionTime)}>{formatExecutionTime(executionTime)}</span>
           </div>
         ) : null}
       </div>
@@ -53,4 +53,10 @@ function formatExecutionTime(time: number) {
   if (time < 1) return `${time.toFixed(3)}ms`;
   if (time < 1000) return `${time.toFixed(2)}ms`;
   return `${(time / 1000).toFixed(3)}s`;
+}
+
+function executionTimeClass(time: number) {
+  if (time < 100) return styles.fastTime;
+  if (time < 1000) return styles.mediumTime;
+  return styles.slowTime;
 }

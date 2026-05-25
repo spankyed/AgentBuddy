@@ -10,6 +10,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
   padding: 6px 16px;
 }
 
@@ -72,7 +73,7 @@
   padding: 2px 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  transition: background-color 160ms ease;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 .LogRow_source:hover {
@@ -92,6 +93,10 @@
   color: rgb(163 163 163);
 }
 
+.LogRow_chevronSlot svg {
+  transition: transform 160ms ease;
+}
+
 .LogRow_expandedChevron {
   transform: rotate(90deg);
 }
@@ -103,6 +108,9 @@
 }
 
 .LogRow_expandedInner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-left: 16px;
 }
 

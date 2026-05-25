@@ -12,6 +12,7 @@
 }
 
 .PluginsSettingsTab_heading {
+  margin: 0;
   color: rgb(115 115 115);
   font-size: 12px;
   font-weight: 600;
@@ -41,9 +42,20 @@
   font-size: 14px;
   padding: 8px 12px;
   text-align: left;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.PluginsSettingsTab_pluginButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .PluginsSettingsTab_pluginButton[data-active="true"] {
+  background: rgb(59 130 246 / 20%);
+  color: rgb(96 165 250);
+}
+
+.PluginsSettingsTab_pluginButton[data-active="true"]:hover {
   background: rgb(59 130 246 / 20%);
   color: rgb(96 165 250);
 }
@@ -53,11 +65,33 @@
   width: 32px;
   height: 32px;
   place-items: center;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: rgb(163 163 163);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.PluginsSettingsTab_visibility:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .PluginsSettingsTab_visibility[data-visible="false"] {
+  color: rgb(82 82 82);
+}
+
+.PluginsSettingsTab_visibility[data-visible="false"]:hover {
+  color: rgb(163 163 163);
+}
+
+.PluginsSettingsTab_visibility:disabled {
+  cursor: not-allowed;
+  color: rgb(82 82 82);
+}
+
+.PluginsSettingsTab_visibility:disabled:hover {
+  background: transparent;
   color: rgb(82 82 82);
 }
 
@@ -75,9 +109,27 @@
 }
 
 .PluginsSettingsTab_title {
+  margin: 0;
   color: white;
   font-size: 20px;
   font-weight: 600;
+}
+
+.PluginsSettingsTab_goToPlugin {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(115 115 115);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.PluginsSettingsTab_goToPlugin:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .PluginsSettingsTab_empty {
@@ -87,6 +139,10 @@
   align-items: center;
   justify-content: center;
   color: rgb(163 163 163);
+}
+
+.PluginsSettingsTab_empty p {
+  margin: 0;
 }
 
 .PluginsSettingsTab_saveStatus {

@@ -26,6 +26,10 @@
   outline: none;
 }
 
+.DatabaseQueryEditorPanel_aiPrompt textarea::placeholder {
+  color: rgb(115 115 115);
+}
+
 .DatabaseQueryEditorPanel_aiPrompt button {
   flex-shrink: 0;
   border: 0;
@@ -35,6 +39,11 @@
   margin-top: 2px;
   padding: 2px 8px;
   font-size: 12px;
+  transition: background-color 160ms ease;
+}
+
+.DatabaseQueryEditorPanel_aiPrompt button:hover {
+  background: rgb(245 158 11 / 30%);
 }
 
 .DatabaseQueryEditorPanel_editorRegion {

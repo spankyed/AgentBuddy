@@ -40,11 +40,22 @@
   color: white;
   font: inherit;
   font-size: 14px;
+  outline: none;
   padding: 4px 8px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .ProjectsSettings_name::placeholder {
   color: rgb(82 82 82);
+}
+
+.ProjectsSettings_name:hover {
+  border-color: rgb(82 82 82);
+}
+
+.ProjectsSettings_name:focus {
+  border-color: rgb(59 130 246 / 50%);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
 }
 
 .ProjectsSettings_dirButton {
@@ -58,6 +69,12 @@
   font: inherit;
   font-size: 12px;
   padding: 4px 8px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.ProjectsSettings_dirButton:hover {
+  background: rgb(64 64 64);
+  color: white;
 }
 
 .ProjectsSettings_removeProjectButton {
@@ -70,6 +87,12 @@
   border-radius: 4px;
   background: transparent;
   color: rgb(163 163 163);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.ProjectsSettings_removeProjectButton:hover {
+  background: rgb(239 68 68 / 10%);
+  color: rgb(248 113 113);
 }
 
 .ProjectsSettings_dirs {
@@ -108,11 +131,22 @@
   background: transparent;
   color: rgb(115 115 115);
   padding: 0;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.ProjectsSettings_removeDirButton:hover {
+  background: rgb(239 68 68 / 10%);
+  color: rgb(248 113 113);
 }
 
 .ProjectsSettings_removeDirButton[data-disabled="true"] {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.ProjectsSettings_removeDirButton[data-disabled="true"]:hover {
+  background: transparent;
+  color: rgb(115 115 115);
 }
 
 .ProjectsSettings_addProjectButton {
@@ -128,4 +162,10 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.ProjectsSettings_addProjectButton:hover {
+  border-color: rgb(82 82 82);
+  color: rgb(212 212 212);
 }

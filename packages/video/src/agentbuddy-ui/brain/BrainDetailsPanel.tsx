@@ -13,12 +13,13 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
   const hasContent = hasInput || hasOutput;
   const duration = getDuration(node.startedAt, node.completedAt);
   return (
-    <aside className={styles.root}>
+    <aside className={styles.root} data-onboarding-id="brain-step-details">
       <header className={styles.header}>
         <div className={styles.titleGroup}>
           <div className={styles.title}>{node.label}</div>
           {node.status ? <span className={styles.status} data-status={node.status}>{node.status}</span> : null}
-          {node.eventType ? <span className={styles.eventType}>{node.eventType}</span> : <span className={styles.kind}>{node.kind}</span>}
+          {node.stepNodeType ? <span className={styles.kind}>{node.stepNodeType}</span> : null}
+          {node.eventType ? <span className={styles.eventType}>{node.eventType}</span> : null}
         </div>
         <button className={styles.closeButton} type="button" aria-label="Close details">
           <Icons.X size={18} />
@@ -59,7 +60,7 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
         <footer className={styles.footer}>
           <div className={styles.sectionTitle}>Execution Info</div>
           <div className={styles.info}>
-            {node.startedAt ? <span><span className={styles.label}>Started:</span> {node.startedAt}</span> : null}
+            {node.startedAt ? <span><span className={styles.label}>Started:</span> {formatTimestamp(node.startedAt)}</span> : null}
             {duration ? <span><span className={styles.label}>Duration:</span> {duration}</span> : null}
           </div>
         </footer>
@@ -68,13 +69,16 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
   );
 }
 
-function getDuration(startedAt?: string, completedAt?: string) {
-  if (!startedAt || !completedAt) return null;
-  const start = Date.parse(startedAt);
-  const end = Date.parse(completedAt);
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+function getDuration(startedAt?: number, completedAt?: number) {
+  if (!startedAt) return null;
+  const end = completedAt ?? Date.now();
+  const start = startedAt;
   const ms = Math.max(0, end - start);
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+}
+
+function formatTimestamp(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString();
 }

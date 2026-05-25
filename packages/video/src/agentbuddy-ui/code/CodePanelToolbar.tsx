@@ -5,6 +5,13 @@ import type {ComponentType, ReactNode} from 'react';
 
 const styles = makeStyles('CodePanelToolbar');
 
+type PanelButton = {
+  badge?: string;
+  icon: ComponentType<{size?: number; className?: string}>;
+  id: 'explorer' | 'commit' | 'pr' | 'search';
+  label: string;
+};
+
 export function CodePanelToolbar({
   activePanel = 'commit',
   baseDirectory,
@@ -20,12 +27,12 @@ export function CodePanelToolbar({
   titleIcon?: ComponentType<{size?: number; className?: string}>;
   toolbar?: ReactNode;
 }) {
-  const codePanels = [
+  const codePanels: PanelButton[] = [
     {id: 'explorer', label: 'Explorer', icon: Icons.FolderOpen},
-    {id: 'commit', label: 'Commit Changes', icon: Icons.GitCommitVertical, badge: String(changeCount)},
+    {id: 'commit', label: 'Commit Changes', icon: Icons.GitCommitVertical, badge: changeCount > 0 ? String(changeCount) : undefined},
     {id: 'pr', label: 'Pull Request', icon: Icons.PullRequest},
     {id: 'search', label: 'Search', icon: Icons.Search},
-  ] as const;
+  ];
   const internalPanels = [
     {id: 'actions', label: 'Actions', icon: Icons.Play},
     {id: 'prompts', label: 'Prompts', icon: Icons.Sparkle},
@@ -51,7 +58,7 @@ export function CodePanelToolbar({
             return (
               <button key={panel.id} className={panel.id === activePanel ? styles.activePanelButton : styles.panelButton} title={panel.label}>
                 <Icon size={16} />
-                {'badge' in panel ? <span className={styles.badge}>{panel.badge}</span> : null}
+                {panel.badge ? <span className={styles.badge}>{panel.badge}</span> : null}
               </button>
             );
           })}

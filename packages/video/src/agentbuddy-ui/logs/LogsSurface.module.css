@@ -9,8 +9,6 @@
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  scrollbar-color: rgb(75 75 75) transparent;
-  scrollbar-width: thin;
 }
 
 .LogsSurface_empty {
@@ -58,6 +56,11 @@
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 500;
+  transition: background-color 160ms ease;
+}
+
+.LogsSurface_empty button:hover {
+  background: rgb(64 64 64);
 }
 
 .LogsSurface_more {

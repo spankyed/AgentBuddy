@@ -15,7 +15,17 @@
   font-size: 14px;
   padding: 8px 12px;
   text-align: left;
-  transition: border-color 150ms ease, color 150ms ease, opacity 150ms ease;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, color 150ms ease, opacity 150ms ease;
+}
+
+.CodeDirectorySelect_trigger:not(:disabled):hover {
+  border-color: rgb(82 82 82);
+}
+
+.CodeDirectorySelect_trigger:focus {
+  border-color: rgb(59 130 246 / 50%);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
 }
 
 .CodeDirectorySelect_trigger:disabled {

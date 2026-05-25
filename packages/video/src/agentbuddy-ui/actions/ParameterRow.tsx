@@ -21,7 +21,7 @@ export function ParameterRow({expanded = false, parameter, paramKey}: ParameterR
         <button className={styles.expandButton} title={expanded ? 'Collapse' : 'Expand options'} type="button">
           <Icons.ChevronDown className={cx(styles.expandIcon, !expanded && styles.collapsedIcon)} size={16} />
         </button>
-        <input className={styles.keyInput} readOnly type="text" value={paramKey} />
+        <input className={styles.keyInput} placeholder="Parameter key" readOnly type="text" value={paramKey} />
         <select className={styles.typeSelect} value={parameter.type}>
           {parameterTypes.map(type => (
             <option key={type} value={type}>{type}</option>
@@ -38,7 +38,7 @@ export function ParameterRow({expanded = false, parameter, paramKey}: ParameterR
       {expanded ? (
         <div className={styles.descriptionRow}>
           <label>Description</label>
-          <input className={styles.descriptionInput} readOnly type="text" value={parameter.description ?? ''} />
+          <input className={styles.descriptionInput} placeholder="Parameter description" readOnly type="text" value={parameter.description ?? ''} />
         </div>
       ) : null}
     </div>

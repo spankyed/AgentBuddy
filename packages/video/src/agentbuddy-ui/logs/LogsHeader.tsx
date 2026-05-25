@@ -25,7 +25,7 @@ export function LogsHeader({filteredCount, state}: LogsHeaderProps) {
     <div className={styles.root}>
       <div className={styles.row}>
         <div className={styles.left}>
-          <div className={styles.searchBox}>
+          <div className={styles.searchBox} data-has-search={state.searchTerm ? 'true' : undefined}>
             <Icons.Search className={styles.searchIcon} size={16} />
             <input placeholder="Filter logs by message, level, or source..." readOnly type="text" value={state.searchTerm} />
             {state.searchTerm ? (
@@ -72,7 +72,7 @@ export function LogsHeader({filteredCount, state}: LogsHeaderProps) {
             <span>{state.copied ? 'Copied' : 'Copy'}</span>
           </button>
           <button className={styles.clearButton} title="Clear all logs" type="button">
-            <Icons.Trash2 size={16} />
+            <Icons.Trash size={16} />
             <span>Clear</span>
           </button>
         </div>

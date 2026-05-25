@@ -20,7 +20,11 @@ export function BrainSurface({state}: {state: BrainSurfaceState}) {
           <header className={styles.leftHeader}>
             <div className={styles.leftHeaderInner}>
               <h3 className={styles.leftTitle}>Watched Events</h3>
-              <span className={styles.leftCount}>{state.events.length} events</span>
+              {state.events.length > 0 ? (
+                <span className={styles.leftCount}>
+                  {state.events.length} event{state.events.length !== 1 ? 's' : ''}
+                </span>
+              ) : null}
             </div>
           </header>
           <BrainEventsList events={state.events} pulsingEventType={state.pulsingEventType} />
@@ -29,7 +33,7 @@ export function BrainSurface({state}: {state: BrainSurfaceState}) {
       <BrainCanvas state={state} />
       {state.brainIsPaused ? (
         <div className={styles.paused}>
-          <span>Brain Paused - Events Queued</span>
+          <span>Brain Paused — Events Queued</span>
           <button className={styles.resume} type="button">Resume</button>
         </div>
       ) : null}

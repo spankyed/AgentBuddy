@@ -11,7 +11,7 @@ type PromptTemplateEditorProps = {
 export function PromptTemplateEditor({value}: PromptTemplateEditorProps) {
   return (
     <div className={styles.root} data-onboarding-id="prompt-template-editor">
-      <MonacoCodeViewer filePath="prompt-template.ts" height="100%" language="typescript" lineNumbers="off" value={value} />
+      <MonacoCodeViewer filePath="prompt-template.ts" fontSize={14} height="100%" language="typescript" lineNumbers="off" value={value} wordWrap="on" />
     </div>
   );
 }

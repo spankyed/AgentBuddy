@@ -27,3 +27,8 @@
   background: transparent;
   color: rgb(115 115 115);
 }
+
+.DatabaseModeTabs_inactive:hover {
+  background: rgb(38 38 38);
+  color: rgb(212 212 212);
+}
