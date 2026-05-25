@@ -26,9 +26,9 @@ const importModes = [
 ] as const;
 
 export function ImportSetupPackPicker({state}: {state: SetupPackImportState}) {
-  const expanded = state.expanded ?? defaultExpanded;
-  const selection = state.selection ?? defaultSelection;
-  const types = state.types ?? defaultTypes;
+  const expanded = state.expanded ?? emptyExpanded;
+  const selection = state.selection ?? emptySelection;
+  const types = state.types ?? emptyTypes;
   const missing = new Set(state.missing ?? []);
   const importing = state.status === 'importing';
   const rows = typeMeta.map(meta => {
@@ -114,35 +114,28 @@ export function ImportSetupPackPicker({state}: {state: SetupPackImportState}) {
   );
 }
 
-const defaultExpanded: Record<SetupPackType, boolean> = {
-  actions: true,
+const emptyExpanded: Record<SetupPackType, boolean> = {
+  actions: false,
   prompts: false,
-  flows: true,
+  flows: false,
   library: false,
   notes: false,
   settings: false,
 };
 
-const defaultSelection: Record<SetupPackType, string[]> = {
-  actions: ['create_ticket', 'publish_branch'],
-  prompts: ['launch_release_notes'],
-  flows: ['root-flow'],
+const emptySelection: Record<SetupPackType, string[]> = {
+  actions: [],
+  prompts: [],
+  flows: [],
   library: [],
   notes: [],
   settings: [],
 };
 
-const defaultTypes: NonNullable<SetupPackImportState['types']> = {
-  actions: [
-    {key: 'create_ticket', description: 'Create execution tickets from launch context'},
-    {key: 'publish_branch', description: 'Publish and prepare branch metadata'},
-  ],
-  prompts: [
-    {key: 'launch_release_notes', description: 'Generate launch-ready release notes'},
-  ],
-  flows: [
-    {key: 'root-flow', childCount: 5, description: 'AgentBuddy root automation flow'},
-  ],
+const emptyTypes: NonNullable<SetupPackImportState['types']> = {
+  actions: [],
+  prompts: [],
+  flows: [],
   library: [],
   notes: [],
   settings: [],
