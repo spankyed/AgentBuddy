@@ -4,7 +4,14 @@ import type {ActionsSurfaceState} from '../../agentbuddy-ui/actions/actionTypes'
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
-import {actionCreateState, actionDetailState, actionsEmptyState, actionsListState, actionsSurfaceStateForFrame} from '../../film/state/actions';
+import {
+  actionCreateState,
+  actionDetailState,
+  actionsEmptyState,
+  actionsListState,
+  actionsLoadingMoreState,
+  actionsSurfaceStateForFrame,
+} from '../../film/state/actions';
 
 function ActionsDemoWindow({state = actionsListState}: {state?: ActionsSurfaceState}) {
   const layout = useAppWindowLayout({hasRightRail: false});
@@ -20,6 +27,8 @@ function ActionsDemoWindow({state = actionsListState}: {state?: ActionsSurfaceSt
 export const ActionsListDemo = () => <ActionsDemoWindow state={actionsListState} />;
 
 export const ActionsEmptyDemo = () => <ActionsDemoWindow state={actionsEmptyState} />;
+
+export const ActionsLoadingMoreDemo = () => <ActionsDemoWindow state={actionsLoadingMoreState} />;
 
 export const ActionCreateDemo = () => <ActionsDemoWindow state={actionCreateState} />;
 

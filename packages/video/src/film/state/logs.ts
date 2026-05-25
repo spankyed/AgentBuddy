@@ -86,6 +86,26 @@ export const logsFilteredState: LogsSurfaceState = {
   searchTerm: 'publish',
 };
 
+export const logsEmptyState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  expandedContent: {},
+  filterLevel: 'all',
+  logs: [],
+  searchTerm: '',
+  settings: {
+    excludedSources: [],
+    maxLogs: 1000,
+    showAppEvents: false,
+  },
+};
+
+export const logsNoMatchingState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  expandedContent: {},
+  filterLevel: 'error',
+  searchTerm: 'database',
+};
+
 export const logsContextMenuState: LogsSurfaceState = {
   ...logsSurfaceState,
   contextMenu: {

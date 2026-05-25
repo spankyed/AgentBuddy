@@ -114,6 +114,14 @@ export const databaseAiLoadingState: DatabaseSurfaceState = {
   successMessage: '',
 };
 
+export const databaseAiPromptState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  aiPrompt: 'Show the five most active launch threads',
+  isAiPromptOpen: true,
+  queryResult: null,
+  successMessage: '',
+};
+
 export const databaseBackupExportState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   backup: {
@@ -192,7 +200,7 @@ export const databaseTraceState: DatabaseSurfaceState = {
 
 export function databaseSurfaceStateForFrame(frame: number): DatabaseSurfaceState {
   if (frame < 80) return databaseExamplesState;
-  if (frame < 130) return {...databaseSurfaceState, aiPrompt: 'Show the five most active launch threads', isAiPromptOpen: true, queryResult: null, successMessage: ''};
+  if (frame < 130) return databaseAiPromptState;
   if (frame < 160) return databaseAiLoadingState;
   return databaseSurfaceState;
 }

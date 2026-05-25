@@ -35,6 +35,27 @@ export type SettingsCategory = {
   name: string;
 };
 
+export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
+
+export type SetupPackPreviewItem = {
+  childCount?: number;
+  description?: string;
+  key: string;
+};
+
+export type SetupPackImportState = {
+  directory?: string;
+  error?: string;
+  expanded?: Record<SetupPackType, boolean>;
+  importMode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
+  restartBrain?: boolean;
+  result?: Record<Exclude<SetupPackType, 'settings'>, {created: number; skipped?: number; updated?: number}>;
+  selection?: Record<SetupPackType, string[]>;
+  status: 'idle' | 'previewing' | 'selecting' | 'importing' | 'success' | 'error';
+  types?: Record<SetupPackType, SetupPackPreviewItem[]>;
+  missing?: SetupPackType[];
+};
+
 export type ThreadModePhaseSettings = {
   color?: string;
   description: string;
@@ -74,6 +95,9 @@ export type SettingsSurfaceState = {
   projects: SettingsProject[];
   saveStatus?: 'idle' | 'saving' | 'saved';
   selectedPluginId?: PluginId;
+  setupPackImport?: SetupPackImportState;
+  confirmingReset?: boolean;
+  resetting?: boolean;
   selectedPluginSettings?: {
     actions?: {
       categories: SettingsCategory[];

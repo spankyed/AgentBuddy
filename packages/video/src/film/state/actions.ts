@@ -88,6 +88,12 @@ export const actionsEmptyState: ActionsSurfaceState = {
   view: 'list',
 };
 
+export const actionsLoadingMoreState: ActionsSurfaceState = {
+  ...actionsListState,
+  hasMore: true,
+  loadingMore: true,
+};
+
 export const actionCreateState: ActionsSurfaceState = {
   categories: actionCategories,
   formData: {

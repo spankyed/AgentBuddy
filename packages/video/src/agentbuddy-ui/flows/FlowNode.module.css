@@ -36,13 +36,18 @@
 }
 
 .FlowNode_node[data-kind="action"] {
-  border-color: rgb(64 64 64);
-  background: rgb(38 38 38 / 92%);
+  border-color: rgb(115 115 115 / 30%);
+  background: rgb(64 64 64 / 60%);
 }
 
 .FlowNode_node[data-kind="create"] {
-  border-color: rgb(96 165 250 / 25%);
-  background: rgb(30 64 175 / 60%);
+  border-color: rgb(192 132 252 / 25%);
+  background: rgb(88 28 135 / 60%);
+}
+
+.FlowNode_node[data-kind="llm"] {
+  border-color: rgb(129 140 248 / 25%);
+  background: rgb(49 46 129 / 60%);
 }
 
 .FlowNode_node[data-kind="schedule"] {
@@ -104,7 +109,8 @@
 .FlowNode_node[data-kind="flow"] .FlowNode_nodeIcon { color: rgb(216 180 254 / 85%); }
 .FlowNode_node[data-kind="keep_alive"] .FlowNode_nodeIcon { color: rgb(110 231 183 / 85%); }
 .FlowNode_node[data-kind="action"] .FlowNode_nodeIcon { color: rgb(163 163 163); }
-.FlowNode_node[data-kind="create"] .FlowNode_nodeIcon { color: rgb(147 197 253 / 85%); }
+.FlowNode_node[data-kind="create"] .FlowNode_nodeIcon { color: rgb(216 180 254 / 85%); }
+.FlowNode_node[data-kind="llm"] .FlowNode_nodeIcon { color: rgb(165 180 252 / 85%); }
 .FlowNode_node[data-kind="schedule"] .FlowNode_nodeIcon { color: rgb(103 232 249 / 85%); }
 .FlowNode_node[data-kind="switch"] .FlowNode_nodeIcon { color: rgb(252 211 77 / 85%); }
 .FlowNode_node[data-kind="fire"] .FlowNode_nodeIcon { color: rgb(253 186 116 / 85%); }

@@ -20,6 +20,9 @@ import {
   settingsPromptsPluginState,
   settingsProjectsState,
   settingsProvidersState,
+  settingsResetConfirmState,
+  settingsSetupPackSelectingState,
+  settingsSetupPackSuccessState,
   settingsThreadsPluginState,
 } from '../../film/state/settings';
 
@@ -35,6 +38,9 @@ function SettingsDemoWindow({state}: {state: SettingsSurfaceState}) {
 }
 
 export const SettingsApplicationDemo = () => <SettingsDemoWindow state={settingsApplicationState} />;
+export const SettingsSetupPackSelectingDemo = () => <SettingsDemoWindow state={settingsSetupPackSelectingState} />;
+export const SettingsSetupPackSuccessDemo = () => <SettingsDemoWindow state={settingsSetupPackSuccessState} />;
+export const SettingsResetConfirmDemo = () => <SettingsDemoWindow state={settingsResetConfirmState} />;
 export const SettingsProvidersDemo = () => <SettingsDemoWindow state={settingsProvidersState} />;
 export const SettingsProjectsDemo = () => <SettingsDemoWindow state={settingsProjectsState} />;
 export const SettingsPersonalDemo = () => <SettingsDemoWindow state={settingsPersonalState} />;

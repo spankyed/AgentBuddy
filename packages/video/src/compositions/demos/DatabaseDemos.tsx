@@ -7,6 +7,8 @@ import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   databaseBackupExportState,
   databaseBackupImportState,
+  databaseAiLoadingState,
+  databaseAiPromptState,
   databaseExamplesState,
   databaseObjectResultState,
   databasePrimitiveArrayState,
@@ -34,6 +36,10 @@ export const DatabaseSurfaceDemo = () => {
 export const DatabaseQueryDemo = () => <DatabaseDemoWindow state={databaseSurfaceState} />;
 
 export const DatabaseExamplesDemo = () => <DatabaseDemoWindow state={databaseExamplesState} />;
+
+export const DatabaseAiPromptDemo = () => <DatabaseDemoWindow state={databaseAiPromptState} />;
+
+export const DatabaseAiLoadingDemo = () => <DatabaseDemoWindow state={databaseAiLoadingState} />;
 
 export const DatabasePrimitiveArrayDemo = () => <DatabaseDemoWindow state={databasePrimitiveArrayState} />;
 

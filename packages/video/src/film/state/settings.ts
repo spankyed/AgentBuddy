@@ -202,6 +202,68 @@ export const settingsApplicationState: SettingsSurfaceState = {
   generalNavItem: 'application',
 };
 
+export const settingsSetupPackSelectingState: SettingsSurfaceState = {
+  ...settingsApplicationState,
+  setupPackImport: {
+    directory: '/Users/spankyed/Develop/Setup Packs/agentbuddy-launch',
+    expanded: {
+      actions: true,
+      prompts: true,
+      flows: true,
+      library: false,
+      notes: false,
+      settings: false,
+    },
+    importMode: 'replace-on-collision',
+    restartBrain: true,
+    selection: {
+      actions: ['create_ticket', 'publish_branch'],
+      prompts: ['launch_release_notes'],
+      flows: ['root-flow'],
+      library: ['launch-system'],
+      notes: [],
+      settings: [],
+    },
+    status: 'selecting',
+    types: {
+      actions: [
+        {key: 'create_ticket', description: 'Create execution tickets from launch context'},
+        {key: 'publish_branch', description: 'Publish and prepare branch metadata'},
+      ],
+      prompts: [
+        {key: 'launch_release_notes', description: 'Generate launch-ready release notes'},
+      ],
+      flows: [
+        {key: 'root-flow', childCount: 5, description: 'AgentBuddy root automation flow'},
+      ],
+      library: [
+        {key: 'launch-system', description: 'Launch operating system reference'},
+      ],
+      notes: [],
+      settings: [],
+    },
+  },
+};
+
+export const settingsSetupPackSuccessState: SettingsSurfaceState = {
+  ...settingsApplicationState,
+  setupPackImport: {
+    result: {
+      actions: {created: 2, updated: 1},
+      prompts: {created: 1, updated: 0},
+      flows: {created: 1, skipped: 0},
+      library: {created: 1, updated: 2},
+      notes: {created: 0, updated: 0},
+    },
+    status: 'success',
+  },
+};
+
+export const settingsResetConfirmState: SettingsSurfaceState = {
+  ...settingsApplicationState,
+  confirmingReset: true,
+};
+
 export const settingsProvidersState: SettingsSurfaceState = {
   ...baseSettings,
   activeTab: 'general',

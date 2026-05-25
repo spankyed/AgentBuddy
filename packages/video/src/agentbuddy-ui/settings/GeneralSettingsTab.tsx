@@ -23,7 +23,7 @@ const bottomNavItems = [
 function CurrentPanel({state}: {state: SettingsSurfaceState}) {
   switch (state.generalNavItem) {
     case 'application':
-      return <ApplicationSettings />;
+      return <ApplicationSettings state={state} />;
     case 'secrets':
       return <ProvidersSettings customProviders={state.customProviders} providers={state.providers} />;
     case 'projects':
