@@ -17,9 +17,13 @@ const topPlugins = [
   {id: 'flows', label: 'Flows', icon: Icons.Flows},
   {id: 'actions', label: 'Actions', icon: Icons.Play},
   {id: 'prompts', label: 'Prompts', icon: Icons.Sparkle},
+] as const;
+
+const pinnedPlugins = [
   {id: 'brain', label: 'Brain', icon: Icons.Brain},
   {id: 'database', label: 'Database', icon: Icons.Database},
   {id: 'logs', label: 'Logs', icon: Icons.Bug},
+  {id: 'settings', label: 'Settings', icon: Icons.Settings},
 ] as const;
 
 // Mirrors packages/renderer/src/core/components/layout/toolbar.vue.
@@ -35,7 +39,9 @@ export function Toolbar({activePlugin}: ToolbarProps) {
         </div>
       </div>
       <div className={styles.pinnedArea}>
-        <ToolbarButton id="settings" label="Settings" icon={Icons.Settings} active={activePlugin === 'settings'} />
+        {pinnedPlugins.map(item => (
+          <ToolbarButton key={item.id} id={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
+        ))}
       </div>
     </aside>
   );

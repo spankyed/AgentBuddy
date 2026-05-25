@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpFromLine,
+  BotMessageSquare,
   Brain,
   Briefcase,
   Bug,
@@ -99,7 +100,8 @@ import {
 } from 'lucide-react';
 
 export const Icons = {
-  Threads: MessageSquareText,
+  Threads: BotMessageSquare,
+  MessageSquareText,
   Notes: FileText,
   NotebookText,
   Code,
