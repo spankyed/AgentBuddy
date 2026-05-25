@@ -22,6 +22,13 @@ These PNGs are extracted from current rendered videos for fast surface-by-surfac
 | Thread content blocks | `packages/video/out/component-demos/content-blocks-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/thread-content-blocks.png` |
 | Thread full conversation | `packages/video/out/component-demos/chat-surface-demo.mp4` | `4.0` | `packages/video/out/review-snapshots/thread-full-conversation.png` |
 | Thread interaction blocks | `packages/video/out/component-demos/interaction-blocks-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/thread-interaction-blocks.png` |
+| Actions plugin | `packages/video/out/component-demos/actions-list-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/actions-plugin.png` |
+| Prompts plugin | `packages/video/out/component-demos/prompts-list-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/prompts-plugin.png` |
+| Database plugin | `packages/video/out/component-demos/database-query-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/database-plugin.png` |
+| Logs plugin | `packages/video/out/component-demos/logs-list-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/logs-plugin.png` |
+| Library plugin | `packages/video/out/component-demos/library-surface-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/library-plugin.png` |
+| Settings plugin | `packages/video/out/component-demos/settings-application-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/settings-plugin.png` |
+| Brain plugin | `packages/video/out/component-demos/brain-surface-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/brain-plugin.png` |
 | Code source control and PR | `packages/video/out/component-demos/code-review-demo.mp4` | `6.4` | `packages/video/out/review-snapshots/code-source-control-pr.png` |
 | Code source control | `packages/video/out/component-demos/source-control-panel-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/code-source-control.png` |
 | Code terminal expanded | `packages/video/out/component-demos/terminal-panel-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/code-terminal-expanded.png` |
