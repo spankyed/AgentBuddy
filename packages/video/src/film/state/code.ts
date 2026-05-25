@@ -1,4 +1,6 @@
 import type {CodeReviewState, CodeReviewViewState, TerminalPanelState} from '../../agentbuddy-ui/code/codeTypes';
+import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
+import {launchComposerState} from './chat';
 import {ease} from './timeline';
 
 export type CodeShotState = {
@@ -6,6 +8,15 @@ export type CodeShotState = {
   chromeDemoBreadcrumbs: string[];
   generatedCommitMessage: string;
   review: CodeReviewState;
+};
+
+export type CodeShotView = {
+  breadcrumbs: string[];
+  composer: ChatComposerState;
+  review: {
+    state: CodeReviewState;
+    view: CodeReviewViewState;
+  };
 };
 
 export const codeShotState: CodeShotState = {
@@ -199,5 +210,16 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
       createdPr: prCreated ? codeShotState.review.pullRequest.createdPr : undefined,
     },
     prPublishProgress,
+  };
+}
+
+export function codeShotViewForFrame(frame: number): CodeShotView {
+  return {
+    breadcrumbs: codeShotState.breadcrumbs,
+    composer: launchComposerState,
+    review: {
+      state: codeShotState.review,
+      view: codeReviewViewForFrame(frame),
+    },
   };
 }

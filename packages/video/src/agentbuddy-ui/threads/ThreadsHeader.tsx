@@ -66,7 +66,7 @@ function FilterPopover({state}: {state: NonNullable<ThreadsHeaderState['filterPo
   );
 }
 
-function FilterSection({label, values}: {label: string; values: Array<{color?: string; count?: number; label: string; selected?: boolean}>}) {
+function FilterSection({label, values}: {label: string; values: Array<{color?: string; label: string; selected?: boolean}>}) {
   if (values.length === 0) return null;
   return (
     <section className={styles.filterSection}>
@@ -81,7 +81,6 @@ function FilterSection({label, values}: {label: string; values: Array<{color?: s
               style={{backgroundColor: value.selected ? color : `${color}20`}}
             >
               {value.label}
-              {value.count != null ? <em>{value.count}</em> : null}
             </span>
           );
         })}

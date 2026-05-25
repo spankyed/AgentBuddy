@@ -22,7 +22,7 @@ export function MessageActions({
   return (
     <div className={styles.root}>
       {createdAt ? <span className={styles.timestamp}>{createdAt}</span> : null}
-      {showRevert ? <button type="button" title={status ? 'Revert to input' : 'Revert'}><Icons.Undo2 size={16} /></button> : null}
+      {showRevert ? <button type="button" title={status ? 'Revert to input' : 'Revert (right-click for options)'}><Icons.Undo2 size={16} /></button> : null}
       {status === 'queued' ? <button type="button" title="Cancel queued message"><Icons.X size={16} /></button> : null}
       {status === 'cancelled' ? <button type="button" title="Copy message text"><Icons.Copy size={16} /></button> : null}
       {status === 'cancelled' && isTail ? <button type="button" title="Resend message"><Icons.RotateCcw size={16} /></button> : null}

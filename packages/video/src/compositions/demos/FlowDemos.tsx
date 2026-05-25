@@ -5,7 +5,8 @@ import {FlowNodeForm} from '../../agentbuddy-ui/flows/FlowNodeForm';
 import {FlowPalette} from '../../agentbuddy-ui/flows/FlowPalette';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {WorkflowShot} from '../../film/shots/WorkflowShot';
-import {flowNodeFormForFrame, releaseAutomationWorkflow} from '../../film/state/workflow';
+import {flowNodeFormForFrame} from '../../film/state/flowForms';
+import {releaseAutomationWorkflow} from '../../film/state/workflow';
 
 export const FlowPaletteDemo = () => (
   <SurfaceFrame>

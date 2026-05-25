@@ -1,4 +1,6 @@
 import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
+import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
+import {launchComposerState} from './chat';
 import {textReveal} from './timeline';
 
 export type NotesTaskListPanelState = {
@@ -19,6 +21,7 @@ export type NotesEditorLineView = {
 
 export type NotesShotView = {
   breadcrumbs: string[];
+  composer: ChatComposerState;
   editor: {
     afterLines: NotesEditorLineView[];
     beforeLines: NotesEditorLineView[];
@@ -155,6 +158,7 @@ export function notesShotViewForFrame(frame: number): NotesShotView {
   const view = notesViewForFrame(frame);
   return {
     breadcrumbs: notesEditorCopy.breadcrumbs,
+    composer: launchComposerState,
     editor: {
       beforeLines: [
         ...notesEditorCopy.beforeLines.map((text, index) => ({id: `before-${index}`, text})),

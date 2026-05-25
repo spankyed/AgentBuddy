@@ -69,18 +69,11 @@
 }
 
 .FlowCanvas_animatedEdge {
-  animation: FlowCanvas_dashFlow 500ms linear infinite;
   stroke-dasharray: 5 5;
 }
 
 .FlowCanvas_edgeMarker {
   fill: rgb(115 115 115);
-}
-
-@keyframes FlowCanvas_dashFlow {
-  to {
-    stroke-dashoffset: -10;
-  }
 }
 
 .FlowCanvas_controls {

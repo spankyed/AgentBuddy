@@ -67,6 +67,7 @@ export type FlowCanvasState = {
     width: number;
   };
   editingNodeId?: string;
+  edgeDashOffset?: number;
   edges: FlowEdgeState[];
   nodes: FlowNodeState[];
   paletteItems: FlowPaletteItemState[];

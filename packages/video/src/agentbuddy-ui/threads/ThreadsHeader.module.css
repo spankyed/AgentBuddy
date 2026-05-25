@@ -205,12 +205,6 @@
   color: rgb(239 246 255);
 }
 
-.ThreadsHeader_filterOption em,
-.ThreadsHeader_filterOptionActive em {
-  color: rgb(113 113 122);
-  font-style: normal;
-}
-
 .ThreadsHeader_filterToggles {
   display: flex;
   flex-direction: column;

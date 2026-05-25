@@ -79,11 +79,11 @@ function StatusIcon({status}: {status: ToolActivityItemState['status']}) {
 
 function formatDuration(durationMs?: number) {
   if (durationMs == null) return '';
-  if (durationMs < 1000) return `${(durationMs / 1000).toFixed(1)}s`;
+  if (durationMs < 1000) return `${durationMs}ms`;
   if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)}s`;
   const mins = Math.floor(durationMs / 60_000);
   const secs = Math.round((durationMs % 60_000) / 1000);
-  return `${mins}m ${secs}s`;
+  return `${mins}m${secs}s`;
 }
 
 function computeLabel(entries: ToolActivityItemState[], state: ToolActivityBlockState['state'], phase?: string) {

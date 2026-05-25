@@ -1,8 +1,8 @@
 import type {CSSProperties} from 'react';
-import {AbsoluteFill, interpolate, Sequence, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Sequence, useCurrentFrame} from 'remotion';
 import {makeStyles} from '../agentbuddy-ui/primitives/makeStyles';
 import {theme} from '../ui/theme';
-import {shots, totalFrames, type FilmShot, type ShotId} from './state/timeline';
+import {captionViewForFrame, filmProgressForFrame, shotAtFrame, shots, type FilmShot, type ShotId} from './state/timeline';
 import {ChatShot} from './shots/ChatShot';
 import {BoardShot} from './shots/BoardShot';
 import {CodeShot} from './shots/CodeShot';
@@ -22,7 +22,7 @@ export const AgentBuddyFilmSquare = () => <Film variant="square" />;
 function Film({variant}: {variant: Variant}) {
   const frame = useCurrentFrame();
   let cursor = 0;
-  const progress = frame / Math.max(1, totalFrames - 1);
+  const progress = filmProgressForFrame(frame);
   const activeShot = shotAtFrame(frame);
 
   return (
@@ -41,7 +41,7 @@ function Film({variant}: {variant: Variant}) {
           <Sequence key={shot.id} from={start} durationInFrames={shot.duration}>
             <SurfaceFrame>
               <ShotSurface id={shot.id} variant={variant} />
-              {shot.title ? <Caption shot={shot} variant={variant} /> : null}
+              <Caption shot={shot} variant={variant} />
             </SurfaceFrame>
           </Sequence>
         );
@@ -53,16 +53,6 @@ function Film({variant}: {variant: Variant}) {
       )}
     </AbsoluteFill>
   );
-}
-
-function shotAtFrame(frame: number) {
-  let cursor = 0;
-  for (const shot of shots) {
-    const end = cursor + shot.duration;
-    if (frame >= cursor && frame < end) return shot;
-    cursor = end;
-  }
-  return shots[shots.length - 1];
 }
 
 function ShotSurface({id, variant}: {id: ShotId; variant: Variant}) {
@@ -77,21 +67,18 @@ function ShotSurface({id, variant}: {id: ShotId; variant: Variant}) {
 
 function Caption({shot, variant}: {shot: FilmShot; variant: Variant}) {
   const frame = useCurrentFrame();
-  const opacity = Math.min(
-    interpolate(frame, [10, 34], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}),
-    interpolate(frame, [shot.duration - 46, shot.duration - 12], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}),
-  );
-  const alignRight = shot.captionAlign === 'right';
-  const className = captionClassName({alignRight, variant});
+  const view = captionViewForFrame(shot, frame);
+  if (!view) return null;
+  const className = captionClassName({alignRight: view.alignRight, variant});
   return (
     <div
       className={className}
       style={{
-        '--caption-opacity': opacity,
-        '--caption-y': `${interpolate(frame, [0, 34], [20, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})}px`,
+        '--caption-opacity': view.opacity,
+        '--caption-y': `${view.y}px`,
       } as CSSProperties}
     >
-      {shot.title}
+      {view.title}
     </div>
   );
 }

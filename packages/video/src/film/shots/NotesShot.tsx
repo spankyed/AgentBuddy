@@ -1,8 +1,6 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
-import {launchComposerState} from '../state/chat';
-import type {NotesEditorLineView} from '../state/notes';
 import {notesShotViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -10,7 +8,7 @@ import {useAppWindowLayout} from '../appWindowLayout';
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesShotViewForFrame(frame);
   const layout = useAppWindowLayout({hasRightRail: true, variant});
-  const renderLine = (line: NotesEditorLineView) => (
+  const renderLine = (line: {caretVisible?: boolean; text: string}) => (
     <>
       {line.text}
       <Caret frame={frame} visible={Boolean(line.caretVisible)} />
@@ -21,7 +19,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
     <AppWindow
       activePlugin="notes"
       breadcrumbs={view.breadcrumbs}
-      composer={launchComposerState}
+      composer={view.composer}
       layout={layout}
       rightRail={<NotesRightRail state={view.rightRail} />}
     >

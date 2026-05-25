@@ -100,13 +100,33 @@ async function main() {
   const actualReferenceErrors = [];
   const unresolvedActualScreenshots = [];
   const conversationOnlyActualReferences = [];
+  const missingActualCaptureTargets = [];
   for (const cells of actualReferenceRows) {
     const surfaceName = cells[1] ?? '';
     const evidenceCell = cells[2] ?? '';
+    const targetCell = cells[3] ?? '';
     if (!surfaceName || surfaceName === 'Surface') continue;
     actualReferenceSurfaces.add(surfaceName);
     const refs = [...evidenceCell.matchAll(/`([^`]+)`/g)].map(match => match[1]);
+    const targetRefs = [...targetCell.matchAll(/`([^`]+)`/g)].map(match => match[1]);
     if (refs.length === 0) actualReferenceErrors.push(`${surfaceName}: no actual-app evidence marker`);
+    const needsDurableCapture = refs.some(ref => ref === 'NEEDS_SCREENSHOT' || ref.startsWith('conversation:'));
+    if (refs.includes('NO_RENDERER_EQUIVALENT')) {
+      if (targetRefs.length > 0 && !targetRefs.includes('NO_RENDERER_EQUIVALENT')) {
+        actualReferenceErrors.push(`${surfaceName}: film-only surface must use NO_RENDERER_EQUIVALENT as target`);
+      }
+    } else if (needsDurableCapture && targetRefs.length === 0) {
+      actualReferenceErrors.push(`${surfaceName}: unresolved actual-app evidence must list target local capture filename`);
+    }
+    for (const targetRef of targetRefs) {
+      if (targetRef === 'NO_RENDERER_EQUIVALENT') continue;
+      if (!targetRef.startsWith('packages/video/reference/actual-app/') || !/\.(png|jpe?g|webp)$/i.test(targetRef)) {
+        actualReferenceErrors.push(`${surfaceName}: invalid target local capture ${targetRef}`);
+        continue;
+      }
+      const targetFullPath = path.join(packageDir, '..', '..', targetRef);
+      if (needsDurableCapture && !(await exists(targetFullPath))) missingActualCaptureTargets.push(`${surfaceName}: ${targetRef}`);
+    }
     for (const ref of refs) {
       if (ref === 'NEEDS_SCREENSHOT') {
         unresolvedActualScreenshots.push(surfaceName);
@@ -285,6 +305,7 @@ async function main() {
   const remotionLeaks = [];
   const filmLeaks = [];
   const stateRemotionLeaks = [];
+  const shotStateImportLeaks = [];
   const shotFixtureLeaks = [];
   const shotSurfaceStyleLeaks = [];
   const demoFixtureLeaks = [];
@@ -343,6 +364,9 @@ async function main() {
     }
     if (!/\.(ts|tsx)$/.test(file)) return;
     const source = await fs.readFile(file, 'utf8');
+    for (const match of source.matchAll(/import\s+(?!type)([\s\S]*?)\s+from\s+['"]\.\.\/state\/[^'"]+['"]/g)) {
+      if (!/ShotViewForFrame/.test(match[1])) shotStateImportLeaks.push(relative);
+    }
     const literals = extractStringLiterals(stripModuleSpecifiers(source));
     if (literals.some(value => forbiddenFixturePatterns.some(pattern => pattern.test(value)))) shotFixtureLeaks.push(relative);
     if (basename !== 'FinalShot.tsx' && /makeStyles\(|\.module\.css/.test(source)) {
@@ -407,6 +431,9 @@ async function main() {
   if (shotFixtureLeaks.length > 0) {
     throw new Error(`Shot-specific fixture strings must live in film/state, not film/shots: ${shotFixtureLeaks.join(', ')}`);
   }
+  if (shotStateImportLeaks.length > 0) {
+    throw new Error(`Film shots must consume assembled *ShotViewForFrame helpers instead of raw state/view imports: ${shotStateImportLeaks.join(', ')}`);
+  }
   if (shotSurfaceStyleLeaks.length > 0) {
     throw new Error(`Film product shots must stay thin and delegate surface styling to agentbuddy-ui components: ${shotSurfaceStyleLeaks.join(', ')}`);
   }
@@ -426,6 +453,9 @@ async function main() {
   }
   if (conversationOnlyActualReferences.length > 0) {
     console.log(`Conversation-only actual-app references need durable local captures: ${conversationOnlyActualReferences.join(', ')}`);
+  }
+  if (missingActualCaptureTargets.length > 0) {
+    console.log(`Missing target actual-app capture files: ${missingActualCaptureTargets.join(', ')}`);
   }
 }
 

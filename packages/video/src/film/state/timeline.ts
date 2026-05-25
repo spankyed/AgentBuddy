@@ -7,6 +7,13 @@ export type FilmShot = {
   title?: string;
 };
 
+export type FilmCaptionView = {
+  alignRight: boolean;
+  opacity: number;
+  title: string;
+  y: number;
+};
+
 export const shots: FilmShot[] = [
   {id: 'notes', title: 'Memory stays connected.', duration: 270},
   {id: 'chat', title: 'Conversation becomes work.', duration: 330},
@@ -17,6 +24,39 @@ export const shots: FilmShot[] = [
 ];
 
 export const totalFrames = shots.reduce((sum, shot) => sum + shot.duration, 0);
+
+export function filmProgressForFrame(frame: number) {
+  return frame / Math.max(1, totalFrames - 1);
+}
+
+export function shotAtFrame(frame: number) {
+  let cursor = 0;
+  for (const shot of shots) {
+    const end = cursor + shot.duration;
+    if (frame >= cursor && frame < end) return shot;
+    cursor = end;
+  }
+  return shots[shots.length - 1];
+}
+
+export function captionViewForFrame(shot: FilmShot, frame: number): FilmCaptionView | null {
+  if (!shot.title) return null;
+  return {
+    alignRight: shot.captionAlign === 'right',
+    opacity: Math.min(
+      linearClamp(frame, 10, 34, 0, 1),
+      linearClamp(frame, shot.duration - 46, shot.duration - 12, 1, 0),
+    ),
+    title: shot.title,
+    y: linearClamp(frame, 0, 34, 20, 0),
+  };
+}
+
+function linearClamp(local: number, from: number, to: number, outFrom: number, outTo: number) {
+  if (local <= from) return outFrom;
+  if (local >= to) return outTo;
+  return mix(outFrom, outTo, (local - from) / (to - from));
+}
 
 export function ease(local: number, from: number, to: number) {
   if (local <= from) return 0;

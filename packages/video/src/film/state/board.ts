@@ -1,6 +1,20 @@
 import type {KanbanBoardState, KanbanCardState, ThreadsHeaderState} from '../../agentbuddy-ui/threads/threadTypes';
 import {ease, mix} from './timeline';
 
+export type BoardShotView = {
+  board: KanbanBoardState;
+  breadcrumbs: string[];
+  header: ThreadsHeaderState;
+  movingCard: {
+    card: KanbanCardState;
+    style: {
+      left: string;
+      top: string;
+      transform: string;
+    };
+  };
+};
+
 export const boardShotState: {
   board: KanbanBoardState;
   breadcrumbs: string[];
@@ -77,18 +91,18 @@ export const threadsHeaderFilterState: ThreadsHeaderState = {
     rootOnly: true,
     showArchived: false,
     statuses: [
-      {label: 'Active', selected: true, count: 8, color: '#2563eb'},
-      {label: 'Paused', count: 2, color: '#a16207'},
-      {label: 'Done', count: 14, color: '#16a34a'},
+      {label: 'Active', selected: true, color: '#2563eb'},
+      {label: 'Paused', color: '#a16207'},
+      {label: 'Done', color: '#16a34a'},
     ],
     tags: [
-      {label: 'launch', selected: true, count: 3, color: '#7c3aed'},
-      {label: 'video', count: 4, color: '#0891b2'},
-      {label: 'bug', count: 5, color: '#dc2626'},
+      {label: 'launch', selected: true, color: '#7c3aed'},
+      {label: 'video', color: '#0891b2'},
+      {label: 'bug', color: '#dc2626'},
     ],
     chatStates: [
-      {label: 'Has tools', selected: true, count: 6, color: '#0d9488'},
-      {label: 'Needs reply', count: 2, color: '#64748b'},
+      {label: 'Has tools', selected: true, color: '#0d9488'},
+      {label: 'Needs reply', color: '#64748b'},
     ],
   },
 };
@@ -106,6 +120,19 @@ export function boardViewForFrame(frame: number) {
       left: `${mix(motion.fromLeft, motion.toLeft, progress)}%`,
       top: `${mix(motion.fromTop, motion.toTop, progress)}%`,
       transform: `rotate(${mix(motion.fromRotation, motion.toRotation, progress)}deg)`,
+    },
+  };
+}
+
+export function boardShotViewForFrame(frame: number): BoardShotView {
+  const view = boardViewForFrame(frame);
+  return {
+    board: boardShotState.board,
+    breadcrumbs: boardShotState.breadcrumbs,
+    header: boardShotState.header,
+    movingCard: {
+      card: boardShotState.movingCard.card,
+      style: view.movingCardStyle,
     },
   };
 }

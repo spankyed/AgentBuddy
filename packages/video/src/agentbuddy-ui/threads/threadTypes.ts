@@ -230,11 +230,11 @@ export type ThreadsHeaderState = {
   activeFilterCount?: number;
   activeView?: 'list' | 'kanban' | 'dashboard';
   filterPopover?: {
-    chatStates?: Array<{color?: string; count?: number; label: string; selected?: boolean}>;
+    chatStates?: Array<{color?: string; label: string; selected?: boolean}>;
     rootOnly?: boolean;
     showArchived?: boolean;
-    statuses?: Array<{color?: string; count?: number; label: string; selected?: boolean}>;
-    tags?: Array<{color?: string; count?: number; label: string; selected?: boolean}>;
+    statuses?: Array<{color?: string; label: string; selected?: boolean}>;
+    tags?: Array<{color?: string; label: string; selected?: boolean}>;
     visible: boolean;
   };
   filterLabel: string;
