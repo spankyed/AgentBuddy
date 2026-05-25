@@ -19,8 +19,17 @@
   padding: 12px 16px;
 }
 
+.BrainDetailsPanel_titleGroup {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+}
+
 .BrainDetailsPanel_title {
   min-width: 0;
+  flex-shrink: 1;
   color: rgb(245 245 245);
   font-size: 14px;
   font-weight: 600;
@@ -29,11 +38,19 @@
   white-space: nowrap;
 }
 
-.BrainDetailsPanel_meta {
-  display: flex;
+.BrainDetailsPanel_kind,
+.BrainDetailsPanel_eventType {
   flex-shrink: 0;
-  gap: 8px;
   color: rgb(163 163 163);
+  font-size: 12px;
+}
+
+.BrainDetailsPanel_eventType {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.BrainDetailsPanel_status {
+  flex-shrink: 0;
   font-size: 12px;
 }
 
@@ -42,9 +59,28 @@
 .BrainDetailsPanel_status[data-status="failed"] { color: rgb(248 113 113); }
 .BrainDetailsPanel_status[data-status="paused"] { color: rgb(251 191 36); }
 
+.BrainDetailsPanel_closeButton {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(163 163 163);
+}
+
 .BrainDetailsPanel_body {
+  display: flex;
   flex: 1;
+  min-height: 0;
+  flex-direction: column;
   overflow-y: auto;
+}
+
+.BrainDetailsPanel_content {
+  flex: 1;
   padding: 16px;
 }
 
@@ -61,16 +97,18 @@
   text-transform: uppercase;
 }
 
-.BrainDetailsPanel_block {
+.BrainDetailsPanel_dataBlock {
   border: 1px solid rgb(255 255 255 / 5%);
   border-radius: 4px;
   background: rgb(0 0 0 / 30%);
   padding: 12px;
-  color: rgb(212 212 216);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.45;
-  white-space: pre-wrap;
+}
+
+.BrainDetailsPanel_empty {
+  margin-top: 32px;
+  color: rgb(115 115 115);
+  font-size: 14px;
+  text-align: center;
 }
 
 .BrainDetailsPanel_footer {

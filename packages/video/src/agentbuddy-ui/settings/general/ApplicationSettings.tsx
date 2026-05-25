@@ -17,12 +17,12 @@ export function ApplicationSettings() {
       <section className={styles.card}>
         <div className={styles.sectionHeader}><Icons.PackageOpen size={16} />Import Setup Pack</div>
         <p className={styles.description}>Import compiled actions, prompts, flows, library docs, and notes from a setup pack directory.</p>
-        <button className={styles.input} style={{marginTop: 16, width: 'auto'}} type="button">Select Compiled Directory...</button>
+        <button className={styles.primaryButton} type="button">Select Compiled Directory...</button>
       </section>
-      <section className={styles.card} style={{borderColor: 'rgb(127 29 29 / 30%)', background: 'rgb(127 29 29 / 10%)'}}>
-        <div className={styles.sectionHeader} style={{color: 'rgb(248 113 113)'}}><Icons.RotateCcw size={16} />Reset App</div>
+      <section className={styles.dangerCard}>
+        <div className={styles.dangerHeader}><Icons.RotateCcw size={16} />Reset App</div>
         <p className={styles.description}>Erase all data and restore defaults. This cannot be undone.</p>
-        <button className={styles.input} style={{background: 'rgb(220 38 38)', marginTop: 16, width: 'auto'}} type="button">Reset App...</button>
+        <button className={styles.dangerButton} type="button">Reset App...</button>
       </section>
     </div>
   );

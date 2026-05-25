@@ -14,7 +14,14 @@ export type ProviderKeyState = {
   hasKey?: boolean;
   key: string;
   label: string;
+  placeholder?: string;
   priority?: 'required' | 'recommended';
+};
+
+export type CustomProviderKeyState = {
+  hasKey?: boolean;
+  id: string;
+  name: string;
 };
 
 export type PluginSettingsItem = {
@@ -28,6 +35,7 @@ export type SettingsSurfaceState = {
   faqs: Array<{answer: string; expanded?: boolean; id: string; question: string}>;
   generalNavItem: GeneralSettingsNavId;
   plugins: PluginSettingsItem[];
+  customProviders?: CustomProviderKeyState[];
   providers: ProviderKeyState[];
   projects: SettingsProject[];
   saveStatus?: 'idle' | 'saving' | 'saved';

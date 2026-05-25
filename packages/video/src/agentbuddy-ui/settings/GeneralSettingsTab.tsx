@@ -25,7 +25,7 @@ function CurrentPanel({state}: {state: SettingsSurfaceState}) {
     case 'application':
       return <ApplicationSettings />;
     case 'secrets':
-      return <ProvidersSettings providers={state.providers} />;
+      return <ProvidersSettings customProviders={state.customProviders} providers={state.providers} />;
     case 'projects':
       return <ProjectsSettings projects={state.projects} />;
     case 'personal':

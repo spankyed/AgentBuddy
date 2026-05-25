@@ -18,11 +18,16 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {id: 'logs', label: 'Logs', visible: true},
     {id: 'settings', label: 'Settings', visible: true},
   ],
+  customProviders: [
+    {hasKey: true, id: 'clientlabs-api', name: 'Clientlabs API'},
+  ],
   providers: [
-    {description: 'Required for general reasoning and tool orchestration', hasKey: true, key: 'openai', label: 'OpenAI', priority: 'required'},
-    {description: 'Recommended for Claude Code and long-running implementation work', hasKey: true, key: 'anthropic', label: 'Anthropic', priority: 'recommended'},
-    {description: 'Used for repository operations and pull request automation', hasKey: false, key: 'github', label: 'GitHub'},
-    {description: 'Optional search provider for workflows that browse the web', hasKey: true, key: 'tavily', label: 'Tavily'},
+    {description: 'Claude 3, Claude 2', hasKey: true, key: 'anthropic', label: 'Anthropic', placeholder: 'Enter Anthropic API key', priority: 'required'},
+    {description: 'GPT-4, GPT-3.5, DALL-E', hasKey: true, key: 'openai', label: 'OpenAI', placeholder: 'Enter OpenAI API key', priority: 'required'},
+    {description: 'Gemini, PaLM', hasKey: false, key: 'google', label: 'Google AI', placeholder: 'Enter Google AI API key', priority: 'recommended'},
+    {description: 'Fast inference API', hasKey: false, key: 'groq', label: 'Groq', placeholder: 'Enter Groq API key'},
+    {description: 'Mistral models', hasKey: false, key: 'mistral', label: 'Mistral AI', placeholder: 'Enter Mistral AI API key'},
+    {description: 'Command, Embed, Rerank', hasKey: false, key: 'cohere', label: 'Cohere', placeholder: 'Enter Cohere API key'},
   ],
   projects: [
     {color: '#3b82f6', directories: ['/Users/spankyed/Develop/Projects/AgentBuddy'], name: 'AgentBuddy'},

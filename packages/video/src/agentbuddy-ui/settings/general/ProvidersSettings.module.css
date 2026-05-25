@@ -55,9 +55,73 @@
   text-align: center;
 }
 
+.ProvidersSettings_inputWrap {
+  position: relative;
+}
+
+.ProvidersSettings_providerInput {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid rgb(64 64 64 / 50%);
+  border-radius: 6px;
+  background: rgb(38 38 38);
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 40px 6px 12px;
+}
+
+.ProvidersSettings_providerInput::placeholder {
+  color: rgb(82 82 82);
+}
+
+.ProvidersSettings_eyeButton {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(156 163 175);
+  transform: translateY(-50%);
+}
+
 .ProvidersSettings_actions {
   display: flex;
   justify-content: flex-end;
   gap: 4px;
   color: rgb(156 163 175);
+}
+
+.ProvidersSettings_iconButton {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgb(156 163 175);
+}
+
+.ProvidersSettings_iconButton[data-danger] {
+  color: rgb(248 113 113);
+}
+
+.ProvidersSettings_addCustomButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(163 163 163);
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 12px;
 }
