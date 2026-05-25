@@ -1,6 +1,5 @@
 .FlowCanvas_root {
-  position: absolute;
-  inset: 0;
+  position: relative;
   display: flex;
   width: 100%;
   height: 100%;

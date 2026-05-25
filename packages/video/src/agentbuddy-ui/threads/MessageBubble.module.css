@@ -2,6 +2,7 @@
   display: flex;
   width: 100%;
   padding-bottom: 0.75rem;
+  animation: MessageBubble_fadeIn 300ms ease-out;
 }
 
 .MessageBubble_userRow { justify-content: flex-end; }
@@ -84,6 +85,11 @@
   background: rgb(38 38 38 / 80%);
 }
 
+.MessageBubble_commandBubble {
+  border-color: rgb(180 180 255 / 30%);
+  box-shadow: 0 0 8px -2px rgb(180 180 255 / 12%);
+}
+
 .MessageBubble_assistantBubble {
   border: 1px solid rgb(64 64 64 / 60%);
   background: transparent;
@@ -102,4 +108,15 @@
   font-size: 12px;
   font-style: italic;
   text-align: left;
+}
+
+@keyframes MessageBubble_fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

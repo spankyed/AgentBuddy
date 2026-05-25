@@ -23,6 +23,9 @@ import {
   DatabaseSurfaceDemo,
   DatabaseTraceDemo,
   FlowCanvasDemo,
+  FlowsListDemo,
+  FlowsListMenuDemo,
+  FlowsListSearchDemo,
   LogsFilteredDemo,
   LogsListDemo,
   LogsSurfaceDemo,
@@ -159,6 +162,9 @@ export const RemotionRoot = () => {
       <Composition id="PullRequestCreateDemo" component={PullRequestCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestDetailsDemo" component={PullRequestDetailsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="TerminalPanelDemo" component={TerminalPanelDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="FlowsListDemo" component={FlowsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="FlowsListSearchDemo" component={FlowsListSearchDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="FlowsListMenuDemo" component={FlowsListMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="FlowPaletteDemo" component={FlowPaletteDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="FlowNodeVariantsDemo" component={FlowNodeVariantsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="FlowCanvasDemo" component={FlowCanvasDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

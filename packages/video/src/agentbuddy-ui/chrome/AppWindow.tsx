@@ -29,7 +29,7 @@ export function AppWindow({activePlugin, breadcrumbs, children, composer, layout
     <div className={styles.window} style={layout.windowStyle}>
       <WindowTrafficLights />
       <div className={styles.grid} style={layout.gridStyle}>
-        <Toolbar activePlugin={activePlugin} />
+        <Toolbar activePlugin={activePlugin} height={layout.windowStyle.height} />
         <main className={styles.main}>
           <CanvasHeader breadcrumbs={breadcrumbs} title={title} />
           <section className={styles.surface}>{children}</section>

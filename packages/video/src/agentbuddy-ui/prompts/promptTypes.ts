@@ -39,6 +39,7 @@ export type PromptsListState = {
 
 export type PromptDetailState = {
   categories: ActionCategory[];
+  expandedInputKeys?: string[];
   formData: PromptFormData;
   inputsExpanded?: boolean;
   metadataExpanded?: boolean;

@@ -1,7 +1,7 @@
 .DatabaseBackupRestore_root {
-  position: absolute;
-  inset: 0;
   display: flex;
+  position: relative;
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
   background: #1a1a1a;

@@ -7,16 +7,18 @@ import './PromptInputsEditor.module.css';
 const styles = makeStyles('PromptInputsEditor');
 
 type PromptInputsEditorProps = {
+  expandedKeys?: string[];
   inputs: Record<string, TemplateInput>;
 };
 
-export function PromptInputsEditor({inputs}: PromptInputsEditorProps) {
+export function PromptInputsEditor({expandedKeys = [], inputs}: PromptInputsEditorProps) {
   const entries = Object.entries(inputs);
+  const expanded = new Set(expandedKeys);
   return (
     <div className={styles.root}>
       {entries.map(([key, input]) => (
         <ParameterRow
-          expanded={false}
+          expanded={expanded.has(key)}
           key={key}
           parameter={{
             description: input.description,

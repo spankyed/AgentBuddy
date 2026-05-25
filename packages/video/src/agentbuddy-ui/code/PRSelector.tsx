@@ -11,7 +11,7 @@ export function PRSelector({state}: {state: PullRequestPanelState}) {
   return (
     <div className={styles.root}>
       <button className={styles.button} type="button">
-        <Icons.PullRequest size={12} />
+        <Icons.PullRequest className={created ? styles.openIcon : styles.placeholderIcon} size={12} />
         <span className={created ? undefined : styles.placeholder}>
           {created ? `#${created.number} ${state.title}` : 'Select a pull request...'}
         </span>

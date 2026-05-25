@@ -91,6 +91,7 @@ export const actionDetailState: ActionsSurfaceState = {
     label: selectedAction.label,
     output: selectedAction.output,
   },
+  expandedParameterKeys: ['launchId'],
   metadataExpanded: true,
   outputExpanded: true,
   parametersExpanded: true,

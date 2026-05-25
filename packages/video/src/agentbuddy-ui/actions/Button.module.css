@@ -9,11 +9,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 1;
-  transition: background-color 160ms ease, color 160ms ease, transform 120ms ease;
-}
-
-.ActionsButton_base:active {
-  transform: scale(0.98);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 .ActionsButton_primary {

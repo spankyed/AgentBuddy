@@ -220,6 +220,7 @@ export const MessageBubbleDemo = () => (
       <MessageBubble sender="system">{messageBubbleDemoState.system}</MessageBubble>
       <MessageBubble sender="marker">{messageBubbleDemoState.marker}</MessageBubble>
       <MessageBubble sender="user" createdAt={messageBubbleDemoState.createdAt}>{messageBubbleDemoState.user}</MessageBubble>
+      <MessageBubble sender="user" createdAt={messageBubbleDemoState.createdAt} isCommand>{messageBubbleDemoState.commandUser}</MessageBubble>
       <MessageBubble sender="user" createdAt={messageBubbleDemoState.createdAt} references={messageBubbleDemoState.references} truncated>{messageBubbleDemoState.longUser}</MessageBubble>
       <MessageBubble sender="user" createdAt={messageBubbleDemoState.createdAt} references={messageBubbleDemoState.references} expanded truncated>{messageBubbleDemoState.longUser}</MessageBubble>
       <MessageBubble sender="user" createdAt={messageBubbleDemoState.createdAt} isTail status="queued">{messageBubbleDemoState.queuedUser}</MessageBubble>

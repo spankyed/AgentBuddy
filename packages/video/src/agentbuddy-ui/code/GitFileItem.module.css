@@ -8,7 +8,10 @@
   transition: background 160ms ease;
 }
 
-.GitFileItem_root:hover,
+.GitFileItem_root:hover {
+  background: rgb(38 38 38 / 50%);
+}
+
 .GitFileItem_selected {
   background: rgb(38 38 38);
 }
@@ -26,7 +29,7 @@
   overflow: hidden;
   color: rgb(229 229 229);
   font-size: 0.875rem;
-  font-weight: 400;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -54,11 +57,23 @@
   color: rgb(34 197 94);
 }
 
+.GitFileItem_deleted {
+  color: rgb(239 68 68);
+}
+
+.GitFileItem_renamed {
+  color: rgb(59 130 246);
+}
+
+.GitFileItem_untracked {
+  color: rgb(115 115 115);
+}
+
 .GitFileItem_openAction,
 .GitFileItem_action {
   display: inline-flex;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   align-items: center;
   justify-content: center;
   border: 0;

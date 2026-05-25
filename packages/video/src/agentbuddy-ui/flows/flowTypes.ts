@@ -6,6 +6,23 @@ export type FlowPaletteItemState = {
   label: string;
 };
 
+export type FlowListItemState = {
+  description?: string;
+  id: string;
+  label?: string;
+};
+
+export type FlowsListState = {
+  focusedFlowId?: string;
+  flows: FlowListItemState[];
+  menuFlowId?: string;
+  multiSelectedFlowIds?: string[];
+  rootFlowId?: string;
+  searchMode?: boolean;
+  searchQuery?: string;
+  selectedFlowId?: string;
+};
+
 export type FlowNodeState = {
   branches?: Array<{isElse?: boolean; label?: string}>;
   id: string;

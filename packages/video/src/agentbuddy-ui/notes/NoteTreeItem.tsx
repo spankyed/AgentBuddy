@@ -24,7 +24,14 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
   return (
     <div>
       <div
-        className={cx(styles.row, isActive && styles.active, menuOpen && styles.menuOpenRow, taskMode && completed && styles.completed, node.muted && styles.muted)}
+        className={cx(
+          styles.row,
+          isActive && styles.active,
+          isActive && taskMode && (completed || node.muted) && styles.activeMuted,
+          menuOpen && styles.menuOpenRow,
+          taskMode && completed && !isActive && styles.completed,
+          node.muted && !isActive && styles.muted,
+        )}
         style={{paddingLeft: depth * 8 + 8}}
       >
         <button className={styles.iconButton} type="button">
@@ -66,7 +73,7 @@ function RowActions({menuOpen, node, taskMode}: {menuOpen: boolean; node: NoteTr
 function RowMenu({isTaskRelated, node, taskMode}: {isTaskRelated: boolean; node: NoteTreeNodeState; taskMode?: boolean}) {
   const menuItems: Array<{danger?: boolean; icon: ComponentType<{className?: string; size?: number}>; iconAccent?: boolean; label: string}> = [];
   if (isTaskRelated) menuItems.push({icon: Icons.FilePlus, label: 'Add Document'});
-  if (!isTaskRelated) menuItems.push({icon: Icons.ClipboardList, label: 'Add Tasklist'});
+  if (!isTaskRelated) menuItems.push({icon: Icons.ListChecks, label: 'Add Tasklist'});
   if (taskMode && node.hasCompletedChildren) {
     menuItems.push({
       icon: node.hidingCompletedChildren ? Icons.Eye : Icons.EyeOff,

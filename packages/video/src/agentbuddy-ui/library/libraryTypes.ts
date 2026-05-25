@@ -48,6 +48,7 @@ export type LibraryDocumentEditorState = {
   name: string;
   sections: LibraryContentSectionState[];
   tags: string[];
+  tagsExpanded?: boolean;
 };
 
 export type LibrarySurfaceState = {

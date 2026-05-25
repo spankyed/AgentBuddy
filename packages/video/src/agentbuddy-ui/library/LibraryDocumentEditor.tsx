@@ -11,6 +11,7 @@ const styles = makeStyles('LibraryDocumentEditor');
 export function LibraryDocumentEditor({state}: {state: LibraryDocumentEditorState}) {
   const isEditMode = Boolean(state.document);
   const isValid = state.name.trim() !== '' && state.sections.length > 0;
+  const tagsExpanded = state.tagsExpanded === true;
   return (
     <div className={styles.root}>
       <LibraryNameSaveHeader isEditing={isEditMode} isValid={isValid} label="Name">
@@ -46,12 +47,12 @@ export function LibraryDocumentEditor({state}: {state: LibraryDocumentEditorStat
 
           {!state.isSymlink ? (
             <div className={styles.tagsSection}>
-              <button className={styles.tagsToggle} type="button">
+              <button className={styles.tagsToggle} data-expanded={tagsExpanded} type="button">
                 <Icons.ChevronRight size={16} />
                 Tags
-                {state.tags.length > 0 ? <span>({state.tags.length})</span> : null}
+                {state.tags.length > 0 && !tagsExpanded ? <span>({state.tags.length})</span> : null}
               </button>
-              <LibraryTagInput availableTags={state.availableTags} selectedTags={state.tags} />
+              {tagsExpanded ? <LibraryTagInput availableTags={state.availableTags} selectedTags={state.tags} /> : null}
             </div>
           ) : null}
         </form>

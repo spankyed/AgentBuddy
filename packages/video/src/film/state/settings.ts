@@ -17,7 +17,6 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {id: 'brain', label: 'Brain', visible: true},
     {id: 'database', label: 'Database', visible: true},
     {id: 'logs', label: 'Logs', visible: true},
-    {id: 'settings', label: 'Settings', visible: true},
   ],
   customProviders: [
     {hasKey: true, id: 'clientlabs-api', name: 'Clientlabs API'},

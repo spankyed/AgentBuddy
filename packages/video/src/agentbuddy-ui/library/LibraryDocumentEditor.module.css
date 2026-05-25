@@ -107,7 +107,7 @@
   text-transform: uppercase;
 }
 
-.LibraryDocumentEditor_tagsToggle svg {
+.LibraryDocumentEditor_tagsToggle[data-expanded='true'] svg {
   transform: rotate(90deg);
 }
 

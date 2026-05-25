@@ -6,7 +6,7 @@ export const brainSurfaceState: BrainSurfaceState = {
   canGoBack: false,
   events: [
     {eventType: 'launch.context.updated', id: 'event-context', label: 'Launch context updated', scope: 'app', triggerType: 'listener'},
-    {eventType: 'release.workflow.scheduled', id: 'event-release', label: 'Release workflow scheduled', scope: 'app', triggerType: 'schedule'},
+    {cronExpression: '0 9 * * 1', eventType: 'release.workflow.scheduled', id: 'event-release', label: 'Release workflow scheduled', scope: 'app', triggerType: 'schedule'},
     {eventType: 'code.branch.published', id: 'event-code', label: 'Code branch published', scope: 'app', triggerType: 'listener'},
   ],
   flowTNodeId: 'TNode-Root',

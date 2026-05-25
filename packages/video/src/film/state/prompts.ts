@@ -84,6 +84,7 @@ const selectedPrompt = prompts[0];
 
 export const promptDetailState: PromptsSurfaceState = {
   categories: promptCategories,
+  expandedInputKeys: ['productName'],
   formData: {
     category: selectedPrompt.category,
     description: selectedPrompt.description,

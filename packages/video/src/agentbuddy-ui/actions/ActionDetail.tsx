@@ -34,7 +34,7 @@ export function ActionDetail({state}: ActionDetailProps) {
         <div className={styles.content}>
           <div className={styles.sectionFirst}>
             <CollapsibleSection label="Input Parameters" open={state.parametersExpanded ?? true}>
-              <ActionParametersEditor parameters={state.formData.input} />
+              <ActionParametersEditor expandedKeys={state.expandedParameterKeys} parameters={state.formData.input} />
             </CollapsibleSection>
           </div>
 

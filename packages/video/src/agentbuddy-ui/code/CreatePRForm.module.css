@@ -119,7 +119,7 @@
   padding: 0 0.75rem;
 }
 
-.CreatePRForm_primary svg {
+.CreatePRForm_spinner {
   animation: CreatePRForm_spin 900ms linear infinite;
 }
 

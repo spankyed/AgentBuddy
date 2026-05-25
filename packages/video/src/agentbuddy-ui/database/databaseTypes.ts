@@ -61,6 +61,7 @@ export type DatabaseTraceEvent = {
 export type DatabaseTraceState = {
   currentFlowId?: string;
   events: DatabaseTraceEvent[];
+  expandedEventIds?: string[];
   flows: DatabaseTraceFlow[];
   hasMore?: boolean;
   isLoading?: boolean;

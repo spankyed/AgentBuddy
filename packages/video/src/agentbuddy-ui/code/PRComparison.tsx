@@ -33,8 +33,8 @@ function TreeFolder({node}: {node: PullRequestFileTreeNode}) {
   return (
     <div className={styles.folder}>
       <div className={styles.folderRow}>
-        <Icons.ChevronDown size={12} />
-        <Icons.FolderOpen size={13} />
+        <Icons.ChevronDown className={styles.chevron} size={12} />
+        <Icons.Folder size={16} />
         <span>{node.label}</span>
         {node.count ? <em>{node.count}</em> : null}
       </div>
@@ -46,7 +46,7 @@ function TreeFolder({node}: {node: PullRequestFileTreeNode}) {
 function TreeFile({node}: {node: PullRequestFileTreeNode}) {
   return (
     <div className={styles.fileRow}>
-      <Icons.File size={13} />
+      <Icons.FileCode size={16} />
       <span>{node.label}</span>
       {node.status ? <strong>{statusLabel(node.status)}</strong> : null}
       <Icons.Copy size={12} />

@@ -84,7 +84,7 @@ export function NotesRightRail({state}: NotesRightRailProps) {
 function CreateMenu() {
   return (
     <div className={styles.menu}>
-      <button type="button"><Icons.ClipboardList size={14} /><span>New TaskList</span></button>
+      <button type="button"><Icons.ListChecks size={14} /><span>New TaskList</span></button>
       <button type="button"><Icons.Star size={14} /><span>Hide Favorites</span></button>
       <button type="button"><Icons.Trash2 size={14} /><span>Trash</span></button>
     </div>
@@ -121,7 +121,7 @@ function SearchResultItem({item}: {item: NoteTreeNodeState}) {
 }
 
 function SearchResultGlyph({item}: {item: NoteTreeNodeState}) {
-  if (item.noteType === 'tasklist') return <Icons.ClipboardList className={styles.searchGlyph} size={14} />;
+  if (item.noteType === 'tasklist') return <Icons.ListChecks className={styles.searchGlyph} size={14} />;
   if (item.noteType === 'task') return <Icons.CircleCheck className={styles.searchGlyph} size={14} />;
   return <Icons.Notes className={styles.searchGlyph} size={14} />;
 }

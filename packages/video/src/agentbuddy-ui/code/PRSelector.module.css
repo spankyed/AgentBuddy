@@ -22,7 +22,14 @@
 
 .PRSelector_button svg {
   flex-shrink: 0;
+}
+
+.PRSelector_openIcon {
   color: rgb(74 222 128);
+}
+
+.PRSelector_placeholderIcon {
+  color: rgb(163 163 163);
 }
 
 .PRSelector_button span {

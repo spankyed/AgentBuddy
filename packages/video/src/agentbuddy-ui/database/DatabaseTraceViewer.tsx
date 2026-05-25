@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {cx} from '../primitives/classNames';
 import type {DatabaseTraceEvent, DatabaseTraceState} from './databaseTypes';
 import './DatabaseTraceViewer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -6,6 +7,7 @@ const styles = makeStyles('DatabaseTraceViewer');
 
 export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
   const selected = state.flows.find(flow => flow.id === state.currentFlowId);
+  const expandedIds = new Set(state.expandedEventIds ?? []);
   return (
     <div className={styles.root}>
       <aside className={styles.flowPanel}>
@@ -35,9 +37,16 @@ export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
           </div>
         </header>
         <section className={styles.events}>
-          <div className={styles.eventList}>
-            {state.events.map(event => <TraceEventItem event={event} key={event.id} />)}
-          </div>
+          {state.events.length > 0 ? (
+            <div className={styles.eventList}>
+              {state.events.map(event => <TraceEventItem event={event} expandedIds={expandedIds} key={event.id} />)}
+            </div>
+          ) : (
+            <div className={styles.emptyEvents}>
+              <div className={styles.emptyIcon}><Icons.ClipboardList size={24} /></div>
+              <p>No events in this flow</p>
+            </div>
+          )}
           {state.hasMore ? <div className={styles.loadMore}><button type="button">Load More Events</button></div> : null}
         </section>
       </main>
@@ -45,16 +54,40 @@ export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
   );
 }
 
-function TraceEventItem({event}: {event: DatabaseTraceEvent}) {
+function TraceEventItem({event, expandedIds}: {event: DatabaseTraceEvent; expandedIds: Set<string>}) {
+  const hasChildren = Boolean(event.children?.length);
+  const hasDetails = Boolean(event.metadata);
+  const expanded = expandedIds.has(event.id);
+  const effectiveType = event.nodeType === 'event' ? 'listener' : event.subtype ?? event.nodeType;
   return (
-    <article className={styles.event} data-status={event.status}>
-      <div className={styles.eventHeader}>
+    <article className={cx(styles.event, expanded && styles.eventExpanded, hasChildren && styles.eventWithChildren)} data-kind={effectiveType} data-status={event.status}>
+      <button className={styles.eventHeader} type="button">
+        {hasChildren || hasDetails ? <Icons.ChevronRight className={cx(styles.eventChevron, expanded && styles.eventChevronExpanded)} size={14} /> : null}
         <span className={styles.eventDot} />
-        <div className={styles.eventTitle}>{event.label}</div>
-        <div className={styles.eventMeta}>{event.subtype ?? event.nodeType} {event.startedAt ? `• ${event.startedAt}` : ''}</div>
-      </div>
-      {event.metadata ? <pre className={styles.details}>{JSON.stringify(event.metadata, null, 2)}</pre> : null}
-      {event.children?.map(child => <TraceEventItem event={child} key={child.id} />)}
+        <div className={styles.eventLabel}>
+          <span>{event.label}</span>
+          {event.startedAt ? <time>{event.startedAt}</time> : null}
+        </div>
+        <NodeTypeIcon kind={effectiveType} />
+        <span className={styles.statusDot} />
+      </button>
+      {expanded && event.metadata ? (
+        <div className={styles.details}>
+          <div className={styles.detailsTitle}>Node Attributes</div>
+          <pre>{JSON.stringify(event.metadata, null, 2)}</pre>
+        </div>
+      ) : null}
+      {expanded && event.children?.length ? (
+        <div className={styles.children}>
+          {event.children.map(child => <TraceEventItem event={child} expandedIds={expandedIds} key={child.id} />)}
+        </div>
+      ) : null}
     </article>
   );
+}
+
+function NodeTypeIcon({kind}: {kind: string}) {
+  if (kind === 'flow') return <Icons.Flows className={styles.typeIcon} size={14} />;
+  if (kind === 'listener') return <Icons.Radio className={styles.typeIcon} size={14} />;
+  return <Icons.Play className={styles.typeIcon} size={14} />;
 }

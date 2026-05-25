@@ -25,6 +25,7 @@ export type BrainNodeState = {
 
 export type BrainEventState = {
   active?: boolean;
+  cronExpression?: string;
   eventType: string;
   id: string;
   label: string;

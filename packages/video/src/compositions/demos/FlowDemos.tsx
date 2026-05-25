@@ -1,12 +1,37 @@
 import {useCurrentFrame} from 'remotion';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
+import {FlowsList} from '../../agentbuddy-ui/flows/FlowsList';
 import {FlowNode} from '../../agentbuddy-ui/flows/FlowNode';
 import {FlowNodeForm} from '../../agentbuddy-ui/flows/FlowNodeForm';
 import {FlowPalette} from '../../agentbuddy-ui/flows/FlowPalette';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {WorkflowShot} from '../../film/shots/WorkflowShot';
 import {flowNodeFormForFrame} from '../../film/state/flowForms';
-import {releaseAutomationWorkflow} from '../../film/state/workflow';
+import {flowsListMenuState, flowsListSearchState, flowsListState, releaseAutomationWorkflow} from '../../film/state/workflow';
+
+export const FlowsListDemo = () => (
+  <SurfaceFrame>
+    <div style={{width: '15rem', height: '100%'}}>
+      <FlowsList state={flowsListState} />
+    </div>
+  </SurfaceFrame>
+);
+
+export const FlowsListSearchDemo = () => (
+  <SurfaceFrame>
+    <div style={{width: '15rem', height: '100%'}}>
+      <FlowsList state={flowsListSearchState} />
+    </div>
+  </SurfaceFrame>
+);
+
+export const FlowsListMenuDemo = () => (
+  <SurfaceFrame>
+    <div style={{width: '15rem', height: '100%'}}>
+      <FlowsList state={flowsListMenuState} />
+    </div>
+  </SurfaceFrame>
+);
 
 export const FlowPaletteDemo = () => (
   <SurfaceFrame>

@@ -94,6 +94,7 @@ export const messageBubbleDemoState = {
   ],
   system: 'Launch AgentBuddy',
   user: 'Turn this launch brief into tickets, notes, and a shippable PR plan.',
+  commandUser: '/launch-film create tickets from the current tasklist',
   queuedUser: 'Queue the release checklist after this plan is approved.',
   cancelledUser: 'Draft the old tutorial carousel again.',
   assistant: 'I found the launch context and turned it into an execution plan.',

@@ -49,6 +49,12 @@
   height: 14px;
 }
 
+@media (max-width: 1279px) {
+  .ActionsNameSaveHeader_backButton span {
+    display: none;
+  }
+}
+
 .ActionsNameSaveHeader_center {
   display: flex;
   min-width: 0;

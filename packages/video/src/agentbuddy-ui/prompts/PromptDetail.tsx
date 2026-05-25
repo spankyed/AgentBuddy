@@ -41,7 +41,7 @@ export function PromptDetail({state}: PromptDetailProps) {
         <div className={styles.content}>
           <div className={styles.sectionFirst}>
             <CollapsibleSection label="Input Parameters" open={state.inputsExpanded ?? true}>
-              <PromptInputsEditor inputs={state.formData.inputs} />
+              <PromptInputsEditor expandedKeys={state.expandedInputKeys} inputs={state.formData.inputs} />
             </CollapsibleSection>
           </div>
 

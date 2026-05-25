@@ -1,3 +1,4 @@
+import type {CSSProperties} from 'react';
 import {Icons} from '../primitives/Icon';
 import {ToolbarButton} from './ToolbarButton';
 import './Toolbar.module.css';
@@ -19,6 +20,7 @@ export type PluginId =
 
 type ToolbarProps = {
   activePlugin: PluginId;
+  height?: CSSProperties['height'];
 };
 
 const toolbarPlugins = [
@@ -39,9 +41,9 @@ const mainToolbarPlugins = toolbarPlugins.filter(item => !item.isPinned);
 const pinnedToolbarPlugins = toolbarPlugins.filter(item => item.isPinned);
 
 // Mirrors packages/renderer/src/core/components/layout/toolbar.vue.
-export function Toolbar({activePlugin}: ToolbarProps) {
+export function Toolbar({activePlugin, height}: ToolbarProps) {
   return (
-    <aside className={styles.root} data-onboarding-id="toolbar">
+    <aside className={styles.root} data-onboarding-id="toolbar" style={height == null ? undefined : {height}}>
       <div className={styles.windowControlsArea} />
       <div className={styles.scrollArea}>
         <div className={styles.buttonStack}>

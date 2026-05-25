@@ -13,8 +13,8 @@ export function BrainNode({connectedExits, node, selected}: {
   const width = flowNodeWidth(node);
   const height = flowNodeHeight(node);
   const statusStyle = {
-    left: `${node.x + width / 2 - 7}px`,
-    top: `${node.y - height / 2 - 7}px`,
+    left: `${node.x + width / 2 - 6}px`,
+    top: `${node.y - height / 2 - 6}px`,
   };
   const showStatus = node.kind !== 'event' && Boolean(node.status);
 

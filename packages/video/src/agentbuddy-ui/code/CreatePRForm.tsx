@@ -31,7 +31,7 @@ export function CreatePRForm({creating, state}: {creating?: boolean; state: Pull
       </div>
       <div className={styles.actions}>
         <button className={styles.primary} type="button">
-          {creating ? <Icons.Loader2 size={12} /> : <Icons.PullRequest size={12} />}
+          {creating ? <Icons.Loader2 className={styles.spinner} size={12} /> : <Icons.PullRequest size={12} />}
           <span>{creating ? 'Creating PR' : 'Create PR'}</span>
         </button>
         <button className={styles.secondary} type="button">

@@ -11,6 +11,22 @@
   padding-left: 24px;
 }
 
+.LibraryTableHeader_name {
+  width: 60%;
+}
+
+.LibraryTableHeader_modified {
+  width: 18%;
+}
+
+.LibraryTableHeader_size {
+  width: 10%;
+}
+
+.LibraryTableHeader_kind {
+  width: 12%;
+}
+
 .LibraryTableHeader_inner {
   display: flex;
   align-items: center;

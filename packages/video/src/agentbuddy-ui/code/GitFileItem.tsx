@@ -23,11 +23,11 @@ export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAc
         <span className={styles.filename}>{filename}</span>
         {directory ? <span className={styles.directory}>{directory}</span> : null}
       </div>
-      <span className={cx(styles.status, file.status === 'added' && styles.added)}>{status}</span>
-      {file.status !== 'deleted' ? <button className={styles.openAction} title="Open file"><Icons.File size={14} /></button> : null}
+      <span className={cx(styles.status, styles[file.status])}>{status}</span>
+      {file.status !== 'deleted' ? <button className={styles.openAction} title="Open file"><Icons.File size={12} /></button> : null}
       {actions.map(action => (
         <button key={action} className={styles.action} title={actionLabel(action)}>
-          {action === 'discard' ? <Icons.RotateCcw size={14} /> : action === 'unstage' ? <Icons.Minus size={14} /> : <Icons.Plus size={14} />}
+          {action === 'discard' ? <Icons.RotateCcw size={12} /> : action === 'unstage' ? <Icons.Minus size={12} /> : <Icons.Plus size={12} />}
         </button>
       ))}
     </div>

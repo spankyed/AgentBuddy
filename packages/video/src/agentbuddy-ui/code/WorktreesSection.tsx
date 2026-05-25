@@ -21,7 +21,11 @@ export function WorktreesSection({worktrees}: {worktrees: WorktreeState[]}) {
       <div className={styles.list}>
         {worktrees.map(worktree => (
           <div className={worktree.current ? styles.currentRow : styles.row} key={worktree.branch}>
-            <Icons.GitBranch className={styles.branchIcon} size={13} />
+            {worktree.locked ? (
+              <Icons.Lock className={styles.lockIcon} size={13} />
+            ) : (
+              <Icons.GitFork className={worktree.current ? styles.currentBranchIcon : styles.branchIcon} size={13} />
+            )}
             <div className={styles.copy}>
               <div className={styles.branch}>
                 <span>{worktree.branch}</span>

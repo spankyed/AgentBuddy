@@ -10,6 +10,8 @@ export type CommitLogEntryState = {
 export type WorktreeState = {
   branch: string;
   current?: boolean;
+  locked?: boolean;
+  main?: boolean;
   path: string;
 };
 

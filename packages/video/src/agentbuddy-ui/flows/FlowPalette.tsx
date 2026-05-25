@@ -8,7 +8,7 @@ const styles = makeStyles('FlowPalette');
 export function FlowPalette({items}: {items: FlowPaletteItemState[]}) {
   return (
     <aside className={styles.root}>
-      <div className={styles.inner}>
+      <div className={styles.inner} data-onboarding-id="flow-node-palette">
         <div className={styles.stack}>
           {items.map(item => <FlowPaletteItem key={item.kind} item={item} />)}
         </div>
@@ -16,4 +16,3 @@ export function FlowPalette({items}: {items: FlowPaletteItemState[]}) {
     </aside>
   );
 }
-

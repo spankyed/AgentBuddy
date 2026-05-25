@@ -1,4 +1,4 @@
-import type {FlowCanvasState} from '../../agentbuddy-ui/flows/flowTypes';
+import type {FlowCanvasState, FlowsListState} from '../../agentbuddy-ui/flows/flowTypes';
 import {ease} from './timeline';
 
 export type WorkflowShotState = {
@@ -43,6 +43,30 @@ export const releaseAutomationWorkflow: WorkflowShotState = {
       {from: 'onboarding', fromExit: 0, kind: 'transitions_to', to: 'run'},
     ],
   },
+};
+
+export const flowsListState: FlowsListState = {
+  rootFlowId: 'root',
+  selectedFlowId: 'release-automation',
+  focusedFlowId: 'release-automation',
+  flows: [
+    {id: 'root', label: 'Root Flow', description: 'Default entrypoint for AgentBuddy'},
+    {id: 'release-automation', label: 'Release Automation', description: 'Launch film publishing path'},
+    {id: 'onboarding', label: 'Start Onboarding', description: 'Tour completion trigger'},
+    {id: 'claude-code-work-mode', label: 'Claude Code Work Mode', description: 'Development workspace loop'},
+    {id: 'daily-summary', label: 'Daily Summary', description: 'Scheduled memory digest'},
+  ],
+};
+
+export const flowsListSearchState: FlowsListState = {
+  ...flowsListState,
+  searchMode: true,
+  searchQuery: 'release',
+};
+
+export const flowsListMenuState: FlowsListState = {
+  ...flowsListState,
+  menuFlowId: 'release-automation',
 };
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {

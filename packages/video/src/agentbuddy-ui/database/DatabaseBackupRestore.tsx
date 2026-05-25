@@ -117,15 +117,18 @@ function InfoCard({icon, label, value}: {icon: React.ReactNode; label: string; v
 }
 
 function formatDate(timestamp: number) {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  return new Date(timestamp).toLocaleString();
 }
 
-function formatSize(size: number) {
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
-  if (size < 1024 * 1024 * 1024) return `${Math.round(size / (1024 * 1024))} MB`;
-  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+function formatSize(bytes: number) {
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(2)} ${units[unitIndex]}`;
 }

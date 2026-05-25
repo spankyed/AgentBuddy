@@ -44,6 +44,7 @@ export type ActionsListState = {
 export type ActionDetailState = {
   action?: ActionEntity;
   categories: ActionCategory[];
+  expandedParameterKeys?: string[];
   formData: ActionFormData;
   metadataExpanded?: boolean;
   outputExpanded?: boolean;

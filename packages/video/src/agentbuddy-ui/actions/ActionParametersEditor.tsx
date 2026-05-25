@@ -7,17 +7,19 @@ import './ActionParametersEditor.module.css';
 const styles = makeStyles('ActionsParametersEditor');
 
 type ActionParametersEditorProps = {
+  expandedKeys?: string[];
   parameters: Record<string, ActionParameter>;
 };
 
-export function ActionParametersEditor({parameters}: ActionParametersEditorProps) {
+export function ActionParametersEditor({expandedKeys = [], parameters}: ActionParametersEditorProps) {
   const entries = Object.entries(parameters);
+  const expanded = new Set(expandedKeys);
   return (
     <div className={styles.root}>
       {entries.length > 0 ? (
         <div className={styles.parameters}>
           {entries.map(([key, parameter]) => (
-            <ParameterRow expanded={false} key={key} parameter={parameter} paramKey={key} />
+            <ParameterRow expanded={expanded.has(key)} key={key} parameter={parameter} paramKey={key} />
           ))}
         </div>
       ) : null}

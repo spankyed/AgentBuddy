@@ -153,6 +153,7 @@ export const databaseTraceState: DatabaseSurfaceState = {
         subtype: 'flow',
       },
     ],
+    expandedEventIds: ['trace-event-2'],
     flows: [
       {completedAt: '42.18ms', id: 'flow-release-automation', label: 'Release automation', startedAt: '10:34 AM', status: 'active'},
       {completedAt: '1.4s', id: 'flow-onboarding', label: 'Start Onboarding', startedAt: '10:18 AM', status: 'completed'},

@@ -1,7 +1,7 @@
 .DatabaseTraceViewer_root {
-  position: absolute;
-  inset: 0;
   display: flex;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: rgb(23 23 23);
 }
@@ -137,6 +137,7 @@
   flex: 1;
   overflow-y: auto;
   background: rgb(23 23 23 / 50%);
+  backdrop-filter: blur(8px);
   padding: 16px;
 }
 
@@ -146,23 +147,59 @@
 }
 
 .DatabaseTraceViewer_event {
+  width: 100%;
   border-radius: 8px;
-  background: rgb(38 38 38 / 50%);
-  border: 1px solid rgb(64 64 64 / 50%);
+  border: 1px solid transparent;
+  background: rgb(255 255 255 / 2%);
   overflow: hidden;
+  user-select: none;
+}
+
+.DatabaseTraceViewer_eventWithChildren {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+}
+
+.DatabaseTraceViewer_eventExpanded {
+  border-color: rgb(255 255 255 / 4%);
+  background: rgb(255 255 255 / 2.5%);
 }
 
 .DatabaseTraceViewer_eventHeader {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
   padding: 10px 12px;
+  text-align: left;
+  transition: filter 150ms ease;
+}
+
+.DatabaseTraceViewer_eventHeader:hover {
+  filter: brightness(1.2);
+}
+
+.DatabaseTraceViewer_eventChevron {
+  flex-shrink: 0;
+  color: rgb(115 115 115);
+  transition: transform 200ms ease, color 200ms ease;
+}
+
+.DatabaseTraceViewer_eventChevronExpanded {
+  transform: rotate(90deg);
+  color: rgb(212 212 212);
 }
 
 .DatabaseTraceViewer_eventDot {
   width: 6px;
   height: 6px;
+  flex-shrink: 0;
   border-radius: 999px;
+  box-shadow: 0 0 0 1px rgb(23 23 23 / 50%), 0 0 0 2px rgb(59 130 246 / 25%);
   background: rgb(59 130 246);
 }
 
@@ -172,27 +209,114 @@
 
 .DatabaseTraceViewer_event[data-status="active"] .DatabaseTraceViewer_eventDot {
   background: rgb(234 179 8);
+  box-shadow: 0 0 0 1px rgb(23 23 23 / 50%), 0 0 0 2px rgb(234 179 8 / 25%);
 }
 
 .DatabaseTraceViewer_eventTitle {
-  flex: 1;
-  color: rgb(245 245 245);
-  font-size: 13px;
-  font-weight: 500;
+  display: none;
 }
 
-.DatabaseTraceViewer_eventMeta {
-  color: rgb(115 115 115);
+.DatabaseTraceViewer_eventLabel {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+  padding-right: 64px;
+}
+
+.DatabaseTraceViewer_eventLabel span {
+  display: block;
+  overflow: hidden;
+  color: rgb(255 255 255 / 90%);
   font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.DatabaseTraceViewer_eventLabel time {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  color: rgb(115 115 115);
+  font-size: 10px;
+  transform: translateY(-50%);
+}
+
+.DatabaseTraceViewer_typeIcon {
+  flex-shrink: 0;
+  color: rgb(163 163 163);
+}
+
+.DatabaseTraceViewer_statusDot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgb(59 130 246);
+  box-shadow: 0 0 0 2px rgb(23 23 23), 0 0 0 4px rgb(59 130 246 / 30%);
 }
 
 .DatabaseTraceViewer_details {
+  margin: 0 12px 12px;
   border-top: 1px solid rgb(38 38 38 / 50%);
-  padding: 10px 28px 12px;
+  border-radius: 0 0 8px 8px;
+  background: rgb(23 23 23 / 80%);
+  padding: 12px 16px;
+}
+
+.DatabaseTraceViewer_detailsTitle {
+  margin-bottom: 8px;
+  color: rgb(163 163 163);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.DatabaseTraceViewer_details pre {
+  margin: 0;
   color: rgb(163 163 163);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   white-space: pre-wrap;
+}
+
+.DatabaseTraceViewer_children {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  padding: 0 12px 8px;
+}
+
+.DatabaseTraceViewer_children .DatabaseTraceViewer_event {
+  max-width: 100%;
+}
+
+.DatabaseTraceViewer_emptyEvents {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.DatabaseTraceViewer_emptyIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: rgb(38 38 38 / 30%);
+  color: rgb(115 115 115);
+}
+
+.DatabaseTraceViewer_emptyEvents p {
+  margin: 0;
+  color: rgb(163 163 163);
+  font-size: 14px;
 }
 
 .DatabaseTraceViewer_loadMore {

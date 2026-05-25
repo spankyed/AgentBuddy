@@ -74,7 +74,17 @@
 
 .WorktreesSection_branchIcon {
   flex-shrink: 0;
+  color: rgb(115 115 115);
+}
+
+.WorktreesSection_currentBranchIcon {
+  flex-shrink: 0;
   color: rgb(96 165 250);
+}
+
+.WorktreesSection_lockIcon {
+  flex-shrink: 0;
+  color: rgb(234 179 8);
 }
 
 .WorktreesSection_copy {

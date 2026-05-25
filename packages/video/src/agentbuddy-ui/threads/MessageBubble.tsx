@@ -17,6 +17,7 @@ type MessageBubbleProps = {
   autoHide?: boolean;
   createdAt?: string;
   expanded?: boolean;
+  isCommand?: boolean;
   isTail?: boolean;
   references?: MessageReference[];
   sender: 'assistant' | 'marker' | 'system' | 'user';
@@ -25,7 +26,7 @@ type MessageBubbleProps = {
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/message.vue bubble structure.
-export function MessageBubble({asUser, autoHide, children, createdAt, expanded, isTail, references = [], sender, status, truncated}: MessageBubbleProps) {
+export function MessageBubble({asUser, autoHide, children, createdAt, expanded, isCommand, isTail, references = [], sender, status, truncated}: MessageBubbleProps) {
   if (sender === 'marker') return <MessageMarker expanded={expanded} text={String(children)} />;
   if (sender === 'system') return <div className={styles.system}>{children}</div>;
   if (autoHide && !expanded) return <MessageAside asUser={asUser} text={String(children)} />;
@@ -37,7 +38,7 @@ export function MessageBubble({asUser, autoHide, children, createdAt, expanded, 
         <div className={styles.actions}>
           <MessageActions collapsible={canCollapse} createdAt={createdAt} isTail={isTail} isUser={sender === 'user'} status={status} />
         </div>
-        <div className={cx(styles.bubble, sender === 'user' ? styles.userBubble : styles.assistantBubble, status === 'cancelled' && styles.cancelled, isCollapsedTruncation && styles.truncated)}>
+        <div className={cx(styles.bubble, sender === 'user' ? styles.userBubble : styles.assistantBubble, sender === 'user' && isCommand && styles.commandBubble, status === 'cancelled' && styles.cancelled, isCollapsedTruncation && styles.truncated)}>
           <MessageReferences references={references} />
           <div className={styles.content}>{children}</div>
           {isCollapsedTruncation ? (

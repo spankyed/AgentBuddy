@@ -19,6 +19,10 @@
   color: rgb(245 245 245);
 }
 
+.NoteTreeItem_activeMuted {
+  color: rgb(163 163 163);
+}
+
 .NoteTreeItem_menuOpenRow {
   z-index: 3;
   background: rgb(38 38 38);

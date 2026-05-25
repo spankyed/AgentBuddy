@@ -36,6 +36,9 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `PullRequestCreateDemo` | `packages/video/out/component-demos/pull-request-create-demo.mp4` |
 | `PullRequestDetailsDemo` | `packages/video/out/component-demos/pull-request-details-demo.mp4` |
 | `TerminalPanelDemo` | `packages/video/out/component-demos/terminal-panel-demo.mp4` |
+| `FlowsListDemo` | `packages/video/out/component-demos/flows-list-demo.mp4` |
+| `FlowsListSearchDemo` | `packages/video/out/component-demos/flows-list-search-demo.mp4` |
+| `FlowsListMenuDemo` | `packages/video/out/component-demos/flows-list-menu-demo.mp4` |
 | `FlowPaletteDemo` | `packages/video/out/component-demos/flow-palette-demo.mp4` |
 | `FlowNodeVariantsDemo` | `packages/video/out/component-demos/flow-node-variants-demo.mp4` |
 | `FlowCanvasDemo` | `packages/video/out/component-demos/flow-canvas-demo.mp4` |
