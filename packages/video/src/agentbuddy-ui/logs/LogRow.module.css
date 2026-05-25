@@ -50,6 +50,11 @@
   word-break: break-word;
 }
 
+.LogRow_searchMark {
+  background: rgb(234 179 8 / 30%);
+  color: rgb(254 240 138);
+}
+
 .LogRow_meta {
   display: flex;
   flex-shrink: 0;

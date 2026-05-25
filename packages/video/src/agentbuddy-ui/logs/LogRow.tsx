@@ -10,9 +10,10 @@ const styles = makeStyles('LogRow');
 type LogRowProps = {
   expandedContent?: 'meta' | 'stack';
   log: LogEntry;
+  searchTerm?: string;
 };
 
-export function LogRow({expandedContent, log}: LogRowProps) {
+export function LogRow({expandedContent, log, searchTerm = ''}: LogRowProps) {
   const hasExpandable = Boolean((log.meta && Object.keys(log.meta).length > 0) || log.stack);
   return (
     <div className={styles.root}>
@@ -21,7 +22,7 @@ export function LogRow({expandedContent, log}: LogRowProps) {
           <LevelIcon level={log.level} />
         </div>
         <div className={styles.message}>
-          <p>{log.message}</p>
+          <p>{renderHighlightedMessage(log.message, searchTerm)}</p>
         </div>
         <div className={styles.meta}>
           {log.source ? (
@@ -65,6 +66,32 @@ export function LogRow({expandedContent, log}: LogRowProps) {
       ) : null}
     </div>
   );
+}
+
+function renderHighlightedMessage(message: string, searchTerm: string) {
+  const includeTerms = parseIncludeTerms(searchTerm);
+  if (includeTerms.length === 0) return message;
+
+  const pattern = includeTerms.map(escapeRegex).join('|');
+  const regex = new RegExp(`(${pattern})`, 'gi');
+  const parts = message.split(regex);
+
+  return parts.map((part, index) => (
+    includeTerms.includes(part.toLowerCase()) ? <mark className={styles.searchMark} key={`${part}-${index}`}>{part}</mark> : part
+  ));
+}
+
+function parseIncludeTerms(searchTerm: string) {
+  if (!searchTerm.trim()) return [];
+  return searchTerm
+    .trim()
+    .split(/\s+/)
+    .filter(term => term && term !== '-' && !term.startsWith('-'))
+    .map(term => term.toLowerCase());
+}
+
+function escapeRegex(term: string) {
+  return term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function LevelIcon({level}: {level: LogEntry['level']}) {

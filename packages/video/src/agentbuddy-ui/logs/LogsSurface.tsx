@@ -33,7 +33,7 @@ export function LogsSurface({state}: LogsSurfaceProps) {
         ) : (
           <div>
             {displayedLogs.map(log => (
-              <LogRow expandedContent={state.expandedContent[log.id]} key={log.id} log={log} />
+              <LogRow expandedContent={state.expandedContent[log.id]} key={log.id} log={log} searchTerm={state.searchTerm} />
             ))}
             {hasMore ? (
               <div className={styles.more}>
@@ -53,12 +53,34 @@ function filterLogs(state: LogsSurfaceState) {
     logs = logs.filter(log => log.level === state.filterLevel);
   }
   if (state.searchTerm.trim()) {
-    const query = state.searchTerm.toLowerCase();
-    logs = logs.filter(log => (
-      log.message.toLowerCase().includes(query) ||
-      log.level.toLowerCase().includes(query) ||
-      (log.source?.toLowerCase().includes(query) ?? false)
-    ));
+    const filter = parseSearchTerm(state.searchTerm);
+    logs = logs.filter(log => searchLog(log, filter));
   }
   return logs;
+}
+
+function parseSearchTerm(searchTerm: string) {
+  if (!searchTerm.trim()) return {excludes: [], includes: []};
+  return searchTerm.trim().split(/\s+/).reduce<{excludes: string[]; includes: string[]}>((acc, term) => {
+    if (term.startsWith('-') && term.length > 1) {
+      acc.excludes.push(term.substring(1).toLowerCase());
+    } else if (term && term !== '-') {
+      acc.includes.push(term.toLowerCase());
+    }
+    return acc;
+  }, {excludes: [], includes: []});
+}
+
+function searchLog(log: LogEntry, filter: {excludes: string[]; includes: string[]}) {
+  if (filter.includes.length === 0 && filter.excludes.length === 0) return true;
+
+  const searchableContent = [
+    log.message,
+    log.source ?? '',
+    log.meta ? JSON.stringify(log.meta) : '',
+  ].join(' ').toLowerCase();
+
+  if (filter.excludes.some(term => searchableContent.includes(term))) return false;
+  if (filter.includes.length === 0) return true;
+  return filter.includes.some(term => searchableContent.includes(term));
 }

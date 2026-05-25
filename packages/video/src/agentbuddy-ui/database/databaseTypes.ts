@@ -20,6 +20,12 @@ export type DatabaseResultRow = Record<string, unknown>;
 
 export type DatabaseBackupState = {
   activeTab: 'export' | 'import';
+  backupInfo?: {
+    databases: string[];
+    hasMedia?: boolean;
+    size: number;
+    timestamp: number;
+  };
   backupName: string;
   exportPath: string;
   importPath?: string;

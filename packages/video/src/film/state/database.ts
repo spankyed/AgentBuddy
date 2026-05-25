@@ -107,6 +107,12 @@ export const databaseBackupImportState: DatabaseSurfaceState = {
   backup: {
     ...databaseBackupExportState.backup!,
     activeTab: 'import',
+    backupInfo: {
+      databases: ['lmdb', 'volatileLmdb', 'secretsLmdb'],
+      hasMedia: false,
+      size: 47 * 1024 * 1024,
+      timestamp: 1769448640000,
+    },
     importPath: '/Users/spankyed/Documents/AgentBuddy Backups/agentbuddy-launch-film',
   },
 };
