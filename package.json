@@ -65,7 +65,8 @@
     "video:render:component": "npm run render:component --workspace @app/video",
     "video:render:demos": "npm run render:demos --workspace @app/video",
     "video:review:snapshots": "npm run review:snapshots --workspace @app/video",
-    "video:verify": "npm run verify --workspace @app/video"
+    "video:verify": "npm run verify --workspace @app/video",
+    "video:audit:fidelity:strict": "npm run audit:fidelity:strict --workspace @app/video"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",

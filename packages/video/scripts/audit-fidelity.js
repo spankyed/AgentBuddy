@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 async function main() {
+  const requireActualAppScreenshots = process.env.REQUIRE_ACTUAL_APP_SCREENSHOTS === '1';
   const fidelityPath = path.join(packageDir, 'src/agentbuddy-ui/FIDELITY.md');
   const visualReviewPath = path.join(packageDir, 'src/agentbuddy-ui/VISUAL_REVIEW.md');
   const actualReferencesPath = path.join(packageDir, 'src/agentbuddy-ui/ACTUAL_APP_REFERENCES.md');
@@ -445,6 +446,16 @@ async function main() {
   }
   if (flowRuntimeLeaks.length > 0) {
     throw new Error(`Flows film UI must remain blueprint-only; runtime status indicators belong outside flows: ${flowRuntimeLeaks.join(', ')}`);
+  }
+  if (requireActualAppScreenshots) {
+    const strictActualAppErrors = [
+      ...unresolvedActualScreenshots.map(surface => `${surface}: NEEDS_SCREENSHOT`),
+      ...conversationOnlyActualReferences.map(ref => `${ref} is conversation-only`),
+      ...missingActualCaptureTargets.map(target => `${target} is missing`),
+    ];
+    if (strictActualAppErrors.length > 0) {
+      throw new Error(`Strict actual-app screenshot evidence is incomplete: ${strictActualAppErrors.join(', ')}`);
+    }
   }
 
   console.log(`Fidelity audit passed: ${referenced.size} referenced demos registered; no agentbuddy-ui film/Remotion leaks.`);

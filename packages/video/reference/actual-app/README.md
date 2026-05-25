@@ -10,4 +10,5 @@ Capture requirements:
 - Keep screenshots unedited except for normal image cropping to the relevant surface.
 - Prefer PNG.
 - Match the target filenames listed in `ACTUAL_APP_REFERENCES.md`.
-- After adding or replacing screenshots, run `npm run audit:fidelity --workspace @app/video`.
+- During iteration, run `npm run audit:fidelity --workspace @app/video`.
+- Before calling visual fidelity complete, run `npm run audit:fidelity:strict --workspace @app/video`; it fails while any row still depends on `conversation:*`, `NEEDS_SCREENSHOT`, or missing target capture files.
