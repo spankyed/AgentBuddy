@@ -9,9 +9,13 @@ import {
   databaseBackupImportState,
   databaseAiLoadingState,
   databaseAiPromptState,
+  databaseEmptyArrayState,
+  databaseErrorState,
   databaseExamplesState,
+  databaseLoadingState,
   databaseObjectResultState,
   databasePrimitiveArrayState,
+  databaseSchemaNoResultsState,
   databaseSurfaceState,
   databaseSurfaceStateForFrame,
   databaseTraceState,
@@ -44,6 +48,14 @@ export const DatabaseAiLoadingDemo = () => <DatabaseDemoWindow state={databaseAi
 export const DatabasePrimitiveArrayDemo = () => <DatabaseDemoWindow state={databasePrimitiveArrayState} />;
 
 export const DatabaseObjectResultDemo = () => <DatabaseDemoWindow state={databaseObjectResultState} />;
+
+export const DatabaseSchemaNoResultsDemo = () => <DatabaseDemoWindow state={databaseSchemaNoResultsState} />;
+
+export const DatabaseLoadingDemo = () => <DatabaseDemoWindow state={databaseLoadingState} />;
+
+export const DatabaseErrorDemo = () => <DatabaseDemoWindow state={databaseErrorState} />;
+
+export const DatabaseEmptyArrayDemo = () => <DatabaseDemoWindow state={databaseEmptyArrayState} />;
 
 export const DatabaseBackupExportDemo = () => <DatabaseDemoWindow state={databaseBackupExportState} />;
 

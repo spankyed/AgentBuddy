@@ -105,6 +105,46 @@ export const databaseObjectResultState: DatabaseSurfaceState = {
   },
 };
 
+export const databaseSchemaNoResultsState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  expandedSchemaCategoryIds: ['entities', 'attributes', 'relations'],
+  searchQuery: 'invoice',
+  selectedSchemaItemId: undefined,
+};
+
+export const databaseLoadingState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  error: null,
+  executionTime: null,
+  isLoading: true,
+  queryResult: null,
+  successMessage: '',
+};
+
+export const databaseErrorState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return qx(EARS.Entity.Thread)
+  .where('missingField', 'active')
+  .pick(['topic']);`,
+  error: 'Unknown attribute "missingField" on entity Thread',
+  executionTime: null,
+  isLoading: false,
+  queryResult: null,
+  successMessage: '',
+};
+
+export const databaseEmptyArrayState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return qx(EARS.Entity.Thread)
+  .where('status', 'archived')
+  .limit(5)
+  .pick(['topic', 'status']);`,
+  error: null,
+  executionTime: 4.7,
+  queryResult: [],
+  successMessage: 'Query executed successfully',
+};
+
 export const databaseAiLoadingState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   aiPrompt: 'Show the five most active launch threads',

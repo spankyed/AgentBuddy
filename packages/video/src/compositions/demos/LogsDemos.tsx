@@ -6,8 +6,10 @@ import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   logsContextMenuState,
+  logsCopiedState,
   logsEmptyState,
   logsFilteredState,
+  logsHasMoreState,
   logsNoMatchingState,
   logsSurfaceState,
   logsSurfaceStateForFrame,
@@ -38,3 +40,7 @@ export const LogsNoMatchingDemo = () => <LogsDemoWindow state={logsNoMatchingSta
 export const LogsFilteredDemo = () => <LogsDemoWindow state={logsFilteredState} />;
 
 export const LogsContextMenuDemo = () => <LogsDemoWindow state={logsContextMenuState} />;
+
+export const LogsCopiedDemo = () => <LogsDemoWindow state={logsCopiedState} />;
+
+export const LogsHasMoreDemo = () => <LogsDemoWindow state={logsHasMoreState} />;

@@ -32,7 +32,7 @@ export function ActionsList({state}: ActionsListProps) {
                   <th>Label</th>
                   <th>Description</th>
                   <th className={styles.categoryFilterCell}>
-                    <CategoryFilter categories={state.categories} selectedCategories={state.selectedCategories} />
+                    <CategoryFilter categories={state.categories} open={state.categoryFilterOpen} selectedCategories={state.selectedCategories} />
                   </th>
                   <th className={styles.inputsColumn}>Inputs</th>
                   <th className={styles.actionsColumn}>Actions</th>

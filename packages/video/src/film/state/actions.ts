@@ -94,6 +94,13 @@ export const actionsLoadingMoreState: ActionsSurfaceState = {
   loadingMore: true,
 };
 
+export const actionsFilteredState: ActionsSurfaceState = {
+  ...actionsListState,
+  actions: actionsListState.actions.filter(action => action.category === 'integration'),
+  categoryFilterOpen: true,
+  selectedCategories: ['integration'],
+};
+
 export const actionCreateState: ActionsSurfaceState = {
   categories: actionCategories,
   formData: {

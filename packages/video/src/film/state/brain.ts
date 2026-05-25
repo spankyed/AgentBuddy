@@ -83,3 +83,41 @@ export const brainStoppedState: BrainSurfaceState = {
   brainIsDead: true,
   selectedNodeId: undefined,
 };
+
+export const brainEmptyEventsState: BrainSurfaceState = {
+  ...brainSurfaceState,
+  events: [],
+  pulsingEventType: undefined,
+  selectedNodeId: undefined,
+};
+
+export const brainNestedFlowState: BrainSurfaceState = {
+  ...brainSurfaceState,
+  canGoBack: true,
+  flowTNodeId: 'Run publish workflow',
+  selectedNodeId: 'notify-team',
+  tracks: [
+    {
+      children: [
+        {
+          id: 'notify-team',
+          kind: 'action',
+          label: 'Notify release team',
+          nodeAttributes: {
+            channel: '#launch',
+            message: 'Release workflow is ready for review.',
+          },
+          completedAt: baseTime + 7600,
+          startedAt: baseTime + 7000,
+          status: 'active',
+          stepNodeType: 'action',
+        },
+      ],
+      id: 'publish-entry',
+      kind: 'entry',
+      label: 'Publish workflow',
+      status: 'completed',
+      subtitle: 'flow.entry',
+    },
+  ],
+};

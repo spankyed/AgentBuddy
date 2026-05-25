@@ -4,9 +4,12 @@ import {
   ActionDetailDemo,
   ActionCreateDemo,
   ActionsEmptyDemo,
+  ActionsFilteredDemo,
   ActionsListDemo,
   ActionsLoadingMoreDemo,
   ActionsSurfaceDemo,
+  BrainEmptyEventsDemo,
+  BrainNestedFlowDemo,
   BoardSurfaceDemo,
   BrainPausedDemo,
   BrainStoppedDemo,
@@ -24,9 +27,13 @@ import {
   DatabaseExamplesDemo,
   DatabaseBackupExportDemo,
   DatabaseBackupImportDemo,
+  DatabaseEmptyArrayDemo,
+  DatabaseErrorDemo,
   DatabaseObjectResultDemo,
   DatabasePrimitiveArrayDemo,
   DatabaseQueryDemo,
+  DatabaseLoadingDemo,
+  DatabaseSchemaNoResultsDemo,
   DatabaseSurfaceDemo,
   DatabaseTraceDemo,
   FlowCanvasDemo,
@@ -35,7 +42,9 @@ import {
   FlowsListSearchDemo,
   LogsFilteredDemo,
   LogsContextMenuDemo,
+  LogsCopiedDemo,
   LogsEmptyDemo,
+  LogsHasMoreDemo,
   LogsListDemo,
   LogsNoMatchingDemo,
   LogsSurfaceDemo,
@@ -62,7 +71,9 @@ import {
   PromptCreateDemo,
   PromptDetailDemo,
   PromptsEmptyDemo,
+  PromptsFilteredDemo,
   PromptsListDemo,
+  PromptsLoadingMoreDemo,
   PromptsSurfaceDemo,
   SettingsBrainPluginDemo,
   SettingsActionsPluginDemo,
@@ -71,16 +82,21 @@ import {
   SettingsDatabasePluginDemo,
   SettingsFlowsPluginDemo,
   SettingsHelpDemo,
+  SettingsHelpExpandedDemo,
   SettingsJsonDemo,
   SettingsLibraryPluginDemo,
   SettingsLogsPluginDemo,
   SettingsNotesPluginDemo,
   SettingsPersonalDemo,
   SettingsPluginsDemo,
+  SettingsPluginsNoSelectionDemo,
   SettingsPromptsPluginDemo,
   SettingsProjectsDemo,
   SettingsProvidersDemo,
   SettingsResetConfirmDemo,
+  SettingsResettingDemo,
+  SettingsSetupPackErrorDemo,
+  SettingsSetupPackPreviewingDemo,
   SettingsSetupPackSelectingDemo,
   SettingsSetupPackSuccessDemo,
   SettingsThreadsPluginDemo,
@@ -111,6 +127,7 @@ export const RemotionRoot = () => {
       <Composition id="ToolbarDemo" component={ToolbarDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsListDemo" component={ActionsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsEmptyDemo" component={ActionsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ActionsFilteredDemo" component={ActionsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsLoadingMoreDemo" component={ActionsLoadingMoreDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionCreateDemo" component={ActionCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionDetailDemo" component={ActionDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -118,8 +135,12 @@ export const RemotionRoot = () => {
       <Composition id="BrainSurfaceDemo" component={BrainSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainPausedDemo" component={BrainPausedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainStoppedDemo" component={BrainStoppedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="BrainEmptyEventsDemo" component={BrainEmptyEventsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="BrainNestedFlowDemo" component={BrainNestedFlowDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsListDemo" component={PromptsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsEmptyDemo" component={PromptsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptsFilteredDemo" component={PromptsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptsLoadingMoreDemo" component={PromptsLoadingMoreDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptCreateDemo" component={PromptCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptDetailDemo" component={PromptDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsSurfaceDemo" component={PromptsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -129,6 +150,10 @@ export const RemotionRoot = () => {
       <Composition id="DatabaseAiLoadingDemo" component={DatabaseAiLoadingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabasePrimitiveArrayDemo" component={DatabasePrimitiveArrayDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseObjectResultDemo" component={DatabaseObjectResultDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseSchemaNoResultsDemo" component={DatabaseSchemaNoResultsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseLoadingDemo" component={DatabaseLoadingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseErrorDemo" component={DatabaseErrorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseEmptyArrayDemo" component={DatabaseEmptyArrayDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseSurfaceDemo" component={DatabaseSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseBackupExportDemo" component={DatabaseBackupExportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseBackupImportDemo" component={DatabaseBackupImportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -138,18 +163,24 @@ export const RemotionRoot = () => {
       <Composition id="LogsNoMatchingDemo" component={LogsNoMatchingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsFilteredDemo" component={LogsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsContextMenuDemo" component={LogsContextMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LogsCopiedDemo" component={LogsCopiedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LogsHasMoreDemo" component={LogsHasMoreDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsSurfaceDemo" component={LogsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibraryDocumentEditorDemo" component={LibraryDocumentEditorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibrarySurfaceDemo" component={LibrarySurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsApplicationDemo" component={SettingsApplicationDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsSetupPackPreviewingDemo" component={SettingsSetupPackPreviewingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsSetupPackSelectingDemo" component={SettingsSetupPackSelectingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsSetupPackSuccessDemo" component={SettingsSetupPackSuccessDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsSetupPackErrorDemo" component={SettingsSetupPackErrorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsResetConfirmDemo" component={SettingsResetConfirmDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsResettingDemo" component={SettingsResettingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsProvidersDemo" component={SettingsProvidersDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsProjectsDemo" component={SettingsProjectsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsPersonalDemo" component={SettingsPersonalDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsJsonDemo" component={SettingsJsonDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsPluginsDemo" component={SettingsPluginsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsPluginsNoSelectionDemo" component={SettingsPluginsNoSelectionDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsCodePluginDemo" component={SettingsCodePluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsDatabasePluginDemo" component={SettingsDatabasePluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsFlowsPluginDemo" component={SettingsFlowsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -161,6 +192,7 @@ export const RemotionRoot = () => {
       <Composition id="SettingsPromptsPluginDemo" component={SettingsPromptsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsThreadsPluginDemo" component={SettingsThreadsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsHelpDemo" component={SettingsHelpDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsHelpExpandedDemo" component={SettingsHelpExpandedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerDemo" component={ChatComposerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerWithAttachmentDemo" component={ChatComposerWithAttachmentDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerModeMenuDemo" component={ChatComposerModeMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

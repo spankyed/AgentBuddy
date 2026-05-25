@@ -4,7 +4,15 @@ import {PromptsSurface} from '../../agentbuddy-ui/prompts/PromptsSurface';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
-import {promptCreateState, promptDetailState, promptsEmptyState, promptsListState, promptsSurfaceStateForFrame} from '../../film/state/prompts';
+import {
+  promptCreateState,
+  promptDetailState,
+  promptsEmptyState,
+  promptsFilteredState,
+  promptsListState,
+  promptsLoadingMoreState,
+  promptsSurfaceStateForFrame,
+} from '../../film/state/prompts';
 
 function PromptsDemoWindow({state = promptsListState}: {state?: PromptsSurfaceState}) {
   const layout = useAppWindowLayout({hasRightRail: false});
@@ -20,6 +28,10 @@ function PromptsDemoWindow({state = promptsListState}: {state?: PromptsSurfaceSt
 export const PromptsListDemo = () => <PromptsDemoWindow state={promptsListState} />;
 
 export const PromptsEmptyDemo = () => <PromptsDemoWindow state={promptsEmptyState} />;
+
+export const PromptsFilteredDemo = () => <PromptsDemoWindow state={promptsFilteredState} />;
+
+export const PromptsLoadingMoreDemo = () => <PromptsDemoWindow state={promptsLoadingMoreState} />;
 
 export const PromptCreateDemo = () => <PromptsDemoWindow state={promptCreateState} />;
 

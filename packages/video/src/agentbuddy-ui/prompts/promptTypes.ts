@@ -30,6 +30,7 @@ export type PromptFormData = {
 
 export type PromptsListState = {
   categories: ActionCategory[];
+  categoryFilterOpen?: boolean;
   hasMore: boolean;
   hasPrompts: boolean;
   loadingMore: boolean;

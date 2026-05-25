@@ -3,7 +3,7 @@ import {BrainSurface} from '../../agentbuddy-ui/brain/BrainSurface';
 import type {BrainSurfaceState} from '../../agentbuddy-ui/brain/brainTypes';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
-import {brainPausedState, brainStoppedState, brainSurfaceState} from '../../film/state/brain';
+import {brainEmptyEventsState, brainNestedFlowState, brainPausedState, brainStoppedState, brainSurfaceState} from '../../film/state/brain';
 
 function BrainDemoWindow({state}: {state: BrainSurfaceState}) {
   const layout = useAppWindowLayout({hasRightRail: false});
@@ -21,3 +21,7 @@ export const BrainSurfaceDemo = () => <BrainDemoWindow state={brainSurfaceState}
 export const BrainPausedDemo = () => <BrainDemoWindow state={brainPausedState} />;
 
 export const BrainStoppedDemo = () => <BrainDemoWindow state={brainStoppedState} />;
+
+export const BrainEmptyEventsDemo = () => <BrainDemoWindow state={brainEmptyEventsState} />;
+
+export const BrainNestedFlowDemo = () => <BrainDemoWindow state={brainNestedFlowState} />;

@@ -80,6 +80,19 @@ export const promptsListState: PromptsSurfaceState = {
   view: 'list',
 };
 
+export const promptsFilteredState: PromptsSurfaceState = {
+  ...promptsListState,
+  categoryFilterOpen: true,
+  prompts: prompts.filter(prompt => prompt.category === 'development'),
+  selectedCategories: ['development'],
+};
+
+export const promptsLoadingMoreState: PromptsSurfaceState = {
+  ...promptsListState,
+  hasMore: true,
+  loadingMore: true,
+};
+
 export const promptsEmptyState: PromptsSurfaceState = {
   categories: promptCategories,
   hasMore: false,

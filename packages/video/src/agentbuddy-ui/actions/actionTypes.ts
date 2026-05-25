@@ -35,6 +35,7 @@ export type ActionFormData = {
 export type ActionsListState = {
   actions: ActionEntity[];
   categories: ActionCategory[];
+  categoryFilterOpen?: boolean;
   hasActions: boolean;
   hasMore: boolean;
   loadingMore: boolean;

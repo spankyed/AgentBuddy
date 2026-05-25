@@ -259,9 +259,32 @@ export const settingsSetupPackSuccessState: SettingsSurfaceState = {
   },
 };
 
+export const settingsSetupPackPreviewingState: SettingsSurfaceState = {
+  ...settingsApplicationState,
+  setupPackImport: {
+    directory: '/Users/spankyed/Develop/Setup Packs/agentbuddy-launch',
+    status: 'previewing',
+  },
+};
+
+export const settingsSetupPackErrorState: SettingsSurfaceState = {
+  ...settingsApplicationState,
+  setupPackImport: {
+    directory: '/Users/spankyed/Develop/Setup Packs/broken-pack',
+    error: 'Missing manifest.json in compiled setup pack directory',
+    status: 'error',
+  },
+};
+
 export const settingsResetConfirmState: SettingsSurfaceState = {
   ...settingsApplicationState,
   confirmingReset: true,
+};
+
+export const settingsResettingState: SettingsSurfaceState = {
+  ...settingsApplicationState,
+  confirmingReset: true,
+  resetting: true,
 };
 
 export const settingsProvidersState: SettingsSurfaceState = {
@@ -292,6 +315,11 @@ export const settingsPluginsState: SettingsSurfaceState = {
   ...baseSettings,
   activeTab: 'plugins',
   generalNavItem: 'application',
+};
+
+export const settingsPluginsNoSelectionState: SettingsSurfaceState = {
+  ...settingsPluginsState,
+  selectedPluginId: undefined,
 };
 
 export const settingsDatabasePluginState: SettingsSurfaceState = {
@@ -348,4 +376,9 @@ export const settingsHelpState: SettingsSurfaceState = {
   ...baseSettings,
   activeTab: 'help',
   generalNavItem: 'application',
+};
+
+export const settingsHelpExpandedState: SettingsSurfaceState = {
+  ...settingsHelpState,
+  faqs: baseSettings.faqs.map((faq, index) => ({...faq, expanded: index === 0})),
 };

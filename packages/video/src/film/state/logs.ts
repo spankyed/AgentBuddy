@@ -116,6 +116,28 @@ export const logsContextMenuState: LogsSurfaceState = {
   },
 };
 
+export const logsCopiedState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  copied: true,
+};
+
+export const logsHasMoreState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  expandedContent: {},
+  logs: Array.from({length: 126}, (_, index) => {
+    const source = index % 5 === 0 ? 'database' : index % 5 === 1 ? 'flows' : index % 5 === 2 ? 'actions' : index % 5 === 3 ? 'video' : 'app-events';
+    const level = index % 11 === 0 ? 'error' : index % 7 === 0 ? 'warn' : index % 3 === 0 ? 'debug' : 'info';
+    return {
+      id: `log-history-${index}`,
+      level,
+      message: `Historical launch log event ${String(index + 1).padStart(3, '0')}`,
+      source,
+      timestamp: now - index * 1000,
+    };
+  }),
+  searchTerm: '',
+};
+
 export function logsSurfaceStateForFrame(frame: number): LogsSurfaceState {
   if (frame > 185) return logsContextMenuState;
   if (frame > 150) return logsFilteredState;

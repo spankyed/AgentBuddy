@@ -38,76 +38,84 @@ export const PullRequestPanelDemo = () => {
   const view = codeReviewViewForFrame(sourceFrame);
   return (
     <SurfaceFrame>
-      <DemoFramedArea>
+      <DemoTallFramedArea>
         <DemoFramedRightPanel width={340}>
-          <PullRequestPanel
-            baseDirectory={codeShotState.review.baseDirectory}
-            changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
-            mode={view.prMode}
-            publishProgress={view.prPublishProgress}
-            state={view.pullRequest}
-          />
+          <CodeFeaturePanel terminal={codeShotState.review.terminal}>
+            <PullRequestPanel
+              baseDirectory={codeShotState.review.baseDirectory}
+              changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
+              mode={view.prMode}
+              publishProgress={view.prPublishProgress}
+              state={view.pullRequest}
+            />
+          </CodeFeaturePanel>
         </DemoFramedRightPanel>
-      </DemoFramedArea>
+      </DemoTallFramedArea>
     </SurfaceFrame>
   );
 };
 
 export const PullRequestFilesDemo = () => (
   <SurfaceFrame>
-    <DemoFramedArea>
+    <DemoTallFramedArea>
       <DemoFramedRightPanel width={430}>
-        <PullRequestPanel
-          baseDirectory={codeShotState.review.baseDirectory}
-          changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
-          mode="files"
-          publishProgress={1}
-          state={{
-            ...codeShotState.review.pullRequest,
-            branchPublished: true,
-          }}
-        />
+        <CodeFeaturePanel terminal={codeShotState.review.terminal}>
+          <PullRequestPanel
+            baseDirectory={codeShotState.review.baseDirectory}
+            changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
+            mode="files"
+            publishProgress={1}
+            state={{
+              ...codeShotState.review.pullRequest,
+              branchPublished: true,
+            }}
+          />
+        </CodeFeaturePanel>
       </DemoFramedRightPanel>
-    </DemoFramedArea>
+    </DemoTallFramedArea>
   </SurfaceFrame>
 );
 
 export const PullRequestCreateDemo = () => (
   <SurfaceFrame>
-    <DemoFramedArea>
+    <DemoTallFramedArea>
       <DemoFramedRightPanel width={430}>
-        <PullRequestPanel
-          baseDirectory={codeShotState.review.baseDirectory}
-          changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
-          mode="create"
-          publishProgress={1}
-          state={{
-            ...codeShotState.review.pullRequest,
-            branchPublished: true,
-            createdPr: undefined,
-          }}
-        />
+        <CodeFeaturePanel terminal={codeShotState.review.terminal}>
+          <PullRequestPanel
+            baseDirectory={codeShotState.review.baseDirectory}
+            changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
+            mode="create"
+            publishProgress={1}
+            state={{
+              ...codeShotState.review.pullRequest,
+              branchPublished: true,
+              createdPr: undefined,
+            }}
+          />
+        </CodeFeaturePanel>
       </DemoFramedRightPanel>
-    </DemoFramedArea>
+    </DemoTallFramedArea>
   </SurfaceFrame>
 );
 
 export const PullRequestDetailsDemo = () => (
   <SurfaceFrame>
-    <DemoFramedArea>
+    <DemoTallFramedArea>
       <DemoFramedRightPanel width={430}>
-        <PullRequestPanel
-          baseDirectory={codeShotState.review.baseDirectory}
-          changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
-          mode="details"
-          publishProgress={1}
-          state={{
-            ...codeShotState.review.pullRequest,
-            branchPublished: true,
-          }}
-        />
+        <CodeFeaturePanel terminal={codeShotState.review.terminal}>
+          <PullRequestPanel
+            baseDirectory={codeShotState.review.baseDirectory}
+            changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
+            mode="details"
+            publishProgress={1}
+            state={{
+              ...codeShotState.review.pullRequest,
+              branchPublished: true,
+            }}
+          />
+        </CodeFeaturePanel>
       </DemoFramedRightPanel>
-    </DemoFramedArea>
+    </DemoTallFramedArea>
   </SurfaceFrame>
 );
 

@@ -8,6 +8,7 @@ import {
   actionCreateState,
   actionDetailState,
   actionsEmptyState,
+  actionsFilteredState,
   actionsListState,
   actionsLoadingMoreState,
   actionsSurfaceStateForFrame,
@@ -27,6 +28,8 @@ function ActionsDemoWindow({state = actionsListState}: {state?: ActionsSurfaceSt
 export const ActionsListDemo = () => <ActionsDemoWindow state={actionsListState} />;
 
 export const ActionsEmptyDemo = () => <ActionsDemoWindow state={actionsEmptyState} />;
+
+export const ActionsFilteredDemo = () => <ActionsDemoWindow state={actionsFilteredState} />;
 
 export const ActionsLoadingMoreDemo = () => <ActionsDemoWindow state={actionsLoadingMoreState} />;
 
