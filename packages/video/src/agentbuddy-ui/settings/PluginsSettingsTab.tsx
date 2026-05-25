@@ -4,6 +4,7 @@ import {BrainPluginSettings} from './plugin-settings/BrainPluginSettings';
 import {CodePluginSettings} from './plugin-settings/CodePluginSettings';
 import {DatabasePluginSettings} from './plugin-settings/DatabasePluginSettings';
 import {FlowsPluginSettings} from './plugin-settings/FlowsPluginSettings';
+import {LibraryPluginSettings} from './plugin-settings/LibraryPluginSettings';
 import {LogsPluginSettings} from './plugin-settings/LogsPluginSettings';
 import {NotesPluginSettings} from './plugin-settings/NotesPluginSettings';
 import {PromptsPluginSettings} from './plugin-settings/PromptsPluginSettings';
@@ -17,6 +18,7 @@ const iconByPlugin = {
   threads: Icons.Threads,
   notes: Icons.NotebookText,
   code: Icons.Code,
+  library: Icons.Library,
   flows: Icons.Flows,
   actions: Icons.Play,
   prompts: Icons.Sparkle,
@@ -63,6 +65,8 @@ function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem
       return <DatabasePluginSettings executeQueryShortcut={state.selectedPluginSettings?.database?.executeQueryShortcut} />;
     case 'flows':
       return <FlowsPluginSettings settings={state.selectedPluginSettings?.flows} />;
+    case 'library':
+      return <LibraryPluginSettings settings={state.selectedPluginSettings?.library} />;
     case 'logs':
       return (
         <LogsPluginSettings

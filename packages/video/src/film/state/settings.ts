@@ -10,6 +10,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {id: 'threads', label: 'Threads', visible: true},
     {id: 'notes', label: 'Notes', visible: true},
     {id: 'code', label: 'Code', visible: true},
+    {id: 'library', label: 'Library', visible: false},
     {id: 'flows', label: 'Flows', visible: true},
     {id: 'actions', label: 'Actions', visible: false},
     {id: 'prompts', label: 'Prompts', visible: false},
@@ -81,6 +82,15 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
         {id: 'run-onboarding', label: 'Run Onboarding'},
       ],
       rootFlowId: 'root-flow',
+    },
+    library: {
+      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Library',
+      exportFormat: 'markdown',
+      tags: [
+        {name: 'Reference', color: '#3B82F6'},
+        {name: 'Research', color: '#22C55E'},
+        {name: 'Launch', color: '#A855F7'},
+      ],
     },
     logs: {
       excludedSources: ['app-events', 'debug.*'],
@@ -228,6 +238,11 @@ export const settingsCodePluginState: SettingsSurfaceState = {
 export const settingsFlowsPluginState: SettingsSurfaceState = {
   ...settingsPluginsState,
   selectedPluginId: 'flows',
+};
+
+export const settingsLibraryPluginState: SettingsSurfaceState = {
+  ...settingsPluginsState,
+  selectedPluginId: 'library',
 };
 
 export const settingsLogsPluginState: SettingsSurfaceState = {

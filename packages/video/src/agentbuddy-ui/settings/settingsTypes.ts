@@ -109,6 +109,11 @@ export type SettingsSurfaceState = {
       flows: Array<{id: string; label: string}>;
       rootFlowId?: string;
     };
+    library?: {
+      exportDirectory?: string;
+      exportFormat: 'markdown' | 'json';
+      tags: SettingsCategory[];
+    };
     logs?: {
       excludedSources: string[];
       maxLogs: number;

@@ -11,6 +11,7 @@ import {
   settingsFlowsPluginState,
   settingsHelpState,
   settingsJsonState,
+  settingsLibraryPluginState,
   settingsLogsPluginState,
   settingsNotesPluginState,
   settingsPersonalState,
@@ -41,6 +42,7 @@ export const SettingsPluginsDemo = () => <SettingsDemoWindow state={settingsPlug
 export const SettingsCodePluginDemo = () => <SettingsDemoWindow state={settingsCodePluginState} />;
 export const SettingsDatabasePluginDemo = () => <SettingsDemoWindow state={settingsDatabasePluginState} />;
 export const SettingsFlowsPluginDemo = () => <SettingsDemoWindow state={settingsFlowsPluginState} />;
+export const SettingsLibraryPluginDemo = () => <SettingsDemoWindow state={settingsLibraryPluginState} />;
 export const SettingsLogsPluginDemo = () => <SettingsDemoWindow state={settingsLogsPluginState} />;
 export const SettingsNotesPluginDemo = () => <SettingsDemoWindow state={settingsNotesPluginState} />;
 export const SettingsActionsPluginDemo = () => <SettingsDemoWindow state={settingsActionsPluginState} />;

@@ -4,7 +4,18 @@ import './Toolbar.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('Toolbar');
 
-export type PluginId = 'threads' | 'notes' | 'code' | 'flows' | 'actions' | 'prompts' | 'brain' | 'database' | 'logs' | 'settings';
+export type PluginId =
+  | 'threads'
+  | 'notes'
+  | 'code'
+  | 'library'
+  | 'flows'
+  | 'actions'
+  | 'prompts'
+  | 'brain'
+  | 'database'
+  | 'logs'
+  | 'settings';
 
 type ToolbarProps = {
   activePlugin: PluginId;
@@ -14,6 +25,7 @@ const topPlugins = [
   {id: 'threads', label: 'Threads', icon: Icons.Threads},
   {id: 'notes', label: 'Notes', icon: Icons.NotebookText},
   {id: 'code', label: 'Code', icon: Icons.Code},
+  {id: 'library', label: 'Library', icon: Icons.Library},
   {id: 'flows', label: 'Flows', icon: Icons.Flows},
   {id: 'actions', label: 'Actions', icon: Icons.Play},
   {id: 'prompts', label: 'Prompts', icon: Icons.Sparkle},

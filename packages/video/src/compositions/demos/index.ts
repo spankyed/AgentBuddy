@@ -5,6 +5,7 @@ export * from './ChatDemos';
 export * from './CodeDemos';
 export * from './DatabaseDemos';
 export * from './FlowDemos';
+export * from './LibraryDemos';
 export * from './LogsDemos';
 export * from './NotesDemos';
 export * from './PromptsDemos';
