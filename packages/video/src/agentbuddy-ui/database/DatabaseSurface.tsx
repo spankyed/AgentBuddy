@@ -1,5 +1,6 @@
 import {DatabaseResultsTable} from './DatabaseResultsTable';
 import {DatabaseBackupRestore} from './DatabaseBackupRestore';
+import {DatabaseGraphCanvas} from './DatabaseGraphCanvas';
 import {DatabaseTraceViewer} from './DatabaseTraceViewer';
 import type {DatabaseSurfaceState} from './databaseTypes';
 import {QueryEditorPanel} from './QueryEditorPanel';
@@ -20,6 +21,10 @@ export function DatabaseSurface({state}: DatabaseSurfaceProps) {
 
   if (state.viewMode === 'trace' && state.trace) {
     return <DatabaseTraceViewer state={state.trace} />;
+  }
+
+  if (state.viewMode === 'graph') {
+    return <DatabaseGraphCanvas state={state} />;
   }
 
   return (

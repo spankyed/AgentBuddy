@@ -42,6 +42,7 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `DatabaseBackupExportDemo` | `packages/video/out/component-demos/database-backup-export-demo.mp4` |
 | `DatabaseBackupImportDemo` | `packages/video/out/component-demos/database-backup-import-demo.mp4` |
 | `DatabaseTraceDemo` | `packages/video/out/component-demos/database-trace-demo.mp4` |
+| `DatabaseGraphDemo` | `packages/video/out/component-demos/database-graph-demo.mp4` |
 | `LogsListDemo` | `packages/video/out/component-demos/logs-list-demo.mp4` |
 | `LogsEmptyDemo` | `packages/video/out/component-demos/logs-empty-demo.mp4` |
 | `LogsNoMatchingDemo` | `packages/video/out/component-demos/logs-no-matching-demo.mp4` |

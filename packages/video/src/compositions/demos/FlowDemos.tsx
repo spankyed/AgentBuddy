@@ -8,28 +8,29 @@ import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {WorkflowShot} from '../../film/shots/WorkflowShot';
 import {flowNodeFormForFrame} from '../../film/state/flowForms';
 import {flowsListMenuState, flowsListSearchState, flowsListState, releaseAutomationWorkflow} from '../../film/state/workflow';
+import {DemoPanelSlot} from '../DemoLayout';
 
 export const FlowsListDemo = () => (
   <SurfaceFrame>
-    <div style={{width: '15rem', height: '100%'}}>
+    <DemoPanelSlot width={240}>
       <FlowsList state={flowsListState} />
-    </div>
+    </DemoPanelSlot>
   </SurfaceFrame>
 );
 
 export const FlowsListSearchDemo = () => (
   <SurfaceFrame>
-    <div style={{width: '15rem', height: '100%'}}>
+    <DemoPanelSlot width={240}>
       <FlowsList state={flowsListSearchState} />
-    </div>
+    </DemoPanelSlot>
   </SurfaceFrame>
 );
 
 export const FlowsListMenuDemo = () => (
   <SurfaceFrame>
-    <div style={{width: '15rem', height: '100%'}}>
+    <DemoPanelSlot width={240}>
       <FlowsList state={flowsListMenuState} />
-    </div>
+    </DemoPanelSlot>
   </SurfaceFrame>
 );
 

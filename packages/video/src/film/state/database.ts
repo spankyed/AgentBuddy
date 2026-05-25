@@ -248,6 +248,42 @@ export const databaseTraceState: DatabaseSurfaceState = {
   viewMode: 'trace',
 };
 
+export const databaseGraphState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return {
+  nodes: qx(EARS.Entity.Thread).limit(6).map(thread => ({
+    id: thread.id,
+    type: 'Thread',
+    label: thread.topic,
+  })),
+  edges: qx().where('kind', 'references').limit(8).pickAll(),
+};`,
+  graph: {
+    currentLayout: 'd3-force',
+    edges: [
+      {id: 'edge-thread-message', source: 'thread-launch-film', target: 'message-launch-plan', type: 'contains'},
+      {id: 'edge-thread-note', source: 'thread-launch-film', target: 'note-tasklist', type: 'references'},
+      {id: 'edge-thread-flow', source: 'thread-release-plan', target: 'flow-release-automation', type: 'triggers'},
+      {id: 'edge-flow-action', source: 'flow-release-automation', target: 'action-publish-report', type: 'runs'},
+      {id: 'edge-thread-prompt', source: 'thread-demo-script', target: 'prompt-launch-copy', type: 'uses'},
+    ],
+    nodes: [
+      {connections: 2, id: 'thread-launch-film', label: 'Launch film', owner: 'spankyed', status: 'active', type: 'Thread'},
+      {connections: 1, id: 'message-launch-plan', label: 'Plan', role: 'assistant', type: 'Message'},
+      {connections: 1, id: 'note-tasklist', label: 'Tasklist', path: 'AgentBuddy / Tasklist', type: 'Artifact'},
+      {connections: 2, id: 'thread-release-plan', label: 'Release plan', status: 'active', type: 'Thread'},
+      {connections: 2, id: 'flow-release-automation', label: 'Release automation', type: 'Flow'},
+      {connections: 1, id: 'action-publish-report', label: 'Publish report', type: 'Node'},
+      {connections: 1, id: 'thread-demo-script', label: 'Demo script', status: 'active', type: 'Thread'},
+      {connections: 1, id: 'prompt-launch-copy', label: 'Launch copy', type: 'Node'},
+    ],
+    selectedNodeId: 'thread-launch-film',
+    zoomLevel: 1,
+  },
+  queryResult: null,
+  viewMode: 'graph',
+};
+
 export function databaseSurfaceStateForFrame(frame: number): DatabaseSurfaceState {
   if (frame < 80) return databaseExamplesState;
   if (frame < 130) return databaseAiPromptState;

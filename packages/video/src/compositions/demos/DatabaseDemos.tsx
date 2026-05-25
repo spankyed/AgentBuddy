@@ -13,6 +13,7 @@ import {
   databaseEmptyArrayState,
   databaseErrorState,
   databaseExamplesState,
+  databaseGraphState,
   databaseLoadingState,
   databaseObjectResultState,
   databasePrimitiveArrayState,
@@ -68,3 +69,5 @@ export const DatabaseBackupExportDemo = () => <DatabaseDemoWindow state={databas
 export const DatabaseBackupImportDemo = () => <DatabaseDemoWindow state={databaseBackupImportState} />;
 
 export const DatabaseTraceDemo = () => <DatabaseDemoWindow state={databaseTraceState} />;
+
+export const DatabaseGraphDemo = () => <DatabaseDemoWindow state={databaseGraphState} />;

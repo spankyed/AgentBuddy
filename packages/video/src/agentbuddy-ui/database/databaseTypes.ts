@@ -68,6 +68,31 @@ export type DatabaseTraceState = {
   isLoading?: boolean;
 };
 
+export type DatabaseGraphNode = {
+  connections?: number;
+  id: string;
+  label?: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
+export type DatabaseGraphEdge = {
+  id: string;
+  source: string;
+  target: string;
+  type?: string;
+};
+
+export type DatabaseGraphState = {
+  currentLayout: string;
+  edges: DatabaseGraphEdge[];
+  isFullscreen?: boolean;
+  isLoading?: boolean;
+  nodes: DatabaseGraphNode[];
+  selectedNodeId?: string;
+  zoomLevel: number;
+};
+
 export type DatabaseSurfaceState = {
   activeMode: 'query' | 'examples';
   aiPrompt?: string;
@@ -82,6 +107,7 @@ export type DatabaseSurfaceState = {
   executionTime: number | null;
   examples: QueryExample[];
   expandedSchemaCategoryIds?: Array<'attributes' | 'entities' | 'relations'>;
+  graph?: DatabaseGraphState;
   isAiPromptOpen: boolean;
   isAiQueryLoading: boolean;
   isLoading: boolean;
@@ -93,5 +119,5 @@ export type DatabaseSurfaceState = {
   selectedSchemaItemId?: string;
   successMessage: string;
   trace?: DatabaseTraceState;
-  viewMode?: 'database' | 'backup' | 'trace';
+  viewMode?: 'database' | 'backup' | 'graph' | 'trace';
 };

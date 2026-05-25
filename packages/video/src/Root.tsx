@@ -31,6 +31,7 @@ import {
   DatabaseCopiedRowDemo,
   DatabaseEmptyArrayDemo,
   DatabaseErrorDemo,
+  DatabaseGraphDemo,
   DatabaseObjectResultDemo,
   DatabasePrimitiveArrayDemo,
   DatabaseQueryDemo,
@@ -167,6 +168,7 @@ export const RemotionRoot = () => {
       <Composition id="DatabaseBackupExportDemo" component={DatabaseBackupExportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseBackupImportDemo" component={DatabaseBackupImportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseTraceDemo" component={DatabaseTraceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseGraphDemo" component={DatabaseGraphDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsListDemo" component={LogsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsEmptyDemo" component={LogsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsNoMatchingDemo" component={LogsNoMatchingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
