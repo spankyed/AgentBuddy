@@ -50,7 +50,6 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
 
   return {
     ...flow,
-    edgeDashOffset: frame % 10,
     viewport: workflowViewportForFrame(frame),
   };
 }

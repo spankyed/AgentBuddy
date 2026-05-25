@@ -42,7 +42,6 @@ export function FlowCanvas({state}: {state: FlowCanvasState}) {
             {state.edges.map((edge, index) => (
               <FlowEdge
                 allEdges={state.edges}
-                dashOffset={state.edgeDashOffset}
                 edge={edge}
                 key={`${edge.from}-${edge.to}-${index}`}
                 nodes={state.nodes}

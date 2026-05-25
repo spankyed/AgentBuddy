@@ -70,6 +70,13 @@
 
 .FlowCanvas_animatedEdge {
   stroke-dasharray: 5 5;
+  animation: FlowCanvas_dashFlow 0.5s linear infinite;
+}
+
+@keyframes FlowCanvas_dashFlow {
+  to {
+    stroke-dashoffset: -10;
+  }
 }
 
 .FlowCanvas_edgeMarker {

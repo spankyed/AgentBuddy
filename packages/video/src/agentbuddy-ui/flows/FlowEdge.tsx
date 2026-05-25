@@ -30,12 +30,10 @@ function elbowPath(a: {x: number; y: number}, b: {x: number; y: number}, hasSibl
 
 export function FlowEdge({
   allEdges,
-  dashOffset = 0,
   edge,
   nodes,
 }: {
   allEdges: FlowEdgeState[];
-  dashOffset?: number;
   edge: FlowEdgeState;
   nodes: FlowNodeState[];
 }) {
@@ -47,14 +45,12 @@ export function FlowEdge({
   const hasSiblings = allEdges.filter(sibling => sibling.to === edge.to).length >= 2;
   const isAnimated = edge.animated ?? (edge.kind === 'transitions_to' && isTriggerNode(from));
   const path = elbowPath(a, b, hasSiblings);
-  const animatedStyle = isAnimated ? {strokeDashoffset: -dashOffset} : undefined;
   return (
     <g>
       <path className={styles.edgeHitArea} d={path} vectorEffect="non-scaling-stroke" />
       <path
         className={cx(styles.edge, isAnimated && styles.animatedEdge)}
         d={path}
-        style={animatedStyle}
         vectorEffect="non-scaling-stroke"
       />
     </g>
