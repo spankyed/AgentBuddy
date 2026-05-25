@@ -41,7 +41,7 @@ export function DatabaseSurface({state}: DatabaseSurfaceProps) {
         </div>
         {state.activeMode !== 'examples' ? (
           <div className={styles.resultsPanel}>
-            <DatabaseResultsTable error={state.error} executionTime={state.executionTime} isLoading={state.isLoading} rows={state.queryResult} />
+            <DatabaseResultsTable error={state.error} executionTime={state.executionTime} isLoading={state.isLoading} result={state.queryResult} />
           </div>
         ) : null}
       </div>

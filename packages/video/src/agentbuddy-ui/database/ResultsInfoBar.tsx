@@ -9,9 +9,10 @@ type ResultsInfoBarProps = {
   resultCount: number;
   resultType: 'array' | 'object' | 'primitive';
   hasResult: boolean;
+  isArrayOfPrimitives?: boolean;
 };
 
-export function ResultsInfoBar({executionTime, hasResult, resultCount, resultType}: ResultsInfoBarProps) {
+export function ResultsInfoBar({executionTime, hasResult, isArrayOfPrimitives = false, resultCount, resultType}: ResultsInfoBarProps) {
   return (
     <div className={styles.root}>
       <div className={styles.inner}>
@@ -34,7 +35,7 @@ export function ResultsInfoBar({executionTime, hasResult, resultCount, resultTyp
           {hasResult ? (
             <div className={styles.type}>
               <Icons.Code size={12} />
-              {resultType}
+              {resultType}{isArrayOfPrimitives ? ' (primitives)' : ''}
             </div>
           ) : null}
         </div>

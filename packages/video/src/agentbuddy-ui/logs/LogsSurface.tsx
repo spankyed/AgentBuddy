@@ -1,5 +1,6 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import {LogsContextMenu} from './LogsContextMenu';
 import {LogRow} from './LogRow';
 import {LogsHeader} from './LogsHeader';
 import type {LogEntry, LogsSurfaceState} from './logTypes';
@@ -43,6 +44,7 @@ export function LogsSurface({state}: LogsSurfaceProps) {
           </div>
         )}
       </div>
+      {state.contextMenu ? <LogsContextMenu contextMenu={state.contextMenu} excludedSources={state.settings.excludedSources} /> : null}
     </div>
   );
 }

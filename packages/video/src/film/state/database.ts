@@ -79,6 +79,32 @@ export const databaseExamplesState: DatabaseSurfaceState = {
   activeMode: 'examples',
 };
 
+export const databasePrimitiveArrayState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return qx(EARS.Entity.Thread)
+  .where('status', 'active')
+  .pluck('topic');`,
+  executionTime: 6.41,
+  queryResult: ['AgentBuddy launch film', 'Release checklist', 'PR review surface', 'Demo script polish'],
+};
+
+export const databaseObjectResultState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return qx(EARS.Entity.Thread)
+  .where('id', 'thread-launch-film')
+  .first()
+  .pickAll();`,
+  executionTime: 12.82,
+  queryResult: {
+    id: 'thread-launch-film',
+    owner: 'spankyed',
+    priority: 'current',
+    status: 'active',
+    topic: 'AgentBuddy launch film',
+    updatedAt: '2026-05-25T14:18:22Z',
+  },
+};
+
 export const databaseAiLoadingState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   aiPrompt: 'Show the five most active launch threads',

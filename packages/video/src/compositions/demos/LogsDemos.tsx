@@ -4,7 +4,7 @@ import {LogsSurface} from '../../agentbuddy-ui/logs/LogsSurface';
 import type {LogsSurfaceState} from '../../agentbuddy-ui/logs/logTypes';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
-import {logsFilteredState, logsSurfaceState, logsSurfaceStateForFrame} from '../../film/state/logs';
+import {logsContextMenuState, logsFilteredState, logsSurfaceState, logsSurfaceStateForFrame} from '../../film/state/logs';
 
 function LogsDemoWindow({state = logsSurfaceState}: {state?: LogsSurfaceState}) {
   const layout = useAppWindowLayout({hasRightRail: false});
@@ -25,3 +25,5 @@ export const LogsSurfaceDemo = () => {
 export const LogsListDemo = () => <LogsDemoWindow state={logsSurfaceState} />;
 
 export const LogsFilteredDemo = () => <LogsDemoWindow state={logsFilteredState} />;
+
+export const LogsContextMenuDemo = () => <LogsDemoWindow state={logsContextMenuState} />;

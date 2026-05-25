@@ -8,6 +8,8 @@ import {
   databaseBackupExportState,
   databaseBackupImportState,
   databaseExamplesState,
+  databaseObjectResultState,
+  databasePrimitiveArrayState,
   databaseSurfaceState,
   databaseSurfaceStateForFrame,
   databaseTraceState,
@@ -32,6 +34,10 @@ export const DatabaseSurfaceDemo = () => {
 export const DatabaseQueryDemo = () => <DatabaseDemoWindow state={databaseSurfaceState} />;
 
 export const DatabaseExamplesDemo = () => <DatabaseDemoWindow state={databaseExamplesState} />;
+
+export const DatabasePrimitiveArrayDemo = () => <DatabaseDemoWindow state={databasePrimitiveArrayState} />;
+
+export const DatabaseObjectResultDemo = () => <DatabaseDemoWindow state={databaseObjectResultState} />;
 
 export const DatabaseBackupExportDemo = () => <DatabaseDemoWindow state={databaseBackupExportState} />;
 

@@ -86,7 +86,18 @@ export const logsFilteredState: LogsSurfaceState = {
   searchTerm: 'publish',
 };
 
+export const logsContextMenuState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  contextMenu: {
+    source: 'database',
+    visible: true,
+    x: 910,
+    y: 268,
+  },
+};
+
 export function logsSurfaceStateForFrame(frame: number): LogsSurfaceState {
+  if (frame > 185) return logsContextMenuState;
   if (frame > 150) return logsFilteredState;
   if (frame > 90) return {...logsSurfaceState, copied: true};
   return logsSurfaceState;

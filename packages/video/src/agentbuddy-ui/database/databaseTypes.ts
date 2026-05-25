@@ -17,6 +17,7 @@ export type QueryExample = {
 };
 
 export type DatabaseResultRow = Record<string, unknown>;
+export type DatabaseQueryResult = DatabaseResultRow[] | unknown[] | Record<string, unknown> | string | number | boolean | null;
 
 export type DatabaseBackupState = {
   activeTab: 'export' | 'import';
@@ -84,7 +85,7 @@ export type DatabaseSurfaceState = {
   isAiQueryLoading: boolean;
   isLoading: boolean;
   mode: 'query' | 'transaction';
-  queryResult: DatabaseResultRow[] | null;
+  queryResult: DatabaseQueryResult;
   schema: DatabaseSchema;
   searchQuery: string;
   selectedSchemaItemId?: string;

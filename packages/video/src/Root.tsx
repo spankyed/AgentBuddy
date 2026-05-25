@@ -19,6 +19,8 @@ import {
   DatabaseExamplesDemo,
   DatabaseBackupExportDemo,
   DatabaseBackupImportDemo,
+  DatabaseObjectResultDemo,
+  DatabasePrimitiveArrayDemo,
   DatabaseQueryDemo,
   DatabaseSurfaceDemo,
   DatabaseTraceDemo,
@@ -27,6 +29,7 @@ import {
   FlowsListMenuDemo,
   FlowsListSearchDemo,
   LogsFilteredDemo,
+  LogsContextMenuDemo,
   LogsListDemo,
   LogsSurfaceDemo,
   FlowNodeFormDemo,
@@ -105,12 +108,15 @@ export const RemotionRoot = () => {
       <Composition id="PromptsSurfaceDemo" component={PromptsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseQueryDemo" component={DatabaseQueryDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseExamplesDemo" component={DatabaseExamplesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabasePrimitiveArrayDemo" component={DatabasePrimitiveArrayDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseObjectResultDemo" component={DatabaseObjectResultDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseSurfaceDemo" component={DatabaseSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseBackupExportDemo" component={DatabaseBackupExportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseBackupImportDemo" component={DatabaseBackupImportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseTraceDemo" component={DatabaseTraceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsListDemo" component={LogsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsFilteredDemo" component={LogsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LogsContextMenuDemo" component={LogsContextMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsSurfaceDemo" component={LogsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibraryDocumentEditorDemo" component={LibraryDocumentEditorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibrarySurfaceDemo" component={LibrarySurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

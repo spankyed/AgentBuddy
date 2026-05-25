@@ -18,6 +18,12 @@ export type LogsSettings = {
 
 export type LogsSurfaceState = {
   copied?: boolean;
+  contextMenu?: {
+    source: string;
+    visible: boolean;
+    x: number;
+    y: number;
+  };
   expandedContent: Record<string, 'meta' | 'stack' | undefined>;
   filterLevel: 'all' | LogLevel;
   logs: LogEntry[];
