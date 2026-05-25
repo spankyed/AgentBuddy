@@ -8,6 +8,7 @@ const styles = makeStyles('DatabaseSchemaPanel');
 
 type SchemaPanelProps = {
   expandedCategoryIds?: Array<Category['id']>;
+  isRefreshing?: boolean;
   schema: DatabaseSchema;
   searchQuery?: string;
   selectedItemId?: string;
@@ -19,7 +20,7 @@ type Category = {
   label: string;
 };
 
-export function SchemaPanel({expandedCategoryIds = [], schema, searchQuery = '', selectedItemId}: SchemaPanelProps) {
+export function SchemaPanel({expandedCategoryIds = [], isRefreshing = false, schema, searchQuery = '', selectedItemId}: SchemaPanelProps) {
   const categories = filterCategories(toCategories(schema), searchQuery);
   const expandedIds = new Set(expandedCategoryIds);
   return (
@@ -34,8 +35,8 @@ export function SchemaPanel({expandedCategoryIds = [], schema, searchQuery = '',
             </button>
           ) : null}
         </div>
-        <button className={styles.refreshButton} title="Refresh schema" type="button">
-          <Icons.RefreshCw size={16} />
+        <button className={styles.refreshButton} disabled={isRefreshing} title="Refresh schema" type="button">
+          <Icons.RefreshCw className={isRefreshing ? styles.refreshing : undefined} size={16} />
         </button>
       </div>
 

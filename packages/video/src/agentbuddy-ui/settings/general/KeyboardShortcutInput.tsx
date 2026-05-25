@@ -3,7 +3,8 @@ import './KeyboardShortcutInput.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('KeyboardShortcutInput');
 
-export function KeyboardShortcutInput({label, value, placeholder = 'Click to set shortcut', showResetButton = true}: {
+export function KeyboardShortcutInput({emptyText = 'Not set', label, value, showResetButton = true}: {
+  emptyText?: string;
   label?: string;
   placeholder?: string;
   showResetButton?: boolean;
@@ -13,7 +14,7 @@ export function KeyboardShortcutInput({label, value, placeholder = 'Click to set
     <div className={styles.root}>
       <span className={styles.box} title={value ?? ''}>
         {label ? <span className={styles.label}>{label}</span> : null}
-        {value ? <span className={styles.key}>{value}</span> : <span className={styles.empty}>{placeholder}</span>}
+        {value ? <span className={styles.key}>{value}</span> : <span className={styles.empty}>{emptyText}</span>}
         {!value ? <Icons.Keyboard className={styles.keyboardIcon} size={16} /> : null}
       </span>
       {value && showResetButton ? (

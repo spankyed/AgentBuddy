@@ -87,6 +87,12 @@ export type ChatStateIndicatorSettings = {
 
 export type SettingsSurfaceState = {
   activeTab: SettingsTabId;
+  applicationHotkeys?: {
+    custom?: Array<{eventName: string; id: string; shortcut?: string}>;
+    switchPluginDown?: string;
+    switchPluginUp?: string;
+    toggleInspectionPanel?: string;
+  };
   faqs: Array<{answer: string; expanded?: boolean; id: string; question: string}>;
   generalNavItem: GeneralSettingsNavId;
   plugins: PluginSettingsItem[];

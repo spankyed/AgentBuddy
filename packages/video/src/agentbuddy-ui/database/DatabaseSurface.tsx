@@ -25,7 +25,13 @@ export function DatabaseSurface({state}: DatabaseSurfaceProps) {
   return (
     <div className={styles.root}>
       <div className={styles.schemaPanel}>
-        <SchemaPanel expandedCategoryIds={state.expandedSchemaCategoryIds} schema={state.schema} searchQuery={state.searchQuery} selectedItemId={state.selectedSchemaItemId} />
+        <SchemaPanel
+          expandedCategoryIds={state.expandedSchemaCategoryIds}
+          isRefreshing={state.isSchemaRefreshing}
+          schema={state.schema}
+          searchQuery={state.searchQuery}
+          selectedItemId={state.selectedSchemaItemId}
+        />
         <div className={styles.schemaResizeHandle}>
           <div />
         </div>
@@ -41,7 +47,7 @@ export function DatabaseSurface({state}: DatabaseSurfaceProps) {
         </div>
         {state.activeMode !== 'examples' ? (
           <div className={styles.resultsPanel}>
-            <DatabaseResultsTable error={state.error} executionTime={state.executionTime} isLoading={state.isLoading} result={state.queryResult} />
+            <DatabaseResultsTable copiedRowIndex={state.copiedResultRowIndex} error={state.error} executionTime={state.executionTime} isLoading={state.isLoading} result={state.queryResult} />
           </div>
         ) : null}
       </div>

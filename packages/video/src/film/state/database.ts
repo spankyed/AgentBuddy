@@ -105,11 +105,21 @@ export const databaseObjectResultState: DatabaseSurfaceState = {
   },
 };
 
+export const databaseCopiedRowState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  copiedResultRowIndex: 1,
+};
+
 export const databaseSchemaNoResultsState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   expandedSchemaCategoryIds: ['entities', 'attributes', 'relations'],
   searchQuery: 'invoice',
   selectedSchemaItemId: undefined,
+};
+
+export const databaseSchemaRefreshingState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  isSchemaRefreshing: true,
 };
 
 export const databaseLoadingState: DatabaseSurfaceState = {

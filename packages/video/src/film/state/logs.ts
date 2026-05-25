@@ -121,6 +121,25 @@ export const logsCopiedState: LogsSurfaceState = {
   copied: true,
 };
 
+export const logsCombinedContentState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  expandedContent: {
+    'log-render-error': 'stack',
+  },
+  logs: logsSurfaceState.logs.map(log => (
+    log.id === 'log-render-error'
+      ? {
+          ...log,
+          meta: {
+            attempt: 1,
+            endpoint: 'assets.launch.clientlabs.dev',
+            retryScheduled: true,
+          },
+        }
+      : log
+  )),
+};
+
 export const logsHasMoreState: LogsSurfaceState = {
   ...logsSurfaceState,
   expandedContent: {},

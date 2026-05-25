@@ -72,6 +72,7 @@ export type DatabaseSurfaceState = {
   activeMode: 'query' | 'examples';
   aiPrompt?: string;
   backup?: DatabaseBackupState;
+  copiedResultRowIndex?: number;
   currentQuery: string;
   error: string | null;
   executeQueryShortcut?: {
@@ -84,6 +85,7 @@ export type DatabaseSurfaceState = {
   isAiPromptOpen: boolean;
   isAiQueryLoading: boolean;
   isLoading: boolean;
+  isSchemaRefreshing?: boolean;
   mode: 'query' | 'transaction';
   queryResult: DatabaseQueryResult;
   schema: DatabaseSchema;

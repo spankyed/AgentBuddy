@@ -9,12 +9,14 @@ import {
   databaseBackupImportState,
   databaseAiLoadingState,
   databaseAiPromptState,
+  databaseCopiedRowState,
   databaseEmptyArrayState,
   databaseErrorState,
   databaseExamplesState,
   databaseLoadingState,
   databaseObjectResultState,
   databasePrimitiveArrayState,
+  databaseSchemaRefreshingState,
   databaseSchemaNoResultsState,
   databaseSurfaceState,
   databaseSurfaceStateForFrame,
@@ -49,7 +51,11 @@ export const DatabasePrimitiveArrayDemo = () => <DatabaseDemoWindow state={datab
 
 export const DatabaseObjectResultDemo = () => <DatabaseDemoWindow state={databaseObjectResultState} />;
 
+export const DatabaseCopiedRowDemo = () => <DatabaseDemoWindow state={databaseCopiedRowState} />;
+
 export const DatabaseSchemaNoResultsDemo = () => <DatabaseDemoWindow state={databaseSchemaNoResultsState} />;
+
+export const DatabaseSchemaRefreshingDemo = () => <DatabaseDemoWindow state={databaseSchemaRefreshingState} />;
 
 export const DatabaseLoadingDemo = () => <DatabaseDemoWindow state={databaseLoadingState} />;
 

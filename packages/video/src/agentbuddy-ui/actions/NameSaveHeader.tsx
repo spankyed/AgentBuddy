@@ -6,13 +6,15 @@ import './NameSaveHeader.module.css';
 const styles = makeStyles('ActionsNameSaveHeader');
 
 type NameSaveHeaderProps = {
+  actions?: ReactNode;
   children: ReactNode;
+  hideSave?: boolean;
   isEditing?: boolean;
   isValid?: boolean;
   label?: string;
 };
 
-export function NameSaveHeader({children, isEditing = false, isValid = true, label = 'Name'}: NameSaveHeaderProps) {
+export function NameSaveHeader({actions, children, hideSave = false, isEditing = false, isValid = true, label = 'Name'}: NameSaveHeaderProps) {
   return (
     <div className={styles.root}>
       <div className={styles.left}>
@@ -26,7 +28,8 @@ export function NameSaveHeader({children, isEditing = false, isValid = true, lab
       </div>
       <div className={styles.center}>{children}</div>
       <div className={styles.actions}>
-        <Button disabled={!isValid}>{isEditing ? 'Save' : 'Create'}</Button>
+        {actions}
+        {!hideSave ? <Button disabled={!isValid}>{isEditing ? 'Save' : 'Create'}</Button> : null}
       </div>
     </div>
   );

@@ -72,6 +72,19 @@
   padding: 8px;
 }
 
+.DatabaseSchemaPanel_refreshButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.DatabaseSchemaPanel_refreshButton:disabled:hover {
+  background: transparent;
+}
+
+.DatabaseSchemaPanel_refreshing {
+  animation: DatabaseSchemaPanel_spin 900ms linear infinite;
+}
+
 .DatabaseSchemaPanel_tree {
   min-height: 0;
   flex: 1;
@@ -241,4 +254,10 @@
   padding: 8px 12px;
   font-size: 14px;
   transition: background-color 160ms ease;
+}
+
+@keyframes DatabaseSchemaPanel_spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

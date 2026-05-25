@@ -137,6 +137,14 @@ export const actionDetailState: ActionsSurfaceState = {
   view: 'detail',
 };
 
+export const actionCollapsedSectionsState: ActionsSurfaceState = {
+  ...actionDetailState,
+  expandedParameterKeys: [],
+  metadataExpanded: false,
+  outputExpanded: false,
+  parametersExpanded: false,
+};
+
 export function actionsSurfaceStateForFrame(frame: number): ActionsSurfaceState {
   return frame < 90 ? actionsListState : actionDetailState;
 }

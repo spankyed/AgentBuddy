@@ -7,6 +7,7 @@ import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   logsContextMenuState,
   logsCopiedState,
+  logsCombinedContentState,
   logsEmptyState,
   logsFilteredState,
   logsHasMoreState,
@@ -42,5 +43,7 @@ export const LogsFilteredDemo = () => <LogsDemoWindow state={logsFilteredState} 
 export const LogsContextMenuDemo = () => <LogsDemoWindow state={logsContextMenuState} />;
 
 export const LogsCopiedDemo = () => <LogsDemoWindow state={logsCopiedState} />;
+
+export const LogsCombinedContentDemo = () => <LogsDemoWindow state={logsCombinedContentState} />;
 
 export const LogsHasMoreDemo = () => <LogsDemoWindow state={logsHasMoreState} />;

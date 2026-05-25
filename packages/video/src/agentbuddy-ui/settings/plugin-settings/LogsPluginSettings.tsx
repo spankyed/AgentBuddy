@@ -44,9 +44,9 @@ export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 
         </div>
         <div className={styles.quick}>
           Quick filters:{' '}
-          {commonExclusions.map((pattern, index) => (
+          {commonExclusions.slice(0, 4).map((pattern, index) => (
             <button disabled={excludedSources.includes(pattern)} key={pattern} type="button">
-              {pattern}{index < commonExclusions.length - 1 ? <span className={styles.dot}>·</span> : null}
+              {pattern}{index < 3 ? <span className={styles.dot}>·</span> : null}
             </button>
           ))}
         </div>

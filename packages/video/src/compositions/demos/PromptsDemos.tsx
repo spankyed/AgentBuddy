@@ -6,6 +6,7 @@ import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   promptCreateState,
+  promptCollapsedSectionsState,
   promptDetailState,
   promptsEmptyState,
   promptsFilteredState,
@@ -36,6 +37,8 @@ export const PromptsLoadingMoreDemo = () => <PromptsDemoWindow state={promptsLoa
 export const PromptCreateDemo = () => <PromptsDemoWindow state={promptCreateState} />;
 
 export const PromptDetailDemo = () => <PromptsDemoWindow state={promptDetailState} />;
+
+export const PromptCollapsedSectionsDemo = () => <PromptsDemoWindow state={promptCollapsedSectionsState} />;
 
 export const PromptsSurfaceDemo = () => {
   const frame = useCurrentFrame();

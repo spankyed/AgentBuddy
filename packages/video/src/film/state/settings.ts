@@ -1,6 +1,15 @@
 import type {SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTypes';
 
 const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> = {
+  applicationHotkeys: {
+    custom: [
+      {id: 'hotkey_quick_prompt', eventName: 'QUICK_PROMPT.OPEN', shortcut: '⌘ K'},
+      {id: 'hotkey_launch_context', eventName: 'LAUNCH.CONTEXT_CAPTURE', shortcut: '⌘ ⇧ L'},
+    ],
+    switchPluginDown: '⌘ ↓',
+    switchPluginUp: '⌘ ↑',
+    toggleInspectionPanel: '⌘ I',
+  },
   faqs: [
     {answer: 'AgentBuddy stores local configuration on this device and uses it to drive workflows, plugin state, and launch-film demos.', id: 'faq-local', question: 'Where are settings stored?'},
     {answer: 'Providers can be configured from the General > Providers view. Keys are masked once saved.', id: 'faq-providers', question: 'How do provider keys work?'},

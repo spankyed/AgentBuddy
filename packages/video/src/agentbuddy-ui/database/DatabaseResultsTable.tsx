@@ -1,5 +1,6 @@
 import type {DatabaseQueryResult, DatabaseResultRow} from './databaseTypes';
 import {JsonResultDisplay} from './JsonResultDisplay';
+import {ObjectResultsTable} from './ObjectResultsTable';
 import {PrimitiveResultDisplay} from './PrimitiveResultDisplay';
 import {PrimitiveResultsTable} from './PrimitiveResultsTable';
 import {ResultStates} from './ResultStates';
@@ -10,13 +11,14 @@ import './DatabaseResultsTable.module.css';
 const styles = makeStyles('DatabaseResultsTable');
 
 type DatabaseResultsTableProps = {
+  copiedRowIndex?: number;
   error: string | null;
   executionTime: number | null;
   isLoading: boolean;
   result: DatabaseQueryResult;
 };
 
-export function DatabaseResultsTable({error, executionTime, isLoading, result}: DatabaseResultsTableProps) {
+export function DatabaseResultsTable({copiedRowIndex, error, executionTime, isLoading, result}: DatabaseResultsTableProps) {
   const analysis = analyzeResult(result);
   const currentState = getState({analysis, error, isLoading, result});
   return (
@@ -27,7 +29,7 @@ export function DatabaseResultsTable({error, executionTime, isLoading, result}: 
         ) : analysis.resultType === 'array' && analysis.isArrayOfPrimitives ? (
           <PrimitiveResultsTable values={result as unknown[]} />
         ) : analysis.resultType === 'array' ? (
-          <ObjectResultsTable headers={analysis.headers} rows={analysis.tableData} />
+          <ObjectResultsTable copiedRowIndex={copiedRowIndex} headers={analysis.headers} rows={analysis.tableData} />
         ) : analysis.resultType === 'object' ? (
           <JsonResultDisplay data={result} />
         ) : (
@@ -36,38 +38,11 @@ export function DatabaseResultsTable({error, executionTime, isLoading, result}: 
       </div>
       <ResultsInfoBar
         executionTime={executionTime}
-        hasResult={result !== null}
+        hasResult={Boolean(result)}
         isArrayOfPrimitives={analysis.isArrayOfPrimitives}
         resultCount={analysis.resultCount}
         resultType={analysis.resultType ?? 'primitive'}
       />
-    </div>
-  );
-}
-
-function ObjectResultsTable({headers, rows}: {headers: string[]; rows: DatabaseResultRow[]}) {
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            {headers.map(header => (
-              <th key={header}>{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {headers.map(header => (
-                <td key={header}>
-                  <div title={formatCellValue(row[header])}>{formatCellValue(row[header])}</div>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -80,15 +55,9 @@ function getState({
 }: Pick<DatabaseResultsTableProps, 'error' | 'isLoading' | 'result'> & {analysis: ResultAnalysis}): 'data' | 'empty-array' | 'error' | 'loading' | 'no-results' {
   if (isLoading) return 'loading';
   if (error) return 'error';
-  if (result === null) return 'no-results';
+  if (!result) return 'no-results';
   if (analysis.resultType === 'array' && analysis.resultCount === 0) return 'empty-array';
   return 'data';
-}
-
-function formatCellValue(value: unknown) {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
 }
 
 function collectHeaders(rows: DatabaseResultRow[]) {

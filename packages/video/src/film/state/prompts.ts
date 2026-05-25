@@ -139,6 +139,14 @@ export const promptDetailState: PromptsSurfaceState = {
   view: 'detail',
 };
 
+export const promptCollapsedSectionsState: PromptsSurfaceState = {
+  ...promptDetailState,
+  expandedInputKeys: [],
+  inputsExpanded: false,
+  metadataExpanded: false,
+  outputExpanded: false,
+};
+
 export function promptsSurfaceStateForFrame(frame: number): PromptsSurfaceState {
   return frame < 90 ? promptsListState : promptDetailState;
 }

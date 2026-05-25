@@ -17,7 +17,7 @@ export function ApplicationSettings({state}: {state: SettingsSurfaceState}) {
         <p className={styles.description}>Import setup packs, configure hotkeys, and manage app data.</p>
       </header>
       <section className={styles.card}>
-        <HotkeysSettings />
+        <HotkeysSettings hotkeys={state.applicationHotkeys} />
       </section>
       <section className={styles.card}>
         <div className={styles.sectionHeader}><Icons.PackageOpen size={16} />Import Setup Pack</div>

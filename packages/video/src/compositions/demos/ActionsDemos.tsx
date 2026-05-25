@@ -6,6 +6,7 @@ import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   actionCreateState,
+  actionCollapsedSectionsState,
   actionDetailState,
   actionsEmptyState,
   actionsFilteredState,
@@ -36,6 +37,8 @@ export const ActionsLoadingMoreDemo = () => <ActionsDemoWindow state={actionsLoa
 export const ActionCreateDemo = () => <ActionsDemoWindow state={actionCreateState} />;
 
 export const ActionDetailDemo = () => <ActionsDemoWindow state={actionDetailState} />;
+
+export const ActionCollapsedSectionsDemo = () => <ActionsDemoWindow state={actionCollapsedSectionsState} />;
 
 export const ActionsSurfaceDemo = () => {
   const frame = useCurrentFrame();

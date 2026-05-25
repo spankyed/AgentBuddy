@@ -12,7 +12,7 @@ const typeMeta: Array<{key: SetupPackType; label: string; icon: React.ComponentT
     key: 'flows',
     label: 'Flows',
     icon: Icons.GitBranch,
-    hint: 'Flows reference actions and prompts by label.',
+    hint: 'Flows reference actions and prompts by label. Any referenced action/prompt must already exist in the database (or be imported in the same run) or the flow will be skipped.',
   },
   {key: 'library', label: 'Library', icon: Icons.Library},
   {key: 'notes', label: 'Notes', icon: Icons.StickyNote},
