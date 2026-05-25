@@ -6,11 +6,8 @@ import {captionViewForFrame, filmProgressForFrame, shotAtFrame, shots, type Film
 import {ChatShot} from './shots/ChatShot';
 import {BoardShot} from './shots/BoardShot';
 import {CodeShot} from './shots/CodeShot';
-import {DatabaseShot} from './shots/DatabaseShot';
 import {FinalShot} from './shots/FinalShot';
-import {LogsShot} from './shots/LogsShot';
 import {NotesShot} from './shots/NotesShot';
-import {SettingsShot} from './shots/SettingsShot';
 import {WorkflowShot} from './shots/WorkflowShot';
 import {SurfaceFrame} from './SurfaceFrame';
 import './AgentBuddyFilm.module.css';
@@ -64,10 +61,7 @@ function ShotSurface({id, variant}: {id: ShotId; variant: Variant}) {
   if (id === 'chat') return <ChatShot frame={frame} variant={variant} />;
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;
-  if (id === 'database') return <DatabaseShot frame={frame} variant={variant} />;
-  if (id === 'logs') return <LogsShot frame={frame} variant={variant} />;
   if (id === 'workflow') return <WorkflowShot frame={frame} variant={variant} />;
-  if (id === 'settings') return <SettingsShot frame={frame} variant={variant} />;
   return <FinalShot frame={frame} variant={variant} />;
 }
 

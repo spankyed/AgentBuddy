@@ -20,7 +20,6 @@ import {
   Columns3,
   Copy,
   CornerDownLeft,
-  Database,
   EllipsisVertical,
   Eye,
   EyeOff,
@@ -43,7 +42,6 @@ import {
   List,
   ListChecks,
   Link,
-  ScrollText,
   Loader2,
   Maximize,
   MessageSquareText,
@@ -148,6 +146,4 @@ export const Icons = {
   EyeOff,
   FilePlus,
   Link,
-  Database,
-  ScrollText,
 };

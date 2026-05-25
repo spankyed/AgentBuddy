@@ -1,4 +1,4 @@
-export type ShotId = 'notes' | 'chat' | 'board' | 'code' | 'database' | 'logs' | 'workflow' | 'settings' | 'final';
+export type ShotId = 'notes' | 'chat' | 'board' | 'code' | 'workflow' | 'final';
 
 export type FilmShot = {
   captionAlign?: 'left' | 'right';
@@ -19,10 +19,7 @@ export const shots: FilmShot[] = [
   {id: 'chat', title: 'Conversation becomes work.', duration: 330},
   {id: 'board', title: 'Threads become execution.', duration: 240},
   {id: 'code', title: 'Ship from the same surface.', captionAlign: 'right', duration: 270},
-  {id: 'database', title: 'Query the work behind it.', duration: 210},
-  {id: 'logs', title: 'Watch the system move.', duration: 210},
   {id: 'workflow', title: 'Automate the system around you.', captionAlign: 'right', duration: 330},
-  {id: 'settings', title: 'Tune every surface.', captionAlign: 'right', duration: 210},
   {id: 'final', duration: 300},
 ];
 
