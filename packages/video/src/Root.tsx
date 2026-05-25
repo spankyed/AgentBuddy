@@ -32,6 +32,9 @@ import {
   PullRequestDetailsDemo,
   PullRequestFilesDemo,
   PullRequestPanelDemo,
+  PromptDetailDemo,
+  PromptsListDemo,
+  PromptsSurfaceDemo,
   SourceControlPanelDemo,
   TaskListPanelDemo,
   TaskListPanelMenuDemo,
@@ -60,6 +63,9 @@ export const RemotionRoot = () => {
       <Composition id="ActionsListDemo" component={ActionsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionDetailDemo" component={ActionDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsSurfaceDemo" component={ActionsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptsListDemo" component={PromptsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptDetailDemo" component={PromptDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptsSurfaceDemo" component={PromptsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerDemo" component={ChatComposerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerWithAttachmentDemo" component={ChatComposerWithAttachmentDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerModeMenuDemo" component={ChatComposerModeMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
