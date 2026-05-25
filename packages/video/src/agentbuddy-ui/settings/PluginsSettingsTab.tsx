@@ -22,7 +22,32 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
         ))}
       </aside>
       <main className={styles.content}>
-        <h2 className={styles.title}>{selected?.label ?? 'Plugin'} Settings</h2>
+        {selected ? (
+          <div className={styles.settingsPane}>
+            <header className={styles.titleRow}>
+              <h2 className={styles.title}>{selected.label} Settings</h2>
+              {selected.id !== 'settings' ? <button title="Go to plugin"><Icons.ExternalLink size={16} /></button> : null}
+            </header>
+            <section className={styles.card}>
+              {selected.settings.map(setting => (
+                <div key={setting.label} className={styles.settingRow}>
+                  <div>
+                    <strong>{setting.label}</strong>
+                    <span>{typeof setting.value === 'boolean' ? 'Boolean setting' : 'Plugin preference'}</span>
+                  </div>
+                  {typeof setting.value === 'boolean' ? (
+                    <span className={`${styles.toggle} ${setting.value ? styles.toggleOn : ''}`}><i /></span>
+                  ) : (
+                    <span className={styles.value}>{setting.value}</span>
+                  )}
+                </div>
+              ))}
+            </section>
+            {state.saveStatus === 'saved' ? <div className={styles.save}><Icons.CircleCheck size={12} /> Settings saved</div> : null}
+          </div>
+        ) : (
+          <div className={styles.empty}><Icons.PackageOpen size={64} /><p>Select a plugin to configure its settings</p></div>
+        )}
       </main>
     </div>
   );

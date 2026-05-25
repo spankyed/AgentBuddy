@@ -24,7 +24,11 @@ export function GeneralSettingsTab({state}: {state: SettingsSurfaceState}) {
         <div className={styles.navBottom}>{navBottom.map(item => <NavItem key={item.id} item={item} active={state.generalNavItem === item.id} />)}</div>
       </aside>
       <section className={styles.content}>
-        {state.generalNavItem === 'application' ? <ApplicationSettings state={state} /> : <PlaceholderSettings id={state.generalNavItem} />}
+        {state.generalNavItem === 'application' ? <ApplicationSettings state={state} /> : null}
+        {state.generalNavItem === 'secrets' ? <SecretsSettings state={state} /> : null}
+        {state.generalNavItem === 'projects' ? <ProjectsSettings state={state} /> : null}
+        {state.generalNavItem === 'personal' ? <PersonalSettings state={state} /> : null}
+        {state.generalNavItem === 'json' ? <JsonSettings state={state} /> : null}
       </section>
     </div>
   );
@@ -77,17 +81,153 @@ function ApplicationSettings({state}: {state: SettingsSurfaceState}) {
   );
 }
 
-function PlaceholderSettings({id}: {id: GeneralSettingsNavId}) {
-  const label = id === 'secrets' ? 'Secrets' : id === 'projects' ? 'Projects' : id === 'personal' ? 'Personal Information' : 'Settings JSON';
+function SecretsSettings({state}: {state: SettingsSurfaceState}) {
   return (
     <div className={styles.max}>
       <header className={styles.header}>
-        <h2 className={styles.title}>{label}</h2>
-        <p className={styles.description}>First-pass replica placeholder for the selected settings section.</p>
+        <h2 className={styles.title}>Secrets</h2>
+        <p className={styles.description}>Manage your API keys for various providers. Keys are stored securely in a separate database partition.</p>
+      </header>
+
+      <section className={styles.providerSection}>
+        <h3 className={styles.sectionHeading}>CLI Providers</h3>
+        <div className={styles.providerGrid}>
+          {state.providers.cli.map(provider => (
+            <div key={provider.label} className={styles.providerInfo}>
+              <strong>{provider.label}</strong>
+              <span>{provider.detected ? 'Detected on PATH' : 'Not detected'}</span>
+            </div>
+          ))}
+          {state.providers.cli.map(provider => (
+            <div key={`${provider.label}-input`} className={styles.providerInput}>{provider.command}</div>
+          ))}
+          {state.providers.cli.map(provider => (
+            <div key={`${provider.label}-action`} className={styles.providerActions}>
+              <Icons.Check size={14} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className={styles.divider} />
+
+      <section className={styles.providerSection} data-onboarding-id="settings-secrets-section">
+        <h3 className={styles.sectionHeading}>Standard Providers</h3>
+        <div className={styles.providerGrid}>
+          {state.providers.standard.map(provider => (
+            <ProviderRow key={provider.key} provider={provider} />
+          ))}
+        </div>
+      </section>
+
+      <div className={styles.divider} />
+
+      <section className={styles.providerSection}>
+        <h3 className={styles.sectionHeading}>Custom Providers</h3>
+        <div className={styles.providerGrid}>
+          {state.providers.custom.map(provider => (
+            <ProviderRow key={provider.name} provider={{key: provider.name, label: provider.name, description: 'Custom Provider', saved: provider.saved}} />
+          ))}
+        </div>
+        <button className={styles.subtleButton}><Icons.Plus size={14} /> Add Custom Provider</button>
+      </section>
+    </div>
+  );
+}
+
+function ProviderRow({provider}: {provider: {key: string; label: string; description: string; priority?: 'required' | 'recommended'; saved?: boolean}}) {
+  return (
+    <>
+      <div className={styles.providerInfo}>
+        <strong>{provider.label}<Icons.ExternalLink size={12} /></strong>
+        <span>{provider.description}</span>
+        {provider.priority ? <em className={provider.priority === 'required' ? styles.required : styles.recommended}>{provider.priority}</em> : null}
+      </div>
+      <div className={styles.providerInput}>{provider.saved ? '••••••••' : `Enter ${provider.label} API key`}</div>
+      <div className={styles.providerActions}>
+        {provider.saved ? <><Icons.Edit3 size={14} /><Icons.Trash2 size={14} /></> : <Icons.Eye size={14} />}
+      </div>
+    </>
+  );
+}
+
+function ProjectsSettings({state}: {state: SettingsSurfaceState}) {
+  return (
+    <div className={styles.wide}>
+      <p className={styles.description} style={{marginBottom: 24}}>Manage your projects. Each project can contain multiple directories.</p>
+      <div className={styles.projects}>
+        {state.projects.map(project => (
+          <section key={project.name} className={styles.projectCard}>
+            <header className={styles.projectHeader}>
+              <span className={styles.colorDot} style={{background: project.color}} />
+              <input value={project.name} readOnly />
+              <button><Icons.Plus size={12} /> Add Directory</button>
+              <button className={styles.iconOnly}><Icons.X size={14} /></button>
+            </header>
+            <div className={styles.directories}>
+              {project.directories.map((directory, index) => (
+                <span key={directory} className={styles.directoryPill} style={index === 0 ? {borderLeftColor: project.color} : undefined}>
+                  <code>{directory.split('/').slice(-2).join('/')}</code>
+                  <Icons.X size={12} />
+                </span>
+              ))}
+            </div>
+          </section>
+        ))}
+        <button className={styles.addProject}><Icons.Plus size={14} /> Add Project</button>
+      </div>
+    </div>
+  );
+}
+
+function PersonalSettings({state}: {state: SettingsSurfaceState}) {
+  const address = state.personal.address;
+  return (
+    <div className={styles.wide}>
+      <header className={styles.header}>
+        <h2 className={styles.title}>Personal Information</h2>
+        <p className={styles.description}>Manage your personal details and contact information. This information is only stored locally on your device, to be used in AI workflows.</p>
       </header>
       <section className={styles.card}>
-        <div className={styles.cardHeader}>{label}</div>
+        <div className={styles.cardHeader}><Icons.User size={16} /> Personal Details</div>
+        <div className={styles.formGrid}>
+          <Field label="Full Name" helper="How you'd like to be addressed" value={state.personal.name} />
+          <Field label="Phone Number" helper="For important notifications" value={state.personal.phoneNumber} />
+        </div>
       </section>
+      <section className={styles.card}>
+        <div className={styles.cardHeader}><Icons.MapPin size={16} /> Address Information</div>
+        <div className={styles.addressGrid}>
+          <Field label="Street" value={address.street} />
+          <Field label="Street 2" value={address.street2 || ''} />
+          <Field label="City" value={address.city} />
+          <Field label="State" value={address.state} />
+          <Field label="Postal Code" value={address.postalCode} />
+          <Field label="Country" value={address.country} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Field({label, value, helper}: {label: string; value: string; helper?: string}) {
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <input value={value} readOnly />
+      {helper ? <small>{helper}</small> : null}
+    </label>
+  );
+}
+
+function JsonSettings({state}: {state: SettingsSurfaceState}) {
+  return (
+    <div className={styles.wide}>
+      <header className={styles.header}>
+        <h2 className={styles.title}>Settings JSON</h2>
+        <p className={styles.description}>Directly inspect the local settings document.</p>
+      </header>
+      <pre className={styles.jsonEditor}>{state.settingsJson}</pre>
     </div>
   );
 }
