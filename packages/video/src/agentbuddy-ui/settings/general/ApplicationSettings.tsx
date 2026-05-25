@@ -23,7 +23,7 @@ export function ApplicationSettings({state}: {state: SettingsSurfaceState}) {
         <div className={styles.sectionHeader}><Icons.PackageOpen size={16} />Import Setup Pack</div>
         <p className={styles.description}>Import compiled actions, prompts, flows, library docs, and notes from a setup pack directory.</p>
         {importStatus === 'idle' || importStatus === 'previewing' ? (
-          <button className={styles.primaryButton} disabled={importStatus === 'previewing'} type="button">
+          <button className={styles.primaryButton} data-status={importStatus} disabled={importStatus === 'previewing'} type="button">
             {importStatus === 'previewing' ? 'Reading pack...' : 'Select Compiled Directory...'}
           </button>
         ) : null}

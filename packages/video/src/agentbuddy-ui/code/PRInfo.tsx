@@ -9,6 +9,7 @@ export function PRInfo({state}: {state: PullRequestPanelState}) {
   const pr = state.createdPr;
   const headBranch = pr?.headBranch ?? state.headBranch;
   const baseBranch = pr?.baseBranch ?? state.baseBranch;
+  const badgeState = pr?.isDraft ? 'DRAFT' : pr?.state ?? 'OPEN';
   return (
     <section className={styles.root}>
       <div className={styles.header}>
@@ -23,12 +24,12 @@ export function PRInfo({state}: {state: PullRequestPanelState}) {
         </div>
         <div className={styles.headerActions}>
           <span className={styles.number}>#{pr?.number}</span>
-          <button type="button" title="Edit PR"><Icons.SquarePen size={14} /></button>
+          {pr?.state === 'OPEN' ? <button type="button" title="Edit PR"><Icons.Pencil size={14} /></button> : null}
           <button type="button" title="View on GitHub"><Icons.ExternalLink size={14} /></button>
         </div>
       </div>
       <div className={styles.meta}>
-        <span className={styles.state} data-state={pr?.state ?? 'OPEN'}>{statusLabel(pr)}</span>
+        <span className={styles.state} data-state={badgeState}>{statusLabel(pr)}</span>
         {pr?.authorName ? <span>·</span> : null}
         {pr?.authorName ? <span>{pr.authorName}</span> : null}
         {pr?.createdAt ? <span>·</span> : null}

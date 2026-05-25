@@ -71,6 +71,11 @@
   color: rgb(163 163 163);
 }
 
+.BrainDetailsPanel_closeButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+}
+
 .BrainDetailsPanel_body {
   display: flex;
   flex: 1;
@@ -129,6 +134,11 @@
   font-size: 12px;
   font-weight: 500;
   transition: background-color 160ms ease, color 160ms ease;
+}
+
+.BrainDetailsPanel_blueprintAction button:hover {
+  background: rgb(64 64 64 / 50%);
+  color: rgb(147 197 253);
 }
 
 .BrainDetailsPanel_footer {

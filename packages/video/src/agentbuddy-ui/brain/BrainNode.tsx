@@ -22,8 +22,8 @@ export function BrainNode({connectedExits, node, selected}: {
     <>
       <FlowNode
         connectedExits={connectedExits}
+        editable={false}
         node={{
-          exits: node.exits,
           id: node.id,
           kind: node.kind,
           label: node.label,

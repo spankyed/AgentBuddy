@@ -1,5 +1,4 @@
 .ActionsParameterRow_root {
-  overflow: hidden;
   border: 1px solid rgb(64 64 64);
   border-radius: 6px;
   background: rgb(38 38 38 / 50%);
@@ -29,10 +28,6 @@
 .ActionsParameterRow_expandButton:hover,
 .ActionsParameterRow_removeButton:hover {
   background: rgb(64 64 64);
-}
-
-.ActionsParameterRow_removeButton:hover {
-  color: rgb(248 113 113);
 }
 
 .ActionsParameterRow_expandIcon {

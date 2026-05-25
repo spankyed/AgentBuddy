@@ -1,8 +1,7 @@
 .LogsContextMenu_scrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 50;
-  pointer-events: none;
 }
 
 .LogsContextMenu_menu {
@@ -32,10 +31,6 @@
 
 .LogsContextMenu_excludeButton:hover {
   background: rgb(64 64 64);
-}
-
-.LogsContextMenu_excludeButton[data-disabled="true"] {
-  opacity: 0.55;
 }
 
 .LogsContextMenu_excludeIcon {

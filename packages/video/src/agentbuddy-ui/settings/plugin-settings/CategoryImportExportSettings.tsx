@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {ColorPicker} from '../../design/ColorPicker';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import './CategoryImportExportSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
@@ -34,7 +35,7 @@ export function CategoryImportExportSettings({
         <div className={styles.categoryGroup}>
           {categories.map((category, index) => (
             <div className={styles.categoryRow} key={`${category.name}-${index}`}>
-              <button className={styles.colorPickerTrigger} style={{backgroundColor: category.color}} title="Change color" type="button" />
+              <ColorPicker value={category.color} />
               <input className={styles.input} readOnly type="text" value={category.name} placeholder="Category name" />
               <button className={styles.iconButton} disabled={categories.length <= 1} title="Remove category" type="button">
                 <Icons.X size={16} />

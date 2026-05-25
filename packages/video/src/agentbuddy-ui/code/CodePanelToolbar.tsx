@@ -47,7 +47,7 @@ export function CodePanelToolbar({
             <Icons.ChevronDown size={14} />
             <span>{directoryName(baseDirectory)}</span>
           </button>
-          <button className={styles.refresh} title="Refresh"><Icons.RotateCcw size={16} /></button>
+          <button className={styles.refresh} title="Refresh"><Icons.RefreshCw size={16} /></button>
         </div>
       </div>
       <div className={styles.panelRow}>

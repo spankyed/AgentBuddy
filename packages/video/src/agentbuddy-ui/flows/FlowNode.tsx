@@ -25,11 +25,13 @@ const iconByKind = {
 // Mirrors packages/renderer/src/plugins/flows/canvas/nodes/BaseNode.vue.
 export function FlowNode({
   connectedExits,
+  editable = true,
   editing,
   node,
   selected,
 }: {
   connectedExits?: Set<number>;
+  editable?: boolean;
   editing?: boolean;
   node: FlowNodeState;
   selected?: boolean;
@@ -48,7 +50,7 @@ export function FlowNode({
               <div key={`${branch.label}-${index}`} className={styles.branchRow}>
                 <span className={cx(styles.branchIndex, branch.isElse && styles.elseIndex)}>{branch.isElse ? 'E' : index + 1}</span>
                 <span className={branch.isElse ? styles.elseLabel : undefined}>{branch.label ?? (branch.isElse ? 'Else' : `Branch ${index + 1}`)}</span>
-                {connectedExits?.has(index) ? <span className={styles.handle} /> : <span className={styles.unconnectedHandle}>+</span>}
+                {connectedExits?.has(index) ? <span className={styles.handle} /> : editable ? <span className={styles.unconnectedHandle}>+</span> : null}
               </div>
             ))}
           </div>
@@ -66,10 +68,10 @@ export function FlowNode({
         {exitCount > 1 ? (
           <div className={styles.exitList}>
             {node.exits?.map((exit, index) => (
-              <div key={exit} className={styles.exitRow}>
+              <div key={`${exit}-${index}`} className={styles.exitRow}>
                 <span className={styles.exitIndex}>{index + 1}</span>
-                <span>{exit}</span>
-                {connectedExits?.has(index) ? <span className={styles.handle} /> : <span className={styles.unconnectedHandle}>+</span>}
+                <span>exit {index + 1}</span>
+                {connectedExits?.has(index) ? <span className={styles.handle} /> : editable ? <span className={styles.unconnectedHandle}>+</span> : null}
               </div>
             ))}
           </div>
@@ -82,7 +84,7 @@ export function FlowNode({
     <div className={nodeClassName} data-kind={node.kind} style={style}>
       <div className={styles.header}><Icon className={styles.nodeIcon} size={14} /><span>{node.label}</span></div>
       {node.subtitle ? <div className={styles.subtitle}>{node.subtitle}</div> : null}
-      <FlowAddHandle selected={selected} />
+      {editable ? <FlowAddHandle selected={selected} /> : null}
     </div>
   );
 }

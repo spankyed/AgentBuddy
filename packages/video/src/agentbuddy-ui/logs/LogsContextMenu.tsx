@@ -17,7 +17,7 @@ export function LogsContextMenu({contextMenu, excludedSources}: LogsContextMenuP
   return (
     <div className={styles.scrim}>
       <div className={styles.menu} style={{left: `${contextMenu.x}px`, top: `${contextMenu.y}px`}}>
-        <button className={styles.excludeButton} data-disabled={isExcluded ? 'true' : undefined} disabled={isExcluded} type="button">
+        <button className={styles.excludeButton} disabled={isExcluded} type="button">
           <Icons.X className={styles.excludeIcon} size={14} />
           <span>Exclude '{contextMenu.source}'</span>
         </button>

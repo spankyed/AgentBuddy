@@ -46,7 +46,7 @@ export function PullRequestPanel({
         <>
           <BackRow refreshing={mode === 'details'} />
           {mode === 'create' ? <CreatePRForm creating={false} state={state} /> : <PRInfo state={state} />}
-          {mode === 'details' ? <PRActionBar /> : null}
+          {mode === 'details' ? <PRActionBar state={state} /> : null}
         </>
       )}
     </div>
@@ -70,7 +70,8 @@ function TopActionRow({
         <button className={styles.viewButton} type="button">View</button>
       ) : (
         <button className={published ? styles.createButton : styles.publishButton} type="button">
-          {published ? 'Create PR' : publishProgress && publishProgress > 0 ? 'Publishing...' : 'Publish'}
+          {!published && publishProgress && publishProgress > 0 ? <Icons.Loader2 className={styles.spinner} size={12} /> : null}
+          <span>{published ? 'Create PR' : publishProgress && publishProgress > 0 ? 'Publishing...' : 'Publish'}</span>
         </button>
       )}
     </div>
@@ -81,7 +82,7 @@ function BackRow({refreshing}: {refreshing?: boolean}) {
   return (
     <button className={styles.backRow} type="button">
       <span><Icons.ArrowLeft size={12} /> Back to files</span>
-      {refreshing ? <Icons.RotateCcw size={12} /> : null}
+      {refreshing ? <Icons.RefreshCw size={12} /> : null}
     </button>
   );
 }

@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {ColorPicker} from '../../design/ColorPicker';
 import {makeStyles} from '../../primitives/makeStyles';
 import type {SettingsSurfaceState} from '../settingsTypes';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
@@ -23,7 +24,7 @@ export function LibraryPluginSettings({settings}: LibraryPluginSettingsProps) {
         <div className={styles.tagGroup}>
           {tags.map((tag, index) => (
             <div className={styles.tagRow} key={`${tag.name}-${index}`}>
-              <button className={styles.colorPickerTrigger} style={{backgroundColor: tag.color}} title="Change color" type="button" />
+              <ColorPicker value={tag.color} />
               <input className={styles.input} readOnly type="text" value={tag.name} placeholder="Tag name" />
               <button className={styles.iconButton} disabled={tags.length <= 1} title="Remove tag" type="button">
                 <Icons.X size={16} />

@@ -137,6 +137,12 @@
   opacity: 0.6;
 }
 
+.SettingsCommon_primaryButton[data-status="previewing"] {
+  background: rgb(64 64 64);
+  color: rgb(163 163 163);
+  opacity: 1;
+}
+
 .SettingsCommon_secondaryButton {
   border: 0;
   border-radius: 8px;

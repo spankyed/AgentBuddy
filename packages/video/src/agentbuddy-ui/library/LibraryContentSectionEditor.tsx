@@ -6,20 +6,22 @@ import './LibraryContentSectionEditor.module.css';
 
 const styles = makeStyles('LibraryContentSectionEditor');
 
-const labelByType: Record<LibraryContentSectionState['type'], string> = {
-  code: 'Code',
-  field: 'Fields',
-  list: 'List',
-  markdown: 'Markdown',
-  text: 'Plain Text',
-};
+const sectionTypeOptions: Array<{label: string; value: LibraryContentSectionState['type']}> = [
+  {label: 'Markdown', value: 'markdown'},
+  {label: 'Plain Text', value: 'text'},
+  {label: 'Code', value: 'code'},
+  {label: 'Fields', value: 'field'},
+  {label: 'List', value: 'list'},
+];
 
 export function LibraryContentSectionEditor({
   fileName,
+  isSymlink = false,
   section,
   showRemove,
 }: {
   fileName?: string;
+  isSymlink?: boolean;
   section: LibraryContentSectionState;
   showRemove?: boolean;
 }) {
@@ -30,8 +32,10 @@ export function LibraryContentSectionEditor({
           <button className={styles.expandButton} type="button">
             <Icons.ChevronRight size={16} />
           </button>
-          <select className={styles.typeSelect} disabled value={section.type}>
-            <option value={section.type}>{labelByType[section.type]}</option>
+          <select className={styles.typeSelect} disabled={hasContent(section)} value={section.type}>
+            {sectionTypeOptions.filter(option => option.value !== 'code' || isSymlink).map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </div>
         {showRemove ? (
@@ -45,6 +49,19 @@ export function LibraryContentSectionEditor({
       </div>
     </div>
   );
+}
+
+function hasContent(section: LibraryContentSectionState) {
+  switch (section.type) {
+    case 'markdown':
+    case 'text':
+    case 'code':
+      return section.text.trim().length > 0;
+    case 'field':
+      return section.fields.some(field => field.key.trim() || field.value.trim());
+    case 'list':
+      return section.items.some(item => item.trim());
+  }
 }
 
 function SectionBody({fileName, section}: {fileName?: string; section: LibraryContentSectionState}) {

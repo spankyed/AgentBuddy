@@ -24,6 +24,7 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  gap: 0.25rem;
   border: 0;
   border-radius: 0.25rem;
   color: white;
@@ -68,4 +69,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+}
+
+.PullRequestPanel_spinner {
+  animation: PullRequestPanel_spin 900ms linear infinite;
+}
+
+@keyframes PullRequestPanel_spin {
+  to { transform: rotate(360deg); }
 }

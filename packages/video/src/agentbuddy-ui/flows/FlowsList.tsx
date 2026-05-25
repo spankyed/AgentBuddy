@@ -104,7 +104,7 @@ function FlowItemMenu({root}: {root?: boolean}) {
   return (
     <div className={styles.menu}>
       <button className={styles.menuItem} type="button">
-        <Icons.Edit2 className={styles.menuEditIcon} size={14} />
+        <Icons.Edit className={styles.menuEditIcon} size={14} />
         <span>Edit Label</span>
       </button>
       {!root ? (

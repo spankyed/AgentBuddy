@@ -60,7 +60,7 @@
 
 .FlowCanvas_edge {
   fill: none;
-  stroke: rgb(115 115 115);
+  stroke: #666;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -79,7 +79,7 @@
 }
 
 .FlowCanvas_edgeMarker {
-  fill: rgb(115 115 115);
+  fill: #666;
 }
 
 .FlowCanvas_controls {
@@ -88,13 +88,11 @@
   left: 1rem;
   z-index: 10;
   display: grid;
-  width: 2rem;
-  height: 2rem;
   place-items: center;
   border: 1px solid rgb(64 64 64);
   border-radius: 0.375rem;
   background: rgb(23 23 23 / 90%);
   color: rgb(212 212 216);
-  padding: 0;
+  padding: 0.375rem;
   backdrop-filter: blur(4px);
 }

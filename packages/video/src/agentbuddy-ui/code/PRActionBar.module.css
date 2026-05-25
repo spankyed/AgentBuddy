@@ -14,7 +14,9 @@
 .PRActionBar_merge,
 .PRActionBar_chevron,
 .PRActionBar_draft,
-.PRActionBar_close {
+.PRActionBar_close,
+.PRActionBar_checkout,
+.PRActionBar_deleteBranch {
   display: inline-flex;
   height: 26px;
   align-items: center;
@@ -52,6 +54,22 @@
 }
 
 .PRActionBar_close {
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(248 113 113);
+  padding: 0 0.5rem;
+}
+
+.PRActionBar_checkout {
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(96 165 250);
+  padding: 0 0.5rem;
+}
+
+.PRActionBar_deleteBranch {
+  border: 0;
   border-radius: 0.25rem;
   background: transparent;
   color: rgb(248 113 113);

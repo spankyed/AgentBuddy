@@ -21,7 +21,7 @@ export function DatabaseGraphToolbar({state}: DatabaseGraphToolbarProps) {
   const hasData = state.nodes.length > 0;
   const canZoomIn = hasData && state.zoomLevel < 3;
   const canZoomOut = hasData && state.zoomLevel > 0.3;
-  const FullscreenIcon = state.isFullscreen ? Icons.Minus : Icons.Maximize;
+  const FullscreenIcon = state.isFullscreen ? Icons.Minimize2 : Icons.Maximize;
 
   return (
     <div className={styles.root}>
@@ -50,11 +50,11 @@ export function DatabaseGraphToolbar({state}: DatabaseGraphToolbarProps) {
       <div className={styles.controls}>
         <div className={styles.viewControls}>
           <button className={styles.iconButton} disabled={!canZoomOut} title="Zoom out (Ctrl+-)" type="button">
-            <Icons.Minus size={16} />
+            <Icons.ZoomOut size={16} />
           </button>
           <div className={styles.zoomLabel}>{Math.round(state.zoomLevel * 100)}%</div>
           <button className={styles.iconButton} disabled={!canZoomIn} title="Zoom in (Ctrl+=)" type="button">
-            <Icons.Plus size={16} />
+            <Icons.ZoomIn size={16} />
           </button>
           <div className={styles.controlDivider} />
           <button className={styles.iconButton} disabled={!hasData} title="Fit to view (Ctrl+0)" type="button">

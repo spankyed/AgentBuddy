@@ -6,8 +6,13 @@
 }
 
 .DatabaseGraphLegend_scroll {
-  overflow-x: hidden;
+  overflow-x: auto;
   font-size: 12px;
+  scrollbar-width: none;
+}
+
+.DatabaseGraphLegend_scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .DatabaseGraphLegend_items {

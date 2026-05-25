@@ -6,10 +6,29 @@ export const librarySurfaceState: LibrarySurfaceState = {
     {id: 'references', name: 'References'},
   ],
   currentFolderId: 'references',
+  currentView: 'browser',
   items: [
     {
       children: [
         {
+          content: [
+            {
+              text: '# AgentBuddy launch positioning\n\nAgentBuddy turns conversations, notes, code, workflows, logs, and memory into one working surface.',
+              type: 'markdown',
+            },
+            {
+              fields: [
+                {key: 'Audience', value: 'builders running product + engineering work'},
+                {key: 'Promise', value: 'conversation becomes execution'},
+              ],
+              type: 'field',
+            },
+            {
+              items: ['Show source-backed UI surfaces', 'Avoid fake status UI', 'Keep workflows as blueprints'],
+              type: 'list',
+            },
+          ],
+          createdAt: '2026-05-21T09:12:00Z',
           id: 'doc-positioning',
           kind: 'Markdown',
           name: 'launch-positioning.md',
@@ -79,6 +98,24 @@ export const librarySurfaceState: LibrarySurfaceState = {
     documentsCount: 19,
     foldersCount: 6,
     selectedItem: {
+      content: [
+        {
+          text: '# AgentBuddy launch positioning\n\nAgentBuddy turns conversations, notes, code, workflows, logs, and memory into one working surface.',
+          type: 'markdown',
+        },
+        {
+          fields: [
+            {key: 'Audience', value: 'builders running product + engineering work'},
+            {key: 'Promise', value: 'conversation becomes execution'},
+          ],
+          type: 'field',
+        },
+        {
+          items: ['Show source-backed UI surfaces', 'Avoid fake status UI', 'Keep workflows as blueprints'],
+          type: 'list',
+        },
+      ],
+      createdAt: '2026-05-21T09:12:00Z',
       filePath: '/Launch Film/References/Launch assets/launch-positioning.md',
       id: 'doc-positioning',
       kind: 'Markdown',
@@ -127,4 +164,10 @@ export const libraryDocumentEditorState: LibraryDocumentEditorState = {
     },
   ],
   tags: ['launch', 'positioning'],
+};
+
+export const libraryEditSurfaceState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  currentView: 'edit',
+  documentEditor: libraryDocumentEditorState,
 };

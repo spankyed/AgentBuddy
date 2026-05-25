@@ -30,20 +30,6 @@
   gap: 12px;
 }
 
-.CategoryImportExportSettings_colorPickerTrigger {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border: 1px solid rgb(64 64 64);
-  border-radius: 6px;
-  padding: 0;
-  transition: border-color 160ms ease;
-}
-
-.CategoryImportExportSettings_colorPickerTrigger:hover {
-  border-color: rgb(82 82 82);
-}
-
 .CategoryImportExportSettings_input,
 .CategoryImportExportSettings_directoryInput {
   border: 1px solid rgb(64 64 64 / 50%);

@@ -2,6 +2,8 @@ export type LibraryItemType = 'document' | 'folder';
 
 export type LibraryItemState = {
   children?: LibraryItemState[];
+  content?: LibraryContentSectionState[];
+  createdAt?: string;
   expanded?: boolean;
   filePath?: string;
   id: string;
@@ -27,6 +29,10 @@ export type LibraryPanelState = {
   documentsCount: number;
   foldersCount: number;
   selectedItem?: LibraryItemState;
+  selectedDocumentsCount?: number;
+  selectedFoldersCount?: number;
+  selectedItemsCount?: number;
+  selectedItemsTags?: string[];
 };
 
 export type LibraryContentSectionState =
@@ -54,6 +60,8 @@ export type LibraryDocumentEditorState = {
 export type LibrarySurfaceState = {
   breadcrumbs: LibraryBreadcrumbState[];
   currentFolderId: string | null;
+  currentView?: 'browser' | 'create' | 'edit';
+  documentEditor?: LibraryDocumentEditorState;
   items: LibraryItemState[];
   panel: LibraryPanelState;
   selectedItemIds: string[];

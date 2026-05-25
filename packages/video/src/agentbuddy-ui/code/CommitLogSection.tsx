@@ -19,7 +19,7 @@ export function CommitLogSection({commits}: {commits: CommitLogEntryState[]}) {
             <Icons.Search size={14} />
           </button>
           <button className={styles.iconButton} type="button" title="Refresh commit log">
-            <Icons.RotateCcw size={14} />
+            <Icons.RefreshCw size={14} />
           </button>
         </div>
       </header>
@@ -35,7 +35,7 @@ export function CommitLogSection({commits}: {commits: CommitLogEntryState[]}) {
                 <Icons.Undo2 size={12} />
               </button>
               <button className={styles.rowAction} type="button" title="Reset to this commit">
-                <Icons.RotateCcw size={12} />
+                <Icons.RotateCw size={12} />
               </button>
               <button className={styles.rowAction} type="button" title="Copy commit hash">
                 <Icons.Copy size={12} />

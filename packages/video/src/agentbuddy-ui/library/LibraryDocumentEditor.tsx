@@ -21,7 +21,7 @@ export function LibraryDocumentEditor({state}: {state: LibraryDocumentEditorStat
             {!state.isSymlink && state.document ? <span className={styles.shortCode}>{state.document.shortCode}</span> : null}
           </div>
         ) : (
-          <input className={styles.nameInput} readOnly value={state.name} placeholder="Enter document name" />
+          <input className={styles.nameInput} data-onboarding-id="library-document-name-input" readOnly value={state.name} placeholder="Enter document name" />
         )}
       </LibraryNameSaveHeader>
 
@@ -31,6 +31,7 @@ export function LibraryDocumentEditor({state}: {state: LibraryDocumentEditorStat
             {state.sections.map((section, index) => (
               <LibraryContentSectionEditor
                 fileName={state.name}
+                isSymlink={state.isSymlink}
                 key={`${section.type}-${index}`}
                 section={section}
                 showRemove={state.sections.length > 1}

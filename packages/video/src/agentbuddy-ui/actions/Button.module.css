@@ -38,10 +38,14 @@
   background: rgb(96 165 250);
 }
 
-.ActionsButton_transparent,
-.ActionsButton_ghost {
+.ActionsButton_transparent {
   background: transparent;
   color: rgb(229 229 229);
+}
+
+.ActionsButton_ghost {
+  background: transparent;
+  color: rgb(212 212 212);
 }
 
 .ActionsButton_transparent:hover,

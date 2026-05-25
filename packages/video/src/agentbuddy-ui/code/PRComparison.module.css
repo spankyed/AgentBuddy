@@ -117,9 +117,37 @@
 .PRComparison_fileRow strong {
   margin-left: auto;
   width: 1rem;
-  color: rgb(34 197 94);
   font-size: 11px;
   font-weight: 500;
+}
+
+.PRComparison_fileRow strong[data-status="modified"] {
+  color: rgb(234 179 8);
+}
+
+.PRComparison_fileRow strong[data-status="added"] {
+  color: rgb(34 197 94);
+}
+
+.PRComparison_fileRow strong[data-status="deleted"],
+.PRComparison_fileRow strong[data-status="unmerged"] {
+  color: rgb(239 68 68);
+}
+
+.PRComparison_fileRow strong[data-status="renamed"] {
+  color: rgb(59 130 246);
+}
+
+.PRComparison_fileRow strong[data-status="untracked"] {
+  color: rgb(115 115 115);
+}
+
+.PRComparison_fileRow strong[data-status="copied"] {
+  color: rgb(168 85 247);
+}
+
+.PRComparison_fileRow strong[data-status="typechange"] {
+  color: rgb(249 115 22);
 }
 
 .PRComparison_fileRow strong:not(:empty) {
@@ -136,5 +164,5 @@
 
 .PRComparison_chevron {
   color: rgb(163 163 163);
-  transform: rotate(0deg);
+  transform: rotate(90deg);
 }
