@@ -3,6 +3,7 @@ import {ActionParametersEditor} from './ActionParametersEditor';
 import type {ActionDetailState} from './actionTypes';
 import {CollapsibleSection} from './CollapsibleSection';
 import {NameSaveHeader} from './NameSaveHeader';
+import {JsonSchemaEditor} from '../design/JsonSchemaEditor';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import './ActionDetail.module.css';
@@ -57,7 +58,7 @@ export function ActionDetail({state}: ActionDetailProps) {
 
           <div className={styles.section}>
             <CollapsibleSection label="Output Schema (Optional)" open={state.outputExpanded ?? Boolean(state.formData.output)}>
-              <textarea className={styles.schemaBox} readOnly value={state.formData.output ?? '{\n  \"type\": \"object\",\n  \"properties\": {}\n}'} />
+              <JsonSchemaEditor value={state.formData.output} />
             </CollapsibleSection>
           </div>
 

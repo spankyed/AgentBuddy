@@ -70,6 +70,10 @@
   padding: 12px 24px;
 }
 
+.ActionsList_table th.ActionsList_categoryFilterCell {
+  padding: 0;
+}
+
 .ActionsList_actionsColumn {
   text-align: right;
 }

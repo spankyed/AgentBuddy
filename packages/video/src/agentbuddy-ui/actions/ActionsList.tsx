@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {CategoryFilter} from '../design/CategoryFilter';
 import {makeStyles} from '../primitives/makeStyles';
 import type {ActionsListState} from './actionTypes';
 import {Button} from './Button';
@@ -30,7 +31,9 @@ export function ActionsList({state}: ActionsListProps) {
                 <tr>
                   <th>Label</th>
                   <th>Description</th>
-                  <th>Category</th>
+                  <th className={styles.categoryFilterCell}>
+                    <CategoryFilter categories={state.categories} selectedCategories={state.selectedCategories} />
+                  </th>
                   <th className={styles.inputsColumn}>Inputs</th>
                   <th className={styles.actionsColumn}>Actions</th>
                 </tr>

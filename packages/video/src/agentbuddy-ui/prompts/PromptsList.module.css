@@ -70,6 +70,10 @@
   padding: 12px 24px;
 }
 
+.PromptsList_table th.PromptsList_categoryFilterCell {
+  padding: 0;
+}
+
 .PromptsList_actionsColumn {
   text-align: right;
 }

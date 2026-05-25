@@ -1,5 +1,6 @@
 import {Button} from '../actions/Button';
 import {categoryStyle, getCategoryName} from '../actions/categoryStyle';
+import {CategoryFilter} from '../design/CategoryFilter';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import type {PromptsListState} from './promptTypes';
@@ -30,7 +31,9 @@ export function PromptsList({state}: PromptsListProps) {
                 <tr>
                   <th>Label</th>
                   <th>Description</th>
-                  <th>Category</th>
+                  <th className={styles.categoryFilterCell}>
+                    <CategoryFilter categories={state.categories} selectedCategories={state.selectedCategories} />
+                  </th>
                   <th className={styles.inputsColumn}>Inputs</th>
                   <th className={styles.actionsColumn}>Actions</th>
                 </tr>

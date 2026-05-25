@@ -94,7 +94,6 @@
   font-size: 12px;
 }
 
-.PromptDetail_schemaBox,
 .PromptDetail_descriptionBox {
   width: 100%;
   border: 1px solid rgb(64 64 64);
@@ -105,12 +104,6 @@
   font-size: 14px;
   outline: none;
   resize: vertical;
-}
-
-.PromptDetail_schemaBox {
-  min-height: 140px;
-  padding: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .PromptDetail_descriptionBox {

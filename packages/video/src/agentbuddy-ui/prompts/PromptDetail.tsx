@@ -1,5 +1,6 @@
 import {CollapsibleSection} from '../actions/CollapsibleSection';
 import {NameSaveHeader} from '../actions/NameSaveHeader';
+import {JsonSchemaEditor} from '../design/JsonSchemaEditor';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import {PromptInputsEditor} from './PromptInputsEditor';
@@ -57,7 +58,7 @@ export function PromptDetail({state}: PromptDetailProps) {
 
           <div className={styles.section}>
             <CollapsibleSection label="Output Schema (Optional)" open={state.outputExpanded ?? Boolean(state.formData.outputSchema)}>
-              <textarea className={styles.schemaBox} readOnly value={state.formData.outputSchema ?? '{\n  \"type\": \"object\",\n  \"properties\": {}\n}'} />
+              <JsonSchemaEditor value={state.formData.outputSchema} />
             </CollapsibleSection>
           </div>
 
