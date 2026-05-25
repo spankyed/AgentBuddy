@@ -111,6 +111,26 @@
   text-align: center;
 }
 
+.BrainDetailsPanel_blueprintAction {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px 8px;
+}
+
+.BrainDetailsPanel_blueprintAction button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(96 165 250);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
 .BrainDetailsPanel_footer {
   border-top: 1px solid rgb(38 38 38 / 50%);
   background: rgb(23 23 23 / 50%);

@@ -9,6 +9,11 @@ export type BrainNodeState = {
   id: string;
   kind: FlowNodeKind;
   label: string;
+  blueprint?: {
+    flowId: string;
+    nodeId: string;
+  };
+  completedAt?: string;
   nodeAttributes?: Record<string, unknown>;
   startedAt?: string;
   status?: BrainNodeStatus;

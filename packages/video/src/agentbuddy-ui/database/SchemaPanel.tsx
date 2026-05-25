@@ -33,7 +33,7 @@ export function SchemaPanel({schema, searchQuery = '', selectedItemId}: SchemaPa
           ) : null}
         </div>
         <button className={styles.refreshButton} title="Refresh schema" type="button">
-          <Icons.RotateCcw size={16} />
+          <Icons.RefreshCw size={16} />
         </button>
       </div>
 

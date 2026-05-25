@@ -11,6 +11,7 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
   const hasInput = Object.keys(input).length > 0;
   const hasOutput = result !== undefined;
   const hasContent = hasInput || hasOutput;
+  const duration = getDuration(node.startedAt, node.completedAt);
   return (
     <aside className={styles.root}>
       <header className={styles.header}>
@@ -46,14 +47,34 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
         ) : null}
         </div>
       </div>
-      {node.startedAt ? (
+      {node.blueprint ? (
+        <div className={styles.blueprintAction}>
+          <button type="button" title="View action details">
+            <Icons.ExternalLink size={12} />
+            Edit step
+          </button>
+        </div>
+      ) : null}
+      {node.startedAt || duration ? (
         <footer className={styles.footer}>
           <div className={styles.sectionTitle}>Execution Info</div>
           <div className={styles.info}>
-            <span><span className={styles.label}>Started:</span> {node.startedAt}</span>
+            {node.startedAt ? <span><span className={styles.label}>Started:</span> {node.startedAt}</span> : null}
+            {duration ? <span><span className={styles.label}>Duration:</span> {duration}</span> : null}
           </div>
         </footer>
       ) : null}
     </aside>
   );
+}
+
+function getDuration(startedAt?: string, completedAt?: string) {
+  if (!startedAt || !completedAt) return null;
+  const start = Date.parse(startedAt);
+  const end = Date.parse(completedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  const ms = Math.max(0, end - start);
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
