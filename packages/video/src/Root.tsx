@@ -2,9 +2,6 @@ import {Composition} from 'remotion';
 import {AgentBuddyFilm, AgentBuddyFilmSquare} from './film/AgentBuddyFilm';
 import {
   BoardSurfaceDemo,
-  ActionsSurfaceDemo,
-  ActionDetailDemo,
-  BrainSurfaceDemo,
   CodeSurfaceDemo,
   ChatSurfaceDemo,
   ChatComposerDemo,
@@ -13,7 +10,6 @@ import {
   ChatComposerWithAttachmentDemo,
   CodeReviewDemo,
   ContentBlocksDemo,
-  DatabaseSurfaceDemo,
   FlowCanvasDemo,
   FlowNodeFormDemo,
   FlowNodeVariantsDemo,
@@ -21,7 +17,6 @@ import {
   InteractionControlsDemo,
   InteractionBlocksDemo,
   KanbanComponentsDemo,
-  LogsSurfaceDemo,
   MessageBubbleDemo,
   NotesRightRailDemo,
   NotesRightRailMenuDemo,
@@ -30,18 +25,11 @@ import {
   NotesRightRailTrashDemo,
   NotesSurfaceDemo,
   PlanArtifactDemo,
-  PromptDetailDemo,
-  PromptsSurfaceDemo,
   PullRequestCreateDemo,
   PullRequestDetailsDemo,
   PullRequestFilesDemo,
   PullRequestPanelDemo,
   SourceControlPanelDemo,
-  SettingsSurfaceDemo,
-  SettingsApplicationDemo,
-  SettingsPersonalDemo,
-  SettingsPluginsDemo,
-  SettingsProjectsDemo,
   TaskListPanelDemo,
   TaskListPanelMenuDemo,
   TaskListPanelRowMenuDemo,
@@ -106,18 +94,6 @@ export const RemotionRoot = () => {
       <Composition id="NotesSurfaceDemo" component={NotesSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatSurfaceDemo" component={ChatSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="ActionsSurfaceDemo" component={ActionsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="ActionDetailDemo" component={ActionDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="BrainSurfaceDemo" component={BrainSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="DatabaseSurfaceDemo" component={DatabaseSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="LogsSurfaceDemo" component={LogsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="SettingsSurfaceDemo" component={SettingsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="SettingsApplicationDemo" component={SettingsApplicationDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="SettingsProjectsDemo" component={SettingsProjectsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="SettingsPersonalDemo" component={SettingsPersonalDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="SettingsPluginsDemo" component={SettingsPluginsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="PromptsSurfaceDemo" component={PromptsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="PromptDetailDemo" component={PromptDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
     </>
   );
 };
