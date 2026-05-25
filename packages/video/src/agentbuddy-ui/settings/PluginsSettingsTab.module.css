@@ -88,3 +88,34 @@
   justify-content: center;
   color: rgb(163 163 163);
 }
+
+.PluginsSettingsTab_saveStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  color: rgb(115 115 115);
+  font-size: 12px;
+}
+
+.PluginsSettingsTab_saveStatus[data-status="saved"] {
+  color: rgb(22 163 74);
+}
+
+.PluginsSettingsTab_savingDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(115 115 115);
+  animation: PluginsSettingsTab_pulse 1s ease-in-out infinite;
+}
+
+@keyframes PluginsSettingsTab_pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}

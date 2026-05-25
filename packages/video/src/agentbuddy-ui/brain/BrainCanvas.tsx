@@ -2,7 +2,7 @@ import {Icons} from '../primitives/Icon';
 import {flowNodePort} from '../flows/flowGeometry';
 import type {FlowEdgeState} from '../flows/flowTypes';
 import {BrainNode} from './BrainNode';
-import {flattenBrainNodes, layoutBrainTracks} from './brainLayout';
+import {layoutBrainTracks} from './brainLayout';
 import type {BrainNodeState, BrainSurfaceState} from './brainTypes';
 import './BrainCanvas.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -30,7 +30,6 @@ function buildEdges(nodes: BrainNodeState[]): FlowEdgeState[] {
 
 export function BrainCanvas({state}: {state: BrainSurfaceState}) {
   const nodes = layoutBrainTracks(state.tracks);
-  const allNodes = flattenBrainNodes(nodes);
   const edges = buildEdges(state.tracks);
   const connectedExitsByNode = new Map<string, Set<number>>();
   for (const edge of edges) {
@@ -43,7 +42,7 @@ export function BrainCanvas({state}: {state: BrainSurfaceState}) {
   return (
     <section className={styles.root}>
       <div className={styles.viewport}>
-        <svg className={styles.edges} viewBox="0 0 1120 720" preserveAspectRatio="none">
+        <svg className={styles.edges}>
           <defs>
             <marker id="brain-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" className={styles.edgeMarker} />

@@ -28,11 +28,6 @@ export function HotkeysSettings() {
       <div className={styles.divider} />
       <div className={styles.group}>
         <h3 className={styles.sectionTitle}>Custom Keyboard Shortcuts</h3>
-        <div className={styles.customRow}>
-          <input className={styles.eventInput} readOnly value="LAUNCH_FILM_PREVIEW" />
-          <KeyboardShortcutInput value="⌘ ⇧ P" />
-          <Icons.X size={16} />
-        </div>
         <button className={styles.add} type="button"><Icons.Plus size={16} />Add Custom Shortcut</button>
       </div>
     </div>

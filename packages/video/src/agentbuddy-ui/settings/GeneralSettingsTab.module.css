@@ -55,7 +55,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgb(22 163 74);
+  color: rgb(115 115 115);
   font-size: 12px;
   margin-top: 24px;
+}
+
+.GeneralSettingsTab_saveStatus[data-status="saved"] {
+  color: rgb(22 163 74);
+}
+
+.GeneralSettingsTab_savingDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(115 115 115);
+  animation: GeneralSettingsTab_pulse 1s ease-in-out infinite;
+}
+
+@keyframes GeneralSettingsTab_pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
 }

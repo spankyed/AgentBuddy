@@ -50,29 +50,6 @@
   text-transform: uppercase;
 }
 
-.HotkeysSettings_customRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid rgb(64 64 64);
-  border-radius: 6px;
-  background: rgb(38 38 38 / 50%);
-  margin-bottom: 12px;
-  padding: 8px;
-}
-
-.HotkeysSettings_eventInput {
-  flex: 1;
-  border: 1px solid rgb(64 64 64);
-  border-radius: 6px;
-  background: rgb(38 38 38);
-  color: white;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 14px;
-  padding: 6px 12px;
-  text-transform: uppercase;
-}
-
 .HotkeysSettings_add {
   display: flex;
   align-items: center;

@@ -52,6 +52,10 @@
   text-transform: uppercase;
 }
 
+.SettingsCommon_sectionHeader svg {
+  color: rgb(163 163 163);
+}
+
 .SettingsCommon_dangerHeader {
   display: flex;
   align-items: center;

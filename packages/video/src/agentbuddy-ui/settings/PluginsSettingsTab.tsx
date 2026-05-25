@@ -29,7 +29,9 @@ const iconByPlugin = {
 } as const;
 
 export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
-  const selected = state.plugins.find(plugin => plugin.id === state.selectedPluginId) ?? state.plugins[0];
+  const selected = state.selectedPluginId
+    ? state.plugins.find(plugin => plugin.id === state.selectedPluginId)
+    : undefined;
   return (
     <div className={styles.root}>
       <aside className={styles.sidebar}>
@@ -44,6 +46,7 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
               {selected.id !== 'settings' ? <Icons.ExternalLink size={16} /> : null}
             </div>
             <SelectedPluginSettings selected={selected.id} state={state} />
+            <SaveStatus status={state.saveStatus} />
           </>
         ) : (
           <div className={styles.empty}><Icons.Package size={64} /><p>Select a plugin to configure its settings</p></div>
@@ -51,6 +54,28 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
       </main>
     </div>
   );
+}
+
+function SaveStatus({status}: {status?: SettingsSurfaceState['saveStatus']}) {
+  if (status === 'saving') {
+    return (
+      <div className={styles.saveStatus}>
+        <span className={styles.savingDot} />
+        Saving...
+      </div>
+    );
+  }
+
+  if (status === 'saved') {
+    return (
+      <div className={styles.saveStatus} data-status="saved">
+        <Icons.CircleCheck size={12} />
+        Settings saved
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem['id']; state: SettingsSurfaceState}) {

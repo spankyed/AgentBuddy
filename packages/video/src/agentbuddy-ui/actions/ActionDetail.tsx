@@ -85,11 +85,5 @@ export function ActionDetail({state}: ActionDetailProps) {
 
 function formatDate(timestamp?: number) {
   if (!timestamp) return 'N/A';
-  return new Date(timestamp).toLocaleString('en-US', {
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return new Date(timestamp).toLocaleString();
 }

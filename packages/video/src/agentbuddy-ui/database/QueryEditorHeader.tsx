@@ -11,7 +11,7 @@ import './QueryEditorHeader.module.css';
 const styles = makeStyles('DatabaseQueryEditorHeader');
 
 type QueryEditorHeaderProps = {
-  state: Pick<DatabaseSurfaceState, 'activeMode' | 'currentQuery' | 'error' | 'isAiPromptOpen' | 'isLoading' | 'mode' | 'successMessage'>;
+  state: Pick<DatabaseSurfaceState, 'activeMode' | 'currentQuery' | 'error' | 'executeQueryShortcut' | 'isAiPromptOpen' | 'isLoading' | 'mode' | 'successMessage'>;
 };
 
 export function QueryEditorHeader({state}: QueryEditorHeaderProps) {
@@ -26,7 +26,7 @@ export function QueryEditorHeader({state}: QueryEditorHeaderProps) {
         <button className={cx(styles.iconButton, state.isAiPromptOpen && styles.aiActive)} title="Generate query with AI" type="button">
           <Icons.Wand2 size={16} />
         </button>
-        <KeyboardHint />
+        <KeyboardHint executeQuery={state.executeQueryShortcut} />
       </div>
 
       <div className={styles.right}>

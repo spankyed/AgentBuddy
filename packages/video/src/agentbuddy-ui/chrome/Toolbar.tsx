@@ -21,37 +21,37 @@ type ToolbarProps = {
   activePlugin: PluginId;
 };
 
-const topPlugins = [
-  {id: 'threads', label: 'Threads', icon: Icons.Threads},
-  {id: 'notes', label: 'Notes', icon: Icons.NotebookText},
-  {id: 'code', label: 'Code', icon: Icons.Code},
-  {id: 'library', label: 'Library', icon: Icons.Library},
-  {id: 'flows', label: 'Flows', icon: Icons.Flows},
-  {id: 'actions', label: 'Actions', icon: Icons.Play},
-  {id: 'prompts', label: 'Prompts', icon: Icons.Sparkle},
-] as const;
-
-const pinnedPlugins = [
-  {id: 'brain', label: 'Brain', icon: Icons.Brain},
-  {id: 'database', label: 'Database', icon: Icons.Database},
-  {id: 'logs', label: 'Logs', icon: Icons.Bug},
-  {id: 'settings', label: 'Settings', icon: Icons.Settings},
+const toolbarPlugins = [
+  {id: 'threads', label: 'Threads', icon: Icons.Threads, isPinned: false},
+  {id: 'notes', label: 'Notes', icon: Icons.NotebookText, isPinned: false},
+  {id: 'code', label: 'Code', icon: Icons.Code2, isPinned: false},
+  {id: 'library', label: 'Library', icon: Icons.Library, isPinned: false},
+  {id: 'flows', label: 'Flows', icon: Icons.Flows, isPinned: false},
+  {id: 'actions', label: 'Actions', icon: Icons.Play, isPinned: false},
+  {id: 'prompts', label: 'Prompts', icon: Icons.Sparkle, isPinned: false},
+  {id: 'brain', label: 'Brain', icon: Icons.Brain, isPinned: true},
+  {id: 'database', label: 'Database', icon: Icons.Database, isPinned: true},
+  {id: 'logs', label: 'Logs', icon: Icons.Bug, isPinned: true},
+  {id: 'settings', label: 'Settings', icon: Icons.Settings, isPinned: true},
 ] as const;
 
 // Mirrors packages/renderer/src/core/components/layout/toolbar.vue.
 export function Toolbar({activePlugin}: ToolbarProps) {
+  const pluginItems = toolbarPlugins.filter(item => !item.isPinned);
+  const pinnedItems = toolbarPlugins.filter(item => item.isPinned);
+
   return (
     <aside className={styles.root} data-onboarding-id="toolbar">
       <div className={styles.windowControlsArea} />
       <div className={styles.scrollArea}>
         <div className={styles.buttonStack}>
-          {topPlugins.map(item => (
+          {pluginItems.map(item => (
             <ToolbarButton key={item.id} id={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
           ))}
         </div>
       </div>
       <div className={styles.pinnedArea}>
-        {pinnedPlugins.map(item => (
+        {pinnedItems.map(item => (
           <ToolbarButton key={item.id} id={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
         ))}
       </div>

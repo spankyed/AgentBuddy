@@ -50,10 +50,32 @@ export function GeneralSettingsTab({state}: {state: SettingsSurfaceState}) {
       </aside>
       <main className={styles.content}>
         <CurrentPanel state={state} />
-        {state.saveStatus === 'saved' ? <div className={styles.saveStatus}><Icons.CircleCheck size={12} />Settings saved</div> : null}
+        <SaveStatus status={state.saveStatus} />
       </main>
     </div>
   );
+}
+
+function SaveStatus({status}: {status?: SettingsSurfaceState['saveStatus']}) {
+  if (status === 'saving') {
+    return (
+      <div className={styles.saveStatus}>
+        <span className={styles.savingDot} />
+        Saving...
+      </div>
+    );
+  }
+
+  if (status === 'saved') {
+    return (
+      <div className={styles.saveStatus} data-status="saved">
+        <Icons.CircleCheck size={12} />
+        Settings saved
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function NavButton({active, item}: {

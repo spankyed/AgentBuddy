@@ -11,8 +11,8 @@ export function BrainNode({connectedExits, node, selected}: {
   selected?: boolean;
 }) {
   const statusStyle = {
-    left: `${node.x + flowNodeWidth(node) / 2 - 6}px`,
-    top: `${node.y - flowNodeHeight(node) / 2 - 6}px`,
+    left: `${node.x + flowNodeWidth(node) / 2 - 4}px`,
+    top: `${node.y - flowNodeHeight(node) / 2 - 4}px`,
   };
 
   return (

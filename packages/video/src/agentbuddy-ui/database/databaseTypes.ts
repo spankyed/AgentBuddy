@@ -72,6 +72,10 @@ export type DatabaseSurfaceState = {
   backup?: DatabaseBackupState;
   currentQuery: string;
   error: string | null;
+  executeQueryShortcut?: {
+    key: string;
+    modifiers: string[];
+  };
   executionTime: number | null;
   examples: QueryExample[];
   expandedSchemaCategoryIds?: Array<'attributes' | 'entities' | 'relations'>;
