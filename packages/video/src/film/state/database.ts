@@ -34,6 +34,7 @@ export const databaseSurfaceState: DatabaseSurfaceState = {
   error: null,
   examples: queryExamples,
   executionTime: 42.18,
+  expandedSchemaCategoryIds: ['entities', 'attributes', 'relations'],
   isAiPromptOpen: false,
   isAiQueryLoading: false,
   isLoading: false,

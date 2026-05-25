@@ -1,21 +1,30 @@
 .BrainNode_status {
   position: absolute;
   z-index: 2;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
-  border: 1px solid rgb(38 38 38);
-  box-shadow: 0 0 14px currentColor;
+  border: 1px solid rgb(38 38 38 / 50%);
+  box-shadow: 0 1px 2px currentColor;
+}
+
+.BrainNode_status[data-status="active"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: BrainNode_ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 .BrainNode_status[data-status="active"] {
-  background: rgb(74 222 128);
-  color: rgb(74 222 128 / 70%);
+  background: rgb(96 165 250);
+  color: rgb(96 165 250 / 50%);
 }
 
 .BrainNode_status[data-status="completed"] {
-  background: rgb(96 165 250);
-  color: rgb(96 165 250 / 65%);
+  background: rgb(34 197 94);
+  color: rgb(34 197 94 / 70%);
 }
 
 .BrainNode_status[data-status="failed"] {
@@ -26,4 +35,11 @@
 .BrainNode_status[data-status="paused"] {
   background: rgb(251 191 36);
   color: rgb(251 191 36 / 65%);
+}
+
+@keyframes BrainNode_ping {
+  75%, 100% {
+    opacity: 0;
+    transform: scale(2);
+  }
 }

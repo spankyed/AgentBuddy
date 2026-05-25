@@ -18,7 +18,7 @@ export function DataRenderer({compact = false, data, depth = 0, hideExpand = fal
         <div className={styles.actions}>
           {!isPrimitive(data) && !hideExpand ? (
             <button className={compact ? styles.compactAction : styles.action} title="View in modal" type="button">
-              <Icons.Maximize size={12} />
+              <Icons.Maximize2 size={12} />
               {!compact ? <span>Expand</span> : null}
             </button>
           ) : null}

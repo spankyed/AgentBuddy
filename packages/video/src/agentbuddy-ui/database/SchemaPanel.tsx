@@ -7,6 +7,7 @@ import './SchemaPanel.module.css';
 const styles = makeStyles('DatabaseSchemaPanel');
 
 type SchemaPanelProps = {
+  expandedCategoryIds?: Array<Category['id']>;
   schema: DatabaseSchema;
   searchQuery?: string;
   selectedItemId?: string;
@@ -18,8 +19,9 @@ type Category = {
   label: string;
 };
 
-export function SchemaPanel({schema, searchQuery = '', selectedItemId}: SchemaPanelProps) {
+export function SchemaPanel({expandedCategoryIds = [], schema, searchQuery = '', selectedItemId}: SchemaPanelProps) {
   const categories = filterCategories(toCategories(schema), searchQuery);
+  const expandedIds = new Set(expandedCategoryIds);
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -42,20 +44,24 @@ export function SchemaPanel({schema, searchQuery = '', selectedItemId}: SchemaPa
           categories.map(category => (
             <div className={styles.category} key={category.id}>
               <div className={styles.categoryHeader}>
-                <Icons.ChevronRight className={styles.categoryChevron} size={16} />
+                {category.children.length > 0 ? (
+                  <Icons.ChevronRight className={cx(styles.categoryChevron, expandedIds.has(category.id) && styles.categoryChevronExpanded)} size={16} />
+                ) : null}
                 <CategoryIcon categoryId={category.id} />
                 <span className={styles.categoryLabel}>{category.label}</span>
                 <span className={styles.count}>{category.children.length}</span>
               </div>
-              <div className={styles.children}>
-                {category.children.map(child => (
-                  <div className={cx(styles.child, selectedItemId === child.id && styles.selectedChild)} key={child.id} title={child.label}>
-                    <ItemIcon categoryId={category.id} selected={selectedItemId === child.id} />
-                    <span>{child.label}</span>
-                    <Icons.ChevronRight className={styles.childChevron} size={12} />
-                  </div>
-                ))}
-              </div>
+              {expandedIds.has(category.id) && category.children.length > 0 ? (
+                <div className={styles.children}>
+                  {category.children.map(child => (
+                    <div className={cx(styles.child, selectedItemId === child.id && styles.selectedChild)} key={child.id} title={child.label}>
+                      <ItemIcon categoryId={category.id} selected={selectedItemId === child.id} />
+                      <span>{child.label}</span>
+                      <Icons.ChevronRight className={styles.childChevron} size={12} />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))
         ) : (
@@ -111,5 +117,5 @@ function ItemIcon({categoryId, selected}: {categoryId: Category['id']; selected:
   const className = cx(styles.itemIcon, selected && styles.selectedItemIcon);
   if (categoryId === 'attributes') return <Icons.Hash className={className} size={12} />;
   if (categoryId === 'relations') return <Icons.Network className={className} size={12} />;
-  return <Icons.Square className={className} size={12} />;
+  return <Icons.Box className={className} size={12} />;
 }

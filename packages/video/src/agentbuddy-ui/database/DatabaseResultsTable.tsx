@@ -15,7 +15,7 @@ type DatabaseResultsTableProps = {
 
 export function DatabaseResultsTable({error, executionTime, isLoading, rows}: DatabaseResultsTableProps) {
   const currentState = getState({error, isLoading, rows});
-  const headers = rows && rows.length > 0 ? Object.keys(rows[0]) : [];
+  const headers = rows && rows.length > 0 ? collectHeaders(rows) : [];
   return (
     <div className={styles.root}>
       <div className={styles.tableContainer}>
@@ -63,4 +63,12 @@ function formatCellValue(value: unknown) {
   if (value === null || value === undefined) return '';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+}
+
+function collectHeaders(rows: DatabaseResultRow[]) {
+  const headers = new Set<string>();
+  rows.forEach(row => {
+    Object.keys(row).forEach(key => headers.add(key));
+  });
+  return Array.from(headers);
 }

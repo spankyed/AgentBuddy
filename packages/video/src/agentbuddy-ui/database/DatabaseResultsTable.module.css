@@ -54,6 +54,10 @@
   background: rgb(64 64 64 / 30%);
 }
 
+.DatabaseResultsTable_table tbody tr {
+  cursor: pointer;
+}
+
 .DatabaseResultsTable_table td {
   color: rgb(245 245 245);
   padding: 8px 16px;

@@ -25,6 +25,12 @@
   transition: background-color 160ms ease, color 160ms ease;
 }
 
+.LogsDataRenderer_action:hover,
+.LogsDataRenderer_compactAction:hover {
+  background: rgb(64 64 64);
+  color: rgb(229 229 229);
+}
+
 .LogsDataRenderer_action {
   padding: 4px 8px;
 }

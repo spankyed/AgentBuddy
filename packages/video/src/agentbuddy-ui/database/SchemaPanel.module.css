@@ -87,6 +87,14 @@
 .DatabaseSchemaPanel_categoryChevron {
   margin-right: 8px;
   color: rgb(163 163 163);
+  transition: transform 200ms ease, color 150ms ease;
+}
+
+.DatabaseSchemaPanel_categoryHeader:hover .DatabaseSchemaPanel_categoryChevron {
+  color: rgb(212 212 212);
+}
+
+.DatabaseSchemaPanel_categoryChevronExpanded {
   transform: rotate(90deg);
 }
 

@@ -13,11 +13,11 @@ export function DatabaseBackupRestore({state}: {state: DatabaseBackupState}) {
         <div className={styles.headerInner}>
           <button className={styles.back} type="button"><Icons.ArrowLeft size={16} />Back to Database</button>
           <div className={styles.tabs}>
-            <button className={styles.tab} data-active={isExport} type="button"><Icons.ArrowDownToLine size={16} />Export</button>
-            <button className={styles.tab} data-active={!isExport} type="button"><Icons.ArrowUpFromLine size={16} />Import</button>
+            <button className={styles.tab} data-active={isExport} type="button"><Icons.HardDriveDownload size={16} />Export</button>
+            <button className={styles.tab} data-active={!isExport} type="button"><Icons.HardDriveUpload size={16} />Import</button>
           </div>
           <button className={styles.action} data-tab={state.activeTab} type="button">
-            {isExport ? <Icons.ArrowDownToLine size={16} /> : <Icons.ArrowUpFromLine size={16} />}
+            {state.isProcessing ? <Icons.Loader2 className={styles.spinner} size={16} /> : isExport ? <Icons.Download size={16} /> : <Icons.Upload size={16} />}
             {state.isProcessing ? (isExport ? 'Exporting...' : 'Importing...') : (isExport ? 'Export Backup' : 'Import Backup')}
           </button>
         </div>

@@ -16,8 +16,8 @@ export function ActionParametersEditor({parameters}: ActionParametersEditorProps
     <div className={styles.root}>
       {entries.length > 0 ? (
         <div className={styles.parameters}>
-          {entries.map(([key, parameter], index) => (
-            <ParameterRow expanded={index === 0} key={key} parameter={parameter} paramKey={key} />
+          {entries.map(([key, parameter]) => (
+            <ParameterRow expanded={false} key={key} parameter={parameter} paramKey={key} />
           ))}
         </div>
       ) : null}

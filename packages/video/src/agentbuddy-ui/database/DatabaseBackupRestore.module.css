@@ -77,6 +77,16 @@
   background: rgb(220 38 38);
 }
 
+.DatabaseBackupRestore_spinner {
+  animation: DatabaseBackupRestore_spin 900ms linear infinite;
+}
+
+@keyframes DatabaseBackupRestore_spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .DatabaseBackupRestore_scroll {
   flex: 1;
   overflow-y: auto;

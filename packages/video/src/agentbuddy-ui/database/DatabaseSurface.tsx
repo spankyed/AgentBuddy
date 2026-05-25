@@ -25,7 +25,7 @@ export function DatabaseSurface({state}: DatabaseSurfaceProps) {
   return (
     <div className={styles.root}>
       <div className={styles.schemaPanel}>
-        <SchemaPanel schema={state.schema} searchQuery={state.searchQuery} selectedItemId={state.selectedSchemaItemId} />
+        <SchemaPanel expandedCategoryIds={state.expandedSchemaCategoryIds} schema={state.schema} searchQuery={state.searchQuery} selectedItemId={state.selectedSchemaItemId} />
         <div className={styles.schemaResizeHandle}>
           <div />
         </div>

@@ -14,9 +14,9 @@ export function PromptInputsEditor({inputs}: PromptInputsEditorProps) {
   const entries = Object.entries(inputs);
   return (
     <div className={styles.root}>
-      {entries.map(([key, input], index) => (
+      {entries.map(([key, input]) => (
         <ParameterRow
-          expanded={index === 0}
+          expanded={false}
           key={key}
           parameter={{
             description: input.description,

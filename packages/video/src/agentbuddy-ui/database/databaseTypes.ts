@@ -74,6 +74,7 @@ export type DatabaseSurfaceState = {
   error: string | null;
   executionTime: number | null;
   examples: QueryExample[];
+  expandedSchemaCategoryIds?: Array<'attributes' | 'entities' | 'relations'>;
   isAiPromptOpen: boolean;
   isAiQueryLoading: boolean;
   isLoading: boolean;
