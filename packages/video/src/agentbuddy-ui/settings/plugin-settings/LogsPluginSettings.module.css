@@ -40,9 +40,16 @@
 .LogsPluginSettings_ticks {
   display: flex;
   justify-content: space-between;
-  color: rgb(82 82 82);
-  font-size: 12px;
   margin-top: 8px;
+}
+
+.LogsPluginSettings_ticks button {
+  border: 0;
+  background: transparent;
+  color: rgb(82 82 82);
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
 }
 
 .LogsPluginSettings_copy {

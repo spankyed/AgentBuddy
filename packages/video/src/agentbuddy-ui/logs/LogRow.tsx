@@ -102,10 +102,31 @@ function LevelIcon({level}: {level: LogEntry['level']}) {
 }
 
 function formatTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString(undefined, {
+  const date = new Date(timestamp);
+  const now = new Date();
+
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `Yesterday ${date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
   });
 }
 

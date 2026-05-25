@@ -1,7 +1,13 @@
 import {Icons} from '../primitives/Icon';
+import {ActionsPluginSettings} from './plugin-settings/ActionsPluginSettings';
 import {BrainPluginSettings} from './plugin-settings/BrainPluginSettings';
+import {CodePluginSettings} from './plugin-settings/CodePluginSettings';
 import {DatabasePluginSettings} from './plugin-settings/DatabasePluginSettings';
+import {FlowsPluginSettings} from './plugin-settings/FlowsPluginSettings';
 import {LogsPluginSettings} from './plugin-settings/LogsPluginSettings';
+import {NotesPluginSettings} from './plugin-settings/NotesPluginSettings';
+import {PromptsPluginSettings} from './plugin-settings/PromptsPluginSettings';
+import {ThreadsPluginSettings} from './plugin-settings/ThreadsPluginSettings';
 import type {PluginSettingsItem, SettingsSurfaceState} from './settingsTypes';
 import './PluginsSettingsTab.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -47,10 +53,16 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
 
 function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem['id']; state: SettingsSurfaceState}) {
   switch (selected) {
+    case 'actions':
+      return <ActionsPluginSettings categories={state.selectedPluginSettings?.actions?.categories} />;
     case 'brain':
       return <BrainPluginSettings />;
+    case 'code':
+      return <CodePluginSettings settings={state.selectedPluginSettings?.code} projects={state.projects} />;
     case 'database':
       return <DatabasePluginSettings executeQueryShortcut={state.selectedPluginSettings?.database?.executeQueryShortcut} />;
+    case 'flows':
+      return <FlowsPluginSettings settings={state.selectedPluginSettings?.flows} />;
     case 'logs':
       return (
         <LogsPluginSettings
@@ -58,8 +70,14 @@ function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem
           maxLogs={state.selectedPluginSettings?.logs?.maxLogs}
         />
       );
+    case 'notes':
+      return <NotesPluginSettings settings={state.selectedPluginSettings?.notes} />;
+    case 'prompts':
+      return <PromptsPluginSettings categories={state.selectedPluginSettings?.prompts?.categories} />;
+    case 'threads':
+      return <ThreadsPluginSettings settings={state.selectedPluginSettings?.threads} />;
     default:
-      return <div className={styles.card} />;
+      return null;
   }
 }
 

@@ -5,14 +5,19 @@
 .CollapsiblePluginSection_header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgb(38 38 38 / 60%);
-  color: rgb(229 229 229);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 0 0 12px;
+  gap: 8px;
+  color: rgb(163 163 163);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .CollapsiblePluginSection_body {
-  padding-top: 16px;
+  margin: 12px 24px 16px;
+}
+
+.CollapsiblePluginSection_chevronOpen {
+  transform: rotate(90deg);
 }

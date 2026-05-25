@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import './BrainPluginSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('BrainPluginSettings');
@@ -6,8 +7,7 @@ const styles = makeStyles('BrainPluginSettings');
 export function BrainPluginSettings() {
   return (
     <div className={styles.root}>
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>Brain Status</header>
+      <CollapsiblePluginSection label="Brain Status">
         <div className={styles.card}>
           <div className={styles.statusRow}>
             <Icons.CircleCheck size={20} color="rgb(34 197 94)" />
@@ -22,15 +22,14 @@ export function BrainPluginSettings() {
             <button className={styles.button} data-tone="danger" type="button"><Icons.Power size={16} />Kill Brain</button>
           </div>
         </div>
-      </section>
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>Inspect Mode</header>
+      </CollapsiblePluginSection>
+      <CollapsiblePluginSection label="Inspect Mode" defaultOpen={false}>
         <p className={styles.copy} style={{marginTop: 16}}>Enable inspect mode to see detailed brain execution information in the inspection panel</p>
         <div className={styles.toggleRow}>
           <span className={styles.toggleLabel}>Inspect Mode:</span>
           <button className={styles.toggle} type="button">Disabled</button>
         </div>
-      </section>
+      </CollapsiblePluginSection>
     </div>
   );
 }

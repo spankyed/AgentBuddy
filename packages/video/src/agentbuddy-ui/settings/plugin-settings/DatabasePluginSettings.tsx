@@ -14,12 +14,12 @@ export function DatabasePluginSettings({executeQueryShortcut = '⌘ ↵'}: {exec
         <p className={styles.hint}>Run the current query or transaction in the editor</p>
       </CollapsiblePluginSection>
 
-      <CollapsiblePluginSection label="Backup & Restore">
+      <CollapsiblePluginSection label="Backup & Restore" defaultOpen={false}>
         <p className={styles.copy}>Export and import database backups.</p>
-        <button className={styles.button} type="button"><Icons.ArrowDownToLine size={16} />Open Backup & Restore</button>
+        <button className={styles.button} type="button"><Icons.HardDriveDownload size={16} />Open Backup & Restore</button>
       </CollapsiblePluginSection>
 
-      <CollapsiblePluginSection label="Danger Zone">
+      <CollapsiblePluginSection label="Danger Zone" defaultOpen={false}>
         <div className={styles.danger}>
           <div className={styles.dangerTitle}>Reset Database</div>
           <p className={styles.dangerCopy}>This will permanently delete all data from the database and create a new root flow. This action cannot be undone.</p>

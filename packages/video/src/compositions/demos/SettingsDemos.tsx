@@ -4,15 +4,21 @@ import type {SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTy
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
+  settingsActionsPluginState,
   settingsApplicationState,
+  settingsCodePluginState,
   settingsDatabasePluginState,
+  settingsFlowsPluginState,
   settingsHelpState,
   settingsJsonState,
   settingsLogsPluginState,
+  settingsNotesPluginState,
   settingsPersonalState,
   settingsPluginsState,
+  settingsPromptsPluginState,
   settingsProjectsState,
   settingsProvidersState,
+  settingsThreadsPluginState,
 } from '../../film/state/settings';
 
 function SettingsDemoWindow({state}: {state: SettingsSurfaceState}) {
@@ -32,6 +38,12 @@ export const SettingsProjectsDemo = () => <SettingsDemoWindow state={settingsPro
 export const SettingsPersonalDemo = () => <SettingsDemoWindow state={settingsPersonalState} />;
 export const SettingsJsonDemo = () => <SettingsDemoWindow state={settingsJsonState} />;
 export const SettingsPluginsDemo = () => <SettingsDemoWindow state={settingsPluginsState} />;
+export const SettingsCodePluginDemo = () => <SettingsDemoWindow state={settingsCodePluginState} />;
 export const SettingsDatabasePluginDemo = () => <SettingsDemoWindow state={settingsDatabasePluginState} />;
+export const SettingsFlowsPluginDemo = () => <SettingsDemoWindow state={settingsFlowsPluginState} />;
 export const SettingsLogsPluginDemo = () => <SettingsDemoWindow state={settingsLogsPluginState} />;
+export const SettingsNotesPluginDemo = () => <SettingsDemoWindow state={settingsNotesPluginState} />;
+export const SettingsActionsPluginDemo = () => <SettingsDemoWindow state={settingsActionsPluginState} />;
+export const SettingsPromptsPluginDemo = () => <SettingsDemoWindow state={settingsPromptsPluginState} />;
+export const SettingsThreadsPluginDemo = () => <SettingsDemoWindow state={settingsThreadsPluginState} />;
 export const SettingsHelpDemo = () => <SettingsDemoWindow state={settingsHelpState} />;

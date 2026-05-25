@@ -18,7 +18,13 @@ export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 
           <span className={styles.small}>• Older logs are automatically removed</span>
         </div>
         <input className={styles.range} readOnly type="range" min={100} max={10000} step={100} value={maxLogs} />
-        <div className={styles.ticks}><span>100</span><span>500</span><span>1k</span><span>5k</span><span>10k</span></div>
+        <div className={styles.ticks}>
+          <button type="button">100</button>
+          <button type="button">500</button>
+          <button type="button">1k</button>
+          <button type="button">5k</button>
+          <button type="button">10k</button>
+        </div>
       </CollapsiblePluginSection>
 
       <CollapsiblePluginSection label="Excluded Sources">

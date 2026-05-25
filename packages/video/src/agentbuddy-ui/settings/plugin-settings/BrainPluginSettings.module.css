@@ -2,21 +2,6 @@
   max-width: 768px;
 }
 
-.BrainPluginSettings_section {
-  margin-bottom: 32px;
-}
-
-.BrainPluginSettings_sectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgb(38 38 38 / 60%);
-  color: rgb(229 229 229);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 0 0 12px;
-}
-
 .BrainPluginSettings_card {
   border: 1px solid rgb(64 64 64 / 50%);
   border-radius: 8px;

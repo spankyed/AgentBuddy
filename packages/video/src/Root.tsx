@@ -47,15 +47,21 @@ import {
   PromptDetailDemo,
   PromptsListDemo,
   PromptsSurfaceDemo,
+  SettingsActionsPluginDemo,
   SettingsApplicationDemo,
+  SettingsCodePluginDemo,
   SettingsDatabasePluginDemo,
+  SettingsFlowsPluginDemo,
   SettingsHelpDemo,
   SettingsJsonDemo,
   SettingsLogsPluginDemo,
+  SettingsNotesPluginDemo,
   SettingsPersonalDemo,
   SettingsPluginsDemo,
+  SettingsPromptsPluginDemo,
   SettingsProjectsDemo,
   SettingsProvidersDemo,
+  SettingsThreadsPluginDemo,
   SourceControlPanelDemo,
   TaskListPanelDemo,
   TaskListPanelMenuDemo,
@@ -105,8 +111,14 @@ export const RemotionRoot = () => {
       <Composition id="SettingsPersonalDemo" component={SettingsPersonalDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsJsonDemo" component={SettingsJsonDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsPluginsDemo" component={SettingsPluginsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsCodePluginDemo" component={SettingsCodePluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsDatabasePluginDemo" component={SettingsDatabasePluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsFlowsPluginDemo" component={SettingsFlowsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsLogsPluginDemo" component={SettingsLogsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsNotesPluginDemo" component={SettingsNotesPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsActionsPluginDemo" component={SettingsActionsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsPromptsPluginDemo" component={SettingsPromptsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsThreadsPluginDemo" component={SettingsThreadsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsHelpDemo" component={SettingsHelpDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerDemo" component={ChatComposerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerWithAttachmentDemo" component={ChatComposerWithAttachmentDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
