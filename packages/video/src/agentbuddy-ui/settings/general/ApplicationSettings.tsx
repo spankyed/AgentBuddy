@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {HotkeysSettings} from './HotkeysSettings';
 import './SettingsCommon.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('SettingsCommon');
@@ -11,12 +12,7 @@ export function ApplicationSettings() {
         <p className={styles.description}>Import setup packs, configure hotkeys, and manage app data.</p>
       </header>
       <section className={styles.card}>
-        <div className={styles.sectionHeader}><Icons.Keyboard size={16} />Hotkeys</div>
-        <div className={styles.grid2}>
-          <Hotkey label="Switch Plugin Up" value="⌘ ↑" />
-          <Hotkey label="Switch Plugin Down" value="⌘ ↓" />
-          <Hotkey label="Toggle Inspection Panel" value="⌘ I" />
-        </div>
+        <HotkeysSettings />
       </section>
       <section className={styles.card}>
         <div className={styles.sectionHeader}><Icons.PackageOpen size={16} />Import Setup Pack</div>
@@ -29,14 +25,5 @@ export function ApplicationSettings() {
         <button className={styles.input} style={{background: 'rgb(220 38 38)', marginTop: 16, width: 'auto'}} type="button">Reset App...</button>
       </section>
     </div>
-  );
-}
-
-function Hotkey({label, value}: {label: string; value: string}) {
-  return (
-    <label>
-      <span className={styles.label}>{label}</span>
-      <input className={styles.input} readOnly value={value} />
-    </label>
   );
 }

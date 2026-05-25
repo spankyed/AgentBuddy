@@ -4,7 +4,14 @@ import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
-import {databaseExamplesState, databaseSurfaceState, databaseSurfaceStateForFrame} from '../../film/state/database';
+import {
+  databaseBackupExportState,
+  databaseBackupImportState,
+  databaseExamplesState,
+  databaseSurfaceState,
+  databaseSurfaceStateForFrame,
+  databaseTraceState,
+} from '../../film/state/database';
 
 function DatabaseDemoWindow({state = databaseSurfaceState}: {state?: DatabaseSurfaceState}) {
   const layout = useAppWindowLayout({hasRightRail: false});
@@ -25,3 +32,9 @@ export const DatabaseSurfaceDemo = () => {
 export const DatabaseQueryDemo = () => <DatabaseDemoWindow state={databaseSurfaceState} />;
 
 export const DatabaseExamplesDemo = () => <DatabaseDemoWindow state={databaseExamplesState} />;
+
+export const DatabaseBackupExportDemo = () => <DatabaseDemoWindow state={databaseBackupExportState} />;
+
+export const DatabaseBackupImportDemo = () => <DatabaseDemoWindow state={databaseBackupImportState} />;
+
+export const DatabaseTraceDemo = () => <DatabaseDemoWindow state={databaseTraceState} />;

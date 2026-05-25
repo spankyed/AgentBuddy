@@ -1,4 +1,6 @@
 import {DatabaseResultsTable} from './DatabaseResultsTable';
+import {DatabaseBackupRestore} from './DatabaseBackupRestore';
+import {DatabaseTraceViewer} from './DatabaseTraceViewer';
 import type {DatabaseSurfaceState} from './databaseTypes';
 import {QueryEditorPanel} from './QueryEditorPanel';
 import {SchemaPanel} from './SchemaPanel';
@@ -12,6 +14,14 @@ type DatabaseSurfaceProps = {
 };
 
 export function DatabaseSurface({state}: DatabaseSurfaceProps) {
+  if (state.viewMode === 'backup' && state.backup) {
+    return <DatabaseBackupRestore state={state.backup} />;
+  }
+
+  if (state.viewMode === 'trace' && state.trace) {
+    return <DatabaseTraceViewer state={state.trace} />;
+  }
+
   return (
     <div className={styles.root}>
       <div className={styles.schemaPanel}>

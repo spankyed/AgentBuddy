@@ -5,8 +5,10 @@ import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   settingsApplicationState,
+  settingsDatabasePluginState,
   settingsHelpState,
   settingsJsonState,
+  settingsLogsPluginState,
   settingsPersonalState,
   settingsPluginsState,
   settingsProjectsState,
@@ -30,4 +32,6 @@ export const SettingsProjectsDemo = () => <SettingsDemoWindow state={settingsPro
 export const SettingsPersonalDemo = () => <SettingsDemoWindow state={settingsPersonalState} />;
 export const SettingsJsonDemo = () => <SettingsDemoWindow state={settingsJsonState} />;
 export const SettingsPluginsDemo = () => <SettingsDemoWindow state={settingsPluginsState} />;
+export const SettingsDatabasePluginDemo = () => <SettingsDemoWindow state={settingsDatabasePluginState} />;
+export const SettingsLogsPluginDemo = () => <SettingsDemoWindow state={settingsLogsPluginState} />;
 export const SettingsHelpDemo = () => <SettingsDemoWindow state={settingsHelpState} />;

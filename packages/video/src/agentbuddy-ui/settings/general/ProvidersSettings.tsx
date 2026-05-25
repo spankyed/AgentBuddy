@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import {CliProvidersSettings} from './CliProvidersSettings';
 import type {ProviderKeyState} from '../settingsTypes';
 import './SettingsCommon.module.css';
 import './ProvidersSettings.module.css';
@@ -13,6 +14,8 @@ export function ProvidersSettings({providers}: {providers: ProviderKeyState[]}) 
         <h2 className={common.title}>Secrets</h2>
         <p className={common.description}>Manage your API keys for various providers. Keys are stored securely in a separate database partition.</p>
       </header>
+      <CliProvidersSettings />
+      <div style={{borderTop: '1px solid rgb(38 38 38)', margin: '32px 0'}} />
       <section>
         <h3 className={common.sectionHeader}>Standard Providers</h3>
         <div className={styles.grid}>

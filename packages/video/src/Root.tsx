@@ -17,8 +17,11 @@ import {
   CodeReviewDemo,
   ContentBlocksDemo,
   DatabaseExamplesDemo,
+  DatabaseBackupExportDemo,
+  DatabaseBackupImportDemo,
   DatabaseQueryDemo,
   DatabaseSurfaceDemo,
+  DatabaseTraceDemo,
   FlowCanvasDemo,
   LogsFilteredDemo,
   LogsListDemo,
@@ -45,8 +48,10 @@ import {
   PromptsListDemo,
   PromptsSurfaceDemo,
   SettingsApplicationDemo,
+  SettingsDatabasePluginDemo,
   SettingsHelpDemo,
   SettingsJsonDemo,
+  SettingsLogsPluginDemo,
   SettingsPersonalDemo,
   SettingsPluginsDemo,
   SettingsProjectsDemo,
@@ -88,6 +93,9 @@ export const RemotionRoot = () => {
       <Composition id="DatabaseQueryDemo" component={DatabaseQueryDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseExamplesDemo" component={DatabaseExamplesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseSurfaceDemo" component={DatabaseSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseBackupExportDemo" component={DatabaseBackupExportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseBackupImportDemo" component={DatabaseBackupImportDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="DatabaseTraceDemo" component={DatabaseTraceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsListDemo" component={LogsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsFilteredDemo" component={LogsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsSurfaceDemo" component={LogsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -97,6 +105,8 @@ export const RemotionRoot = () => {
       <Composition id="SettingsPersonalDemo" component={SettingsPersonalDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsJsonDemo" component={SettingsJsonDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsPluginsDemo" component={SettingsPluginsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsDatabasePluginDemo" component={SettingsDatabasePluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsLogsPluginDemo" component={SettingsLogsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsHelpDemo" component={SettingsHelpDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerDemo" component={ChatComposerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerWithAttachmentDemo" component={ChatComposerWithAttachmentDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

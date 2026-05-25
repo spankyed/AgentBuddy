@@ -31,6 +31,15 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
   ],
   saveStatus: 'saved',
   selectedPluginId: 'brain',
+  selectedPluginSettings: {
+    database: {
+      executeQueryShortcut: '⌘ ↵',
+    },
+    logs: {
+      excludedSources: ['app-events', 'debug.*'],
+      maxLogs: 1000,
+    },
+  },
   settingsJson: JSON.stringify({
     general: {
       application: {hotkeys: {switchPluginDown: 'Cmd+Down', switchPluginUp: 'Cmd+Up'}},
@@ -86,6 +95,16 @@ export const settingsPluginsState: SettingsSurfaceState = {
   ...baseSettings,
   activeTab: 'plugins',
   generalNavItem: 'application',
+};
+
+export const settingsDatabasePluginState: SettingsSurfaceState = {
+  ...settingsPluginsState,
+  selectedPluginId: 'database',
+};
+
+export const settingsLogsPluginState: SettingsSurfaceState = {
+  ...settingsPluginsState,
+  selectedPluginId: 'logs',
 };
 
 export const settingsHelpState: SettingsSurfaceState = {

@@ -87,6 +87,75 @@ export const databaseAiLoadingState: DatabaseSurfaceState = {
   successMessage: '',
 };
 
+export const databaseBackupExportState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  backup: {
+    activeTab: 'export',
+    backupName: 'agentbuddy-launch-film',
+    exportPath: '/Users/spankyed/Documents/AgentBuddy Backups',
+    selectedDatabases: [
+      {description: 'Core application data (ears-db)', id: 'lmdb', label: 'Main Database', selected: true, tone: 'blue'},
+      {description: 'Execution traces (ears-trace)', id: 'volatileLmdb', label: 'Trace Database', selected: true, tone: 'green'},
+      {description: 'API keys and credentials', id: 'secretsLmdb', label: 'Secrets Database', selected: false, tone: 'amber'},
+    ],
+  },
+  viewMode: 'backup',
+};
+
+export const databaseBackupImportState: DatabaseSurfaceState = {
+  ...databaseBackupExportState,
+  backup: {
+    ...databaseBackupExportState.backup!,
+    activeTab: 'import',
+    importPath: '/Users/spankyed/Documents/AgentBuddy Backups/agentbuddy-launch-film',
+  },
+};
+
+export const databaseTraceState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  trace: {
+    currentFlowId: 'flow-release-automation',
+    events: [
+      {
+        id: 'trace-event-1',
+        label: 'Release automation',
+        metadata: {trigger: 'code.branch.published', branch: 'as/react-launch-film'},
+        nodeType: 'event',
+        startedAt: '10:34 AM',
+        status: 'completed',
+        subtype: 'listener',
+      },
+      {
+        children: [
+          {
+            id: 'trace-event-2a',
+            label: 'Create PR summary',
+            metadata: {provider: 'codex', tokens: 1842},
+            nodeType: 'step',
+            startedAt: '10:35 AM',
+            status: 'completed',
+            subtype: 'action',
+          },
+        ],
+        id: 'trace-event-2',
+        label: 'Publish launch workflow',
+        metadata: {flowId: 'release-automation', result: 'ready'},
+        nodeType: 'flow',
+        startedAt: '10:35 AM',
+        status: 'active',
+        subtype: 'flow',
+      },
+    ],
+    flows: [
+      {completedAt: '42.18ms', id: 'flow-release-automation', label: 'Release automation', startedAt: '10:34 AM', status: 'active'},
+      {completedAt: '1.4s', id: 'flow-onboarding', label: 'Start Onboarding', startedAt: '10:18 AM', status: 'completed'},
+      {completedAt: '812ms', id: 'flow-asset-check', label: 'Asset checks', startedAt: '9:57 AM', status: 'completed'},
+    ],
+    hasMore: true,
+  },
+  viewMode: 'trace',
+};
+
 export function databaseSurfaceStateForFrame(frame: number): DatabaseSurfaceState {
   if (frame < 80) return databaseExamplesState;
   if (frame < 130) return {...databaseSurfaceState, aiPrompt: 'Show the five most active launch threads', isAiPromptOpen: true, queryResult: null, successMessage: ''};

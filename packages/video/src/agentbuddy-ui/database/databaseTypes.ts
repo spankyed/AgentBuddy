@@ -18,9 +18,52 @@ export type QueryExample = {
 
 export type DatabaseResultRow = Record<string, unknown>;
 
+export type DatabaseBackupState = {
+  activeTab: 'export' | 'import';
+  backupName: string;
+  exportPath: string;
+  importPath?: string;
+  isProcessing?: boolean;
+  selectedDatabases: Array<{
+    description: string;
+    id: string;
+    label: string;
+    selected: boolean;
+    tone: 'blue' | 'green' | 'amber';
+  }>;
+};
+
+export type DatabaseTraceFlow = {
+  completedAt?: string;
+  id: string;
+  label: string;
+  startedAt: string;
+  status: 'active' | 'paused' | 'completed' | 'failed';
+};
+
+export type DatabaseTraceEvent = {
+  children?: DatabaseTraceEvent[];
+  id: string;
+  label: string;
+  metadata?: Record<string, unknown>;
+  nodeType: 'flow' | 'step' | 'event';
+  startedAt?: string;
+  status: 'active' | 'paused' | 'completed' | 'failed';
+  subtype?: string;
+};
+
+export type DatabaseTraceState = {
+  currentFlowId?: string;
+  events: DatabaseTraceEvent[];
+  flows: DatabaseTraceFlow[];
+  hasMore?: boolean;
+  isLoading?: boolean;
+};
+
 export type DatabaseSurfaceState = {
   activeMode: 'query' | 'examples';
   aiPrompt?: string;
+  backup?: DatabaseBackupState;
   currentQuery: string;
   error: string | null;
   executionTime: number | null;
@@ -34,4 +77,6 @@ export type DatabaseSurfaceState = {
   searchQuery: string;
   selectedSchemaItemId?: string;
   successMessage: string;
+  trace?: DatabaseTraceState;
+  viewMode?: 'database' | 'backup' | 'trace';
 };

@@ -32,6 +32,15 @@ export type SettingsSurfaceState = {
   projects: SettingsProject[];
   saveStatus?: 'idle' | 'saving' | 'saved';
   selectedPluginId?: PluginId;
+  selectedPluginSettings?: {
+    database?: {
+      executeQueryShortcut: string;
+    };
+    logs?: {
+      excludedSources: string[];
+      maxLogs: number;
+    };
+  };
   settingsJson: string;
   user: {
     address: {

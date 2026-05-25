@@ -1,5 +1,7 @@
 import {Icons} from '../primitives/Icon';
 import {BrainPluginSettings} from './plugin-settings/BrainPluginSettings';
+import {DatabasePluginSettings} from './plugin-settings/DatabasePluginSettings';
+import {LogsPluginSettings} from './plugin-settings/LogsPluginSettings';
 import type {PluginSettingsItem, SettingsSurfaceState} from './settingsTypes';
 import './PluginsSettingsTab.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -33,7 +35,7 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
               <h2 className={styles.title}>{selected.label} Settings</h2>
               {selected.id !== 'settings' ? <Icons.ExternalLink size={16} /> : null}
             </div>
-            {selected.id === 'brain' ? <BrainPluginSettings /> : <div className={styles.card} />}
+            <SelectedPluginSettings selected={selected.id} state={state} />
           </>
         ) : (
           <div className={styles.empty}><Icons.Package size={64} /><p>Select a plugin to configure its settings</p></div>
@@ -41,6 +43,24 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
       </main>
     </div>
   );
+}
+
+function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem['id']; state: SettingsSurfaceState}) {
+  switch (selected) {
+    case 'brain':
+      return <BrainPluginSettings />;
+    case 'database':
+      return <DatabasePluginSettings executeQueryShortcut={state.selectedPluginSettings?.database?.executeQueryShortcut} />;
+    case 'logs':
+      return (
+        <LogsPluginSettings
+          excludedSources={state.selectedPluginSettings?.logs?.excludedSources}
+          maxLogs={state.selectedPluginSettings?.logs?.maxLogs}
+        />
+      );
+    default:
+      return <div className={styles.card} />;
+  }
 }
 
 function PluginRow({plugin, selected}: {plugin: PluginSettingsItem; selected: boolean}) {
