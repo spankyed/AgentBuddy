@@ -17,15 +17,31 @@ export function ProjectsSettings({projects}: {projects: SettingsProject[]}) {
               <span className={styles.swatch} style={{background: project.color}} />
               <input className={`${common.input} ${styles.name}`} readOnly value={project.name} />
               <button className={styles.dirButton} type="button"><Icons.Plus size={12} />Add Directory</button>
-              <Icons.X size={14} />
+              <button className={styles.removeProjectButton} type="button"><Icons.X size={14} /></button>
             </header>
             <div className={styles.dirs}>
-              {project.directories.map((dir, index) => <span className={styles.dir} key={dir} style={index === 0 ? {borderLeft: `2px solid ${project.color}`} : undefined}>{dir.split('/').slice(-2).join('/')}</span>)}
+              {project.directories.map((dir, index) => (
+                <span
+                  className={styles.dir}
+                  data-primary={index === 0}
+                  key={dir}
+                  style={index === 0 ? {borderLeftColor: project.color} : undefined}
+                >
+                  <span>{getDirectoryName(dir)}</span>
+                  <button className={styles.removeDirButton} data-disabled={project.directories.length === 1} type="button"><Icons.X size={12} /></button>
+                </span>
+              ))}
             </div>
           </article>
         ))}
       </div>
-      <button className={styles.dirButton} style={{border: '2px dashed rgb(64 64 64)', marginTop: 12, padding: '8px 16px'}} type="button"><Icons.Plus size={14} />Add Project</button>
+      <button className={styles.addProjectButton} type="button"><Icons.Plus size={14} />Add Project</button>
     </div>
   );
+}
+
+function getDirectoryName(path: string) {
+  if (!path) return 'No directory';
+  const parts = path.split('/').filter(Boolean);
+  return parts.slice(-2).join('/') || path;
 }
