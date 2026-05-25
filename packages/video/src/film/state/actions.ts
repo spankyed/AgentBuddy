@@ -78,6 +78,32 @@ export const actionsListState: ActionsSurfaceState = {
   view: 'list',
 };
 
+export const actionsEmptyState: ActionsSurfaceState = {
+  actions: [],
+  categories: actionCategories,
+  hasActions: false,
+  hasMore: false,
+  loadingMore: false,
+  selectedCategories: [],
+  view: 'list',
+};
+
+export const actionCreateState: ActionsSurfaceState = {
+  categories: actionCategories,
+  formData: {
+    actionFn: '',
+    category: '',
+    description: '',
+    input: {},
+    label: '',
+    output: '',
+  },
+  metadataExpanded: true,
+  outputExpanded: false,
+  parametersExpanded: true,
+  view: 'create',
+};
+
 const selectedAction = actionsListState.actions[0];
 
 export const actionDetailState: ActionsSurfaceState = {

@@ -80,6 +80,32 @@ export const promptsListState: PromptsSurfaceState = {
   view: 'list',
 };
 
+export const promptsEmptyState: PromptsSurfaceState = {
+  categories: promptCategories,
+  hasMore: false,
+  hasPrompts: false,
+  loadingMore: false,
+  prompts: [],
+  selectedCategories: [],
+  view: 'list',
+};
+
+export const promptCreateState: PromptsSurfaceState = {
+  categories: promptCategories,
+  formData: {
+    category: '',
+    description: '',
+    inputs: {},
+    label: '',
+    outputSchema: '',
+    templateFn: '',
+  },
+  inputsExpanded: true,
+  metadataExpanded: true,
+  outputExpanded: false,
+  view: 'create',
+};
+
 const selectedPrompt = prompts[0];
 
 export const promptDetailState: PromptsSurfaceState = {

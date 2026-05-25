@@ -2,6 +2,8 @@ import {Composition} from 'remotion';
 import {AgentBuddyFilm, AgentBuddyFilmSquare} from './film/AgentBuddyFilm';
 import {
   ActionDetailDemo,
+  ActionCreateDemo,
+  ActionsEmptyDemo,
   ActionsListDemo,
   ActionsSurfaceDemo,
   BoardSurfaceDemo,
@@ -52,7 +54,9 @@ import {
   PullRequestDetailsDemo,
   PullRequestFilesDemo,
   PullRequestPanelDemo,
+  PromptCreateDemo,
   PromptDetailDemo,
+  PromptsEmptyDemo,
   PromptsListDemo,
   PromptsSurfaceDemo,
   SettingsBrainPluginDemo,
@@ -98,12 +102,16 @@ export const RemotionRoot = () => {
       <Composition id="AgentBuddyFilmSquare" component={AgentBuddyFilmSquare} durationInFrames={fullDuration} fps={fps} width={1080} height={1080} />
       <Composition id="ToolbarDemo" component={ToolbarDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsListDemo" component={ActionsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ActionsEmptyDemo" component={ActionsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ActionCreateDemo" component={ActionCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionDetailDemo" component={ActionDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsSurfaceDemo" component={ActionsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainSurfaceDemo" component={BrainSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainPausedDemo" component={BrainPausedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainStoppedDemo" component={BrainStoppedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsListDemo" component={PromptsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptsEmptyDemo" component={PromptsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PromptCreateDemo" component={PromptCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptDetailDemo" component={PromptDetailDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsSurfaceDemo" component={PromptsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="DatabaseQueryDemo" component={DatabaseQueryDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

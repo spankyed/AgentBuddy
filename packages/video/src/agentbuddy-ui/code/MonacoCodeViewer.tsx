@@ -3,6 +3,7 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/min/vs/editor/editor.main.css';
 import './MonacoCodeViewer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
+import {cx} from '../primitives/classNames';
 
 const styles = makeStyles('MonacoCodeViewer');
 
@@ -19,6 +20,7 @@ type MonacoCodeViewerProps = {
   lineNumbers?: 'off' | 'on';
   modified?: string;
   original?: string;
+  placeholder?: string;
   value?: string;
   wordWrap?: 'off' | 'on';
 };
@@ -34,6 +36,7 @@ export function MonacoCodeViewer({
   lineNumbers = 'off',
   modified,
   original,
+  placeholder,
   value = '',
   wordWrap = 'off',
 }: MonacoCodeViewerProps) {
@@ -116,7 +119,9 @@ export function MonacoCodeViewer({
   return (
     <div className={styles.root} style={{height}}>
       <div className={styles.editor} ref={containerRef} />
-      <pre className={styles.placeholder}>{isDiff ? (modified ?? original ?? value) : value}</pre>
+      <pre className={cx(styles.placeholder, !isDiff && !value && placeholder && styles.placeholderVisible)}>
+        {isDiff ? (modified ?? original ?? value) : value || placeholder}
+      </pre>
     </div>
   );
 }

@@ -49,3 +49,8 @@
   padding: 0.75rem;
   white-space: pre-wrap;
 }
+
+.MonacoCodeViewer_placeholderVisible {
+  z-index: 2;
+  pointer-events: none;
+}
