@@ -1,8 +1,10 @@
 import {Icons} from '../../primitives/Icon';
 import type {SettingsSurfaceState} from '../settingsTypes';
 import './SettingsCommon.module.css';
+import './PersonalSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('SettingsCommon');
+const personal = makeStyles('PersonalSettings');
 
 export function PersonalSettings({user}: {user: SettingsSurfaceState['user']}) {
   return (
@@ -20,15 +22,35 @@ export function PersonalSettings({user}: {user: SettingsSurfaceState['user']}) {
       </section>
       <section className={styles.card}>
         <div className={styles.sectionHeader}><Icons.MapPin size={16} />Address Information</div>
-        <div className={styles.grid2}>
-          <label><span className={styles.label}>Street Address</span><input className={styles.input} readOnly value={user.address.street} /></label>
-          <label><span className={styles.label}>Apartment, suite, etc.</span><input className={styles.input} readOnly value={user.address.street2 ?? ''} /></label>
-          <label><span className={styles.label}>City</span><input className={styles.input} readOnly value={user.address.city} /></label>
-          <label><span className={styles.label}>State</span><input className={styles.input} readOnly value={user.address.state} /></label>
-          <label><span className={styles.label}>Postal Code</span><input className={styles.input} readOnly value={user.address.postalCode} /></label>
-          <label><span className={styles.label}>Country</span><input className={styles.input} readOnly value={user.address.country} /></label>
+        <div className={personal.addressStack}>
+          <label className={personal.fieldLg}><span className={styles.label}>Street Address</span><input className={styles.input} readOnly value={user.address.street} placeholder="123 Main Street" /></label>
+          <label className={personal.fieldSm}>
+            <span className={styles.label}>Apartment / Suite <span className={personal.optional}>(optional)</span></span>
+            <input className={styles.input} readOnly value={user.address.street2 ?? ''} placeholder="Apt 4B, Suite 200, etc." />
+          </label>
+          <div className={personal.cityRow}>
+            <label><span className={styles.label}>City</span><input className={styles.input} readOnly value={user.address.city} placeholder="New York" /></label>
+            <label><span className={styles.label}>State</span><select className={personal.select} disabled value={user.address.state}><option>{user.address.state || 'Select'}</option></select></label>
+            <label><span className={styles.label}>ZIP Code</span><input className={styles.input} readOnly value={user.address.postalCode} placeholder="12345" /></label>
+          </div>
+          <label className={personal.fieldXs}><span className={styles.label}>Country</span><select className={personal.select} disabled value={user.address.country}><option value={user.address.country}>{countryLabel(user.address.country)}</option></select></label>
         </div>
       </section>
     </div>
   );
+}
+
+function countryLabel(country: string) {
+  if (country === 'US') return 'United States';
+  if (country === 'CA') return 'Canada';
+  if (country === 'MX') return 'Mexico';
+  if (country === 'GB') return 'United Kingdom';
+  if (country === 'AU') return 'Australia';
+  if (country === 'DE') return 'Germany';
+  if (country === 'FR') return 'France';
+  if (country === 'JP') return 'Japan';
+  if (country === 'CN') return 'China';
+  if (country === 'IN') return 'India';
+  if (country === 'BR') return 'Brazil';
+  return country || 'Other';
 }
