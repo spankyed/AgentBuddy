@@ -36,6 +36,11 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
             {state.selectedItemIds.length > 0 ? (
               <>
                 <span className={styles.selectionCount}>{state.selectedItemIds.length} selected</span>
+                {state.currentFolderId !== null && !state.isInSymlinkContext ? (
+                  <LibraryButton size="sm" variant="transparent">
+                    <Icons.ArrowUp size={16} />
+                  </LibraryButton>
+                ) : null}
                 <LibraryButton size="sm" variant="transparent">
                   <Icons.Trash2 size={16} />
                 </LibraryButton>
@@ -53,7 +58,7 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
             </div>
             <LibraryButton size="sm" variant="primary">
               <Icons.FileText size={16} />
-              <span>New Document</span>
+              <span>{state.isInSymlinkContext ? 'New File' : 'New Document'}</span>
             </LibraryButton>
           </div>
         </div>

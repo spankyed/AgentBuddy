@@ -16,6 +16,11 @@
   color: rgb(82 82 82);
 }
 
+.LibraryTableRow_broken .LibraryTableRow_itemIcon,
+.LibraryTableRow_broken .LibraryTableRow_itemName {
+  color: rgb(82 82 82);
+}
+
 .LibraryTableRow_nameCell {
   position: relative;
   padding: 4px 16px;

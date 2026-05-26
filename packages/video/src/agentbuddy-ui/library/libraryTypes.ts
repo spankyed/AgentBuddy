@@ -62,6 +62,7 @@ export type LibrarySurfaceState = {
   currentFolderId: string | null;
   currentView?: 'browser' | 'create' | 'edit';
   documentEditor?: LibraryDocumentEditorState;
+  isInSymlinkContext?: boolean;
   items: LibraryItemState[];
   panel: LibraryPanelState;
   selectedItemIds: string[];
