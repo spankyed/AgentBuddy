@@ -19,6 +19,17 @@ export type ProviderKeyState = {
   priority?: 'required' | 'recommended';
 };
 
+export type CliProviderSettings = {
+  error?: string;
+  installCmd: string;
+  installHint: string;
+  key: string;
+  label: string;
+  placeholder: string;
+  status?: 'success' | 'error' | 'testing';
+  value?: string;
+};
+
 export type CustomProviderKeyState = {
   hasKey?: boolean;
   id: string;
@@ -106,6 +117,7 @@ export type SettingsSurfaceState = {
   setupPackImport?: SetupPackImportState;
   confirmingReset?: boolean;
   resetting?: boolean;
+  cliProviders?: CliProviderSettings[];
   selectedPluginSettings?: {
     actions?: {
       categories: SettingsCategory[];

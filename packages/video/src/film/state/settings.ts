@@ -32,6 +32,12 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
   customProviders: [
     {hasKey: true, id: 'clientlabs-api', name: 'Clientlabs API'},
   ],
+  cliProviders: [
+    {installCmd: 'npm install -g @github/copilot', installHint: 'Install via npm', key: 'copilot', label: 'Copilot CLI', placeholder: 'Path override (auto-detected if empty)'},
+    {installCmd: 'npm install -g @anthropic-ai/claude-code', installHint: 'Install via npm', key: 'claude-code', label: 'Claude Code CLI', placeholder: 'Path override (auto-detected if empty)', status: 'success', value: '/opt/homebrew/bin/claude'},
+    {installCmd: 'npm install -g @openai/codex', installHint: 'Install via npm', key: 'codex', label: 'Codex CLI', placeholder: 'Path override (auto-detected if empty)', status: 'success', value: '/opt/homebrew/bin/codex'},
+    {installCmd: 'brew install gh', installHint: 'Install via Homebrew', key: 'gh', label: 'GitHub CLI', placeholder: 'Path override (auto-detected if empty)', status: 'error', error: 'CLI not found in PATH'},
+  ],
   providers: [
     {description: 'Claude 3, Claude 2', hasKey: true, key: 'anthropic', label: 'Anthropic', placeholder: 'Enter Anthropic API key', priority: 'required'},
     {description: 'GPT-4, GPT-3.5, DALL-E', hasKey: true, key: 'openai', label: 'OpenAI', placeholder: 'Enter OpenAI API key', priority: 'required'},

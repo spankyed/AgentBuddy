@@ -1,20 +1,20 @@
 import {Icons} from '../../primitives/Icon';
 import {CliProvidersSettings} from './CliProvidersSettings';
-import type {CustomProviderKeyState, ProviderKeyState} from '../settingsTypes';
+import type {CliProviderSettings, CustomProviderKeyState, ProviderKeyState} from '../settingsTypes';
 import './SettingsCommon.module.css';
 import './ProvidersSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const common = makeStyles('SettingsCommon');
 const styles = makeStyles('ProvidersSettings');
 
-export function ProvidersSettings({customProviders = [], providers}: {customProviders?: CustomProviderKeyState[]; providers: ProviderKeyState[]}) {
+export function ProvidersSettings({cliProviders, customProviders = [], providers}: {cliProviders?: CliProviderSettings[]; customProviders?: CustomProviderKeyState[]; providers: ProviderKeyState[]}) {
   return (
     <div className={common.panelNarrow}>
       <header className={common.header}>
         <h2 className={common.title}>Secrets</h2>
         <p className={common.description}>Manage your API keys for various providers. Keys are stored securely in a separate database partition.</p>
       </header>
-      <CliProvidersSettings />
+      <CliProvidersSettings providers={cliProviders} />
       <div style={{borderTop: '1px solid rgb(38 38 38)', margin: '32px 0'}} />
       <section>
         <h3 className={common.sectionHeader}>Standard Providers</h3>
