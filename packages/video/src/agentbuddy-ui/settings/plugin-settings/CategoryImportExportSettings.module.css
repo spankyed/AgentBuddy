@@ -114,6 +114,11 @@
   color: white;
 }
 
+.CategoryImportExportSettings_secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .CategoryImportExportSettings_addButton {
   align-self: flex-start;
   border-radius: 8px;

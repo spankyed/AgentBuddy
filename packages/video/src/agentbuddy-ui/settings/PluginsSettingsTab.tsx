@@ -36,7 +36,13 @@ export function PluginsSettingsTab({state}: {state: SettingsSurfaceState}) {
     <div className={styles.root}>
       <aside className={styles.sidebar}>
         <h3 className={styles.heading}>Plugins with Settings</h3>
-        {state.plugins.map(plugin => <PluginRow key={plugin.id} plugin={plugin} selected={selected?.id === plugin.id} />)}
+        {state.plugins.length === 0 ? (
+          <div className={styles.noPlugins}>
+            <p>No plugins have settings configured yet</p>
+          </div>
+        ) : (
+          state.plugins.map(plugin => <PluginRow key={plugin.id} plugin={plugin} selected={selected?.id === plugin.id} />)
+        )}
       </aside>
       <main className={styles.content}>
         {selected ? (

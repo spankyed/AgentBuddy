@@ -7,6 +7,8 @@ const styles = makeStyles('CommitLogSection');
 
 // Mirrors the lower CommitLogSection area inside packages/renderer/src/plugins/code/features/commit/CommitPanel.vue.
 export function CommitLogSection({commits}: {commits: CommitLogEntryState[]}) {
+  if (commits.length === 0) return null;
+
   return (
     <section className={styles.root}>
       <header className={styles.header}>

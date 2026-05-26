@@ -7,16 +7,20 @@ const styles = makeStyles('DatabaseBackupRestore');
 export function DatabaseBackupRestore({state}: {state: DatabaseBackupState}) {
   const selectedCount = state.selectedDatabases.filter(database => database.selected).length;
   const isExport = state.activeTab === 'export';
+  const canPerformAction = isExport
+    ? Boolean(state.exportPath && selectedCount > 0)
+    : Boolean(state.importPath && state.backupInfo);
+  const actionDisabled = !canPerformAction || Boolean(state.isProcessing);
   return (
     <div className={styles.root}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <button className={styles.back} type="button"><Icons.ArrowLeft size={16} />Back to Database</button>
+          <button className={styles.back} type="button"><Icons.ArrowLeft className={styles.backIcon} size={16} />Back to Database</button>
           <div className={styles.tabs}>
             <button className={styles.tab} data-active={isExport} type="button"><Icons.HardDriveDownload size={16} />Export</button>
             <button className={styles.tab} data-active={!isExport} type="button"><Icons.HardDriveUpload size={16} />Import</button>
           </div>
-          <button className={styles.action} data-tab={state.activeTab} type="button">
+          <button className={styles.action} data-disabled={actionDisabled ? 'true' : undefined} data-tab={state.activeTab} disabled={actionDisabled} type="button">
             {state.isProcessing ? <Icons.Loader2 className={styles.spinner} size={16} /> : isExport ? <Icons.Download size={16} /> : <Icons.Upload size={16} />}
             {state.isProcessing ? (isExport ? 'Exporting...' : 'Importing...') : (isExport ? 'Export Backup' : 'Import Backup')}
           </button>
@@ -29,11 +33,17 @@ export function DatabaseBackupRestore({state}: {state: DatabaseBackupState}) {
               <section className={styles.card}>
                 <label className={styles.label}>Backup Location</label>
                 <div className={styles.inputRow}>
-                  <div className={styles.inputWrap}><Icons.Folder className={styles.inputIcon} size={16} /><input className={styles.input} readOnly value={state.exportPath} /></div>
+                  <div className={styles.inputWrap}>
+                    <Icons.Folder className={styles.inputIcon} size={16} />
+                    <input className={styles.input} placeholder="/Users/spankyed/Documents/AgentBuddy Backups" readOnly value={state.exportPath} />
+                  </div>
                   <button className={styles.browse} type="button"><Icons.FolderOpen size={16} />Browse</button>
                 </div>
                 <label className={styles.label} style={{marginTop: 16}}>Backup Name <span style={{color: 'rgb(82 82 82)'}}>(Optional)</span></label>
-                <div className={styles.inputWrap}><Icons.FileText className={styles.inputIcon} size={16} /><input className={styles.input} readOnly value={state.backupName} /></div>
+                <div className={styles.inputWrap}>
+                  <Icons.FileText className={styles.inputIcon} size={16} />
+                  <input className={styles.input} placeholder={`backup-${new Date().toISOString().split('T')[0]}`} readOnly value={state.backupName} />
+                </div>
               </section>
               <DatabaseSelection count={selectedCount} databases={state.selectedDatabases} />
             </div>

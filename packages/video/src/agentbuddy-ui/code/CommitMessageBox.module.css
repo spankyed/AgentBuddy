@@ -90,12 +90,23 @@
   height: 30px;
   border: 0;
   border-radius: 0.25rem;
-  background: rgb(22 163 74);
-  color: white;
+  background: rgb(38 38 38);
+  color: rgb(115 115 115);
+  cursor: not-allowed;
   font-size: 0.875rem;
   font-weight: 500;
   margin-top: 0.5rem;
   transition: background 160ms ease;
+}
+
+.CommitMessageBox_button[data-enabled="true"] {
+  background: rgb(22 163 74);
+  color: white;
+  cursor: pointer;
+}
+
+.CommitMessageBox_button[data-enabled="true"]:hover {
+  background: rgb(21 128 61);
 }
 
 @keyframes CommitMessageBox_spin {

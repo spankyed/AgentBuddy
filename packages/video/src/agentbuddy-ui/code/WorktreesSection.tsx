@@ -7,6 +7,8 @@ const styles = makeStyles('WorktreesSection');
 
 // Mirrors the worktrees section rendered below source-control changes in the real code panel.
 export function WorktreesSection({worktrees}: {worktrees: WorktreeState[]}) {
+  if (worktrees.length === 0) return null;
+
   return (
     <section className={styles.root}>
       <header className={styles.header}>

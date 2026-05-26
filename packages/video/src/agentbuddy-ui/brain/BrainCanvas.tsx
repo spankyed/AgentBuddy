@@ -29,8 +29,9 @@ function buildEdges(nodes: BrainNodeState[]): FlowEdgeState[] {
 }
 
 export function BrainCanvas({state}: {state: BrainSurfaceState}) {
-  const nodes = layoutBrainTracks(state.tracks);
-  const edges = buildEdges(state.tracks);
+  const recentTracks = state.tracks.length > 150 ? state.tracks.slice(-150) : state.tracks;
+  const nodes = layoutBrainTracks(recentTracks);
+  const edges = buildEdges(recentTracks);
   const connectedExitsByNode = new Map<string, Set<number>>();
   for (const edge of edges) {
     if (edge.fromExit == null) continue;
@@ -66,7 +67,7 @@ export function BrainCanvas({state}: {state: BrainSurfaceState}) {
           />
         ))}
       </div>
-      {state.canGoBack ? <button className={styles.backButton} type="button"><Icons.ArrowLeft size={15} />Back</button> : null}
+      {state.canGoBack ? <button className={styles.backButton} type="button"><Icons.ArrowLeft size={14} />Back</button> : null}
       <button className={styles.fitButton} title="Jump to latest" type="button"><Icons.Maximize size={16} /></button>
       {state.flowTNodeId ? <div className={styles.currentLabel}>{state.flowTNodeId}</div> : null}
     </section>

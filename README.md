@@ -79,6 +79,12 @@ npm run start:inspect    # Dev mode with Electron inspection enabled
 npm run start:no-build   # Start dev mode without rebuilding first
 ```
 
+### Video Render OOM
+
+If a Remotion video render starts failing with a Node heap OOM, see
+[`packages/video/README.md`](packages/video/README.md) for the cache clear and
+heap-size retry steps.
+
 ### Build
 
 ```sh

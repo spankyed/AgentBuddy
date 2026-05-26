@@ -5,6 +5,8 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('CommitMessageBox');
 
 export function CommitMessageBox({branch, message, generating}: {branch: string; generating?: boolean; message: string}) {
+  const canCommit = message.trim().length > 0;
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -17,7 +19,7 @@ export function CommitMessageBox({branch, message, generating}: {branch: string;
         </button>
       </div>
       <textarea className={styles.textarea} data-generating={generating ? 'true' : undefined} placeholder={`Message (currently on ${branch})`} rows={4} value={message} readOnly />
-      <button className={styles.button}>Commit</button>
+      <button className={styles.button} data-enabled={canCommit ? 'true' : undefined} disabled={!canCommit}>Commit</button>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('LogsPluginSettings');
 const commonExclusions = ['app-events', 'xstate.*', 'debug.*', 'trace.*', 'verbose.*', 'system.*'];
 
-export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 1000}: {
+export function LogsPluginSettings({excludedSources = [], maxLogs = 1000}: {
   excludedSources?: string[];
   maxLogs?: number;
 }) {
@@ -30,14 +30,16 @@ export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 
 
       <CollapsiblePluginSection label="Excluded Sources">
         <p className={styles.copy}>Hide logs from noisy sources</p>
-        <div className={styles.exclusionList}>
-          {excludedSources.map(source => (
-            <div className={styles.exclusion} key={source}>
-              <button className={styles.removeButton} title="Remove" type="button"><Icons.X size={16} /></button>
-              <code className={styles.code}>{source}</code>
-            </div>
-          ))}
-        </div>
+        {excludedSources.length > 0 ? (
+          <div className={styles.exclusionList}>
+            {excludedSources.map(source => (
+              <div className={styles.exclusion} key={source}>
+                <button className={styles.removeButton} title="Remove" type="button"><Icons.X size={16} /></button>
+                <code className={styles.code}>{source}</code>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className={styles.addRow}>
           <input className={styles.input} readOnly value="" placeholder="Add pattern, e.g. debug.*" />
           <button className={styles.add} disabled type="button">Add</button>

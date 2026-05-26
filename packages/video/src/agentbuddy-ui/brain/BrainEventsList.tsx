@@ -35,7 +35,7 @@ export function BrainEventsList({events, pulsingEventType}: {events: BrainEventS
                 <div className={styles.meta}>
                   <span className={styles.eventType}>{eventSubtitle(event)}</span>
                   <span>•</span>
-                  <span>{event.triggerType === 'schedule' ? 'schedule' : event.scope ?? 'app'}</span>
+                  <span>{event.triggerType === 'schedule' ? 'schedule' : event.scope}</span>
                 </div>
               </div>
               <span className={styles.icon}><Icon size={14} /></span>

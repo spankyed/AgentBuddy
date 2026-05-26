@@ -264,3 +264,9 @@
     display: none;
   }
 }
+
+@container (max-width: 900px) {
+  .PromptsList_inputsColumn {
+    display: none;
+  }
+}

@@ -30,6 +30,20 @@
   font: inherit;
   font-size: 14px;
   padding: 6px 12px;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.DatabaseBackupRestore_back:hover {
+  background: rgb(38 38 38 / 50%);
+  color: white;
+}
+
+.DatabaseBackupRestore_backIcon {
+  transition: transform 200ms ease;
+}
+
+.DatabaseBackupRestore_back:hover .DatabaseBackupRestore_backIcon {
+  transform: translateX(-2px);
 }
 
 .DatabaseBackupRestore_tabs {
@@ -59,6 +73,10 @@
   color: white;
 }
 
+.DatabaseBackupRestore_tab:not([data-active="true"]):hover {
+  color: rgb(229 229 229);
+}
+
 .DatabaseBackupRestore_action {
   display: flex;
   align-items: center;
@@ -71,10 +89,30 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 20px;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.DatabaseBackupRestore_action:hover:not(:disabled) {
+  background: rgb(29 78 216);
+}
+
+.DatabaseBackupRestore_action[data-disabled="true"] {
+  cursor: not-allowed;
+  background: rgb(38 38 38);
+  color: rgb(115 115 115);
 }
 
 .DatabaseBackupRestore_action[data-tab="import"] {
   background: rgb(220 38 38);
+}
+
+.DatabaseBackupRestore_action[data-tab="import"]:hover:not(:disabled) {
+  background: rgb(185 28 28);
+}
+
+.DatabaseBackupRestore_action[data-tab="import"][data-disabled="true"] {
+  background: rgb(38 38 38);
+  color: rgb(115 115 115);
 }
 
 .DatabaseBackupRestore_spinner {
@@ -132,7 +170,18 @@
   color: white;
   font: inherit;
   font-size: 14px;
+  outline: none;
   padding: 8px 12px 8px 40px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.DatabaseBackupRestore_input::placeholder {
+  color: rgb(82 82 82);
+}
+
+.DatabaseBackupRestore_input:focus {
+  border-color: rgb(59 130 246 / 50%);
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
 }
 
 .DatabaseBackupRestore_browse {
@@ -146,6 +195,12 @@
   font: inherit;
   font-size: 14px;
   padding: 8px 16px;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.DatabaseBackupRestore_browse:hover {
+  border-color: rgb(64 64 64);
+  background: rgb(64 64 64);
 }
 
 .DatabaseBackupRestore_inputWrap {

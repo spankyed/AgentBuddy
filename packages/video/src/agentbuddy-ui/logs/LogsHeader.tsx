@@ -21,6 +21,7 @@ const levels: Array<{icon: keyof typeof Icons; level: LogLevel; className: strin
 export function LogsHeader({filteredCount, state}: LogsHeaderProps) {
   const total = state.logs.length;
   const counts = countByLevel(state.logs);
+  const allCountLabel = (state.filterLevel !== 'all' || state.searchTerm) && filteredCount !== total ? `${filteredCount}/${total}` : total;
   return (
     <div className={styles.root}>
       <div className={styles.row}>
@@ -38,7 +39,7 @@ export function LogsHeader({filteredCount, state}: LogsHeaderProps) {
           <div className={styles.levelPills}>
             <button className={cx(styles.allPill, state.filterLevel === 'all' && styles.allActive)} type="button">
               All
-              <span>{state.filterLevel !== 'all' || state.searchTerm ? `${filteredCount}/${total}` : total}</span>
+              <span>{allCountLabel}</span>
             </button>
             {levels.map(item => {
               const count = counts[item.level];

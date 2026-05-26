@@ -21,6 +21,17 @@
   text-transform: uppercase;
 }
 
+.PluginsSettingsTab_noPlugins {
+  padding: 24px 12px;
+  text-align: center;
+}
+
+.PluginsSettingsTab_noPlugins p {
+  margin: 0;
+  color: rgb(115 115 115);
+  font-size: 14px;
+}
+
 .PluginsSettingsTab_pluginRow {
   display: flex;
   align-items: center;
