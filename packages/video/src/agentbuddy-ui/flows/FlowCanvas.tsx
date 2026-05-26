@@ -23,7 +23,7 @@ export function FlowCanvas({state}: {state: FlowCanvasState}) {
   return (
     <div className={styles.root}>
       <FlowPalette items={state.paletteItems} />
-      <section className={styles.editor}>
+      <section className={styles.editor} data-onboarding-id="flow-editor-canvas">
         <button className={styles.backButton} type="button"><Icons.ArrowLeft size={15} />Back</button>
         <div
           className={styles.viewport}
