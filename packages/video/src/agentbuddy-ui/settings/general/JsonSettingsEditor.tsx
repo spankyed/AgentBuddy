@@ -18,7 +18,7 @@ export function JsonSettingsEditor({value}: {value: string}) {
         </div>
       </header>
       <div className={styles.editorFrame}>
-        <MonacoCodeViewer filePath="settings.json" language="json" lineNumbers="off" value={value} />
+        <MonacoCodeViewer filePath="settings.json" language="json" lineNumbers="on" value={value} />
       </div>
     </div>
   );

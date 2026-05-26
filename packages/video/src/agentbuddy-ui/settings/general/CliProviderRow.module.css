@@ -112,13 +112,32 @@
 }
 
 .CliProviderRow_command {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid rgb(64 64 64 / 50%);
   border-radius: 4px;
-  background: rgb(38 38 38 / 70%);
+  background: rgb(38 38 38 / 60%);
   color: rgb(163 163 163);
+  cursor: pointer;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 6px;
+  transition: background-color 160ms ease;
+}
+
+.CliProviderRow_command:hover {
+  background: rgb(64 64 64 / 60%);
+}
+
+.CliProviderRow_prompt,
+.CliProviderRow_copyIcon {
+  color: rgb(82 82 82);
+  transition: color 160ms ease;
+}
+
+.CliProviderRow_command:hover .CliProviderRow_copyIcon {
+  color: rgb(163 163 163);
 }
 
 .CliProviderRow_errorMessage {

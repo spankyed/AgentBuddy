@@ -32,7 +32,11 @@ export function CliProviderRow({provider}: {provider: CliProviderRowState}) {
 
       <div className={styles.helper}>
         <span>{provider.installHint}</span>
-        <code className={styles.command}>{provider.installCmd}</code>
+        <code className={styles.command}>
+          <span className={styles.prompt}>$</span>
+          <span>{provider.installCmd}</span>
+          <Icons.Copy className={styles.copyIcon} size={12} />
+        </code>
       </div>
 
       {provider.status === 'error' && provider.error ? <div className={styles.errorMessage}>{provider.error}</div> : null}
