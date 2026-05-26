@@ -1,5 +1,4 @@
 import type {FlowCanvasState, FlowsListState} from '../../agentbuddy-ui/flows/flowTypes';
-import {ease} from './timeline';
 
 export type WorkflowShotState = {
   breadcrumbs: string[];
@@ -70,27 +69,13 @@ export const flowsListMenuState: FlowsListState = {
 };
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {
-  const flow = releaseAutomationWorkflow.flow;
-
-  return {
-    ...flow,
-    viewport: workflowViewportForFrame(frame),
-  };
+  void frame;
+  return releaseAutomationWorkflow.flow;
 }
 
 export function workflowShotViewForFrame(frame: number): WorkflowShotView {
   return {
     breadcrumbs: releaseAutomationWorkflow.breadcrumbs,
     flow: workflowStateForFrame(frame),
-  };
-}
-
-export function workflowViewportForFrame(frame: number): NonNullable<FlowCanvasState['viewport']> {
-  const firstMove = ease(frame, 40, 118);
-  const secondMove = ease(frame, 170, 268);
-  return {
-    x: -28 * firstMove - 46 * secondMove,
-    y: 18 * firstMove - 38 * secondMove,
-    zoom: 1 + 0.08 * firstMove + 0.08 * secondMove,
   };
 }

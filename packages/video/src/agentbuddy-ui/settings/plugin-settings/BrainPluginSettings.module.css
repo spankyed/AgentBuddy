@@ -59,6 +59,10 @@
   color: rgb(163 163 163);
 }
 
+.BrainPluginSettings_card[data-state="stopped"] .BrainPluginSettings_statusCopy {
+  color: rgb(115 115 115);
+}
+
 .BrainPluginSettings_card[data-state="restart"] .BrainPluginSettings_statusTitle {
   color: rgb(251 191 36);
 }
@@ -85,6 +89,11 @@
 
 .BrainPluginSettings_card[data-state="restart"] .BrainPluginSettings_lowerBlock {
   border-top-color: rgb(180 83 9 / 30%);
+}
+
+.BrainPluginSettings_card[data-state="stopped"] .BrainPluginSettings_lowerBlock,
+.BrainPluginSettings_card[data-state="restart"] .BrainPluginSettings_lowerBlock {
+  padding-top: 16px;
 }
 
 .BrainPluginSettings_caution {

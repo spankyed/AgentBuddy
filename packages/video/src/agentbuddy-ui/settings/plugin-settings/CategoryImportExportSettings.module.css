@@ -57,13 +57,11 @@
   color: rgb(82 82 82);
 }
 
-.CategoryImportExportSettings_input:hover,
-.CategoryImportExportSettings_directoryInput:hover {
+.CategoryImportExportSettings_input:hover {
   border-color: rgb(82 82 82);
 }
 
-.CategoryImportExportSettings_input:focus,
-.CategoryImportExportSettings_directoryInput:focus {
+.CategoryImportExportSettings_input:focus {
   border-color: rgb(59 130 246 / 50%);
   box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
 }

@@ -47,7 +47,6 @@
 .DatabaseSchemaPanel_clearSearch,
 .DatabaseSchemaPanel_refreshButton {
   border: 0;
-  border-radius: 8px;
   background: transparent;
   color: rgb(163 163 163);
   transition: background-color 160ms ease, color 160ms ease;
@@ -63,11 +62,13 @@
   position: absolute;
   right: 8px;
   top: 50%;
+  border-radius: 4px;
   padding: 4px;
   transform: translateY(-50%);
 }
 
 .DatabaseSchemaPanel_refreshButton {
+  border-radius: 8px;
   padding: 8px;
 }
 

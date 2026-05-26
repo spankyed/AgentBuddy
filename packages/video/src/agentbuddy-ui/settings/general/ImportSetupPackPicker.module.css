@@ -41,6 +41,10 @@
   opacity: 0.4;
 }
 
+.ImportSetupPackPicker_typeRow[data-empty="true"]:hover {
+  background: transparent;
+}
+
 .ImportSetupPackPicker_chevron {
   display: grid;
   width: 20px;

@@ -53,10 +53,15 @@
   border-radius: 8px;
   background: rgb(64 64 64 / 50%);
   padding: 8px 12px;
+  transition: border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease;
 }
 
 .CategoryFilter_option + .CategoryFilter_option {
   margin-top: 4px;
+}
+
+.CategoryFilter_option:not(.CategoryFilter_optionSelected):hover {
+  border-color: rgb(115 115 115);
 }
 
 .CategoryFilter_optionSelected {
