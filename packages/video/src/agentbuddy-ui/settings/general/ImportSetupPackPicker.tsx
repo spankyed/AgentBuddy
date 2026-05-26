@@ -7,7 +7,7 @@ const styles = makeStyles('ImportSetupPackPicker');
 
 const typeMeta: Array<{key: SetupPackType; label: string; icon: React.ComponentType<{size?: number; className?: string}>; hint?: string}> = [
   {key: 'actions', label: 'Actions', icon: Icons.Zap},
-  {key: 'prompts', label: 'Prompts', icon: Icons.MessageSquareText},
+  {key: 'prompts', label: 'Prompts', icon: Icons.MessageSquare},
   {
     key: 'flows',
     label: 'Flows',

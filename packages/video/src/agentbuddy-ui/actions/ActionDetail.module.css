@@ -160,7 +160,11 @@
   font-size: 12px;
 }
 
-.ActionDetail_metadata span span {
+.ActionDetail_metadataValue,
+.ActionDetail_metadataMono {
   color: rgb(163 163 163);
+}
+
+.ActionDetail_metadataMono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

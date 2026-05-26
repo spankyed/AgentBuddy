@@ -31,7 +31,7 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
           <section className={styles.section}>
             <div className={styles.sectionTitle}>Input Parameters</div>
             <div className={styles.dataBlock}>
-              <DataRenderer data={input} hideExpand />
+              <DataRenderer data={input} />
             </div>
           </section>
         ) : null}
@@ -39,7 +39,7 @@ export function BrainDetailsPanel({node}: {node?: BrainNodeState}) {
           <section className={styles.section}>
             <div className={styles.sectionTitle}>Output Result</div>
             <div className={styles.dataBlock}>
-              <DataRenderer data={result} hideExpand />
+              <DataRenderer data={result} />
             </div>
           </section>
         ) : null}

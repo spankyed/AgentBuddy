@@ -2,7 +2,7 @@
   display: flex;
   height: 100%;
   flex-direction: column;
-  background: rgb(31 41 55);
+  background: rgb(38 38 38);
 }
 
 .DatabaseGraphExplorer_canvasRegion {
@@ -15,7 +15,7 @@
 .DatabaseGraphExplorer_canvas {
   position: absolute;
   inset: 0;
-  background: rgb(31 41 55);
+  background: rgb(38 38 38);
 }
 
 .DatabaseGraphExplorer_graphSvg {
@@ -46,7 +46,7 @@
 }
 
 .DatabaseGraphExplorer_loading {
-  background: rgb(31 41 55 / 50%);
+  background: rgb(38 38 38 / 50%);
   backdrop-filter: blur(4px);
 }
 
@@ -126,7 +126,7 @@
 }
 
 .DatabaseGraphExplorer_infoHeader button:hover {
-  background: rgb(55 65 81);
+  background: rgb(38 38 38);
 }
 
 .DatabaseGraphExplorer_infoFields {

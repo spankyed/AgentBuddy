@@ -57,7 +57,7 @@ export function ApplicationSettings({state}: {state: SettingsSurfaceState}) {
           <div className={styles.confirmRow}>
             <span>Are you sure?</span>
             <button className={styles.dangerButton} disabled={state.resetting} type="button">
-              {state.resetting ? 'Resetting...' : 'Yes, erase everything'}
+              {state.resetting ? 'Resetting…' : 'Yes, erase everything'}
             </button>
             <button className={styles.secondaryButton} disabled={state.resetting} type="button">Cancel</button>
           </div>

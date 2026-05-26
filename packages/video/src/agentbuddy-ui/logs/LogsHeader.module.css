@@ -239,3 +239,7 @@
 .LogsHeader_clearButton:hover {
   color: rgb(229 229 229);
 }
+
+.LogsHeader_copyButton.LogsHeader_copied:hover {
+  color: rgb(74 222 128);
+}

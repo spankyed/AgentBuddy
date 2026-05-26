@@ -26,7 +26,7 @@ export function QueryEditorPanel({state}: QueryEditorPanelProps) {
       <div className={styles.editorRegion}>
         {state.activeMode === 'query' ? (
           <>
-            <MonacoCodeViewer filePath="database-query.ts" fontSize={14} height="100%" language="typescript" lineNumbers="off" value={state.currentQuery} wordWrap="on" />
+            <MonacoCodeViewer filePath="database-query.ts" fontSize={14} height="100%" language="typescript" lineNumbers="on" value={state.currentQuery} wordWrap="on" />
             {state.isAiQueryLoading ? (
               <div className={styles.loadingOverlay}>
                 <div className={styles.loadingBody}>

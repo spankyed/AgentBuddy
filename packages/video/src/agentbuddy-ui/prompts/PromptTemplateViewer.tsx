@@ -12,7 +12,7 @@ type PromptTemplateViewerProps = {
 export function PromptTemplateViewer({value}: PromptTemplateViewerProps) {
   return (
     <div className={styles.root}>
-      <MonacoCodeViewer filePath="prompt-template.js" height="100%" language="javascript" value={value} />
+      <MonacoCodeViewer filePath="prompt-template.js" height="100%" language="javascript" lineNumbers="on" value={value} />
     </div>
   );
 }

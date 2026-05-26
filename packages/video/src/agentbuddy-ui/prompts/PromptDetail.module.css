@@ -154,7 +154,11 @@
   font-size: 12px;
 }
 
-.PromptDetail_metadata span span {
+.PromptDetail_metadataValue,
+.PromptDetail_metadataMono {
   color: rgb(163 163 163);
+}
+
+.PromptDetail_metadataMono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

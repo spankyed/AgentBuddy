@@ -79,6 +79,17 @@
   padding: 4px 20px 16px;
 }
 
+.HelpSettingsTab_answer .MarkdownViewer_wrapper {
+  color: rgb(163 163 163);
+  font-size: 13px;
+}
+
+.HelpSettingsTab_answer .MarkdownViewer_prose h1,
+.HelpSettingsTab_answer .MarkdownViewer_prose h2,
+.HelpSettingsTab_answer .MarkdownViewer_prose h3 {
+  color: rgb(163 163 163);
+}
+
 .HelpSettingsTab_footer {
   flex-shrink: 0;
   background: rgb(23 23 23);

@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {MarkdownViewer} from '../threads/MarkdownViewer';
 import type {SettingsSurfaceState} from './settingsTypes';
 import './HelpSettingsTab.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -17,7 +18,7 @@ export function HelpSettingsTab({state}: {state: SettingsSurfaceState}) {
                   <span>{item.question}</span>
                   <Icons.ChevronDown size={16} />
                 </button>
-                {item.expanded ? <div className={styles.answer}>{item.answer}</div> : null}
+                {item.expanded ? <div className={styles.answer}><MarkdownViewer content={item.answer} /></div> : null}
               </article>
             ))}
           </div>

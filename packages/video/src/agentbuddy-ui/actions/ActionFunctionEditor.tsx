@@ -40,7 +40,7 @@ try {
 export function ActionFunctionEditor({value}: ActionFunctionEditorProps) {
   return (
     <div className={styles.root} data-onboarding-id="action-function-editor">
-      <MonacoCodeViewer filePath="action-template.ts" fontSize={14} height="100%" language="typescript" lineNumbers="off" placeholder={placeholder} value={value} wordWrap="on" />
+      <MonacoCodeViewer filePath="action-template.ts" fontSize={14} height="100%" language="typescript" lineNumbers="on" placeholder={placeholder} value={value} wordWrap="on" />
     </div>
   );
 }

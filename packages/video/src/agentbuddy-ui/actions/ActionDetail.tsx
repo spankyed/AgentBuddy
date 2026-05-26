@@ -71,9 +71,9 @@ export function ActionDetail({state}: ActionDetailProps) {
           <div className={styles.section}>
             <CollapsibleSection label="Metadata" open={state.metadataExpanded ?? true}>
               <div className={styles.metadata}>
-                <span>ID <span>{state.action?.id ?? 'N/A'}</span></span>
-                <span>Created <span>{formatDate(state.action?.createdAt)}</span></span>
-                <span>Updated <span>{formatDate(state.action?.updatedAt)}</span></span>
+                <span>ID <span className={styles.metadataMono}>{state.action?.id ?? 'N/A'}</span></span>
+                <span>Created <span className={styles.metadataValue}>{formatDate(state.action?.createdAt)}</span></span>
+                <span>Updated <span className={styles.metadataValue}>{formatDate(state.action?.updatedAt)}</span></span>
               </div>
             </CollapsibleSection>
           </div>

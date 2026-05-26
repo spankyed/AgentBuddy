@@ -84,6 +84,7 @@ import {
   Maximize,
   Maximize2,
   Minimize2,
+  MessageSquare,
   MessageSquareText,
   Mic,
   Minus,
@@ -132,6 +133,7 @@ import {
 export const Icons = {
   BotMessageSquare,
   Threads: BotMessageSquare,
+  MessageSquare,
   MessageSquareText,
   Notes: FileText,
   NotebookText,

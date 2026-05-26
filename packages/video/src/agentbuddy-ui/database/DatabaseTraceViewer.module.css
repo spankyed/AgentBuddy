@@ -3,7 +3,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: rgb(23 23 23);
+  background: rgb(28 28 30);
 }
 
 .DatabaseTraceViewer_flowPanel {
@@ -85,6 +85,10 @@
 
 .DatabaseTraceViewer_flowItem[data-status="failed"] .DatabaseTraceViewer_status {
   background: rgb(239 68 68);
+}
+
+.DatabaseTraceViewer_flowItem[data-status="paused"] .DatabaseTraceViewer_status {
+  background: rgb(107 114 128);
 }
 
 .DatabaseTraceViewer_flowMeta {
