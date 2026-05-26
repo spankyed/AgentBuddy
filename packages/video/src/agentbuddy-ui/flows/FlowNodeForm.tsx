@@ -1,3 +1,4 @@
+import type {CSSProperties} from 'react';
 import {Icons} from '../primitives/Icon';
 import {cx} from '../primitives/classNames';
 import {MonacoCodeViewer} from '../code/MonacoCodeViewer';
@@ -16,11 +17,19 @@ const actionIcon = {
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/components/NodeForm.vue
 // plus the BaseForm node-specific form shell.
-export function FlowNodeForm({state}: {state: FlowNodeFormState}) {
+export function FlowNodeForm({
+  overlayStyle,
+  panelStyle,
+  state,
+}: {
+  overlayStyle?: CSSProperties;
+  panelStyle?: CSSProperties;
+  state: FlowNodeFormState;
+}) {
   return (
     <>
-      <div className={styles.overlay} />
-      <aside className={styles.panel} data-onboarding-id="flow-node-form">
+      <div className={styles.overlay} style={overlayStyle} />
+      <aside className={styles.panel} data-onboarding-id="flow-node-form" style={panelStyle}>
         <header className={styles.header}>
           <h2 className={styles.title}>{state.nodeKind}</h2>
           <div className={styles.actions}>

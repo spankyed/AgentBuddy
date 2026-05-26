@@ -11,7 +11,7 @@ import './QueryEditorHeader.module.css';
 const styles = makeStyles('DatabaseQueryEditorHeader');
 
 type QueryEditorHeaderProps = {
-  state: Pick<DatabaseSurfaceState, 'activeMode' | 'currentQuery' | 'error' | 'executeQueryShortcut' | 'isAiPromptOpen' | 'isLoading' | 'mode' | 'successMessage'>;
+  state: Pick<DatabaseSurfaceState, 'activeMode' | 'currentQuery' | 'error' | 'executePressed' | 'executeQueryShortcut' | 'isAiPromptOpen' | 'isLoading' | 'mode' | 'successMessage'>;
 };
 
 export function QueryEditorHeader({state}: QueryEditorHeaderProps) {
@@ -31,7 +31,7 @@ export function QueryEditorHeader({state}: QueryEditorHeaderProps) {
 
       <div className={styles.right}>
         <QueryEditorMessages error={state.error} successMessage={state.successMessage} />
-        <QueryEditorActions isDisabled={!state.currentQuery.trim()} isLoading={state.isLoading} mode={state.mode} />
+        <QueryEditorActions executePressed={state.executePressed} isDisabled={!state.currentQuery.trim()} isLoading={state.isLoading} mode={state.mode} />
       </div>
     </div>
   );

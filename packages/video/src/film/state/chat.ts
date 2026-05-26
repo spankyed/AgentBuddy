@@ -21,7 +21,7 @@ import type {
 } from '../../agentbuddy-ui/threads/threadTypes';
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {filmProjects} from './paths';
-import {ease, textReveal} from './timeline';
+import {ease, mix, textReveal} from './timeline';
 
 export type ChatShotView = {
   breadcrumbs: string[];
@@ -415,13 +415,30 @@ export function chatViewForFrame(frame: number) {
 
 export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
+  const noteAttachmentEnter = ease(frame, 108, 122);
+  const imageAttachmentEnter = ease(frame, 132, 148);
   return {
     breadcrumbs: chatShotState.breadcrumbs,
     composer: {
       ...launchComposerState,
       attachments: [
-        ...(frame > 108 ? [{type: 'file' as const, label: '#notes:current', typeLabel: 'Note'}] : []),
-        ...(frame > 132 ? [{type: 'image' as const, label: 'image 1'}] : []),
+        ...(frame > 108 ? [{
+          type: 'file' as const,
+          label: '#notes:current',
+          typeLabel: 'Note',
+          style: {
+            opacity: noteAttachmentEnter,
+            transform: `translateY(${mix(10, 0, noteAttachmentEnter)}px) scale(${mix(0.975, 1, noteAttachmentEnter)})`,
+          },
+        }] : []),
+        ...(frame > 132 ? [{
+          type: 'image' as const,
+          label: 'image 1',
+          style: {
+            opacity: imageAttachmentEnter,
+            transform: `translateY(${mix(10, 0, imageAttachmentEnter)}px) scale(${mix(0.975, 1, imageAttachmentEnter)})`,
+          },
+        }] : []),
       ],
       bottomTabs: frame > 20
         ? {

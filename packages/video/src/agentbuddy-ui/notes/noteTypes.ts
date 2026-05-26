@@ -1,3 +1,5 @@
+import type {CSSProperties} from 'react';
+
 export type NoteTreeNodeState = {
   addPressed?: boolean;
   children?: NoteTreeNodeState[];
@@ -13,6 +15,7 @@ export type NoteTreeNodeState = {
   noteType: 'document' | 'task' | 'tasklist';
   pressed?: boolean;
   rowMenuOpen?: boolean;
+  style?: CSSProperties;
   title: string;
 };
 

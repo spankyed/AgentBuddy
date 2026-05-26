@@ -12,6 +12,8 @@
   min-height: 36px;
   padding: 0.5rem 0.5rem;
   transition: color 160ms ease, background 160ms ease;
+  transform-origin: 0 50%;
+  will-change: opacity, transform;
 }
 
 .NoteTreeItem_active {

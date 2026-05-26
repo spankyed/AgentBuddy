@@ -61,6 +61,12 @@
   color: rgb(251 191 36);
 }
 
+.CommitMessageBox_generate[data-pressed="true"] {
+  background: rgb(38 38 38);
+  color: rgb(251 191 36);
+  transform: translateY(1px);
+}
+
 .CommitMessageBox_moreButton[data-active="true"] {
   background: rgb(38 38 38);
   color: rgb(229 229 229);
@@ -158,6 +164,11 @@
 
 .CommitMessageBox_button[data-enabled="true"]:hover {
   background: rgb(21 128 61);
+}
+
+.CommitMessageBox_button[data-enabled="true"][data-pressed="true"] {
+  background: rgb(21 128 61);
+  transform: translateY(1px);
 }
 
 @keyframes CommitMessageBox_spin {

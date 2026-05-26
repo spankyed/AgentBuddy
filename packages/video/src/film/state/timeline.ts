@@ -1,5 +1,5 @@
-export type ChapterShotId = 'intro-title' | 'chat-title' | 'notes-title' | 'code-title' | 'workflow-title' | 'system-title';
-export type ContentShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'system' | 'final';
+export type ChapterShotId = 'intro-title' | 'chat-title' | 'notes-title' | 'code-title' | 'workflow-title' | 'montage-title';
+export type ContentShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'montage' | 'final';
 export type ShotId = ChapterShotId | ContentShotId;
 
 export type FilmShot = {
@@ -32,8 +32,8 @@ export const shots: FilmShot[] = [
   {id: 'code', duration: 420},
   {id: 'workflow-title', chapter: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 84},
   {id: 'workflow', duration: 360},
-  {id: 'system-title', chapter: {eyebrow: '5', title: 'AgentBuddy is a revolution', subtitle: 'to put the full power of AI into the hands of the people'}, duration: 108},
-  {id: 'system', duration: 360},
+  {id: 'montage-title', chapter: {eyebrow: '5', title: 'AgentBuddy is a revolution', subtitle: 'to put the full power of AI into the hands of the people'}, duration: 108},
+  {id: 'montage', duration: 360},
   {id: 'final', duration: 180},
 ];
 

@@ -6,12 +6,16 @@ const styles = makeStyles('CommitMessageBox');
 
 export function CommitMessageBox({
   branch,
+  commitPressed,
+  generatePressed,
   menuActionPressed,
   menuOpen,
   message,
   generating,
 }: {
   branch: string;
+  commitPressed?: boolean;
+  generatePressed?: boolean;
   generating?: boolean;
   menuActionPressed?: boolean;
   menuOpen?: boolean;
@@ -36,12 +40,12 @@ export function CommitMessageBox({
           </div>
           <span className={styles.label}>{generating ? 'Generating...' : 'Commit Message'}</span>
         </div>
-        <button className={styles.generate} disabled={generating} title="Generate commit message">
+        <button className={styles.generate} data-pressed={generatePressed || undefined} disabled={generating} title="Generate commit message">
           {generating ? <Icons.Loader2 className={styles.spinner} size={14} /> : <Icons.Sparkle size={14} />}
         </button>
       </div>
       <textarea className={styles.textarea} data-generating={generating ? 'true' : undefined} placeholder={`Message (currently on ${branch})`} rows={4} value={message} readOnly />
-      <button className={styles.button} data-enabled={canCommit ? 'true' : undefined} disabled={!canCommit}>Commit</button>
+      <button className={styles.button} data-enabled={canCommit ? 'true' : undefined} data-pressed={commitPressed || undefined} disabled={!canCommit}>Commit</button>
     </div>
   );
 }

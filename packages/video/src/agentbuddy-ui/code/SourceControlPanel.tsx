@@ -25,6 +25,8 @@ export function SourceControlPanel({state, view}: SourceControlPanelProps) {
       <BranchInfo branch={state.branch} sync={state.branchSync} />
       <CommitMessageBox
         branch={state.branch}
+        commitPressed={view.commitButtonPressed}
+        generatePressed={view.generateCommitPressed}
         menuActionPressed={view.commitMenuActionPressed}
         menuOpen={view.commitMenuOpen}
         message={view.commitMessage}

@@ -147,10 +147,12 @@ export type CodeReviewState = {
 
 export type CodeReviewViewState = {
   activePanel: 'commit' | 'pr';
+  commitButtonPressed?: boolean;
   commitMenuActionPressed?: boolean;
   commitMenuOpen?: boolean;
   commitMessage: string;
   diffLineOpacities: number[];
+  generateCommitPressed?: boolean;
   generatingCommitMessage: boolean;
   leftSurface?: 'app-preview' | 'diff';
   prMode: 'files' | 'create' | 'details';

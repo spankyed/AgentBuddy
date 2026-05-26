@@ -102,6 +102,7 @@ export type DatabaseSurfaceState = {
   copiedResultRowIndex?: number;
   currentQuery: string;
   error: string | null;
+  executePressed?: boolean;
   executeQueryShortcut?: {
     key: string;
     modifiers: string[];

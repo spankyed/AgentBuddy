@@ -1,6 +1,8 @@
 .NoteImageBlock_wrap {
   position: relative;
   margin: 0.5em 0;
+  transform-origin: 0 50%;
+  will-change: opacity, transform;
 }
 
 .NoteImageBlock_imageFrame {

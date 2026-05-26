@@ -8,7 +8,7 @@ const styles = makeStyles('ChatComposer');
 // Mirrors packages/renderer/src/plugins/threads/chat/FileBlock.vue.
 export function FileAttachment({attachment}: {attachment: ChatAttachment}) {
   return (
-    <div className={styles.fileAttachment} title={attachment.label}>
+    <div className={styles.fileAttachment} style={attachment.style} title={attachment.label}>
       <span className={styles.fileIcon}>
         {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" /> : <Icons.File size={20} />}
       </span>

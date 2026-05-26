@@ -15,6 +15,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
   const view = notesShotViewForFrame(frame);
   const layout = useAppWindowLayout({hasRightRail: frame > 178, variant});
   const taskListEnter = ease(frame, 190, 224);
+  const appReveal = ease(frame, 78, 114);
   const renderLine = (line: {caretVisible?: boolean; text: string}) => (
     <>
       {line.text}
@@ -47,27 +48,35 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
   }
 
   return (
-    <AppWindow
-      activePlugin="notes"
-      breadcrumbs={view.breadcrumbs}
-      composer={view.composer}
-      layout={layout}
-      rightRail={frame > 178 ? <NotesRightRail state={view.rightRail} /> : undefined}
+    <div
+      className={styles.appReveal}
+      style={{
+        opacity: appReveal,
+        transform: `translateY(${mix(-26, 0, appReveal)}px) scale(${mix(0.986, 1, appReveal)})`,
+      }}
     >
-      <NotesLayout
-        showTaskList={frame > 190}
-        taskListStyle={{
-          opacity: taskListEnter,
-          transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
-        }}
-        taskList={view.taskList}
-        editor={{
-          beforeLines: view.editor.beforeLines.map(renderLine),
-          afterLines: view.editor.afterLines.map(renderLine),
-          image: view.editor.image,
-          title: view.editor.title,
-        }}
-      />
-    </AppWindow>
+      <AppWindow
+        activePlugin="notes"
+        breadcrumbs={view.breadcrumbs}
+        composer={view.composer}
+        layout={layout}
+        rightRail={frame > 178 ? <NotesRightRail state={view.rightRail} /> : undefined}
+      >
+        <NotesLayout
+          showTaskList={frame > 190}
+          taskListStyle={{
+            opacity: taskListEnter,
+            transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
+          }}
+          taskList={view.taskList}
+          editor={{
+            beforeLines: view.editor.beforeLines.map(renderLine),
+            afterLines: view.editor.afterLines.map(renderLine),
+            image: view.editor.image,
+            title: view.editor.title,
+          }}
+        />
+      </AppWindow>
+    </div>
   );
 }

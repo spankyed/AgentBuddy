@@ -1,4 +1,4 @@
-.NotesShot_isolatedHome {
+.BoardShot_isolatedHeader {
   position: absolute;
   inset: 0;
   display: grid;
@@ -6,9 +6,8 @@
   background: #050505;
 }
 
-.NotesShot_homeCard {
-  width: min(760px, calc(100% - 180px));
-  height: min(560px, calc(100% - 180px));
+.BoardShot_headerCard {
+  width: min(980px, calc(100% - 180px));
   overflow: hidden;
   border: 1px solid rgb(38 38 38);
   border-radius: 10px;
@@ -17,12 +16,18 @@
   will-change: opacity, transform;
 }
 
-.NotesShot_square .NotesShot_homeCard {
-  width: min(680px, calc(100% - 96px));
-  height: min(620px, calc(100% - 112px));
+.BoardShot_square .BoardShot_headerCard {
+  width: min(700px, calc(100% - 96px));
 }
 
-.NotesShot_appReveal {
+.BoardShot_appReveal {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 48%;
+  will-change: opacity, transform;
+}
+
+.BoardShot_surfaceReveal {
   position: absolute;
   inset: 0;
   transform-origin: 50% 48%;

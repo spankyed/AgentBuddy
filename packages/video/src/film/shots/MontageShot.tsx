@@ -11,21 +11,49 @@ import {brainLaunchCommandStateForFrame} from '../state/brain';
 import {databaseMessagesBeforeDateState, databaseMessageLookupState} from '../state/database';
 import {logsLaunchReleaseStateForFrame} from '../state/logs';
 import {settingsProvidersStateForFrame} from '../state/settings';
-import {textReveal} from '../state/timeline';
+import {ease, mix, textReveal} from '../state/timeline';
 import {useAppWindowLayout} from '../appWindowLayout';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+import './MontageShot.module.css';
 
-export function SystemShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const view = systemShotViewForFrame(frame);
+const styles = makeStyles('MontageShot');
+
+const segmentStarts = [0, 72, 142, 222, 292];
+const segmentEnds = [72, 142, 222, 292, 360];
+
+export function MontageShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  const view = montageShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
+  const segmentIndex = segmentIndexForFrame(frame);
+  const segmentStart = segmentStarts[Math.max(0, segmentIndex)];
+  const segmentEnd = segmentEnds[Math.max(0, segmentIndex)];
+  const enter = ease(frame, segmentStart, segmentStart + 16);
+  const exit = 1 - ease(frame, segmentEnd - 12, segmentEnd);
+  const visibility = Math.min(enter, exit);
 
   return (
-    <AppWindow activePlugin={view.activePlugin} breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
-      {view.surface}
-    </AppWindow>
+    <div
+      className={styles.segment}
+      style={{
+        opacity: visibility,
+        transform: `translateY(${mix(18, 0, enter) + mix(0, -10, 1 - exit)}px) scale(${mix(0.992, 1, enter)})`,
+      }}
+    >
+      <AppWindow activePlugin={view.activePlugin} breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
+        {view.surface}
+      </AppWindow>
+    </div>
   );
 }
 
-function systemShotViewForFrame(frame: number) {
+function segmentIndexForFrame(frame: number) {
+  for (let index = segmentStarts.length - 1; index >= 0; index -= 1) {
+    if (frame >= segmentStarts[index]) return index;
+  }
+  return 0;
+}
+
+function montageShotViewForFrame(frame: number) {
   if (frame < 72) {
     return {
       activePlugin: 'threads' as PluginId,
@@ -53,7 +81,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'database' as PluginId,
       breadcrumbs: ['Database'],
       composer: false as const,
-      surface: <DatabaseSurface state={databaseStateForSystemFrame(frame)} />,
+      surface: <DatabaseSurface state={databaseStateForMontageFrame(frame)} />,
     };
   }
 
@@ -74,7 +102,7 @@ function systemShotViewForFrame(frame: number) {
   };
 }
 
-function databaseStateForSystemFrame(frame: number): DatabaseSurfaceState {
+function databaseStateForMontageFrame(frame: number): DatabaseSurfaceState {
   const state = frame < 182 ? databaseMessageLookupState : databaseMessagesBeforeDateState;
   const segmentStart = frame < 182 ? 142 : 182;
   const local = frame - segmentStart;
@@ -84,6 +112,7 @@ function databaseStateForSystemFrame(frame: number): DatabaseSurfaceState {
     return {
       ...state,
       currentQuery: query,
+      executePressed: false,
       executionTime: null,
       isLoading: false,
       queryResult: null,
@@ -95,6 +124,7 @@ function databaseStateForSystemFrame(frame: number): DatabaseSurfaceState {
     return {
       ...state,
       currentQuery: state.currentQuery,
+      executePressed: local < 30,
       executionTime: null,
       isLoading: true,
       queryResult: null,
@@ -102,5 +132,9 @@ function databaseStateForSystemFrame(frame: number): DatabaseSurfaceState {
     };
   }
 
-  return state;
+  return {
+    ...state,
+    copiedResultRowIndex: local > 52 ? 0 : state.copiedResultRowIndex,
+    executePressed: false,
+  };
 }

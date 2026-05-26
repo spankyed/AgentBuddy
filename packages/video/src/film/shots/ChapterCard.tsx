@@ -6,12 +6,14 @@ import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 const styles = makeStyles('ChapterCard');
 
 export function ChapterCard({
+  duration,
   eyebrow,
   frame,
   subtitle,
   title,
   variant,
 }: {
+  duration: number;
   eyebrow?: string;
   frame: number;
   subtitle?: string;
@@ -20,7 +22,7 @@ export function ChapterCard({
 }) {
   const titleIn = ease(frame, 10, 42);
   const subtitleIn = ease(frame, 28, 54);
-  const exit = ease(frame, 68, 100);
+  const exit = ease(frame, Math.max(54, duration - 30), Math.max(68, duration - 4));
   const opacity = Math.min(titleIn, 1 - exit);
   const y = mix(18, -10, exit) + mix(10, 0, titleIn);
 

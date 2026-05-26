@@ -9,7 +9,7 @@ import {ChapterCard} from './shots/ChapterCard';
 import {CodeShot} from './shots/CodeShot';
 import {FinalShot} from './shots/FinalShot';
 import {NotesShot} from './shots/NotesShot';
-import {SystemShot} from './shots/SystemShot';
+import {MontageShot} from './shots/MontageShot';
 import {WorkflowShot} from './shots/WorkflowShot';
 import {SurfaceFrame} from './SurfaceFrame';
 import './AgentBuddyFilm.module.css';
@@ -84,14 +84,14 @@ function ShotSurface({shot, variant}: {shot: FilmShot; variant: Variant}) {
   const frame = useCurrentFrame();
   const id = shot.id;
   if (shot.chapter) {
-    return <ChapterCard eyebrow={shot.chapter.eyebrow} frame={frame} subtitle={shot.chapter.subtitle} title={shot.chapter.title} variant={variant} />;
+    return <ChapterCard duration={shot.duration} eyebrow={shot.chapter.eyebrow} frame={frame} subtitle={shot.chapter.subtitle} title={shot.chapter.title} variant={variant} />;
   }
   if (id === 'notes') return <NotesShot frame={frame} variant={variant} />;
   if (id === 'chat') return <ChatShot frame={frame} variant={variant} />;
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;
   if (id === 'workflow') return <WorkflowShot frame={frame} variant={variant} />;
-  if (id === 'system') return <SystemShot frame={frame} variant={variant} />;
+  if (id === 'montage') return <MontageShot frame={frame} variant={variant} />;
   return <FinalShot frame={frame} variant={variant} />;
 }
 

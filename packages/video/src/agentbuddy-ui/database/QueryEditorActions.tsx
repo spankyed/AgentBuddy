@@ -7,12 +7,13 @@ import './QueryEditorActions.module.css';
 const styles = makeStyles('DatabaseQueryEditorActions');
 
 type QueryEditorActionsProps = {
+  executePressed?: boolean;
   isDisabled: boolean;
   isLoading: boolean;
   mode: DatabaseSurfaceState['mode'];
 };
 
-export function QueryEditorActions({isDisabled, isLoading, mode}: QueryEditorActionsProps) {
+export function QueryEditorActions({executePressed, isDisabled, isLoading, mode}: QueryEditorActionsProps) {
   const ModeIcon = mode === 'query' ? Icons.Database : Icons.Edit3;
   const ExecuteIcon = isLoading ? Icons.Loader2 : Icons.Play;
   return (
@@ -22,7 +23,7 @@ export function QueryEditorActions({isDisabled, isLoading, mode}: QueryEditorAct
         <span>{mode === 'query' ? 'Query' : 'Transaction'}</span>
       </button>
       <div className={styles.divider} />
-      <button className={styles.executeButton} data-disabled={isDisabled || isLoading} disabled={isDisabled || isLoading} type="button">
+      <button className={styles.executeButton} data-disabled={isDisabled || isLoading} data-pressed={executePressed || undefined} disabled={isDisabled || isLoading} type="button">
         <ExecuteIcon className={isLoading ? styles.spinner : undefined} size={14} />
         <span>{isLoading ? 'Running...' : 'Execute'}</span>
       </button>

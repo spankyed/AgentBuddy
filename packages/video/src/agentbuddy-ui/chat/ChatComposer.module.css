@@ -41,6 +41,8 @@
   border-radius: 0.5rem;
   background: rgb(23 23 23);
   cursor: pointer;
+  transform-origin: 0 50%;
+  will-change: opacity, transform;
 }
 
 .ChatComposer_imageAttachment {

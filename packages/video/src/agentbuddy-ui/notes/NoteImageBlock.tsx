@@ -1,3 +1,4 @@
+import type {CSSProperties} from 'react';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import './NoteImageBlock.module.css';
@@ -11,13 +12,14 @@ export type NoteImageBlockState = {
   resizeOpen?: boolean;
   sliderPressed?: boolean;
   src: string;
+  style?: CSSProperties;
   widthPercent: number;
 };
 
 // Mirrors the selected image styling plus packages/renderer/src/core/components/tiptap/TiptapImageBubbleMenu.vue.
 export function NoteImageBlock({state}: {state: NoteImageBlockState}) {
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={state.style}>
       {state.bubbleOpen ? (
         <div className={styles.bubble}>
           <div className={styles.bubbleActions}>

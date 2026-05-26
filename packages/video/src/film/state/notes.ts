@@ -3,7 +3,7 @@ import type {NoteImageBlockState} from '../../agentbuddy-ui/notes/NoteImageBlock
 import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {launchComposerState} from './chat';
-import {textReveal} from './timeline';
+import {ease, mix, textReveal} from './timeline';
 
 const launchImageSrc = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20720%20320%22%3E%3Crect%20width%3D%22720%22%20height%3D%22320%22%20fill%3D%22%23171717%22%2F%3E%3Crect%20x%3D%2248%22%20y%3D%2244%22%20width%3D%22624%22%20height%3D%22232%22%20rx%3D%2218%22%20fill%3D%22%23262626%22%20stroke%3D%22%23525252%22%2F%3E%3Cpath%20d%3D%22M96%20106h312M96%20146h456M96%20186h380M96%20226h214%22%20stroke%3D%22%23e5e5e5%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22596%22%20cy%3D%22106%22%20r%3D%2226%22%20fill%3D%22%233b82f6%22%2F%3E%3Cpath%20d%3D%22M586%20106l7%207%2016-19%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%227%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E';
 
@@ -173,6 +173,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
   const markedComplete = frame > 214;
   const addPressed = frame > 232 && frame <= 242;
   const linkedTodoVisible = frame > 242;
+  const linkedTodoEnter = ease(frame, 242, 262);
   const items = notesTaskListItems.map(item =>
     item.id === 'resize-image' && markedComplete
       ? {...item, completed: true, muted: true}
@@ -188,6 +189,10 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
       id: 'launch-thread',
       title: '#threads: Create launch PR flow',
       noteType: 'task',
+      style: {
+        opacity: linkedTodoEnter,
+        transform: `translateY(${mix(12, 0, linkedTodoEnter)}px) scale(${mix(0.985, 1, linkedTodoEnter)})`,
+      },
     });
   }
 
@@ -199,6 +204,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
 }
 
 export function notesViewForFrame(frame: number) {
+  const imageEnter = ease(frame, 96, 122);
   const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => ({
     caretVisible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
     id: `animated-${index}`,
@@ -215,6 +221,10 @@ export function notesViewForFrame(frame: number) {
           resizeOpen: frame > 148 && frame < 188,
           sliderPressed: frame > 152 && frame < 184,
           src: launchImageSrc,
+          style: {
+            opacity: imageEnter,
+            transform: `translateY(${mix(18, 0, imageEnter)}px) scale(${mix(0.985, 1, imageEnter)})`,
+          },
           widthPercent: frame > 148 ? Math.round(100 - Math.min(1, (frame - 148) / 40) * 35) : 100,
         }
       : undefined,

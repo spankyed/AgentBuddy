@@ -33,7 +33,10 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
           node.muted && !isActive && styles.muted,
           node.pressed && styles.pressed,
         )}
-        style={{paddingLeft: depth * 8 + 8}}
+        style={{
+          ...node.style,
+          paddingLeft: depth * 8 + 8,
+        }}
       >
         <button className={styles.iconButton} type="button">
           {children.length > 0 ? (

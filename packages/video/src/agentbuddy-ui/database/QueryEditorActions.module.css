@@ -64,6 +64,11 @@
   background: rgb(37 99 235);
 }
 
+.DatabaseQueryEditorActions_executeButton[data-pressed="true"] {
+  background: rgb(37 99 235);
+  transform: translateY(1px) scale(0.97);
+}
+
 .DatabaseQueryEditorActions_executeButton[data-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.5;

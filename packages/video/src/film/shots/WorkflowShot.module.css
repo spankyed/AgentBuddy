@@ -18,3 +18,10 @@
 .WorkflowShot_square .WorkflowShot_isolatedNode {
   transform: scale(1.08);
 }
+
+.WorkflowShot_appReveal {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 48%;
+  will-change: opacity, transform;
+}

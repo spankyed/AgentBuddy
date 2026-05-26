@@ -2,7 +2,7 @@ import type {CodeReviewState, CodeReviewViewState, TerminalPanelState} from '../
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {launchComposerState} from './chat';
 import {filmProjects} from './paths';
-import {ease} from './timeline';
+import {ease, textReveal} from './timeline';
 
 export type CodeShotState = {
   breadcrumbs: string[];
@@ -243,14 +243,16 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
   const prMerged = frame > 374;
   return {
     activePanel: frame < 48 || frame > 238 ? 'pr' : 'commit',
-    commitMenuActionPressed: frame > 74 && frame < 84,
-    commitMenuOpen: frame > 58 && frame < 86,
-    commitMessage: frame < 92 ? 'incomplete work' : frame > 132 ? codeShotState.generatedCommitMessage : '',
+    commitButtonPressed: frame > 204 && frame <= 214,
+    commitMenuActionPressed: frame > 92 && frame < 102,
+    commitMenuOpen: frame > 78 && frame < 104,
+    commitMessage: frame < 104 ? textReveal('incomplete work', frame, 52, 76) : frame > 184 ? codeShotState.generatedCommitMessage : '',
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
     ),
-    generatingCommitMessage: frame > 96 && frame <= 132,
-    leftSurface: frame > 206 && frame < 238 ? 'app-preview' : 'diff',
+    generateCommitPressed: frame > 148 && frame <= 158,
+    generatingCommitMessage: frame > 154 && frame <= 184,
+    leftSurface: frame > 220 && frame < 238 ? 'app-preview' : 'diff',
     prMode: frame <= 286 ? 'files' : frame <= 318 ? 'create' : 'details',
     prCreatePressed: frame > 306 && frame <= 318,
     prMergePressed: frame > 360 && frame <= 374,
@@ -273,10 +275,10 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
 export function codeShotViewForFrame(frame: number): CodeShotView {
   const initialStaged = codeShotState.review.staged;
   const initialChanges = codeShotState.review.changes;
-  const stashedInitialWork = frame >= 82;
-  const stagedReviewedWork = frame >= 142 && frame < 174;
-  const committedReviewedWork = frame >= 174;
-  const checkedOutMainWorktree = frame >= 108;
+  const stashedInitialWork = frame >= 104;
+  const stagedReviewedWork = frame >= 142 && frame < 214;
+  const committedReviewedWork = frame >= 214;
+  const checkedOutMainWorktree = frame >= 122;
   const reviewState: CodeReviewState = {
     ...codeShotState.review,
     branch: checkedOutMainWorktree ? 'master' : codeShotState.review.branch,
@@ -302,12 +304,12 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
           },
         ]
       : [],
-    stashesExpanded: frame >= 86 && frame < 118,
-    terminal: frame > 190 && frame < 238 ? expandedTerminalPanelState : codeShotState.review.terminal,
+    stashesExpanded: frame >= 104 && frame < 132,
+    terminal: frame > 220 && frame < 238 ? expandedTerminalPanelState : codeShotState.review.terminal,
     worktrees: codeShotState.review.worktrees.map(worktree => ({
       ...worktree,
       current: checkedOutMainWorktree ? worktree.branch === 'master' : worktree.branch === 'as/react-launch-film',
-      pressed: frame > 98 && frame < 108 && worktree.branch === 'master',
+      pressed: frame > 112 && frame < 122 && worktree.branch === 'master',
     })),
   };
 

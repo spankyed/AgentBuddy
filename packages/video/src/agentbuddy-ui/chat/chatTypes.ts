@@ -1,6 +1,9 @@
+import type {CSSProperties} from 'react';
+
 export type ChatAttachment = {
   label: string;
   previewUrl?: string;
+  style?: CSSProperties;
   typeLabel?: string;
   type: 'file' | 'image';
 };
