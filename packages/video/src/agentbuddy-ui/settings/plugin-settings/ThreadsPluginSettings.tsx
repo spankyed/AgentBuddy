@@ -1,5 +1,6 @@
 import {Icons} from '../../primitives/Icon';
 import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
+import {ColorPicker} from '../../design/ColorPicker';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import type {SettingsSurfaceState, ThreadModeSettings} from '../settingsTypes';
 import './ThreadsPluginSettings.module.css';
@@ -65,14 +66,14 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
             {(selectedMode?.phases ?? []).map(phase => (
               <div className={styles.phaseCard} key={phase.id}>
                 <div className={styles.modeRow}>
-                  <button className={styles.colorPickerTrigger} style={{backgroundColor: phase.color ?? '#737373'}} title="Change color" type="button" />
+                  <ColorPicker allowClear value={phase.color ?? null} />
                   <input className={`${styles.input} ${styles.modeName}`} readOnly value={phase.name} placeholder="Phase name" />
                   <input className={`${styles.input} ${styles.flexInput}`} readOnly value={phase.description} placeholder="Description of this phase" />
-                  <button className={styles.iconButton} type="button" title="Remove phase"><Icons.X size={16} /></button>
+                  <button className={styles.phaseRemoveButton} type="button" title="Remove phase"><Icons.X size={16} /></button>
                 </div>
               </div>
             ))}
-            <button className={styles.addButton} type="button"><Icons.Plus size={14} />Add Phase</button>
+            <button className={styles.phaseAddButton} type="button"><Icons.Plus size={14} />Add Phase</button>
           </div>
         </CollapsiblePluginSection>
 
@@ -135,7 +136,7 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
         <div className={styles.compactStack}>
           {value.chatStates.map(chatState => (
             <div className={styles.optionRow} key={chatState.id}>
-              <button className={styles.colorPickerTrigger} style={{backgroundColor: chatState.color}} title="Change color" type="button" />
+              <ColorPicker value={chatState.color} />
               <input className={`${styles.input} ${styles.flexInput}`} readOnly value={chatState.label} />
               <button className={styles.busyButton} data-active={Boolean(chatState.busy)} type="button">✦</button>
               <span className={styles.stateId}>{chatState.id}</span>
@@ -197,7 +198,7 @@ function OptionsList({addLabel, field, items, onboardingId, placeholder}: {addLa
     <div className={styles.compactStack} data-onboarding-id={onboardingId}>
       {items.map((item, index) => (
         <div className={styles.optionRow} key={`${item.color}-${index}`}>
-          <button className={styles.colorPickerTrigger} style={{backgroundColor: item.color}} title="Change color" type="button" />
+          <ColorPicker value={item.color} />
           <input className={`${styles.input} ${styles.flexInput}`} readOnly value={(field === 'label' ? item.label : item.name) ?? ''} placeholder={placeholder} />
           <button className={styles.iconButton} disabled={items.length <= 1} type="button" title="Remove"><Icons.X size={16} /></button>
         </div>

@@ -119,5 +119,5 @@ export type DatabaseSurfaceState = {
   selectedSchemaItemId?: string;
   successMessage: string;
   trace?: DatabaseTraceState;
-  viewMode?: 'database' | 'backup' | 'graph' | 'trace';
+  viewMode?: 'database' | 'backup' | 'trace';
 };

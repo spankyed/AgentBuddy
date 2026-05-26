@@ -15,29 +15,50 @@ export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
           <button className={styles.back} type="button"><Icons.ArrowLeft size={16} />Back to Database</button>
         </header>
         <div className={styles.flowList}>
-          {state.flows.map(flow => (
-            <div className={styles.flowItem} data-active={flow.id === state.currentFlowId} data-status={flow.status} key={flow.id}>
-              <div className={styles.flowTitle}>
-                <div className={styles.flowName}><Icons.GitBranch size={14} />{flow.label}</div>
-                <span className={styles.status} />
-              </div>
-              <div className={styles.flowMeta}>
-                <span>{flow.startedAt}</span>
-                {flow.completedAt ? <span>{flow.completedAt}</span> : null}
-              </div>
+          {state.flows.length === 0 && !state.isLoading ? (
+            <div className={styles.emptyFlows}>
+              <p>No trace flows found</p>
+              <span>Run a flow to generate trace data</span>
             </div>
-          ))}
+          ) : state.flows.length === 0 && state.isLoading ? (
+            <div className={styles.loadingFlows}>
+              <div><Icons.Loader2 className={styles.refreshing} size={20} /></div>
+              <p>Loading flows...</p>
+            </div>
+          ) : (
+            state.flows.map(flow => (
+              <div className={styles.flowItem} data-active={flow.id === state.currentFlowId} data-status={flow.status} key={flow.id}>
+                <div className={styles.flowTitle}>
+                  <div className={styles.flowName}><Icons.GitBranch size={14} />{flow.label}</div>
+                  <span className={styles.status} />
+                </div>
+                <div className={styles.flowMeta}>
+                  <span>{flow.startedAt}</span>
+                  {flow.completedAt ? <span>{flow.completedAt}</span> : null}
+                </div>
+                <div className={styles.flowId}>{flow.id}</div>
+              </div>
+            ))
+          )}
         </div>
       </aside>
       <main className={styles.main}>
         <header className={styles.header}>
           <div className={styles.headerInner}>
             <div className={styles.flowLabel}>{selected ? <>Flow: <span>{selected.label}</span></> : 'No flow selected'}</div>
-            <div className={styles.refresh}><Icons.RefreshCw size={16} /></div>
+            <button className={styles.refresh} disabled={state.isLoading} title="Refresh trace data" type="button">
+              <Icons.RefreshCw className={state.isLoading ? styles.refreshing : undefined} size={16} />
+            </button>
           </div>
         </header>
         <section className={styles.events}>
-          {state.events.length > 0 ? (
+          {!selected ? (
+            <div className={styles.noFlow}>
+              <div className={styles.noFlowIcon}><Icons.History size={24} /></div>
+              <p>No flow selected</p>
+              <span>Select a flow from the left panel to view its event trace</span>
+            </div>
+          ) : state.events.length > 0 ? (
             <div className={styles.eventList}>
               {state.events.map(event => <TraceEventItem event={event} expandedIds={expandedIds} key={event.id} />)}
             </div>
@@ -47,7 +68,14 @@ export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
               <p>No events in this flow</p>
             </div>
           )}
-          {state.hasMore ? <div className={styles.loadMore}><button type="button">Load More Events</button></div> : null}
+          {state.hasMore ? (
+            <div className={styles.loadMore}>
+              <button disabled={state.isLoading} type="button">
+                {state.isLoading ? <Icons.Loader2 className={styles.refreshing} size={16} /> : null}
+                <span>{state.isLoading ? 'Loading...' : 'Load More Events'}</span>
+              </button>
+            </div>
+          ) : null}
         </section>
       </main>
     </div>

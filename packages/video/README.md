@@ -5,7 +5,8 @@ Remotion-first demo video package.
 ## OOM Render Fix
 
 If a Remotion render that previously worked starts failing with a Node heap OOM,
-clear the local Remotion/webpack cache first:
+do not start by refactoring the film or auditing components. Treat it as a stale
+Remotion/webpack cache issue first and clear the local cache:
 
 ```sh
 rm -rf packages/video/node_modules/.cache

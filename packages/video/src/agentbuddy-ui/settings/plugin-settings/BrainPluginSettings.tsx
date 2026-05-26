@@ -10,7 +10,7 @@ type BrainPluginSettingsState = NonNullable<SettingsSurfaceState['selectedPlugin
 export function BrainPluginSettings({settings}: {settings?: BrainPluginSettingsState}) {
   const brainIsDead = settings?.brainIsDead ?? false;
   const needsRestart = !brainIsDead && (settings?.needsRestart ?? false);
-  const inspectEnabled = settings?.inspectEnabled ?? false;
+  const inspectEnabled = false;
 
   return (
     <div className={styles.root}>

@@ -65,7 +65,7 @@ export function CodePluginSettings({settings, projects = []}: {settings?: CodeSe
           <div className={styles.stack}>
             <Toggle title="Auto-fetch remote" copy="Periodically fetch from the remote to detect new commits available to pull" checked={value.autoFetchRemote} />
             {value.autoFetchRemote ? (
-              <NumberSetting title="Fetch interval (seconds)" copy="How often to check the remote for new commits (minimum 60 seconds)" value={value.autoFetchIntervalSeconds} />
+              <NumberSetting min={60} title="Fetch interval (seconds)" copy="How often to check the remote for new commits (minimum 60 seconds)" value={value.autoFetchIntervalSeconds} />
             ) : null}
           </div>
         </CollapsiblePluginSection>
@@ -90,7 +90,7 @@ export function CodePluginSettings({settings, projects = []}: {settings?: CodeSe
             <Toggle title="Enable shell integration" copy="Track directory changes automatically (displays a brief setup command on terminal startup)" checked={value.enableShellIntegration} />
             <Toggle title="Confirm before closing terminals" copy="Show a confirmation prompt when closing terminal tabs" checked={value.confirmTerminalClose} />
             <Toggle title="Close terminal process when tab is closed" copy="Terminate the terminal process when closing a terminal tab" checked={value.closeTerminalOnTabClose} />
-            <NumberSetting title="Maximum terminals" copy="Maximum number of terminals that can be open at once" value={value.maxTerminals} checkbox />
+            <NumberSetting checkbox max={100} min={1} title="Maximum terminals" copy="Maximum number of terminals that can be open at once" value={value.maxTerminals} />
           </div>
         </CollapsiblePluginSection>
       </Divider>
@@ -153,7 +153,7 @@ function Toggle({checked, copy, title}: {checked: boolean; copy: string; title: 
   );
 }
 
-function NumberSetting({checkbox = false, copy, title, value}: {checkbox?: boolean; copy: string; title: string; value: number}) {
+function NumberSetting({checkbox = false, copy, max, min, title, value}: {checkbox?: boolean; copy: string; max?: number; min?: number; title: string; value: number}) {
   return (
     <div className={styles.settingRow}>
       <div>
@@ -161,7 +161,7 @@ function NumberSetting({checkbox = false, copy, title, value}: {checkbox?: boole
         <p className={styles.help}>{copy}</p>
       </div>
       <div className={styles.scriptRow}>
-        {value > 0 ? <input className={styles.input} readOnly type="number" value={value} /> : <span className={styles.help}>No limit</span>}
+        {value > 0 ? <input className={styles.input} max={max} min={min} readOnly type="number" value={value} /> : <span className={styles.help}>No limit</span>}
         {checkbox ? <input className={styles.checkbox} readOnly checked={value > 0} type="checkbox" title="Toggle terminal limit" /> : null}
       </div>
     </div>

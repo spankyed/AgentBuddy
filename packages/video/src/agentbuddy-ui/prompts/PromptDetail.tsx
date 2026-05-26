@@ -84,7 +84,7 @@ export function PromptDetail({state}: PromptDetailProps) {
           <div className={styles.section}>
             <CollapsibleSection label="Metadata" open={state.metadataExpanded ?? true}>
               <div className={styles.metadata}>
-                <span>ID <span className={styles.metadataMono}>{state.prompt?.id ?? 'N/A'}</span></span>
+                <span>ID <span className={styles.metadataMono}>{state.prompt?.id}</span></span>
                 <span>Created <span className={styles.metadataValue}>{formatDate(state.prompt?.createdAt)}</span></span>
                 <span>Updated <span className={styles.metadataValue}>{formatDate(state.prompt?.updatedAt)}</span></span>
               </div>

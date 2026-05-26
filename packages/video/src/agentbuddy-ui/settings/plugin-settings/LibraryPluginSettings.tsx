@@ -15,7 +15,8 @@ type LibraryPluginSettingsProps = {
 
 export function LibraryPluginSettings({settings}: LibraryPluginSettingsProps) {
   const tags = settings?.tags ?? [];
-  const exportFormat = settings?.exportFormat ?? 'markdown';
+  const exportFormat = 'markdown' as 'markdown' | 'json';
+  const exportDirectory = '';
 
   return (
     <div className={styles.root}>
@@ -66,7 +67,7 @@ export function LibraryPluginSettings({settings}: LibraryPluginSettingsProps) {
               className={styles.directoryInput}
               readOnly
               type="text"
-              value={settings?.exportDirectory ?? ''}
+              value={exportDirectory}
               placeholder="Select output directory..."
             />
             <button className={styles.secondaryButton} type="button">
@@ -74,7 +75,7 @@ export function LibraryPluginSettings({settings}: LibraryPluginSettingsProps) {
               Browse
             </button>
           </div>
-          <button className={styles.secondaryButton} disabled={!settings?.exportDirectory} type="button">
+          <button className={styles.secondaryButton} disabled={!exportDirectory} type="button">
             <Icons.Download size={16} />
             Export
           </button>

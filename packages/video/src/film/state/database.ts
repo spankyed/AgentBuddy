@@ -281,7 +281,7 @@ export const databaseGraphState: DatabaseSurfaceState = {
     zoomLevel: 1,
   },
   queryResult: null,
-  viewMode: 'graph',
+  viewMode: 'database',
 };
 
 export function databaseSurfaceStateForFrame(frame: number): DatabaseSurfaceState {

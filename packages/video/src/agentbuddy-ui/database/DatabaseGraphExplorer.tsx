@@ -36,24 +36,34 @@ function GraphPreview({state}: {state: DatabaseGraphState}) {
   return (
     <svg className={styles.graphSvg} viewBox="0 0 900 480">
       <defs>
-        <marker id="database-graph-arrow" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="5" refY="3">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#6b7280" />
+        <marker id="database-graph-arrow" markerHeight="8" markerWidth="8" orient="auto-start-reverse" refX="7" refY="4">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#e5e7eb" />
         </marker>
       </defs>
       {state.edges.map(edge => {
         const source = nodePositions.get(edge.source);
         const target = nodePositions.get(edge.target);
         if (!source || !target) return null;
+        const label = edge.type ?? '';
+        const labelX = (source.x + target.x) / 2;
+        const labelY = (source.y + target.y) / 2;
         return (
-          <line
-            className={styles.edge}
-            key={edge.id}
-            markerEnd="url(#database-graph-arrow)"
-            x1={source.x}
-            x2={target.x}
-            y1={source.y}
-            y2={target.y}
-          />
+          <g key={edge.id}>
+            <line
+              className={styles.edge}
+              markerEnd="url(#database-graph-arrow)"
+              x1={source.x}
+              x2={target.x}
+              y1={source.y}
+              y2={target.y}
+            />
+            {label ? (
+              <g className={styles.edgeLabel} transform={`translate(${labelX} ${labelY})`}>
+                <rect height="16" rx="2" width={Math.max(28, label.length * 6 + 8)} x={-Math.max(28, label.length * 6 + 8) / 2} y="-8" />
+                <text dy="3">{label}</text>
+              </g>
+            ) : null}
+          </g>
         );
       })}
       {state.nodes.map(node => {
@@ -62,8 +72,8 @@ function GraphPreview({state}: {state: DatabaseGraphState}) {
         const color = databaseGraphEntityColors[node.type ?? 'Node'] ?? databaseGraphEntityColors.Node;
         return (
           <g className={styles.node} key={node.id} transform={`translate(${point.x} ${point.y})`}>
-            <circle fill={color} r="18" stroke="#fff" strokeWidth="2" />
-            <text dy="40">{node.label ?? labelFromId(node.id)}</text>
+            <circle fill={color} r="16" stroke="#fff" strokeWidth="2" />
+            <text dy="36">{node.label ?? labelFromId(node.id)}</text>
           </g>
         );
       })}
@@ -138,7 +148,7 @@ function InfoField({label, monospace, small, value}: {label: string; monospace?:
   return (
     <div className={small ? styles.infoFieldSmall : styles.infoField}>
       <span>{label}</span>
-      <strong className={monospace ? styles.monospace : undefined}>{value}</strong>
+      <p className={monospace ? styles.monospace : undefined}>{value}</p>
     </div>
   );
 }

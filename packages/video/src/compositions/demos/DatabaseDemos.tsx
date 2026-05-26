@@ -1,5 +1,6 @@
 import {useCurrentFrame} from 'remotion';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
+import {DatabaseGraphCanvas} from '../../agentbuddy-ui/database/DatabaseGraphCanvas';
 import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
@@ -70,4 +71,13 @@ export const DatabaseBackupImportDemo = () => <DatabaseDemoWindow state={databas
 
 export const DatabaseTraceDemo = () => <DatabaseDemoWindow state={databaseTraceState} />;
 
-export const DatabaseGraphDemo = () => <DatabaseDemoWindow state={databaseGraphState} />;
+export const DatabaseGraphDemo = () => {
+  const layout = useAppWindowLayout({hasRightRail: false});
+  return (
+    <SurfaceFrame>
+      <AppWindow activePlugin="database" breadcrumbs={['DATABASE']} composer={false} layout={layout}>
+        <DatabaseGraphCanvas state={databaseGraphState} />
+      </AppWindow>
+    </SurfaceFrame>
+  );
+};

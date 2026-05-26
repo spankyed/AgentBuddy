@@ -24,8 +24,18 @@
 }
 
 .DatabaseGraphExplorer_edge {
-  stroke: #6b7280;
+  stroke: #e5e7eb;
   stroke-width: 1.5;
+}
+
+.DatabaseGraphExplorer_edgeLabel rect {
+  fill: rgb(255 255 255 / 80%);
+}
+
+.DatabaseGraphExplorer_edgeLabel text {
+  fill: #6b7280;
+  font-size: 10px;
+  text-anchor: middle;
 }
 
 .DatabaseGraphExplorer_node text {
@@ -148,16 +158,16 @@
   font-size: 12px;
 }
 
-.DatabaseGraphExplorer_infoField strong,
-.DatabaseGraphExplorer_infoFieldSmall strong {
+.DatabaseGraphExplorer_infoField p,
+.DatabaseGraphExplorer_infoFieldSmall p {
+  margin: 0;
   color: rgb(229 229 229);
   font-size: 13px;
-  font-weight: 500;
   overflow-wrap: anywhere;
   word-break: break-all;
 }
 
-.DatabaseGraphExplorer_infoFieldSmall strong {
+.DatabaseGraphExplorer_infoFieldSmall p {
   color: rgb(209 213 219);
   font-size: 12px;
 }

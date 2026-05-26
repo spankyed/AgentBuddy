@@ -33,6 +33,12 @@
   font-size: 14px;
   font-weight: 500;
   padding: 6px 12px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.DatabaseTraceViewer_back:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
 }
 
 .DatabaseTraceViewer_flowList {
@@ -42,11 +48,47 @@
   padding: 8px;
 }
 
+.DatabaseTraceViewer_emptyFlows,
+.DatabaseTraceViewer_loadingFlows {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.DatabaseTraceViewer_emptyFlows p,
+.DatabaseTraceViewer_loadingFlows p {
+  margin: 0;
+  color: rgb(115 115 115);
+  font-size: 12px;
+}
+
+.DatabaseTraceViewer_emptyFlows span {
+  display: block;
+  margin-top: 4px;
+  color: rgb(82 82 82);
+  font-size: 12px;
+}
+
+.DatabaseTraceViewer_loadingFlows div {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  color: rgb(115 115 115);
+}
+
 .DatabaseTraceViewer_flowItem {
   border: 1px solid transparent;
   border-radius: 8px;
   color: rgb(163 163 163);
+  cursor: pointer;
   padding: 10px 12px;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.DatabaseTraceViewer_flowItem:hover {
+  background: rgb(38 38 38 / 50%);
 }
 
 .DatabaseTraceViewer_flowItem[data-active="true"] {
@@ -99,6 +141,21 @@
   margin-top: 6px;
 }
 
+.DatabaseTraceViewer_flowId {
+  overflow: hidden;
+  margin-top: 4px;
+  color: rgb(82 82 82);
+  font-size: 12px;
+  opacity: 0;
+  text-overflow: ellipsis;
+  transition: opacity 200ms ease;
+  white-space: nowrap;
+}
+
+.DatabaseTraceViewer_flowItem:hover .DatabaseTraceViewer_flowId {
+  opacity: 1;
+}
+
 .DatabaseTraceViewer_main {
   display: flex;
   min-width: 0;
@@ -133,8 +190,30 @@
   width: 32px;
   height: 32px;
   place-items: center;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
   color: rgb(163 163 163);
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.DatabaseTraceViewer_refresh:hover {
+  background: rgb(64 64 64);
+}
+
+.DatabaseTraceViewer_refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.DatabaseTraceViewer_refreshing {
+  animation: DatabaseTraceViewer_spin 900ms linear infinite;
+}
+
+@keyframes DatabaseTraceViewer_spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .DatabaseTraceViewer_events {
@@ -323,6 +402,40 @@
   font-size: 14px;
 }
 
+.DatabaseTraceViewer_noFlow {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.DatabaseTraceViewer_noFlowIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: rgb(38 38 38 / 50%);
+  color: rgb(115 115 115);
+}
+
+.DatabaseTraceViewer_noFlow p {
+  margin: 0;
+  color: rgb(163 163 163);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.DatabaseTraceViewer_noFlow span {
+  margin-top: 4px;
+  color: rgb(115 115 115);
+  font-size: 12px;
+}
+
 .DatabaseTraceViewer_loadMore {
   display: flex;
   justify-content: center;
@@ -330,6 +443,9 @@
 }
 
 .DatabaseTraceViewer_loadMore button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
   border-radius: 8px;
   background: rgb(30 58 138 / 20%);
@@ -338,4 +454,10 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.DatabaseTraceViewer_loadMore button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

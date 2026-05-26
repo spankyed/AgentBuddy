@@ -15,7 +15,9 @@ const defaultNotesSettings: NotesSettings = {
 
 export function NotesPluginSettings({settings}: {settings?: NotesSettings}) {
   const value = settings ?? defaultNotesSettings;
-  const exportCopy = value.exportFormat === 'markdown'
+  const exportFormat = 'markdown' as 'markdown' | 'json';
+  const exportDirectory = '';
+  const exportCopy = exportFormat === 'markdown'
     ? 'Export notes as markdown files with frontmatter'
     : 'Export all notes to a JSON file (full-fidelity round-trip)';
 
@@ -45,15 +47,15 @@ export function NotesPluginSettings({settings}: {settings?: NotesSettings}) {
         <p className={styles.copy}>{exportCopy}</p>
         <div className={styles.stack}>
           <div className={styles.formatToggle}>
-            <button className={styles.formatButton} data-active={value.exportFormat === 'markdown'} type="button">Markdown</button>
-            <button className={styles.formatButton} data-active={value.exportFormat === 'json'} type="button">JSON</button>
+            <button className={styles.formatButton} data-active={exportFormat === 'markdown'} type="button">Markdown</button>
+            <button className={styles.formatButton} data-active={exportFormat === 'json'} type="button">JSON</button>
           </div>
           <div className={styles.directoryRow}>
             <input
               className={styles.directoryInput}
               readOnly
               type="text"
-              value={value.exportDirectory ?? ''}
+              value={exportDirectory}
               placeholder="Select output directory..."
             />
             <button className={styles.secondaryButton} type="button">
@@ -61,7 +63,7 @@ export function NotesPluginSettings({settings}: {settings?: NotesSettings}) {
               Browse
             </button>
           </div>
-          <button className={styles.secondaryButton} disabled={!value.exportDirectory} type="button">
+          <button className={styles.secondaryButton} disabled={!exportDirectory} type="button">
             <Icons.Download size={16} />
             Export
           </button>
