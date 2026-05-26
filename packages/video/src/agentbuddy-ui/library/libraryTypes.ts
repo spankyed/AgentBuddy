@@ -70,4 +70,8 @@ export type LibrarySurfaceState = {
   selectedItemIds: string[];
   sortBy: 'name' | 'modified' | 'size' | 'kind';
   sortDirection: 'asc' | 'desc';
+  symlinkInput?: {
+    path: string;
+    show: boolean;
+  };
 };

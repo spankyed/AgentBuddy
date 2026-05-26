@@ -48,6 +48,11 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
                 <span className={styles.divider} />
               </>
             ) : null}
+            {state.isInSymlinkContext ? (
+              <LibraryButton size="sm" variant="transparent">
+                <Icons.RefreshCw size={16} />
+              </LibraryButton>
+            ) : null}
             <div className={styles.splitButton}>
               <button className={styles.splitMain} type="button">
                 <Icons.FolderPlus size={16} />
@@ -61,6 +66,19 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
               <Icons.FileText size={16} />
               <span>{state.isInSymlinkContext ? 'New File' : 'New Document'}</span>
             </LibraryButton>
+            {state.symlinkInput?.show ? (
+              <>
+                <div className={styles.symlinkBackdrop} />
+                <div className={styles.symlinkPopover}>
+                  <input className={styles.symlinkInput} readOnly value={state.symlinkInput.path} placeholder="Enter directory path" />
+                  <LibraryButton size="sm" variant="transparent">Browse</LibraryButton>
+                  <LibraryButton size="sm" variant="primary">Create</LibraryButton>
+                  <button className={styles.symlinkClose} type="button">
+                    <Icons.X size={16} />
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       </div>

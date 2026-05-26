@@ -159,6 +159,57 @@
   color: rgb(245 245 245);
 }
 
+.LibraryBrowser_symlinkBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.LibraryBrowser_symlinkPopover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 6px;
+  background: rgb(38 38 38);
+  box-shadow: 0 10px 15px rgb(0 0 0 / 30%);
+  padding: 12px;
+}
+
+.LibraryBrowser_symlinkInput {
+  width: 384px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 6px;
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  padding: 6px 12px;
+}
+
+.LibraryBrowser_symlinkInput::placeholder {
+  color: rgb(82 82 82);
+}
+
+.LibraryBrowser_symlinkClose {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: rgb(163 163 163);
+  padding: 4px;
+}
+
+.LibraryBrowser_symlinkClose:hover {
+  color: rgb(229 229 229);
+}
+
 .LibraryBrowser_tableScroller {
   min-height: 0;
   flex: 1;
