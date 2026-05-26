@@ -80,7 +80,7 @@ export const boardShotState: {
       tags: ['claude-code'],
     },
     motion: {
-      from: 174,
+      from: 162,
       to: 236,
       fromLeft: 8,
       toLeft: 40,
@@ -140,7 +140,7 @@ export function boardViewForFrame(frame: number) {
 
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
-  const createVisible = frame >= 36 && frame < 150;
+  const createVisible = frame >= 36 && frame < 134;
   const createFrame = Math.max(0, frame - 36);
   const createForm = createVisible
     ? {
@@ -162,9 +162,9 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     createForm,
     header: {
       ...boardShotState.header,
-      activeView: frame < 162 ? 'list' : 'kanban',
+      activeView: frame < 146 ? 'list' : 'kanban',
       newThreadPressed: frame > 16 && frame < 32,
-      pressedView: frame > 154 && frame < 168 ? 'kanban' : undefined,
+      pressedView: frame > 140 && frame < 152 ? 'kanban' : undefined,
     },
     movingCard: {
       card: boardShotState.movingCard.card,

@@ -1,30 +1,13 @@
-.NotesShot_isolatedHome {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: #050505;
-}
-
-.NotesShot_homeCard {
-  width: min(760px, calc(100% - 180px));
-  height: min(560px, calc(100% - 180px));
-  overflow: hidden;
-  border: 1px solid rgb(38 38 38);
-  border-radius: 10px;
-  background: rgb(23 23 23);
-  box-shadow: 0 40px 120px rgb(0 0 0 / 42%);
-  will-change: opacity, transform;
-}
-
-.NotesShot_square .NotesShot_homeCard {
-  width: min(680px, calc(100% - 96px));
-  height: min(620px, calc(100% - 112px));
-}
-
 .NotesShot_appReveal {
   position: absolute;
   inset: 0;
   transform-origin: 50% 48%;
   will-change: opacity, transform;
+}
+
+.NotesShot_homeFade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(23 23 23);
 }

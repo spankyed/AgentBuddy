@@ -13,7 +13,7 @@ export type WorkflowShotView = {
 export const releaseAutomationWorkflow: WorkflowShotState = {
   breadcrumbs: ['Flows', 'Root Flow (Root)'],
   flow: {
-    canvas: {width: 1120, height: 720},
+    canvas: {width: 1280, height: 720},
     paletteItems: [
       {kind: 'action', label: 'Action'},
       {kind: 'keep_alive', label: 'Keep alive'},
@@ -26,15 +26,15 @@ export const releaseAutomationWorkflow: WorkflowShotState = {
       {kind: 'kill', label: 'Kill'},
     ],
     nodes: [
-      {id: 'listener', kind: 'listener', label: 'start command listener', subtitle: 'user.command', exits: ['exit 1'], x: 360, y: 235},
-      {id: 'switch', kind: 'switch', label: 'is /replace-obsolete-apps', branches: [{label: '/replace-obsolete-apps'}, {isElse: true, label: 'Else'}], x: 620, y: 235},
-      {id: 'delete-apps', kind: 'action', label: 'Find and delete obsolete apps', x: 930, y: 190, width: 286},
-      {id: 'log-result', kind: 'action', label: 'Log obsolete apps removed', x: 930, y: 320, width: 286},
+      {id: 'listener', kind: 'listener', label: 'start command listener', subtitle: 'user.command', exits: ['exit 1'], x: 330, y: 260},
+      {id: 'switch', kind: 'switch', label: 'is /replace-obsolete-apps', branches: [{label: '/replace-obsolete-apps'}, {isElse: true, label: 'Else'}], x: 580, y: 260},
+      {id: 'delete-apps', kind: 'action', label: 'Find and delete obsolete apps', x: 890, y: 210, width: 286},
+      {id: 'log-result', kind: 'action', label: 'Log obsolete apps removed', x: 890, y: 340, width: 286},
     ],
     edges: [
       {from: 'listener', fromExit: 0, kind: 'transitions_to', to: 'switch'},
       {from: 'switch', fromExit: 0, kind: 'transitions_to', to: 'delete-apps'},
-      {from: 'delete-apps', kind: 'transitions_to', to: 'log-result'},
+      {from: 'switch', fromExit: 1, kind: 'transitions_to', to: 'log-result'},
     ],
   },
 };
@@ -68,19 +68,19 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
   const pressedPaletteKind =
     frame > 64 && frame <= 76 ? 'switch'
       : frame > 130 && frame <= 142 ? 'action'
-        : frame > 188 && frame <= 200 ? 'action'
+      : frame > 190 && frame <= 204 ? 'action'
           : undefined;
   const selectedNodeId =
     frame > 72 && frame < 104 ? 'switch'
       : frame > 138 && frame < 170 ? 'delete-apps'
-        : frame > 196 && frame < 228 ? 'log-result'
-          : frame > 228 ? 'delete-apps'
+        : frame > 210 && frame < 236 ? 'log-result'
+          : frame > 236 ? 'delete-apps'
             : 'listener';
   const visibleNodeIds = new Set([
     'listener',
     ...(frame > 72 ? ['switch'] : []),
     ...(frame > 138 ? ['delete-apps'] : []),
-    ...(frame > 196 ? ['log-result'] : []),
+    ...(frame > 210 ? ['log-result'] : []),
   ]);
   const nodes = flow.nodes.filter(node => visibleNodeIds.has(node.id));
   return {
@@ -91,8 +91,11 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
       ...item,
       pressed: item.kind === pressedPaletteKind,
     })),
-    edges: flow.edges.filter(edge => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to)),
+    edges: flow.edges
+      .filter(edge => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to))
+      .map(edge => ({...edge, animated: frame > 236 && edge.to === 'log-result'})),
     selectedNodeId,
+    viewport: frame > 236 ? {x: -180, y: 0, zoom: 1} : undefined,
   };
 }
 

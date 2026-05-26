@@ -22,24 +22,27 @@ type ThreadConversationProps = {
     system?: CSSProperties;
     user?: CSSProperties;
   };
-  systemMessage: string;
+  systemMessage?: ReactNode;
   userMessage: ReactNode;
 };
 
 // Reusable thread conversation surface for app-like scenes. Film shots provide
 // frame-derived text/cursor overlays; message rendering stays here.
 export function ThreadConversation({assistant, children, createdAt, messageStyles, systemMessage, userMessage}: ThreadConversationProps) {
+  const hasAssistantContent = Boolean(assistant.toolActivity || assistant.artifact || assistant.markdown.trim());
   return (
     <ThreadChatCanvas>
-      <div style={messageStyles?.system}><MessageBubble sender="system">{systemMessage}</MessageBubble></div>
+      {systemMessage ? <div style={messageStyles?.system}><MessageBubble sender="system">{systemMessage}</MessageBubble></div> : null}
       <div style={messageStyles?.user}><MessageBubble sender="user" createdAt={createdAt} isTail>{userMessage}</MessageBubble></div>
-      <div style={messageStyles?.assistant}>
-        <MessageBubble sender="assistant" createdAt={createdAt}>
-          {assistant.toolActivity ? <ToolActivityBlock rowOpacities={assistant.toolActivity.rowOpacities} state={assistant.toolActivity.state} /> : null}
-          <MarkdownViewer content={assistant.markdown} />
-          {assistant.artifact ? <PlanArtifactCard artifact={assistant.artifact} /> : null}
-        </MessageBubble>
-      </div>
+      {hasAssistantContent ? (
+        <div style={messageStyles?.assistant}>
+          <MessageBubble sender="assistant" createdAt={createdAt}>
+            {assistant.toolActivity ? <ToolActivityBlock rowOpacities={assistant.toolActivity.rowOpacities} state={assistant.toolActivity.state} /> : null}
+            {assistant.markdown.trim() ? <MarkdownViewer content={assistant.markdown} /> : null}
+            {assistant.artifact ? <PlanArtifactCard artifact={assistant.artifact} /> : null}
+          </MessageBubble>
+        </div>
+      ) : null}
       {children}
     </ThreadChatCanvas>
   );

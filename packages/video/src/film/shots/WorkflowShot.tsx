@@ -2,6 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
 import {FlowNode} from '../../agentbuddy-ui/flows/FlowNode';
 import {FlowNodeForm} from '../../agentbuddy-ui/flows/FlowNodeForm';
+import {ComponentStage} from '../ComponentStage';
 import {replaceObsoleteAppsFormStateForFrame} from '../state/flowForms';
 import {workflowShotViewForFrame} from '../state/workflow';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -20,11 +21,17 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
   if (frame < 64) {
     const listener = view.flow.nodes[0];
     return (
-      <div className={`${styles.isolatedFlow} ${variant === 'square' ? styles.square : ''}`}>
-        <div className={styles.isolatedNode}>
+      <ComponentStage
+        className={styles.nodeStage}
+        frame={frame}
+        height={variant === 'square' ? '300px' : '320px'}
+        variant={variant}
+        width={variant === 'square' ? 'min(520px, calc(100% - 96px))' : '560px'}
+      >
+        <div className={styles.nodeSlot}>
           <FlowNode editable={false} node={{...listener, x: 0, y: 0}} selected />
         </div>
-      </div>
+      </ComponentStage>
     );
   }
 

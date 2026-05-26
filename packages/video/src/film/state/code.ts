@@ -228,7 +228,7 @@ export const expandedTerminalPanelState: TerminalPanelState = {
     '',
     'Local: http://127.0.0.1:5173',
     'rendered local app preview',
-    'anti-gravity comparison page ready',
+    'launch film preview ready',
   ].join('\n'),
 };
 
@@ -238,11 +238,11 @@ export const sourceControlPanelReviewState: CodeReviewState = {
 };
 
 export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
-  const prPublishProgress = ease(frame, 238, 278);
-  const prCreated = frame > 318;
-  const prMerged = frame > 374;
+  const prPublishProgress = ease(frame, 318, 350);
+  const prCreated = frame > 380;
+  const prMerged = frame > 404;
   return {
-    activePanel: frame < 48 || frame > 238 ? 'pr' : 'commit',
+    activePanel: frame < 48 || frame > 316 ? 'pr' : 'commit',
     commitButtonPressed: frame > 204 && frame <= 214,
     commitMenuActionPressed: frame > 92 && frame < 102,
     commitMenuOpen: frame > 78 && frame < 104,
@@ -252,11 +252,11 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
     ),
     generateCommitPressed: frame > 148 && frame <= 158,
     generatingCommitMessage: frame > 154 && frame <= 184,
-    leftSurface: frame > 220 && frame < 238 ? 'app-preview' : 'diff',
-    prMode: frame <= 286 ? 'files' : frame <= 318 ? 'create' : 'details',
-    prCreatePressed: frame > 306 && frame <= 318,
-    prMergePressed: frame > 360 && frame <= 374,
-    prPublishPressed: frame > 232 && frame <= 242,
+    leftSurface: frame > 220 && frame < 258 ? 'terminal' : frame >= 258 && frame < 316 ? 'app-preview' : 'diff',
+    prMode: frame <= 350 ? 'files' : frame <= 380 ? 'create' : 'details',
+    prCreatePressed: frame > 368 && frame <= 380,
+    prMergePressed: frame > 394 && frame <= 404,
+    prPublishPressed: frame > 318 && frame <= 328,
     pullRequest: {
       ...codeShotState.review.pullRequest,
       branchPublished: prPublishProgress >= 1,
@@ -305,7 +305,7 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
         ]
       : [],
     stashesExpanded: frame >= 104 && frame < 132,
-    terminal: frame > 220 && frame < 238 ? expandedTerminalPanelState : codeShotState.review.terminal,
+    terminal: frame > 220 && frame < 316 ? expandedTerminalPanelState : codeShotState.review.terminal,
     worktrees: codeShotState.review.worktrees.map(worktree => ({
       ...worktree,
       current: checkedOutMainWorktree ? worktree.branch === 'master' : worktree.branch === 'as/react-launch-film',

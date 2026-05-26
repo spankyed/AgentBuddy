@@ -17,7 +17,7 @@ export function AppPreviewSurface() {
         </div>
         <main className={styles.page}>
           <p>local app preview</p>
-          <h1>anti-gravity sucks</h1>
+          <h1>&ldquo;anti-gravity&rdquo; sucks</h1>
         </main>
       </div>
     </section>

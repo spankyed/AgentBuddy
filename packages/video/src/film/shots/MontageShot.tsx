@@ -3,7 +3,7 @@ import {BrainSurface} from '../../agentbuddy-ui/brain/BrainSurface';
 import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import {LogsSurface} from '../../agentbuddy-ui/logs/LogsSurface';
 import {SettingsSurface} from '../../agentbuddy-ui/settings/SettingsSurface';
-import {ThreadChatCanvas} from '../../agentbuddy-ui/threads/ThreadChatCanvas';
+import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
 import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import type {PluginId} from '../../agentbuddy-ui/chrome/Toolbar';
 import {launchComposerState} from '../state/chat';
@@ -27,8 +27,8 @@ export function MontageShot({frame, variant}: {frame: number; variant?: 'landsca
   const segmentIndex = segmentIndexForFrame(frame);
   const segmentStart = segmentStarts[Math.max(0, segmentIndex)];
   const segmentEnd = segmentEnds[Math.max(0, segmentIndex)];
-  const enter = ease(frame, segmentStart, segmentStart + 16);
-  const exit = 1 - ease(frame, segmentEnd - 12, segmentEnd);
+  const enter = ease(frame, segmentStart, segmentStart + 10);
+  const exit = 1 - ease(frame, segmentEnd - 4, segmentEnd);
   const visibility = Math.min(enter, exit);
 
   return (
@@ -55,15 +55,30 @@ function segmentIndexForFrame(frame: number) {
 
 function montageShotViewForFrame(frame: number) {
   if (frame < 72) {
+    const command = '/replace-obsolete-apps';
     return {
       activePlugin: 'threads' as PluginId,
       breadcrumbs: ['Threads'],
       composer: {
         ...launchComposerState,
-        sendPressed: frame > 54 && frame < 66,
-        text: textReveal('/replace-obsolete-apps', frame, 12, 52),
+        sendPressed: frame > 20 && frame < 28,
+        text: frame < 24 ? textReveal(command, frame, 4, 20) : '',
       },
-      surface: <ThreadChatCanvas />,
+      surface: (
+        <ThreadConversation
+          assistant={{
+            markdown: frame > 24
+              ? textReveal('Matched obsolete apps, queued the database cleanup, and opened the execution trace.', frame, 24, 58)
+              : '',
+          }}
+          createdAt="just now"
+          messageStyles={{
+            assistant: {opacity: ease(frame, 28, 44), transform: `translateY(${mix(18, 0, ease(frame, 28, 44))}px)`},
+            user: {opacity: ease(frame, 18, 28), transform: `translateY(${mix(14, 0, ease(frame, 18, 28))}px)`},
+          }}
+          userMessage={command}
+        />
+      ),
     };
   }
 
@@ -106,9 +121,9 @@ function databaseStateForMontageFrame(frame: number): DatabaseSurfaceState {
   const state = frame < 182 ? databaseMessageLookupState : databaseMessagesBeforeDateState;
   const segmentStart = frame < 182 ? 142 : 182;
   const local = frame - segmentStart;
-  const query = textReveal(state.currentQuery, local, 0, 24);
+  const query = textReveal(state.currentQuery, local, 0, 4);
 
-  if (local < 24) {
+  if (local < 4) {
     return {
       ...state,
       currentQuery: query,
@@ -120,11 +135,11 @@ function databaseStateForMontageFrame(frame: number): DatabaseSurfaceState {
     };
   }
 
-  if (local < 36) {
+  if (local < 8) {
     return {
       ...state,
       currentQuery: state.currentQuery,
-      executePressed: local < 30,
+      executePressed: local < 6,
       executionTime: null,
       isLoading: true,
       queryResult: null,
@@ -134,7 +149,7 @@ function databaseStateForMontageFrame(frame: number): DatabaseSurfaceState {
 
   return {
     ...state,
-    copiedResultRowIndex: local > 52 ? 0 : state.copiedResultRowIndex,
+    copiedResultRowIndex: local > 24 ? 0 : state.copiedResultRowIndex,
     executePressed: false,
   };
 }

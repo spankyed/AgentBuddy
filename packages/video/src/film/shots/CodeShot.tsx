@@ -2,6 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {CodeFeaturePanel} from '../../agentbuddy-ui/code/CodeFeaturePanel';
 import {CodeReview} from '../../agentbuddy-ui/code/CodeReview';
 import {PullRequestPanel} from '../../agentbuddy-ui/code/PullRequestPanel';
+import {ComponentStage} from '../ComponentStage';
 import {codeShotViewForFrame} from '../state/code';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
@@ -17,7 +18,12 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
 
   if (frame < 48) {
     return (
-      <div className={`${styles.isolatedPanel} ${variant === 'square' ? styles.square : ''}`}>
+      <ComponentStage
+        frame={frame}
+        height={variant === 'square' ? 'min(700px, calc(100% - 112px))' : 'min(740px, calc(100% - 96px))'}
+        variant={variant}
+        width={variant === 'square' ? 'min(430px, calc(100% - 72px))' : '430px'}
+      >
         <CodeFeaturePanel terminal={view.review.state.terminal}>
           <PullRequestPanel
             baseDirectory={view.review.state.baseDirectory}
@@ -30,7 +36,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
             state={view.review.view.pullRequest}
           />
         </CodeFeaturePanel>
-      </div>
+      </ComponentStage>
     );
   }
 

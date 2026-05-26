@@ -154,7 +154,7 @@ export type CodeReviewViewState = {
   diffLineOpacities: number[];
   generateCommitPressed?: boolean;
   generatingCommitMessage: boolean;
-  leftSurface?: 'app-preview' | 'diff';
+  leftSurface?: 'app-preview' | 'diff' | 'terminal';
   prMode: 'files' | 'create' | 'details';
   prCreatePressed?: boolean;
   prMergePressed?: boolean;

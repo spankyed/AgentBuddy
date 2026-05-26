@@ -14,8 +14,8 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
   const view = boardShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
   const appReveal = ease(frame, 36, 68);
-  const createExit = 1 - ease(frame, 132, 150);
-  const boardReveal = ease(frame, 150, 180);
+  const createExit = 1 - ease(frame, 120, 134);
+  const boardReveal = ease(frame, 132, 156);
 
   if (frame < 36) {
     const enter = ease(frame, 0, 18);

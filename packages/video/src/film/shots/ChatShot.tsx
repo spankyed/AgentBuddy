@@ -14,9 +14,9 @@ const styles = makeStyles('ChatShot');
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
-  const appReveal = ease(frame, 42, 78);
+  const appReveal = ease(frame, 96, 132);
 
-  if (frame < 42) {
+  if (frame < 96) {
     return (
       <div className={`${styles.isolatedComposer} ${variant === 'square' ? styles.square : ''}`}>
         <ChatComposer state={view.composer} />

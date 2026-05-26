@@ -3,6 +3,7 @@ import type {CodeReviewState, CodeReviewViewState} from './codeTypes';
 import {AppPreviewSurface} from './AppPreviewSurface';
 import {CodeDiffView} from './CodeDiffView';
 import {CodeFeaturePanel} from './CodeFeaturePanel';
+import {CodeTerminalSurface} from './CodeTerminalSurface';
 import {PullRequestPanel} from './PullRequestPanel';
 import {SourceControlPanel} from './SourceControlPanel';
 import './CodeReview.module.css';
@@ -18,7 +19,9 @@ type CodeReviewProps = {
 export function CodeReview({state, variant, view}: CodeReviewProps) {
   return (
     <div className={cx(styles.root, variant === 'square' && styles.compact)}>
-      {view.leftSurface === 'app-preview' ? (
+      {view.leftSurface === 'terminal' ? (
+        <CodeTerminalSurface state={state.terminal} />
+      ) : view.leftSurface === 'app-preview' ? (
         <AppPreviewSurface />
       ) : (
         <CodeDiffView fileName={state.diff.fileName} lineOpacities={view.diffLineOpacities} lineStart={state.diff.lineStart} lines={state.diff.lines} />

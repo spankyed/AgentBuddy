@@ -5,7 +5,40 @@ import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {launchComposerState} from './chat';
 import {ease, mix, textReveal} from './timeline';
 
-const launchImageSrc = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20720%20320%22%3E%3Crect%20width%3D%22720%22%20height%3D%22320%22%20fill%3D%22%23171717%22%2F%3E%3Crect%20x%3D%2248%22%20y%3D%2244%22%20width%3D%22624%22%20height%3D%22232%22%20rx%3D%2218%22%20fill%3D%22%23262626%22%20stroke%3D%22%23525252%22%2F%3E%3Cpath%20d%3D%22M96%20106h312M96%20146h456M96%20186h380M96%20226h214%22%20stroke%3D%22%23e5e5e5%22%20stroke-width%3D%2214%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22596%22%20cy%3D%22106%22%20r%3D%2226%22%20fill%3D%22%233b82f6%22%2F%3E%3Cpath%20d%3D%22M586%20106l7%207%2016-19%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%227%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E';
+const launchImageSrc = svgDataUri(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320">
+  <rect width="720" height="320" fill="#111111"/>
+  <rect x="1" y="1" width="718" height="318" rx="10" fill="#171717" stroke="#2f2f2f"/>
+  <rect x="1" y="1" width="718" height="34" rx="10" fill="#1d1d1d"/>
+  <circle cx="24" cy="18" r="5" fill="#ff5f57"/>
+  <circle cx="42" cy="18" r="5" fill="#ffbd2e"/>
+  <circle cx="60" cy="18" r="5" fill="#28c840"/>
+  <text x="94" y="22" fill="#a3a3a3" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">THREADS / LAUNCH PLAN</text>
+  <rect x="36" y="62" width="210" height="42" rx="7" fill="#202020" stroke="#303030"/>
+  <text x="52" y="87" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Launch AgentBuddy</text>
+  <rect x="352" y="66" width="320" height="42" rx="8" fill="#172033" stroke="#27456f"/>
+  <text x="368" y="91" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="14">Turn launch context into execution tickets.</text>
+  <rect x="72" y="142" width="274" height="118" rx="8" fill="#1d1d1d" stroke="#303030"/>
+  <text x="92" y="168" fill="#a3a3a3" font-family="Inter, Arial, sans-serif" font-size="13">Agent is working</text>
+  <circle cx="96" cy="196" r="4" fill="#14b8a6"/>
+  <text x="112" y="200" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Capture launch context</text>
+  <circle cx="96" cy="220" r="4" fill="#14b8a6"/>
+  <text x="112" y="224" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Create execution tickets</text>
+  <circle cx="96" cy="244" r="4" fill="#f59e0b"/>
+  <text x="112" y="248" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Prepare release workflow</text>
+  <rect x="390" y="130" width="250" height="150" rx="8" fill="#1d1d1d" stroke="#303030"/>
+  <text x="410" y="158" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Launch Operating Plan</text>
+  <line x1="410" y1="188" x2="616" y2="188" stroke="#2f2f2f"/>
+  <text x="410" y="212" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Capture launch context</text>
+  <text x="592" y="212" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="12">done</text>
+  <text x="410" y="238" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Create execution tickets</text>
+  <text x="592" y="238" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="12">done</text>
+</svg>
+`);
+
+function svgDataUri(svg: string) {
+  return `data:image/svg+xml,${encodeURIComponent(svg.trim())}`;
+}
 
 export type NotesTaskListPanelState = {
   activeId: string | null;
@@ -169,11 +202,11 @@ export const notesEditorCopy = {
 };
 
 export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
-  const checkboxPressed = frame > 202 && frame <= 214;
-  const markedComplete = frame > 214;
-  const addPressed = frame > 232 && frame <= 242;
-  const linkedTodoVisible = frame > 242;
-  const linkedTodoEnter = ease(frame, 242, 262);
+  const checkboxPressed = frame > 190 && frame <= 204;
+  const markedComplete = frame > 204;
+  const addPressed = frame > 218 && frame <= 230;
+  const linkedTodoVisible = frame > 230;
+  const linkedTodoEnter = ease(frame, 230, 250);
   const items = notesTaskListItems.map(item =>
     item.id === 'resize-image' && markedComplete
       ? {...item, completed: true, muted: true}
@@ -204,7 +237,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
 }
 
 export function notesViewForFrame(frame: number) {
-  const imageEnter = ease(frame, 96, 122);
+  const imageEnter = ease(frame, 72, 98);
   const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => ({
     caretVisible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
     id: `animated-${index}`,
@@ -213,19 +246,19 @@ export function notesViewForFrame(frame: number) {
 
   return {
     animatedLines,
-    image: frame > 96
+    image: frame > 72
       ? {
           alt: 'Launch checklist image',
-          bubbleOpen: frame > 126 && frame < 188,
-          resizeButtonPressed: frame > 142 && frame <= 150,
-          resizeOpen: frame > 148 && frame < 188,
-          sliderPressed: frame > 152 && frame < 184,
+          bubbleOpen: frame > 100 && frame < 188,
+          resizeButtonPressed: frame > 112 && frame <= 124,
+          resizeOpen: frame > 118 && frame < 188,
+          sliderPressed: frame > 124 && frame < 184,
           src: launchImageSrc,
           style: {
             opacity: imageEnter,
             transform: `translateY(${mix(18, 0, imageEnter)}px) scale(${mix(0.985, 1, imageEnter)})`,
           },
-          widthPercent: frame > 148 ? Math.round(100 - Math.min(1, (frame - 148) / 40) * 35) : 100,
+          widthPercent: frame > 124 ? Math.round(76 - Math.min(1, (frame - 124) / 48) * 22) : 76,
         }
       : undefined,
   };
@@ -233,7 +266,7 @@ export function notesViewForFrame(frame: number) {
 
 export function notesShotViewForFrame(frame: number): NotesShotView {
   const view = notesViewForFrame(frame);
-  const tasklistPressed = frame > 180 && frame < 196;
+  const tasklistPressed = frame > 170 && frame < 186;
   const home = {
     ...notesHomeState,
     recent: notesHomeState.recent.map(note => note.id === 'recent-current'

@@ -61,8 +61,8 @@ function Film({variant}: {variant: Variant}) {
 
 function ShotLayer({children, shot}: {children: ReactNode; shot: FilmShot}) {
   const frame = useCurrentFrame();
-  const enter = ease(frame, 0, shot.chapter ? 1 : 18);
-  const exit = shot.id === 'final' ? 0 : ease(frame, shot.duration - 18, shot.duration);
+  const enter = shot.chapter ? 1 : ease(frame, 0, 18);
+  const exit = shot.chapter || shot.id === 'final' ? 0 : ease(frame, shot.duration - 4, shot.duration);
   const opacity = Math.min(enter, 1 - exit);
   const scale = shot.chapter ? 1 : mix(0.992, 1, enter) - exit * 0.006;
   const y = shot.chapter ? 0 : mix(10, 0, enter) - exit * 6;

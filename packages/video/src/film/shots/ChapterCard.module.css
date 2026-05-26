@@ -29,12 +29,13 @@
 }
 
 .ChapterCard_lockup h1 {
-  max-width: 980px;
+  max-width: 1180px;
   font-size: 72px;
   font-weight: 820;
   letter-spacing: 0;
   line-height: 0.98;
   margin: 0;
+  text-wrap: balance;
 }
 
 .ChapterCard_lockup p {

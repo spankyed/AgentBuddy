@@ -28,12 +28,12 @@ export type ChatShotView = {
   composer: ChatComposerState;
   conversation: {
     assistant: {
-      artifact: PlanArtifactState;
+      artifact?: PlanArtifactState;
       markdown: string;
-      toolActivity: ReturnType<typeof toolActivityViewForFrame>;
+      toolActivity?: ReturnType<typeof toolActivityViewForFrame>;
     };
     createdAt: string;
-    systemMessage: string;
+    systemMessage?: string;
     userMessage: {
       caretVisible: boolean;
       text: string;
@@ -128,10 +128,19 @@ export const chatShotState = {
   breadcrumbs: ['Threads', 'Launch Thread'],
   createdAt: '9:41 AM',
   cursorPath: {from: [58, 74] as [number, number], to: [82, 84] as [number, number], start: 34, end: 96},
-  systemMessage: 'Launch AgentBuddy',
+  systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
-  response: {text: 'Plan artifact created. I pinned the launch thread, linked the parent ticket, and prepared a quick prompt for `write a commit`.', from: 202, to: 286},
+  response: {text: 'I found the launch context and turned it into execution work: tickets, a linked parent thread, and a clean next step for `write a commit`.', from: 190, to: 264},
 };
+
+const commitMessageResponse = `Here's the commit message:
+
+\`\`\`
+feat(video): turn launch context into execution tickets
+
+Create the launch operating plan, link the parent thread,
+and queue the next implementation pass from the same surface.
+\`\`\``;
 
 export const chatToolActivity: ToolActivityBlockState = {
   artifactRef: {
@@ -384,15 +393,15 @@ export const projectSelectRespondedState: ProjectSelectBlockState = {
 
 export function toolActivityViewForFrame(frame: number) {
   return {
-    rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, 78 + index * 18, 96 + index * 18)),
+    rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, 174 + index * 14, 190 + index * 14)),
     state: frame > 230 ? {...chatToolActivity, state: 'done' as const} : chatToolActivity,
   };
 }
 
 export function chatViewForFrame(frame: number) {
-  const completedThreadOpen = frame > 166;
+  const quickPromptActive = frame > 292;
   const messageReveal = (from: number) => {
-    const progress = completedThreadOpen ? ease(frame, from, from + 18) : 1;
+    const progress = ease(frame, from, from + 18);
     return {
       opacity: progress,
       transform: `translateY(${(1 - progress) * 18}px)`,
@@ -401,15 +410,17 @@ export function chatViewForFrame(frame: number) {
   return {
     prompt: textReveal(chatShotState.prompt.text, frame, chatShotState.prompt.from, chatShotState.prompt.to),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
-    response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
-    conversationOpacity: ease(frame, 42, 82),
-    conversationY: 28 - ease(frame, 42, 82) * 28,
+    response: quickPromptActive
+      ? textReveal(commitMessageResponse, frame, 326, 386)
+      : textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
+    conversationOpacity: ease(frame, 110, 146),
+    conversationY: 28 - ease(frame, 110, 146) * 28,
     messageStyles: {
-      assistant: messageReveal(202),
-      system: messageReveal(168),
-      user: messageReveal(184),
+      assistant: messageReveal(quickPromptActive ? 326 : 190),
+      system: messageReveal(150),
+      user: messageReveal(quickPromptActive ? 292 : 154),
     },
-    toolActivity: toolActivityViewForFrame(frame),
+    toolActivity: undefined,
   };
 }
 
@@ -422,7 +433,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     composer: {
       ...launchComposerState,
       attachments: [
-        ...(frame > 108 ? [{
+        ...(frame > 108 && frame < 166 ? [{
           type: 'file' as const,
           label: '#notes:current',
           typeLabel: 'Note',
@@ -431,7 +442,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             transform: `translateY(${mix(10, 0, noteAttachmentEnter)}px) scale(${mix(0.975, 1, noteAttachmentEnter)})`,
           },
         }] : []),
-        ...(frame > 132 ? [{
+        ...(frame > 132 && frame < 166 ? [{
           type: 'image' as const,
           label: 'image 1',
           style: {
@@ -444,7 +455,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
         ? {
             ...launchComposerState.bottomTabs!,
             active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : 'active',
-            activePinned: frame > 246,
+            activePinned: frame > 330,
             pressed: frame > 24 && frame < 38 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
           }
         : undefined,
@@ -453,19 +464,19 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       quickPromptsOpen: frame > 270 && frame < 308,
       quickPromptPressedId: frame > 284 && frame < 300 ? 'qp-write-commit' : undefined,
       sendPressed: (frame > 154 && frame < 166) || (frame > 312 && frame < 324),
-      text: frame > 78 && frame < 166 ? view.prompt : frame > 292 ? 'write a commit' : undefined,
+      text: frame > 78 && frame < 166 ? view.prompt : frame > 292 && frame < 324 ? 'write a commit' : undefined,
     },
     conversation: {
       assistant: {
-        artifact: launchPlanArtifact,
+        artifact: undefined,
         markdown: view.response,
-        toolActivity: view.toolActivity,
+        toolActivity: undefined,
       },
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
-        caretVisible: view.promptCaretVisible,
-        text: view.prompt,
+        caretVisible: frame < 166 && view.promptCaretVisible,
+        text: frame > 292 ? 'write a commit' : view.prompt,
       },
     },
     conversationStyle: {

@@ -1,6 +1,4 @@
-.WorkflowShot_isolatedFlow {
-  position: absolute;
-  inset: 0;
+.WorkflowShot_nodeStage {
   display: grid;
   place-items: center;
   background-color: rgb(23 23 23);
@@ -8,15 +6,11 @@
   background-size: 24px 24px;
 }
 
-.WorkflowShot_isolatedNode {
+.WorkflowShot_nodeSlot {
   position: relative;
   width: 1px;
   height: 1px;
-  transform: scale(1.18);
-}
-
-.WorkflowShot_square .WorkflowShot_isolatedNode {
-  transform: scale(1.08);
+  transform: scale(1.2);
 }
 
 .WorkflowShot_appReveal {
