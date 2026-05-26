@@ -1,5 +1,5 @@
 import {Icons} from '../../primitives/Icon';
-import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
+import {KeyboardShortcutInput, type KeyboardShortcutValue} from '../general/KeyboardShortcutInput';
 import {ColorPicker} from '../../design/ColorPicker';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import type {ReactNode} from 'react';
@@ -299,7 +299,7 @@ function SelectStart({copy, title, value}: {copy: string; title: string; value: 
   );
 }
 
-function Hotkey({copy, label, value}: {copy: string; label: string; value?: string}) {
+function Hotkey({copy, label, value}: {copy: string; label: string; value?: KeyboardShortcutValue}) {
   return (
     <div>
       <KeyboardShortcutInput label={label} value={value ?? undefined} />

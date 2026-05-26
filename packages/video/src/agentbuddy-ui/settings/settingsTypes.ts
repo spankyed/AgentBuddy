@@ -1,4 +1,5 @@
 import type {PluginId} from '../chrome/Toolbar';
+import type {KeyboardShortcutValue} from './general/KeyboardShortcutInput';
 
 export type SettingsTabId = 'general' | 'plugins' | 'help';
 export type GeneralSettingsNavId = 'application' | 'secrets' | 'projects' | 'personal' | 'json';
@@ -89,9 +90,9 @@ export type SettingsSurfaceState = {
   activeTab: SettingsTabId;
   applicationHotkeys?: {
     custom?: Array<{eventName: string; id: string; shortcut?: string}>;
-    switchPluginDown?: string;
-    switchPluginUp?: string;
-    toggleInspectionPanel?: string;
+    switchPluginDown?: KeyboardShortcutValue;
+    switchPluginUp?: KeyboardShortcutValue;
+    toggleInspectionPanel?: KeyboardShortcutValue;
   };
   faqs: Array<{answer: string; expanded?: boolean; id: string; question: string}>;
   generalNavItem: GeneralSettingsNavId;
@@ -124,7 +125,7 @@ export type SettingsSurfaceState = {
     };
     database?: {
       hotkeys: {
-        executeQuery?: string;
+        executeQuery?: KeyboardShortcutValue;
       };
     };
     code?: {
@@ -136,11 +137,11 @@ export type SettingsSurfaceState = {
       enablePreview: boolean;
       enableShellIntegration: boolean;
       hotkeys: {
-        focusSearch?: string;
-        navigateNextPanel?: string;
-        navigatePrevPanel?: string;
-        openTerminal?: string;
-        openTerminalTab?: string;
+        focusSearch?: KeyboardShortcutValue;
+        navigateNextPanel?: KeyboardShortcutValue;
+        navigatePrevPanel?: KeyboardShortcutValue;
+        openTerminal?: KeyboardShortcutValue;
+        openTerminalTab?: KeyboardShortcutValue;
       };
       maxTerminals: number;
       mdEditorDefault: boolean;
@@ -208,8 +209,8 @@ export type SettingsSurfaceState = {
         defaultMode?: string;
         defaultPhase?: string;
         hotkeys: {
-          switchMode?: string;
-          textToSpeech?: string;
+          switchMode?: KeyboardShortcutValue;
+          textToSpeech?: KeyboardShortcutValue;
         };
         modes: ThreadModeSettings[];
         quickPromptNumberKeyInserts: boolean;

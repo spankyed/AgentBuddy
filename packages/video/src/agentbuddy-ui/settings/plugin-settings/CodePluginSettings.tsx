@@ -1,5 +1,5 @@
 import {Icons} from '../../primitives/Icon';
-import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
+import {KeyboardShortcutInput, type KeyboardShortcutValue} from '../general/KeyboardShortcutInput';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import {CodeDirectorySelect} from './CodeDirectorySelect';
 import type {SettingsSurfaceState} from '../settingsTypes';
@@ -168,7 +168,7 @@ function NumberSetting({checkbox = false, copy, max, min, title, value}: {checkb
   );
 }
 
-function Hotkey({copy, label, value}: {copy?: string; label: string; value?: string}) {
+function Hotkey({copy, label, value}: {copy?: string; label: string; value?: KeyboardShortcutValue}) {
   return (
     <div className={styles.hotkeyGroup}>
       <KeyboardShortcutInput label={label} value={value ?? undefined} />

@@ -50,6 +50,21 @@
   white-space: nowrap;
 }
 
+.KeyboardShortcutInput_globalBadge {
+  margin-left: auto;
+  margin-right: 8px;
+  border-radius: 6px;
+  background: rgb(59 130 246 / 20%);
+  color: rgb(96 165 250);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+}
+
+.KeyboardShortcutInput_globalBadge + .KeyboardShortcutInput_key {
+  margin-left: 0;
+}
+
 .KeyboardShortcutInput_empty {
   margin-left: auto;
   color: rgb(115 115 115);

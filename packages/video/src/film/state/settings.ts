@@ -6,9 +6,9 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       {id: 'hotkey_quick_prompt', eventName: 'QUICK_PROMPT.OPEN', shortcut: '⌘ K'},
       {id: 'hotkey_launch_context', eventName: 'LAUNCH.CONTEXT_CAPTURE', shortcut: '⌘ ⇧ L'},
     ],
-    switchPluginDown: '⌘ ↓',
-    switchPluginUp: '⌘ ↑',
-    toggleInspectionPanel: '⌘ I',
+    switchPluginDown: {key: 'ArrowDown', modifiers: ['cmd']},
+    switchPluginUp: {key: 'ArrowUp', modifiers: ['cmd']},
+    toggleInspectionPanel: {key: 'i', modifiers: ['cmd']},
   },
   faqs: [
     {answer: 'AgentBuddy stores local configuration on this device and uses it to drive workflows, plugin state, and launch-film demos.', id: 'faq-local', question: 'Where are settings stored?'},
@@ -69,11 +69,11 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       enablePreview: true,
       enableShellIntegration: true,
       hotkeys: {
-        focusSearch: '⌘ ⇧ F',
-        navigateNextPanel: '⌘ ]',
-        navigatePrevPanel: '⌘ [',
-        openTerminal: '⌃ `',
-        openTerminalTab: '⌘ ⇧ `',
+        focusSearch: {key: 'f', modifiers: ['cmd', 'shift']},
+        navigateNextPanel: {key: ']', modifiers: ['cmd']},
+        navigatePrevPanel: {key: '[', modifiers: ['cmd']},
+        openTerminal: {key: '`', modifiers: ['ctrl']},
+        openTerminalTab: {key: '`', modifiers: ['cmd', 'shift']},
       },
       maxTerminals: 25,
       mdEditorDefault: false,
@@ -88,7 +88,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     },
     database: {
       hotkeys: {
-        executeQuery: '⌘ ↵',
+        executeQuery: {key: 'Enter', modifiers: ['cmd']},
       },
     },
     flows: {
@@ -133,8 +133,8 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
         defaultMode: 'Plan',
         defaultPhase: 'Research',
         hotkeys: {
-          switchMode: '⌘ ⇧ M',
-          textToSpeech: '⌘ ⇧ S',
+          switchMode: {key: 'm', modifiers: ['cmd', 'shift']},
+          textToSpeech: {key: 's', modifiers: ['cmd', 'shift']},
         },
         modes: [
           {
