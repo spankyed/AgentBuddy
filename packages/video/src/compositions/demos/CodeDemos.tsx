@@ -77,6 +77,30 @@ export const PullRequestFilesDemo = () => (
   </SurfaceFrame>
 );
 
+export const PullRequestFilesLoadingDemo = () => (
+  <SurfaceFrame>
+    <DemoTallFramedArea>
+      <DemoFramedRightPanel width={430}>
+        <CodeFeaturePanel terminal={codeShotState.review.terminal}>
+          <PullRequestPanel
+            baseDirectory={codeShotState.review.baseDirectory}
+            changeCount={codeShotState.review.staged.length + codeShotState.review.changes.length}
+            mode="files"
+            publishProgress={1}
+            state={{
+              ...codeShotState.review.pullRequest,
+              branchPublished: true,
+              createdPr: undefined,
+              fileTree: [],
+              loadingFiles: true,
+            }}
+          />
+        </CodeFeaturePanel>
+      </DemoFramedRightPanel>
+    </DemoTallFramedArea>
+  </SurfaceFrame>
+);
+
 export const PullRequestSelectorDemo = () => (
   <SurfaceFrame>
     <DemoTallFramedArea>
@@ -158,6 +182,7 @@ export const PullRequestDetailsDemo = () => (
             state={{
               ...codeShotState.review.pullRequest,
               branchPublished: true,
+              showMergeTooltip: true,
             }}
           />
         </CodeFeaturePanel>

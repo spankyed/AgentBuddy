@@ -40,12 +40,17 @@ export type PullRequestPanelState = {
     createdAt?: string;
     headBranch?: string;
     isDraft?: boolean;
+    mergeStateStatus?: 'CLEAN' | 'DIRTY' | 'BEHIND' | 'BLOCKED' | 'UNKNOWN';
+    mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
     number: number;
+    reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | 'REVIEWED';
     state: 'OPEN' | 'DRAFT' | 'MERGED' | 'CLOSED';
+    statusCheckRollup?: PullRequestStatusCheckState[];
     url: string;
   };
   fileTree: PullRequestFileTreeNode[];
   headBranch: string;
+  loadingFiles?: boolean;
   openPullRequests?: Array<{
     isDraft?: boolean;
     number: number;
@@ -55,7 +60,15 @@ export type PullRequestPanelState = {
   selectorOpen?: boolean;
   reviewThreads?: PullRequestReviewThreadState[];
   selectedCommentTab?: 'discussion' | 'reviews';
+  showMergeTooltip?: boolean;
   title: string;
+};
+
+export type PullRequestStatusCheckState = {
+  conclusion?: 'SUCCESS' | 'FAILURE' | 'CANCELLED' | 'SKIPPED' | 'TIMED_OUT' | null;
+  name: string;
+  state?: 'SUCCESS' | 'FAILURE' | 'PENDING' | 'ERROR';
+  status?: 'QUEUED' | 'IN_PROGRESS' | 'COMPLETED' | 'PENDING' | 'REQUESTED' | null;
 };
 
 export type PullRequestCommentState = {

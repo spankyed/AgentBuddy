@@ -101,8 +101,15 @@ export const codeShotState: CodeShotState = {
         createdAt: 'just now',
         headBranch: 'as/react-launch-film',
         isDraft: false,
+        mergeStateStatus: 'CLEAN',
+        mergeable: 'MERGEABLE',
         number: 128,
+        reviewDecision: 'APPROVED',
         state: 'OPEN',
+        statusCheckRollup: [
+          {conclusion: 'SUCCESS', name: 'Preview build', status: 'COMPLETED'},
+          {conclusion: 'SUCCESS', name: 'Release checks', status: 'COMPLETED'},
+        ],
         url: 'https://github.com/clientlabs/agentbuddy/pull/128',
       },
       fileTree: [

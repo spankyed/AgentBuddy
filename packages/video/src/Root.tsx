@@ -73,6 +73,7 @@ import {
   PullRequestCreateDemo,
   PullRequestDetailsDemo,
   PullRequestFilesDemo,
+  PullRequestFilesLoadingDemo,
   PullRequestPanelDemo,
   PullRequestSelectorDemo,
   PullRequestSelectorEmptyDemo,
@@ -237,6 +238,7 @@ export const RemotionRoot = () => {
       <Composition id="PlanArtifactDemo" component={PlanArtifactDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestPanelDemo" component={PullRequestPanelDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestFilesDemo" component={PullRequestFilesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PullRequestFilesLoadingDemo" component={PullRequestFilesLoadingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestSelectorDemo" component={PullRequestSelectorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestSelectorEmptyDemo" component={PullRequestSelectorEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestCreateDemo" component={PullRequestCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
