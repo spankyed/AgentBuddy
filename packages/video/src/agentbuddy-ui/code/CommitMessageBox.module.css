@@ -11,6 +11,7 @@
 }
 
 .CommitMessageBox_labelWrap {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -45,6 +46,11 @@
   margin-left: -0.25rem;
 }
 
+.CommitMessageBox_moreWrap {
+  position: relative;
+  display: inline-flex;
+}
+
 .CommitMessageBox_moreButton:hover,
 .CommitMessageBox_generate:hover {
   background: rgb(38 38 38);
@@ -53,6 +59,51 @@
 
 .CommitMessageBox_generate:hover {
   color: rgb(251 191 36);
+}
+
+.CommitMessageBox_moreButton[data-active="true"] {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+}
+
+.CommitMessageBox_menu {
+  position: absolute;
+  left: -0.25rem;
+  top: calc(100% + 0.25rem);
+  z-index: 5;
+  width: 190px;
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(23 23 23);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 42%);
+  padding: 0.25rem;
+}
+
+.CommitMessageBox_menuItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(212 212 216);
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+}
+
+.CommitMessageBox_menuItem svg {
+  color: rgb(163 163 163);
+  flex-shrink: 0;
+}
+
+.CommitMessageBox_menuItem[data-pressed="true"] {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+  transform: translateY(1px);
 }
 
 .CommitMessageBox_generate:disabled {

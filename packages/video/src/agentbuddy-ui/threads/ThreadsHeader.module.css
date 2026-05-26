@@ -257,3 +257,8 @@
   padding: 0.375rem 1rem;
   white-space: nowrap;
 }
+
+.ThreadsHeader_newButton[data-pressed="true"] {
+  background: rgb(29 78 216);
+  transform: translateY(1px) scale(0.97);
+}

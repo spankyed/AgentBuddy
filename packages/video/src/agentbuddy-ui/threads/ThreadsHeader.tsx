@@ -40,7 +40,7 @@ export function ThreadsHeader({state}: {state: ThreadsHeaderState}) {
           <input className={styles.searchInput} value={searchKeyword} placeholder={state.searchPlaceholder} readOnly />
           {searchKeyword ? <button className={styles.clearSearchButton} type="button"><Icons.X size={14} /></button> : null}
         </div>
-        <button className={styles.newButton} data-onboarding-id="thread-create-button">{state.newThreadLabel}</button>
+        <button className={styles.newButton} data-onboarding-id="thread-create-button" data-pressed={state.newThreadPressed || undefined}>{state.newThreadLabel}</button>
       </div>
     </div>
   );

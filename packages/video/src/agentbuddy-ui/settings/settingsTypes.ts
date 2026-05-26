@@ -18,11 +18,14 @@ export type SettingsProject = {
 
 export type ProviderKeyState = {
   description: string;
+  editing?: boolean;
   hasKey?: boolean;
   key: string;
   label: string;
   placeholder?: string;
   priority?: 'required' | 'recommended';
+  pressedAction?: 'edit' | 'save' | 'delete';
+  value?: string;
 };
 
 export type CliProviderSettings = {

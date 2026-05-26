@@ -4,6 +4,7 @@ export type FlowPaletteItemState = {
   disabled?: boolean;
   kind: FlowNodeKind;
   label: string;
+  pressed?: boolean;
 };
 
 export type FlowListItemState = {

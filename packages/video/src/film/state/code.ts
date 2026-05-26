@@ -227,8 +227,8 @@ export const expandedTerminalPanelState: TerminalPanelState = {
     '> vite --host 127.0.0.1',
     '',
     'Local: http://127.0.0.1:5173',
-    'rendered launch preview',
-    'launch preview ready',
+    'rendered local app preview',
+    'anti-gravity comparison page ready',
   ].join('\n'),
 };
 
@@ -243,6 +243,8 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
   const prMerged = frame > 374;
   return {
     activePanel: frame < 48 || frame > 238 ? 'pr' : 'commit',
+    commitMenuActionPressed: frame > 74 && frame < 84,
+    commitMenuOpen: frame > 58 && frame < 86,
     commitMessage: frame < 92 ? 'incomplete work' : frame > 132 ? codeShotState.generatedCommitMessage : '',
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
@@ -250,6 +252,9 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
     generatingCommitMessage: frame > 96 && frame <= 132,
     leftSurface: frame > 206 && frame < 238 ? 'app-preview' : 'diff',
     prMode: frame <= 286 ? 'files' : frame <= 318 ? 'create' : 'details',
+    prCreatePressed: frame > 306 && frame <= 318,
+    prMergePressed: frame > 360 && frame <= 374,
+    prPublishPressed: frame > 232 && frame <= 242,
     pullRequest: {
       ...codeShotState.review.pullRequest,
       branchPublished: prPublishProgress >= 1,
@@ -261,6 +266,7 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
         : undefined,
     },
     prPublishProgress,
+    stageActionPressed: frame > 132 && frame <= 142,
   };
 }
 
@@ -301,6 +307,7 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
     worktrees: codeShotState.review.worktrees.map(worktree => ({
       ...worktree,
       current: checkedOutMainWorktree ? worktree.branch === 'master' : worktree.branch === 'as/react-launch-film',
+      pressed: frame > 98 && frame < 108 && worktree.branch === 'master',
     })),
   };
 

@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {cx} from '../primitives/classNames';
 import {makeStyles} from '../primitives/makeStyles';
 import type {WorktreeState} from './codeTypes';
 import './WorktreesSection.module.css';
@@ -22,7 +23,7 @@ export function WorktreesSection({worktrees}: {worktrees: WorktreeState[]}) {
       </header>
       <div className={styles.list}>
         {worktrees.map(worktree => (
-          <div className={worktree.current ? styles.currentRow : styles.row} key={worktree.branch}>
+          <div className={cx(worktree.current ? styles.currentRow : styles.row, worktree.pressed && styles.pressed)} key={worktree.branch}>
             {worktree.locked ? (
               <Icons.Lock className={styles.lockIcon} size={13} />
             ) : (

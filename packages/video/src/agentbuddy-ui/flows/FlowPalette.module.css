@@ -43,6 +43,17 @@
   filter: brightness(1.05);
 }
 
+.FlowPalette_item[data-pressed="true"] {
+  cursor: grabbing;
+  transform: translateY(1px) scale(0.985);
+  filter: brightness(1.12);
+}
+
+.FlowPalette_item[data-pressed="true"] .FlowPalette_glow,
+.FlowPalette_item[data-pressed="true"] .FlowPalette_gradientOverlay {
+  opacity: 0.18;
+}
+
 .FlowPalette_item:active {
   cursor: grabbing;
   transform: scale(0.98);

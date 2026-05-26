@@ -25,7 +25,7 @@ export const shots: FilmShot[] = [
   {id: 'intro-title', chapter: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 78},
   {id: 'chat-title', chapter: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 84},
   {id: 'chat', duration: 360},
-  {id: 'board', duration: 210},
+  {id: 'board', duration: 240},
   {id: 'notes-title', chapter: {eyebrow: '2', title: 'More than just a note taker'}, duration: 84},
   {id: 'notes', duration: 330},
   {id: 'code-title', chapter: {eyebrow: '3', title: 'More than just an IDE'}, duration: 84},

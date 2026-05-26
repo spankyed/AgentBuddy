@@ -132,6 +132,11 @@
   color: white;
 }
 
+.ThreadCreateForm_linkButton[data-pressed="true"] {
+  background: rgb(29 78 216);
+  transform: translateY(1px) scale(0.98);
+}
+
 .ThreadCreateForm_cancelButton {
   background: transparent;
   color: rgb(163 163 163);

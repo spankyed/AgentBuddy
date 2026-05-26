@@ -6,6 +6,10 @@ import {notesShotViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+import './NotesShot.module.css';
+
+const styles = makeStyles('NotesShot');
 
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesShotViewForFrame(frame);
@@ -18,6 +22,30 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
     </>
   );
 
+  if (frame < 78) {
+    const enter = ease(frame, 0, 24);
+    const exit = ease(frame, 58, 78);
+    return (
+      <div className={`${styles.isolatedHome} ${variant === 'square' ? styles.square : ''}`}>
+        <div
+          className={styles.homeCard}
+          style={{
+            opacity: Math.min(enter, 1 - exit),
+            transform: `translateY(${mix(18, 0, enter) - exit * 18}px) scale(${mix(0.985, 1, enter) - exit * 0.01})`,
+          }}
+        >
+          <NotesHomeSurface
+            favorites={view.home.favorites}
+            greeting={view.home.greeting}
+            recent={view.home.recent}
+            searchQuery={view.home.searchQuery}
+            searchResults={view.home.searchResults}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AppWindow
       activePlugin="notes"
@@ -26,30 +54,20 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
       layout={layout}
       rightRail={frame > 178 ? <NotesRightRail state={view.rightRail} /> : undefined}
     >
-      {frame < 78 ? (
-        <NotesHomeSurface
-          favorites={view.home.favorites}
-          greeting={view.home.greeting}
-          recent={view.home.recent}
-          searchQuery={view.home.searchQuery}
-          searchResults={view.home.searchResults}
-        />
-      ) : (
-        <NotesLayout
-          showTaskList={frame > 190}
-          taskListStyle={{
-            opacity: taskListEnter,
-            transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
-          }}
-          taskList={view.taskList}
-          editor={{
-            beforeLines: view.editor.beforeLines.map(renderLine),
-            afterLines: view.editor.afterLines.map(renderLine),
-            image: view.editor.image,
-            title: view.editor.title,
-          }}
-        />
-      )}
+      <NotesLayout
+        showTaskList={frame > 190}
+        taskListStyle={{
+          opacity: taskListEnter,
+          transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
+        }}
+        taskList={view.taskList}
+        editor={{
+          beforeLines: view.editor.beforeLines.map(renderLine),
+          afterLines: view.editor.afterLines.map(renderLine),
+          image: view.editor.image,
+          title: view.editor.title,
+        }}
+      />
     </AppWindow>
   );
 }

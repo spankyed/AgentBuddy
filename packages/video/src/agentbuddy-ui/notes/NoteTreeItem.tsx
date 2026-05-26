@@ -31,6 +31,7 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
           menuOpen && styles.menuOpenRow,
           taskMode && completed && !isActive && styles.completed,
           node.muted && !isActive && styles.muted,
+          node.pressed && styles.pressed,
         )}
         style={{paddingLeft: depth * 8 + 8}}
       >
@@ -46,7 +47,7 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
         {taskMode && isTask ? (
           <>
             <RowActions menuOpen={menuOpen} node={node} taskMode />
-            <TaskCheckbox completed={completed} />
+            <TaskCheckbox completed={completed} pressed={node.checkboxPressed} />
           </>
         ) : (
           <RowActions menuOpen={menuOpen} node={node} taskMode={taskMode} />
@@ -67,9 +68,9 @@ function NoteGlyph({className, node}: {className?: string; node: NoteTreeNodeSta
 function RowActions({menuOpen, node, taskMode}: {menuOpen: boolean; node: NoteTreeNodeState; taskMode?: boolean}) {
   const isTaskRelated = node.noteType === 'tasklist' || node.noteType === 'task';
   return (
-    <div className={cx(styles.actionPill, menuOpen && styles.actionPillVisible)}>
+    <div className={cx(styles.actionPill, (menuOpen || node.addPressed) && styles.actionPillVisible)}>
       <button className={menuOpen ? styles.actionButtonActive : undefined} type="button"><Icons.MoreHorizontal size={13} /></button>
-      <button type="button"><Icons.Plus size={13} /></button>
+      <button className={node.addPressed ? styles.actionButtonActive : undefined} type="button"><Icons.Plus size={13} /></button>
       {menuOpen ? <RowMenu isTaskRelated={isTaskRelated} node={node} taskMode={taskMode} /> : null}
     </div>
   );
@@ -108,9 +109,9 @@ function RowMenu({isTaskRelated, node, taskMode}: {isTaskRelated: boolean; node:
   );
 }
 
-function TaskCheckbox({completed}: {completed: boolean}) {
+function TaskCheckbox({completed, pressed}: {completed: boolean; pressed?: boolean}) {
   return (
-    <button className={cx(styles.checkbox, completed && styles.checkboxChecked)} type="button">
+    <button className={cx(styles.checkbox, completed && styles.checkboxChecked, pressed && styles.checkboxPressed)} type="button">
       {completed ? <Icons.Check size={10} /> : null}
     </button>
   );

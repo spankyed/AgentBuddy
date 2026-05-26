@@ -14,22 +14,25 @@ type ComposerActionBarProps = {
   modeOptions?: ChatModeOption[];
   openSelector?: 'mode' | 'phase';
   phase?: string;
+  referenceButtonPressed?: boolean;
   quickPrompts?: QuickPromptState[];
+  quickPromptsButtonPressed?: boolean;
   quickPromptsOpen?: boolean;
+  quickPromptPressedId?: string;
   sendDisabled?: boolean;
   sendPressed?: boolean;
 };
 
 // Mirrors the button row in packages/renderer/src/plugins/threads/chat/input.vue.
-export function ComposerActionBar({disabled, mode, modeOptions, openSelector, phase, quickPrompts, quickPromptsOpen, sendDisabled, sendPressed}: ComposerActionBarProps) {
+export function ComposerActionBar({disabled, mode, modeOptions, openSelector, phase, referenceButtonPressed, quickPrompts, quickPromptsButtonPressed, quickPromptsOpen, quickPromptPressedId, sendDisabled, sendPressed}: ComposerActionBarProps) {
   return (
     <div className={styles.actionBar}>
       <div className={styles.leftActions}>
-        <ComposerIconButton disabled={disabled} icon={Icons.Hash} label="Add reference" />
+        <ComposerIconButton disabled={disabled} icon={Icons.Hash} label="Add reference" pressed={referenceButtonPressed} />
         <ComposerIconButton disabled={disabled} icon={Icons.Paperclip} label="Attach file" />
         <span className={styles.quickPromptsAnchor}>
-          <ComposerIconButton disabled={disabled} icon={Icons.Sparkle} label="Quick message" />
-          {quickPromptsOpen ? <QuickPromptsPopup prompts={quickPrompts ?? []} /> : null}
+          <ComposerIconButton disabled={disabled} icon={Icons.Sparkle} label="Quick message" pressed={quickPromptsButtonPressed} />
+          {quickPromptsOpen ? <QuickPromptsPopup pressedPromptId={quickPromptPressedId} prompts={quickPrompts ?? []} /> : null}
         </span>
         <ComposerIconButton disabled={disabled} icon={Icons.Mic} label="Voice input" />
         <ModePhaseSelector disabled={disabled} mode={mode} modeOptions={modeOptions} openSelector={openSelector} phase={phase} />

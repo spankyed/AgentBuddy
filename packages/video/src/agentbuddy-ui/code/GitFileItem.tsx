@@ -13,7 +13,7 @@ export type GitFile = {
 
 type GitFileAction = 'discard' | 'stage' | 'unstage';
 
-export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAction[]; file: GitFile; selected?: boolean}) {
+export function GitFileItem({actions = [], file, pressedAction, selected}: {actions?: GitFileAction[]; file: GitFile; pressedAction?: GitFileAction; selected?: boolean}) {
   const slash = file.path.lastIndexOf('/');
   const filename = slash === -1 ? file.path : file.path.slice(slash + 1);
   const directory = slash === -1 ? '' : file.path.slice(0, slash);
@@ -28,7 +28,7 @@ export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAc
       <span className={cx(styles.status, styles[file.status])}>{status}</span>
       {file.status !== 'deleted' ? <button className={styles.openAction} title="Open file"><Icons.File size={12} /></button> : null}
       {actions.map(action => (
-        <button key={action} className={styles.action} title={actionLabel(action)}>
+        <button key={action} className={styles.action} data-pressed={pressedAction === action || undefined} title={actionLabel(action)}>
           {action === 'discard' ? <Icons.RotateCcw size={12} /> : action === 'unstage' ? <Icons.Minus size={12} /> : <Icons.Plus size={12} />}
         </button>
       ))}

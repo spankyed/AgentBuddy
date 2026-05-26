@@ -1,5 +1,7 @@
 export type NoteTreeNodeState = {
+  addPressed?: boolean;
   children?: NoteTreeNodeState[];
+  checkboxPressed?: boolean;
   completed?: boolean;
   deletedAge?: string;
   favorite?: boolean;
@@ -9,6 +11,7 @@ export type NoteTreeNodeState = {
   id: string;
   muted?: boolean;
   noteType: 'document' | 'task' | 'tasklist';
+  pressed?: boolean;
   rowMenuOpen?: boolean;
   title: string;
 };

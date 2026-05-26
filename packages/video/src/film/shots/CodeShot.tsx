@@ -20,7 +20,10 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
           <PullRequestPanel
             baseDirectory={view.review.state.baseDirectory}
             changeCount={view.review.state.staged.length + view.review.state.changes.length}
+            createPressed={view.review.view.prCreatePressed}
+            mergePressed={view.review.view.prMergePressed}
             mode={view.review.view.prMode}
+            publishPressed={view.review.view.prPublishPressed}
             publishProgress={view.review.view.prPublishProgress}
             state={view.review.view.pullRequest}
           />

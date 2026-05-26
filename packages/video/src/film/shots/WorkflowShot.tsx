@@ -2,7 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
 import {FlowNode} from '../../agentbuddy-ui/flows/FlowNode';
 import {FlowNodeForm} from '../../agentbuddy-ui/flows/FlowNodeForm';
-import {prepareLaunchPrFormState} from '../state/flowForms';
+import {replaceObsoleteAppsFormStateForFrame} from '../state/flowForms';
 import {workflowShotViewForFrame} from '../state/workflow';
 import {useAppWindowLayout} from '../appWindowLayout';
 import './WorkflowShot.module.css';
@@ -28,7 +28,7 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
   return (
     <AppWindow activePlugin="flows" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
       <FlowCanvas state={view.flow} />
-      {frame > 236 ? <FlowNodeForm state={prepareLaunchPrFormState} /> : null}
+      {frame > 236 ? <FlowNodeForm state={replaceObsoleteAppsFormStateForFrame(frame)} /> : null}
     </AppWindow>
   );
 }

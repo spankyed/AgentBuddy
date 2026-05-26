@@ -13,6 +13,7 @@ export type WorktreeState = {
   locked?: boolean;
   main?: boolean;
   path: string;
+  pressed?: boolean;
 };
 
 export type StashState = {
@@ -146,11 +147,17 @@ export type CodeReviewState = {
 
 export type CodeReviewViewState = {
   activePanel: 'commit' | 'pr';
+  commitMenuActionPressed?: boolean;
+  commitMenuOpen?: boolean;
   commitMessage: string;
   diffLineOpacities: number[];
   generatingCommitMessage: boolean;
   leftSurface?: 'app-preview' | 'diff';
   prMode: 'files' | 'create' | 'details';
+  prCreatePressed?: boolean;
+  prMergePressed?: boolean;
   pullRequest: PullRequestPanelState;
+  prPublishPressed?: boolean;
   prPublishProgress?: number;
+  stageActionPressed?: boolean;
 };

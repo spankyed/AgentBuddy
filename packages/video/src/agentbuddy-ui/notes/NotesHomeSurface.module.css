@@ -180,6 +180,13 @@
   box-shadow: 0 0 0 1px rgb(59 130 246 / 35%);
 }
 
+.NotesHomeSurface_card[data-pressed="true"] {
+  border-color: rgb(96 165 250 / 70%);
+  background: rgb(45 45 45);
+  box-shadow: 0 0 0 1px rgb(59 130 246 / 45%), 0 16px 36px rgb(0 0 0 / 28%);
+  transform: translateY(1px) scale(0.985);
+}
+
 .NotesHomeSurface_card[data-favorite="true"] {
   border-color: rgb(202 138 4 / 35%);
 }

@@ -1,26 +1,9 @@
 import type {FlowNodeFormState} from '../../agentbuddy-ui/flows/flowTypes';
+import {textReveal} from './timeline';
 
-export const prepareLaunchPrFormState: FlowNodeFormState = {
-  canAddNextStep: true,
-  nodeKind: 'action',
-  nodeLabel: 'Find and delete obsolete apps',
-  sections: [
-    {
-      fields: [
-        {label: 'Mode', type: 'select', value: 'Code'},
-        {label: 'Description', type: 'textarea', value: 'Find obsolete productivity apps and remove them from the local app registry.'},
-      ],
-      title: 'Action',
-    },
-    {
-      fields: [
-        {
-          filePath: 'actions/replace-obsolete-apps.ts',
-          height: 220,
-          label: 'Code',
-          language: 'typescript',
-          type: 'code',
-          value: `export async function run({ database, logs }) {
+const replaceObsoleteAppsDescription = 'Find obsolete productivity apps and remove them from the local app registry.';
+
+const replaceObsoleteAppsCode = `export async function run({ database, logs }) {
   const obsolete = [
     "anti-gravity",
     "cursor",
@@ -36,13 +19,54 @@ export const prepareLaunchPrFormState: FlowNodeFormState = {
 
   await logs.info("all obsolete apps removed", { removed });
   return { removed };
-}`,
+}`;
+
+export const replaceObsoleteAppsFormState: FlowNodeFormState = {
+  canAddNextStep: true,
+  nodeKind: 'action',
+  nodeLabel: 'Find and delete obsolete apps',
+  sections: [
+    {
+      fields: [
+        {label: 'Mode', type: 'select', value: 'Code'},
+        {label: 'Description', type: 'textarea', value: replaceObsoleteAppsDescription},
+      ],
+      title: 'Action',
+    },
+    {
+      fields: [
+        {
+          filePath: 'actions/replace-obsolete-apps.ts',
+          height: 220,
+          label: 'Code',
+          language: 'typescript',
+          type: 'code',
+          value: replaceObsoleteAppsCode,
         },
       ],
       title: 'Code',
     },
   ],
 };
+
+export function replaceObsoleteAppsFormStateForFrame(frame: number): FlowNodeFormState {
+  const local = Math.max(0, frame - 236);
+  const description = textReveal(replaceObsoleteAppsDescription, local, 4, 42);
+  const code = textReveal(replaceObsoleteAppsCode, local, 30, 118);
+
+  return {
+    ...replaceObsoleteAppsFormState,
+    canAddNextStep: local > 124,
+    sections: replaceObsoleteAppsFormState.sections.map(section => ({
+      ...section,
+      fields: section.fields?.map(field => {
+        if (field.label === 'Description') return {...field, value: description};
+        if (field.label === 'Code') return {...field, value: code};
+        return field;
+      }),
+    })),
+  };
+}
 
 export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {

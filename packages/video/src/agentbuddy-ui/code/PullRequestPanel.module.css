@@ -36,6 +36,12 @@
   background: rgb(37 99 235 / 80%);
 }
 
+.PullRequestPanel_publishButton[data-pressed="true"],
+.PullRequestPanel_createButton[data-pressed="true"] {
+  filter: brightness(0.88);
+  transform: translateY(1px) scale(0.98);
+}
+
 .PullRequestPanel_createButton {
   background: rgb(22 163 74 / 85%);
 }

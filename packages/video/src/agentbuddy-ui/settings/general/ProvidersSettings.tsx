@@ -44,6 +44,7 @@ export function ProvidersSettings({cliProviders, customProviders = [], providers
 }
 
 function ProviderRow({provider}: {provider: ProviderKeyState}) {
+  const editing = Boolean(provider.editing);
   return (
     <>
       <div>
@@ -54,7 +55,12 @@ function ProviderRow({provider}: {provider: ProviderKeyState}) {
         <div className={styles.description}>{provider.description}</div>
       </div>
       <div>
-        {provider.hasKey ? (
+        {editing ? (
+          <div className={styles.inputWrap}>
+            <input className={styles.providerInput} readOnly value={provider.value ?? ''} placeholder={provider.placeholder ?? `Enter ${provider.label} API key`} />
+            <button className={styles.eyeButton} type="button"><Icons.Eye size={14} /></button>
+          </div>
+        ) : provider.hasKey ? (
           <span className={styles.masked}>••••••••</span>
         ) : (
           <div className={styles.inputWrap}>
@@ -64,10 +70,12 @@ function ProviderRow({provider}: {provider: ProviderKeyState}) {
         )}
       </div>
       <div className={styles.actions}>
-        {provider.hasKey ? (
+        {editing ? (
+          <button className={styles.iconButton} data-pressed={provider.pressedAction === 'save' || undefined} type="button"><Icons.Check size={14} /></button>
+        ) : provider.hasKey ? (
           <>
-            <button className={styles.iconButton} type="button"><Icons.Edit2 size={14} /></button>
-            <button className={styles.iconButton} data-danger type="button"><Icons.Trash2 size={14} /></button>
+            <button className={styles.iconButton} data-pressed={provider.pressedAction === 'edit' || undefined} type="button"><Icons.Edit2 size={14} /></button>
+            <button className={styles.iconButton} data-danger data-pressed={provider.pressedAction === 'delete' || undefined} type="button"><Icons.Trash2 size={14} /></button>
           </>
         ) : null}
       </div>

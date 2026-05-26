@@ -4,14 +4,36 @@ import {makeStyles} from '../primitives/makeStyles';
 
 const styles = makeStyles('CommitMessageBox');
 
-export function CommitMessageBox({branch, message, generating}: {branch: string; generating?: boolean; message: string}) {
+export function CommitMessageBox({
+  branch,
+  menuActionPressed,
+  menuOpen,
+  message,
+  generating,
+}: {
+  branch: string;
+  generating?: boolean;
+  menuActionPressed?: boolean;
+  menuOpen?: boolean;
+  message: string;
+}) {
   const canCommit = message.trim().length > 0;
 
   return (
     <div className={styles.root}>
       <div className={styles.header}>
         <div className={styles.labelWrap}>
-          <button className={styles.moreButton} title="More actions" type="button"><Icons.EllipsisVertical size={14} /></button>
+          <div className={styles.moreWrap}>
+            <button className={styles.moreButton} data-active={menuOpen || undefined} title="More actions" type="button"><Icons.EllipsisVertical size={14} /></button>
+            {menuOpen ? (
+              <div className={styles.menu}>
+                <button className={styles.menuItem} data-pressed={menuActionPressed || undefined} type="button">
+                  <Icons.Archive size={13} />
+                  <span>Stash Staged Changes</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
           <span className={styles.label}>{generating ? 'Generating...' : 'Commit Message'}</span>
         </div>
         <button className={styles.generate} disabled={generating} title="Generate commit message">

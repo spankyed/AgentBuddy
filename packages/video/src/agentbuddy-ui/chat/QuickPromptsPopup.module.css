@@ -67,6 +67,15 @@
   color: white;
 }
 
+.QuickPromptsPopup_item[data-pressed="true"] > button:first-child {
+  background: rgb(38 38 38);
+  color: white;
+}
+
+.QuickPromptsPopup_item[data-pressed="true"] .QuickPromptsPopup_copy {
+  opacity: 1;
+}
+
 .QuickPromptsPopup_index {
   margin-right: 0.75rem;
   color: rgb(82 82 82);

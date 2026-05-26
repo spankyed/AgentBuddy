@@ -16,12 +16,18 @@ export function PullRequestPanel({
   baseDirectory,
   changeCount,
   mode,
+  createPressed,
+  mergePressed,
+  publishPressed,
   publishProgress,
   state,
 }: {
   baseDirectory: string;
   changeCount: number;
+  createPressed?: boolean;
+  mergePressed?: boolean;
   mode: CodeReviewViewState['prMode'];
+  publishPressed?: boolean;
   publishProgress?: number;
   state: PullRequestPanelState;
 }) {
@@ -39,14 +45,14 @@ export function PullRequestPanel({
 
       {mode === 'files' ? (
         <>
-          <TopActionRow published={published} publishProgress={publishProgress} state={state} />
+          <TopActionRow published={published} publishPressed={publishPressed} publishProgress={publishProgress} state={state} />
           <PRComparison state={state} />
         </>
       ) : (
         <>
           <BackRow refreshing={mode === 'details'} />
-          {mode === 'create' ? <CreatePRForm creating={false} state={state} /> : <PRInfo state={state} />}
-          {mode === 'details' ? <PRActionBar state={state} /> : null}
+          {mode === 'create' ? <CreatePRForm creating={createPressed} pressed={createPressed} state={state} /> : <PRInfo state={state} />}
+          {mode === 'details' ? <PRActionBar mergePressed={mergePressed} state={state} /> : null}
         </>
       )}
     </div>
@@ -55,10 +61,12 @@ export function PullRequestPanel({
 
 function TopActionRow({
   published,
+  publishPressed,
   publishProgress,
   state,
 }: {
   published: boolean;
+  publishPressed?: boolean;
   publishProgress?: number;
   state: PullRequestPanelState;
 }) {
@@ -69,7 +77,7 @@ function TopActionRow({
       {selectedPr ? (
         <button className={styles.viewButton} type="button">View</button>
       ) : (
-        <button className={published ? styles.createButton : styles.publishButton} type="button">
+        <button className={published ? styles.createButton : styles.publishButton} data-pressed={publishPressed || undefined} type="button">
           {!published && publishProgress && publishProgress > 0 ? <Icons.Loader2 className={styles.spinner} size={12} /> : null}
           <span>{published ? 'Create PR' : publishProgress && publishProgress > 0 ? 'Publishing...' : 'Publish'}</span>
         </button>

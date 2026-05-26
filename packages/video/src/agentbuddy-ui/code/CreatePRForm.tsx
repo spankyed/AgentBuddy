@@ -5,7 +5,7 @@ import './CreatePRForm.module.css';
 
 const styles = makeStyles('CreatePRForm');
 
-export function CreatePRForm({creating, state}: {creating?: boolean; state: PullRequestPanelState}) {
+export function CreatePRForm({creating, pressed, state}: {creating?: boolean; pressed?: boolean; state: PullRequestPanelState}) {
   return (
     <section className={styles.root}>
       <div className={styles.field}>
@@ -30,7 +30,7 @@ export function CreatePRForm({creating, state}: {creating?: boolean; state: Pull
         </div>
       </div>
       <div className={styles.actions}>
-        <button className={styles.primary} type="button">
+        <button className={styles.primary} data-pressed={pressed || undefined} type="button">
           {creating ? <Icons.Loader2 className={styles.spinner} size={12} /> : <Icons.PullRequest size={12} />}
           <span>{creating ? 'Creating PR' : 'Create PR'}</span>
         </button>

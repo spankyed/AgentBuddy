@@ -113,6 +113,11 @@
   font-weight: 500;
 }
 
+.CreatePRForm_primary[data-pressed="true"] {
+  background: rgb(29 78 216);
+  transform: translateY(1px) scale(0.985);
+}
+
 .CreatePRForm_secondary {
   border: 1px solid rgb(64 64 64);
   background: transparent;

@@ -80,8 +80,8 @@ export const boardShotState: {
       tags: ['claude-code'],
     },
     motion: {
-      from: 142,
-      to: 204,
+      from: 174,
+      to: 236,
       fromLeft: 8,
       toLeft: 40,
       fromTop: 34,
@@ -140,18 +140,20 @@ export function boardViewForFrame(frame: number) {
 
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
-  const createVisible = frame < 120;
+  const createVisible = frame >= 36 && frame < 150;
+  const createFrame = Math.max(0, frame - 36);
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
-        createPressed: frame > 96 && frame < 112,
-        instructions: textReveal(boardShotState.createForm.instructions, frame, 12, 58),
-        linkedThreadsOpen: frame > 66,
-        linkInputVisible: frame > 66 && frame <= 96,
-        linkedThreadQuery: frame > 70 ? boardShotState.createForm.linkedThreadQuery : '',
-        parentThread: frame > 86 ? boardShotState.createForm.parentThread : undefined,
+        createPressed: createFrame > 96 && createFrame < 112,
+        instructions: textReveal(boardShotState.createForm.instructions, createFrame, 12, 58),
+        linkPressed: createFrame > 82 && createFrame <= 90,
+        linkedThreadsOpen: createFrame > 66,
+        linkInputVisible: createFrame > 66 && createFrame <= 96,
+        linkedThreadQuery: createFrame > 70 ? boardShotState.createForm.linkedThreadQuery : '',
+        parentThread: createFrame > 86 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,
-        title: textReveal(boardShotState.createForm.title, frame, 58, 82),
+        title: textReveal(boardShotState.createForm.title, createFrame, 58, 82),
       }
     : undefined;
   return {
@@ -160,8 +162,9 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     createForm,
     header: {
       ...boardShotState.header,
-      activeView: frame < 132 ? 'list' : 'kanban',
-      pressedView: frame > 124 && frame < 138 ? 'kanban' : undefined,
+      activeView: frame < 162 ? 'list' : 'kanban',
+      newThreadPressed: frame > 16 && frame < 32,
+      pressedView: frame > 154 && frame < 168 ? 'kanban' : undefined,
     },
     movingCard: {
       card: boardShotState.movingCard.card,

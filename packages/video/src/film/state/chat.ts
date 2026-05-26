@@ -419,7 +419,10 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     breadcrumbs: chatShotState.breadcrumbs,
     composer: {
       ...launchComposerState,
-      attachments: frame > 132 ? [{type: 'image', label: 'image 1'}] : undefined,
+      attachments: [
+        ...(frame > 108 ? [{type: 'file' as const, label: '#notes:current', typeLabel: 'Note'}] : []),
+        ...(frame > 132 ? [{type: 'image' as const, label: 'image 1'}] : []),
+      ],
       bottomTabs: frame > 20
         ? {
             ...launchComposerState.bottomTabs!,
@@ -428,7 +431,10 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             pressed: frame > 24 && frame < 38 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
           }
         : undefined,
+      referenceButtonPressed: frame > 96 && frame <= 108,
+      quickPromptsButtonPressed: frame > 262 && frame <= 274,
       quickPromptsOpen: frame > 270 && frame < 308,
+      quickPromptPressedId: frame > 284 && frame < 300 ? 'qp-write-commit' : undefined,
       sendPressed: (frame > 154 && frame < 166) || (frame > 312 && frame < 324),
       text: frame > 78 && frame < 166 ? view.prompt : frame > 292 ? 'write a commit' : undefined,
     },

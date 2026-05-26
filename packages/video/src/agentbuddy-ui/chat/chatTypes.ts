@@ -27,8 +27,11 @@ export type ChatComposerState = {
   openSelector?: 'mode' | 'phase';
   phase?: string;
   placeholder: string;
+  referenceButtonPressed?: boolean;
   quickPrompts?: QuickPromptState[];
+  quickPromptsButtonPressed?: boolean;
   quickPromptsOpen?: boolean;
+  quickPromptPressedId?: string;
   sendPressed?: boolean;
   statusLine?: string;
   text?: string;

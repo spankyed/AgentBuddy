@@ -23,7 +23,7 @@ const iconByKind = {
 export function FlowPaletteItem({item}: {item: FlowPaletteItemState}) {
   const Icon = iconByKind[item.kind];
   return (
-    <button className={styles.item} data-disabled={item.disabled ? 'true' : undefined} data-kind={item.kind} type="button">
+    <button className={styles.item} data-disabled={item.disabled ? 'true' : undefined} data-kind={item.kind} data-pressed={item.pressed ? 'true' : undefined} type="button">
       {!item.disabled ? <span className={styles.glow} /> : null}
       <span className={styles.content}>
         <span className={styles.dot} />

@@ -239,6 +239,7 @@ export type ThreadsHeaderState = {
   };
   filterLabel: string;
   newThreadLabel: string;
+  newThreadPressed?: boolean;
   pressedView?: 'list' | 'kanban' | 'dashboard';
   searchKeyword?: string;
   searchPlaceholder: string;

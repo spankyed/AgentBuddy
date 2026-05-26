@@ -29,6 +29,12 @@
   color: rgb(229 229 229);
 }
 
+.NoteTreeItem_pressed {
+  background: rgb(64 64 64);
+  color: rgb(245 245 245);
+  transform: translateY(1px) scale(0.99);
+}
+
 .NoteTreeItem_completed {
   color: rgb(82 82 82);
 }
@@ -198,4 +204,10 @@
 .NoteTreeItem_checkboxChecked {
   border-color: rgb(82 82 82);
   background: rgb(64 64 64);
+}
+
+.NoteTreeItem_checkboxPressed {
+  border-color: rgb(212 212 216);
+  background: rgb(82 82 82);
+  transform: scale(0.9);
 }

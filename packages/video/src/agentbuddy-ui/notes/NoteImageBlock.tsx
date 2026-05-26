@@ -7,7 +7,9 @@ const styles = makeStyles('NoteImageBlock');
 export type NoteImageBlockState = {
   alt?: string;
   bubbleOpen?: boolean;
+  resizeButtonPressed?: boolean;
   resizeOpen?: boolean;
+  sliderPressed?: boolean;
   src: string;
   widthPercent: number;
 };
@@ -21,12 +23,12 @@ export function NoteImageBlock({state}: {state: NoteImageBlockState}) {
           <div className={styles.bubbleActions}>
             <button title="View image" type="button"><Icons.Eye size={15} /></button>
             <button title="Copy image" type="button"><Icons.Copy size={15} /></button>
-            <button className={state.resizeOpen ? styles.activeButton : undefined} title="Resize image" type="button"><Icons.Maximize2 size={15} /></button>
+            <button className={state.resizeOpen ? styles.activeButton : undefined} data-pressed={state.resizeButtonPressed || undefined} title="Resize image" type="button"><Icons.Maximize2 size={15} /></button>
             <button className={styles.deleteButton} title="Delete image" type="button"><Icons.Trash2 size={15} /></button>
           </div>
           {state.resizeOpen ? (
             <div className={styles.resizeRow}>
-              <input className={styles.slider} max={100} min={25} readOnly step={5} type="range" value={state.widthPercent} />
+              <input className={styles.slider} data-pressed={state.sliderPressed || undefined} max={100} min={25} readOnly step={5} type="range" value={state.widthPercent} />
               <span className={styles.widthLabel}>{state.widthPercent}%</span>
             </div>
           ) : null}

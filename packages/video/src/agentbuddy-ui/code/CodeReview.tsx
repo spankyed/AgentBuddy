@@ -29,7 +29,10 @@ export function CodeReview({state, variant, view}: CodeReviewProps) {
             <PullRequestPanel
               baseDirectory={state.baseDirectory}
               changeCount={state.staged.length + state.changes.length}
+              createPressed={view.prCreatePressed}
+              mergePressed={view.prMergePressed}
               mode={view.prMode}
+              publishPressed={view.prPublishPressed}
               publishProgress={view.prPublishProgress}
               state={view.pullRequest}
             />

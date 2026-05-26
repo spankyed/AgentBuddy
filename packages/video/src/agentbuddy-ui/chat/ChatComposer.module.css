@@ -202,6 +202,11 @@
   color: rgb(229 229 229);
 }
 
+.ChatComposer_iconButton[data-pressed="true"] {
+  color: rgb(229 229 229);
+  transform: translateY(1px) scale(0.94);
+}
+
 .ChatComposer_iconButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;

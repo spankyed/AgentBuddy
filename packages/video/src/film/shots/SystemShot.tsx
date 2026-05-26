@@ -4,12 +4,13 @@ import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import {LogsSurface} from '../../agentbuddy-ui/logs/LogsSurface';
 import {SettingsSurface} from '../../agentbuddy-ui/settings/SettingsSurface';
 import {ThreadChatCanvas} from '../../agentbuddy-ui/threads/ThreadChatCanvas';
+import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import type {PluginId} from '../../agentbuddy-ui/chrome/Toolbar';
 import {launchComposerState} from '../state/chat';
-import {brainLaunchCommandState} from '../state/brain';
+import {brainLaunchCommandStateForFrame} from '../state/brain';
 import {databaseMessagesBeforeDateState, databaseMessageLookupState} from '../state/database';
-import {logsLaunchReleaseState} from '../state/logs';
-import {settingsProvidersState} from '../state/settings';
+import {logsLaunchReleaseStateForFrame} from '../state/logs';
+import {settingsProvidersStateForFrame} from '../state/settings';
 import {textReveal} from '../state/timeline';
 import {useAppWindowLayout} from '../appWindowLayout';
 
@@ -43,7 +44,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'logs' as PluginId,
       breadcrumbs: ['Logs'],
       composer: false as const,
-      surface: <LogsSurface state={logsLaunchReleaseState} />,
+      surface: <LogsSurface state={logsLaunchReleaseStateForFrame(frame)} />,
     };
   }
 
@@ -52,7 +53,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'database' as PluginId,
       breadcrumbs: ['Database'],
       composer: false as const,
-      surface: <DatabaseSurface state={frame < 182 ? databaseMessageLookupState : databaseMessagesBeforeDateState} />,
+      surface: <DatabaseSurface state={databaseStateForSystemFrame(frame)} />,
     };
   }
 
@@ -61,7 +62,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'brain' as PluginId,
       breadcrumbs: ['Brain'],
       composer: false as const,
-      surface: <BrainSurface state={brainLaunchCommandState} />,
+      surface: <BrainSurface state={brainLaunchCommandStateForFrame(frame)} />,
     };
   }
 
@@ -69,6 +70,37 @@ function systemShotViewForFrame(frame: number) {
     activePlugin: 'settings' as PluginId,
     breadcrumbs: ['Settings'],
     composer: false as const,
-    surface: <SettingsSurface state={settingsProvidersState} />,
+    surface: <SettingsSurface state={settingsProvidersStateForFrame(frame)} />,
   };
+}
+
+function databaseStateForSystemFrame(frame: number): DatabaseSurfaceState {
+  const state = frame < 182 ? databaseMessageLookupState : databaseMessagesBeforeDateState;
+  const segmentStart = frame < 182 ? 142 : 182;
+  const local = frame - segmentStart;
+  const query = textReveal(state.currentQuery, local, 0, 24);
+
+  if (local < 24) {
+    return {
+      ...state,
+      currentQuery: query,
+      executionTime: null,
+      isLoading: false,
+      queryResult: null,
+      successMessage: '',
+    };
+  }
+
+  if (local < 36) {
+    return {
+      ...state,
+      currentQuery: state.currentQuery,
+      executionTime: null,
+      isLoading: true,
+      queryResult: null,
+      successMessage: '',
+    };
+  }
+
+  return state;
 }

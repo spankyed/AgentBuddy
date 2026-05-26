@@ -1,4 +1,5 @@
 import type {LogsSurfaceState} from '../../agentbuddy-ui/logs/logTypes';
+import {textReveal} from './timeline';
 
 const now = Date.parse('2026-05-25T14:35:16Z');
 
@@ -201,6 +202,16 @@ export const logsLaunchReleaseState: LogsSurfaceState = {
   ],
   searchTerm: 'obsolete',
 };
+
+export function logsLaunchReleaseStateForFrame(frame: number): LogsSurfaceState {
+  const local = Math.max(0, frame - 72);
+  const searchTerm = textReveal('obsolete', local, 4, 26);
+  return {
+    ...logsLaunchReleaseState,
+    expandedContent: local > 38 ? logsLaunchReleaseState.expandedContent : {},
+    searchTerm,
+  };
+}
 
 export function logsSurfaceStateForFrame(frame: number): LogsSurfaceState {
   if (frame > 185) return logsContextMenuState;

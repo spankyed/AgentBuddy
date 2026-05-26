@@ -8,6 +8,7 @@ const styles = makeStyles('NotesHomeSurface');
 
 export type NotesHomeCardState = Pick<NoteTreeNodeState, 'icon' | 'id' | 'noteType' | 'title'> & {
   active?: boolean;
+  pressed?: boolean;
   updatedAt: string;
 };
 
@@ -91,7 +92,13 @@ function SearchResult({note}: {note: NotesHomeCardState}) {
 function NoteCard({favorite, note}: {favorite?: boolean; note: NotesHomeCardState}) {
   const icon = note.icon ?? (note.noteType === 'tasklist' ? <Icons.ListChecks size={28} /> : note.noteType === 'task' ? <Icons.CircleCheck size={28} /> : <Icons.FileText size={28} />);
   return (
-    <button className={styles.card} data-active={note.active ? 'true' : undefined} data-favorite={favorite ? 'true' : undefined} type="button">
+    <button
+      className={styles.card}
+      data-active={note.active ? 'true' : undefined}
+      data-favorite={favorite ? 'true' : undefined}
+      data-pressed={note.pressed ? 'true' : undefined}
+      type="button"
+    >
       <div className={styles.cardIcon}>{icon}</div>
       <div className={styles.cardCopy}>
         <span>{note.title || 'Untitled'}</span>

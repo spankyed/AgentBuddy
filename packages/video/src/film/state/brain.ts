@@ -197,3 +197,52 @@ export const brainLaunchCommandState: BrainSurfaceState = {
     },
   ],
 };
+
+export function brainLaunchCommandStateForFrame(frame: number): BrainSurfaceState {
+  const local = Math.max(0, frame - 222);
+  const showSwitch = local > 14;
+  const showDelete = local > 30;
+  const showLog = local > 48;
+  const selectedNodeId =
+    showLog ? 'log-obsolete-apps'
+      : showDelete ? 'delete-obsolete-apps'
+        : showSwitch ? 'route-command'
+          : 'command-listener';
+
+  return {
+    ...brainLaunchCommandState,
+    events: brainLaunchCommandState.events.filter((event, index) => (
+      index === 0 || (index === 1 && showLog) || (index === 2 && local > 58)
+    )),
+    pulsingEventType: local < 24 ? 'user.command' : showLog ? 'logs.info' : undefined,
+    selectedNodeId,
+    tracks: [
+      {
+        ...brainLaunchCommandState.tracks[0],
+        status: showLog ? 'completed' : 'active',
+        children: [
+          {
+            ...brainLaunchCommandState.tracks[0].children![0],
+            status: showSwitch ? 'completed' : 'active',
+            children: showSwitch ? [
+              {
+                ...brainLaunchCommandState.tracks[0].children![0].children![0],
+                status: showDelete ? 'completed' : 'active',
+                children: [
+                  ...(showDelete ? [{
+                    ...brainLaunchCommandState.tracks[0].children![0].children![0].children![0],
+                    status: showLog ? 'completed' as const : 'active' as const,
+                  }] : []),
+                  ...(showLog ? [{
+                    ...brainLaunchCommandState.tracks[0].children![0].children![0].children![1],
+                    status: 'completed' as const,
+                  }] : []),
+                ],
+              },
+            ] : [],
+          },
+        ],
+      },
+    ],
+  };
+}

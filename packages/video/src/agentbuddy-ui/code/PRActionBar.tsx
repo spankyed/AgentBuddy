@@ -5,7 +5,7 @@ import './PRActionBar.module.css';
 
 const styles = makeStyles('PRActionBar');
 
-export function PRActionBar({state}: {state: PullRequestPanelState}) {
+export function PRActionBar({mergePressed, state}: {mergePressed?: boolean; state: PullRequestPanelState}) {
   const pr = state.createdPr;
   if (pr && (pr.state === 'MERGED' || pr.state === 'CLOSED')) {
     return (
@@ -22,11 +22,11 @@ export function PRActionBar({state}: {state: PullRequestPanelState}) {
   return (
     <div className={styles.root}>
       <div className={styles.mergeGroup}>
-        <button className={styles.merge} data-variant={mergeVariant} type="button">
+        <button className={styles.merge} data-pressed={mergePressed || undefined} data-variant={mergePressed ? 'merging' : mergeVariant} type="button">
           {mergeIcon(mergeVariant)}
           <span>{mergeText}</span>
         </button>
-        <button className={styles.chevron} data-variant={mergeVariant} type="button"><Icons.ChevronDown size={11} /></button>
+        <button className={styles.chevron} data-pressed={mergePressed || undefined} data-variant={mergePressed ? 'merging' : mergeVariant} type="button"><Icons.ChevronDown size={11} /></button>
         {state.showMergeTooltip ? <MergeButtonTooltip state={state} variant={mergeVariant} /> : null}
       </div>
       <button className={pr?.isDraft ? styles.ready : styles.draft} type="button">

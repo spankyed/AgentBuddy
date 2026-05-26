@@ -16,8 +16,8 @@ export function AppPreviewSurface() {
           <div className={styles.address}>127.0.0.1:5173</div>
         </div>
         <main className={styles.page}>
-          <p>launch preview</p>
-          <h1>AgentBuddy</h1>
+          <p>local app preview</p>
+          <h1>anti-gravity sucks</h1>
         </main>
       </div>
     </section>

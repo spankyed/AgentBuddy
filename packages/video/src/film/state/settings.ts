@@ -323,6 +323,27 @@ export const settingsProvidersState: SettingsSurfaceState = {
   generalNavItem: 'secrets',
 };
 
+export function settingsProvidersStateForFrame(frame: number): SettingsSurfaceState {
+  const local = Math.max(0, frame - 292);
+  const editing = local > 22 && local < 56;
+  const value = local > 34 ? 'sk-clientlabs-live-••••' : local > 28 ? 'sk-clientlabs' : '';
+  return {
+    ...settingsProvidersState,
+    saveStatus: local > 64 ? 'saved' : local > 56 ? 'saving' : 'idle',
+    providers: settingsProvidersState.providers.map(provider => (
+      provider.key === 'google'
+        ? {
+            ...provider,
+            editing,
+            hasKey: local > 64 ? true : provider.hasKey,
+            pressedAction: local > 14 && local <= 24 ? 'edit' : local > 52 && local <= 60 ? 'save' : undefined,
+            value,
+          }
+        : provider
+    )),
+  };
+}
+
 export const settingsProjectsState: SettingsSurfaceState = {
   ...baseSettings,
   activeTab: 'general',

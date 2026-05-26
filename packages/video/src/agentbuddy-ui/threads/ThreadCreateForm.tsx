@@ -7,6 +7,7 @@ const styles = makeStyles('ThreadCreateForm');
 export type ThreadCreateFormState = {
   createPressed?: boolean;
   instructions: string;
+  linkPressed?: boolean;
   linkedThreadsOpen?: boolean;
   linkInputVisible?: boolean;
   linkedThreadQuery?: string;
@@ -134,7 +135,7 @@ function LinkedThreads({state}: {state: ThreadCreateFormState}) {
               </td>
               <td colSpan={2}>
                 <div className={styles.linkActions}>
-                  <button className={styles.linkButton} type="button">Link</button>
+                  <button className={styles.linkButton} data-pressed={state.linkPressed || undefined} type="button">Link</button>
                   <button className={styles.cancelButton} type="button">Cancel</button>
                 </div>
               </td>

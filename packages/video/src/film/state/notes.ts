@@ -169,11 +169,17 @@ export const notesEditorCopy = {
 };
 
 export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
+  const checkboxPressed = frame > 202 && frame <= 214;
   const markedComplete = frame > 214;
+  const addPressed = frame > 232 && frame <= 242;
   const linkedTodoVisible = frame > 242;
   const items = notesTaskListItems.map(item =>
     item.id === 'resize-image' && markedComplete
       ? {...item, completed: true, muted: true}
+      : item.id === 'resize-image' && checkboxPressed
+        ? {...item, checkboxPressed: true, pressed: true}
+        : item.id === 'current' && addPressed
+          ? {...item, addPressed: true, pressed: true}
       : item
   );
 
@@ -205,7 +211,9 @@ export function notesViewForFrame(frame: number) {
       ? {
           alt: 'Launch checklist image',
           bubbleOpen: frame > 126 && frame < 188,
+          resizeButtonPressed: frame > 142 && frame <= 150,
           resizeOpen: frame > 148 && frame < 188,
+          sliderPressed: frame > 152 && frame < 184,
           src: launchImageSrc,
           widthPercent: frame > 148 ? Math.round(100 - Math.min(1, (frame - 148) / 40) * 35) : 100,
         }
@@ -215,6 +223,14 @@ export function notesViewForFrame(frame: number) {
 
 export function notesShotViewForFrame(frame: number): NotesShotView {
   const view = notesViewForFrame(frame);
+  const tasklistPressed = frame > 180 && frame < 196;
+  const home = {
+    ...notesHomeState,
+    recent: notesHomeState.recent.map(note => note.id === 'recent-current'
+      ? {...note, pressed: frame > 48 && frame < 64}
+      : note
+    ),
+  };
   return {
     breadcrumbs: notesEditorCopy.breadcrumbs,
     composer: launchComposerState,
@@ -227,8 +243,15 @@ export function notesShotViewForFrame(frame: number): NotesShotView {
       image: view.image,
       title: notesEditorCopy.title,
     },
-    home: notesHomeState,
-    rightRail: notesRightRailState,
+    home,
+    rightRail: {
+      ...notesRightRailState,
+      activeId: tasklistPressed ? undefined : notesRightRailState.activeId,
+      items: notesRightRailState.items.map(item => item.id === 'tasklist'
+        ? {...item, pressed: tasklistPressed}
+        : item
+      ),
+    },
     taskList: notesTaskListForFrame(frame),
   };
 }

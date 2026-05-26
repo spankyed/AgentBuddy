@@ -23,7 +23,13 @@ export function SourceControlPanel({state, view}: SourceControlPanelProps) {
     <div className={styles.panelContent}>
       <CodePanelToolbar baseDirectory={state.baseDirectory} changeCount={state.staged.length + state.changes.length} />
       <BranchInfo branch={state.branch} sync={state.branchSync} />
-      <CommitMessageBox branch={state.branch} message={view.commitMessage} generating={view.generatingCommitMessage} />
+      <CommitMessageBox
+        branch={state.branch}
+        menuActionPressed={view.commitMenuActionPressed}
+        menuOpen={view.commitMenuOpen}
+        message={view.commitMessage}
+        generating={view.generatingCommitMessage}
+      />
       <div className={styles.fileGroups}>
         <section className={styles.fileGroup}>
           <div className={styles.groupHeader}>
@@ -40,7 +46,15 @@ export function SourceControlPanel({state, view}: SourceControlPanelProps) {
               <button type="button"><Icons.Plus size={13} /></button>
             </div>
           </div>
-          {state.changes.map((file, index) => <GitFileItem key={file.path} actions={['discard', 'stage']} file={file} selected={index === 0} />)}
+          {state.changes.map((file, index) => (
+            <GitFileItem
+              key={file.path}
+              actions={['discard', 'stage']}
+              file={file}
+              pressedAction={index === 0 && view.stageActionPressed ? 'stage' : undefined}
+              selected={index === 0}
+            />
+          ))}
         </section>
       </div>
       <CommitLogSection commits={state.commits} />

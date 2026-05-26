@@ -9,11 +9,12 @@ type ComposerIconButtonProps = {
   disabled?: boolean;
   icon: ComponentType<{size?: number; className?: string}>;
   label: string;
+  pressed?: boolean;
 };
 
-export function ComposerIconButton({className, disabled, icon: Icon, label}: ComposerIconButtonProps) {
+export function ComposerIconButton({className, disabled, icon: Icon, label, pressed}: ComposerIconButtonProps) {
   return (
-    <button className={cx(styles.iconButton, className)} disabled={disabled} title={label} type="button">
+    <button className={cx(styles.iconButton, className)} data-pressed={pressed || undefined} disabled={disabled} title={label} type="button">
       <Icon size={20} />
     </button>
   );

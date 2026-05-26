@@ -65,6 +65,17 @@ export const flowsListMenuState: FlowsListState = {
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {
   const flow = releaseAutomationWorkflow.flow;
+  const pressedPaletteKind =
+    frame > 64 && frame <= 76 ? 'switch'
+      : frame > 130 && frame <= 142 ? 'action'
+        : frame > 188 && frame <= 200 ? 'action'
+          : undefined;
+  const selectedNodeId =
+    frame > 72 && frame < 104 ? 'switch'
+      : frame > 138 && frame < 170 ? 'delete-apps'
+        : frame > 196 && frame < 228 ? 'log-result'
+          : frame > 228 ? 'delete-apps'
+            : 'listener';
   const visibleNodeIds = new Set([
     'listener',
     ...(frame > 72 ? ['switch'] : []),
@@ -74,8 +85,14 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
   const nodes = flow.nodes.filter(node => visibleNodeIds.has(node.id));
   return {
     ...flow,
+    editingNodeId: frame > 236 ? 'delete-apps' : undefined,
     nodes,
+    paletteItems: flow.paletteItems.map(item => ({
+      ...item,
+      pressed: item.kind === pressedPaletteKind,
+    })),
     edges: flow.edges.filter(edge => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to)),
+    selectedNodeId,
   };
 }
 

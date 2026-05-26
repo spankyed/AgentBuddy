@@ -25,8 +25,11 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
             modeOptions={state.modeOptions}
             openSelector={state.openSelector}
             phase={state.phase}
+            referenceButtonPressed={state.referenceButtonPressed}
             quickPrompts={state.quickPrompts}
+            quickPromptsButtonPressed={state.quickPromptsButtonPressed}
             quickPromptsOpen={state.quickPromptsOpen}
+            quickPromptPressedId={state.quickPromptPressedId}
             sendDisabled={sendDisabled}
             sendPressed={state.sendPressed}
           />

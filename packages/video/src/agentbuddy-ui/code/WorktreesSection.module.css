@@ -72,6 +72,11 @@
   background: rgb(38 38 38 / 50%);
 }
 
+.WorktreesSection_pressed {
+  background: rgb(64 64 64 / 70%);
+  transform: translateY(1px) scale(0.99);
+}
+
 .WorktreesSection_branchIcon {
   flex-shrink: 0;
   color: rgb(115 115 115);
