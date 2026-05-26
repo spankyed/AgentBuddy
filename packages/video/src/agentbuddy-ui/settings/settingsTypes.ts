@@ -107,6 +107,14 @@ export type SettingsSurfaceState = {
   selectedPluginSettings?: {
     actions?: {
       categories: SettingsCategory[];
+      exportDirectory?: string;
+      exportErrors?: string[];
+      exportStatus?: 'idle' | 'exporting' | 'success' | 'error';
+      exportedFilePath?: string;
+      exportedItemCount?: number;
+      importErrors?: string[];
+      importStatus?: 'idle' | 'importing' | 'success' | 'error';
+      importedCount?: number;
     };
     brain?: {
       brainIsDead?: boolean;
@@ -115,7 +123,9 @@ export type SettingsSurfaceState = {
       runningRootFlowId?: string;
     };
     database?: {
-      executeQueryShortcut: string;
+      hotkeys: {
+        executeQuery?: string;
+      };
     };
     code?: {
       autoFetchIntervalSeconds: number;
@@ -143,13 +153,27 @@ export type SettingsSurfaceState = {
     flows?: {
       enableFlowPreview: boolean;
       exportDirectory?: string;
+      exportErrors?: string[];
+      exportStatus?: 'idle' | 'exporting' | 'success' | 'error';
+      exportedFilePath?: string;
+      exportedFlowCount?: number;
       flows: Array<{id: string; label: string}>;
+      importErrors?: string[];
+      importStatus?: 'idle' | 'importing' | 'success' | 'error';
+      importedFlowNames?: string[];
       needsRestart?: boolean;
       rootFlowId?: string;
     };
     library?: {
       exportDirectory?: string;
+      exportErrors?: string[];
       exportFormat: 'markdown' | 'json';
+      exportStatus?: 'idle' | 'exporting' | 'success' | 'error';
+      exportedFilePath?: string;
+      exportedItemCount?: number;
+      importErrors?: string[];
+      importStatus?: 'idle' | 'importing' | 'success' | 'error';
+      importedCount?: number;
       tags: SettingsCategory[];
     };
     logs?: {
@@ -158,11 +182,26 @@ export type SettingsSurfaceState = {
     };
     notes?: {
       exportDirectory?: string;
+      exportErrors?: string[];
       exportFormat: 'markdown' | 'json';
+      exportStatus?: 'idle' | 'exporting' | 'success' | 'error';
+      exportedFilePath?: string;
+      exportedItemCount?: number;
+      importErrors?: string[];
+      importStatus?: 'idle' | 'importing' | 'success' | 'error';
+      importedCount?: number;
       tasklistPanelPosition: 'left' | 'right';
     };
     prompts?: {
       categories: SettingsCategory[];
+      exportDirectory?: string;
+      exportErrors?: string[];
+      exportStatus?: 'idle' | 'exporting' | 'success' | 'error';
+      exportedFilePath?: string;
+      exportedItemCount?: number;
+      importErrors?: string[];
+      importStatus?: 'idle' | 'importing' | 'success' | 'error';
+      importedCount?: number;
     };
     threads?: {
       chat: {
@@ -180,6 +219,13 @@ export type SettingsSurfaceState = {
       chatStates: ChatStateIndicatorSettings[];
       clickToChat: boolean;
       exportDirectory?: string;
+      exportErrors?: string[];
+      exportStatus?: 'idle' | 'exporting' | 'success' | 'error';
+      exportedFilePath?: string;
+      exportedThreadCount?: number;
+      importErrors?: string[];
+      importStatus?: 'idle' | 'importing' | 'success' | 'error';
+      importedCount?: number;
       recentThreadsLimit: number;
       recentThreadsSortOrder: 'created' | 'visited' | 'message';
       recordingLimitMinutes: number;

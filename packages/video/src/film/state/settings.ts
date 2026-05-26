@@ -47,6 +47,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
   selectedPluginId: 'brain',
   selectedPluginSettings: {
     actions: {
+      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Actions',
       categories: [
         {name: 'database', color: '#3B82F6'},
         {name: 'communication', color: '#22C55E'},
@@ -86,7 +87,9 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       ],
     },
     database: {
-      executeQueryShortcut: '⌘ ↵',
+      hotkeys: {
+        executeQuery: '⌘ ↵',
+      },
     },
     flows: {
       enableFlowPreview: true,
@@ -118,6 +121,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       tasklistPanelPosition: 'left',
     },
     prompts: {
+      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Prompts',
       categories: [
         {name: 'development', color: '#22C55E'},
         {name: 'analysis', color: '#F97316'},

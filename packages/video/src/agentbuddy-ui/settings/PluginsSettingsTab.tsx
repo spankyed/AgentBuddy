@@ -91,13 +91,13 @@ function SaveStatus({status}: {status?: SettingsSurfaceState['saveStatus']}) {
 function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem['id']; state: SettingsSurfaceState}) {
   switch (selected) {
     case 'actions':
-      return <ActionsPluginSettings categories={state.selectedPluginSettings?.actions?.categories} />;
+      return <ActionsPluginSettings settings={state.selectedPluginSettings?.actions} />;
     case 'brain':
       return <BrainPluginSettings settings={state.selectedPluginSettings?.brain} />;
     case 'code':
       return <CodePluginSettings settings={state.selectedPluginSettings?.code} projects={state.projects} />;
     case 'database':
-      return <DatabasePluginSettings executeQueryShortcut={state.selectedPluginSettings?.database?.executeQueryShortcut} />;
+      return <DatabasePluginSettings settings={state.selectedPluginSettings?.database} />;
     case 'flows':
       return <FlowsPluginSettings settings={state.selectedPluginSettings?.flows} />;
     case 'library':
@@ -112,7 +112,7 @@ function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem
     case 'notes':
       return <NotesPluginSettings settings={state.selectedPluginSettings?.notes} />;
     case 'prompts':
-      return <PromptsPluginSettings categories={state.selectedPluginSettings?.prompts?.categories} />;
+      return <PromptsPluginSettings settings={state.selectedPluginSettings?.prompts} />;
     case 'threads':
       return <ThreadsPluginSettings settings={state.selectedPluginSettings?.threads} />;
     default:

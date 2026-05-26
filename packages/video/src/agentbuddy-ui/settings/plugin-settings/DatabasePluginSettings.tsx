@@ -1,11 +1,16 @@
 import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
 import {Icons} from '../../primitives/Icon';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
+import type {SettingsSurfaceState} from '../settingsTypes';
 import './DatabasePluginSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('DatabasePluginSettings');
 
-export function DatabasePluginSettings({executeQueryShortcut = '⌘ ↵'}: {executeQueryShortcut?: string}) {
+type DatabaseSettings = NonNullable<NonNullable<SettingsSurfaceState['selectedPluginSettings']>['database']>;
+
+export function DatabasePluginSettings({settings}: {settings?: DatabaseSettings}) {
+  const executeQueryShortcut = settings?.hotkeys.executeQuery;
+
   return (
     <div className={styles.root}>
       <CollapsiblePluginSection label="Database Hotkeys">

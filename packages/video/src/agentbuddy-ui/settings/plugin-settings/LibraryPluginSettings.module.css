@@ -163,3 +163,66 @@
   align-items: center;
   gap: 8px;
 }
+
+.LibraryPluginSettings_statusCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.LibraryPluginSettings_statusCard[data-tone="success"] {
+  border-color: rgb(4 120 87 / 50%);
+  background: rgb(6 78 59 / 20%);
+}
+
+.LibraryPluginSettings_statusCard[data-tone="error"] {
+  border-color: rgb(185 28 28 / 50%);
+  background: rgb(127 29 29 / 20%);
+}
+
+.LibraryPluginSettings_statusIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.LibraryPluginSettings_statusCard[data-tone="success"] .LibraryPluginSettings_statusIcon {
+  color: rgb(16 185 129);
+}
+
+.LibraryPluginSettings_statusCard[data-tone="error"] .LibraryPluginSettings_statusIcon {
+  color: rgb(239 68 68);
+}
+
+.LibraryPluginSettings_statusBody {
+  flex: 1;
+}
+
+.LibraryPluginSettings_statusTitle {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.LibraryPluginSettings_statusCard[data-tone="success"] .LibraryPluginSettings_statusTitle {
+  color: rgb(52 211 153);
+}
+
+.LibraryPluginSettings_statusCard[data-tone="error"] .LibraryPluginSettings_statusTitle {
+  color: rgb(248 113 113);
+}
+
+.LibraryPluginSettings_statusCopy,
+.LibraryPluginSettings_statusList {
+  color: rgb(163 163 163);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.LibraryPluginSettings_statusList {
+  list-style: disc;
+  padding-left: 18px;
+}
