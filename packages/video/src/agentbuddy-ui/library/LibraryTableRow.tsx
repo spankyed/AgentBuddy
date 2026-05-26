@@ -23,7 +23,7 @@ export function LibraryTableRow({depth = 0, item}: {depth?: number; item: Librar
             ) : (
               <span className={styles.disclosureSpacer} />
             )}
-            <ItemIcon className={cx(styles.itemIcon, isFolder && styles.folderIcon, item.isSymlink && styles.symlinkIcon)} size={isFolder ? 20 : 16} />
+            <ItemIcon className={cx(styles.itemIcon, isFolder && styles.folderIcon, item.isSymlink && !isBrokenSymlink && styles.symlinkIcon)} size={isFolder ? 20 : 16} />
             <span className={cx(styles.itemName, isFolder && styles.folderName)}>{item.name}</span>
           </div>
         </td>
@@ -39,5 +39,12 @@ export function LibraryTableRow({depth = 0, item}: {depth?: number; item: Librar
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const time = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+  if (date.toDateString() === today.toDateString()) return `Today, ${time}`;
+  if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
+  return `${date.toLocaleDateString()}, ${time}`;
 }
