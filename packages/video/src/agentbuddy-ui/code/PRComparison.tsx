@@ -7,6 +7,17 @@ const styles = makeStyles('PRComparison');
 
 export function PRComparison({state}: {state: PullRequestPanelState}) {
   if (state.loadingFiles && state.fileTree.length === 0) return <FileTreeSkeleton />;
+  if (state.fileTree.length === 0) {
+    return (
+      <section className={styles.root}>
+        <div className={styles.emptyState}>
+          <Icons.GitBranch size={40} />
+          <h3>No changes found</h3>
+          <p>Comparing with {state.baseBranch || 'base branch'}</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={styles.root}>

@@ -19,6 +19,12 @@
   gap: 16px;
 }
 
+.CodePluginSettings_hotkeyStack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .CodePluginSettings_compactStack {
   display: flex;
   flex-direction: column;
@@ -103,6 +109,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.CodePluginSettings_hotkeyPair {
+  gap: 16px;
 }
 
 .CodePluginSettings_scriptLabel {

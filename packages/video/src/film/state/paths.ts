@@ -1,7 +1,33 @@
-export const filmHomeDirectory = '~';
+export type FilmPathState = {
+  homeDirectory: string;
+  homeDisplayName: string;
+};
 
-export function homePath(path: string) {
-  return `${filmHomeDirectory}/${path.replace(/^\/+/, '')}`;
+export const filmPathState: FilmPathState = {
+  homeDirectory: '~',
+  homeDisplayName: '~',
+};
+
+export const filmHomeDirectory = filmPathState.homeDirectory;
+
+export function homePath(path: string, state: FilmPathState = filmPathState) {
+  return `${state.homeDirectory}/${path.replace(/^\/+/, '')}`;
+}
+
+export function displayPath(path: string, state: FilmPathState = filmPathState) {
+  const normalizedHome = state.homeDirectory.replace(/\/+$/, '');
+
+  if (!normalizedHome) return path;
+
+  if (path === normalizedHome) {
+    return state.homeDisplayName;
+  }
+
+  if (path.startsWith(`${normalizedHome}/`)) {
+    return `${state.homeDisplayName}${path.slice(normalizedHome.length)}`;
+  }
+
+  return path;
 }
 
 export const filmProjects = {

@@ -47,15 +47,16 @@ function GraphPreview({state}: {state: DatabaseGraphState}) {
         const label = edge.type ?? '';
         const labelX = (source.x + target.x) / 2;
         const labelY = (source.y + target.y) / 2;
+        const line = edgeLinePoints(source, target);
         return (
           <g key={edge.id}>
             <line
               className={styles.edge}
               markerEnd="url(#database-graph-arrow)"
-              x1={source.x}
-              x2={target.x}
-              y1={source.y}
-              y2={target.y}
+              x1={line.x1}
+              x2={line.x2}
+              y1={line.y1}
+              y2={line.y2}
             />
             {label ? (
               <g className={styles.edgeLabel} transform={`translate(${labelX} ${labelY})`}>
@@ -95,6 +96,27 @@ function layoutNodes(nodes: DatabaseGraphNode[]) {
     });
   });
   return positions;
+}
+
+function edgeLinePoints(source: {x: number; y: number}, target: {x: number; y: number}) {
+  const nodeRadius = 16;
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const distance = Math.hypot(dx, dy);
+
+  if (distance === 0) {
+    return {x1: source.x, y1: source.y, x2: target.x, y2: target.y};
+  }
+
+  const offsetX = (dx / distance) * nodeRadius;
+  const offsetY = (dy / distance) * nodeRadius;
+
+  return {
+    x1: source.x + offsetX,
+    y1: source.y + offsetY,
+    x2: target.x - offsetX,
+    y2: target.y - offsetY,
+  };
 }
 
 function EmptyState() {

@@ -119,7 +119,7 @@ export function CodePluginSettings({homeDirectory, settings, projects = []}: {ho
       <Divider>
         <CollapsiblePluginSection label="Code Hotkeys">
           <p className={styles.copy}>Keyboard shortcuts available when the code plugin is active</p>
-          <div className={styles.stack}>
+          <div className={styles.hotkeyStack}>
             <Hotkey label="Open Terminal" value={value.hotkeys.openTerminal} copy="Open a new terminal in the current working directory" />
             <Hotkey label="Open Terminal Tab" value={value.hotkeys.openTerminalTab} copy="Open a new terminal as an editor tab" />
             <Hotkey label="Focus Search" value={value.hotkeys.focusSearch} copy="Open the search panel and focus the search input" />

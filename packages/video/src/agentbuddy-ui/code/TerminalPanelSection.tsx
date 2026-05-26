@@ -17,6 +17,9 @@ export function TerminalPanelSection({state}: {state: TerminalPanelState}) {
           <span>TERMINAL</span>
         </div>
         <div className={styles.actions}>
+          <button className={styles.iconButton} title="Run Script" type="button">
+            <Icons.Play size={14} />
+          </button>
           <button className={styles.iconButton} disabled={!state.activeTerminalId} title="Stop (Ctrl+C)" type="button">
             <Icons.Square className={!state.activeTerminalId ? styles.disabledIcon : undefined} size={12} />
           </button>
