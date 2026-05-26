@@ -2,6 +2,7 @@ import {Icons} from '../../primitives/Icon';
 import {KeyboardShortcutInput} from '../general/KeyboardShortcutInput';
 import {ColorPicker} from '../../design/ColorPicker';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
+import type {ReactNode} from 'react';
 import type {SettingsSurfaceState, ThreadModeSettings} from '../settingsTypes';
 import './ThreadsPluginSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
@@ -34,6 +35,8 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
   const visibleModes = value.chat.modes.filter(mode => !mode.hidden);
   const selectedMode = visibleModes[0];
   const defaultMode = value.chat.modes.find(mode => mode.name === value.chat.defaultMode);
+  const importStatus = value.importStatus ?? 'idle';
+  const exportStatus = value.exportStatus ?? 'idle';
 
   return (
     <div className={styles.root}>
@@ -161,7 +164,28 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
       <Divider>
         <CollapsiblePluginSection label="Import Threads">
           <p className={styles.copy}>Import threads from an export folder</p>
-          <button className={styles.secondaryButton} type="button"><Icons.Upload size={16} />Select Export Folder...</button>
+          <div className={styles.stack}>
+            <button className={styles.secondaryButton} disabled={importStatus === 'importing'} type="button">
+              <Icons.Upload size={16} />
+              {importStatus === 'importing' ? 'Importing...' : 'Select Export Folder...'}
+            </button>
+            {importStatus === 'success' ? (
+              <StatusCard tone="success" title={`Successfully imported ${value.importedCount ?? 0} thread${(value.importedCount ?? 0) !== 1 ? 's' : ''}`}>
+                {(value.importErrors ?? []).length > 0 ? (
+                  <ul className={styles.statusList}>
+                    {(value.importErrors ?? []).map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}
+                  </ul>
+                ) : null}
+              </StatusCard>
+            ) : null}
+            {importStatus === 'error' ? (
+              <StatusCard tone="error" title="Import failed">
+                <ul className={styles.statusList}>
+                  {(value.importErrors ?? []).map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}
+                </ul>
+              </StatusCard>
+            ) : null}
+          </div>
         </CollapsiblePluginSection>
       </Divider>
 
@@ -173,7 +197,22 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
               <input className={`${styles.input} ${styles.directoryInput}`} readOnly value={value.exportDirectory ?? ''} placeholder="Select output directory..." />
             <button className={styles.secondaryButton} type="button"><Icons.FolderOpen size={16} />Browse</button>
           </div>
-            <button className={styles.secondaryButton} disabled={!value.exportDirectory} type="button"><Icons.Download size={16} />Export</button>
+            <button className={styles.secondaryButton} disabled={exportStatus === 'exporting' || !value.exportDirectory} type="button">
+              <Icons.Download size={16} />
+              {exportStatus === 'exporting' ? 'Exporting...' : 'Export'}
+            </button>
+            {exportStatus === 'success' ? (
+              <StatusCard tone="success" title={`Successfully exported ${value.exportedThreadCount ?? 0} thread${(value.exportedThreadCount ?? 0) !== 1 ? 's' : ''}`}>
+                {value.exportedFilePath ? <p className={styles.statusCopy}>{value.exportedFilePath}</p> : null}
+              </StatusCard>
+            ) : null}
+            {exportStatus === 'error' ? (
+              <StatusCard tone="error" title="Export failed">
+                <ul className={styles.statusList}>
+                  {(value.exportErrors ?? []).map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}
+                </ul>
+              </StatusCard>
+            ) : null}
           </div>
         </CollapsiblePluginSection>
       </Divider>
@@ -269,6 +308,20 @@ function Hotkey({copy, label, value}: {copy: string; label: string; value?: stri
   );
 }
 
-function Divider({children}: {children: React.ReactNode}) {
+function StatusCard({children, title, tone}: {children?: ReactNode; title: string; tone: 'error' | 'success'}) {
+  const Icon = tone === 'success' ? Icons.CircleCheck : Icons.CircleX;
+
+  return (
+    <div className={styles.statusCard} data-tone={tone}>
+      <Icon className={styles.statusIcon} size={20} />
+      <div className={styles.statusBody}>
+        <div className={styles.statusTitle}>{title}</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Divider({children}: {children: ReactNode}) {
   return <div className={styles.divider}>{children}</div>;
 }

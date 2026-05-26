@@ -335,3 +335,66 @@
 .ThreadsPluginSettings_directoryInput {
   flex: 1;
 }
+
+.ThreadsPluginSettings_statusCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.ThreadsPluginSettings_statusCard[data-tone="success"] {
+  border-color: rgb(4 120 87 / 50%);
+  background: rgb(6 78 59 / 20%);
+}
+
+.ThreadsPluginSettings_statusCard[data-tone="error"] {
+  border-color: rgb(185 28 28 / 50%);
+  background: rgb(127 29 29 / 20%);
+}
+
+.ThreadsPluginSettings_statusIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.ThreadsPluginSettings_statusCard[data-tone="success"] .ThreadsPluginSettings_statusIcon {
+  color: rgb(16 185 129);
+}
+
+.ThreadsPluginSettings_statusCard[data-tone="error"] .ThreadsPluginSettings_statusIcon {
+  color: rgb(239 68 68);
+}
+
+.ThreadsPluginSettings_statusBody {
+  flex: 1;
+}
+
+.ThreadsPluginSettings_statusTitle {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.ThreadsPluginSettings_statusCard[data-tone="success"] .ThreadsPluginSettings_statusTitle {
+  color: rgb(52 211 153);
+}
+
+.ThreadsPluginSettings_statusCard[data-tone="error"] .ThreadsPluginSettings_statusTitle {
+  color: rgb(248 113 113);
+}
+
+.ThreadsPluginSettings_statusCopy,
+.ThreadsPluginSettings_statusList {
+  color: rgb(163 163 163);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ThreadsPluginSettings_statusList {
+  list-style: disc;
+  padding-left: 18px;
+}
