@@ -59,5 +59,7 @@ function statusLabel(status: PullRequestFileTreeNode['status']) {
   if (status === 'modified') return 'M';
   if (status === 'deleted') return 'D';
   if (status === 'renamed') return 'R';
-  return '?';
+  if (status === 'copied') return 'C';
+  if (status === 'typechange') return 'T';
+  return 'U';
 }

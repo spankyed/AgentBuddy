@@ -6,8 +6,9 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('GitFileItem');
 
 export type GitFile = {
+  originalPath?: string;
   path: string;
-  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked';
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
 };
 
 type GitFileAction = 'discard' | 'stage' | 'unstage';
@@ -16,11 +17,12 @@ export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAc
   const slash = file.path.lastIndexOf('/');
   const filename = slash === -1 ? file.path : file.path.slice(slash + 1);
   const directory = slash === -1 ? '' : file.path.slice(0, slash);
-  const status = file.status === 'modified' ? 'M' : file.status === 'added' ? 'A' : file.status === 'deleted' ? 'D' : file.status === 'renamed' ? 'R' : 'U';
+  const status = statusLabel(file.status);
+  const displayName = file.status === 'renamed' && file.originalPath ? `${filenameFromPath(file.originalPath)} -> ${filename}` : filename;
   return (
-    <div className={cx(styles.root, selected && styles.selected)}>
+    <div className={cx(styles.root, selected && styles.selected)} title={file.status === 'renamed' && file.originalPath ? `${file.originalPath} -> ${file.path}` : file.path}>
       <div className={styles.nameWrap}>
-        <span className={styles.filename}>{filename}</span>
+        <span className={styles.filename}>{displayName}</span>
         {directory ? <span className={styles.directory}>{directory}</span> : null}
       </div>
       <span className={cx(styles.status, styles[file.status])}>{status}</span>
@@ -32,6 +34,21 @@ export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAc
       ))}
     </div>
   );
+}
+
+function filenameFromPath(path: string) {
+  const slash = path.lastIndexOf('/');
+  return slash === -1 ? path : path.slice(slash + 1);
+}
+
+function statusLabel(status: GitFile['status']) {
+  if (status === 'modified') return 'M';
+  if (status === 'added') return 'A';
+  if (status === 'deleted') return 'D';
+  if (status === 'renamed') return 'R';
+  if (status === 'copied') return 'C';
+  if (status === 'typechange') return 'T';
+  return 'U';
 }
 
 function actionLabel(action: GitFileAction) {

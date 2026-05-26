@@ -1,9 +1,8 @@
 .Toolbar_root {
   --toolbar-width: 4.5rem;
-  --toolbar-pinned-height: 17.5rem;
 
-  position: relative;
   display: flex;
+  height: 100%;
   flex-shrink: 0;
   flex-direction: column;
   width: var(--toolbar-width);
@@ -23,7 +22,6 @@
   flex: 1;
   overflow-y: auto;
   margin: 0.5rem 0;
-  padding-bottom: var(--toolbar-pinned-height);
   scrollbar-width: none;
 }
 
@@ -39,16 +37,11 @@
 }
 
 .Toolbar_pinnedArea {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
   display: flex;
-  height: var(--toolbar-pinned-height);
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-  justify-content: flex-end;
+  margin-top: auto;
   border-top: 1px solid rgb(38 38 38);
   padding: 1.5rem 0;
 }

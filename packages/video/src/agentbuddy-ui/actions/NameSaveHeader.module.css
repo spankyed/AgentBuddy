@@ -32,6 +32,7 @@
   border: 1px solid rgb(38 38 38);
   border-radius: 6px;
   background: rgb(23 23 23 / 90%);
+  backdrop-filter: blur(4px);
   color: rgb(212 212 212);
   padding: 6px 12px;
   font-size: 14px;

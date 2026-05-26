@@ -69,6 +69,18 @@
   color: rgb(115 115 115);
 }
 
+.GitFileItem_copied {
+  color: rgb(168 85 247);
+}
+
+.GitFileItem_typechange {
+  color: rgb(249 115 22);
+}
+
+.GitFileItem_unmerged {
+  color: rgb(220 38 38);
+}
+
 .GitFileItem_openAction,
 .GitFileItem_action {
   display: inline-flex;
