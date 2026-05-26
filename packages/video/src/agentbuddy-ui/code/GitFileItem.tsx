@@ -18,9 +18,9 @@ export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAc
   const filename = slash === -1 ? file.path : file.path.slice(slash + 1);
   const directory = slash === -1 ? '' : file.path.slice(0, slash);
   const status = statusLabel(file.status);
-  const displayName = file.status === 'renamed' && file.originalPath ? `${filenameFromPath(file.originalPath)} -> ${filename}` : filename;
+  const displayName = file.status === 'renamed' && file.originalPath ? `${filenameFromPath(file.originalPath)} \u2192 ${filename}` : filename;
   return (
-    <div className={cx(styles.root, selected && styles.selected)} title={file.status === 'renamed' && file.originalPath ? `${file.originalPath} -> ${file.path}` : file.path}>
+    <div className={cx(styles.root, selected && styles.selected)} title={file.status === 'renamed' && file.originalPath ? `${file.originalPath} \u2192 ${file.path}` : file.path}>
       <div className={styles.nameWrap}>
         <span className={styles.filename}>{displayName}</span>
         {directory ? <span className={styles.directory}>{directory}</span> : null}
