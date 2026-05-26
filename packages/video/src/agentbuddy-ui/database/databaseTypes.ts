@@ -29,6 +29,7 @@ export type DatabaseBackupState = {
   };
   backupName: string;
   exportPath: string;
+  exportPathPlaceholder?: string;
   importPath?: string;
   isProcessing?: boolean;
   selectedDatabases: Array<{

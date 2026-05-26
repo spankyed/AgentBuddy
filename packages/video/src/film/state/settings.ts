@@ -1,4 +1,5 @@
 import type {SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTypes';
+import {filmExportDirectories, filmHomeDirectory, filmProjects, filmSetupPackDirectories} from './paths';
 
 const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> = {
   applicationHotkeys: {
@@ -15,6 +16,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {answer: 'Providers can be configured from the General > Providers view. Keys are masked once saved.', id: 'faq-providers', question: 'How do provider keys work?'},
     {answer: 'Setup packs import compiled actions, prompts, flows, library docs, and notes.', id: 'faq-setup', question: 'What is a setup pack?'},
   ],
+  homeDirectory: filmHomeDirectory,
   plugins: [
     {id: 'threads', label: 'Threads', visible: true},
     {id: 'notes', label: 'Notes', visible: true},
@@ -39,15 +41,15 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {description: 'Command, Embed, Rerank', hasKey: false, key: 'cohere', label: 'Cohere', placeholder: 'Enter Cohere API key'},
   ],
   projects: [
-    {color: '#3b82f6', directories: ['/Users/spankyed/Develop/Projects/AgentBuddy'], name: 'AgentBuddy'},
-    {color: '#22c55e', directories: ['/Users/spankyed/Develop/Projects/Clientlabs'], name: 'Clientlabs'},
-    {color: '#f59e0b', directories: ['/Users/spankyed/Develop/Projects/Launch'], name: 'Launch'},
+    {color: '#3b82f6', directories: [filmProjects.agentBuddy], name: 'AgentBuddy'},
+    {color: '#22c55e', directories: [filmProjects.clientlabs], name: 'Clientlabs'},
+    {color: '#f59e0b', directories: [filmProjects.launch], name: 'Launch'},
   ],
   saveStatus: 'saved',
   selectedPluginId: 'brain',
   selectedPluginSettings: {
     actions: {
-      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Actions',
+      exportDirectory: filmExportDirectories.actions,
       categories: [
         {name: 'database', color: '#3B82F6'},
         {name: 'communication', color: '#22C55E'},
@@ -65,7 +67,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       autoFetchRemote: true,
       closeTerminalOnTabClose: true,
       confirmTerminalClose: true,
-      defaultBaseDirectory: '/Users/spankyed/Develop/Projects/AgentBuddy',
+      defaultBaseDirectory: filmProjects.agentBuddy,
       enablePreview: true,
       enableShellIntegration: true,
       hotkeys: {
@@ -93,7 +95,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     },
     flows: {
       enableFlowPreview: true,
-      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Flows',
+      exportDirectory: filmExportDirectories.flows,
       flows: [
         {id: 'root-flow', label: 'Root Flow'},
         {id: 'launch-release', label: 'Launch Release'},
@@ -103,7 +105,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       rootFlowId: 'root-flow',
     },
     library: {
-      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Library',
+      exportDirectory: filmExportDirectories.library,
       exportFormat: 'markdown',
       tags: [
         {name: 'Reference', color: '#3B82F6'},
@@ -116,12 +118,12 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       maxLogs: 1000,
     },
     notes: {
-      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Notes',
+      exportDirectory: filmExportDirectories.notes,
       exportFormat: 'markdown',
       tasklistPanelPosition: 'left',
     },
     prompts: {
-      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Prompts',
+      exportDirectory: filmExportDirectories.prompts,
       categories: [
         {name: 'development', color: '#22C55E'},
         {name: 'analysis', color: '#F97316'},
@@ -170,7 +172,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
         {id: 'working', label: 'Working', color: '#22C55E'},
       ],
       clickToChat: false,
-      exportDirectory: '/Users/spankyed/Exports/AgentBuddy Threads',
+      exportDirectory: filmExportDirectories.threads,
       recentThreadsLimit: 7,
       recentThreadsSortOrder: 'visited',
       recordingLimitMinutes: 3,
@@ -218,7 +220,7 @@ export const settingsApplicationState: SettingsSurfaceState = {
 export const settingsSetupPackSelectingState: SettingsSurfaceState = {
   ...settingsApplicationState,
   setupPackImport: {
-    directory: '/Users/spankyed/Develop/Setup Packs/agentbuddy-launch',
+    directory: filmSetupPackDirectories.launch,
     expanded: {
       actions: true,
       prompts: true,
@@ -275,7 +277,7 @@ export const settingsSetupPackSuccessState: SettingsSurfaceState = {
 export const settingsSetupPackPreviewingState: SettingsSurfaceState = {
   ...settingsApplicationState,
   setupPackImport: {
-    directory: '/Users/spankyed/Develop/Setup Packs/agentbuddy-launch',
+    directory: filmSetupPackDirectories.launch,
     status: 'previewing',
   },
 };
@@ -283,7 +285,7 @@ export const settingsSetupPackPreviewingState: SettingsSurfaceState = {
 export const settingsSetupPackErrorState: SettingsSurfaceState = {
   ...settingsApplicationState,
   setupPackImport: {
-    directory: '/Users/spankyed/Develop/Setup Packs/broken-pack',
+    directory: filmSetupPackDirectories.broken,
     error: 'Missing manifest.json in compiled setup pack directory',
     status: 'error',
   },

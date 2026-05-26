@@ -35,7 +35,7 @@ export function DatabaseBackupRestore({state}: {state: DatabaseBackupState}) {
                 <div className={styles.inputRow}>
                   <div className={styles.inputWrap}>
                     <Icons.Folder className={styles.inputIcon} size={16} />
-                    <input className={styles.input} placeholder="/Users/spankyed/Documents/AgentBuddy Backups" readOnly value={state.exportPath} />
+                    <input className={styles.input} placeholder={state.exportPathPlaceholder ?? 'Select backup directory'} readOnly value={state.exportPath} />
                   </div>
                   <button className={styles.browse} type="button"><Icons.FolderOpen size={16} />Browse</button>
                 </div>

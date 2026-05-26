@@ -1,4 +1,5 @@
 import type {LibraryDocumentEditorState, LibrarySurfaceState} from '../../agentbuddy-ui/library/libraryTypes';
+import {filmProjects} from './paths';
 
 export const librarySurfaceState: LibrarySurfaceState = {
   breadcrumbs: [
@@ -59,7 +60,7 @@ export const librarySurfaceState: LibrarySurfaceState = {
       updatedAt: '2026-05-25T14:45:00Z',
     },
     {
-      filePath: '/Users/spankyed/Develop/Projects/AgentBuddy/docs',
+      filePath: `${filmProjects.agentBuddy}/docs`,
       id: 'folder-agentbuddy-docs',
       isSymlink: true,
       kind: 'Linked Folder',

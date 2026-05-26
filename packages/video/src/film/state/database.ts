@@ -1,4 +1,5 @@
 import type {DatabaseSurfaceState, QueryExample} from '../../agentbuddy-ui/database/databaseTypes';
+import {filmDatabaseBackupDirectory} from './paths';
 
 const queryExamples: QueryExample[] = [
   {
@@ -177,7 +178,8 @@ export const databaseBackupExportState: DatabaseSurfaceState = {
   backup: {
     activeTab: 'export',
     backupName: 'agentbuddy-launch-film',
-    exportPath: '/Users/spankyed/Documents/AgentBuddy Backups',
+    exportPath: filmDatabaseBackupDirectory,
+    exportPathPlaceholder: '~/Documents/AgentBuddy Backups',
     selectedDatabases: [
       {description: 'Core application data (ears-db)', id: 'lmdb', label: 'Main Database', selected: true, tone: 'blue'},
       {description: 'Execution traces (ears-trace)', id: 'volatileLmdb', label: 'Trace Database', selected: false, tone: 'green'},
@@ -198,7 +200,7 @@ export const databaseBackupImportState: DatabaseSurfaceState = {
       size: 47 * 1024 * 1024,
       timestamp: 1769448640000,
     },
-    importPath: '/Users/spankyed/Documents/AgentBuddy Backups/agentbuddy-launch-film',
+    importPath: `${filmDatabaseBackupDirectory}/agentbuddy-launch-film`,
   },
 };
 

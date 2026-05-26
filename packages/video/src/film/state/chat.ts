@@ -20,6 +20,7 @@ import type {
   ToolInputBlockState,
 } from '../../agentbuddy-ui/threads/threadTypes';
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
+import {filmProjects} from './paths';
 import {ease, textReveal} from './timeline';
 
 export type ChatShotView = {
@@ -344,17 +345,17 @@ export const filePickerBlockDemoState: FilePickerBlockState = {
 
 export const projectSelectBlockDemoState: ProjectSelectBlockState = {
   projects: [
-    {name: 'AgentBuddy', color: '#3b82f6', directories: ['/Users/spankyed/Develop/Projects/AgentBuddy']},
-    {name: 'Clientlabs', color: '#10b981', directories: ['/Users/spankyed/Develop/Projects/Clientlabs']},
+    {name: 'AgentBuddy', color: '#3b82f6', directories: [filmProjects.agentBuddy]},
+    {name: 'Clientlabs', color: '#10b981', directories: [filmProjects.clientlabs]},
   ],
 };
 
 export const projectSelectRespondedState: ProjectSelectBlockState = {
   disabled: true,
   displayText: 'Selected project:',
-  response: '/Users/spankyed/Develop/Projects/AgentBuddy',
+  response: filmProjects.agentBuddy,
   projects: [
-    {name: 'AgentBuddy', color: '#3b82f6', directories: ['/Users/spankyed/Develop/Projects/AgentBuddy']},
+    {name: 'AgentBuddy', color: '#3b82f6', directories: [filmProjects.agentBuddy]},
   ],
 };
 

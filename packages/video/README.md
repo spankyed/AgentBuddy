@@ -4,6 +4,8 @@ Remotion-first demo video package.
 
 ## OOM Render Fix
 
+Search terms: OOM, heap, Remotion render memory, stale webpack cache.
+
 If a Remotion render that previously worked starts failing with a Node heap OOM,
 use this as the known first response. Do not start by refactoring the film or
 auditing components. Treat it as a stale Remotion/webpack cache issue first and

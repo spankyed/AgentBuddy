@@ -1,6 +1,7 @@
 import type {CodeReviewState, CodeReviewViewState, TerminalPanelState} from '../../agentbuddy-ui/code/codeTypes';
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {launchComposerState} from './chat';
+import {filmProjects} from './paths';
 import {ease} from './timeline';
 
 export type CodeShotState = {
@@ -24,7 +25,7 @@ export const codeShotState: CodeShotState = {
   chromeDemoBreadcrumbs: ['Code'],
   generatedCommitMessage: 'feat(video): align launch film surfaces with app UI',
   review: {
-    baseDirectory: '/Users/spankyed/Develop/Projects/AgentBuddy',
+    baseDirectory: filmProjects.agentBuddy,
     branch: 'as/react-launch-film',
     branchSync: {
       commitsAhead: 4,

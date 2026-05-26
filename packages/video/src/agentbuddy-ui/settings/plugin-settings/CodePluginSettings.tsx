@@ -27,7 +27,7 @@ const defaultCodeSettings: CodeSettings = {
   terminalScripts: [],
 };
 
-export function CodePluginSettings({settings, projects = []}: {settings?: CodeSettings; projects?: SettingsSurfaceState['projects']}) {
+export function CodePluginSettings({homeDirectory, settings, projects = []}: {homeDirectory?: string; settings?: CodeSettings; projects?: SettingsSurfaceState['projects']}) {
   const value = settings ?? defaultCodeSettings;
   const directoryOptions = projects.flatMap(project => project.directories.map(directory => ({project: project.name, directory})));
 
@@ -40,7 +40,7 @@ export function CodePluginSettings({settings, projects = []}: {settings?: CodeSe
             <span className={styles.label}>Default Base Directory</span>
             <button className={styles.linkButton} type="button">Go to Projects →</button>
           </div>
-          <CodeDirectorySelect disabled={directoryOptions.length === 0} value={value.defaultBaseDirectory ?? null} />
+          <CodeDirectorySelect disabled={directoryOptions.length === 0} homeDirectory={homeDirectory} projects={projects} value={value.defaultBaseDirectory ?? null} />
           <p className={styles.help}>
             {directoryOptions.length === 0
               ? 'Add projects in Settings → General → Projects to set a default directory'
