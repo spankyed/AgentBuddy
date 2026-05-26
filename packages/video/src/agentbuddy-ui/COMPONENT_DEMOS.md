@@ -53,7 +53,13 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `LogsHasMoreDemo` | `packages/video/out/component-demos/logs-has-more-demo.mp4` |
 | `LogsSurfaceDemo` | `packages/video/out/component-demos/logs-surface-demo.mp4` |
 | `LibraryBrokenSymlinkDemo` | `packages/video/out/component-demos/library-broken-symlink-demo.mp4` |
+| `LibraryBrokenRowRelinkDemo` | `packages/video/out/component-demos/library-broken-row-relink-demo.mp4` |
+| `LibraryBulkSelectionDemo` | `packages/video/out/component-demos/library-bulk-selection-demo.mp4` |
+| `LibraryDocumentEditorCopiedCodeDemo` | `packages/video/out/component-demos/library-document-editor-copied-code-demo.mp4` |
 | `LibraryDocumentEditorDemo` | `packages/video/out/component-demos/library-document-editor-demo.mp4` |
+| `LibraryLoadingFolderDemo` | `packages/video/out/component-demos/library-loading-folder-demo.mp4` |
+| `LibraryRenameRowDemo` | `packages/video/out/component-demos/library-rename-row-demo.mp4` |
+| `LibraryRowMenuDemo` | `packages/video/out/component-demos/library-row-menu-demo.mp4` |
 | `LibrarySurfaceDemo` | `packages/video/out/component-demos/library-surface-demo.mp4` |
 | `SettingsApplicationDemo` | `packages/video/out/component-demos/settings-application-demo.mp4` |
 | `SettingsSetupPackPreviewingDemo` | `packages/video/out/component-demos/settings-setup-pack-previewing-demo.mp4` |

@@ -26,15 +26,15 @@ export const releaseAutomationWorkflow: WorkflowShotState = {
       {kind: 'kill', label: 'Kill'},
     ],
     nodes: [
-      {id: 'listener', kind: 'listener', label: 'Command listener', subtitle: 'release.command', exits: ['exit 1'], x: 390, y: 235},
-      {id: 'switch', kind: 'switch', label: 'route launch command', branches: [{label: 'create_pr'}, {isElse: true, label: 'Else'}], x: 650, y: 235},
-      {id: 'delete', kind: 'action', label: 'Prepare pull request', x: 930, y: 190},
-      {id: 'log', kind: 'action', label: 'Notify release thread', x: 930, y: 320},
+      {id: 'listener', kind: 'listener', label: 'start command listener', subtitle: 'user.command', exits: ['exit 1'], x: 360, y: 235},
+      {id: 'switch', kind: 'switch', label: 'is /replace-obsolete-apps', branches: [{label: '/replace-obsolete-apps'}, {isElse: true, label: 'Else'}], x: 620, y: 235},
+      {id: 'delete-apps', kind: 'action', label: 'Find and delete obsolete apps', x: 930, y: 190, width: 286},
+      {id: 'log-result', kind: 'action', label: 'Log obsolete apps removed', x: 930, y: 320, width: 286},
     ],
     edges: [
       {from: 'listener', fromExit: 0, kind: 'transitions_to', to: 'switch'},
-      {from: 'switch', fromExit: 0, kind: 'transitions_to', to: 'delete'},
-      {from: 'delete', kind: 'transitions_to', to: 'log'},
+      {from: 'switch', fromExit: 0, kind: 'transitions_to', to: 'delete-apps'},
+      {from: 'delete-apps', kind: 'transitions_to', to: 'log-result'},
     ],
   },
 };
@@ -65,9 +65,17 @@ export const flowsListMenuState: FlowsListState = {
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {
   const flow = releaseAutomationWorkflow.flow;
+  const visibleNodeIds = new Set([
+    'listener',
+    ...(frame > 72 ? ['switch'] : []),
+    ...(frame > 138 ? ['delete-apps'] : []),
+    ...(frame > 196 ? ['log-result'] : []),
+  ]);
+  const nodes = flow.nodes.filter(node => visibleNodeIds.has(node.id));
   return {
     ...flow,
-    editingNodeId: frame > 218 ? 'delete' : undefined,
+    nodes,
+    edges: flow.edges.filter(edge => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to)),
   };
 }
 

@@ -1,0 +1,18 @@
+.CodeShot_isolatedPanel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 430px;
+  height: min(740px, calc(100% - 96px));
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64 / 65%);
+  border-radius: 0.5rem;
+  background: rgb(23 23 23);
+  box-shadow: 0 48px 150px rgb(0 0 0 / 58%);
+  transform: translate(-50%, -50%);
+}
+
+.CodeShot_square {
+  width: min(430px, calc(100% - 72px));
+  height: min(700px, calc(100% - 112px));
+}

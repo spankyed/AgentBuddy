@@ -1,35 +1,35 @@
 import {ease, mix} from './timeline';
 
 export type FinalShotView = {
-  brand: string;
-  tagline: string;
-  taglineStyle: {
-    opacity: number;
-  };
-  titleStyle: {
+  date: string;
+  link: string;
+  linkStyle: {
     opacity: number;
     transform: string;
+  };
+  dateStyle: {
+    opacity: number;
   };
 };
 
 export const finalShotState = {
-  brand: 'AgentBuddy',
-  tagline: 'The AI operating system for modern work.',
+  date: 'June 19th',
+  link: 'Clientlabs.com',
   motion: {
-    title: {from: 24, to: 70, yFrom: 20, yTo: 0},
-    tagline: {from: 52, to: 94},
+    link: {from: 24, to: 70, yFrom: 20, yTo: 0},
+    date: {from: 58, to: 96},
   },
 };
 
 export function finalViewForFrame(frame: number) {
-  const titleProgress = ease(frame, finalShotState.motion.title.from, finalShotState.motion.title.to);
+  const linkProgress = ease(frame, finalShotState.motion.link.from, finalShotState.motion.link.to);
   return {
-    titleStyle: {
-      opacity: titleProgress,
-      transform: `translateY(${mix(finalShotState.motion.title.yFrom, finalShotState.motion.title.yTo, titleProgress)}px)`,
+    linkStyle: {
+      opacity: linkProgress,
+      transform: `translateY(${mix(finalShotState.motion.link.yFrom, finalShotState.motion.link.yTo, linkProgress)}px)`,
     },
-    taglineStyle: {
-      opacity: ease(frame, finalShotState.motion.tagline.from, finalShotState.motion.tagline.to),
+    dateStyle: {
+      opacity: ease(frame, finalShotState.motion.date.from, finalShotState.motion.date.to),
     },
   };
 }
@@ -37,9 +37,9 @@ export function finalViewForFrame(frame: number) {
 export function finalShotViewForFrame(frame: number): FinalShotView {
   const view = finalViewForFrame(frame);
   return {
-    brand: finalShotState.brand,
-    tagline: finalShotState.tagline,
-    taglineStyle: view.taglineStyle,
-    titleStyle: view.titleStyle,
+    date: finalShotState.date,
+    link: finalShotState.link,
+    dateStyle: view.dateStyle,
+    linkStyle: view.linkStyle,
   };
 }

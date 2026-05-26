@@ -167,6 +167,11 @@ export const libraryDocumentEditorState: LibraryDocumentEditorState = {
   tags: ['launch', 'positioning'],
 };
 
+export const libraryDocumentEditorCopiedCodeState: LibraryDocumentEditorState = {
+  ...libraryDocumentEditorState,
+  shortCodeCopied: true,
+};
+
 export const libraryEditSurfaceState: LibrarySurfaceState = {
   ...librarySurfaceState,
   currentView: 'edit',
@@ -183,5 +188,120 @@ export const libraryBrokenSymlinkState: LibrarySurfaceState = {
   isInSymlinkContext: true,
   items: [],
   lastKnownPath: `${filmProjects.agentBuddy}/docs`,
+  selectedItemIds: [],
+};
+
+export const libraryLoadingFolderState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  items: librarySurfaceState.items.map(item => (
+    item.id === 'folder-agentbuddy-docs'
+      ? {
+        ...item,
+        expanded: true,
+      }
+      : item
+  )),
+  loadingFolderIds: ['folder-agentbuddy-docs'],
+  selectedItemIds: [],
+};
+
+export const libraryRowMenuState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  items: librarySurfaceState.items.map(item => (
+    item.id === 'folder-agentbuddy-docs'
+      ? {
+        ...item,
+        isContextMenuOpen: true,
+        isSymlinked: true,
+      }
+      : {
+        ...item,
+        selected: false,
+      }
+  )),
+  selectedItemIds: [],
+};
+
+export const libraryRenameRowState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  items: librarySurfaceState.items.map(item => (
+    item.id === 'folder-agentbuddy-docs'
+      ? {
+        ...item,
+        isEditing: true,
+      }
+      : {
+        ...item,
+        selected: false,
+      }
+  )),
+  selectedItemIds: [],
+};
+
+export const libraryBulkSelectionState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  items: librarySurfaceState.items.map(item => {
+    if (item.id === 'folder-launch-assets') return {...item, selected: true};
+    if (item.id === 'doc-workflows') return {...item, selected: true};
+    return {...item, selected: false};
+  }),
+  panel: {
+    ...librarySurfaceState.panel,
+    selectedItem: undefined,
+    selectedDocumentsCount: 1,
+    selectedFoldersCount: 1,
+    selectedItemsCount: 2,
+    selectedItemsTags: ['launch', 'reference'],
+  },
+  selectedItemIds: ['folder-launch-assets', 'doc-workflows'],
+};
+
+export const libraryBrokenRowRelinkState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  breadcrumbs: [
+    {id: 'external', name: 'External'},
+  ],
+  currentFolderId: 'external',
+  items: [
+    {
+      filePath: `${filmProjects.agentBuddy}/docs`,
+      id: 'folder-agentbuddy-docs',
+      isBroken: true,
+      isSymlink: true,
+      kind: 'Linked Folder',
+      name: 'AgentBuddy docs',
+      relinkForm: {
+        path: `${filmProjects.agentBuddy}/docs`,
+        show: true,
+      },
+      size: '--',
+      type: 'folder',
+      updatedAt: '2026-05-24T18:20:00Z',
+    },
+    {
+      id: 'doc-workflows',
+      kind: 'Structured document',
+      name: 'workflow-blueprint-notes',
+      shortCode: 'DOC-177',
+      size: '24 KB',
+      tags: ['flows', 'reference'],
+      type: 'document',
+      updatedAt: '2026-05-23T20:35:00Z',
+    },
+  ],
+  panel: {
+    ...librarySurfaceState.panel,
+    selectedItem: {
+      filePath: `${filmProjects.agentBuddy}/docs`,
+      id: 'folder-agentbuddy-docs',
+      isBroken: true,
+      isSymlink: true,
+      kind: 'Linked Folder',
+      name: 'AgentBuddy docs',
+      size: '--',
+      type: 'folder',
+      updatedAt: '2026-05-24T18:20:00Z',
+    },
+  },
   selectedItemIds: [],
 };

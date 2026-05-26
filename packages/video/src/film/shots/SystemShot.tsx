@@ -6,9 +6,9 @@ import {SettingsSurface} from '../../agentbuddy-ui/settings/SettingsSurface';
 import {ThreadChatCanvas} from '../../agentbuddy-ui/threads/ThreadChatCanvas';
 import type {PluginId} from '../../agentbuddy-ui/chrome/Toolbar';
 import {launchComposerState} from '../state/chat';
-import {brainSurfaceState} from '../state/brain';
-import {databaseObjectResultState, databaseSurfaceState} from '../state/database';
-import {logsSurfaceState} from '../state/logs';
+import {brainLaunchCommandState} from '../state/brain';
+import {databaseMessagesBeforeDateState, databaseMessageLookupState} from '../state/database';
+import {logsLaunchReleaseState} from '../state/logs';
 import {settingsProvidersState} from '../state/settings';
 import {textReveal} from '../state/timeline';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -31,7 +31,8 @@ function systemShotViewForFrame(frame: number) {
       breadcrumbs: ['Threads'],
       composer: {
         ...launchComposerState,
-        text: textReveal('Connect the launch thread to memory, logs, and settings.', frame, 12, 52),
+        sendPressed: frame > 54 && frame < 66,
+        text: textReveal('/replace-obsolete-apps', frame, 12, 52),
       },
       surface: <ThreadChatCanvas />,
     };
@@ -42,7 +43,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'logs' as PluginId,
       breadcrumbs: ['Logs'],
       composer: false as const,
-      surface: <LogsSurface state={logsSurfaceState} />,
+      surface: <LogsSurface state={logsLaunchReleaseState} />,
     };
   }
 
@@ -51,7 +52,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'database' as PluginId,
       breadcrumbs: ['Database'],
       composer: false as const,
-      surface: <DatabaseSurface state={frame < 182 ? databaseSurfaceState : databaseObjectResultState} />,
+      surface: <DatabaseSurface state={frame < 182 ? databaseMessageLookupState : databaseMessagesBeforeDateState} />,
     };
   }
 
@@ -60,7 +61,7 @@ function systemShotViewForFrame(frame: number) {
       activePlugin: 'brain' as PluginId,
       breadcrumbs: ['Brain'],
       composer: false as const,
-      surface: <BrainSurface state={brainSurfaceState} />,
+      surface: <BrainSurface state={brainLaunchCommandState} />,
     };
   }
 

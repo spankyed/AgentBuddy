@@ -121,3 +121,79 @@ export const brainNestedFlowState: BrainSurfaceState = {
     },
   ],
 };
+
+export const brainLaunchCommandState: BrainSurfaceState = {
+  canGoBack: false,
+  events: [
+    {active: true, eventType: 'user.command', id: 'event-replace-obsolete-apps', label: '/replace-obsolete-apps', scope: 'app', triggerType: 'listener'},
+    {eventType: 'logs.info', id: 'event-logs', label: 'all obsolete apps removed', scope: 'app', triggerType: 'listener'},
+    {eventType: 'database.message.created', id: 'event-message', label: 'Command message saved', scope: 'app', triggerType: 'listener'},
+  ],
+  flowTNodeId: 'TNode-Root',
+  pulsingEventType: 'user.command',
+  selectedNodeId: 'delete-obsolete-apps',
+  showLeftPanel: true,
+  tracks: [
+    {
+      children: [
+        {
+          children: [
+            {
+              children: [
+                {
+                  id: 'delete-obsolete-apps',
+                  kind: 'action',
+                  label: 'Find and delete obsolete apps',
+                  nodeAttributes: {
+                    removed: ['anti-gravity', 'cursor', 'vscode', 'notion', 'obsidian', 'tick-tick'],
+                    result: '6 apps removed',
+                  },
+                  completedAt: baseTime + 1800,
+                  startedAt: baseTime + 900,
+                  status: 'completed',
+                  stepNodeType: 'action',
+                },
+                {
+                  id: 'log-obsolete-apps',
+                  kind: 'action',
+                  label: 'Log obsolete apps removed',
+                  nodeAttributes: {
+                    message: 'all obsolete apps removed',
+                    source: 'flows',
+                  },
+                  completedAt: baseTime + 2400,
+                  startedAt: baseTime + 1900,
+                  status: 'completed',
+                  stepNodeType: 'action',
+                },
+              ],
+              exits: ['/replace-obsolete-apps', 'Else'],
+              id: 'route-command',
+              kind: 'switch',
+              label: 'is /replace-obsolete-apps',
+              completedAt: baseTime + 800,
+              startedAt: baseTime + 500,
+              status: 'completed',
+              stepNodeType: 'switch',
+            },
+          ],
+          exits: ['command'],
+          id: 'command-listener',
+          kind: 'listener',
+          label: 'Command listener',
+          completedAt: baseTime + 420,
+          eventType: 'user.command',
+          startedAt: baseTime,
+          status: 'completed',
+          stepNodeType: 'listener',
+          subtitle: 'user.command',
+        },
+      ],
+      id: 'launch-root',
+      kind: 'entry',
+      label: 'Root Flow',
+      status: 'completed',
+      subtitle: '/replace-obsolete-apps',
+    },
+  ],
+};

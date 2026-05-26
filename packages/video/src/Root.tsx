@@ -61,7 +61,13 @@ import {
   InteractionBlocksDemo,
   KanbanComponentsDemo,
   LibraryBrokenSymlinkDemo,
+  LibraryBrokenRowRelinkDemo,
+  LibraryDocumentEditorCopiedCodeDemo,
   LibraryDocumentEditorDemo,
+  LibraryBulkSelectionDemo,
+  LibraryLoadingFolderDemo,
+  LibraryRenameRowDemo,
+  LibraryRowMenuDemo,
   LibrarySurfaceDemo,
   MessageBubbleDemo,
   NotesRightRailDemo,
@@ -183,7 +189,13 @@ export const RemotionRoot = () => {
       <Composition id="LogsHasMoreDemo" component={LogsHasMoreDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsSurfaceDemo" component={LogsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibraryBrokenSymlinkDemo" component={LibraryBrokenSymlinkDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryBrokenRowRelinkDemo" component={LibraryBrokenRowRelinkDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryDocumentEditorCopiedCodeDemo" component={LibraryDocumentEditorCopiedCodeDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibraryDocumentEditorDemo" component={LibraryDocumentEditorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryBulkSelectionDemo" component={LibraryBulkSelectionDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryLoadingFolderDemo" component={LibraryLoadingFolderDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryRenameRowDemo" component={LibraryRenameRowDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryRowMenuDemo" component={LibraryRowMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibrarySurfaceDemo" component={LibrarySurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsApplicationDemo" component={SettingsApplicationDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsSetupPackPreviewingDemo" component={SettingsSetupPackPreviewingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

@@ -18,7 +18,7 @@ export function LibraryDocumentEditor({state}: {state: LibraryDocumentEditorStat
         {isEditMode ? (
           <div className={styles.nameInputWithCode}>
             <input className={styles.nameInputInline} readOnly value={state.name} placeholder="Enter document name" />
-            {!state.isSymlink && state.document ? <span className={styles.shortCode}>{state.document.shortCode}</span> : null}
+            {!state.isSymlink && state.document ? <span className={styles.shortCode} data-copied={state.shortCodeCopied ? 'true' : undefined}>{state.document.shortCode}</span> : null}
           </div>
         ) : (
           <input className={styles.nameInput} data-onboarding-id="library-document-name-input" readOnly value={state.name} placeholder="Enter document name" />

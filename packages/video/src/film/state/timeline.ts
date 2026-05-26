@@ -1,7 +1,14 @@
-export type ShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'system' | 'final';
+export type ChapterShotId = 'intro-title' | 'chat-title' | 'notes-title' | 'code-title' | 'workflow-title' | 'system-title';
+export type ContentShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'system' | 'final';
+export type ShotId = ChapterShotId | ContentShotId;
 
 export type FilmShot = {
   captionAlign?: 'left' | 'right';
+  chapter?: {
+    eyebrow?: string;
+    subtitle?: string;
+    title: string;
+  };
   duration: number;
   id: ShotId;
   title?: string;
@@ -15,12 +22,18 @@ export type FilmCaptionView = {
 };
 
 export const shots: FilmShot[] = [
-  {id: 'chat', title: 'More than just a chat.', duration: 360},
-  {id: 'board', title: 'Threads become execution.', duration: 210},
-  {id: 'notes', title: 'More than just a note taker.', duration: 330},
-  {id: 'code', title: 'More than just an IDE.', captionAlign: 'right', duration: 420},
-  {id: 'workflow', title: 'More than just a workflow engine.', captionAlign: 'right', duration: 360},
-  {id: 'system', title: 'The full power of AI, connected.', captionAlign: 'right', duration: 360},
+  {id: 'intro-title', chapter: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 78},
+  {id: 'chat-title', chapter: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 84},
+  {id: 'chat', duration: 360},
+  {id: 'board', duration: 210},
+  {id: 'notes-title', chapter: {eyebrow: '2', title: 'More than just a note taker'}, duration: 84},
+  {id: 'notes', duration: 330},
+  {id: 'code-title', chapter: {eyebrow: '3', title: 'More than just an IDE'}, duration: 84},
+  {id: 'code', duration: 420},
+  {id: 'workflow-title', chapter: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 84},
+  {id: 'workflow', duration: 360},
+  {id: 'system-title', chapter: {eyebrow: '5', title: 'AgentBuddy is a revolution', subtitle: 'to put the full power of AI into the hands of the people'}, duration: 108},
+  {id: 'system', duration: 360},
   {id: 'final', duration: 180},
 ];
 

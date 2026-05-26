@@ -38,11 +38,11 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
               <>
                 <span className={styles.selectionCount}>{state.selectedItemIds.length} selected</span>
                 {state.currentFolderId !== null && !state.isInSymlinkContext ? (
-                  <LibraryButton size="sm" variant="transparent">
+                  <LibraryButton size="sm" tone="blue" variant="transparent">
                     <Icons.ArrowUp size={16} />
                   </LibraryButton>
                 ) : null}
-                <LibraryButton size="sm" variant="transparent">
+                <LibraryButton size="sm" tone="red" variant="transparent">
                   <Icons.Trash2 size={16} />
                 </LibraryButton>
                 <span className={styles.divider} />
@@ -98,7 +98,7 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
           </thead>
           <tbody>
             {state.items.length > 0 ? (
-              state.items.map(item => <LibraryTableRow item={item} key={item.id} />)
+              state.items.map(item => <LibraryTableRow item={item} key={item.id} loadingFolderIds={state.loadingFolderIds} />)
             ) : (
               <tr>
                 <td className={styles.emptyCell} colSpan={4}>

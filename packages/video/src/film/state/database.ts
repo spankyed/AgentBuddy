@@ -41,7 +41,7 @@ export const databaseSurfaceState: DatabaseSurfaceState = {
   isLoading: false,
   mode: 'query',
   queryResult: [
-    {id: 'thread-launch-film', status: 'active', topic: 'AgentBuddy launch film', updatedAt: '2026-05-25T14:18:22Z'},
+    {id: 'thread-replace-obsolete-apps', status: 'active', topic: 'AgentBuddy launch film', updatedAt: '2026-05-25T14:18:22Z'},
     {id: 'thread-release-plan', status: 'active', topic: 'Release checklist', updatedAt: '2026-05-25T13:42:09Z'},
     {id: 'thread-pr-review', status: 'active', topic: 'PR review surface', updatedAt: '2026-05-25T12:57:44Z'},
     {id: 'thread-demo-script', status: 'active', topic: 'Demo script polish', updatedAt: '2026-05-25T12:11:03Z'},
@@ -92,12 +92,12 @@ export const databasePrimitiveArrayState: DatabaseSurfaceState = {
 export const databaseObjectResultState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   currentQuery: `return qx(EARS.Entity.Thread)
-  .where('id', 'thread-launch-film')
+  .where('id', 'thread-replace-obsolete-apps')
   .first()
   .pickAll();`,
   executionTime: 12.82,
   queryResult: {
-    id: 'thread-launch-film',
+    id: 'thread-replace-obsolete-apps',
     owner: 'spankyed',
     priority: 'current',
     status: 'active',
@@ -264,14 +264,14 @@ export const databaseGraphState: DatabaseSurfaceState = {
   graph: {
     currentLayout: 'd3-force',
     edges: [
-      {id: 'edge-thread-message', source: 'thread-launch-film', target: 'message-launch-plan', type: 'contains'},
-      {id: 'edge-thread-note', source: 'thread-launch-film', target: 'note-tasklist', type: 'references'},
+      {id: 'edge-thread-message', source: 'thread-replace-obsolete-apps', target: 'message-launch-plan', type: 'contains'},
+      {id: 'edge-thread-note', source: 'thread-replace-obsolete-apps', target: 'note-tasklist', type: 'references'},
       {id: 'edge-thread-flow', source: 'thread-release-plan', target: 'flow-release-automation', type: 'triggers'},
       {id: 'edge-flow-action', source: 'flow-release-automation', target: 'action-publish-report', type: 'runs'},
       {id: 'edge-thread-prompt', source: 'thread-demo-script', target: 'prompt-launch-copy', type: 'uses'},
     ],
     nodes: [
-      {connections: 2, id: 'thread-launch-film', label: 'Launch film', owner: 'spankyed', status: 'active', type: 'Thread'},
+      {connections: 2, id: 'thread-replace-obsolete-apps', label: 'Launch film', owner: 'spankyed', status: 'active', type: 'Thread'},
       {connections: 1, id: 'message-launch-plan', label: 'Plan', role: 'assistant', type: 'Message'},
       {connections: 1, id: 'note-tasklist', label: 'Tasklist', path: 'AgentBuddy / Tasklist', type: 'Artifact'},
       {connections: 2, id: 'thread-release-plan', label: 'Release plan', status: 'active', type: 'Thread'},
@@ -280,11 +280,60 @@ export const databaseGraphState: DatabaseSurfaceState = {
       {connections: 1, id: 'thread-demo-script', label: 'Demo script', status: 'active', type: 'Thread'},
       {connections: 1, id: 'prompt-launch-copy', label: 'Launch copy', type: 'Node'},
     ],
-    selectedNodeId: 'thread-launch-film',
+    selectedNodeId: 'thread-replace-obsolete-apps',
     zoomLevel: 1,
   },
   queryResult: null,
   viewMode: 'database',
+};
+
+export const databaseMessageLookupState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return qx(EARS.Entity.Message)
+  .where('text', 'contains', 'replace-obsolete-apps')
+  .orderBy('timestamp', 'desc')
+  .limit(1)
+  .pick(['text', 'sender', 'timestamp', 'threadId']);`,
+  executionTime: 9.74,
+  queryResult: [
+    {
+      sender: 'user',
+      text: '/replace-obsolete-apps',
+      threadId: 'thread-replace-obsolete-apps',
+      timestamp: '2026-05-25T14:34:18Z',
+    },
+  ],
+  selectedSchemaItemId: 'entity:Message',
+  successMessage: 'Query executed successfully',
+};
+
+export const databaseMessagesBeforeDateState: DatabaseSurfaceState = {
+  ...databaseSurfaceState,
+  currentQuery: `return qx(EARS.Entity.Message)
+  .where('timestamp', '<', '2026-06-19')
+  .where('text', 'contains', 'obsolete')
+  .orderBy('timestamp', 'desc')
+  .pick(['text', 'sender', 'timestamp']);`,
+  executionTime: 14.33,
+  queryResult: [
+    {
+      sender: 'assistant',
+      text: 'all obsolete apps removed',
+      timestamp: '2026-05-25T14:35:16Z',
+    },
+    {
+      sender: 'user',
+      text: '/replace-obsolete-apps',
+      timestamp: '2026-05-25T14:34:18Z',
+    },
+    {
+      sender: 'assistant',
+      text: 'Removed launch context, branch, pull request, and review checklist from the app registry.',
+      timestamp: '2026-05-25T14:34:03Z',
+    },
+  ],
+  selectedSchemaItemId: 'entity:Message',
+  successMessage: 'Query executed successfully',
 };
 
 export function databaseSurfaceStateForFrame(frame: number): DatabaseSurfaceState {

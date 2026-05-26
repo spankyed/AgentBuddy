@@ -16,7 +16,7 @@ export const logsSurfaceState: LogsSurfaceState = {
       message: 'Release workflow started for AgentBuddy launch film',
       meta: {
         flowId: 'release-automation',
-        branch: 'as/react-launch-film',
+        removed: ['anti-gravity', 'cursor', 'vscode', 'notion', 'obsidian', 'tick-tick'],
         steps: ['capture context', 'render demos', 'publish assets'],
       },
       source: 'flows',
@@ -155,6 +155,51 @@ export const logsHasMoreState: LogsSurfaceState = {
     };
   }),
   searchTerm: '',
+};
+
+export const logsLaunchReleaseState: LogsSurfaceState = {
+  ...logsSurfaceState,
+  expandedContent: {
+    'log-obsolete-apps': 'meta',
+  },
+  filterLevel: 'all',
+  logs: [
+    {
+      id: 'log-obsolete-apps',
+      level: 'info',
+      message: 'all obsolete apps removed',
+      meta: {
+        command: '/replace-obsolete-apps',
+        removed: ['anti-gravity', 'cursor', 'vscode', 'notion', 'obsidian', 'tick-tick'],
+        threadId: 'thread-replace-obsolete-apps',
+      },
+      source: 'flows',
+      timestamp: now,
+    },
+    {
+      id: 'log-publish-pr',
+      level: 'debug',
+      message: 'Deleted 6 obsolete application records',
+      meta: {
+        action: 'Find and delete obsolete apps',
+        durationMs: 1284,
+      },
+      source: 'actions',
+      timestamp: now - 5_000,
+    },
+    {
+      id: 'log-command-route',
+      level: 'info',
+      message: 'Matched user.command route: /replace-obsolete-apps',
+      meta: {
+        branch: '/replace-obsolete-apps',
+        flowId: 'root-flow',
+      },
+      source: 'brain',
+      timestamp: now - 11_000,
+    },
+  ],
+  searchTerm: 'obsolete',
 };
 
 export function logsSurfaceStateForFrame(frame: number): LogsSurfaceState {

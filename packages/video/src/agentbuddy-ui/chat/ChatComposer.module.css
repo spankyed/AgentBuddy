@@ -230,12 +230,18 @@
   font-size: 14px;
   font-weight: 500;
   padding: 0 1rem;
+  transition: background 140ms ease, transform 140ms ease;
 }
 
 .ChatComposer_sendButton:disabled {
   background: rgb(75 85 99);
   color: rgb(209 213 219);
   cursor: not-allowed;
+}
+
+.ChatComposer_sendButton[data-pressed="true"] {
+  background: rgb(29 78 216);
+  transform: translateY(1px) scale(0.97);
 }
 
 .ChatComposer_sendIcon {
@@ -263,4 +269,17 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.ChatComposer_bottomTabs span[data-active="true"] {
+  color: rgb(212 212 216);
+}
+
+.ChatComposer_bottomTabs span[data-pressed="true"] {
+  background: rgb(64 64 64 / 70%);
+  color: rgb(245 245 245);
+  transform: translateY(1px) scale(0.98);
 }

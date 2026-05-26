@@ -26,6 +26,7 @@ export function isSwitchNode(node: FlowNodeState) {
 
 export function flowNodeExitCount(node: FlowNodeState) {
   if (isSwitchNode(node)) return node.branches?.length ?? node.exits?.length ?? 0;
+  if (isTriggerNode(node)) return (node.exits?.length ?? 0) + 1;
   return node.exits?.length ?? 0;
 }
 

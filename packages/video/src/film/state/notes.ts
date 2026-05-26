@@ -1,5 +1,6 @@
 import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
 import type {NoteImageBlockState} from '../../agentbuddy-ui/notes/NoteImageBlock';
+import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {launchComposerState} from './chat';
 import {textReveal} from './timeline';
@@ -34,6 +35,13 @@ export type NotesShotView = {
       text: string;
     };
   };
+  home: {
+    favorites: NotesHomeCardState[];
+    greeting: string;
+    recent: NotesHomeCardState[];
+    searchQuery?: string;
+    searchResults?: NotesHomeCardState[];
+  };
   rightRail: NotesRightRailState;
   taskList: NotesTaskListPanelState;
 };
@@ -41,8 +49,7 @@ export type NotesShotView = {
 export const notesTaskListItems: NoteTreeNodeState[] = [
   {id: 'default', title: 'default setup', icon: '🚧', noteType: 'task'},
   {id: 'current', title: 'current', icon: '🔥', noteType: 'task'},
-  {id: 'launch-thread', title: '#threads: Launch PR flow', noteType: 'task'},
-  {id: 'resize-image', title: 'resize image in note', noteType: 'task', completed: true, muted: true},
+  {id: 'resize-image', title: 'resize image in note', noteType: 'task'},
   {id: 'phone', title: 'phone app', noteType: 'task'},
   {id: 'bugs', title: 'bugs', icon: '🪲', noteType: 'task'},
   {id: 'manager', title: 'manager mode', noteType: 'task'},
@@ -104,6 +111,20 @@ export const notesRightRailState: NotesRightRailState = {
   items: notesRailTree,
 };
 
+export const notesHomeState: NotesShotView['home'] = {
+  greeting: 'Good afternoon',
+  recent: [
+    {id: 'recent-current', icon: '🔥', title: 'current', noteType: 'document', updatedAt: 'just now', active: true},
+    {id: 'recent-tasklist', icon: '📝', title: 'Tasklist', noteType: 'tasklist', updatedAt: '4m ago'},
+    {id: 'recent-cli', icon: '💻', title: 'cli', noteType: 'document', updatedAt: '18m ago'},
+  ],
+  favorites: [
+    {id: 'fav-current', icon: '🔥', title: 'current', noteType: 'document', updatedAt: 'just now'},
+    {id: 'fav-videos', icon: '🎬', title: 'Videos', noteType: 'document', updatedAt: 'today'},
+    {id: 'fav-brand', icon: '⭐', title: 'Brand & Content', noteType: 'document', updatedAt: 'yesterday'},
+  ],
+};
+
 export const notesRightRailSearchState: NotesRightRailState = {
   ...notesRightRailState,
   search: {
@@ -143,9 +164,33 @@ export const notesEditorCopy = {
   animatedLines: [
     {text: 'add launch image, resize it, and keep the tasklist beside the note', from: 34, to: 112, caretUntil: 116},
     {text: 'mark resize image complete, then create the next todo', from: 128, to: 198},
-    {text: 'new todo: link #threads: Launch PR flow back to the parent ticket', from: 168, to: 254, caretFrom: 168, caretUntil: 258},
+    {text: 'new todo: link #threads: Create launch PR flow back to the parent ticket', from: 168, to: 254, caretFrom: 168, caretUntil: 258},
   ],
 };
+
+export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
+  const markedComplete = frame > 214;
+  const linkedTodoVisible = frame > 242;
+  const items = notesTaskListItems.map(item =>
+    item.id === 'resize-image' && markedComplete
+      ? {...item, completed: true, muted: true}
+      : item
+  );
+
+  if (linkedTodoVisible) {
+    items.splice(3, 0, {
+      id: 'launch-thread',
+      title: '#threads: Create launch PR flow',
+      noteType: 'task',
+    });
+  }
+
+  return {
+    ...notesTaskListState,
+    activeId: linkedTodoVisible ? 'launch-thread' : markedComplete ? 'resize-image' : notesTaskListState.activeId,
+    items,
+  };
+}
 
 export function notesViewForFrame(frame: number) {
   const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => ({
@@ -182,7 +227,8 @@ export function notesShotViewForFrame(frame: number): NotesShotView {
       image: view.image,
       title: notesEditorCopy.title,
     },
+    home: notesHomeState,
     rightRail: notesRightRailState,
-    taskList: notesTaskListState,
+    taskList: notesTaskListForFrame(frame),
   };
 }

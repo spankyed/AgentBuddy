@@ -1,5 +1,6 @@
 import {cx} from '../primitives/classNames';
 import type {CodeReviewState, CodeReviewViewState} from './codeTypes';
+import {AppPreviewSurface} from './AppPreviewSurface';
 import {CodeDiffView} from './CodeDiffView';
 import {CodeFeaturePanel} from './CodeFeaturePanel';
 import {PullRequestPanel} from './PullRequestPanel';
@@ -17,7 +18,11 @@ type CodeReviewProps = {
 export function CodeReview({state, variant, view}: CodeReviewProps) {
   return (
     <div className={cx(styles.root, variant === 'square' && styles.compact)}>
-      <CodeDiffView fileName={state.diff.fileName} lineOpacities={view.diffLineOpacities} lineStart={state.diff.lineStart} lines={state.diff.lines} />
+      {view.leftSurface === 'app-preview' ? (
+        <AppPreviewSurface />
+      ) : (
+        <CodeDiffView fileName={state.diff.fileName} lineOpacities={view.diffLineOpacities} lineStart={state.diff.lineStart} lines={state.diff.lines} />
+      )}
       <aside className={styles.panel}>
         <CodeFeaturePanel terminal={state.terminal}>
           {view.activePanel === 'pr' ? (

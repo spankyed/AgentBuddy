@@ -5,6 +5,7 @@ import './ThreadCreateForm.module.css';
 const styles = makeStyles('ThreadCreateForm');
 
 export type ThreadCreateFormState = {
+  createPressed?: boolean;
   instructions: string;
   linkedThreadsOpen?: boolean;
   linkInputVisible?: boolean;
@@ -37,7 +38,7 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
           </select>
         </div>
         <div className={styles.headerRight}>
-          <button className={valid ? styles.saveButton : styles.saveButtonDisabled} data-onboarding-id="thread-create-save-button" type="button">
+          <button className={valid ? styles.saveButton : styles.saveButtonDisabled} data-onboarding-id="thread-create-save-button" data-pressed={state.createPressed || undefined} type="button">
             Create
           </button>
         </div>

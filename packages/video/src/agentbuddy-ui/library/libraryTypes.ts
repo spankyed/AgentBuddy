@@ -7,10 +7,17 @@ export type LibraryItemState = {
   expanded?: boolean;
   filePath?: string;
   id: string;
+  isContextMenuOpen?: boolean;
+  isEditing?: boolean;
   isBroken?: boolean;
   isSymlink?: boolean;
+  isSymlinked?: boolean;
   kind: string;
   name: string;
+  relinkForm?: {
+    path: string;
+    show: boolean;
+  };
   selected?: boolean;
   shortCode?: string;
   size: string;
@@ -50,6 +57,7 @@ export type LibraryDocumentEditorState = {
     name: string;
     shortCode: string;
   };
+  shortCodeCopied?: boolean;
   isSymlink?: boolean;
   name: string;
   sections: LibraryContentSectionState[];
@@ -66,6 +74,7 @@ export type LibrarySurfaceState = {
   isInSymlinkContext?: boolean;
   items: LibraryItemState[];
   lastKnownPath?: string | null;
+  loadingFolderIds?: string[];
   panel: LibraryPanelState;
   selectedItemIds: string[];
   sortBy: 'name' | 'modified' | 'size' | 'kind';

@@ -58,6 +58,11 @@
   font-size: 12px;
   font-weight: 500;
   padding: 4px 12px;
+  transition: color 150ms ease;
+}
+
+.LibraryDocumentEditor_shortCode[data-copied='true'] {
+  color: rgb(74 222 128);
 }
 
 .LibraryDocumentEditor_scroller {

@@ -11,6 +11,13 @@
   background: linear-gradient(135deg, #07090b 0%, #0b1012 55%, #050608 100%);
 }
 
+.AgentBuddyFilm_shotLayer {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 52%;
+  will-change: opacity, transform;
+}
+
 .AgentBuddyFilm_progress {
   position: absolute;
   right: 0;

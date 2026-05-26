@@ -13,8 +13,11 @@ export type QuickPromptState = {
 export type ChatComposerState = {
   attachments?: ChatAttachment[];
   bottomTabs?: {
+    active?: 'active' | 'new' | 'recent';
     activeLabel: string;
+    activePinned?: boolean;
     newThreadLabel: string;
+    pressed?: 'active' | 'new' | 'recent';
     recentLabel: string;
   };
   busy?: boolean;
@@ -26,6 +29,7 @@ export type ChatComposerState = {
   placeholder: string;
   quickPrompts?: QuickPromptState[];
   quickPromptsOpen?: boolean;
+  sendPressed?: boolean;
   statusLine?: string;
   text?: string;
 };

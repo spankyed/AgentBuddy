@@ -77,7 +77,7 @@ type ResultAnalysis = {
 };
 
 function analyzeResult(result: DatabaseQueryResult): ResultAnalysis {
-  if (result === null) {
+  if (!result) {
     return {headers: [], isArrayOfPrimitives: false, resultCount: 0, resultType: null, tableData: []};
   }
 

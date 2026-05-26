@@ -1,0 +1,12 @@
+.ChatShot_isolatedComposer {
+  position: absolute;
+  left: 50%;
+  bottom: 122px;
+  width: min(960px, calc(100% - 160px));
+  transform: translateX(-50%);
+}
+
+.ChatShot_square {
+  bottom: 160px;
+  width: min(720px, calc(100% - 96px));
+}

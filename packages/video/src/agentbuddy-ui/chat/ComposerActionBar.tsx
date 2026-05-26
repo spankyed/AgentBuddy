@@ -17,10 +17,11 @@ type ComposerActionBarProps = {
   quickPrompts?: QuickPromptState[];
   quickPromptsOpen?: boolean;
   sendDisabled?: boolean;
+  sendPressed?: boolean;
 };
 
 // Mirrors the button row in packages/renderer/src/plugins/threads/chat/input.vue.
-export function ComposerActionBar({disabled, mode, modeOptions, openSelector, phase, quickPrompts, quickPromptsOpen, sendDisabled}: ComposerActionBarProps) {
+export function ComposerActionBar({disabled, mode, modeOptions, openSelector, phase, quickPrompts, quickPromptsOpen, sendDisabled, sendPressed}: ComposerActionBarProps) {
   return (
     <div className={styles.actionBar}>
       <div className={styles.leftActions}>
@@ -33,7 +34,7 @@ export function ComposerActionBar({disabled, mode, modeOptions, openSelector, ph
         <ComposerIconButton disabled={disabled} icon={Icons.Mic} label="Voice input" />
         <ModePhaseSelector disabled={disabled} mode={mode} modeOptions={modeOptions} openSelector={openSelector} phase={phase} />
       </div>
-      <SendButton disabled={sendDisabled ?? disabled} />
+      <SendButton disabled={sendDisabled ?? disabled} pressed={sendPressed} />
     </div>
   );
 }

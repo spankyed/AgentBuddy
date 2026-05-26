@@ -1,35 +1,41 @@
 import type {FlowNodeFormState} from '../../agentbuddy-ui/flows/flowTypes';
 
-export const launchPullRequestFormState: FlowNodeFormState = {
+export const prepareLaunchPrFormState: FlowNodeFormState = {
   canAddNextStep: true,
   nodeKind: 'action',
-  nodeLabel: 'Prepare pull request',
+  nodeLabel: 'Find and delete obsolete apps',
   sections: [
     {
       fields: [
         {label: 'Mode', type: 'select', value: 'Code'},
-        {label: 'Description', type: 'textarea', value: 'Publish the launch branch and prepare the pull request body.'},
+        {label: 'Description', type: 'textarea', value: 'Find obsolete productivity apps and remove them from the local app registry.'},
       ],
       title: 'Action',
     },
     {
       fields: [
         {
-          filePath: 'actions/prepare-launch-pr.ts',
+          filePath: 'actions/replace-obsolete-apps.ts',
           height: 220,
           label: 'Code',
           language: 'typescript',
           type: 'code',
-          value: `export async function run({ code, github, thread }) {
-  const branch = await code.publishBranch("as/react-launch-film");
-  const summary = await thread.summarize("launch-pr");
+          value: `export async function run({ database, logs }) {
+  const obsolete = [
+    "anti-gravity",
+    "cursor",
+    "vscode",
+    "notion",
+    "obsidian",
+    "tick-tick",
+  ];
 
-  return github.preparePullRequest({
-    base: "master",
-    head: branch.name,
-    title: "React launch film",
-    body: summary,
+  const removed = await database.apps.deleteMany({
+    where: { slug: { in: obsolete } },
   });
+
+  await logs.info("all obsolete apps removed", { removed });
+  return { removed };
 }`,
         },
       ],

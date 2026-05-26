@@ -8,6 +8,8 @@
 
 .DatabaseTraceViewer_flowPanel {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 280px;
   flex-shrink: 0;
   overflow: hidden;
@@ -15,7 +17,34 @@
   background: rgb(23 23 23);
 }
 
+.DatabaseTraceViewer_flowPanelHeader {
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 12px;
+}
+
+.DatabaseTraceViewer_backButton {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(163 163 163);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 12px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.DatabaseTraceViewer_backButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+}
+
 .DatabaseTraceViewer_flowList {
+  flex: 1;
   display: grid;
   gap: 4px;
   overflow-y: auto;
@@ -97,6 +126,16 @@
 
 .DatabaseTraceViewer_flowItem[data-status="active"] .DatabaseTraceViewer_status {
   background: rgb(234 179 8);
+}
+
+.DatabaseTraceViewer_flowItem[data-status="active"] .DatabaseTraceViewer_status::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  opacity: 0.75;
+  animation: DatabaseTraceViewer_ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 .DatabaseTraceViewer_flowItem[data-status="failed"] .DatabaseTraceViewer_status {
@@ -187,6 +226,14 @@
 @keyframes DatabaseTraceViewer_spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes DatabaseTraceViewer_ping {
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(2);
   }
 }
 

@@ -43,6 +43,20 @@ export type ChatShotView = {
     opacity: number;
     transform: string;
   };
+  messageStyles: {
+    assistant: {
+      opacity: number;
+      transform: string;
+    };
+    system: {
+      opacity: number;
+      transform: string;
+    };
+    user: {
+      opacity: number;
+      transform: string;
+    };
+  };
   cursorPath: {
     end: number;
     from: [number, number];
@@ -376,12 +390,25 @@ export function toolActivityViewForFrame(frame: number) {
 }
 
 export function chatViewForFrame(frame: number) {
+  const completedThreadOpen = frame > 166;
+  const messageReveal = (from: number) => {
+    const progress = completedThreadOpen ? ease(frame, from, from + 18) : 1;
+    return {
+      opacity: progress,
+      transform: `translateY(${(1 - progress) * 18}px)`,
+    };
+  };
   return {
     prompt: textReveal(chatShotState.prompt.text, frame, chatShotState.prompt.from, chatShotState.prompt.to),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
     conversationOpacity: ease(frame, 42, 82),
     conversationY: 28 - ease(frame, 42, 82) * 28,
+    messageStyles: {
+      assistant: messageReveal(202),
+      system: messageReveal(168),
+      user: messageReveal(184),
+    },
     toolActivity: toolActivityViewForFrame(frame),
   };
 }
@@ -393,8 +420,16 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     composer: {
       ...launchComposerState,
       attachments: frame > 132 ? [{type: 'image', label: 'image 1'}] : undefined,
-      bottomTabs: frame > 42 ? launchComposerState.bottomTabs : undefined,
+      bottomTabs: frame > 20
+        ? {
+            ...launchComposerState.bottomTabs!,
+            active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : 'active',
+            activePinned: frame > 246,
+            pressed: frame > 24 && frame < 38 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
+          }
+        : undefined,
       quickPromptsOpen: frame > 270 && frame < 308,
+      sendPressed: (frame > 154 && frame < 166) || (frame > 312 && frame < 324),
       text: frame > 78 && frame < 166 ? view.prompt : frame > 292 ? 'write a commit' : undefined,
     },
     conversation: {
@@ -414,6 +449,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       opacity: view.conversationOpacity,
       transform: `translateY(${view.conversationY}px)`,
     },
+    messageStyles: view.messageStyles,
     cursorPath: chatShotState.cursorPath,
   };
 }

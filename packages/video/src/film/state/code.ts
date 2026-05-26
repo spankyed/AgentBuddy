@@ -248,6 +248,7 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
     ),
     generatingCommitMessage: frame > 96 && frame <= 132,
+    leftSurface: frame > 206 && frame < 238 ? 'app-preview' : 'diff',
     prMode: frame <= 286 ? 'files' : frame <= 318 ? 'create' : 'details',
     pullRequest: {
       ...codeShotState.review.pullRequest,

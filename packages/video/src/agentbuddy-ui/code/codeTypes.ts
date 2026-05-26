@@ -149,6 +149,7 @@ export type CodeReviewViewState = {
   commitMessage: string;
   diffLineOpacities: number[];
   generatingCommitMessage: boolean;
+  leftSurface?: 'app-preview' | 'diff';
   prMode: 'files' | 'create' | 'details';
   pullRequest: PullRequestPanelState;
   prPublishProgress?: number;

@@ -12,6 +12,12 @@ export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
   return (
     <div className={styles.root}>
       <aside className={styles.flowPanel}>
+        <div className={styles.flowPanelHeader}>
+          <button className={styles.backButton} type="button">
+            <Icons.ArrowLeft size={16} />
+            <span>Back to Database</span>
+          </button>
+        </div>
         <div className={styles.flowList}>
           {state.flows.length === 0 && !state.isLoading ? (
             <div className={styles.emptyFlows}>

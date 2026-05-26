@@ -117,6 +117,11 @@
   padding: 0.5rem 0.875rem;
 }
 
+.ThreadCreateForm_saveButton[data-pressed="true"] {
+  background: rgb(29 78 216);
+  transform: translateY(1px) scale(0.98);
+}
+
 .ThreadCreateForm_linkButton,
 .ThreadCreateForm_cancelButton {
   padding: 0.25rem 0.75rem;

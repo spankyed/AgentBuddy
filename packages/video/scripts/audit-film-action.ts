@@ -83,33 +83,34 @@ const checks: Check[] = [
   {
     area: 'code',
     message: 'code shot generates commit message',
-    pass: codeReviewViewForFrame(80).commitMessage === ''
-      && codeReviewViewForFrame(130).commitMessage === codeShotState.generatedCommitMessage,
+    pass: codeReviewViewForFrame(96).commitMessage === ''
+      && codeReviewViewForFrame(134).commitMessage === codeShotState.generatedCommitMessage,
   },
   {
     area: 'code',
     message: 'code shot switches from commit panel to PR panel',
-    pass: codeReviewViewForFrame(0).activePanel === 'commit'
-      && codeReviewViewForFrame(170).activePanel === 'pr',
+    pass: codeReviewViewForFrame(96).activePanel === 'commit'
+      && codeReviewViewForFrame(260).activePanel === 'pr',
   },
   {
     area: 'code',
     message: 'code shot publishes branch before PR creation',
-    pass: codeReviewViewForFrame(150).prPublishProgress === 0
-      && codeReviewViewForFrame(190).prPublishProgress === 1,
+    pass: codeReviewViewForFrame(220).prPublishProgress === 0
+      && codeReviewViewForFrame(286).prPublishProgress === 1,
   },
   {
     area: 'code',
     message: 'code shot progresses through PR files, create, and details modes',
-    pass: codeReviewViewForFrame(160).prMode === 'files'
-      && codeReviewViewForFrame(200).prMode === 'create'
-      && codeReviewViewForFrame(230).prMode === 'details'
-      && Boolean(codeReviewViewForFrame(230).pullRequest.createdPr),
+    pass: codeReviewViewForFrame(260).prMode === 'files'
+      && codeReviewViewForFrame(300).prMode === 'create'
+      && codeReviewViewForFrame(330).prMode === 'details'
+      && Boolean(codeReviewViewForFrame(330).pullRequest.createdPr),
   },
   {
     area: 'workflow',
-    message: 'workflow shot moves blueprint viewport',
-    pass: changed(workflowStateForFrame(0).viewport, workflowStateForFrame(260).viewport),
+    message: 'workflow shot reveals blueprint nodes and edges',
+    pass: workflowStateForFrame(0).nodes.length !== workflowStateForFrame(260).nodes.length
+      && workflowStateForFrame(0).edges.length !== workflowStateForFrame(260).edges.length,
   },
   {
     area: 'workflow',
@@ -129,13 +130,13 @@ const checks: Check[] = [
   },
   {
     area: 'final',
-    message: 'final shot animates title',
-    pass: finalViewForFrame(0).titleStyle.opacity !== finalViewForFrame(80).titleStyle.opacity,
+    message: 'final shot animates link',
+    pass: finalViewForFrame(0).linkStyle.opacity !== finalViewForFrame(80).linkStyle.opacity,
   },
   {
     area: 'final',
-    message: 'final shot animates tagline',
-    pass: finalViewForFrame(0).taglineStyle.opacity !== finalViewForFrame(100).taglineStyle.opacity,
+    message: 'final shot animates date',
+    pass: finalViewForFrame(0).dateStyle.opacity !== finalViewForFrame(100).dateStyle.opacity,
   },
 ];
 

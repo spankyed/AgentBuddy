@@ -1,10 +1,11 @@
-import type {CSSProperties} from 'react';
+import type {CSSProperties, ReactNode} from 'react';
 import {AbsoluteFill, Sequence, useCurrentFrame} from 'remotion';
 import {makeStyles} from '../agentbuddy-ui/primitives/makeStyles';
 import {theme} from '../ui/theme';
-import {captionViewForFrame, filmProgressForFrame, shotAtFrame, shots, type FilmShot, type ShotId} from './state/timeline';
+import {captionViewForFrame, ease, filmProgressForFrame, mix, shotAtFrame, shots, type FilmShot} from './state/timeline';
 import {ChatShot} from './shots/ChatShot';
 import {BoardShot} from './shots/BoardShot';
+import {ChapterCard} from './shots/ChapterCard';
 import {CodeShot} from './shots/CodeShot';
 import {FinalShot} from './shots/FinalShot';
 import {NotesShot} from './shots/NotesShot';
@@ -40,14 +41,16 @@ function Film({variant}: {variant: Variant}) {
         cursor += shot.duration;
         return (
           <Sequence key={shot.id} from={start} durationInFrames={shot.duration}>
-            <SurfaceFrame>
-              <ShotSurface id={shot.id} variant={variant} />
-              <Caption shot={shot} variant={variant} />
-            </SurfaceFrame>
+            <ShotLayer shot={shot}>
+              <SurfaceFrame>
+                <ShotSurface shot={shot} variant={variant} />
+                <Caption shot={shot} variant={variant} />
+              </SurfaceFrame>
+            </ShotLayer>
           </Sequence>
         );
       })}
-      {activeShot?.id === 'final' ? null : (
+      {activeShot?.id === 'final' || activeShot?.chapter ? null : (
         <div className={styles.progress}>
           <div className={styles.progressFill} />
         </div>
@@ -56,8 +59,33 @@ function Film({variant}: {variant: Variant}) {
   );
 }
 
-function ShotSurface({id, variant}: {id: ShotId; variant: Variant}) {
+function ShotLayer({children, shot}: {children: ReactNode; shot: FilmShot}) {
   const frame = useCurrentFrame();
+  const enter = ease(frame, 0, shot.chapter ? 1 : 18);
+  const exit = shot.id === 'final' ? 0 : ease(frame, shot.duration - 18, shot.duration);
+  const opacity = Math.min(enter, 1 - exit);
+  const scale = shot.chapter ? 1 : mix(0.992, 1, enter) - exit * 0.006;
+  const y = shot.chapter ? 0 : mix(10, 0, enter) - exit * 6;
+
+  return (
+    <div
+      className={styles.shotLayer}
+      style={{
+        opacity,
+        transform: `translateY(${y}px) scale(${scale})`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ShotSurface({shot, variant}: {shot: FilmShot; variant: Variant}) {
+  const frame = useCurrentFrame();
+  const id = shot.id;
+  if (shot.chapter) {
+    return <ChapterCard eyebrow={shot.chapter.eyebrow} frame={frame} subtitle={shot.chapter.subtitle} title={shot.chapter.title} variant={variant} />;
+  }
   if (id === 'notes') return <NotesShot frame={frame} variant={variant} />;
   if (id === 'chat') return <ChatShot frame={frame} variant={variant} />;
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;

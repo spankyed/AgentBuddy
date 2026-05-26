@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react';
+import type {CSSProperties} from 'react';
 import {makeStyles} from '../primitives/makeStyles';
 import {NoteEditor} from './NoteEditor';
 import type {NoteImageBlockState} from './NoteImageBlock';
@@ -18,6 +19,8 @@ type NotesLayoutProps = {
       text: string;
     };
   };
+  showTaskList?: boolean;
+  taskListStyle?: CSSProperties;
   taskList: {
     activeId?: string | null;
     items: NoteTreeNodeState[];
@@ -31,10 +34,14 @@ type NotesLayoutProps = {
 
 // Mirrors the notes plugin main panel: task list on the left, note editor on
 // the right. Film-specific note text is passed in from film/state via shots.
-export function NotesLayout({editor, taskList}: NotesLayoutProps) {
+export function NotesLayout({editor, showTaskList = true, taskList, taskListStyle}: NotesLayoutProps) {
   return (
     <div className={styles.root}>
-      <TaskListPanel activeId={taskList.activeId} items={taskList.items} showCompleted={taskList.showCompleted} title={taskList.title} />
+      {showTaskList ? (
+        <div className={styles.taskListWrap} style={taskListStyle}>
+          <TaskListPanel activeId={taskList.activeId} items={taskList.items} showCompleted={taskList.showCompleted} title={taskList.title} />
+        </div>
+      ) : null}
       <NoteEditor afterLines={editor.afterLines} beforeLines={editor.beforeLines} image={editor.image} title={editor.title} />
     </div>
   );

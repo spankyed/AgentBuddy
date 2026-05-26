@@ -1,0 +1,20 @@
+.WorkflowShot_isolatedFlow {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background-color: rgb(23 23 23);
+  background-image: radial-gradient(rgb(255 255 255 / 8%) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.WorkflowShot_isolatedNode {
+  position: relative;
+  width: 1px;
+  height: 1px;
+  transform: scale(1.18);
+}
+
+.WorkflowShot_square .WorkflowShot_isolatedNode {
+  transform: scale(1.08);
+}

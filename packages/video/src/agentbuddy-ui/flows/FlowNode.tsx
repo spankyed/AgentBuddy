@@ -61,13 +61,14 @@ export function FlowNode({
 
   if (isTriggerNode(node)) {
     const exitCount = flowNodeExitCount(node);
+    const exits = Array.from({length: exitCount}, (_, index) => node.exits?.[index] ?? `exit ${index + 1}`);
     return (
       <div className={cx(nodeClassName, styles.entry)} data-kind={node.kind} style={style}>
         <div className={styles.header}><Icon className={styles.nodeIcon} size={14} /><span>{node.label}</span></div>
         {node.subtitle ? <div className={styles.subtitle}>{node.subtitle}</div> : null}
         {exitCount > 1 ? (
           <div className={styles.exitList}>
-            {node.exits?.map((exit, index) => (
+            {exits.map((exit, index) => (
               <div key={`${exit}-${index}`} className={styles.exitRow}>
                 <span className={styles.exitIndex}>{index + 1}</span>
                 <span>exit {index + 1}</span>

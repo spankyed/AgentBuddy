@@ -1,15 +1,24 @@
 export type FilmPathState = {
   homeDirectory: string;
   homeDisplayName: string;
-  pathAliases?: Array<{
+  displayPathAliases: Array<{
     displayName: string;
     path: string;
   }>;
 };
 
+export type FilmDirectoryState = {
+  displayPath: string;
+  name: string;
+  path: string;
+};
+
 export const filmPathState: FilmPathState = {
   homeDirectory: '~',
   homeDisplayName: '~',
+  displayPathAliases: [
+    {displayName: '~', path: '~'},
+  ],
 };
 
 export const filmHomeDirectory = filmPathState.homeDirectory;
@@ -19,12 +28,7 @@ export function homePath(path: string, state: FilmPathState = filmPathState) {
 }
 
 export function displayPath(path: string, state: FilmPathState = filmPathState) {
-  const aliases = [
-    {displayName: state.homeDisplayName, path: state.homeDirectory},
-    ...(state.pathAliases ?? []),
-  ];
-
-  for (const alias of aliases) {
+  for (const alias of state.displayPathAliases) {
     const normalizedPath = alias.path.replace(/\/+$/, '');
 
     if (!normalizedPath) continue;
@@ -41,10 +45,30 @@ export function displayPath(path: string, state: FilmPathState = filmPathState) 
   return path;
 }
 
+export function directoryState(path: string, name?: string, state: FilmPathState = filmPathState): FilmDirectoryState {
+  const segments = path.split('/').filter(Boolean);
+
+  return {
+    displayPath: displayPath(path, state),
+    name: name || segments.at(-1) || path,
+    path,
+  };
+}
+
+export function homeDirectoryState(relativePath: string, name?: string, state: FilmPathState = filmPathState) {
+  return directoryState(homePath(relativePath, state), name, state);
+}
+
+export const filmProjectDirectories = {
+  agentBuddy: homeDirectoryState('Develop/Projects/AgentBuddy'),
+  clientlabs: homeDirectoryState('Develop/Projects/Clientlabs'),
+  launch: homeDirectoryState('Develop/Projects/Launch'),
+};
+
 export const filmProjects = {
-  agentBuddy: homePath('Develop/Projects/AgentBuddy'),
-  clientlabs: homePath('Develop/Projects/Clientlabs'),
-  launch: homePath('Develop/Projects/Launch'),
+  agentBuddy: filmProjectDirectories.agentBuddy.path,
+  clientlabs: filmProjectDirectories.clientlabs.path,
+  launch: filmProjectDirectories.launch.path,
 };
 
 export const filmExportDirectories = {

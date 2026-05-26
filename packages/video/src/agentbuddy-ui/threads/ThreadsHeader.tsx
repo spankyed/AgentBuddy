@@ -18,9 +18,9 @@ export function ThreadsHeader({state}: {state: ThreadsHeaderState}) {
       </div>
       <div className={styles.actions}>
         <div className={styles.toggleGroup}>
-          <button className={activeView === 'list' ? styles.activeIconButton : styles.iconButton} title="List View"><Icons.List size={16} /></button>
-          <button className={activeView === 'kanban' ? styles.activeIconButton : styles.iconButton} title="Kanban Board"><Icons.Columns size={16} /></button>
-          <button className={activeView === 'dashboard' ? styles.activeIconButton : styles.iconButton} title="Dashboard"><Icons.PanelLeft size={16} /></button>
+          <button className={activeView === 'list' ? styles.activeIconButton : styles.iconButton} data-pressed={state.pressedView === 'list'} title="List View"><Icons.List size={16} /></button>
+          <button className={activeView === 'kanban' ? styles.activeIconButton : styles.iconButton} data-pressed={state.pressedView === 'kanban'} title="Kanban Board"><Icons.Columns size={16} /></button>
+          <button className={activeView === 'dashboard' ? styles.activeIconButton : styles.iconButton} data-pressed={state.pressedView === 'dashboard'} title="Dashboard"><Icons.PanelLeft size={16} /></button>
         </div>
         <div className={styles.filterGroup}>
           <button className={styles.filterButton}>

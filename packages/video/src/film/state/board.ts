@@ -80,8 +80,8 @@ export const boardShotState: {
       tags: ['claude-code'],
     },
     motion: {
-      from: 70,
-      to: 170,
+      from: 142,
+      to: 204,
       fromLeft: 8,
       toLeft: 40,
       fromTop: 34,
@@ -144,6 +144,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
+        createPressed: frame > 96 && frame < 112,
         instructions: textReveal(boardShotState.createForm.instructions, frame, 12, 58),
         linkedThreadsOpen: frame > 66,
         linkInputVisible: frame > 66 && frame <= 96,
@@ -157,7 +158,11 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     board: boardShotState.board,
     breadcrumbs: createVisible ? ['Threads', 'New Thread'] : boardShotState.breadcrumbs,
     createForm,
-    header: boardShotState.header,
+    header: {
+      ...boardShotState.header,
+      activeView: frame < 132 ? 'list' : 'kanban',
+      pressedView: frame > 124 && frame < 138 ? 'kanban' : undefined,
+    },
     movingCard: {
       card: boardShotState.movingCard.card,
       style: view.movingCardStyle,

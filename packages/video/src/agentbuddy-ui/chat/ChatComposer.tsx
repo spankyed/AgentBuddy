@@ -28,6 +28,7 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
             quickPrompts={state.quickPrompts}
             quickPromptsOpen={state.quickPromptsOpen}
             sendDisabled={sendDisabled}
+            sendPressed={state.sendPressed}
           />
           {state.statusLine ? <div className={styles.statusLine}>{state.statusLine}</div> : null}
         </div>
