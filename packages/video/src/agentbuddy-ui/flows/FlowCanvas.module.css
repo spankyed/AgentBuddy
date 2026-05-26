@@ -67,6 +67,20 @@
   marker-end: url(#flow-arrow);
 }
 
+.FlowCanvas_edgeSelection {
+  fill: none;
+  stroke: #3b82f6;
+  stroke-width: 6;
+  opacity: 0.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.FlowCanvas_selectedEdge {
+  stroke: #3b82f6;
+  stroke-width: 2.5;
+}
+
 .FlowCanvas_animatedEdge {
   stroke-dasharray: 5 5;
   animation: FlowCanvas_dashFlow 0.5s linear infinite;

@@ -52,6 +52,7 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `LogsCombinedContentDemo` | `packages/video/out/component-demos/logs-combined-content-demo.mp4` |
 | `LogsHasMoreDemo` | `packages/video/out/component-demos/logs-has-more-demo.mp4` |
 | `LogsSurfaceDemo` | `packages/video/out/component-demos/logs-surface-demo.mp4` |
+| `LibraryBrokenSymlinkDemo` | `packages/video/out/component-demos/library-broken-symlink-demo.mp4` |
 | `LibraryDocumentEditorDemo` | `packages/video/out/component-demos/library-document-editor-demo.mp4` |
 | `LibrarySurfaceDemo` | `packages/video/out/component-demos/library-surface-demo.mp4` |
 | `SettingsApplicationDemo` | `packages/video/out/component-demos/settings-application-demo.mp4` |

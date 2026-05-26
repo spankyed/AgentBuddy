@@ -1,5 +1,6 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import {PRComments} from './PRComments';
 import type {PullRequestPanelState} from './codeTypes';
 import './PRInfo.module.css';
 
@@ -38,16 +39,7 @@ export function PRInfo({state}: {state: PullRequestPanelState}) {
         <span>{pr?.commitCount ?? state.changedFiles.length} commits</span>
       </div>
       <div className={styles.body}>{renderBody(state.body)}</div>
-      <div className={styles.comments}>
-        <div className={styles.tabs}>
-          <button className={styles.activeTab} type="button"><Icons.Threads size={12} />Discussion</button>
-          <button type="button">Reviews</button>
-        </div>
-        <div className={styles.commentBox}>
-          <span>Write a comment...</span>
-          <button type="button">Comment</button>
-        </div>
-      </div>
+      <PRComments state={state} />
     </section>
   );
 }

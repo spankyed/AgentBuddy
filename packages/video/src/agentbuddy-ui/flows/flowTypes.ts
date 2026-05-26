@@ -76,6 +76,7 @@ export type FlowEdgeState = {
   from: string;
   fromExit?: number;
   kind?: 'transitions_to' | 'references' | 'contains';
+  selected?: boolean;
   to: string;
 };
 

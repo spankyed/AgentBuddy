@@ -5,7 +5,7 @@ import {LibrarySurface} from '../../agentbuddy-ui/library/LibrarySurface';
 import type {LibrarySurfaceState} from '../../agentbuddy-ui/library/libraryTypes';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {useAppWindowLayout} from '../../film/appWindowLayout';
-import {libraryDocumentEditorState, librarySurfaceState} from '../../film/state/library';
+import {libraryBrokenSymlinkState, libraryDocumentEditorState, librarySurfaceState} from '../../film/state/library';
 
 function LibraryDemoWindow({state = librarySurfaceState}: {state?: LibrarySurfaceState}) {
   const layout = useAppWindowLayout({hasRightRail: true});
@@ -25,6 +25,8 @@ function LibraryDemoWindow({state = librarySurfaceState}: {state?: LibrarySurfac
 }
 
 export const LibrarySurfaceDemo = () => <LibraryDemoWindow />;
+
+export const LibraryBrokenSymlinkDemo = () => <LibraryDemoWindow state={libraryBrokenSymlinkState} />;
 
 export const LibraryDocumentEditorDemo = () => {
   const layout = useAppWindowLayout({hasRightRail: false});

@@ -32,6 +32,7 @@ export type PullRequestPanelState = {
   branchPublished: boolean;
   changedFiles: GitFile[];
   checks: string[];
+  comments?: PullRequestCommentState[];
   createdPr?: {
     authorName?: string;
     baseBranch?: string;
@@ -52,7 +53,37 @@ export type PullRequestPanelState = {
     title: string;
   }>;
   selectorOpen?: boolean;
+  reviewThreads?: PullRequestReviewThreadState[];
+  selectedCommentTab?: 'discussion' | 'reviews';
   title: string;
+};
+
+export type PullRequestCommentState = {
+  authorName: string;
+  body: string;
+  createdAt: string;
+  id: string;
+  viewerDidAuthor?: boolean;
+};
+
+export type PullRequestReviewCommentState = {
+  authorName: string;
+  body: string;
+  createdAt: string;
+  id: string;
+  viewerDidAuthor?: boolean;
+};
+
+export type PullRequestReviewThreadState = {
+  comments: PullRequestReviewCommentState[];
+  diffLines?: Array<{
+    kind: 'context' | 'added' | 'removed' | 'meta';
+    text: string;
+  }>;
+  id: string;
+  isResolved?: boolean;
+  location: string;
+  path: string;
 };
 
 export type PullRequestFileTreeNode = {

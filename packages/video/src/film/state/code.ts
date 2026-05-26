@@ -81,6 +81,15 @@ export const codeShotState: CodeShotState = {
         {path: 'packages/video/src/film/state/code.ts', status: 'modified'},
         {path: 'packages/video/src/compositions/demos/CodeDemos.tsx', status: 'modified'},
       ],
+      comments: [
+        {
+          authorName: 'spankyed',
+          body: 'This is ready for review. The launch film now uses source-mirrored UI components instead of screenshot captures.',
+          createdAt: 'just now',
+          id: 'discussion-1',
+          viewerDidAuthor: true,
+        },
+      ],
       checks: [
         'Preview build passed',
         'Release checks passed',
@@ -167,6 +176,29 @@ export const codeShotState: CodeShotState = {
         {number: 124, state: 'OPEN', title: 'Improve launch film code surface'},
         {isDraft: true, number: 119, state: 'DRAFT', title: 'Flow blueprint polish'},
       ],
+      reviewThreads: [
+        {
+          comments: [
+            {
+              authorName: 'reviewbot',
+              body: 'Verified the PR panel keeps the same branch and action layout as the app.',
+              createdAt: 'just now',
+              id: 'review-comment-1',
+            },
+          ],
+          diffLines: [
+            {kind: 'meta', text: '@@ -24,7 +24,8 @@'},
+            {kind: 'context', text: ' export function PullRequestPanel(props) {'},
+            {kind: 'removed', text: '-  return <FakePrScaffold />;'},
+            {kind: 'added', text: '+  return <PullRequestPanel state={state} />;'},
+          ],
+          id: 'review-thread-1',
+          isResolved: false,
+          location: 'Comment on line +25',
+          path: 'packages/video/src/agentbuddy-ui/code/PullRequestPanel.tsx',
+        },
+      ],
+      selectedCommentTab: 'discussion',
       title: 'Align launch film with app UI',
     },
     terminal: {

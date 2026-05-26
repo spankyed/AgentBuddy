@@ -48,8 +48,9 @@ export function FlowEdge({
   return (
     <g>
       <path className={styles.edgeHitArea} d={path} vectorEffect="non-scaling-stroke" />
+      {edge.selected ? <path className={styles.edgeSelection} d={path} vectorEffect="non-scaling-stroke" /> : null}
       <path
-        className={cx(styles.edge, isAnimated && styles.animatedEdge)}
+        className={cx(styles.edge, edge.selected && styles.selectedEdge, isAnimated && styles.animatedEdge)}
         d={path}
         vectorEffect="non-scaling-stroke"
       />

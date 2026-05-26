@@ -59,6 +59,7 @@ import {
   InteractionControlsDemo,
   InteractionBlocksDemo,
   KanbanComponentsDemo,
+  LibraryBrokenSymlinkDemo,
   LibraryDocumentEditorDemo,
   LibrarySurfaceDemo,
   MessageBubbleDemo,
@@ -180,6 +181,7 @@ export const RemotionRoot = () => {
       <Composition id="LogsCombinedContentDemo" component={LogsCombinedContentDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsHasMoreDemo" component={LogsHasMoreDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LogsSurfaceDemo" component={LogsSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="LibraryBrokenSymlinkDemo" component={LibraryBrokenSymlinkDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibraryDocumentEditorDemo" component={LibraryDocumentEditorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="LibrarySurfaceDemo" component={LibrarySurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsApplicationDemo" component={SettingsApplicationDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
