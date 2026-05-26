@@ -1,5 +1,6 @@
 import {Icons} from '../primitives/Icon';
 import {cx} from '../primitives/classNames';
+import {DataRenderer} from '../logs/DataRenderer';
 import type {DatabaseTraceEvent, DatabaseTraceState} from './databaseTypes';
 import './DatabaseTraceViewer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -84,7 +85,7 @@ export function DatabaseTraceViewer({state}: {state: DatabaseTraceState}) {
 
 function TraceEventItem({event, expandedIds}: {event: DatabaseTraceEvent; expandedIds: Set<string>}) {
   const hasChildren = Boolean(event.children?.length);
-  const hasDetails = Boolean(event.metadata);
+  const hasDetails = event.nodeType === 'flow' || event.nodeType === 'step' || event.nodeType === 'event' || Boolean(event.metadata);
   const expanded = expandedIds.has(event.id);
   const effectiveType = event.nodeType === 'event' ? 'listener' : event.subtype ?? event.nodeType;
   return (
@@ -101,8 +102,15 @@ function TraceEventItem({event, expandedIds}: {event: DatabaseTraceEvent; expand
       </button>
       {expanded && event.metadata ? (
         <div className={styles.details}>
-          <div className={styles.detailsTitle}>Node Attributes</div>
-          <pre>{JSON.stringify(event.metadata, null, 2)}</pre>
+          <div className={styles.attributes}>
+            <div className={styles.detailsTitle}>Node Attributes</div>
+            <DataRenderer compact data={event.metadata} />
+          </div>
+          <TraceEventMeta event={event} effectiveType={effectiveType} />
+        </div>
+      ) : expanded ? (
+        <div className={styles.details}>
+          <TraceEventMeta event={event} effectiveType={effectiveType} />
         </div>
       ) : null}
       {expanded && event.children?.length ? (
@@ -111,6 +119,27 @@ function TraceEventItem({event, expandedIds}: {event: DatabaseTraceEvent; expand
         </div>
       ) : null}
     </article>
+  );
+}
+
+function TraceEventMeta({effectiveType, event}: {effectiveType: string; event: DatabaseTraceEvent}) {
+  return (
+    <div className={cx(styles.metaStrip, event.metadata && styles.metaStripBordered)}>
+      <div className={styles.metaLeft}>
+        <span className={event.nodeType === 'flow' ? styles.flowType : event.nodeType === 'event' ? styles.eventType : styles.stepType}>
+          {event.nodeType === 'step' ? effectiveType : event.nodeType === 'event' ? effectiveType : 'flow'}
+        </span>
+        <span className={styles.entityId}>{event.id}</span>
+      </div>
+      <div className={styles.metaRight}>
+        {event.startedAt ? (
+          <span>
+            <span className={styles.metaLabel}>Started:</span>
+            <span className={styles.metaValue}>{event.startedAt}</span>
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
