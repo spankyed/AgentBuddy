@@ -74,6 +74,7 @@ import {
   PullRequestFilesDemo,
   PullRequestPanelDemo,
   PullRequestSelectorDemo,
+  PullRequestSelectorEmptyDemo,
   PromptCreateDemo,
   PromptCollapsedSectionsDemo,
   PromptDetailDemo,
@@ -235,6 +236,7 @@ export const RemotionRoot = () => {
       <Composition id="PullRequestPanelDemo" component={PullRequestPanelDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestFilesDemo" component={PullRequestFilesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestSelectorDemo" component={PullRequestSelectorDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="PullRequestSelectorEmptyDemo" component={PullRequestSelectorEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestCreateDemo" component={PullRequestCreateDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestDetailsDemo" component={PullRequestDetailsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="TerminalPanelDemo" component={TerminalPanelDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
