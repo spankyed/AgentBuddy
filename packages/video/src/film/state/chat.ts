@@ -61,6 +61,11 @@ export const launchComposerState: ChatComposerState = {
     {name: 'Birth', disabled: true},
   ],
   phase: 'Plan',
+  quickPrompts: [
+    {id: 'qp-write-commit', text: 'write a commit'},
+    {id: 'qp-create-ticket', text: 'create the next thread from this plan'},
+    {id: 'qp-link-parent', text: 'link this to the parent ticket'},
+  ],
   bottomTabs: {
     activeLabel: 'AgentBuddy launch film',
     newThreadLabel: 'New thread',
@@ -389,6 +394,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       ...launchComposerState,
       attachments: frame > 132 ? [{type: 'image', label: 'image 1'}] : undefined,
       bottomTabs: frame > 42 ? launchComposerState.bottomTabs : undefined,
+      quickPromptsOpen: frame > 270 && frame < 308,
       text: frame > 78 && frame < 166 ? view.prompt : frame > 292 ? 'write a commit' : undefined,
     },
     conversation: {

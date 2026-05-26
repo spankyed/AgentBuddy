@@ -1,4 +1,5 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
+import {ThreadCreateForm} from '../../agentbuddy-ui/threads/ThreadCreateForm';
 import {ThreadsBoardSurface} from '../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {boardShotViewForFrame} from '../state/board';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -8,11 +9,15 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
   const layout = useAppWindowLayout({variant});
   return (
     <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
-      <ThreadsBoardSurface
-        board={view.board}
-        header={view.header}
-        movingCard={view.movingCard}
-      />
+      {view.createForm ? (
+        <ThreadCreateForm state={view.createForm} />
+      ) : (
+        <ThreadsBoardSurface
+          board={view.board}
+          header={view.header}
+          movingCard={view.movingCard}
+        />
+      )}
     </AppWindow>
   );
 }

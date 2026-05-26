@@ -24,10 +24,10 @@ export function ProjectsSettings({projects}: {projects: SettingsProject[]}) {
                 <span
                   className={styles.dir}
                   data-primary={index === 0}
-                  key={dir}
+                  key={dir.path}
                   style={index === 0 ? {borderLeftColor: project.color} : undefined}
                 >
-                  <span>{getDirectoryName(dir)}</span>
+                  <span>{dir.displayPath}</span>
                   <button className={styles.removeDirButton} data-disabled={project.directories.length === 1} type="button"><Icons.X size={12} /></button>
                 </span>
               ))}
@@ -38,10 +38,4 @@ export function ProjectsSettings({projects}: {projects: SettingsProject[]}) {
       <button className={styles.addProjectButton} type="button"><Icons.Plus size={14} />Add Project</button>
     </div>
   );
-}
-
-function getDirectoryName(path: string) {
-  if (!path) return 'No directory';
-  const parts = path.split('/').filter(Boolean);
-  return parts.slice(-2).join('/') || path;
 }

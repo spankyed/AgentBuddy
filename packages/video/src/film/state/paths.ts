@@ -1,6 +1,10 @@
 export type FilmPathState = {
   homeDirectory: string;
   homeDisplayName: string;
+  pathAliases?: Array<{
+    displayName: string;
+    path: string;
+  }>;
 };
 
 export const filmPathState: FilmPathState = {
@@ -15,16 +19,23 @@ export function homePath(path: string, state: FilmPathState = filmPathState) {
 }
 
 export function displayPath(path: string, state: FilmPathState = filmPathState) {
-  const normalizedHome = state.homeDirectory.replace(/\/+$/, '');
+  const aliases = [
+    {displayName: state.homeDisplayName, path: state.homeDirectory},
+    ...(state.pathAliases ?? []),
+  ];
 
-  if (!normalizedHome) return path;
+  for (const alias of aliases) {
+    const normalizedPath = alias.path.replace(/\/+$/, '');
 
-  if (path === normalizedHome) {
-    return state.homeDisplayName;
-  }
+    if (!normalizedPath) continue;
 
-  if (path.startsWith(`${normalizedHome}/`)) {
-    return `${state.homeDisplayName}${path.slice(normalizedHome.length)}`;
+    if (path === normalizedPath) {
+      return alias.displayName;
+    }
+
+    if (path.startsWith(`${normalizedPath}/`)) {
+      return `${alias.displayName}${path.slice(normalizedPath.length)}`;
+    }
   }
 
   return path;

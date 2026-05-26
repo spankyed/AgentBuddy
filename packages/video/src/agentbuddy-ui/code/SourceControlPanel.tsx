@@ -5,6 +5,7 @@ import {CodePanelToolbar} from './CodePanelToolbar';
 import {CommitLogSection} from './CommitLogSection';
 import {CommitMessageBox} from './CommitMessageBox';
 import {GitFileItem} from './GitFileItem';
+import {StashesSection} from './StashesSection';
 import {WorktreesSection} from './WorktreesSection';
 import './CodeReview.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -43,6 +44,7 @@ export function SourceControlPanel({state, view}: SourceControlPanelProps) {
         </section>
       </div>
       <CommitLogSection commits={state.commits} />
+      <StashesSection expanded={state.stashesExpanded} searchOpen={state.stashSearchOpen} searchQuery={state.stashSearchQuery} stashes={state.stashes} />
       <WorktreesSection worktrees={state.worktrees} />
     </div>
   );

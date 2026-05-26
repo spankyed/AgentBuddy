@@ -15,6 +15,13 @@ export type WorktreeState = {
   path: string;
 };
 
+export type StashState = {
+  branch: string;
+  date: string;
+  message: string;
+  ref: string;
+};
+
 export type TerminalPanelState = {
   activeTerminalId?: string;
   expanded?: boolean;
@@ -128,6 +135,10 @@ export type CodeReviewState = {
     }>;
   };
   staged: GitFile[];
+  stashes?: StashState[];
+  stashesExpanded?: boolean;
+  stashSearchOpen?: boolean;
+  stashSearchQuery?: string;
   pullRequest: PullRequestPanelState;
   terminal: TerminalPanelState;
   worktrees: WorktreeState[];

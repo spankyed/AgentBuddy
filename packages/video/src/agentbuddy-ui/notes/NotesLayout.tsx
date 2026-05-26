@@ -1,6 +1,7 @@
 import type {ReactNode} from 'react';
 import {makeStyles} from '../primitives/makeStyles';
 import {NoteEditor} from './NoteEditor';
+import type {NoteImageBlockState} from './NoteImageBlock';
 import {TaskListPanel} from './TaskListPanel';
 import type {NoteTreeNodeState} from './noteTypes';
 import './NotesLayout.module.css';
@@ -11,6 +12,7 @@ type NotesLayoutProps = {
   editor: {
     afterLines: ReactNode[];
     beforeLines: ReactNode[];
+    image?: NoteImageBlockState;
     title: {
       icon: string;
       text: string;
@@ -33,7 +35,7 @@ export function NotesLayout({editor, taskList}: NotesLayoutProps) {
   return (
     <div className={styles.root}>
       <TaskListPanel activeId={taskList.activeId} items={taskList.items} showCompleted={taskList.showCompleted} title={taskList.title} />
-      <NoteEditor afterLines={editor.afterLines} beforeLines={editor.beforeLines} title={editor.title} />
+      <NoteEditor afterLines={editor.afterLines} beforeLines={editor.beforeLines} image={editor.image} title={editor.title} />
     </div>
   );
 }

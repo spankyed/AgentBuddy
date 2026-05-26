@@ -5,6 +5,11 @@ export type ChatAttachment = {
   type: 'file' | 'image';
 };
 
+export type QuickPromptState = {
+  id: string;
+  text: string;
+};
+
 export type ChatComposerState = {
   attachments?: ChatAttachment[];
   bottomTabs?: {
@@ -19,10 +24,7 @@ export type ChatComposerState = {
   openSelector?: 'mode' | 'phase';
   phase?: string;
   placeholder: string;
-  quickPrompts?: Array<{
-    id: string;
-    text: string;
-  }>;
+  quickPrompts?: QuickPromptState[];
   quickPromptsOpen?: boolean;
   statusLine?: string;
   text?: string;

@@ -4,9 +4,15 @@ import type {KeyboardShortcutValue} from './general/KeyboardShortcutInput';
 export type SettingsTabId = 'general' | 'plugins' | 'help';
 export type GeneralSettingsNavId = 'application' | 'secrets' | 'projects' | 'personal' | 'json';
 
+export type SettingsProjectDirectory = {
+  displayPath: string;
+  name: string;
+  path: string;
+};
+
 export type SettingsProject = {
   color: string;
-  directories: string[];
+  directories: SettingsProjectDirectory[];
   name: string;
 };
 

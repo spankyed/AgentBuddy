@@ -1,4 +1,5 @@
 import {Icons} from '../../primitives/Icon';
+import type {SettingsProject} from '../settingsTypes';
 import './CodeDirectorySelect.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 
@@ -6,15 +7,14 @@ const styles = makeStyles('CodeDirectorySelect');
 
 type CodeDirectorySelectProps = {
   disabled?: boolean;
-  homeDirectory?: string;
-  homeDisplayName?: string;
   open?: boolean;
-  projects?: Array<{color: string; directories: string[]; name: string}>;
+  projects?: SettingsProject[];
   value?: string | null;
 };
 
-export function CodeDirectorySelect({disabled = false, homeDirectory, homeDisplayName, open = false, projects = [], value}: CodeDirectorySelectProps) {
-  const selectedLabel = value == null ? 'Use last opened directory' : getFolderName(value);
+export function CodeDirectorySelect({disabled = false, open = false, projects = [], value}: CodeDirectorySelectProps) {
+  const selectedDirectory = projects.flatMap(project => project.directories).find(directory => directory.path === value);
+  const selectedLabel = value == null ? 'Use last opened directory' : selectedDirectory?.name ?? value;
 
   return (
     <div className={styles.root}>
@@ -35,11 +35,11 @@ export function CodeDirectorySelect({disabled = false, homeDirectory, homeDispla
                 {project.name || `Project ${projectIndex + 1}`}
               </div>
               {project.directories.map((directory, directoryIndex) => (
-                <div className={styles.directoryOption} data-active={value === directory} key={`${directory}-${directoryIndex}`}>
+                <div className={styles.directoryOption} data-active={value === directory.path} key={`${directory.path}-${directoryIndex}`}>
                   <div className={styles.directoryMain}>
                     <span className={styles.projectDot} style={{backgroundColor: project.color || 'red'}} />
-                    <span className={styles.folderName}>{getFolderName(directory)}</span>
-                    <span className={styles.fullPath}>{formatFullPath(directory, homeDirectory, homeDisplayName)}</span>
+                    <span className={styles.folderName}>{directory.name}</span>
+                    <span className={styles.fullPath}>{directory.displayPath}</span>
                   </div>
                   <span className={styles.projectName}>
                     {project.name}{project.directories.length > 1 ? ` (${directoryIndex + 1})` : ''}
@@ -52,40 +52,4 @@ export function CodeDirectorySelect({disabled = false, homeDirectory, homeDispla
       ) : null}
     </div>
   );
-}
-
-function getFolderName(path: string) {
-  const segments = path.split('/').filter(Boolean);
-  return segments.at(-1) || path;
-}
-
-function formatFullPath(path: string, homeDirectory?: string, homeDisplayName = '~') {
-  if (!path) return '';
-
-  const normalizedHome = homeDirectory?.replace(/\/+$/, '');
-  const displayPath = normalizedHome && (path === normalizedHome || path.startsWith(`${normalizedHome}/`))
-    ? `${homeDisplayName}${path.slice(normalizedHome.length)}`
-    : path;
-  if (displayPath.length <= 50) return displayPath;
-
-  const segments = displayPath.split('/').filter(Boolean);
-  if (segments.length <= 2) return `...${displayPath.slice(-47)}`;
-
-  const last = segments.at(-1) ?? '';
-  const secondLast = segments.at(-2) ?? '';
-  const tail = `/${secondLast}/${last}`;
-  let result = segments[0] ?? '';
-  let remaining = 50 - result.length - tail.length - 2;
-
-  for (let index = 1; index < segments.length - 2; index += 1) {
-    const segment = segments[index];
-    if (remaining >= segment.length + 1) {
-      result += `/${segment}`;
-      remaining -= segment.length + 1;
-    } else {
-      return `${result}/...${tail}`;
-    }
-  }
-
-  return result + tail;
 }

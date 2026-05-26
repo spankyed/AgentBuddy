@@ -24,7 +24,10 @@ export function QuickPromptsPopup({prompts}: QuickPromptsPopupProps) {
           <div className={styles.item} key={prompt.id}>
             <button type="button">
               <span className={styles.index}>{index + 1}</span>
-              <span className={styles.text}>{prompt.text.split('\n')[0]}</span>
+              <span className={styles.text}>
+                {prompt.text.split('\n')[0]}
+                {prompt.text.includes('\n') ? <span className={styles.ellipsis}>...</span> : null}
+              </span>
             </button>
             <button className={styles.copy} title="Copy prompt" type="button"><Icons.Copy size={14} /></button>
           </div>

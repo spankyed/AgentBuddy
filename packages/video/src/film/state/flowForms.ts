@@ -1,6 +1,6 @@
 import type {FlowNodeFormState} from '../../agentbuddy-ui/flows/flowTypes';
 
-export const replaceObsoleteAppsFormState: FlowNodeFormState = {
+export const launchPullRequestFormState: FlowNodeFormState = {
   canAddNextStep: true,
   nodeKind: 'action',
   nodeLabel: 'Prepare pull request',

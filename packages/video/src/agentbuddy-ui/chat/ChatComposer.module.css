@@ -211,6 +211,11 @@
   color: rgb(115 115 115);
 }
 
+.ChatComposer_quickPromptsAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
 .ChatComposer_sendButton {
   display: flex;
   flex-shrink: 0;

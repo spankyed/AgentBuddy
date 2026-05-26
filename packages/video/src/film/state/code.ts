@@ -58,6 +58,7 @@ export const codeShotState: CodeShotState = {
       {authorName: 'spankyed', hash: '77bb1e4', title: 'Align tasklist rows with renderer', time: '18m ago'},
       {authorName: 'spankyed', hash: '43d0ac9', title: 'Add Remotion app chrome primitives', time: '1h ago'},
     ],
+    stashes: [],
     worktrees: [
       {branch: 'as/react-launch-film', path: '~/AgentBuddy', current: true},
       {branch: 'master', path: '~/AgentBuddy-master'},
@@ -103,7 +104,7 @@ export const codeShotState: CodeShotState = {
         mergeable: 'MERGEABLE',
         number: 128,
         reviewDecision: 'APPROVED',
-          state: 'OPEN',
+        state: 'OPEN',
         statusCheckRollup: [
           {conclusion: 'SUCCESS', name: 'Preview build', status: 'COMPLETED'},
           {conclusion: 'SUCCESS', name: 'Release checks', status: 'COMPLETED'},
@@ -226,7 +227,8 @@ export const expandedTerminalPanelState: TerminalPanelState = {
     '> vite --host 127.0.0.1',
     '',
     'Local: http://127.0.0.1:5173',
-    'launch film preview ready',
+    'rendered launch preview',
+    'launch preview ready',
   ].join('\n'),
 };
 
@@ -240,7 +242,7 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
   const prCreated = frame > 318;
   const prMerged = frame > 374;
   return {
-    activePanel: frame > 238 ? 'pr' : 'commit',
+    activePanel: frame < 48 || frame > 238 ? 'pr' : 'commit',
     commitMessage: frame < 92 ? 'incomplete work' : frame > 132 ? codeShotState.generatedCommitMessage : '',
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
@@ -262,14 +264,50 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
 }
 
 export function codeShotViewForFrame(frame: number): CodeShotView {
+  const initialStaged = codeShotState.review.staged;
+  const initialChanges = codeShotState.review.changes;
+  const stashedInitialWork = frame >= 82;
+  const stagedReviewedWork = frame >= 142 && frame < 174;
+  const committedReviewedWork = frame >= 174;
+  const checkedOutMainWorktree = frame >= 108;
+  const reviewState: CodeReviewState = {
+    ...codeShotState.review,
+    branch: checkedOutMainWorktree ? 'master' : codeShotState.review.branch,
+    changes: stagedReviewedWork || committedReviewedWork ? [] : initialChanges,
+    commits: committedReviewedWork
+      ? [
+          {authorName: 'spankyed', hash: 'c0ffee1', title: codeShotState.generatedCommitMessage, time: 'just now'},
+          ...codeShotState.review.commits,
+        ]
+      : codeShotState.review.commits,
+    staged: stashedInitialWork
+      ? stagedReviewedWork
+        ? initialChanges
+        : []
+      : initialStaged,
+    stashes: stashedInitialWork
+      ? [
+          {
+            branch: 'as/react-launch-film',
+            date: 'just now',
+            message: 'WIP on as/react-launch-film: incomplete work',
+            ref: 'stash@{0}',
+          },
+        ]
+      : [],
+    stashesExpanded: frame >= 86 && frame < 118,
+    terminal: frame > 190 && frame < 238 ? expandedTerminalPanelState : codeShotState.review.terminal,
+    worktrees: codeShotState.review.worktrees.map(worktree => ({
+      ...worktree,
+      current: checkedOutMainWorktree ? worktree.branch === 'master' : worktree.branch === 'as/react-launch-film',
+    })),
+  };
+
   return {
     breadcrumbs: codeShotState.breadcrumbs,
     composer: launchComposerState,
     review: {
-      state: {
-        ...codeShotState.review,
-        terminal: frame > 190 && frame < 238 ? expandedTerminalPanelState : codeShotState.review.terminal,
-      },
+      state: reviewState,
       view: codeReviewViewForFrame(frame),
     },
   };

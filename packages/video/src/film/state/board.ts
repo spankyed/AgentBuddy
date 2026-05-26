@@ -1,9 +1,11 @@
 import type {KanbanBoardState, KanbanCardState, ThreadsHeaderState} from '../../agentbuddy-ui/threads/threadTypes';
-import {ease, mix} from './timeline';
+import type {ThreadCreateFormState} from '../../agentbuddy-ui/threads/ThreadCreateForm';
+import {ease, mix, textReveal} from './timeline';
 
 export type BoardShotView = {
   board: KanbanBoardState;
   breadcrumbs: string[];
+  createForm?: ThreadCreateFormState;
   header: ThreadsHeaderState;
   movingCard: {
     card: KanbanCardState;
@@ -18,6 +20,7 @@ export type BoardShotView = {
 export const boardShotState: {
   board: KanbanBoardState;
   breadcrumbs: string[];
+  createForm: ThreadCreateFormState;
   header: ThreadsHeaderState;
   movingCard: {
     card: KanbanCardState;
@@ -34,6 +37,17 @@ export const boardShotState: {
   };
 } = {
   breadcrumbs: ['Threads', 'Board'],
+  createForm: {
+    instructions: 'Create the launch PR flow from the current operating plan. Link it to the parent launch thread and keep the branch publish path visible.',
+    linkedThreadQuery: 'Launch operating plan',
+    parentThread: {
+      relation: 'parent_of',
+      status: 'Active',
+      tags: ['launch'],
+      title: 'Launch operating plan',
+    },
+    title: 'Create launch PR flow',
+  },
   header: {
     activeView: 'kanban',
     filterLabel: 'Filter',
@@ -126,9 +140,23 @@ export function boardViewForFrame(frame: number) {
 
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
+  const createVisible = frame < 120;
+  const createForm = createVisible
+    ? {
+        ...boardShotState.createForm,
+        instructions: textReveal(boardShotState.createForm.instructions, frame, 12, 58),
+        linkedThreadsOpen: frame > 66,
+        linkInputVisible: frame > 66 && frame <= 96,
+        linkedThreadQuery: frame > 70 ? boardShotState.createForm.linkedThreadQuery : '',
+        parentThread: frame > 86 ? boardShotState.createForm.parentThread : undefined,
+        tagsOpen: false,
+        title: textReveal(boardShotState.createForm.title, frame, 58, 82),
+      }
+    : undefined;
   return {
     board: boardShotState.board,
-    breadcrumbs: boardShotState.breadcrumbs,
+    breadcrumbs: createVisible ? ['Threads', 'New Thread'] : boardShotState.breadcrumbs,
+    createForm,
     header: boardShotState.header,
     movingCard: {
       card: boardShotState.movingCard.card,

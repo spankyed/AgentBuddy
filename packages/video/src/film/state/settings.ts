@@ -1,5 +1,14 @@
-import type {SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTypes';
-import {filmExportDirectories, filmHomeDirectory, filmPathState, filmProjects, filmSetupPackDirectories} from './paths';
+import type {SettingsProjectDirectory, SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTypes';
+import {displayPath, filmExportDirectories, filmHomeDirectory, filmPathState, filmProjects, filmSetupPackDirectories} from './paths';
+
+function projectDirectory(path: string): SettingsProjectDirectory {
+  const segments = path.split('/').filter(Boolean);
+  return {
+    displayPath: displayPath(path),
+    name: segments.at(-1) || path,
+    path,
+  };
+}
 
 const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> = {
   applicationHotkeys: {
@@ -48,9 +57,9 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {description: 'Command, Embed, Rerank', hasKey: false, key: 'cohere', label: 'Cohere', placeholder: 'Enter Cohere API key'},
   ],
   projects: [
-    {color: '#3b82f6', directories: [filmProjects.agentBuddy], name: 'AgentBuddy'},
-    {color: '#22c55e', directories: [filmProjects.clientlabs], name: 'Clientlabs'},
-    {color: '#f59e0b', directories: [filmProjects.launch], name: 'Launch'},
+    {color: '#3b82f6', directories: [projectDirectory(filmProjects.agentBuddy)], name: 'AgentBuddy'},
+    {color: '#22c55e', directories: [projectDirectory(filmProjects.clientlabs)], name: 'Clientlabs'},
+    {color: '#f59e0b', directories: [projectDirectory(filmProjects.launch)], name: 'Launch'},
   ],
   saveStatus: 'saved',
   selectedPluginId: 'brain',
