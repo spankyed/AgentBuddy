@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {BrokenSymlinkView} from './BrokenSymlinkView';
 import {makeStyles} from '../primitives/makeStyles';
 import {LibraryButton} from './LibraryButton';
 import {LibraryTableHeader} from './LibraryTableHeader';
@@ -64,6 +65,9 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
         </div>
       </div>
 
+      {state.isBroken ? (
+        <BrokenSymlinkView lastKnownPath={state.lastKnownPath} />
+      ) : (
       <div className={styles.tableScroller}>
         <table className={styles.table} data-onboarding-id="library-table">
           <thead className={styles.thead}>
@@ -100,6 +104,7 @@ export function LibraryBrowser({state}: {state: LibrarySurfaceState}) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

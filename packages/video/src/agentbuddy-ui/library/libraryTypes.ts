@@ -62,8 +62,10 @@ export type LibrarySurfaceState = {
   currentFolderId: string | null;
   currentView?: 'browser' | 'create' | 'edit';
   documentEditor?: LibraryDocumentEditorState;
+  isBroken?: boolean;
   isInSymlinkContext?: boolean;
   items: LibraryItemState[];
+  lastKnownPath?: string | null;
   panel: LibraryPanelState;
   selectedItemIds: string[];
   sortBy: 'name' | 'modified' | 'size' | 'kind';

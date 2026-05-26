@@ -1,4 +1,4 @@
-export const filmHomeDirectory = '/Users/spankyed';
+export const filmHomeDirectory = '~';
 
 export function homePath(path: string) {
   return `${filmHomeDirectory}/${path.replace(/^\/+/, '')}`;

@@ -172,3 +172,16 @@ export const libraryEditSurfaceState: LibrarySurfaceState = {
   currentView: 'edit',
   documentEditor: libraryDocumentEditorState,
 };
+
+export const libraryBrokenSymlinkState: LibrarySurfaceState = {
+  ...librarySurfaceState,
+  breadcrumbs: [
+    {id: 'folder-agentbuddy-docs', name: 'AgentBuddy docs'},
+  ],
+  currentFolderId: 'folder-agentbuddy-docs',
+  isBroken: true,
+  isInSymlinkContext: true,
+  items: [],
+  lastKnownPath: `${filmProjects.agentBuddy}/docs`,
+  selectedItemIds: [],
+};
