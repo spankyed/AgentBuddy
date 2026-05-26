@@ -107,6 +107,7 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `PlanArtifactDemo` | `packages/video/out/component-demos/plan-artifact-demo.mp4` |
 | `PullRequestPanelDemo` | `packages/video/out/component-demos/pull-request-panel-demo.mp4` |
 | `PullRequestFilesDemo` | `packages/video/out/component-demos/pull-request-files-demo.mp4` |
+| `PullRequestSelectorDemo` | `packages/video/out/component-demos/pull-request-selector-demo.mp4` |
 | `PullRequestCreateDemo` | `packages/video/out/component-demos/pull-request-create-demo.mp4` |
 | `PullRequestDetailsDemo` | `packages/video/out/component-demos/pull-request-details-demo.mp4` |
 | `TerminalPanelDemo` | `packages/video/out/component-demos/terminal-panel-demo.mp4` |

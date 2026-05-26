@@ -161,6 +161,11 @@ export const codeShotState: CodeShotState = {
         },
       ],
       headBranch: 'as/react-launch-film',
+      openPullRequests: [
+        {number: 128, state: 'OPEN', title: 'Align launch film with app UI'},
+        {number: 124, state: 'OPEN', title: 'Improve launch film code surface'},
+        {isDraft: true, number: 119, state: 'DRAFT', title: 'Flow blueprint polish'},
+      ],
       title: 'Align launch film with app UI',
     },
     terminal: {

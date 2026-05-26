@@ -45,6 +45,13 @@ export type PullRequestPanelState = {
   };
   fileTree: PullRequestFileTreeNode[];
   headBranch: string;
+  openPullRequests?: Array<{
+    isDraft?: boolean;
+    number: number;
+    state: 'OPEN' | 'DRAFT' | 'MERGED' | 'CLOSED';
+    title: string;
+  }>;
+  selectorOpen?: boolean;
   title: string;
 };
 
