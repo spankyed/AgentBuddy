@@ -20,14 +20,14 @@ try {
     'SELECT * FROM users WHERE id = ?',
     [param1]
   );
-
+  
   // Send email notification
   await services.email.send(
     param2,
     'Action completed',
     'Your action has been processed successfully.'
   );
-
+  
   return {
     success: true,
     data: result.rows

@@ -247,7 +247,13 @@
   border: 1px solid rgb(64 64 64);
   border-radius: 8px;
   background: rgb(38 38 38 / 50%);
+  cursor: pointer;
   padding: 16px;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.DatabaseBackupRestore_dbCard:hover {
+  background: rgb(38 38 38 / 70%);
 }
 
 .DatabaseBackupRestore_dbCard[data-selected="true"] {

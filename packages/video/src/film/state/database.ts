@@ -180,7 +180,7 @@ export const databaseBackupExportState: DatabaseSurfaceState = {
     exportPath: '/Users/spankyed/Documents/AgentBuddy Backups',
     selectedDatabases: [
       {description: 'Core application data (ears-db)', id: 'lmdb', label: 'Main Database', selected: true, tone: 'blue'},
-      {description: 'Execution traces (ears-trace)', id: 'volatileLmdb', label: 'Trace Database', selected: true, tone: 'green'},
+      {description: 'Execution traces (ears-trace)', id: 'volatileLmdb', label: 'Trace Database', selected: false, tone: 'green'},
       {description: 'API keys and credentials', id: 'secretsLmdb', label: 'Secrets Database', selected: false, tone: 'amber'},
     ],
   },
