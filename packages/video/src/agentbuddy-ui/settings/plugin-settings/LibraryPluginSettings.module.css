@@ -90,11 +90,6 @@
   transition: border-color 150ms ease, color 150ms ease;
 }
 
-.LibraryPluginSettings_iconButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .LibraryPluginSettings_iconButton:not(:disabled):hover {
   border-color: rgb(239 68 68 / 50%);
   color: rgb(248 113 113);

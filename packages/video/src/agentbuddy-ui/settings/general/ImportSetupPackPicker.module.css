@@ -250,6 +250,12 @@
   background: rgb(59 130 246);
 }
 
+.ImportSetupPackPicker_importButton:disabled,
+.ImportSetupPackPicker_importButton.ImportSetupPackPicker_disabled {
+  background: rgb(64 64 64);
+  color: rgb(163 163 163);
+}
+
 .ImportSetupPackPicker_cancelButton {
   background: transparent;
   color: rgb(163 163 163);
@@ -264,5 +270,4 @@
 .ImportSetupPackPicker_importButton:disabled,
 .ImportSetupPackPicker_cancelButton:disabled {
   cursor: not-allowed;
-  opacity: 0.65;
 }

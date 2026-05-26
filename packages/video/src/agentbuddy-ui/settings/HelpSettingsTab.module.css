@@ -100,7 +100,11 @@
 }
 
 .HelpSettingsTab_footer p {
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+.HelpSettingsTab_footer p + p {
+  margin-top: 8px;
 }
 
 .HelpSettingsTab_link {

@@ -47,10 +47,10 @@ function ProviderRow({provider}: {provider: ProviderKeyState}) {
   return (
     <>
       <div>
-        <div className={styles.providerLabel}>
+        <button className={styles.providerLabel} title={`Open ${provider.label} API keys page`} type="button">
           {provider.label}<Icons.ExternalLink size={12} />
-          {provider.priority ? <span className={styles.priority} data-priority={provider.priority}><span className={styles.dot} />{provider.priority}</span> : null}
-        </div>
+        </button>
+        {provider.priority ? <span className={styles.priority} data-priority={provider.priority}><span className={styles.dot} />{provider.priority}</span> : null}
         <div className={styles.description}>{provider.description}</div>
       </div>
       <div>
