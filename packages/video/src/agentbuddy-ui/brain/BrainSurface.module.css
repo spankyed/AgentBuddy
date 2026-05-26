@@ -1,7 +1,7 @@
 .BrainSurface_root {
-  position: absolute;
-  inset: 0;
+  position: relative;
   display: flex;
+  height: 100%;
   overflow: hidden;
   background: rgb(23 23 23);
 }
