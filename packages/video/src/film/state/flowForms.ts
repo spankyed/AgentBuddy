@@ -1,5 +1,43 @@
 import type {FlowNodeFormState} from '../../agentbuddy-ui/flows/flowTypes';
 
+export const replaceObsoleteAppsFormState: FlowNodeFormState = {
+  canAddNextStep: true,
+  nodeKind: 'action',
+  nodeLabel: 'Prepare pull request',
+  sections: [
+    {
+      fields: [
+        {label: 'Mode', type: 'select', value: 'Code'},
+        {label: 'Description', type: 'textarea', value: 'Publish the launch branch and prepare the pull request body.'},
+      ],
+      title: 'Action',
+    },
+    {
+      fields: [
+        {
+          filePath: 'actions/prepare-launch-pr.ts',
+          height: 220,
+          label: 'Code',
+          language: 'typescript',
+          type: 'code',
+          value: `export async function run({ code, github, thread }) {
+  const branch = await code.publishBranch("as/react-launch-film");
+  const summary = await thread.summarize("launch-pr");
+
+  return github.preparePullRequest({
+    base: "master",
+    head: branch.name,
+    title: "React launch film",
+    body: summary,
+  });
+}`,
+        },
+      ],
+      title: 'Code',
+    },
+  ],
+};
+
 export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {
     canAddNextStep: true,

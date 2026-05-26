@@ -37,7 +37,8 @@ export type NotesShotView = {
 export const notesTaskListItems: NoteTreeNodeState[] = [
   {id: 'default', title: 'default setup', icon: '🚧', noteType: 'task'},
   {id: 'current', title: 'current', icon: '🔥', noteType: 'task'},
-  {id: 'remotion', title: 'remotion', noteType: 'task', children: []},
+  {id: 'launch-thread', title: '#threads: Launch PR flow', noteType: 'task'},
+  {id: 'resize-image', title: 'resize image in note', noteType: 'task', completed: true, muted: true},
   {id: 'phone', title: 'phone app', noteType: 'task'},
   {id: 'bugs', title: 'bugs', icon: '🪲', noteType: 'task'},
   {id: 'manager', title: 'manager mode', noteType: 'task'},
@@ -134,11 +135,11 @@ export const notesRightRailTrashActionsState: NotesRightRailState = {
 export const notesEditorCopy = {
   breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist', 'Current'],
   title: {icon: '🔥', text: 'current'},
-  beforeLines: ['provocative posts', '3 clips a week for clientlabs yt'],
+  beforeLines: ['recent notes', 'launch context stays connected'],
   animatedLines: [
-    {text: 'demo different features with cinematic product scenes', from: 34, to: 112, caretUntil: 116},
-    {text: 'conversation becomes tickets, notes, code, and workflows', from: 128, to: 198},
-    {text: 'same surface, same memory, no context handoff', from: 168, to: 238, caretFrom: 168, caretUntil: 242},
+    {text: 'add launch image, resize it, and keep the tasklist beside the note', from: 34, to: 112, caretUntil: 116},
+    {text: 'mark resize image complete, then create the next todo', from: 128, to: 198},
+    {text: 'new todo: link #threads: Launch PR flow back to the parent ticket', from: 168, to: 254, caretFrom: 168, caretUntil: 258},
   ],
 };
 

@@ -42,7 +42,7 @@ export function DatabaseBackupRestore({state}: {state: DatabaseBackupState}) {
                 <label className={styles.label} style={{marginTop: 16}}>Backup Name <span style={{color: 'rgb(82 82 82)'}}>(Optional)</span></label>
                 <div className={styles.inputWrap}>
                   <Icons.FileText className={styles.inputIcon} size={16} />
-                  <input className={styles.input} placeholder={`backup-${new Date().toISOString().split('T')[0]}`} readOnly value={state.backupName} />
+                  <input className={styles.input} placeholder={state.backupNamePlaceholder ?? 'backup'} readOnly value={state.backupName} />
                 </div>
               </section>
               <DatabaseSelection count={selectedCount} databases={state.selectedDatabases} />

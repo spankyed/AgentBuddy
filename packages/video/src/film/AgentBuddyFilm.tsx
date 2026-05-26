@@ -8,6 +8,7 @@ import {BoardShot} from './shots/BoardShot';
 import {CodeShot} from './shots/CodeShot';
 import {FinalShot} from './shots/FinalShot';
 import {NotesShot} from './shots/NotesShot';
+import {SystemShot} from './shots/SystemShot';
 import {WorkflowShot} from './shots/WorkflowShot';
 import {SurfaceFrame} from './SurfaceFrame';
 import './AgentBuddyFilm.module.css';
@@ -62,6 +63,7 @@ function ShotSurface({id, variant}: {id: ShotId; variant: Variant}) {
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;
   if (id === 'workflow') return <WorkflowShot frame={frame} variant={variant} />;
+  if (id === 'system') return <SystemShot frame={frame} variant={variant} />;
   return <FinalShot frame={frame} variant={variant} />;
 }
 

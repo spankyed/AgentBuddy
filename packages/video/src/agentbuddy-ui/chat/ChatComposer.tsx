@@ -1,6 +1,7 @@
 import {AttachmentStrip} from './AttachmentStrip';
 import {BottomThreadTabs} from './BottomThreadTabs';
 import {ComposerActionBar} from './ComposerActionBar';
+import {QuickPromptsPopup} from './QuickPromptsPopup';
 import type {ChatComposerState} from './chatTypes';
 import './ChatComposer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -27,6 +28,7 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
             phase={state.phase}
             sendDisabled={sendDisabled}
           />
+          {state.quickPromptsOpen ? <QuickPromptsPopup prompts={state.quickPrompts ?? []} /> : null}
           {state.statusLine ? <div className={styles.statusLine}>{state.statusLine}</div> : null}
         </div>
       </form>

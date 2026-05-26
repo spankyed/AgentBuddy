@@ -7,12 +7,13 @@ const styles = makeStyles('CodeDirectorySelect');
 type CodeDirectorySelectProps = {
   disabled?: boolean;
   homeDirectory?: string;
+  homeDisplayName?: string;
   open?: boolean;
   projects?: Array<{color: string; directories: string[]; name: string}>;
   value?: string | null;
 };
 
-export function CodeDirectorySelect({disabled = false, homeDirectory, open = false, projects = [], value}: CodeDirectorySelectProps) {
+export function CodeDirectorySelect({disabled = false, homeDirectory, homeDisplayName, open = false, projects = [], value}: CodeDirectorySelectProps) {
   const selectedLabel = value == null ? 'Use last opened directory' : getFolderName(value);
 
   return (
@@ -38,7 +39,7 @@ export function CodeDirectorySelect({disabled = false, homeDirectory, open = fal
                   <div className={styles.directoryMain}>
                     <span className={styles.projectDot} style={{backgroundColor: project.color || 'red'}} />
                     <span className={styles.folderName}>{getFolderName(directory)}</span>
-                    <span className={styles.fullPath}>{formatFullPath(directory, homeDirectory)}</span>
+                    <span className={styles.fullPath}>{formatFullPath(directory, homeDirectory, homeDisplayName)}</span>
                   </div>
                   <span className={styles.projectName}>
                     {project.name}{project.directories.length > 1 ? ` (${directoryIndex + 1})` : ''}
@@ -58,12 +59,12 @@ function getFolderName(path: string) {
   return segments.at(-1) || path;
 }
 
-function formatFullPath(path: string, homeDirectory?: string) {
+function formatFullPath(path: string, homeDirectory?: string, homeDisplayName = '~') {
   if (!path) return '';
 
   const normalizedHome = homeDirectory?.replace(/\/+$/, '');
   const displayPath = normalizedHome && (path === normalizedHome || path.startsWith(`${normalizedHome}/`))
-    ? `~${path.slice(normalizedHome.length)}`
+    ? `${homeDisplayName}${path.slice(normalizedHome.length)}`
     : path;
   if (displayPath.length <= 50) return displayPath;
 

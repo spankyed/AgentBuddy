@@ -44,12 +44,12 @@ export const boardShotState: {
   board: {
     columns: [
       {
-        cards: [{title: 'Ship capture-state renderer', tags: ['video']}],
+        cards: [{title: 'Draft launch distribution plan', tags: ['parent']}],
         title: 'Backlog',
         tone: 'neutral',
       },
       {
-        cards: [{title: 'Automate release checks', tags: ['launch']}],
+        cards: [{title: 'Write commit from quick prompt', tags: ['claude-code']}],
         title: 'In Progress',
         tone: 'blue',
       },
@@ -62,8 +62,8 @@ export const boardShotState: {
   },
   movingCard: {
     card: {
-      title: 'Publish launch film cutdown',
-      tags: ['launch'],
+      title: 'Create launch PR flow',
+      tags: ['claude-code'],
     },
     motion: {
       from: 70,

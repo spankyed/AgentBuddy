@@ -39,6 +39,10 @@ export type ChatShotView = {
       text: string;
     };
   };
+  conversationStyle: {
+    opacity: number;
+    transform: string;
+  };
   cursorPath: {
     end: number;
     from: [number, number];
@@ -104,10 +108,10 @@ export const messageBubbleDemoState = {
 export const chatShotState = {
   breadcrumbs: ['Threads', 'Launch Thread'],
   createdAt: '9:41 AM',
-  cursorPath: {from: [48, 30] as [number, number], to: [78, 36] as [number, number], start: 80, end: 190},
+  cursorPath: {from: [58, 74] as [number, number], to: [82, 84] as [number, number], start: 34, end: 96},
   systemMessage: 'Launch AgentBuddy',
-  prompt: {text: 'Turn this launch brief into tickets, notes, and a shippable PR plan.', from: 24, to: 88, caretUntil: 90},
-  response: {text: 'I found the launch context and turned it into an execution plan.', from: 186, to: 248},
+  prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
+  response: {text: 'Plan artifact created. I pinned the launch thread, linked the parent ticket, and prepared a quick prompt for `write a commit`.', from: 202, to: 286},
 };
 
 export const chatToolActivity: ToolActivityBlockState = {
@@ -131,12 +135,12 @@ export const launchPlanArtifact: PlanArtifactState = {
   title: 'Launch Operating Plan',
   content: {
     status: 'in-progress',
-    notes: '### Launch path\n- [x] Capture **launch context**\n- [x] Create execution tickets\n- [ ] Generate branch and PR plan\n- [ ] Automate `release checks`\n\n| Surface | State |\n| --- | --- |\n| PR flow | ready |\n| Flow blueprint | review |\n\n```sh\nnpm run video:verify\n```\n\n> Same surface, same memory.',
+    notes: '### Launch path\n- [x] Capture **launch context**\n- [x] Create execution tickets\n- [x] Pin launch thread\n- [ ] Write commit\n\n| Surface | State |\n| --- | --- |\n| Thread plan | active |\n| Parent ticket | linked |\n\n```sh\nwrite a commit\n```\n\n> Conversation becomes work.',
     steps: [
       {id: 'capture-context', title: 'Capture launch context', status: 'done'},
       {id: 'execution-tickets', title: 'Create execution tickets', status: 'done'},
-      {id: 'branch-plan', title: 'Generate branch and PR plan', status: 'running'},
-      {id: 'release-checks', title: 'Automate release checks', status: 'queued'},
+      {id: 'pin-thread', title: 'Pin launch thread', status: 'done'},
+      {id: 'commit-prompt', title: 'Send quick prompt: write a commit', status: 'running'},
     ],
   },
 };
@@ -371,6 +375,8 @@ export function chatViewForFrame(frame: number) {
     prompt: textReveal(chatShotState.prompt.text, frame, chatShotState.prompt.from, chatShotState.prompt.to),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
+    conversationOpacity: ease(frame, 42, 82),
+    conversationY: 28 - ease(frame, 42, 82) * 28,
     toolActivity: toolActivityViewForFrame(frame),
   };
 }
@@ -379,7 +385,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   return {
     breadcrumbs: chatShotState.breadcrumbs,
-    composer: launchComposerState,
+    composer: {
+      ...launchComposerState,
+      attachments: frame > 132 ? [{type: 'image', label: 'image 1'}] : undefined,
+      bottomTabs: frame > 42 ? launchComposerState.bottomTabs : undefined,
+      text: frame > 78 && frame < 166 ? view.prompt : frame > 292 ? 'write a commit' : undefined,
+    },
     conversation: {
       assistant: {
         artifact: launchPlanArtifact,
@@ -392,6 +403,10 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
         caretVisible: view.promptCaretVisible,
         text: view.prompt,
       },
+    },
+    conversationStyle: {
+      opacity: view.conversationOpacity,
+      transform: `translateY(${view.conversationY}px)`,
     },
     cursorPath: chatShotState.cursorPath,
   };

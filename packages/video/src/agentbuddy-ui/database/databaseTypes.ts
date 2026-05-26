@@ -28,6 +28,7 @@ export type DatabaseBackupState = {
     timestamp: number;
   };
   backupName: string;
+  backupNamePlaceholder?: string;
   exportPath: string;
   exportPathPlaceholder?: string;
   importPath?: string;

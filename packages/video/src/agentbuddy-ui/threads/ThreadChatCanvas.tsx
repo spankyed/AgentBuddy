@@ -5,7 +5,7 @@ import './ThreadChatCanvas.module.css';
 const styles = makeStyles('ThreadChatCanvas');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/chat.vue.
-export function ThreadChatCanvas({children}: {children: ReactNode}) {
+export function ThreadChatCanvas({children}: {children?: ReactNode}) {
   return (
     <div className={styles.root}>
       <div className={styles.messagesWrapper}>
@@ -16,4 +16,3 @@ export function ThreadChatCanvas({children}: {children: ReactNode}) {
     </div>
   );
 }
-

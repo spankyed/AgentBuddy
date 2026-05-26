@@ -26,20 +26,15 @@ export const releaseAutomationWorkflow: WorkflowShotState = {
       {kind: 'kill', label: 'Kill'},
     ],
     nodes: [
-      {id: 'entry', kind: 'entry', label: 'Flow Entry', subtitle: 'flow.entry', exits: ['exit 1', 'exit 2', 'exit 3', 'exit 4', 'exit 5'], x: 620, y: 185},
-      {id: 'listener', kind: 'flow', label: 'start command listener', x: 900, y: 98},
-      {id: 'claude', kind: 'flow', label: 'start claude code work mode', x: 900, y: 232},
-      {id: 'keep', kind: 'keep_alive', label: 'Keep Alive', x: 920, y: 355},
-      {id: 'codex', kind: 'flow', label: 'Start codex', x: 920, y: 482},
-      {id: 'onboarding', kind: 'listener', label: 'Start Onboarding', subtitle: 'tour.complete', exits: ['exit 1', 'exit 2'], x: 615, y: 545},
-      {id: 'run', kind: 'flow', label: 'run onboarding', x: 900, y: 640},
+      {id: 'listener', kind: 'listener', label: 'Command listener', subtitle: 'release.command', exits: ['exit 1'], x: 390, y: 235},
+      {id: 'switch', kind: 'switch', label: 'route launch command', branches: [{label: 'create_pr'}, {isElse: true, label: 'Else'}], x: 650, y: 235},
+      {id: 'delete', kind: 'action', label: 'Prepare pull request', x: 930, y: 190},
+      {id: 'log', kind: 'action', label: 'Notify release thread', x: 930, y: 320},
     ],
     edges: [
-      {from: 'entry', fromExit: 0, kind: 'transitions_to', to: 'listener'},
-      {from: 'entry', fromExit: 1, kind: 'transitions_to', to: 'claude'},
-      {from: 'entry', fromExit: 2, kind: 'transitions_to', to: 'keep'},
-      {from: 'entry', fromExit: 3, kind: 'transitions_to', to: 'codex'},
-      {from: 'onboarding', fromExit: 0, kind: 'transitions_to', to: 'run'},
+      {from: 'listener', fromExit: 0, kind: 'transitions_to', to: 'switch'},
+      {from: 'switch', fromExit: 0, kind: 'transitions_to', to: 'delete'},
+      {from: 'delete', kind: 'transitions_to', to: 'log'},
     ],
   },
 };
@@ -69,8 +64,11 @@ export const flowsListMenuState: FlowsListState = {
 };
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {
-  void frame;
-  return releaseAutomationWorkflow.flow;
+  const flow = releaseAutomationWorkflow.flow;
+  return {
+    ...flow,
+    editingNodeId: frame > 218 ? 'delete' : undefined,
+  };
 }
 
 export function workflowShotViewForFrame(frame: number): WorkflowShotView {

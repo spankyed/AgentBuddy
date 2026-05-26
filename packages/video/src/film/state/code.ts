@@ -23,7 +23,7 @@ export type CodeShotView = {
 export const codeShotState: CodeShotState = {
   breadcrumbs: ['Code'],
   chromeDemoBreadcrumbs: ['Code'],
-  generatedCommitMessage: 'feat(video): align launch film surfaces with app UI',
+  generatedCommitMessage: 'feat(video): align launch film surfaces',
   review: {
     baseDirectory: filmProjects.agentBuddy,
     branch: 'as/react-launch-film',
@@ -33,14 +33,15 @@ export const codeShotState: CodeShotState = {
       hasUpstream: true,
     },
     diff: {
-      fileName: 'AgentBuddyFilm.tsx',
+      fileName: 'prepare-launch-pr.ts',
       lineStart: 24,
       lines: [
-        {kind: 'context', text: 'export async function prepareLaunchPlan(context) {'},
-        {kind: 'add', text: '  const notes = await memory.collectLinkedNotes(context);'},
-        {kind: 'add', text: '  const tickets = await threads.createExecutionTickets(notes);'},
-        {kind: 'remove', text: '  await handoff.writeChecklist(tickets);'},
-        {kind: 'add', text: '  await workflows.scheduleReleaseChecks(tickets);'},
+        {kind: 'context', text: 'export async function run(context) {'},
+        {kind: 'add', text: '  const branch = await code.publishBranch(context.branch);'},
+        {kind: 'add', text: '  const body = await thread.summarize("launch-pr");'},
+        {kind: 'remove', text: '  return github.draftPullRequest(context);'},
+        {kind: 'add', text: '  return github.preparePullRequest({ branch, body });'},
+        {kind: 'add', text: '  await logs.info("launch PR prepared");'},
         {kind: 'context', text: '}'},
       ],
     },
@@ -64,12 +65,9 @@ export const codeShotState: CodeShotState = {
     pullRequest: {
       baseBranch: 'master',
       body: [
-        'feat(video): rebuild demo system as Vue film stage',
-        'feat(video): rebuild demo as Remotion component film',
-        'Rebuilt the flows shot around actual flow components: palette, node variants, Flow Entry, handles, dashed elbow edges, Back button.',
-        'refactor(video): split launch film into source-mirrored UI components',
-        'Realistic tasklist panel',
-        'Polish AgentBuddy video UI surfaces',
+        'Align launch film surfaces with the real app UI',
+        'Add the publish branch and create PR views',
+        'Keep flow blueprints status-free and source-backed',
       ].join('\n'),
       branchPublished: false,
       changedFiles: [
@@ -105,7 +103,7 @@ export const codeShotState: CodeShotState = {
         mergeable: 'MERGEABLE',
         number: 128,
         reviewDecision: 'APPROVED',
-        state: 'OPEN',
+          state: 'OPEN',
         statusCheckRollup: [
           {conclusion: 'SUCCESS', name: 'Preview build', status: 'COMPLETED'},
           {conclusion: 'SUCCESS', name: 'Release checks', status: 'COMPLETED'},
@@ -179,7 +177,7 @@ export const codeShotState: CodeShotState = {
       ],
       headBranch: 'as/react-launch-film',
       openPullRequests: [
-        {number: 128, state: 'OPEN', title: 'Align launch film with app UI'},
+        {number: 128, state: 'OPEN', title: 'React launch film'},
         {number: 124, state: 'OPEN', title: 'Improve launch film code surface'},
         {isDraft: true, number: 119, state: 'DRAFT', title: 'Flow blueprint polish'},
       ],
@@ -206,7 +204,7 @@ export const codeShotState: CodeShotState = {
         },
       ],
       selectedCommentTab: 'discussion',
-      title: 'Align launch film with app UI',
+      title: 'React launch film',
     },
     terminal: {
       activeTerminalId: 'terminal-launch',
@@ -222,14 +220,13 @@ export const expandedTerminalPanelState: TerminalPanelState = {
   ...codeShotState.review.terminal,
   expanded: true,
   output: [
-    '$ npm run video:verify',
+    '$ npm run dev',
     '',
-    '> abuddy@0.3.4 video:verify',
-    '> npm run verify --workspace @app/video',
+    '> agentbuddy-launch-film@0.1.0 dev',
+    '> vite --host 127.0.0.1',
     '',
-    'Fidelity audit passed: 37 referenced demos registered',
-    'Film action audit passed: 19 frame-driven shot checks',
-    'tsc --noEmit',
+    'Local: http://127.0.0.1:5173',
+    'launch film preview ready',
   ].join('\n'),
 };
 
@@ -239,20 +236,26 @@ export const sourceControlPanelReviewState: CodeReviewState = {
 };
 
 export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
-  const prPublishProgress = ease(frame, 158, 188);
-  const prCreated = frame > 224;
+  const prPublishProgress = ease(frame, 238, 278);
+  const prCreated = frame > 318;
+  const prMerged = frame > 374;
   return {
-    activePanel: frame > 158 ? 'pr' : 'commit',
-    commitMessage: frame > 116 ? codeShotState.generatedCommitMessage : '',
+    activePanel: frame > 238 ? 'pr' : 'commit',
+    commitMessage: frame < 92 ? 'incomplete work' : frame > 132 ? codeShotState.generatedCommitMessage : '',
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
     ),
-    generatingCommitMessage: frame > 76 && frame <= 116,
-    prMode: frame <= 176 ? 'files' : frame <= 224 ? 'create' : 'details',
+    generatingCommitMessage: frame > 96 && frame <= 132,
+    prMode: frame <= 286 ? 'files' : frame <= 318 ? 'create' : 'details',
     pullRequest: {
       ...codeShotState.review.pullRequest,
       branchPublished: prPublishProgress >= 1,
-      createdPr: prCreated ? codeShotState.review.pullRequest.createdPr : undefined,
+      createdPr: prCreated
+        ? {
+            ...codeShotState.review.pullRequest.createdPr!,
+            state: prMerged ? 'MERGED' : codeShotState.review.pullRequest.createdPr!.state,
+          }
+        : undefined,
     },
     prPublishProgress,
   };
@@ -263,7 +266,10 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
     breadcrumbs: codeShotState.breadcrumbs,
     composer: launchComposerState,
     review: {
-      state: codeShotState.review,
+      state: {
+        ...codeShotState.review,
+        terminal: frame > 190 && frame < 238 ? expandedTerminalPanelState : codeShotState.review.terminal,
+      },
       view: codeReviewViewForFrame(frame),
     },
   };

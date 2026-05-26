@@ -10,14 +10,16 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const layout = useAppWindowLayout({variant});
   return (
     <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
-      <ThreadConversation
-        assistant={view.conversation.assistant}
-        createdAt={view.conversation.createdAt}
-        systemMessage={view.conversation.systemMessage}
-        userMessage={<>{view.conversation.userMessage.text}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
-      >
-        <Cursor frame={frame} {...view.cursorPath} />
-      </ThreadConversation>
+      <div style={{height: '100%', ...view.conversationStyle}}>
+        <ThreadConversation
+          assistant={view.conversation.assistant}
+          createdAt={view.conversation.createdAt}
+          systemMessage={view.conversation.systemMessage}
+          userMessage={<>{view.conversation.userMessage.text}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
+        >
+          <Cursor frame={frame} {...view.cursorPath} />
+        </ThreadConversation>
+      </div>
     </AppWindow>
   );
 }

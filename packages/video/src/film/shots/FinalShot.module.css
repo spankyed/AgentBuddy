@@ -30,6 +30,13 @@
   max-width: 900px;
 }
 
+.FinalShot_meta {
+  color: rgb(163 163 163);
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 32px 0 0;
+}
+
 .FinalShot_square .FinalShot_lockup {
   padding: 0 56px;
 }
@@ -41,4 +48,8 @@
 .FinalShot_square .FinalShot_sub {
   font-size: 28px;
   max-width: 660px;
+}
+
+.FinalShot_square .FinalShot_meta {
+  font-size: 20px;
 }

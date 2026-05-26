@@ -178,6 +178,7 @@ export const databaseBackupExportState: DatabaseSurfaceState = {
   backup: {
     activeTab: 'export',
     backupName: 'agentbuddy-launch-film',
+    backupNamePlaceholder: 'backup-2026-05-25',
     exportPath: filmDatabaseBackupDirectory,
     exportPathPlaceholder: '~/Documents/AgentBuddy Backups',
     selectedDatabases: [

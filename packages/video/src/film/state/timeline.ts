@@ -1,4 +1,4 @@
-export type ShotId = 'notes' | 'chat' | 'board' | 'code' | 'workflow' | 'final';
+export type ShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'system' | 'final';
 
 export type FilmShot = {
   captionAlign?: 'left' | 'right';
@@ -15,12 +15,13 @@ export type FilmCaptionView = {
 };
 
 export const shots: FilmShot[] = [
-  {id: 'notes', title: 'Memory stays connected.', duration: 270},
-  {id: 'chat', title: 'Conversation becomes work.', duration: 330},
-  {id: 'board', title: 'Threads become execution.', duration: 240},
-  {id: 'code', title: 'Ship from the same surface.', captionAlign: 'right', duration: 270},
-  {id: 'workflow', title: 'Automate the system around you.', captionAlign: 'right', duration: 330},
-  {id: 'final', duration: 300},
+  {id: 'chat', title: 'More than just a chat.', duration: 360},
+  {id: 'board', title: 'Threads become execution.', duration: 210},
+  {id: 'notes', title: 'More than just a note taker.', duration: 330},
+  {id: 'code', title: 'More than just an IDE.', captionAlign: 'right', duration: 420},
+  {id: 'workflow', title: 'More than just a workflow engine.', captionAlign: 'right', duration: 360},
+  {id: 'system', title: 'The full power of AI, connected.', captionAlign: 'right', duration: 360},
+  {id: 'final', duration: 180},
 ];
 
 export const totalFrames = shots.reduce((sum, shot) => sum + shot.duration, 0);

@@ -95,7 +95,7 @@ function SelectedPluginSettings({selected, state}: {selected: PluginSettingsItem
     case 'brain':
       return <BrainPluginSettings settings={state.selectedPluginSettings?.brain} />;
     case 'code':
-      return <CodePluginSettings homeDirectory={state.homeDirectory} settings={state.selectedPluginSettings?.code} projects={state.projects} />;
+      return <CodePluginSettings homeDirectory={state.homeDirectory} homeDisplayName={state.homeDisplayName} settings={state.selectedPluginSettings?.code} projects={state.projects} />;
     case 'database':
       return <DatabasePluginSettings settings={state.selectedPluginSettings?.database} />;
     case 'flows':

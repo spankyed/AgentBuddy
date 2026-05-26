@@ -1,5 +1,5 @@
 import type {SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTypes';
-import {filmExportDirectories, filmHomeDirectory, filmProjects, filmSetupPackDirectories} from './paths';
+import {filmExportDirectories, filmHomeDirectory, filmPathState, filmProjects, filmSetupPackDirectories} from './paths';
 
 const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> = {
   applicationHotkeys: {
@@ -17,6 +17,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {answer: 'Setup packs import compiled actions, prompts, flows, library docs, and notes.', id: 'faq-setup', question: 'What is a setup pack?'},
   ],
   homeDirectory: filmHomeDirectory,
+  homeDisplayName: filmPathState.homeDisplayName,
   plugins: [
     {id: 'threads', label: 'Threads', visible: true},
     {id: 'notes', label: 'Notes', visible: true},

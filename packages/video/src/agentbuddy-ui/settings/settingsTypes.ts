@@ -108,6 +108,7 @@ export type SettingsSurfaceState = {
   faqs: Array<{answer: string; expanded?: boolean; id: string; question: string}>;
   generalNavItem: GeneralSettingsNavId;
   homeDirectory?: string;
+  homeDisplayName?: string;
   plugins: PluginSettingsItem[];
   customProviders?: CustomProviderKeyState[];
   providers: ProviderKeyState[];
