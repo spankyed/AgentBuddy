@@ -45,6 +45,13 @@
   padding: 0;
 }
 
+.LibraryBrowser_backButton:not([data-disabled='true']):hover,
+.LibraryBrowser_homeButton:hover,
+.LibraryBrowser_crumbButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(212 212 212);
+}
+
 .LibraryBrowser_backButton[data-disabled='true'] {
   color: rgb(64 64 64);
 }
@@ -144,6 +151,12 @@
   border-left: 1px solid rgb(82 82 82);
   color: rgb(163 163 163);
   padding: 0 4px;
+}
+
+.LibraryBrowser_splitMain:hover,
+.LibraryBrowser_splitChevron:hover {
+  background: rgb(82 82 82);
+  color: rgb(245 245 245);
 }
 
 .LibraryBrowser_tableScroller {

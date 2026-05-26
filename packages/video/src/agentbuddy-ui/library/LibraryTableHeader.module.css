@@ -7,6 +7,10 @@
   font-weight: 500;
 }
 
+.LibraryTableHeader_root:hover {
+  color: rgb(212 212 212);
+}
+
 .LibraryTableHeader_root:first-child {
   padding-left: 24px;
 }

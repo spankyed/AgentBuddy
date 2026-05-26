@@ -29,6 +29,7 @@
   border: 0;
   background: transparent;
   color: rgb(163 163 163);
+  transition: color 150ms ease;
 }
 
 .LibraryContentSectionEditor_expandButton {
@@ -36,8 +37,17 @@
   transform: rotate(90deg);
 }
 
+.LibraryContentSectionEditor_expandButton:hover {
+  color: rgb(229 229 229);
+}
+
 .LibraryContentSectionEditor_removeButton {
   padding: 6px;
+}
+
+.LibraryContentSectionEditor_removeButton:hover,
+.LibraryContentSectionEditor_inlineIconButton:hover {
+  color: rgb(248 113 113);
 }
 
 .LibraryContentSectionEditor_inlineIconButton {
@@ -54,6 +64,16 @@
   letter-spacing: 0.05em;
   padding: 6px 12px;
   text-transform: uppercase;
+}
+
+.LibraryContentSectionEditor_typeSelect:focus {
+  border-color: rgb(59 130 246);
+  outline: none;
+}
+
+.LibraryContentSectionEditor_typeSelect:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .LibraryContentSectionEditor_body {
@@ -112,6 +132,12 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 12px;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.LibraryContentSectionEditor_secondaryButton:hover {
+  border-color: rgb(82 82 82);
+  color: rgb(245 245 245);
 }
 
 .LibraryContentSectionEditor_markdownEditor {

@@ -63,6 +63,7 @@
   right: 8px;
   top: 50%;
   border-radius: 4px;
+  color: rgb(115 115 115);
   padding: 4px;
   transform: translateY(-50%);
 }
@@ -187,6 +188,10 @@
 .DatabaseSchemaPanel_itemIcon {
   margin-right: 10px;
   color: rgb(115 115 115);
+}
+
+.DatabaseSchemaPanel_child:hover .DatabaseSchemaPanel_itemIcon {
+  color: rgb(163 163 163);
 }
 
 .DatabaseSchemaPanel_selectedItemIcon {

@@ -40,6 +40,11 @@
   transition: background-color 200ms ease, color 200ms ease;
 }
 
+.LibraryNameSaveHeader_backButton:hover {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
 .LibraryNameSaveHeader_center {
   display: flex;
   min-width: 0;
