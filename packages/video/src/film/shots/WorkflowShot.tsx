@@ -19,7 +19,7 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
   const {height, width} = useVideoConfig();
   const appReveal = ease(frame, 36, 92);
   const nodeDock = ease(frame, 40, 104);
-  const nodeExit = ease(frame, 104, 124);
+  const nodeExit = ease(frame, 92, 108);
   const formReveal = ease(frame, 236, 266);
   const listener = view.flow.nodes[0];
   const nodeRect = workflowNodePlacement({dock: nodeDock, height, layout, listener, width});
@@ -34,8 +34,8 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
         }}
       >
         <AppWindow activePlugin="flows" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
-          <div style={{height: '100%', opacity: ease(frame, 72, 112)}}>
-            <FlowCanvas state={view.flow} />
+          <div style={{height: '100%', opacity: ease(frame, 48, 88)}}>
+            <FlowCanvas hiddenNodeIds={frame < 106 ? new Set([listener.id]) : undefined} state={view.flow} />
           </div>
           {frame > 236 ? (
             <FlowNodeForm
@@ -49,7 +49,7 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
           ) : null}
         </AppWindow>
       </div>
-      {frame < 126 ? (
+      {frame < 110 ? (
         <div
           className={styles.nodeMotion}
           style={{

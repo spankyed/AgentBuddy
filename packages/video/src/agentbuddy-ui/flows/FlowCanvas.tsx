@@ -9,7 +9,7 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('FlowCanvas');
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/flow-canvas.vue and components/FlowEditor.vue.
-export function FlowCanvas({state}: {state: FlowCanvasState}) {
+export function FlowCanvas({hiddenNodeIds, state}: {hiddenNodeIds?: ReadonlySet<string>; state: FlowCanvasState}) {
   const viewport = state.viewport ?? {x: 0, y: 0, zoom: 1};
   const canvas = state.canvas ?? {width: 1120, height: 720};
   const connectedExitsByNode = new Map<string, Set<number>>();
@@ -55,6 +55,7 @@ export function FlowCanvas({state}: {state: FlowCanvasState}) {
               editing={state.editingNodeId === node.id}
               node={node}
               selected={state.selectedNodeId === node.id}
+              style={hiddenNodeIds?.has(node.id) ? {opacity: 0} : undefined}
             />
           ))}
         </div>

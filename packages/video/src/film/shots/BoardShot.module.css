@@ -1,23 +1,13 @@
-.BoardShot_isolatedHeader {
+.BoardShot_root {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  background: #050505;
 }
 
-.BoardShot_headerCard {
-  width: min(980px, calc(100% - 180px));
-  overflow: hidden;
-  border: 1px solid rgb(38 38 38);
-  border-radius: 10px;
-  background: rgb(23 23 23);
-  box-shadow: 0 40px 120px rgb(0 0 0 / 42%);
-  will-change: opacity, transform;
-}
-
-.BoardShot_square .BoardShot_headerCard {
-  width: min(700px, calc(100% - 96px));
+.BoardShot_headerMotion {
+  position: absolute;
+  z-index: 4;
+  overflow: visible;
+  will-change: left, opacity, top, transform, width;
 }
 
 .BoardShot_appReveal {
@@ -32,4 +22,13 @@
   inset: 0;
   transform-origin: 50% 48%;
   will-change: opacity, transform;
+}
+
+.BoardShot_headerCard {
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid rgb(38 38 38);
+  border-radius: 8px;
+  background: rgb(23 23 23);
+  box-shadow: 0 40px 120px rgb(0 0 0 / 42%);
 }

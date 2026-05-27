@@ -2,6 +2,7 @@ import {Icons} from '../primitives/Icon';
 import {cx} from '../primitives/classNames';
 import {FlowAddHandle} from './FlowAddHandle';
 import type {FlowNodeState} from './flowTypes';
+import type {CSSProperties} from 'react';
 import {flowNodeExitCount, flowNodeWidth, isSwitchNode, isTriggerNode} from './flowGeometry';
 import './FlowNode.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -29,15 +30,17 @@ export function FlowNode({
   editing,
   node,
   selected,
+  style: styleOverride,
 }: {
   connectedExits?: Set<number>;
   editable?: boolean;
   editing?: boolean;
   node: FlowNodeState;
   selected?: boolean;
+  style?: CSSProperties;
 }) {
   const Icon = iconByKind[node.kind];
-  const style = {left: `${node.x}px`, top: `${node.y}px`, width: `${flowNodeWidth(node)}px`};
+  const style = {left: `${node.x}px`, top: `${node.y}px`, width: `${flowNodeWidth(node)}px`, ...styleOverride};
   const nodeClassName = cx(styles.node, editing && styles.editing, !editing && selected && styles.selected);
   if (isSwitchNode(node)) {
     const branches: NonNullable<FlowNodeState['branches']> = node.branches ?? node.exits?.map(label => ({label})) ?? [];
