@@ -101,7 +101,7 @@ export const boardShotState: {
     },
     motion: {
       from: 162,
-      to: 236,
+      to: 210,
       fromLeft: 8,
       toLeft: 40,
       fromTop: 34,

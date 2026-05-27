@@ -20,8 +20,10 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
   const dashboardExit = ease(frame, 84, 110);
   const appDashboardReveal = ease(frame, 58, 84);
   const createExit = 1 - ease(frame, 152, 166);
+  const createBoardExit = 1 - ease(frame, 146, 158);
   const boardReveal = ease(frame, 150, 178);
   const createReveal = ease(frame, 92, 118);
+  const dashboardCreateExit = view.createForm ? 1 - ease(frame, 88, 106) : 1;
   const dashboardRect = dashboardPlacement({dock: dashboardDock, height, layout, variant, width});
 
   return (
@@ -38,7 +40,7 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
             <div
               className={styles.surfaceReveal}
               style={{
-                opacity: appDashboardReveal,
+                opacity: Math.min(appDashboardReveal, dashboardCreateExit),
                 transform: `translateY(${mix(18, 0, appDashboardReveal)}px) scale(${mix(0.992, 1, appDashboardReveal)})`,
               }}
             >
@@ -64,7 +66,7 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
             <div
               className={styles.surfaceReveal}
               style={{
-                opacity: Math.min(createReveal, createExit),
+                opacity: Math.min(createReveal, createExit, createBoardExit),
                 transform: `translateY(${mix(20, -18, 1 - createExit)}px) scale(${mix(0.992, 1, createReveal)})`,
               }}
             >
@@ -79,7 +81,7 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
           style={{
             height: dashboardRect.height,
             left: dashboardRect.left,
-            opacity: Math.min(ease(frame, 0, 18), 1 - dashboardExit),
+            opacity: Math.min(ease(frame, 0, 18), 1 - dashboardExit, dashboardCreateExit),
             top: dashboardRect.top,
             transform: `translate(-50%, -50%) scale(${mix(1.02, 1, dashboardDock)})`,
             width: dashboardRect.width,
