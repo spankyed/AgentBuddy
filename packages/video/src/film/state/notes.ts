@@ -195,7 +195,7 @@ export const notesEditorCopy = {
   title: {icon: '🔥', text: 'current'},
   beforeLines: ['recent notes', 'launch context stays connected'],
   animatedLines: [
-    {text: 'add launch image, resize it, and keep the tasklist beside the note', from: 132, to: 188, caretUntil: 192},
+    {text: 'add launch image, resize it, and keep tasks nearby', from: 132, to: 176, caretUntil: 180},
     {text: 'mark resize image complete, then create the next todo', from: 220, to: 276},
     {text: 'new todo: link #threads: Create launch PR flow back to the parent ticket', from: 248, to: 320, caretFrom: 248, caretUntil: 324},
   ],
