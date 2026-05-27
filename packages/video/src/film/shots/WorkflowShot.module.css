@@ -1,16 +1,23 @@
-.WorkflowShot_nodeStage {
-  display: grid;
-  place-items: center;
-  background-color: rgb(23 23 23);
-  background-image: radial-gradient(rgb(255 255 255 / 8%) 1px, transparent 1px);
-  background-size: 24px 24px;
+.WorkflowShot_root {
+  position: absolute;
+  inset: 0;
+}
+
+.WorkflowShot_nodeMotion {
+  position: absolute;
+  z-index: 4;
+  overflow: visible;
+  transform-origin: 50% 50%;
+  will-change: height, left, opacity, top, transform, width;
 }
 
 .WorkflowShot_nodeSlot {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 1px;
   height: 1px;
-  transform: scale(1.2);
+  transform: translate(-50%, -50%);
 }
 
 .WorkflowShot_appReveal {

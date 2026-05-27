@@ -1,8 +1,25 @@
+.NotesShot_root {
+  position: absolute;
+  inset: 0;
+}
+
 .NotesShot_appReveal {
   position: absolute;
   inset: 0;
   transform-origin: 50% 48%;
   will-change: opacity, transform;
+}
+
+.NotesShot_homeMotion {
+  position: absolute;
+  overflow: hidden;
+  border: 1px solid rgb(38 38 38);
+  border-radius: 10px;
+  background: rgb(23 23 23);
+  box-shadow: 0 44px 130px rgb(0 0 0 / 48%);
+  color: rgb(245 245 245);
+  transform-origin: 50% 50%;
+  will-change: height, left, opacity, top, transform, width;
 }
 
 .NotesShot_homeFade {
