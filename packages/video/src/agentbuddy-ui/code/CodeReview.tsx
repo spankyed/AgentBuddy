@@ -1,4 +1,5 @@
 import {cx} from '../primitives/classNames';
+import type {CSSProperties} from 'react';
 import type {CodeReviewState, CodeReviewViewState} from './codeTypes';
 import {AppPreviewSurface} from './AppPreviewSurface';
 import {CodeDiffView} from './CodeDiffView';
@@ -11,24 +12,28 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('CodeReview');
 
 type CodeReviewProps = {
+  leftSurfaceStyle?: CSSProperties;
+  panelStyle?: CSSProperties;
   state: CodeReviewState;
   variant?: 'landscape' | 'square';
   view: CodeReviewViewState;
 };
 
-export function CodeReview({state, variant, view}: CodeReviewProps) {
+export function CodeReview({leftSurfaceStyle, panelStyle, state, variant, view}: CodeReviewProps) {
+  const leftSurface = view.leftSurface === 'blank' ? (
+    <div className={styles.blankSurface} />
+  ) : view.leftSurface === 'terminal' ? (
+    <CodeTerminalSurface state={state.terminal} />
+  ) : view.leftSurface === 'app-preview' ? (
+    <AppPreviewSurface />
+  ) : (
+    <CodeDiffView fileName={state.diff.fileName} lineOpacities={view.diffLineOpacities} lineStart={state.diff.lineStart} lines={state.diff.lines} />
+  );
+
   return (
     <div className={cx(styles.root, variant === 'square' && styles.compact)}>
-      {view.leftSurface === 'blank' ? (
-        <div className={styles.blankSurface} />
-      ) : view.leftSurface === 'terminal' ? (
-        <CodeTerminalSurface state={state.terminal} />
-      ) : view.leftSurface === 'app-preview' ? (
-        <AppPreviewSurface />
-      ) : (
-        <CodeDiffView fileName={state.diff.fileName} lineOpacities={view.diffLineOpacities} lineStart={state.diff.lineStart} lines={state.diff.lines} />
-      )}
-      <aside className={styles.panel}>
+      <div className={styles.leftSurface} style={leftSurfaceStyle}>{leftSurface}</div>
+      <aside className={styles.panel} style={panelStyle}>
         <CodeFeaturePanel terminal={state.terminal}>
           {view.activePanel === 'pr' ? (
             <PullRequestPanel

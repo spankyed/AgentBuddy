@@ -18,6 +18,8 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
   const appReveal = ease(frame, 34, 86);
   const panelDock = ease(frame, 36, 92);
   const panelExit = ease(frame, 88, 108);
+  const leftSurfaceReveal = ease(frame, 62, 104);
+  const fullPanelReveal = ease(frame, 108, 126);
   const panelRect = codePanelPlacement({dock: panelDock, height, layout, variant, width});
 
   return (
@@ -30,8 +32,19 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
         }}
       >
         <AppWindow activePlugin="code" breadcrumbs={view.breadcrumbs} composer={frame > 112 ? view.composer : false} layout={layout}>
-          <div style={{height: '100%', opacity: ease(frame, 96, 124)}}>
-            <CodeReview state={view.review.state} variant={variant} view={view.review.view} />
+          <div style={{height: '100%', opacity: appReveal}}>
+            <CodeReview
+              leftSurfaceStyle={{
+                opacity: leftSurfaceReveal,
+                transform: `translateX(${mix(-28, 0, leftSurfaceReveal)}px)`,
+              }}
+              panelStyle={{
+                opacity: fullPanelReveal,
+              }}
+              state={view.review.state}
+              variant={variant}
+              view={view.review.view}
+            />
           </div>
         </AppWindow>
       </div>

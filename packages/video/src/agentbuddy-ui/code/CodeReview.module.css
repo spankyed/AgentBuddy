@@ -5,6 +5,13 @@
   background: rgb(23 23 23);
 }
 
+.CodeReview_leftSurface {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
 .CodeReview_panel {
   display: flex;
   width: 430px;
