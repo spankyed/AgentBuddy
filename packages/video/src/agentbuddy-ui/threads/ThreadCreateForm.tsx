@@ -11,6 +11,12 @@ export type ThreadCreateFormState = {
   linkedThreadsOpen?: boolean;
   linkInputVisible?: boolean;
   linkedThreadQuery?: string;
+  linkedThreadCandidate?: {
+    relation: string;
+    status: string;
+    tags: string[];
+    title: string;
+  };
   parentThread?: {
     relation: string;
     status: string;
@@ -24,7 +30,7 @@ export type ThreadCreateFormState = {
 
 // Mirrors packages/renderer/src/plugins/threads/canvas/ThreadDetail.vue in create mode.
 export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
-  const valid = state.title.trim().length > 0;
+  const valid = state.title.trim().length > 0 && Boolean(state.parentThread);
 
   return (
     <div className={styles.root}>
@@ -142,6 +148,22 @@ function LinkedThreads({state}: {state: ThreadCreateFormState}) {
                   <button className={styles.cancelButton} type="button">Cancel</button>
                 </div>
               </td>
+            </tr>
+          ) : null}
+          {state.linkInputVisible && state.linkedThreadCandidate ? (
+            <tr className={styles.candidateRow}>
+              <td />
+              <td><span className={styles.relation}>{state.linkedThreadCandidate.relation}</span></td>
+              <td>
+                <div className={styles.threadTitleCell}>
+                  <span className={styles.statusDot} />
+                  <span className={styles.threadTitle}>{state.linkedThreadCandidate.title}</span>
+                </div>
+              </td>
+              <td>
+                <div className={styles.tags}>{state.linkedThreadCandidate.tags.map(tag => <span className={styles.tag} key={tag}>{tag}</span>)}</div>
+              </td>
+              <td><span className={styles.status}>{state.linkedThreadCandidate.status}</span></td>
             </tr>
           ) : null}
         </tbody>

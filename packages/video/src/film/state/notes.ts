@@ -71,9 +71,13 @@ export type NotesShotView = {
   home: {
     favorites: NotesHomeCardState[];
     greeting: string;
+    newNotePressed?: boolean;
     recent: NotesHomeCardState[];
     searchQuery?: string;
     searchResults?: NotesHomeCardState[];
+    showFavorites?: boolean;
+    showRecent?: boolean;
+    showSearch?: boolean;
   };
   rightRail: NotesRightRailState;
   taskList: NotesTaskListPanelState;
@@ -201,6 +205,43 @@ export const notesEditorCopy = {
   ],
 };
 
+const newNoteCopy = {
+  breadcrumbs: ['Notes', 'AgentBuddy', 'Launch Notes'],
+  title: {icon: '📝', text: 'Launch notes'},
+  lines: [
+    'recent notes',
+    'launch context stays connected',
+    'add launch image, resize it, and keep tasks nearby',
+  ],
+};
+
+const tasklistOverviewCopy = {
+  breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist'],
+  title: {icon: '📝', text: 'Tasklist'},
+  beforeLines: [
+    'default setup',
+    'current',
+    'resize image in note',
+    'Create launch PR flow',
+  ],
+  afterLines: [
+    'Launch work stays beside the note instead of becoming another app.',
+  ],
+};
+
+const todoNoteCopy = {
+  breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist', 'resize image in note'],
+  title: {icon: '', text: 'resize image in note'},
+  beforeLines: [
+    'Open the launch image block',
+    'Resize it to fit the note',
+    'Keep the linked launch context visible',
+  ],
+  afterLines: [
+    'Completed from the tasklist panel.',
+  ],
+};
+
 export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
   const checkboxPressed = frame > 230 && frame <= 244;
   const markedComplete = frame > 244;
@@ -296,5 +337,136 @@ export function notesShotViewForFrame(frame: number): NotesShotView {
       ),
     },
     taskList: notesTaskListForFrame(frame),
+  };
+}
+
+export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
+  const greeting = textReveal(notesHomeState.greeting, frame, 8, 44);
+  const showSearch = frame >= 44;
+  const showRecent = frame >= 62;
+  const newNotePressed = frame >= 108 && frame < 124;
+
+  return {
+    ...notesHomeState,
+    favorites: [],
+    greeting,
+    newNotePressed,
+    recent: showRecent ? notesHomeState.recent.map(note => ({...note, active: false, pressed: false})) : [],
+    showFavorites: false,
+    showRecent,
+    showSearch,
+  };
+}
+
+export function notesEditorViewForFrame(frame: number): NotesShotView {
+  const tasklistPressed = frame >= 68 && frame < 88;
+  const tasklistActive = frame >= 88;
+  const todoPressed = frame >= 130 && frame < 148;
+  const todoActive = frame >= 148;
+  const todoCompletePressed = frame >= 168 && frame < 180;
+  const todoComplete = frame >= 180;
+
+  const taskList = notesTaskListForEditorFrame(frame);
+  const rightRail: NotesRightRailState = {
+    ...notesRightRailState,
+    activeId: tasklistActive ? 'tasklist' : undefined,
+    items: notesRightRailState.items.map(item => item.id === 'tasklist'
+      ? {...item, pressed: tasklistPressed}
+      : item
+    ),
+  };
+
+  if (!tasklistActive) {
+    return {
+      breadcrumbs: newNoteCopy.breadcrumbs,
+      composer: launchComposerState,
+      editor: {
+        afterLines: [],
+        beforeLines: newNoteCopy.lines.map((text, index) => ({
+          caretVisible: index === newNoteCopy.lines.length - 1 && frame < 68,
+          id: `new-note-${index}`,
+          text: textReveal(text, frame, 8 + index * 18, 34 + index * 18),
+        })),
+        title: {
+          icon: newNoteCopy.title.icon,
+          text: textReveal(newNoteCopy.title.text, frame, 0, 22),
+        },
+      },
+      home: notesHomeState,
+      rightRail,
+      taskList,
+    };
+  }
+
+  if (!todoActive) {
+    return {
+      breadcrumbs: tasklistOverviewCopy.breadcrumbs,
+      composer: launchComposerState,
+      editor: {
+        afterLines: tasklistOverviewCopy.afterLines.map((text, index) => ({
+          id: `overview-after-${index}`,
+          text: textReveal(text, frame, 106 + index * 10, 132 + index * 10),
+        })),
+        beforeLines: tasklistOverviewCopy.beforeLines.map((text, index) => ({
+          id: `overview-${index}`,
+          text,
+        })),
+        title: tasklistOverviewCopy.title,
+      },
+      home: notesHomeState,
+      rightRail,
+      taskList,
+    };
+  }
+
+  return {
+    breadcrumbs: todoNoteCopy.breadcrumbs,
+    composer: launchComposerState,
+    editor: {
+      afterLines: todoNoteCopy.afterLines.map((text, index) => ({
+        id: `todo-after-${index}`,
+        text: todoComplete ? text : '',
+      })),
+      beforeLines: todoNoteCopy.beforeLines.map((text, index) => ({
+        caretVisible: index === todoNoteCopy.beforeLines.length - 1 && !todoComplete,
+        id: `todo-${index}`,
+        text,
+      })),
+      title: todoNoteCopy.title,
+    },
+    home: notesHomeState,
+    rightRail,
+    taskList: {
+      ...taskList,
+      activeId: 'resize-image',
+      items: taskList.items.map(item => item.id === 'resize-image'
+        ? {...item, checkboxPressed: todoCompletePressed, completed: todoComplete, muted: todoComplete}
+        : item
+      ),
+    },
+  };
+}
+
+function notesTaskListForEditorFrame(frame: number): NotesTaskListPanelState {
+  const tasklistActive = frame >= 88;
+  const todoPressed = frame >= 130 && frame < 148;
+  const todoCompletePressed = frame >= 168 && frame < 180;
+  const todoComplete = frame >= 180;
+
+  return {
+    ...notesTaskListState,
+    activeId: tasklistActive ? 'current' : null,
+    items: notesTaskListItems.map(item => {
+      if (item.id === 'resize-image') {
+        return {
+          ...item,
+          checkboxPressed: todoCompletePressed,
+          completed: todoComplete,
+          muted: todoComplete,
+          pressed: todoPressed || todoCompletePressed,
+        };
+      }
+      return item;
+    }),
   };
 }

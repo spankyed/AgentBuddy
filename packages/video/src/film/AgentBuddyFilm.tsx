@@ -80,8 +80,7 @@ function ShotSurface({shot, variant}: {shot: FilmShot; variant: Variant}) {
   if (shot.chapter) {
     return <ChapterCard duration={shot.duration} eyebrow={shot.chapter.eyebrow} frame={frame} subtitle={shot.chapter.subtitle} title={shot.chapter.title} variant={variant} />;
   }
-  if (id === 'notes-open') return <NotesShot frame={frame} mode="open" variant={variant} />;
-  if (id === 'notes') return <NotesShot frame={frame} mode="editor" variant={variant} />;
+  if (id === 'notes') return <NotesShot frame={frame} variant={variant} />;
   if (id === 'chat') return <ChatShot frame={frame} variant={variant} />;
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;

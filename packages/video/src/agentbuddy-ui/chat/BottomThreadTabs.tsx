@@ -9,16 +9,22 @@ type BottomThreadTabsProps = NonNullable<ChatComposerState['bottomTabs']>;
 export function BottomThreadTabs({active = 'active', activeLabel, activePinned, newThreadLabel, pressed, recentLabel, recentThreadsMenu}: BottomThreadTabsProps) {
   return (
     <div className={styles.bottomTabs}>
-      <button data-active={active === 'recent'} data-pressed={pressed === 'recent'} type="button">
-        <Icons.Clock size={14} />{recentLabel}
-      </button>
-      {recentThreadsMenu ? <RecentThreadsMenu menu={recentThreadsMenu} /> : null}
-      <button data-active={active === 'active'} data-pressed={pressed === 'active'} type="button">
+      <div className={styles.bottomTabSlot} data-slot="recent">
+        <button data-active={active === 'recent'} data-pressed={pressed === 'recent'} type="button">
+          <Icons.Clock size={14} /><span>{recentLabel}</span>
+        </button>
+        {recentThreadsMenu ? <RecentThreadsMenu menu={recentThreadsMenu} /> : null}
+      </div>
+      <div className={styles.bottomTabSlot} data-slot="active">
+        <button data-active={active === 'active'} data-pressed={pressed === 'active'} type="button">
         <Icons.PanelLeft size={14} />
-        {activeLabel}
+        <span>{activeLabel}</span>
         {activePinned ? <Icons.Pin className={styles.bottomTabPinnedIcon} size={12} /> : null}
-      </button>
-      <button data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={14} />{newThreadLabel}</button>
+        </button>
+      </div>
+      <div className={styles.bottomTabSlot} data-slot="new">
+        <button data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={14} /><span>{newThreadLabel}</span></button>
+      </div>
     </div>
   );
 }

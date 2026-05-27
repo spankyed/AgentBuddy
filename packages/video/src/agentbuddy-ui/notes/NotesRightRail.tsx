@@ -11,7 +11,7 @@ type NotesRightRailProps = {
 };
 
 export function NotesRightRail({state}: NotesRightRailProps) {
-  const activeId = state.activeId ?? 'tasklist';
+  const activeId = state.activeId ?? '';
   const favoritesExpanded = state.favoritesExpanded ?? true;
   const searchActive = Boolean(state.search?.active);
   const searchQuery = state.search?.query?.trim() ?? '';

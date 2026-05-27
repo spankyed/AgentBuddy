@@ -105,8 +105,8 @@ export const boardShotState: {
       title: 'Create launch PR flow',
     },
     motion: {
-      from: 196,
-      to: 228,
+      from: 204,
+      to: 238,
       fromLeft: 8,
       toLeft: 40,
       fromTop: 34,
@@ -166,7 +166,7 @@ export function boardViewForFrame(frame: number) {
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
   const dashboardVisible = frame < 108;
-  const createVisible = frame >= 88 && frame < 196;
+  const createVisible = frame >= 88 && frame < 204;
   const createFrame = Math.max(0, frame - 88);
   const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
   const droppedCard = frame >= boardShotState.movingCard.motion.to;
@@ -201,6 +201,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
         linkPressed: createFrame > 76 && createFrame <= 84,
         linkedThreadsOpen: createFrame > 62,
         linkInputVisible: createFrame > 62 && createFrame <= 86,
+        linkedThreadCandidate: createFrame > 74 && createFrame <= 84 ? boardShotState.createForm.parentThread : undefined,
         linkedThreadQuery: createFrame > 70 ? boardShotState.createForm.linkedThreadQuery : '',
         parentThread: createFrame > 84 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,

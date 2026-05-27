@@ -37,7 +37,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
               createdAt={view.conversation.createdAt}
               messageStyles={view.messageStyles}
               systemMessage={view.conversation.systemMessage}
-              userMessage={<>{view.conversation.userMessage.text}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
+              userMessage={<>{formatUserMessage(view.conversation.userMessage.text)}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
             >
               <Cursor frame={frame} {...view.cursorPath} />
             </ThreadConversation>
@@ -57,6 +57,24 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
       </div>
       {initialCursor ? <Cursor frame={frame} {...initialCursor} /> : null}
     </div>
+  );
+}
+
+function formatUserMessage(text: string) {
+  const token = '#notes:current';
+  const tokenIndex = text.indexOf(token);
+  if (tokenIndex === -1) return text;
+
+  return (
+    <>
+      {text.slice(0, tokenIndex)}
+      <span className={styles.noteReferencePill}>
+        <span>📝</span>
+        <span>notes:current</span>
+        <small>note</small>
+      </span>
+      {text.slice(tokenIndex + token.length)}
+    </>
   );
 }
 

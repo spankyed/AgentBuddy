@@ -3,7 +3,7 @@ import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {Icons} from '../../agentbuddy-ui/primitives/Icon';
-import {notesShotViewForFrame} from '../state/notes';
+import {notesEditorViewForFrame, notesHomeViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
 import {Cursor} from '../overlays/Cursor';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -12,20 +12,43 @@ import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 import './NotesShot.module.css';
 
 const styles = makeStyles('NotesShot');
-const EDITOR_FRAME_OFFSET = 132;
 
-type NotesShotMode = 'open' | 'editor';
-
-export function NotesShot({frame, mode = 'editor', variant}: {frame: number; mode?: NotesShotMode; variant?: 'landscape' | 'square'}) {
-  if (mode === 'open') {
-    return <NotesOpenShot frame={frame} variant={variant} />;
+export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  if (frame < 132) {
+    return <NotesOpenToEditorShot frame={frame} variant={variant} />;
   }
-  return <NotesEditorShot frame={frame} sourceFrame={frame + EDITOR_FRAME_OFFSET} variant={variant} />;
+  return <NotesEditorShot frame={frame - 132} variant={variant} />;
+}
+
+function NotesOpenToEditorShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  const editorEnter = ease(frame, 124, 132);
+  return (
+    <div className={styles.root}>
+      <div
+        className={styles.homeLayer}
+        style={{
+          opacity: 1 - editorEnter,
+          transform: `translateY(${mix(0, -8, editorEnter)}px)`,
+        }}
+      >
+        <NotesOpenShot frame={frame} variant={variant} />
+      </div>
+      <div
+        className={styles.editorLayer}
+        style={{
+          opacity: editorEnter,
+          transform: `translateY(${mix(12, 0, editorEnter)}px)`,
+        }}
+      >
+        <NotesEditorShot frame={Math.max(0, frame - 124)} variant={variant} />
+      </div>
+    </div>
+  );
 }
 
 function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const view = notesShotViewForFrame(frame);
-  const layout = useAppWindowLayout({variant});
+  const home = notesHomeViewForFrame(frame);
+  const layout = useAppWindowLayout({animate: false, variant});
   const cursor = notesHomeCursorForFrame(frame);
 
   return (
@@ -36,11 +59,15 @@ function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' |
         layout={layout}
       >
         <NotesHomeSurface
-          favorites={view.home.favorites}
-          greeting={view.home.greeting}
-          recent={view.home.recent}
-          searchQuery={view.home.searchQuery}
-          searchResults={view.home.searchResults}
+          favorites={home.favorites}
+          greeting={home.greeting}
+          newNotePressed={home.newNotePressed}
+          recent={home.recent}
+          searchQuery={home.searchQuery}
+          searchResults={home.searchResults}
+          showFavorites={home.showFavorites}
+          showRecent={home.showRecent}
+          showSearch={home.showSearch}
         />
       </AppWindow>
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}
@@ -48,13 +75,14 @@ function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' |
   );
 }
 
-function NotesEditorShot({frame, sourceFrame, variant}: {frame: number; sourceFrame: number; variant?: 'landscape' | 'square'}) {
-  const view = notesShotViewForFrame(sourceFrame);
-  const layout = useAppWindowLayout({hasRightRail: sourceFrame > 204, variant});
-  const taskListEnter = ease(sourceFrame, 210, 240);
-  const cursor = notesEditorCursorForFrame(sourceFrame);
+function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  const view = notesEditorViewForFrame(frame);
+  const taskListVisible = frame >= 88;
+  const layout = useAppWindowLayout({animate: false, hasRightRail: true, variant});
+  const taskListEnter = ease(frame, 88, 112);
+  const cursor = notesEditorCursorForFrame(frame);
   const renderLine = (line: {caretVisible?: boolean; text: string}) => (
-    <NoteLine frame={sourceFrame} line={line} />
+    <NoteLine frame={frame} line={line} />
   );
   const visibleLine = (line: {caretVisible?: boolean; text: string}) => line.text.length > 0 || Boolean(line.caretVisible);
 
@@ -63,12 +91,12 @@ function NotesEditorShot({frame, sourceFrame, variant}: {frame: number; sourceFr
       <AppWindow
         activePlugin="notes"
         breadcrumbs={view.breadcrumbs}
-        composer={sourceFrame > 160 ? view.composer : false}
+        composer={false}
         layout={layout}
-        rightRail={sourceFrame > 204 ? <NotesRightRail state={view.rightRail} /> : undefined}
+        rightRail={<NotesRightRail state={view.rightRail} />}
       >
         <NotesLayout
-          showTaskList={sourceFrame > 210}
+          showTaskList={taskListVisible}
           taskListStyle={{
             opacity: taskListEnter,
             transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
@@ -82,18 +110,18 @@ function NotesEditorShot({frame, sourceFrame, variant}: {frame: number; sourceFr
           }}
         />
       </AppWindow>
-      {cursor ? <Cursor frame={sourceFrame} {...cursor} /> : null}
+      {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
 }
 
 function notesHomeCursorForFrame(frame: number) {
-  if (frame >= 52 && frame < 88) {
+  if (frame >= 88 && frame < 126) {
     return {
-      from: [55, 68] as [number, number],
-      to: [32, 48] as [number, number],
-      start: 52,
-      end: 80,
+      from: [50, 58] as [number, number],
+      to: [67, 28] as [number, number],
+      start: 88,
+      end: 116,
     };
   }
 
@@ -101,30 +129,30 @@ function notesHomeCursorForFrame(frame: number) {
 }
 
 function notesEditorCursorForFrame(frame: number) {
-  if (frame >= 150 && frame < 178) {
+  if (frame >= 62 && frame < 92) {
     return {
-      from: [19, 31] as [number, number],
-      to: [35, 31] as [number, number],
-      start: 150,
-      end: 170,
+      from: [55, 52] as [number, number],
+      to: [83, 38] as [number, number],
+      start: 62,
+      end: 82,
     };
   }
 
-  if (frame >= 190 && frame < 222) {
+  if (frame >= 120 && frame < 150) {
     return {
-      from: [58, 72] as [number, number],
-      to: [78, 37] as [number, number],
-      start: 190,
-      end: 212,
+      from: [35, 42] as [number, number],
+      to: [17, 29] as [number, number],
+      start: 120,
+      end: 140,
     };
   }
 
-  if (frame >= 222 && frame < 248) {
+  if (frame >= 158 && frame < 184) {
     return {
-      from: [24, 43] as [number, number],
-      to: [24, 23] as [number, number],
-      start: 222,
-      end: 238,
+      from: [18, 29] as [number, number],
+      to: [32, 29] as [number, number],
+      start: 158,
+      end: 174,
     };
   }
 

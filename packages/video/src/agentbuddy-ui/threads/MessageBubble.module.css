@@ -97,8 +97,15 @@
 .MessageBubble_assistantBubble {
   width: 100%;
   box-sizing: border-box;
+  max-height: min(520px, calc(100vh - 310px));
+  overflow-y: auto;
   border: 1px solid rgb(64 64 64 / 60%);
   background: transparent;
+  scrollbar-width: none;
+}
+
+.MessageBubble_assistantBubble::-webkit-scrollbar {
+  display: none;
 }
 
 .MessageBubble_cancelled {

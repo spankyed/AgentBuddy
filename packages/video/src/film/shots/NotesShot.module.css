@@ -3,6 +3,14 @@
   inset: 0;
 }
 
+.NotesShot_homeLayer,
+.NotesShot_editorLayer {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 42%;
+  will-change: opacity, transform;
+}
+
 .NotesShot_threadPill {
   display: inline-flex;
   align-items: center;

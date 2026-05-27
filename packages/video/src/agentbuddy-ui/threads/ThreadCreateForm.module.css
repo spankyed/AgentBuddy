@@ -320,8 +320,17 @@
   white-space: nowrap;
 }
 
-.ThreadCreateForm_inputRow {
+.ThreadCreateForm_inputRow,
+.ThreadCreateForm_candidateRow {
   background: rgb(38 38 38 / 30%);
+}
+
+.ThreadCreateForm_candidateRow {
+  background: rgb(38 38 38 / 55%);
+}
+
+.ThreadCreateForm_candidateRow td {
+  border-bottom-color: rgb(64 64 64 / 65%);
 }
 
 .ThreadCreateForm_linkActions {

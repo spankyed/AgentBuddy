@@ -15,31 +15,39 @@ export type NotesHomeCardState = Pick<NoteTreeNodeState, 'icon' | 'id' | 'noteTy
 export function NotesHomeSurface({
   favorites,
   greeting,
+  newNotePressed = false,
   recent,
   searchQuery = '',
   searchResults = [],
+  showFavorites = true,
+  showRecent = true,
+  showSearch = true,
 }: {
   favorites: NotesHomeCardState[];
   greeting: string;
+  newNotePressed?: boolean;
   recent: NotesHomeCardState[];
   searchQuery?: string;
   searchResults?: NotesHomeCardState[];
+  showFavorites?: boolean;
+  showRecent?: boolean;
+  showSearch?: boolean;
 }) {
   const isSearching = searchQuery.trim().length > 0;
   return (
     <div className={styles.root}>
       <h1 className={styles.greeting}>{greeting}</h1>
       <div className={styles.content}>
-        <div className={styles.searchRow}>
+        {showSearch ? <div className={styles.searchRow}>
           <div className={styles.searchBox}>
             <Icons.Search className={styles.searchIcon} size={16} />
             <input placeholder="Search notes..." readOnly type="text" value={searchQuery} />
           </div>
-          <button className={styles.newNoteButton} type="button">
+          <button className={styles.newNoteButton} data-pressed={newNotePressed ? 'true' : undefined} type="button">
             <Icons.Plus size={16} />
             <span>New note</span>
           </button>
-        </div>
+        </div> : null}
 
         {isSearching ? (
           <div className={styles.searchResults}>
@@ -51,10 +59,10 @@ export function NotesHomeSurface({
           </div>
         ) : (
           <>
-            <Section emptyLabel="No recently viewed notes" icon={<Icons.Clock size={16} />} title="Recently visited">
+            {showRecent ? <Section emptyLabel="No recently viewed notes" icon={<Icons.Clock size={16} />} title="Recently visited">
               {recent.map(note => <NoteCard key={note.id} note={note} />)}
-            </Section>
-            {favorites.length > 0 ? (
+            </Section> : null}
+            {showFavorites && favorites.length > 0 ? (
               <Section icon={<Icons.Star size={16} />} title="Favorites">
                 {favorites.map(note => <NoteCard key={note.id} note={note} favorite />)}
               </Section>

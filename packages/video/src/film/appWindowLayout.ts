@@ -4,10 +4,18 @@ import type {AppWindowLayout} from '../agentbuddy-ui/chrome/AppWindow';
 
 type Variant = 'landscape' | 'square';
 
-export function useAppWindowLayout({hasRightRail = false, variant = 'landscape'}: {hasRightRail?: boolean; variant?: Variant}): AppWindowLayout {
+export function useAppWindowLayout({
+  animate = true,
+  hasRightRail = false,
+  variant = 'landscape',
+}: {
+  animate?: boolean;
+  hasRightRail?: boolean;
+  variant?: Variant;
+}): AppWindowLayout {
   const frame = useCurrentFrame();
   const {width, height, fps} = useVideoConfig();
-  const enter = spring({frame, fps, config: {damping: 25, stiffness: 110}});
+  const enter = animate ? spring({frame, fps, config: {damping: 25, stiffness: 110}}) : 1;
   const square = variant === 'square' || width === height;
   const marginX = square ? 42 : 32;
   const marginTop = square ? 54 : 32;

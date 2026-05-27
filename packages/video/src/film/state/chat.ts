@@ -130,7 +130,7 @@ export const chatShotState = {
   cursorPath: {from: [58, 74] as [number, number], to: [82, 84] as [number, number], start: 34, end: 96},
   systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
-  response: {text: 'I found the launch context and turned it into execution work: tickets, a linked parent thread, and a clean next step for `write a commit`.', from: 190, to: 264},
+  response: {text: 'Plan artifact created. I pinned the launch thread and prepared `write a commit`.', from: 190, to: 250},
 };
 
 const commitMessageResponse = `Here's the commit message:
@@ -145,7 +145,7 @@ and queue the next implementation pass from the same surface.
 const completedDevThreadResponse = 'The launch film branch is ready for the commit pass. I aligned the chat input, Recent Threads menu, source-control panel, PR flow, and flow-blueprint surfaces against the real app UI, then ran the video checks.';
 
 const completedDevThreadActivity: ToolActivityBlockState = {
-  defaultOpen: true,
+  defaultOpen: false,
   entries: [
     {id: 'inspect-ui', tool: 'Read', summary: 'packages/video/src/agentbuddy-ui', status: 'ok', durationMs: 420, outputSummary: 'UI surfaces reviewed'},
     {id: 'patch-chat', tool: 'Edit', summary: 'chat input, recent threads, thread state handoff', status: 'ok', durationMs: 1300, outputSummary: 'Composer and thread transition aligned'},
@@ -161,7 +161,7 @@ export const chatToolActivity: ToolActivityBlockState = {
     artifactId: 'launch-operating-plan',
     label: 'Launch Operating Plan',
   },
-  defaultOpen: true,
+  defaultOpen: false,
   entries: [
     {id: 'read-launch-notes', tool: 'Read', summary: 'notes/agentbuddy/tasklist/current.md', status: 'ok', durationMs: 312, outputSummary: 'Launch notes loaded'},
     {id: 'create-tickets', tool: 'Task', summary: 'create execution tickets from launch context', status: 'ok', durationMs: 1280, outputSummary: '4 tickets created'},
@@ -420,7 +420,7 @@ export function completedDevThreadActivityViewForFrame(frame: number) {
 }
 
 export function chatViewForFrame(frame: number) {
-  const quickPromptActive = frame > 324;
+  const quickPromptActive = frame > 402;
   const messageReveal = (from: number) => {
     const progress = ease(frame, from, from + 18);
     return {
@@ -432,14 +432,14 @@ export function chatViewForFrame(frame: number) {
     prompt: textReveal(chatShotState.prompt.text, frame, chatShotState.prompt.from, chatShotState.prompt.to),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: quickPromptActive
-      ? textReveal(commitMessageResponse, frame, 326, 386)
+      ? textReveal(commitMessageResponse, frame, 404, 446)
       : textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
     conversationOpacity: ease(frame, 110, 146),
     conversationY: 28 - ease(frame, 110, 146) * 28,
     messageStyles: {
-      assistant: messageReveal(quickPromptActive ? 326 : 190),
+      assistant: messageReveal(quickPromptActive ? 404 : 190),
       system: messageReveal(150),
-      user: messageReveal(quickPromptActive ? 292 : 154),
+      user: messageReveal(quickPromptActive ? 388 : 154),
     },
     toolActivity: undefined,
   };
@@ -448,10 +448,10 @@ export function chatViewForFrame(frame: number) {
 export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   const imageAttachmentEnter = ease(frame, 132, 148);
-  const recentThreadLoaded = frame >= 214;
+  const recentThreadLoaded = frame >= 314;
   const showLaunchWork = frame > 174 && frame < 292;
-  const showLaunchArtifact = frame > 232 && frame < 292;
-  const showQuickPromptResponse = frame > 324;
+  const showLaunchArtifact = frame > 226 && frame < 314;
+  const showQuickPromptResponse = frame > 402;
   const stableLoadedMessageStyles = {
     assistant: {
       opacity: 1,
@@ -480,7 +480,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             ],
           }
         : undefined,
-      references: frame >= 124 && frame < 166
+      references: frame >= 124 && frame < 176
         ? [{id: 'notes-current', icon: '📝', label: 'notes:current', token: '#notes:current', typeLabel: 'note'}]
         : undefined,
       attachments: [
@@ -496,18 +496,18 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       bottomTabs: frame > 28
         ? {
             ...launchComposerState.bottomTabs!,
-            active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : frame > 54 ? 'active' : undefined,
-            activePinned: frame > 330,
+            active: frame > 314 ? 'active' : frame > 274 && frame < 314 ? 'recent' : frame > 54 ? 'active' : undefined,
+            activePinned: frame > 418,
             pressed: frame > 36 && frame < 54
               ? 'new'
-              : frame > 166 && frame < 184
+              : frame > 274 && frame < 292
                 ? 'recent'
-                : (frame > 232 && frame < 246) || (frame > 420 && frame < 438)
+                : (frame > 320 && frame < 334) || (frame > 420 && frame < 438)
                   ? 'active'
                   : undefined,
-            recentThreadsMenu: frame > 178 && frame < 214
+            recentThreadsMenu: frame > 286 && frame < 314
               ? {
-                  activeId: frame > 196 ? 'launch-dev-complete' : undefined,
+                  activeId: frame > 302 ? 'launch-dev-complete' : undefined,
                   threads: [
                     {id: 'launch-dev-complete', title: 'Launch PR implementation', meta: 'completed just now', pinned: true, status: 'done', time: 'now'},
                     {id: 'launch-plan', title: 'Launch Operating Plan', meta: 'active thread', status: 'active', time: '2m'},
@@ -518,11 +518,11 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           }
         : undefined,
       referenceButtonPressed: frame > 96 && frame <= 108,
-      quickPromptsButtonPressed: frame > 262 && frame <= 274,
-      quickPromptsOpen: frame > 270 && frame < 308,
-      quickPromptPressedId: frame > 284 && frame < 300 ? 'qp-write-commit' : undefined,
-      sendPressed: (frame > 154 && frame < 166) || (frame > 312 && frame < 324),
-      text: frame > 78 && frame < 166 ? view.prompt : frame > 292 && frame < 324 ? 'write a commit' : undefined,
+      quickPromptsButtonPressed: frame > 336 && frame <= 348,
+      quickPromptsOpen: frame > 346 && frame < 382,
+      quickPromptPressedId: frame > 360 && frame < 376 ? 'qp-write-commit' : undefined,
+      sendPressed: (frame > 154 && frame < 166) || (frame > 390 && frame < 402),
+      text: frame > 78 && frame < 166 ? view.prompt : frame > 376 && frame < 402 ? 'write a commit' : undefined,
     },
     conversation: {
       assistant: {
