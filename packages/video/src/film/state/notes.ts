@@ -249,10 +249,10 @@ export function notesViewForFrame(frame: number) {
     image: frame > 72
       ? {
           alt: 'Launch checklist image',
-          bubbleOpen: frame > 100 && frame < 188,
+          bubbleOpen: frame > 100 && frame < 222,
           resizeButtonPressed: frame > 112 && frame <= 124,
-          resizeOpen: frame > 118 && frame < 188,
-          sliderPressed: frame > 124 && frame < 184,
+          resizeOpen: frame > 118 && frame < 222,
+          sliderPressed: frame > 124 && frame < 210,
           src: launchImageSrc,
           style: {
             opacity: imageEnter,

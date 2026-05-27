@@ -2,6 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
+import {Icons} from '../../agentbuddy-ui/primitives/Icon';
 import {ComponentStage} from '../ComponentStage';
 import {notesShotViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
@@ -18,10 +19,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
   const taskListEnter = ease(frame, 176, 206);
   const appReveal = ease(frame, 0, 36);
   const renderLine = (line: {caretVisible?: boolean; text: string}) => (
-    <>
-      {line.text}
-      <Caret frame={frame} visible={Boolean(line.caretVisible)} />
-    </>
+    <NoteLine frame={frame} line={line} />
   );
   const visibleLine = (line: {caretVisible?: boolean; text: string}) => line.text.length > 0 || Boolean(line.caretVisible);
 
@@ -82,5 +80,36 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
         />
       </AppWindow>
     </div>
+  );
+}
+
+function NoteLine({frame, line}: {frame: number; line: {caretVisible?: boolean; text: string}}) {
+  const marker = '#threads: ';
+  const markerIndex = line.text.indexOf(marker);
+  if (markerIndex === -1) {
+    return (
+      <>
+        {line.text}
+        <Caret frame={frame} visible={Boolean(line.caretVisible)} />
+      </>
+    );
+  }
+
+  const before = line.text.slice(0, markerIndex);
+  const referenceAndAfter = line.text.slice(markerIndex + marker.length);
+  const fullTitle = 'Create launch PR flow';
+  const title = referenceAndAfter.slice(0, Math.min(fullTitle.length, referenceAndAfter.length));
+  const shownSuffix = referenceAndAfter.length > fullTitle.length ? referenceAndAfter.slice(fullTitle.length) : '';
+
+  return (
+    <>
+      {before}
+      <span className={styles.threadPill}>
+        <Icons.MessageSquare size={13} />
+        <span>{title}</span>
+      </span>
+      {shownSuffix}
+      <Caret frame={frame} visible={Boolean(line.caretVisible)} />
+    </>
   );
 }
