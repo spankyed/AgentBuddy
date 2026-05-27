@@ -4,7 +4,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: rgb(28 28 28);
+  background: transparent;
 }
 
 .ThreadChatCanvas_messagesWrapper {

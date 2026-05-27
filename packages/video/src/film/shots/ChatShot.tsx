@@ -19,6 +19,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const appReveal = ease(frame, 58, 112);
   const composerDock = ease(frame, 50, 122);
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
+  const initialCursor = initialChatCursorForFrame(frame);
 
   return (
     <div className={styles.root}>
@@ -54,8 +55,23 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
       >
         <ChatComposer formStyle={{width: '100%'}} state={view.composer} />
       </div>
+      {initialCursor ? <Cursor frame={frame} {...initialCursor} /> : null}
     </div>
   );
+}
+
+function initialChatCursorForFrame(frame: number):
+  | {end: number; from: [number, number]; start: number; to: [number, number]}
+  | null {
+  if (frame >= 24 && frame < 54) {
+    return {end: 54, from: [52, 53], start: 24, to: [82, 59]};
+  }
+
+  if (frame >= 138 && frame < 166) {
+    return {end: 166, from: [82, 59], start: 138, to: [82, 87]};
+  }
+
+  return null;
 }
 
 function composerPlacement({

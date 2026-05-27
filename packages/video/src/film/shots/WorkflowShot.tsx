@@ -7,6 +7,7 @@ import {replaceObsoleteAppsFormStateForFrame} from '../state/flowForms';
 import {workflowShotViewForFrame} from '../state/workflow';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
+import {Cursor} from '../overlays/Cursor';
 import {useVideoConfig} from 'remotion';
 import './WorkflowShot.module.css';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -23,6 +24,7 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
   const formReveal = ease(frame, 236, 266);
   const listener = view.flow.nodes[0];
   const nodeRect = workflowNodePlacement({dock: nodeDock, height, layout, listener, width});
+  const cursor = workflowCursorForFrame(frame);
 
   return (
     <div className={styles.root}>
@@ -66,8 +68,35 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
           </div>
         </div>
       ) : null}
+      {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
+}
+
+function workflowCursorForFrame(frame: number):
+  | {end: number; from: [number, number]; start: number; to: [number, number]}
+  | null {
+  if (frame >= 46 && frame < 78) {
+    return {end: 78, from: [50, 52], start: 46, to: [22, 40]};
+  }
+
+  if (frame >= 112 && frame < 146) {
+    return {end: 146, from: [56, 39], start: 112, to: [78, 32]};
+  }
+
+  if (frame >= 172 && frame < 204) {
+    return {end: 204, from: [78, 32], start: 172, to: [78, 43]};
+  }
+
+  if (frame >= 230 && frame < 266) {
+    return {end: 266, from: [78, 43], start: 230, to: [78, 32]};
+  }
+
+  if (frame >= 272 && frame < 318) {
+    return {end: 318, from: [78, 32], start: 272, to: [87, 62]};
+  }
+
+  return null;
 }
 
 function workflowNodePlacement({

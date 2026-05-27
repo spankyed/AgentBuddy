@@ -2,6 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {CodeFeaturePanel} from '../../agentbuddy-ui/code/CodeFeaturePanel';
 import {CodeReview} from '../../agentbuddy-ui/code/CodeReview';
 import {PullRequestPanel} from '../../agentbuddy-ui/code/PullRequestPanel';
+import {Cursor} from '../overlays/Cursor';
 import {codeShotViewForFrame} from '../state/code';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
@@ -21,6 +22,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
   const leftSurfaceReveal = ease(frame, 62, 104);
   const fullPanelReveal = ease(frame, 108, 126);
   const panelRect = codePanelPlacement({dock: panelDock, height, layout, variant, width});
+  const cursor = codeCursorForFrame(frame);
 
   return (
     <div className={styles.root}>
@@ -76,8 +78,94 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
           </div>
         </div>
       ) : null}
+      {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
+}
+
+function codeCursorForFrame(frame: number) {
+  if (frame >= 18 && frame < 46) {
+    return {
+      from: [48, 68] as [number, number],
+      to: [61, 20] as [number, number],
+      start: 18,
+      end: 38,
+    };
+  }
+
+  if (frame >= 78 && frame < 108) {
+    return {
+      from: [66, 36] as [number, number],
+      to: [96, 16] as [number, number],
+      start: 78,
+      end: 98,
+    };
+  }
+
+  if (frame >= 112 && frame < 142) {
+    return {
+      from: [92, 88] as [number, number],
+      to: [93, 21] as [number, number],
+      start: 112,
+      end: 132,
+    };
+  }
+
+  if (frame >= 142 && frame < 166) {
+    return {
+      from: [93, 21] as [number, number],
+      to: [96, 27] as [number, number],
+      start: 142,
+      end: 156,
+    };
+  }
+
+  if (frame >= 198 && frame < 222) {
+    return {
+      from: [88, 30] as [number, number],
+      to: [83, 42] as [number, number],
+      start: 198,
+      end: 214,
+    };
+  }
+
+  if (frame >= 226 && frame < 252) {
+    return {
+      from: [83, 88] as [number, number],
+      to: [90, 90] as [number, number],
+      start: 226,
+      end: 244,
+    };
+  }
+
+  if (frame >= 316 && frame < 344) {
+    return {
+      from: [88, 42] as [number, number],
+      to: [92, 20] as [number, number],
+      start: 316,
+      end: 332,
+    };
+  }
+
+  if (frame >= 360 && frame < 386) {
+    return {
+      from: [88, 52] as [number, number],
+      to: [84, 53] as [number, number],
+      start: 360,
+      end: 376,
+    };
+  }
+
+  if (frame >= 392 && frame < 412) {
+    return {
+      from: [84, 53] as [number, number],
+      to: [73, 87] as [number, number],
+      start: 392,
+      end: 404,
+    };
+  }
+
+  return null;
 }
 
 function codePanelPlacement({

@@ -1,6 +1,6 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
+import {ThreadDashboardSurface} from '../../agentbuddy-ui/threads/ThreadDashboardSurface';
 import {ThreadCreateForm} from '../../agentbuddy-ui/threads/ThreadCreateForm';
-import {ThreadsHeader} from '../../agentbuddy-ui/threads/ThreadsHeader';
 import {ThreadsBoardSurface} from '../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {boardShotViewForFrame} from '../state/board';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -16,12 +16,13 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
   const layout = useAppWindowLayout({variant});
   const {height, width} = useVideoConfig();
   const appReveal = ease(frame, 24, 68);
-  const headerDock = ease(frame, 20, 62);
-  const headerExit = ease(frame, 58, 82);
-  const createExit = 1 - ease(frame, 120, 134);
-  const boardReveal = ease(frame, 132, 156);
-  const createReveal = ease(frame, 52, 78);
-  const headerRect = headerPlacement({dock: headerDock, height, layout, variant, width});
+  const dashboardDock = ease(frame, 18, 62);
+  const dashboardExit = ease(frame, 84, 110);
+  const appDashboardReveal = ease(frame, 58, 84);
+  const createExit = 1 - ease(frame, 152, 166);
+  const boardReveal = ease(frame, 150, 178);
+  const createReveal = ease(frame, 92, 118);
+  const dashboardRect = dashboardPlacement({dock: dashboardDock, height, layout, variant, width});
 
   return (
     <div className={styles.root}>
@@ -33,17 +34,18 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
         }}
       >
         <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
-          {view.createForm ? (
+          {view.dashboard ? (
             <div
               className={styles.surfaceReveal}
               style={{
-                opacity: Math.min(createReveal, createExit),
-                transform: `translateY(${mix(20, -18, 1 - createExit)}px) scale(${mix(0.992, 1, createReveal)})`,
+                opacity: appDashboardReveal,
+                transform: `translateY(${mix(18, 0, appDashboardReveal)}px) scale(${mix(0.992, 1, appDashboardReveal)})`,
               }}
             >
-              <ThreadCreateForm state={view.createForm} />
+              <ThreadDashboardSurface state={view.dashboard} />
             </div>
-          ) : (
+          ) : null}
+          {!view.dashboard && (frame >= 150 || !view.createForm) ? (
             <div
               className={styles.surfaceReveal}
               style={{
@@ -57,30 +59,40 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
                 movingCard={view.movingCard}
               />
             </div>
-          )}
+          ) : null}
+          {view.createForm ? (
+            <div
+              className={styles.surfaceReveal}
+              style={{
+                opacity: Math.min(createReveal, createExit),
+                transform: `translateY(${mix(20, -18, 1 - createExit)}px) scale(${mix(0.992, 1, createReveal)})`,
+              }}
+            >
+              <ThreadCreateForm state={view.createForm} />
+            </div>
+          ) : null}
         </AppWindow>
       </div>
-      {frame < 84 ? (
+      {view.dashboard && frame < 112 ? (
         <div
-          className={styles.headerMotion}
+          className={styles.dashboardMotion}
           style={{
-            left: headerRect.left,
-            opacity: Math.min(ease(frame, 0, 18), 1 - headerExit),
-            top: headerRect.top,
-            transform: `translate(-50%, -50%) scale(${mix(1.01, 1, headerDock)})`,
-            width: headerRect.width,
+            height: dashboardRect.height,
+            left: dashboardRect.left,
+            opacity: Math.min(ease(frame, 0, 18), 1 - dashboardExit),
+            top: dashboardRect.top,
+            transform: `translate(-50%, -50%) scale(${mix(1.02, 1, dashboardDock)})`,
+            width: dashboardRect.width,
           }}
         >
-          <div className={styles.headerCard}>
-            <ThreadsHeader state={view.header} />
-          </div>
+          <ThreadDashboardSurface state={view.dashboard} />
         </div>
       ) : null}
     </div>
   );
 }
 
-function headerPlacement({
+function dashboardPlacement({
   dock,
   height,
   layout,
@@ -96,14 +108,18 @@ function headerPlacement({
   const windowLeft = Number(layout.windowStyle.left ?? 0);
   const windowTop = Number(layout.windowStyle.top ?? 0);
   const windowWidth = Number(layout.windowStyle.width ?? width);
+  const windowHeight = Number(layout.windowStyle.height ?? height);
   const mainLeft = windowLeft + 72;
   const mainWidth = windowWidth - 72;
-  const startWidth = variant === 'square' ? Math.min(760, width - 112) : Math.min(980, width - 180);
+  const startWidth = variant === 'square' ? Math.min(720, width - 112) : Math.min(880, width - 220);
+  const startHeight = variant === 'square' ? 440 : 520;
   const finalWidth = mainWidth;
   const finalCenterX = mainLeft + mainWidth / 2;
-  const finalCenterY = windowTop + 42 + 28;
+  const finalHeight = windowHeight - 42;
+  const finalCenterY = windowTop + 42 + finalHeight / 2;
 
   return {
+    height: mix(startHeight, finalHeight, dock),
     left: mix(width / 2, finalCenterX, dock),
     top: mix(height / 2, finalCenterY, dock),
     width: mix(startWidth, finalWidth, dock),

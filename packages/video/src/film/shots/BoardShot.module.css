@@ -3,11 +3,15 @@
   inset: 0;
 }
 
-.BoardShot_headerMotion {
+.BoardShot_dashboardMotion {
   position: absolute;
   z-index: 4;
-  overflow: visible;
-  will-change: left, opacity, top, transform, width;
+  overflow: hidden;
+  border: 1px solid rgb(38 38 38);
+  border-radius: 8px;
+  background: rgb(23 23 23);
+  box-shadow: 0 40px 120px rgb(0 0 0 / 42%);
+  will-change: height, left, opacity, top, transform, width;
 }
 
 .BoardShot_appReveal {
@@ -22,13 +26,4 @@
   inset: 0;
   transform-origin: 50% 48%;
   will-change: opacity, transform;
-}
-
-.BoardShot_headerCard {
-  overflow: hidden;
-  width: 100%;
-  border: 1px solid rgb(38 38 38);
-  border-radius: 8px;
-  background: rgb(23 23 23);
-  box-shadow: 0 40px 120px rgb(0 0 0 / 42%);
 }

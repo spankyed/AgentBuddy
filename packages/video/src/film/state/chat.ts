@@ -428,6 +428,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   const noteAttachmentEnter = ease(frame, 108, 122);
   const imageAttachmentEnter = ease(frame, 132, 148);
+  const showLaunchWork = frame > 174 && frame < 292;
+  const showLaunchArtifact = frame > 232 && frame < 292;
+  const showQuickPromptResponse = frame > 292;
   return {
     breadcrumbs: chatShotState.breadcrumbs,
     composer: {
@@ -451,12 +454,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           },
         }] : []),
       ],
-      bottomTabs: frame > 96
+      bottomTabs: frame > 28
         ? {
             ...launchComposerState.bottomTabs!,
-            active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : 'active',
+            active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : frame > 54 ? 'active' : undefined,
             activePinned: frame > 330,
-            pressed: frame > 24 && frame < 38 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
+            pressed: frame > 36 && frame < 54 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
           }
         : undefined,
       referenceButtonPressed: frame > 96 && frame <= 108,
@@ -468,15 +471,15 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     },
     conversation: {
       assistant: {
-        artifact: undefined,
+        artifact: showLaunchArtifact ? launchPlanArtifact : undefined,
         markdown: view.response,
-        toolActivity: undefined,
+        toolActivity: showLaunchWork ? toolActivityViewForFrame(frame) : undefined,
       },
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
         caretVisible: frame < 166 && view.promptCaretVisible,
-        text: frame > 292 ? 'write a commit' : view.prompt,
+        text: showQuickPromptResponse ? 'write a commit' : view.prompt,
       },
     },
     conversationStyle: {

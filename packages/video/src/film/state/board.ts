@@ -1,12 +1,16 @@
 import type {KanbanBoardState, KanbanCardState, ThreadsHeaderState} from '../../agentbuddy-ui/threads/threadTypes';
 import type {ThreadCreateFormState} from '../../agentbuddy-ui/threads/ThreadCreateForm';
+import type {ThreadDashboardSurfaceState} from '../../agentbuddy-ui/threads/ThreadDashboardSurface';
+import {launchPlanArtifact} from './chat';
 import {ease, mix, textReveal} from './timeline';
 
 export type BoardShotView = {
   board: KanbanBoardState;
   breadcrumbs: string[];
   createForm?: ThreadCreateFormState;
+  dashboard?: ThreadDashboardSurfaceState;
   header: ThreadsHeaderState;
+  mode: 'dashboard' | 'create' | 'board';
   movingCard: {
     card: KanbanCardState;
     style: {
@@ -21,6 +25,7 @@ export const boardShotState: {
   board: KanbanBoardState;
   breadcrumbs: string[];
   createForm: ThreadCreateFormState;
+  dashboard: ThreadDashboardSurfaceState;
   header: ThreadsHeaderState;
   movingCard: {
     card: KanbanCardState;
@@ -37,6 +42,21 @@ export const boardShotState: {
   };
 } = {
   breadcrumbs: ['Threads', 'Board'],
+  dashboard: {
+    activeTabId: 'launch-operating-plan',
+    artifact: {
+      ...launchPlanArtifact,
+      content: {
+        ...launchPlanArtifact.content,
+        status: 'approved',
+      },
+    },
+    tabs: [
+      {id: 'release-checklist', label: 'Release checklist'},
+      {id: 'launch-operating-plan', label: 'Launch operating plan'},
+      {id: 'write-commit', label: 'Write commit'},
+    ],
+  },
   createForm: {
     instructions: 'Create the launch PR flow from the current operating plan. Link it to the parent launch thread and keep the branch publish path visible.',
     linkedThreadQuery: 'Launch operating plan',
@@ -140,8 +160,9 @@ export function boardViewForFrame(frame: number) {
 
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
-  const createVisible = frame >= 36 && frame < 134;
-  const createFrame = Math.max(0, frame - 36);
+  const dashboardVisible = frame < 110;
+  const createVisible = frame >= 88 && frame < 166;
+  const createFrame = Math.max(0, frame - 88);
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
@@ -158,14 +179,22 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     : undefined;
   return {
     board: boardShotState.board,
-    breadcrumbs: createVisible ? ['Threads', 'New Thread'] : boardShotState.breadcrumbs,
+    breadcrumbs: frame < 96 ? ['Threads', 'Dashboard'] : createVisible ? ['Threads', 'New Thread'] : boardShotState.breadcrumbs,
     createForm,
+    dashboard: dashboardVisible
+      ? {
+          ...boardShotState.dashboard,
+          pinPressed: frame > 52 && frame < 66,
+          pinned: frame >= 66,
+        }
+      : undefined,
     header: {
       ...boardShotState.header,
-      activeView: frame < 146 ? 'list' : 'kanban',
-      newThreadPressed: frame > 16 && frame < 32,
-      pressedView: frame > 140 && frame < 152 ? 'kanban' : undefined,
+      activeView: dashboardVisible ? 'dashboard' : frame < 178 ? 'list' : 'kanban',
+      newThreadPressed: frame > 72 && frame < 86,
+      pressedView: frame > 172 && frame < 184 ? 'kanban' : undefined,
     },
+    mode: dashboardVisible ? 'dashboard' : createVisible ? 'create' : 'board',
     movingCard: {
       card: boardShotState.movingCard.card,
       style: view.movingCardStyle,

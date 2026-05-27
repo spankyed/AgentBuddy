@@ -5,6 +5,7 @@ import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {Icons} from '../../agentbuddy-ui/primitives/Icon';
 import {notesShotViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
+import {Cursor} from '../overlays/Cursor';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -22,6 +23,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
   const homeDock = ease(frame, 42, 84);
   const homeExit = ease(frame, 72, 92);
   const homePlacement = notesHomePlacement({dock: homeDock, height, layout, variant, width});
+  const cursor = notesCursorForFrame(frame);
   const renderLine = (line: {caretVisible?: boolean; text: string}) => (
     <NoteLine frame={frame} line={line} />
   );
@@ -83,8 +85,49 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
           <div className={styles.homeFade} style={{opacity: homeExit}} />
         </div>
       ) : null}
+      {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
+}
+
+function notesCursorForFrame(frame: number) {
+  if (frame >= 28 && frame < 66) {
+    return {
+      from: [55, 68] as [number, number],
+      to: [32, 48] as [number, number],
+      start: 28,
+      end: 58,
+    };
+  }
+
+  if (frame >= 104 && frame < 132) {
+    return {
+      from: [19, 31] as [number, number],
+      to: [35, 31] as [number, number],
+      start: 104,
+      end: 124,
+    };
+  }
+
+  if (frame >= 156 && frame < 188) {
+    return {
+      from: [58, 72] as [number, number],
+      to: [78, 37] as [number, number],
+      start: 156,
+      end: 178,
+    };
+  }
+
+  if (frame >= 188 && frame < 214) {
+    return {
+      from: [24, 43] as [number, number],
+      to: [24, 23] as [number, number],
+      start: 188,
+      end: 204,
+    };
+  }
+
+  return null;
 }
 
 function notesHomePlacement({
