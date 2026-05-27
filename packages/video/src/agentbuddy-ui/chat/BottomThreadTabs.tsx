@@ -1,5 +1,5 @@
-import {Icons} from '../primitives/Icon';
 import type {ChatComposerState} from './chatTypes';
+import {Icons} from '../primitives/Icon';
 import './ChatComposer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('ChatComposer');
@@ -41,14 +41,6 @@ function RecentThreadsMenu({menu}: {menu: NonNullable<BottomThreadTabsProps['rec
           </div>
           {thread.pinned ? <Icons.Pin className={styles.recentThreadPin} size={12} /> : null}
           <small className={styles.recentThreadTime}>{thread.time}</small>
-          <button className={styles.recentThreadAction} type="button">
-            <Icons.FileText size={12} />
-            Details
-          </button>
-          <button className={styles.recentThreadAction} type="button">
-            <Icons.PanelLeft size={12} />
-            Artifacts
-          </button>
         </div>
       ))}
     </div>

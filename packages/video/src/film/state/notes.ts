@@ -1,8 +1,6 @@
 import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
 import type {NoteImageBlockState} from '../../agentbuddy-ui/notes/NoteImageBlock';
 import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurface';
-import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
-import {launchComposerState} from './chat';
 import {ease, mix, textReveal} from './timeline';
 
 const launchImageSrc = svgDataUri(`
@@ -58,7 +56,6 @@ export type NotesEditorLineView = {
 
 export type NotesShotView = {
   breadcrumbs: string[];
-  composer: ChatComposerState;
   editor: {
     afterLines: NotesEditorLineView[];
     beforeLines: NotesEditorLineView[];
@@ -317,7 +314,6 @@ export function notesShotViewForFrame(frame: number): NotesShotView {
   };
   return {
     breadcrumbs: notesEditorCopy.breadcrumbs,
-    composer: launchComposerState,
     editor: {
       beforeLines: [
         ...notesEditorCopy.beforeLines.map((text, index) => ({id: `before-${index}`, text})),
@@ -379,7 +375,6 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
   if (!tasklistActive) {
     return {
       breadcrumbs: newNoteCopy.breadcrumbs,
-      composer: launchComposerState,
       editor: {
         afterLines: [],
         beforeLines: newNoteCopy.lines.map((text, index) => ({
@@ -401,7 +396,6 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
   if (!todoActive) {
     return {
       breadcrumbs: tasklistOverviewCopy.breadcrumbs,
-      composer: launchComposerState,
       editor: {
         afterLines: tasklistOverviewCopy.afterLines.map((text, index) => ({
           id: `overview-after-${index}`,
@@ -421,7 +415,6 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
 
   return {
     breadcrumbs: todoNoteCopy.breadcrumbs,
-    composer: launchComposerState,
     editor: {
       afterLines: todoNoteCopy.afterLines.map((text, index) => ({
         id: `todo-after-${index}`,
@@ -449,13 +442,14 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
 
 function notesTaskListForEditorFrame(frame: number): NotesTaskListPanelState {
   const tasklistActive = frame >= 88;
+  const todoActive = frame >= 148;
   const todoPressed = frame >= 130 && frame < 148;
   const todoCompletePressed = frame >= 168 && frame < 180;
   const todoComplete = frame >= 180;
 
   return {
     ...notesTaskListState,
-    activeId: tasklistActive ? 'current' : null,
+    activeId: tasklistActive && todoActive ? 'resize-image' : null,
     items: notesTaskListItems.map(item => {
       if (item.id === 'resize-image') {
         return {

@@ -37,7 +37,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
           transform: `translateY(${mix(24, 0, appReveal)}px) scale(${mix(0.988, 1, appReveal)})`,
         }}
       >
-        <AppWindow activePlugin="code" breadcrumbs={view.breadcrumbs} composer={frame > 150 ? view.composer : false} layout={layout}>
+        <AppWindow activePlugin="code" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
           <div style={{height: '100%', opacity: appReveal}}>
             <CodeReview
               leftSurfaceStyle={{

@@ -21,8 +21,8 @@ export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSPro
             <span className={state.text ? styles.text : styles.placeholder}>
               {state.text ? <ComposerText state={state} /> : state.placeholder}
             </span>
-            {state.referenceAutocomplete ? <ReferenceAutocomplete state={state.referenceAutocomplete} /> : null}
           </div>
+          {state.referenceAutocomplete ? <ReferenceAutocomplete state={state.referenceAutocomplete} /> : null}
           <ComposerActionBar
             disabled={state.disabled}
             mode={state.mode}

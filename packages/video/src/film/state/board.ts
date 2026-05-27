@@ -165,7 +165,7 @@ export function boardViewForFrame(frame: number) {
 
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
-  const dashboardVisible = frame < 108;
+  const dashboardVisible = frame < 88;
   const createVisible = frame >= 88 && frame < 204;
   const createFrame = Math.max(0, frame - 88);
   const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
@@ -196,16 +196,16 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
-        createPressed: createFrame > 94 && createFrame < 106,
-        instructions: textReveal(boardShotState.createForm.instructions, createFrame, 12, 58),
-        linkPressed: createFrame > 76 && createFrame <= 84,
-        linkedThreadsOpen: createFrame > 62,
-        linkInputVisible: createFrame > 62 && createFrame <= 86,
-        linkedThreadCandidate: createFrame > 74 && createFrame <= 84 ? boardShotState.createForm.parentThread : undefined,
-        linkedThreadQuery: createFrame > 70 ? boardShotState.createForm.linkedThreadQuery : '',
-        parentThread: createFrame > 84 ? boardShotState.createForm.parentThread : undefined,
+        createPressed: createFrame > 102 && createFrame < 114,
+        instructions: textReveal(boardShotState.createForm.instructions, createFrame, 34, 78),
+        linkPressed: createFrame > 82 && createFrame <= 90,
+        linkedThreadsOpen: createFrame > 64,
+        linkInputVisible: createFrame > 64 && createFrame <= 92,
+        linkedThreadCandidate: createFrame > 76 && createFrame <= 90 ? boardShotState.createForm.parentThread : undefined,
+        linkedThreadQuery: createFrame > 72 ? boardShotState.createForm.linkedThreadQuery : '',
+        parentThread: createFrame > 90 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,
-        title: textReveal(boardShotState.createForm.title, createFrame, 58, 82),
+        title: textReveal(boardShotState.createForm.title, createFrame, 10, 34),
       }
     : undefined;
   return {

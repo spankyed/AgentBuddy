@@ -130,7 +130,7 @@ export const chatShotState = {
   cursorPath: {from: [58, 74] as [number, number], to: [82, 84] as [number, number], start: 34, end: 96},
   systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
-  response: {text: 'Plan artifact created. I pinned the launch thread and prepared `write a commit`.', from: 190, to: 250},
+  response: {text: 'Plan artifact created. I pinned the launch thread and linked the release checklist.', from: 190, to: 250},
 };
 
 const commitMessageResponse = `Here's the commit message:
@@ -177,12 +177,12 @@ export const launchPlanArtifact: PlanArtifactState = {
   title: 'Launch Operating Plan',
   content: {
     status: 'in-progress',
-    notes: '### Launch path\n- [x] Capture **launch context**\n- [x] Create execution tickets\n- [x] Pin launch thread\n- [ ] Write commit\n\n| Surface | State |\n| --- | --- |\n| Thread plan | active |\n| Parent ticket | linked |\n\n```sh\nwrite a commit\n```\n\n> Conversation becomes work.',
+    notes: '### Launch path\n- [x] Capture **launch context**\n- [x] Create execution tickets\n- [x] Pin launch thread\n- [ ] Review release checklist\n\n| Surface | State |\n| --- | --- |\n| Thread plan | active |\n| Parent ticket | linked |\n\n> Conversation becomes work.',
     steps: [
       {id: 'capture-context', title: 'Capture launch context', status: 'done'},
       {id: 'execution-tickets', title: 'Create execution tickets', status: 'done'},
       {id: 'pin-thread', title: 'Pin launch thread', status: 'done'},
-      {id: 'commit-prompt', title: 'Send quick prompt: write a commit', status: 'running'},
+      {id: 'release-checklist', title: 'Review release checklist', status: 'running'},
     ],
   },
 };
@@ -466,21 +466,22 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       transform: 'translateY(0px)',
     },
   };
+  const typedNoteReference = view.prompt.includes('#notes:current');
   return {
-    breadcrumbs: chatShotState.breadcrumbs,
+    breadcrumbs: recentThreadLoaded ? ['Threads', 'Launch PR implementation'] : chatShotState.breadcrumbs,
     composer: {
       ...launchComposerState,
-      referenceAutocomplete: frame > 96 && frame < 124
+      referenceAutocomplete: frame > 96 && frame < 136
         ? {
             activeId: 'notes-current',
-            query: frame > 112 ? 'notes:current' : 'notes',
+            query: typedNoteReference ? 'notes:current' : 'notes',
             suggestions: [
               {id: 'notes-current', icon: '📝', label: 'current', typeLabel: 'note'},
               {id: 'notes-tasklist', icon: '📝', label: 'Tasklist', typeLabel: 'tasklist'},
             ],
           }
         : undefined,
-      references: frame >= 124 && frame < 176
+      references: typedNoteReference && frame < 176
         ? [{id: 'notes-current', icon: '📝', label: 'notes:current', token: '#notes:current', typeLabel: 'note'}]
         : undefined,
       attachments: [
@@ -496,6 +497,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       bottomTabs: frame > 28
         ? {
             ...launchComposerState.bottomTabs!,
+            activeLabel: recentThreadLoaded ? 'Launch PR implementation' : launchComposerState.bottomTabs!.activeLabel,
             active: frame > 314 ? 'active' : frame > 274 && frame < 314 ? 'recent' : frame > 54 ? 'active' : undefined,
             activePinned: frame > 418,
             pressed: frame > 36 && frame < 54

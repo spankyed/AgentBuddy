@@ -14,49 +14,37 @@ import './NotesShot.module.css';
 const styles = makeStyles('NotesShot');
 
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  if (frame < 132) {
-    return <NotesOpenToEditorShot frame={frame} variant={variant} />;
+  if (frame < 124) {
+    return <NotesOpenShot frame={frame} variant={variant} />;
   }
-  return <NotesEditorShot frame={frame - 132} variant={variant} />;
-}
-
-function NotesOpenToEditorShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const editorEnter = ease(frame, 124, 132);
-  return (
-    <div className={styles.root}>
-      <div
-        className={styles.homeLayer}
-        style={{
-          opacity: 1 - editorEnter,
-          transform: `translateY(${mix(0, -8, editorEnter)}px)`,
-        }}
-      >
-        <NotesOpenShot frame={frame} variant={variant} />
-      </div>
-      <div
-        className={styles.editorLayer}
-        style={{
-          opacity: editorEnter,
-          transform: `translateY(${mix(12, 0, editorEnter)}px)`,
-        }}
-      >
-        <NotesEditorShot frame={Math.max(0, frame - 124)} variant={variant} />
-      </div>
-    </div>
-  );
+  return <NotesEditorShot frame={frame - 124} variant={variant} />;
 }
 
 function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const home = notesHomeViewForFrame(frame);
-  const layout = useAppWindowLayout({animate: false, variant});
+  const baseLayout = useAppWindowLayout({animate: false, variant});
+  const chromeReveal = ease(frame, 96, 120);
+  const layout = {
+    ...baseLayout,
+    windowStyle: {
+      ...baseLayout.windowStyle,
+      opacity: 1,
+    },
+  };
   const cursor = notesHomeCursorForFrame(frame);
+  const surfaceBackground = `rgb(23 23 23 / ${chromeReveal})`;
 
   return (
     <div className={styles.root}>
       <AppWindow
         activePlugin="notes"
         breadcrumbs={['Notes']}
+        chromeOpacity={chromeReveal}
+        frameOpacity={chromeReveal}
+        headerOpacity={chromeReveal}
         layout={layout}
+        mainBackground={surfaceBackground}
+        surfaceBackground={surfaceBackground}
       >
         <NotesHomeSurface
           favorites={home.favorites}
@@ -68,6 +56,7 @@ function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' |
           showFavorites={home.showFavorites}
           showRecent={home.showRecent}
           showSearch={home.showSearch}
+          style={{background: 'transparent'}}
         />
       </AppWindow>
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}

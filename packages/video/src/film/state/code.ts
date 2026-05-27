@@ -1,6 +1,4 @@
 import type {CodeReviewState, CodeReviewViewState, TerminalPanelState} from '../../agentbuddy-ui/code/codeTypes';
-import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
-import {launchComposerState} from './chat';
 import {filmProjects} from './paths';
 import {ease, textReveal} from './timeline';
 
@@ -13,7 +11,6 @@ export type CodeShotState = {
 
 export type CodeShotView = {
   breadcrumbs: string[];
-  composer: ChatComposerState;
   review: {
     state: CodeReviewState;
     view: CodeReviewViewState;
@@ -315,7 +312,6 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
 
   return {
     breadcrumbs: codeShotState.breadcrumbs,
-    composer: launchComposerState,
     review: {
       state: reviewState,
       view: codeReviewViewForFrame(frame),

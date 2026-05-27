@@ -1,7 +1,7 @@
 .NotesHomeSurface_root {
   height: 100%;
   overflow-y: auto;
-  background: rgb(23 23 23);
+  background: transparent;
   padding: 0 24px 24px;
 }
 
@@ -10,7 +10,7 @@
   font-size: 30px;
   font-weight: 700;
   margin: 0;
-  padding: 48px 0 24px;
+  padding: 56px 0 24px;
   text-align: center;
 }
 

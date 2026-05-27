@@ -5,7 +5,6 @@ import {ThreadsBoardSurface} from '../../agentbuddy-ui/threads/ThreadsBoardSurfa
 import {Cursor} from '../overlays/Cursor';
 import {boardShotViewForFrame} from '../state/board';
 import {useAppWindowLayout} from '../appWindowLayout';
-import {ease, mix} from '../state/timeline';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 import './BoardShot.module.css';
 
@@ -14,11 +13,6 @@ const styles = makeStyles('BoardShot');
 export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = boardShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
-  const createExit = 1 - ease(frame, 194, 208);
-  const createBoardExit = 1 - ease(frame, 198, 212);
-  const boardReveal = ease(frame, 204, 230);
-  const createReveal = ease(frame, 92, 118);
-  const dashboardCreateExit = view.createForm ? 1 - ease(frame, 88, 106) : 1;
   const cursor = boardCursorForFrame(frame);
 
   return (
@@ -26,23 +20,12 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
       <div className={styles.appReveal}>
         <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
           {view.dashboard ? (
-            <div
-              className={styles.surfaceReveal}
-              style={{
-                opacity: dashboardCreateExit,
-              }}
-            >
+            <div className={styles.surfaceReveal}>
               <ThreadDashboardSurface state={view.dashboard} />
             </div>
           ) : null}
           {!view.dashboard && (frame >= 150 || !view.createForm) ? (
-            <div
-              className={styles.surfaceReveal}
-              style={{
-                opacity: boardReveal,
-                transform: `translateY(${mix(24, 0, boardReveal)}px) scale(${mix(0.99, 1, boardReveal)})`,
-              }}
-            >
+            <div className={styles.surfaceReveal}>
               <ThreadsBoardSurface
                 board={view.board}
                 header={view.header}
@@ -51,13 +34,7 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
             </div>
           ) : null}
           {view.createForm ? (
-            <div
-              className={styles.surfaceReveal}
-              style={{
-                opacity: Math.min(createReveal, createExit, createBoardExit),
-                transform: `translateY(${mix(20, -18, 1 - createExit)}px) scale(${mix(0.992, 1, createReveal)})`,
-              }}
-            >
+            <div className={styles.surfaceReveal}>
               <ThreadCreateForm state={view.createForm} />
             </div>
           ) : null}

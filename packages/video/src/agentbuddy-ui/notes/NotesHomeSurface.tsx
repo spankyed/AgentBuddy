@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react';
+import type {CSSProperties} from 'react';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import type {NoteTreeNodeState} from './noteTypes';
@@ -22,6 +23,7 @@ export function NotesHomeSurface({
   showFavorites = true,
   showRecent = true,
   showSearch = true,
+  style,
 }: {
   favorites: NotesHomeCardState[];
   greeting: string;
@@ -32,10 +34,11 @@ export function NotesHomeSurface({
   showFavorites?: boolean;
   showRecent?: boolean;
   showSearch?: boolean;
+  style?: CSSProperties;
 }) {
   const isSearching = searchQuery.trim().length > 0;
   return (
-    <div className={styles.root}>
+    <div className={styles.root} style={style}>
       <h1 className={styles.greeting}>{greeting}</h1>
       <div className={styles.content}>
         {showSearch ? <div className={styles.searchRow}>

@@ -3,23 +3,6 @@
   inset: 0;
 }
 
-.WorkflowShot_nodeMotion {
-  position: absolute;
-  z-index: 4;
-  overflow: visible;
-  transform-origin: 50% 50%;
-  will-change: height, left, opacity, top, transform, width;
-}
-
-.WorkflowShot_nodeSlot {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 1px;
-  height: 1px;
-  transform: translate(-50%, -50%);
-}
-
 .WorkflowShot_appReveal {
   position: absolute;
   inset: 0;
