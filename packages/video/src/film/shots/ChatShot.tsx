@@ -50,7 +50,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
           left: composerRect.left,
           top: composerRect.top,
           width: composerRect.width,
-          transform: `translate(-50%, -50%) scale(${mix(1.04, 1, composerDock)})`,
+          transform: `translate(-50%, ${mix(-50, -100, composerDock)}%) scale(${mix(1.04, 1, composerDock)})`,
         }}
       >
         <ChatComposer formStyle={{width: '100%'}} state={view.composer} />
@@ -100,11 +100,11 @@ function composerPlacement({
   const finalWidth = Math.min(mainWidth * 0.8, 1060);
   const startWidth = variant === 'square' ? Math.min(720, width - 96) : Math.min(960, width - 160);
   const finalCenterX = mainLeft + mainWidth / 2;
-  const finalCenterY = windowTop + windowHeight - (variant === 'square' ? 84 : 76);
+  const finalBottomY = windowTop + windowHeight - (variant === 'square' ? 20 : 18);
 
   return {
     left: mix(width / 2, finalCenterX, dock),
-    top: mix(height / 2, finalCenterY, dock),
+    top: mix(height / 2, finalBottomY, dock),
     width: mix(startWidth, finalWidth, dock),
   };
 }
