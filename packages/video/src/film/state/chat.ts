@@ -177,6 +177,7 @@ export const launchPlanArtifact: PlanArtifactState = {
   title: 'Launch Operating Plan',
   content: {
     status: 'in-progress',
+    nextStep: 'Review release checklist',
     notes: '### Launch path\n- [x] Capture **launch context**\n- [x] Create execution tickets\n- [x] Pin launch thread\n- [ ] Review release checklist\n\n| Surface | State |\n| --- | --- |\n| Thread plan | active |\n| Parent ticket | linked |\n\n> Conversation becomes work.',
     steps: [
       {id: 'capture-context', title: 'Capture launch context', status: 'done'},
@@ -482,7 +483,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           }
         : undefined,
       references: typedNoteReference && frame < 176
-        ? [{id: 'notes-current', icon: '📝', label: 'notes:current', token: '#notes:current', typeLabel: 'note'}]
+        ? [{id: 'notes-current', icon: '📝', label: 'current', token: '#notes:current', typeLabel: 'note'}]
         : undefined,
       attachments: [
         ...(frame > 132 && frame < 166 ? [{

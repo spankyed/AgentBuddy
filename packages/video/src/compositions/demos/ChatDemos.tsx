@@ -91,6 +91,56 @@ export const ChatComposerPhaseMenuDemo = () => (
   </SurfaceFrame>
 );
 
+export const ChatComposerReferencesDemo = () => (
+  <SurfaceFrame>
+    <DemoBottomSlot>
+      <ChatComposer
+        state={{
+          ...launchComposerState,
+          referenceAutocomplete: {
+            activeId: 'notes-current',
+            query: 'notes',
+            suggestions: [
+              {id: 'notes-current', icon: '📝', label: 'current', typeLabel: 'note:current'},
+              {id: 'notes-tasklist', icon: '☑', label: 'Tasklist', typeLabel: 'tasklist:root'},
+              {id: 'thread-launch', icon: '↺', label: 'Launch PR implementation', typeLabel: 'thread:launch'},
+            ],
+          },
+          references: [{id: 'notes-current', icon: '📝', label: 'current', token: '#notes:current', typeLabel: 'note'}],
+          text: 'Use #notes:current and this screenshot to turn launch context into tickets.',
+        }}
+      />
+    </DemoBottomSlot>
+  </SurfaceFrame>
+);
+
+export const ChatComposerRecentThreadsDemo = () => (
+  <SurfaceFrame>
+    <DemoBottomSlot>
+      <ChatComposer
+        state={{
+          ...launchComposerState,
+          bottomTabs: {
+            active: 'recent',
+            activeLabel: 'AgentBuddy launch film',
+            newThreadLabel: 'New thread',
+            pressed: 'recent',
+            recentLabel: 'Recent Threads',
+            recentThreadsMenu: {
+              activeId: 'launch-dev-complete',
+              threads: [
+                {id: 'launch-dev-complete', title: 'Launch PR implementation', pinned: true, status: 'done', time: 'now'},
+                {id: 'launch-plan', title: 'Launch Operating Plan', status: 'active', time: '2m'},
+                {id: 'release-checks', title: 'Release checklist', status: 'next', time: '8m'},
+              ],
+            },
+          },
+        }}
+      />
+    </DemoBottomSlot>
+  </SurfaceFrame>
+);
+
 export const ToolActivityDemo = () => {
   const frame = useCurrentFrame();
   const view = toolActivityViewForFrame(frame);

@@ -33,14 +33,20 @@ function RecentThreadsMenu({menu}: {menu: NonNullable<BottomThreadTabsProps['rec
   return (
     <div className={styles.recentThreadsMenu}>
       {menu.threads.map(thread => (
-        <div className={thread.id === menu.activeId ? styles.recentThreadActive : styles.recentThread} key={thread.id}>
+        <div className={thread.id === menu.activeId ? styles.recentThreadActive : styles.recentThread} data-current={thread.status === 'active'} key={thread.id}>
           <span className={thread.status === 'active' ? styles.recentThreadDotActive : styles.recentThreadDot} />
           <div className={styles.recentThreadTitle}>
-            <strong>{thread.title}</strong>
-            {thread.meta ? <small>{thread.meta}</small> : null}
+            <span>{thread.title}</span>
           </div>
-          {thread.pinned ? <Icons.Pin className={styles.recentThreadPin} size={12} /> : null}
+          <button className={styles.recentThreadPinButton} type="button">
+            <Icons.Pin className={thread.pinned ? styles.recentThreadPinActive : styles.recentThreadPin} size={12} />
+          </button>
           <small className={styles.recentThreadTime}>{thread.time}</small>
+          <div className={styles.recentThreadActions}>
+            <button type="button"><Icons.FileText size={12} />Details</button>
+            <button type="button"><Icons.PanelLeft size={12} />Artifacts</button>
+            <button type="button"><Icons.Archive size={12} />Archive</button>
+          </div>
         </div>
       ))}
     </div>

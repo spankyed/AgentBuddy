@@ -77,10 +77,9 @@ function ComposerText({state}: {state: ChatComposerState}) {
 
 function ReferencePill({icon = '#', label, typeLabel}: {icon?: string; label: string; typeLabel?: string}) {
   return (
-    <span className={styles.referencePill}>
+    <span className={styles.referencePill} data-ref-type={typeLabel ?? 'thread'}>
       <span className={styles.referenceIcon}>{icon}</span>
       <span>{label}</span>
-      {typeLabel ? <small>{typeLabel}</small> : null}
     </span>
   );
 }
@@ -88,7 +87,6 @@ function ReferencePill({icon = '#', label, typeLabel}: {icon?: string; label: st
 function ReferenceAutocomplete({state}: {state: NonNullable<ChatComposerState['referenceAutocomplete']>}) {
   return (
     <div className={styles.referenceAutocomplete}>
-      <div className={styles.referenceSearch}>#{state.query}</div>
       {state.suggestions.map(suggestion => (
         <div className={suggestion.id === state.activeId ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
           <span className={styles.referenceIcon}>{suggestion.icon ?? '#'}</span>

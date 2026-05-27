@@ -44,6 +44,7 @@ export function PlanArtifactCard({artifact}: {artifact: PlanArtifactState}) {
 
 function StructuredPlan({artifact}: {artifact: PlanArtifactState}) {
   const steps = artifact.content.steps ?? [];
+  const nextStep = artifact.content.nextStep ?? 'Review release checklist';
   return (
     <div className={styles.structured}>
       <section className={styles.section}>
@@ -69,7 +70,7 @@ function StructuredPlan({artifact}: {artifact: PlanArtifactState}) {
           <span>Parent ticket</span>
           <strong>linked</strong>
           <span>Next step</span>
-          <strong>write a commit</strong>
+          <strong>{nextStep}</strong>
         </div>
       </section>
     </div>

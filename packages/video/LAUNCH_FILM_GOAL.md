@@ -1,89 +1,85 @@
 # AgentBuddy Launch Film Goal
 
-## Current Goal
+## Goal
 
-Build a complete Remotion-driven AgentBuddy launch film using reusable React components that closely mirror the real app UI. The film should feel like captured product usage, but remain fully controllable in Remotion for timing, camera, cursor, state changes, and component-level staging.
+Ship a Remotion-driven AgentBuddy launch film built from reusable React replicas of the real AgentBuddy UI. The film should be cinematic and fully controllable in Remotion, but every app-like surface shown must read as the real product.
 
-This is not an Electron screenshot pipeline, a Playwright recording, a QA capture, or a fake marketing UI. Any app surface shown in the film should either be a near 1:1 recreation of the real AgentBuddy UI or live in clearly separated film-only code when it is not part of the app.
+## Core Rules
 
-## What Matters Most
+- No Electron capture, Playwright recording, screenshot carousel, or fake marketing UI.
+- `packages/video/src/agentbuddy-ui/**` is the source-backed app replica layer. Do not put loose mockups there.
+- Every visible app-like component must map to real renderer code, real renderer CSS/theme, or an actual app screenshot.
+- Film-only graphics must live outside the app replica layer and must not pretend to be AgentBuddy UI.
+- If a surface cannot be made faithful enough, remove it from the cut until it can be rebuilt properly.
+- Prefer fixing shared components and state models over one-off shot overlays.
 
-- Real Remotion-driven video logic.
-- Reusable component-level app surfaces, split across separate files.
-- Near 1:1 clones of the real app UI for the surfaces shown in the film.
-- Progressive component staging is a first-class requirement: important components should begin centered or isolated, then slide/settle into their real position inside the full app surface. Do not cut from an isolated component to a fully assembled app unless the app itself is navigating.
-- Navigation should behave like the real app. Avoid black transitions, generic grow-ins, or fake scene transitions when the user action is just app navigation.
-- No fake plugin surfaces, no ad hoc UI, no invented widgets pretending to be real product UI.
-- No audit-heavy detours unless they directly unblock visible film quality.
+## Current Fidelity Targets
 
-## Notes Chapter Target
+Work through visible film segments and replica components until no ad hoc app UI remains. The immediate known problem areas are:
 
-The notes chapter is the clearest place to prove the film can move from isolated product components into full app context without fake transitions. It must demonstrate the real Notes workflow through controlled Remotion state changes while preserving app fidelity.
+- Recent Threads menu.
+- Inline note/reference pills.
+- Reference autocomplete menu.
+- Chat composer spacing and floating behavior.
+- Notes chapter staging, navigation, right rail, tasklist panel, and task rows.
+- Code source-control and PR panel layout.
+- Flows blueprint identity, node styling, handles, and elbow-edge routing.
 
-The chapter should not begin with a complete app window popping, scaling, or growing into view. It should begin with the Notes home surface staged intentionally in the middle of the frame, then have those same real components slide and settle into their actual app positions as the full Notes layout becomes visible.
+## Required Surfaces In The Cut
 
-Required narrative sequence:
+- App chrome and toolbar, including pinned plugin placement and active states.
+- Chat composer, messages, tool activity, references, recent threads, and artifacts.
+- Threads dashboard/board and navigation into a thread.
+- Notes home, new-note flow, editor, right rail, tasklist panel, and task completion.
+- Code source control, PR files/create/details views, terminal, and Monaco-backed code views.
+- Flows blueprint canvas, palette, nodes, handles, and edges.
+- Final lockup as pure film graphics on black.
 
-1. Start on the Notes home view, not an editor and not a tasklist note.
-2. Type out `Good afternoon` on the Notes home surface.
-3. Reveal the real Notes home controls: search, `+ New note`, and `Recently visited`.
+Only show brain, database, logs, settings, prompts, actions, or library if the visible UI has been rebuilt with the same renderer-backed fidelity. Do not add quick fake plugin screens.
+
+## Motion Rules
+
+- Component-first moments should preserve spatial continuity: isolated components may start staged, but they must settle into their real app position.
+- Normal app navigation should look like navigation: click the real control, then show the destination state directly.
+- Do not use black flashes, generic crossfades, fake card expansion, or whole-app grow-ins to hide unfinished transitions.
+- Cursor motion should imply expert use without becoming the focus.
+
+## Notes Chapter Contract
+
+The notes chapter should follow this product flow:
+
+1. Start on Notes home.
+2. Type `Good afternoon`.
+3. Reveal search, `+ New note`, and Recently visited.
 4. Click `+ New note`.
-5. Navigate directly into a new note editor.
-6. Type the launch note content into the editor.
-7. Show the Notes right rail as soon as the shot leaves the Notes home/recents state.
-8. From the right rail, click the `Tasklist` note.
-9. Navigate the main content to the tasklist overview note.
-10. Show the tasklist left panel only after the tasklist note is active.
-11. Click a todo note from the tasklist left panel.
-12. Navigate the main content to that todo note.
-13. Mark the todo complete using the real task row/checkbox styling.
+5. Navigate directly into a new note editor and type the launch note content.
+6. Show the Notes right rail once no longer on the home view.
+7. Click `Tasklist` from the right rail.
+8. Navigate to the tasklist overview.
+9. Show the tasklist left panel only once the tasklist note is active.
+10. Click a todo note, open it, and mark it complete with the real task row/checkbox styling.
 
-Required motion and staging:
+Do not show the chat composer or bottom thread tabs in notes shots unless the real Notes plugin would show them for that exact state.
 
-- The Notes home component should be the staged hero object at the beginning of the chapter.
-- The staged Notes home component must become the full app view by moving into place, not by being replaced with a separate render.
-- New controls should enter as real app controls, not as film-only labels or decorative overlays.
-- The `+ New note` click should produce app navigation, not a black cut, grow transition, or generic crossfade.
-- The right rail should appear because the app entered note-editing context.
-- The tasklist panel should appear because the selected note is a tasklist, not because a layout panel randomly slides in.
-- Panel transitions can be authored, but they must preserve spatial continuity and real app identity.
+## Working Loop
 
-Specific notes chapter constraints:
+For each segment or component:
 
-- Do not show the chat composer over notes shots.
-- Do not show the bottom thread tabs in notes shots unless the real Notes plugin would show them for that exact app state.
-- Do not begin by growing in the whole app as the first notes shot.
-- Do not click a recent note card for the primary beat; the primary action is `+ New note`.
-- Do not use a fake card expansion transition for note navigation.
-- The right Notes rail should be present during note editing and tasklist work.
-- The tasklist left panel should only appear once the tasklist note is active.
-- Styling should match the real Notes plugin, including panel structure, spacing, right rail behavior, task rows, checkboxes, note editor typography, scrollbars, and selected row states.
+1. Inspect the real renderer source and any available app screenshot.
+2. Compare the replica against that source.
+3. Patch shared UI/state.
+4. Render or sample frames.
+5. Move on only when the visible result reads as the real app.
 
-## Full-Film Review Loop
+Keep `packages/video/src/agentbuddy-ui/FIDELITY.md` as the source map for replica components. It should document evidence, not become an excuse for audit-only work.
 
-Continue improving the film by watching rendered output in short intervals and fixing visible issues before moving forward. The interval does not have to be exactly three seconds; use the smallest review slice that exposes the problem.
+## Done
 
-For each review pass:
+This goal is done when:
 
-1. Inspect the actual rendered frames or video segment.
-2. Identify concrete fidelity, motion, layout, or narrative issues.
-3. Fix the issue in the reusable component or shot state, not with one-off hacks.
-4. Re-render or sample frames enough to verify the fix.
-5. Continue to the next segment only after the current segment is acceptable.
-
-Priority issues to catch during these passes:
-
-- Abrupt component-to-app transitions.
-- Black flashes or fake fades during normal app navigation.
-- Chat composer appearing in non-chat chapters.
-- Film-only UI being mistaken for real app UI.
-- Incorrect plugin identity, especially flows versus brain-like execution/status UI.
-- Any ad hoc surface that should instead be a 1:1 app component recreation.
-
-## Current Wrap-Up Criteria
-
-- The film renders successfully in landscape.
-- The notes chapter follows the sequence above without abrupt app-grow transitions.
-- The chat, board, notes, code, PR, flows, and final shots use real-looking AgentBuddy surfaces.
-- Any remaining non-app visuals are clearly isolated as film-only components.
-- The output is good enough to review as a product film, not just as a component proof.
+- The landscape film renders successfully.
+- Every visible app-like surface has renderer/screenshot evidence.
+- No known ad hoc app UI remains in the cut.
+- Chat, threads, notes, code/PR, and flows have been reviewed in rendered frames.
+- The notes chapter follows the contract above.
+- Film-only visuals are clearly separated from AgentBuddy UI.

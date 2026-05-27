@@ -213,6 +213,7 @@ export type PlanArtifactState = {
   content: {
     branch?: string;
     notes: string;
+    nextStep?: string;
     prNumber?: string;
     status: 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected';
     steps?: Array<{
