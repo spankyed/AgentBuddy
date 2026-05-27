@@ -33,7 +33,11 @@ export function AppWindow({activePlugin, breadcrumbs, children, composer, layout
         <main className={styles.main}>
           <CanvasHeader breadcrumbs={breadcrumbs} title={title} />
           <section className={styles.surface}>{children}</section>
-          {composer === false || composer == null ? null : <ChatComposer state={composer} />}
+          {composer === false || composer == null ? null : (
+            <div className={styles.composerDock}>
+              <ChatComposer state={composer} />
+            </div>
+          )}
         </main>
         {rightRail && layout.showRightRail ? <aside className={styles.rightRail}>{rightRail}</aside> : null}
       </div>

@@ -8,6 +8,8 @@ Non-negotiables:
 - Do not add fake/ad-hoc plugin UIs, loading indicators, chrome, or decorative filler that does not exist in the app.
 - Each chapter must reveal progressively: start with one or two focused components centered in frame, then animate those same components into their real position inside the full app UI. Do not cut abruptly from an isolated component to the entire app.
 - The transition from component focus to full UI is a primary quality bar. App chrome, sidebars, panels, and neighboring surfaces should slide/fade/scale into place around the already-visible component so the viewer understands where it lives.
+- Review passes must treat component-to-app continuity as a central defect class: if a shot cuts from a floating component to a full surface without the component visibly becoming part of that surface, fix the shot timing/layout before moving on.
+- Chat composer surfaces should float over the canvas like the real app. Do not add a separate bottom container band, alternate background color, or fake dock behind the input.
 - Chapter 1 is the benchmark for this reveal grammar: the chat input starts centered, then moves down into its real composer position while the thread canvas, header, toolbar, and bottom tabs assemble around it.
 - The montage should show real AgentBuddy surfaces and pay off prior actions, not random feature tiles.
 - The final screen should be plain black with `clientlabs.com` and `June 19th`.

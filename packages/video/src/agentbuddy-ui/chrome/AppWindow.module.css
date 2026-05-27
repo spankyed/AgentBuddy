@@ -15,9 +15,10 @@
 }
 
 .AppWindow_main {
+  position: relative;
   display: grid;
   min-width: 0;
-  grid-template-rows: 42px minmax(0, 1fr) auto;
+  grid-template-rows: 42px minmax(0, 1fr);
   background: rgb(23 23 23);
 }
 
@@ -32,4 +33,17 @@
   overflow: hidden;
   border-left: 1px solid rgb(38 38 38);
   background: rgb(23 23 23);
+}
+
+.AppWindow_composerDock {
+  position: absolute;
+  right: 0;
+  bottom: 20px;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.AppWindow_composerDock * {
+  pointer-events: auto;
 }
