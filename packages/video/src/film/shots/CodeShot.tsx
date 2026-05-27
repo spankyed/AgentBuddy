@@ -2,6 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {CodeFeaturePanel} from '../../agentbuddy-ui/code/CodeFeaturePanel';
 import {CodeReview} from '../../agentbuddy-ui/code/CodeReview';
 import {PullRequestPanel} from '../../agentbuddy-ui/code/PullRequestPanel';
+import {ExternalBrowserWindow} from '../props/ExternalBrowserWindow';
 import {Cursor} from '../overlays/Cursor';
 import {codeShotViewForFrame} from '../state/code';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -22,6 +23,9 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
   const leftSurfaceReveal = ease(frame, 88, 132);
   const fullPanelReveal = ease(frame, 100, 132);
   const panelRect = codePanelPlacement({dock: panelDock, height, layout, variant, width});
+  const browserRect = browserWindowPlacement({height, layout, variant, width});
+  const browserEnter = ease(frame, 258, 284);
+  const browserExit = ease(frame, 300, 316);
   const cursor = codeCursorForFrame(frame);
 
   return (
@@ -76,6 +80,21 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
               />
             </CodeFeaturePanel>
           </div>
+        </div>
+      ) : null}
+      {frame >= 258 && frame < 316 ? (
+        <div
+          className={styles.browserMotion}
+          style={{
+            height: browserRect.height,
+            left: browserRect.left,
+            opacity: browserEnter * (1 - browserExit),
+            top: browserRect.top,
+            transform: `translate(-50%, -50%) translateY(${mix(20, 0, browserEnter) - browserExit * 18}px) scale(${mix(0.965, 1, browserEnter)})`,
+            width: browserRect.width,
+          }}
+        >
+          <ExternalBrowserWindow />
         </div>
       ) : null}
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}
@@ -195,5 +214,32 @@ function codePanelPlacement({
     left: mix(width / 2, windowLeft + windowWidth - panelWidth / 2, dock),
     top: mix(height / 2, windowTop + 42 + finalHeight / 2, dock),
     width: mix(startWidth, panelWidth, dock),
+  };
+}
+
+function browserWindowPlacement({
+  height,
+  layout,
+  variant,
+  width,
+}: {
+  height: number;
+  layout: ReturnType<typeof useAppWindowLayout>;
+  variant?: 'landscape' | 'square';
+  width: number;
+}) {
+  const windowLeft = Number(layout.windowStyle.left ?? 0);
+  const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowWidth = Number(layout.windowStyle.width ?? width);
+  const windowHeight = Number(layout.windowStyle.height ?? height);
+  const sidePanelWidth = variant === 'square' ? 360 : 430;
+  const browserWidth = variant === 'square' ? Math.min(760, width - 92) : Math.min(900, windowWidth - sidePanelWidth - 150);
+  const browserHeight = variant === 'square' ? 480 : Math.min(560, windowHeight - 176);
+
+  return {
+    height: browserHeight,
+    left: windowLeft + 72 + (windowWidth - 72 - sidePanelWidth) / 2,
+    top: windowTop + 42 + (windowHeight - 42) / 2,
+    width: browserWidth,
   };
 }

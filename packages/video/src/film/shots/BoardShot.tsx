@@ -19,9 +19,9 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
   const dashboardDock = ease(frame, 18, 62);
   const dashboardExit = ease(frame, 84, 110);
   const appDashboardReveal = ease(frame, 58, 84);
-  const createExit = 1 - ease(frame, 152, 166);
-  const createBoardExit = 1 - ease(frame, 146, 158);
-  const boardReveal = ease(frame, 150, 178);
+  const createExit = 1 - ease(frame, 188, 202);
+  const createBoardExit = 1 - ease(frame, 190, 204);
+  const boardReveal = ease(frame, 196, 222);
   const createReveal = ease(frame, 92, 118);
   const dashboardCreateExit = view.createForm ? 1 - ease(frame, 88, 106) : 1;
   const dashboardRect = dashboardPlacement({dock: dashboardDock, height, layout, variant, width});

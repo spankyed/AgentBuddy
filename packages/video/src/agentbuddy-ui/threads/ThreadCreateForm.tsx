@@ -17,6 +17,7 @@ export type ThreadCreateFormState = {
     tags: string[];
     title: string;
   };
+  tags?: string[];
   tagsOpen?: boolean;
   title: string;
 };
@@ -63,9 +64,11 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
                 <Icons.ChevronRight className={styles.sectionChevron} data-open={state.tagsOpen || undefined} size={14} />
                 <span>Tags</span>
               </div>
-              <div className={styles.tags}>
-                <span className={styles.tag}>claude-code</span>
-              </div>
+              {state.tags?.length ? (
+                <div className={styles.tags}>
+                  {state.tags.map(tag => <span className={styles.tag} key={tag}>{tag}</span>)}
+                </div>
+              ) : null}
             </div>
           </section>
 

@@ -420,7 +420,7 @@ export function completedDevThreadActivityViewForFrame(frame: number) {
 }
 
 export function chatViewForFrame(frame: number) {
-  const quickPromptActive = frame > 292;
+  const quickPromptActive = frame > 324;
   const messageReveal = (from: number) => {
     const progress = ease(frame, from, from + 18);
     return {
@@ -451,7 +451,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const recentThreadLoaded = frame >= 214;
   const showLaunchWork = frame > 174 && frame < 292;
   const showLaunchArtifact = frame > 232 && frame < 292;
-  const showQuickPromptResponse = frame > 292;
+  const showQuickPromptResponse = frame > 324;
   const stableLoadedMessageStyles = {
     assistant: {
       opacity: 1,

@@ -72,10 +72,73 @@
 }
 
 .ThreadDashboardSurface_body {
+  display: grid;
   min-height: 0;
   flex: 1;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 20px;
   overflow: hidden;
   padding: 20px 24px;
+}
+
+.ThreadDashboardSurface_body[data-sidebar="false"] {
+  display: block;
+}
+
+.ThreadDashboardSurface_artifactSidebar {
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid rgb(38 38 38);
+  padding-right: 16px;
+}
+
+.ThreadDashboardSurface_artifactSidebar h3 {
+  color: rgb(115 115 115);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 2px 0 12px;
+  text-transform: uppercase;
+}
+
+.ThreadDashboardSurface_artifactItem,
+.ThreadDashboardSurface_artifactItemActive {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 0.375rem;
+  color: rgb(163 163 163);
+  padding: 8px 10px;
+}
+
+.ThreadDashboardSurface_artifactItemActive {
+  background: rgb(64 64 64 / 55%);
+  color: rgb(245 245 245);
+}
+
+.ThreadDashboardSurface_artifactItem strong,
+.ThreadDashboardSurface_artifactItemActive strong {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ThreadDashboardSurface_artifactItem small,
+.ThreadDashboardSurface_artifactItemActive small {
+  display: block;
+  color: rgb(115 115 115);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.ThreadDashboardSurface_content {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ThreadDashboardSurface_threadHeader {

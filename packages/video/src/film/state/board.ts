@@ -18,7 +18,7 @@ export type BoardShotView = {
       top: string;
       transform: string;
     };
-  };
+  } | undefined;
 };
 
 export const boardShotState: {
@@ -44,6 +44,11 @@ export const boardShotState: {
   breadcrumbs: ['Threads', 'Board'],
   dashboard: {
     activeTabId: 'launch-operating-plan',
+    artifactSidebar: [
+      {id: 'launch-operating-plan', title: 'Launch operating plan', meta: 'approved'},
+      {id: 'release-checklist', title: 'Release checklist', meta: 'ready'},
+      {id: 'write-commit', title: 'Write commit', meta: 'next'},
+    ],
     artifact: {
       ...launchPlanArtifact,
       content: {
@@ -66,6 +71,7 @@ export const boardShotState: {
       tags: ['launch'],
       title: 'Launch operating plan',
     },
+    tags: [],
     title: 'Create launch PR flow',
   },
   header: {
@@ -78,12 +84,12 @@ export const boardShotState: {
   board: {
     columns: [
       {
-        cards: [{title: 'Draft launch distribution plan', tags: ['parent']}],
+        cards: [{title: 'Draft launch distribution plan', tags: ['parent']}, {title: 'Create launch PR flow'}],
         title: 'Backlog',
         tone: 'neutral',
       },
       {
-        cards: [{title: 'Write commit from quick prompt', tags: ['claude-code']}],
+        cards: [{title: 'Write commit from quick prompt'}],
         title: 'In Progress',
         tone: 'blue',
       },
@@ -97,11 +103,10 @@ export const boardShotState: {
   movingCard: {
     card: {
       title: 'Create launch PR flow',
-      tags: ['claude-code'],
     },
     motion: {
-      from: 162,
-      to: 210,
+      from: 196,
+      to: 228,
       fromLeft: 8,
       toLeft: 40,
       fromTop: 34,
@@ -160,30 +165,64 @@ export function boardViewForFrame(frame: number) {
 
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
-  const dashboardVisible = frame < 110;
-  const createVisible = frame >= 88 && frame < 166;
+  const dashboardVisible = frame < 108;
+  const createVisible = frame >= 88 && frame < 196;
   const createFrame = Math.max(0, frame - 88);
+  const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
+  const droppedCard = frame >= boardShotState.movingCard.motion.to;
+  const boardColumns = boardShotState.board.columns.map(column => {
+    if (column.title === 'Backlog') {
+      return {
+        ...column,
+        cards: droppedCard || draggingCard
+          ? column.cards.filter(card => card.title !== boardShotState.movingCard.card.title)
+          : column.cards,
+        count: droppedCard || draggingCard ? column.cards.length - 1 : column.cards.length,
+      };
+    }
+
+    if (column.title === 'In Progress') {
+      return {
+        ...column,
+        cards: droppedCard
+          ? [...column.cards, {...boardShotState.movingCard.card, tags: ['claude-code']}]
+          : column.cards,
+        count: droppedCard ? column.cards.length + 1 : column.cards.length,
+      };
+    }
+
+    return column;
+  });
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
-        createPressed: createFrame > 96 && createFrame < 112,
+        createPressed: createFrame > 94 && createFrame < 106,
         instructions: textReveal(boardShotState.createForm.instructions, createFrame, 12, 58),
-        linkPressed: createFrame > 82 && createFrame <= 90,
-        linkedThreadsOpen: createFrame > 66,
-        linkInputVisible: createFrame > 66 && createFrame <= 96,
+        linkPressed: createFrame > 76 && createFrame <= 84,
+        linkedThreadsOpen: createFrame > 62,
+        linkInputVisible: createFrame > 62 && createFrame <= 86,
         linkedThreadQuery: createFrame > 70 ? boardShotState.createForm.linkedThreadQuery : '',
-        parentThread: createFrame > 86 ? boardShotState.createForm.parentThread : undefined,
+        parentThread: createFrame > 84 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,
         title: textReveal(boardShotState.createForm.title, createFrame, 58, 82),
       }
     : undefined;
   return {
-    board: boardShotState.board,
+    board: {
+      ...boardShotState.board,
+      columns: boardColumns,
+    },
     breadcrumbs: frame < 96 ? ['Threads', 'Dashboard'] : createVisible ? ['Threads', 'New Thread'] : boardShotState.breadcrumbs,
     createForm,
     dashboard: dashboardVisible
       ? {
           ...boardShotState.dashboard,
+          header: {
+            ...boardShotState.header,
+            activeView: 'dashboard',
+            newThreadPressed: frame > 72 && frame < 86,
+            pressedView: undefined,
+          },
           pinPressed: frame > 52 && frame < 66,
           pinned: frame >= 66,
         }
@@ -195,9 +234,11 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
       pressedView: frame > 172 && frame < 184 ? 'kanban' : undefined,
     },
     mode: dashboardVisible ? 'dashboard' : createVisible ? 'create' : 'board',
-    movingCard: {
-      card: boardShotState.movingCard.card,
-      style: view.movingCardStyle,
-    },
+    movingCard: draggingCard
+      ? {
+          card: boardShotState.movingCard.card,
+          style: view.movingCardStyle,
+        }
+      : undefined,
   };
 }
