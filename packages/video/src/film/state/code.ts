@@ -244,9 +244,9 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
   return {
     activePanel: frame < 48 || frame > 316 ? 'pr' : 'commit',
     commitButtonPressed: frame > 204 && frame <= 214,
-    commitMenuActionPressed: frame > 92 && frame < 102,
-    commitMenuOpen: frame > 78 && frame < 104,
-    commitMessage: frame < 104 ? textReveal('incomplete work', frame, 52, 76) : frame > 184 ? codeShotState.generatedCommitMessage : '',
+    commitMenuActionPressed: frame > 128 && frame < 140,
+    commitMenuOpen: frame > 112 && frame < 142,
+    commitMessage: frame < 142 ? textReveal('incomplete work', frame, 56, 88) : frame > 184 ? codeShotState.generatedCommitMessage : '',
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
     ),
@@ -275,10 +275,10 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
 export function codeShotViewForFrame(frame: number): CodeShotView {
   const initialStaged = codeShotState.review.staged;
   const initialChanges = codeShotState.review.changes;
-  const stashedInitialWork = frame >= 104;
+  const stashedInitialWork = frame >= 142;
   const stagedReviewedWork = frame >= 142 && frame < 214;
   const committedReviewedWork = frame >= 214;
-  const checkedOutMainWorktree = frame >= 122;
+  const checkedOutMainWorktree = frame >= 154;
   const reviewState: CodeReviewState = {
     ...codeShotState.review,
     branch: checkedOutMainWorktree ? 'master' : codeShotState.review.branch,
@@ -304,12 +304,12 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
           },
         ]
       : [],
-    stashesExpanded: frame >= 104 && frame < 132,
+    stashesExpanded: frame >= 142 && frame < 170,
     terminal: frame > 220 && frame < 316 ? expandedTerminalPanelState : codeShotState.review.terminal,
     worktrees: codeShotState.review.worktrees.map(worktree => ({
       ...worktree,
       current: checkedOutMainWorktree ? worktree.branch === 'master' : worktree.branch === 'as/react-launch-film',
-      pressed: frame > 112 && frame < 122 && worktree.branch === 'master',
+      pressed: frame > 142 && frame < 154 && worktree.branch === 'master',
     })),
   };
 

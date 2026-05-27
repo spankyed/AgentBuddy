@@ -21,14 +21,6 @@ const replaceObsoleteAppsCode = `export async function run({ database, logs }) {
   return { removed };
 }`;
 
-const replaceObsoleteAppsLogSnippet = `  await logs.info("all obsolete apps removed", {
-    command: "/replace-obsolete-apps",
-    removed,
-  });
-
-  return { removed };
-}`;
-
 export const replaceObsoleteAppsFormState: FlowNodeFormState = {
   canAddNextStep: true,
   nodeKind: 'action',
@@ -60,8 +52,7 @@ export const replaceObsoleteAppsFormState: FlowNodeFormState = {
 export function replaceObsoleteAppsFormStateForFrame(frame: number): FlowNodeFormState {
   const local = Math.max(0, frame - 236);
   const description = textReveal(replaceObsoleteAppsDescription, local, 4, 42);
-  const codeSource = local > 82 ? replaceObsoleteAppsLogSnippet : replaceObsoleteAppsCode;
-  const code = local > 82 ? textReveal(codeSource, local, 82, 96) : textReveal(codeSource, local, 8, 72);
+  const code = textReveal(replaceObsoleteAppsCode, local, 8, 96);
 
   return {
     ...replaceObsoleteAppsFormState,

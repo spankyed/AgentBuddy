@@ -93,30 +93,30 @@ function codeCursorForFrame(frame: number) {
     };
   }
 
-  if (frame >= 78 && frame < 108) {
+  if (frame >= 92 && frame < 122) {
     return {
       from: [66, 36] as [number, number],
       to: [96, 16] as [number, number],
-      start: 78,
-      end: 98,
-    };
-  }
-
-  if (frame >= 112 && frame < 142) {
-    return {
-      from: [92, 88] as [number, number],
-      to: [93, 21] as [number, number],
-      start: 112,
-      end: 132,
+      start: 92,
+      end: 112,
     };
   }
 
   if (frame >= 142 && frame < 166) {
     return {
-      from: [93, 21] as [number, number],
-      to: [96, 27] as [number, number],
+      from: [92, 88] as [number, number],
+      to: [93, 21] as [number, number],
       start: 142,
       end: 156,
+    };
+  }
+
+  if (frame >= 166 && frame < 190) {
+    return {
+      from: [93, 21] as [number, number],
+      to: [96, 27] as [number, number],
+      start: 166,
+      end: 180,
     };
   }
 
