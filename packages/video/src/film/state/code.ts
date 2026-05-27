@@ -252,7 +252,7 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
     ),
     generateCommitPressed: frame > 148 && frame <= 158,
     generatingCommitMessage: frame > 154 && frame <= 184,
-    leftSurface: frame < 72 ? 'blank' : frame > 220 && frame < 258 ? 'terminal' : frame >= 258 && frame < 316 ? 'app-preview' : 'diff',
+    leftSurface: frame < 72 ? 'blank' : frame > 220 && frame < 258 ? 'terminal' : frame >= 258 && frame < 316 ? 'blank' : 'diff',
     prMode: frame <= 350 ? 'files' : frame <= 380 ? 'create' : 'details',
     prCreatePressed: frame > 368 && frame <= 380,
     prMergePressed: frame > 394 && frame <= 404,

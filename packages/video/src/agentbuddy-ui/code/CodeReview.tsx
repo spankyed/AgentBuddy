@@ -1,7 +1,6 @@
 import {cx} from '../primitives/classNames';
 import type {CSSProperties} from 'react';
 import type {CodeReviewState, CodeReviewViewState} from './codeTypes';
-import {AppPreviewSurface} from './AppPreviewSurface';
 import {CodeDiffView} from './CodeDiffView';
 import {CodeFeaturePanel} from './CodeFeaturePanel';
 import {CodeTerminalSurface} from './CodeTerminalSurface';
@@ -24,8 +23,6 @@ export function CodeReview({leftSurfaceStyle, panelStyle, state, variant, view}:
     <div className={styles.blankSurface} />
   ) : view.leftSurface === 'terminal' ? (
     <CodeTerminalSurface state={state.terminal} />
-  ) : view.leftSurface === 'app-preview' ? (
-    <AppPreviewSurface />
   ) : (
     <CodeDiffView fileName={state.diff.fileName} lineOpacities={view.diffLineOpacities} lineStart={state.diff.lineStart} lines={state.diff.lines} />
   );
