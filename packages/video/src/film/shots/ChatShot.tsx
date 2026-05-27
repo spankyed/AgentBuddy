@@ -71,6 +71,10 @@ function initialChatCursorForFrame(frame: number):
     return {end: 166, from: [82, 59], start: 138, to: [82, 87]};
   }
 
+  if (frame >= 410 && frame < 438) {
+    return {end: 432, from: [84, 86], start: 410, to: [49, 94]};
+  }
+
   return null;
 }
 

@@ -498,7 +498,13 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             ...launchComposerState.bottomTabs!,
             active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : frame > 54 ? 'active' : undefined,
             activePinned: frame > 330,
-            pressed: frame > 36 && frame < 54 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
+            pressed: frame > 36 && frame < 54
+              ? 'new'
+              : frame > 166 && frame < 184
+                ? 'recent'
+                : (frame > 232 && frame < 246) || (frame > 420 && frame < 438)
+                  ? 'active'
+                  : undefined,
             recentThreadsMenu: frame > 178 && frame < 214
               ? {
                   activeId: frame > 196 ? 'launch-dev-complete' : undefined,

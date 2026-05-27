@@ -21,8 +21,10 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
   const taskListEnter = ease(frame, 210, 240);
   const appReveal = ease(frame, 74, 124);
   const homeDock = ease(frame, 72, 128);
-  const homeExit = ease(frame, 118, 146);
+  const homeExit = ease(frame, 96, 124);
   const homePlacement = notesHomePlacement({dock: homeDock, height, layout, variant, width});
+  const cardMorph = noteCardPlacement({height, homePlacement, layout, progress: ease(frame, 82, 150), variant, width});
+  const cardMorphOpacity = Math.min(ease(frame, 76, 90), 1 - ease(frame, 112, 132));
   const cursor = notesCursorForFrame(frame);
   const renderLine = (line: {caretVisible?: boolean; text: string}) => (
     <NoteLine frame={frame} line={line} />
@@ -45,7 +47,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
           layout={layout}
           rightRail={frame > 204 ? <NotesRightRail state={view.rightRail} /> : undefined}
         >
-          <div style={{height: '100%', opacity: ease(frame, 118, 150)}}>
+          <div style={{height: '100%', opacity: ease(frame, 104, 136)}}>
             <NotesLayout
               showTaskList={frame > 210}
               taskListStyle={{
@@ -83,6 +85,25 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
             searchResults={view.home.searchResults}
           />
           <div className={styles.homeFade} style={{opacity: homeExit}} />
+        </div>
+      ) : null}
+      {frame >= 76 && frame < 162 ? (
+        <div
+          className={styles.noteCardMorph}
+          style={{
+            height: cardMorph.height,
+            left: cardMorph.left,
+            opacity: cardMorphOpacity,
+            top: cardMorph.top,
+            transform: `translate(-50%, -50%) scale(${mix(0.985, 1, ease(frame, 82, 116))})`,
+            width: cardMorph.width,
+          }}
+        >
+          <div className={styles.morphIcon}>🔥</div>
+          <div className={styles.morphCopy}>
+            <strong>current</strong>
+            <small>{frame < 128 ? 'just now' : 'NOTES › AGENTBUDDY › TASKLIST'}</small>
+          </div>
         </div>
       ) : null}
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}
@@ -159,6 +180,50 @@ function notesHomePlacement({
     left: mix(width / 2, mainLeft + mainWidth / 2, dock),
     top: mix(height / 2, windowTop + 42 + finalHeight / 2, dock),
     width: mix(startWidth, finalWidth, dock),
+  };
+}
+
+function noteCardPlacement({
+  homePlacement,
+  layout,
+  progress,
+  variant,
+  width,
+}: {
+  height: number;
+  homePlacement: ReturnType<typeof notesHomePlacement>;
+  layout: ReturnType<typeof useAppWindowLayout>;
+  progress: number;
+  variant?: 'landscape' | 'square';
+  width: number;
+}) {
+  const windowLeft = Number(layout.windowStyle.left ?? 0);
+  const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowWidth = Number(layout.windowStyle.width ?? width);
+  const mainLeft = windowLeft + 72;
+  const mainWidth = windowWidth - 72;
+  const homeLeft = homePlacement.left - homePlacement.width / 2;
+  const contentWidth = Math.min(672, homePlacement.width - 48);
+  const contentLeft = homeLeft + (homePlacement.width - contentWidth) / 2;
+  const start = {
+    height: 110,
+    left: contentLeft + 80,
+    top: homePlacement.top - homePlacement.height / 2 + 205,
+    width: 160,
+  };
+  const finalWidth = variant === 'square' ? Math.min(650, width - 150) : Math.min(760, mainWidth - 160);
+  const end = {
+    height: variant === 'square' ? 430 : 470,
+    left: mainLeft + mainWidth / 2,
+    top: windowTop + 42 + (variant === 'square' ? 310 : 340),
+    width: finalWidth,
+  };
+
+  return {
+    height: mix(start.height, end.height, progress),
+    left: mix(start.left, end.left, progress),
+    top: mix(start.top, end.top, progress),
+    width: mix(start.width, end.width, progress),
   };
 }
 

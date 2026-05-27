@@ -1,5 +1,5 @@
 export type ChapterShotId = 'intro-title' | 'chat-title' | 'notes-title' | 'code-title' | 'workflow-title' | 'montage-title';
-export type ContentShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'montage' | 'final';
+export type ContentShotId = 'chat' | 'board' | 'notes-open' | 'notes' | 'code' | 'workflow' | 'montage' | 'final';
 export type ShotId = ChapterShotId | ContentShotId;
 
 export type FilmShot = {
@@ -11,6 +11,10 @@ export type FilmShot = {
   };
   duration: number;
   id: ShotId;
+  transition?: {
+    enter?: 'cut' | 'float';
+    exit?: 'fade' | 'hold';
+  };
   title?: string;
 };
 
@@ -24,10 +28,11 @@ export type FilmCaptionView = {
 export const shots: FilmShot[] = [
   {id: 'intro-title', chapter: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 78},
   {id: 'chat-title', chapter: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 84},
-  {id: 'chat', duration: 450},
-  {id: 'board', duration: 240},
+  {id: 'chat', duration: 450, transition: {exit: 'hold'}},
+  {id: 'board', duration: 240, transition: {enter: 'cut'}},
   {id: 'notes-title', chapter: {eyebrow: '2', title: 'More than just a note taker'}, duration: 84},
-  {id: 'notes', duration: 330},
+  {id: 'notes-open', duration: 132, transition: {exit: 'hold'}},
+  {id: 'notes', duration: 198, transition: {enter: 'cut'}},
   {id: 'code-title', chapter: {eyebrow: '3', title: 'More than just an IDE'}, duration: 84},
   {id: 'code', duration: 420},
   {id: 'workflow-title', chapter: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 84},

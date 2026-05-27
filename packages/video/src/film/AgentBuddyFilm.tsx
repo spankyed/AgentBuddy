@@ -53,11 +53,13 @@ function Film({variant}: {variant: Variant}) {
 
 function ShotLayer({children, shot}: {children: ReactNode; shot: FilmShot}) {
   const frame = useCurrentFrame();
-  const enter = shot.chapter ? 1 : ease(frame, 0, 18);
-  const exit = shot.chapter || shot.id === 'final' ? 0 : ease(frame, shot.duration - 4, shot.duration);
+  const enterMode = shot.transition?.enter ?? 'float';
+  const exitMode = shot.transition?.exit ?? 'fade';
+  const enter = shot.chapter || enterMode === 'cut' ? 1 : ease(frame, 0, 18);
+  const exit = shot.chapter || exitMode === 'hold' ? 0 : ease(frame, shot.duration - 4, shot.duration);
   const opacity = Math.min(enter, 1 - exit);
-  const scale = shot.chapter ? 1 : mix(0.992, 1, enter) - exit * 0.006;
-  const y = shot.chapter ? 0 : mix(10, 0, enter) - exit * 6;
+  const scale = shot.chapter || enterMode === 'cut' ? 1 - exit * 0.006 : mix(0.992, 1, enter) - exit * 0.006;
+  const y = shot.chapter || enterMode === 'cut' ? -exit * 6 : mix(10, 0, enter) - exit * 6;
 
   return (
     <div
@@ -78,7 +80,8 @@ function ShotSurface({shot, variant}: {shot: FilmShot; variant: Variant}) {
   if (shot.chapter) {
     return <ChapterCard duration={shot.duration} eyebrow={shot.chapter.eyebrow} frame={frame} subtitle={shot.chapter.subtitle} title={shot.chapter.title} variant={variant} />;
   }
-  if (id === 'notes') return <NotesShot frame={frame} variant={variant} />;
+  if (id === 'notes-open') return <NotesShot frame={frame} mode="open" variant={variant} />;
+  if (id === 'notes') return <NotesShot frame={frame} mode="editor" variant={variant} />;
   if (id === 'chat') return <ChatShot frame={frame} variant={variant} />;
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;
