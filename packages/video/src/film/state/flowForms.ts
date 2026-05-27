@@ -5,20 +5,13 @@ const replaceObsoleteAppsDescription = 'Find obsolete productivity apps and remo
 
 const replaceObsoleteAppsCode = `export async function run({ database, logs }) {
   const obsolete = [
-    "anti-gravity",
-    "cursor",
-    "vscode",
-    "notion",
-    "obsidian",
-    "tick-tick",
+    "anti-gravity", "cursor", "vscode", "notion",
+    "obsidian", "tick-tick",
   ];
-
   const removed = await database.apps.deleteMany({
     where: { slug: { in: obsolete } },
   });
-
   await logs.info("all obsolete apps removed", { removed });
-  return { removed };
 }`;
 
 export const replaceObsoleteAppsFormState: FlowNodeFormState = {
@@ -50,9 +43,9 @@ export const replaceObsoleteAppsFormState: FlowNodeFormState = {
 };
 
 export function replaceObsoleteAppsFormStateForFrame(frame: number): FlowNodeFormState {
-  const local = Math.max(0, frame - 236);
+  const local = Math.max(0, frame - 252);
   const description = textReveal(replaceObsoleteAppsDescription, local, 4, 42);
-  const code = textReveal(replaceObsoleteAppsCode, local, 8, 96);
+  const code = textReveal(replaceObsoleteAppsCode, local, 8, 84);
 
   return {
     ...replaceObsoleteAppsFormState,

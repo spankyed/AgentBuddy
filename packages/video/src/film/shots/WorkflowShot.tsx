@@ -18,10 +18,10 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
   const view = workflowShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
   const {height, width} = useVideoConfig();
-  const appReveal = ease(frame, 36, 92);
-  const nodeDock = ease(frame, 40, 104);
-  const nodeExit = ease(frame, 92, 108);
-  const formReveal = ease(frame, 236, 266);
+  const appReveal = ease(frame, 86, 140);
+  const nodeDock = ease(frame, 84, 150);
+  const nodeExit = ease(frame, 148, 168);
+  const formReveal = ease(frame, 252, 282);
   const listener = view.flow.nodes[0];
   const nodeRect = workflowNodePlacement({dock: nodeDock, height, layout, listener, width});
   const cursor = workflowCursorForFrame(frame);
@@ -37,9 +37,9 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
       >
         <AppWindow activePlugin="flows" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
           <div style={{height: '100%', opacity: ease(frame, 48, 88)}}>
-            <FlowCanvas hiddenNodeIds={frame < 106 ? new Set([listener.id]) : undefined} state={view.flow} />
+            <FlowCanvas hiddenNodeIds={frame < 168 ? new Set([listener.id]) : undefined} state={view.flow} />
           </div>
-          {frame > 236 ? (
+          {frame > 252 ? (
             <FlowNodeForm
               overlayStyle={{opacity: formReveal}}
               panelStyle={{
@@ -51,7 +51,7 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
           ) : null}
         </AppWindow>
       </div>
-      {frame < 110 ? (
+      {frame < 168 ? (
         <div
           className={styles.nodeMotion}
           style={{
@@ -76,24 +76,24 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
 function workflowCursorForFrame(frame: number):
   | {end: number; from: [number, number]; start: number; to: [number, number]}
   | null {
-  if (frame >= 46 && frame < 78) {
-    return {end: 78, from: [50, 52], start: 46, to: [22, 40]};
+  if (frame >= 92 && frame < 124) {
+    return {end: 124, from: [50, 52], start: 92, to: [22, 40]};
   }
 
-  if (frame >= 112 && frame < 146) {
-    return {end: 146, from: [56, 39], start: 112, to: [78, 32]};
+  if (frame >= 144 && frame < 178) {
+    return {end: 178, from: [56, 39], start: 144, to: [78, 32]};
   }
 
-  if (frame >= 172 && frame < 204) {
-    return {end: 204, from: [78, 32], start: 172, to: [78, 43]};
+  if (frame >= 200 && frame < 232) {
+    return {end: 232, from: [78, 32], start: 200, to: [78, 43]};
   }
 
-  if (frame >= 230 && frame < 266) {
-    return {end: 266, from: [78, 43], start: 230, to: [78, 32]};
+  if (frame >= 246 && frame < 282) {
+    return {end: 282, from: [78, 43], start: 246, to: [78, 32]};
   }
 
-  if (frame >= 272 && frame < 318) {
-    return {end: 318, from: [78, 32], start: 272, to: [87, 62]};
+  if (frame >= 288 && frame < 334) {
+    return {end: 334, from: [78, 32], start: 288, to: [87, 62]};
   }
 
   return null;
