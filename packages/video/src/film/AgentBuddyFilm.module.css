@@ -8,7 +8,7 @@
 .AgentBuddyFilm_background {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #07090b 0%, #0b1012 55%, #050608 100%);
+  background: #050505;
 }
 
 .AgentBuddyFilm_shotLayer {

@@ -142,6 +142,20 @@ Create the launch operating plan, link the parent thread,
 and queue the next implementation pass from the same surface.
 \`\`\``;
 
+const completedDevThreadResponse = 'The launch film branch is ready for the commit pass. I aligned the chat input, Recent Threads menu, source-control panel, PR flow, and flow-blueprint surfaces against the real app UI, then ran the video checks.';
+
+const completedDevThreadActivity: ToolActivityBlockState = {
+  defaultOpen: true,
+  entries: [
+    {id: 'inspect-ui', tool: 'Read', summary: 'packages/video/src/agentbuddy-ui', status: 'ok', durationMs: 420, outputSummary: 'UI surfaces reviewed'},
+    {id: 'patch-chat', tool: 'Edit', summary: 'chat input, recent threads, thread state handoff', status: 'ok', durationMs: 1300, outputSummary: 'Composer and thread transition aligned'},
+    {id: 'patch-code-pr', tool: 'Edit', summary: 'source control and pull request panels', status: 'ok', durationMs: 1900, outputSummary: 'PR path ready for launch film'},
+    {id: 'render-video', tool: 'Bash', summary: 'npm run video:render', status: 'ok', durationMs: 8600, outputSummary: 'Landscape cut rendered'},
+  ],
+  phase: launchComposerState.phase,
+  state: 'done',
+};
+
 export const chatToolActivity: ToolActivityBlockState = {
   artifactRef: {
     artifactId: 'launch-operating-plan',
@@ -398,6 +412,13 @@ export function toolActivityViewForFrame(frame: number) {
   };
 }
 
+export function completedDevThreadActivityViewForFrame(frame: number) {
+  return {
+    rowOpacities: completedDevThreadActivity.entries.map((_, index) => ease(frame, 214 + index * 8, 226 + index * 8)),
+    state: completedDevThreadActivity,
+  };
+}
+
 export function chatViewForFrame(frame: number) {
   const quickPromptActive = frame > 292;
   const messageReveal = (from: number) => {
@@ -426,25 +447,43 @@ export function chatViewForFrame(frame: number) {
 
 export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
-  const noteAttachmentEnter = ease(frame, 108, 122);
   const imageAttachmentEnter = ease(frame, 132, 148);
+  const recentThreadLoaded = frame >= 214;
   const showLaunchWork = frame > 174 && frame < 292;
   const showLaunchArtifact = frame > 232 && frame < 292;
   const showQuickPromptResponse = frame > 292;
+  const stableLoadedMessageStyles = {
+    assistant: {
+      opacity: 1,
+      transform: 'translateY(0px)',
+    },
+    system: {
+      opacity: 0,
+      transform: 'translateY(0px)',
+    },
+    user: {
+      opacity: 1,
+      transform: 'translateY(0px)',
+    },
+  };
   return {
     breadcrumbs: chatShotState.breadcrumbs,
     composer: {
       ...launchComposerState,
+      referenceAutocomplete: frame > 96 && frame < 124
+        ? {
+            activeId: 'notes-current',
+            query: frame > 112 ? 'notes:current' : 'notes',
+            suggestions: [
+              {id: 'notes-current', icon: '📝', label: 'current', typeLabel: 'note'},
+              {id: 'notes-tasklist', icon: '📝', label: 'Tasklist', typeLabel: 'tasklist'},
+            ],
+          }
+        : undefined,
+      references: frame >= 124 && frame < 166
+        ? [{id: 'notes-current', icon: '📝', label: 'notes:current', token: '#notes:current', typeLabel: 'note'}]
+        : undefined,
       attachments: [
-        ...(frame > 108 && frame < 166 ? [{
-          type: 'file' as const,
-          label: '#notes:current',
-          typeLabel: 'Note',
-          style: {
-            opacity: noteAttachmentEnter,
-            transform: `translateY(${mix(10, 0, noteAttachmentEnter)}px) scale(${mix(0.975, 1, noteAttachmentEnter)})`,
-          },
-        }] : []),
         ...(frame > 132 && frame < 166 ? [{
           type: 'image' as const,
           label: 'image 1',
@@ -460,6 +499,16 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : frame > 54 ? 'active' : undefined,
             activePinned: frame > 330,
             pressed: frame > 36 && frame < 54 ? 'new' : frame > 166 && frame < 184 ? 'recent' : frame > 232 && frame < 246 ? 'active' : undefined,
+            recentThreadsMenu: frame > 178 && frame < 214
+              ? {
+                  activeId: frame > 196 ? 'launch-dev-complete' : undefined,
+                  threads: [
+                    {id: 'launch-dev-complete', title: 'Launch PR implementation', meta: 'completed just now', status: 'done'},
+                    {id: 'launch-plan', title: 'Launch Operating Plan', meta: 'active thread', status: 'active'},
+                    {id: 'release-checks', title: 'Release checklist', meta: 'queued', status: 'next'},
+                  ],
+                }
+              : undefined,
           }
         : undefined,
       referenceButtonPressed: frame > 96 && frame <= 108,
@@ -471,22 +520,26 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     },
     conversation: {
       assistant: {
-        artifact: showLaunchArtifact ? launchPlanArtifact : undefined,
-        markdown: view.response,
-        toolActivity: showLaunchWork ? toolActivityViewForFrame(frame) : undefined,
+        artifact: !recentThreadLoaded && showLaunchArtifact ? launchPlanArtifact : undefined,
+        markdown: showQuickPromptResponse ? view.response : recentThreadLoaded ? completedDevThreadResponse : view.response,
+        toolActivity: recentThreadLoaded && !showQuickPromptResponse
+          ? completedDevThreadActivityViewForFrame(frame)
+          : showLaunchWork
+            ? toolActivityViewForFrame(frame)
+            : undefined,
       },
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
         caretVisible: frame < 166 && view.promptCaretVisible,
-        text: showQuickPromptResponse ? 'write a commit' : view.prompt,
+        text: showQuickPromptResponse ? 'write a commit' : recentThreadLoaded ? 'Polish the launch film UI and prepare the PR path.' : view.prompt,
       },
     },
     conversationStyle: {
       opacity: view.conversationOpacity,
       transform: `translateY(${view.conversationY}px)`,
     },
-    messageStyles: view.messageStyles,
+    messageStyles: recentThreadLoaded && !showQuickPromptResponse ? stableLoadedMessageStyles : view.messageStyles,
     cursorPath: chatShotState.cursorPath,
   };
 }

@@ -30,6 +30,7 @@
   margin: 0 1rem;
   padding-top: 0.75rem;
   overflow-x: hidden;
+  max-height: 96px;
 }
 
 .ChatComposer_imageAttachment,
@@ -161,7 +162,7 @@
   position: relative;
   width: 100%;
   min-height: 48px;
-  padding: 0.5rem 0.5rem 0.25rem 0.375rem;
+  padding: 0.625rem 0.75rem 0.25rem;
 }
 
 .ChatComposer_placeholder {
@@ -172,6 +173,74 @@
 .ChatComposer_text {
   color: rgb(229 229 229);
   font-size: 16px;
+  line-height: 1.6;
+}
+
+.ChatComposer_referencePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0.125rem;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(23 23 23);
+  color: rgb(229 229 229);
+  font-size: 0.875em;
+  line-height: 1;
+  padding: 0.125rem 0.375rem;
+  vertical-align: 0.08em;
+}
+
+.ChatComposer_referencePill small {
+  color: rgb(115 115 115);
+  font-size: 0.75em;
+}
+
+.ChatComposer_referenceIcon {
+  color: rgb(163 163 163);
+  font-size: 0.875em;
+}
+
+.ChatComposer_referenceAutocomplete {
+  position: absolute;
+  left: 0.75rem;
+  top: calc(100% - 0.125rem);
+  z-index: 7;
+  width: 260px;
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.5rem;
+  background: rgb(23 23 23);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 46%);
+}
+
+.ChatComposer_referenceSearch {
+  border-bottom: 1px solid rgb(38 38 38);
+  color: rgb(115 115 115);
+  font-size: 12px;
+  padding: 0.5rem 0.75rem;
+}
+
+.ChatComposer_referenceSuggestion,
+.ChatComposer_referenceSuggestionActive {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(212 212 212);
+  font-size: 13px;
+  padding: 0.5rem 0.75rem;
+}
+
+.ChatComposer_referenceSuggestionActive {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
+.ChatComposer_referenceSuggestion small,
+.ChatComposer_referenceSuggestionActive small {
+  margin-left: auto;
+  color: rgb(115 115 115);
+  font-size: 11px;
 }
 
 .ChatComposer_actionBar {
@@ -264,6 +333,7 @@
 }
 
 .ChatComposer_bottomTabs {
+  position: relative;
   display: flex;
   height: 38px;
   align-items: center;
@@ -272,21 +342,86 @@
   font-size: 13px;
 }
 
-.ChatComposer_bottomTabs span {
+.ChatComposer_bottomTabs button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  border: 0;
   border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   padding: 0.25rem 0.5rem;
   transition: background 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
-.ChatComposer_bottomTabs span[data-active="true"] {
+.ChatComposer_bottomTabs button[data-active="true"] {
   color: rgb(212 212 216);
 }
 
-.ChatComposer_bottomTabs span[data-pressed="true"] {
+.ChatComposer_bottomTabs button[data-pressed="true"] {
   background: rgb(64 64 64 / 70%);
   color: rgb(245 245 245);
   transform: translateY(1px) scale(0.98);
+}
+
+.ChatComposer_recentThreadsMenu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 0.5rem);
+  z-index: 8;
+  width: 310px;
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.5rem;
+  background: rgb(23 23 23);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 50%);
+  color: rgb(212 212 216);
+  text-align: left;
+}
+
+.ChatComposer_recentThreadsHeader {
+  border-bottom: 1px solid rgb(38 38 38);
+  color: rgb(163 163 163);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0.625rem 0.75rem;
+}
+
+.ChatComposer_recentThread,
+.ChatComposer_recentThreadActive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+}
+
+.ChatComposer_recentThreadActive {
+  background: rgb(38 38 38);
+}
+
+.ChatComposer_recentThread strong,
+.ChatComposer_recentThreadActive strong {
+  display: block;
+  color: rgb(245 245 245);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ChatComposer_recentThread small,
+.ChatComposer_recentThreadActive small {
+  display: block;
+  color: rgb(115 115 115);
+  font-size: 12px;
+  margin-top: 0.125rem;
+}
+
+.ChatComposer_recentThread span,
+.ChatComposer_recentThreadActive span {
+  border: 1px solid rgb(64 64 64);
+  border-radius: 999px;
+  color: rgb(163 163 163);
+  font-size: 11px;
+  padding: 0.125rem 0.375rem;
 }
