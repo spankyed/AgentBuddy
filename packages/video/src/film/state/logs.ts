@@ -205,7 +205,7 @@ export const logsLaunchReleaseState: LogsSurfaceState = {
 
 export function logsLaunchReleaseStateForFrame(frame: number): LogsSurfaceState {
   const local = Math.max(0, frame - 72);
-  const searchTerm = textReveal('obsolete', local, 4, 26);
+  const searchTerm = textReveal('all obsolete apps removed', local, 4, 30);
   return {
     ...logsLaunchReleaseState,
     expandedContent: local > 38 ? logsLaunchReleaseState.expandedContent : {},

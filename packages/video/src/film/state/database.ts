@@ -311,7 +311,7 @@ export const databaseMessagesBeforeDateState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   currentQuery: `return qx(EARS.Entity.Message)
   .where('timestamp', '<', '2026-06-19')
-  .where('text', 'contains', 'obsolete')
+  .where('text', 'contains', 'all obsolete apps removed')
   .orderBy('timestamp', 'desc')
   .pick(['text', 'sender', 'timestamp']);`,
   executionTime: 14.33,
