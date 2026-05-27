@@ -9,109 +9,85 @@ import {Cursor} from '../overlays/Cursor';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
-import {useVideoConfig} from 'remotion';
 import './NotesShot.module.css';
 
 const styles = makeStyles('NotesShot');
+const EDITOR_FRAME_OFFSET = 132;
 
-export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+type NotesShotMode = 'open' | 'editor';
+
+export function NotesShot({frame, mode = 'editor', variant}: {frame: number; mode?: NotesShotMode; variant?: 'landscape' | 'square'}) {
+  if (mode === 'open') {
+    return <NotesOpenShot frame={frame} variant={variant} />;
+  }
+  return <NotesEditorShot frame={frame} sourceFrame={frame + EDITOR_FRAME_OFFSET} variant={variant} />;
+}
+
+function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesShotViewForFrame(frame);
-  const layout = useAppWindowLayout({hasRightRail: frame > 204, variant});
-  const {height, width} = useVideoConfig();
-  const taskListEnter = ease(frame, 210, 240);
-  const appReveal = ease(frame, 74, 124);
-  const homeDock = ease(frame, 72, 128);
-  const homeExit = ease(frame, 96, 124);
-  const homePlacement = notesHomePlacement({dock: homeDock, height, layout, variant, width});
-  const cardMorph = noteCardPlacement({height, homePlacement, layout, progress: ease(frame, 82, 150), variant, width});
-  const cardMorphOpacity = Math.min(ease(frame, 76, 90), 1 - ease(frame, 112, 132));
-  const cursor = notesCursorForFrame(frame);
-  const renderLine = (line: {caretVisible?: boolean; text: string}) => (
-    <NoteLine frame={frame} line={line} />
-  );
-  const visibleLine = (line: {caretVisible?: boolean; text: string}) => line.text.length > 0 || Boolean(line.caretVisible);
+  const layout = useAppWindowLayout({variant});
+  const cursor = notesHomeCursorForFrame(frame);
 
   return (
     <div className={styles.root}>
-      <div
-        className={styles.appReveal}
-        style={{
-          opacity: appReveal,
-          transform: `translateY(${mix(24, 0, appReveal)}px) scale(${mix(0.988, 1, appReveal)})`,
-        }}
+      <AppWindow
+        activePlugin="notes"
+        breadcrumbs={['Notes']}
+        layout={layout}
       >
-        <AppWindow
-          activePlugin="notes"
-          breadcrumbs={view.breadcrumbs}
-          composer={frame > 160 ? view.composer : false}
-          layout={layout}
-          rightRail={frame > 204 ? <NotesRightRail state={view.rightRail} /> : undefined}
-        >
-          <div style={{height: '100%', opacity: ease(frame, 104, 136)}}>
-            <NotesLayout
-              showTaskList={frame > 210}
-              taskListStyle={{
-                opacity: taskListEnter,
-                transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
-              }}
-              taskList={view.taskList}
-              editor={{
-                beforeLines: view.editor.beforeLines.filter(visibleLine).map(renderLine),
-                afterLines: view.editor.afterLines.filter(visibleLine).map(renderLine),
-                image: view.editor.image,
-                title: view.editor.title,
-              }}
-            />
-          </div>
-        </AppWindow>
-      </div>
-      {frame < 148 ? (
-        <div
-          className={styles.homeMotion}
-          style={{
-            height: homePlacement.height,
-            left: homePlacement.left,
-            opacity: 1 - homeExit,
-            top: homePlacement.top,
-            transform: `translate(-50%, -50%) scale(${mix(1.02, 1, homeDock)})`,
-            width: homePlacement.width,
-          }}
-        >
-          <NotesHomeSurface
-            favorites={view.home.favorites}
-            greeting={view.home.greeting}
-            recent={view.home.recent}
-            searchQuery={view.home.searchQuery}
-            searchResults={view.home.searchResults}
-          />
-          <div className={styles.homeFade} style={{opacity: homeExit}} />
-        </div>
-      ) : null}
-      {frame >= 76 && frame < 162 ? (
-        <div
-          className={styles.noteCardMorph}
-          style={{
-            height: cardMorph.height,
-            left: cardMorph.left,
-            opacity: cardMorphOpacity,
-            top: cardMorph.top,
-            transform: `translate(-50%, -50%) scale(${mix(0.985, 1, ease(frame, 82, 116))})`,
-            width: cardMorph.width,
-          }}
-        >
-          <div className={styles.morphIcon}>🔥</div>
-          <div className={styles.morphCopy}>
-            <strong>current</strong>
-            <small>{frame < 128 ? 'just now' : 'NOTES › AGENTBUDDY › TASKLIST'}</small>
-          </div>
-        </div>
-      ) : null}
+        <NotesHomeSurface
+          favorites={view.home.favorites}
+          greeting={view.home.greeting}
+          recent={view.home.recent}
+          searchQuery={view.home.searchQuery}
+          searchResults={view.home.searchResults}
+        />
+      </AppWindow>
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
 }
 
-function notesCursorForFrame(frame: number) {
+function NotesEditorShot({frame, sourceFrame, variant}: {frame: number; sourceFrame: number; variant?: 'landscape' | 'square'}) {
+  const view = notesShotViewForFrame(sourceFrame);
+  const layout = useAppWindowLayout({hasRightRail: sourceFrame > 204, variant});
+  const taskListEnter = ease(sourceFrame, 210, 240);
+  const cursor = notesEditorCursorForFrame(sourceFrame);
+  const renderLine = (line: {caretVisible?: boolean; text: string}) => (
+    <NoteLine frame={sourceFrame} line={line} />
+  );
+  const visibleLine = (line: {caretVisible?: boolean; text: string}) => line.text.length > 0 || Boolean(line.caretVisible);
+
+  return (
+    <div className={styles.root}>
+      <AppWindow
+        activePlugin="notes"
+        breadcrumbs={view.breadcrumbs}
+        composer={sourceFrame > 160 ? view.composer : false}
+        layout={layout}
+        rightRail={sourceFrame > 204 ? <NotesRightRail state={view.rightRail} /> : undefined}
+      >
+        <NotesLayout
+          showTaskList={sourceFrame > 210}
+          taskListStyle={{
+            opacity: taskListEnter,
+            transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
+          }}
+          taskList={view.taskList}
+          editor={{
+            beforeLines: view.editor.beforeLines.filter(visibleLine).map(renderLine),
+            afterLines: view.editor.afterLines.filter(visibleLine).map(renderLine),
+            image: view.editor.image,
+            title: view.editor.title,
+          }}
+        />
+      </AppWindow>
+      {cursor ? <Cursor frame={sourceFrame} {...cursor} /> : null}
+    </div>
+  );
+}
+
+function notesHomeCursorForFrame(frame: number) {
   if (frame >= 52 && frame < 88) {
     return {
       from: [55, 68] as [number, number],
@@ -121,6 +97,10 @@ function notesCursorForFrame(frame: number) {
     };
   }
 
+  return null;
+}
+
+function notesEditorCursorForFrame(frame: number) {
   if (frame >= 150 && frame < 178) {
     return {
       from: [19, 31] as [number, number],
@@ -149,82 +129,6 @@ function notesCursorForFrame(frame: number) {
   }
 
   return null;
-}
-
-function notesHomePlacement({
-  dock,
-  height,
-  layout,
-  variant,
-  width,
-}: {
-  dock: number;
-  height: number;
-  layout: ReturnType<typeof useAppWindowLayout>;
-  variant?: 'landscape' | 'square';
-  width: number;
-}) {
-  const windowLeft = Number(layout.windowStyle.left ?? 0);
-  const windowTop = Number(layout.windowStyle.top ?? 0);
-  const windowWidth = Number(layout.windowStyle.width ?? width);
-  const windowHeight = Number(layout.windowStyle.height ?? height);
-  const mainLeft = windowLeft + 72;
-  const mainWidth = windowWidth - 72;
-  const startWidth = variant === 'square' ? Math.min(680, width - 96) : Math.min(760, width - 180);
-  const startHeight = variant === 'square' ? Math.min(620, height - 112) : Math.min(560, height - 180);
-  const finalWidth = Math.min(mainWidth, startWidth + 220);
-  const finalHeight = Math.min(windowHeight - 152, startHeight + 80);
-
-  return {
-    height: mix(startHeight, finalHeight, dock),
-    left: mix(width / 2, mainLeft + mainWidth / 2, dock),
-    top: mix(height / 2, windowTop + 42 + finalHeight / 2, dock),
-    width: mix(startWidth, finalWidth, dock),
-  };
-}
-
-function noteCardPlacement({
-  homePlacement,
-  layout,
-  progress,
-  variant,
-  width,
-}: {
-  height: number;
-  homePlacement: ReturnType<typeof notesHomePlacement>;
-  layout: ReturnType<typeof useAppWindowLayout>;
-  progress: number;
-  variant?: 'landscape' | 'square';
-  width: number;
-}) {
-  const windowLeft = Number(layout.windowStyle.left ?? 0);
-  const windowTop = Number(layout.windowStyle.top ?? 0);
-  const windowWidth = Number(layout.windowStyle.width ?? width);
-  const mainLeft = windowLeft + 72;
-  const mainWidth = windowWidth - 72;
-  const homeLeft = homePlacement.left - homePlacement.width / 2;
-  const contentWidth = Math.min(672, homePlacement.width - 48);
-  const contentLeft = homeLeft + (homePlacement.width - contentWidth) / 2;
-  const start = {
-    height: 110,
-    left: contentLeft + 80,
-    top: homePlacement.top - homePlacement.height / 2 + 205,
-    width: 160,
-  };
-  const finalWidth = variant === 'square' ? Math.min(650, width - 150) : Math.min(760, mainWidth - 160);
-  const end = {
-    height: variant === 'square' ? 430 : 470,
-    left: mainLeft + mainWidth / 2,
-    top: windowTop + 42 + (variant === 'square' ? 310 : 340),
-    width: finalWidth,
-  };
-
-  return {
-    height: mix(start.height, end.height, progress),
-    left: mix(start.left, end.left, progress),
-    top: mix(start.top, end.top, progress),
-    width: mix(start.width, end.width, progress),
-  };
 }
 
 function NoteLine({frame, line}: {frame: number; line: {caretVisible?: boolean; text: string}}) {
