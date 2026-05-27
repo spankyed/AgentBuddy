@@ -1,6 +1,6 @@
 .ChatComposer_outer {
-  border-top: 1px solid rgb(38 38 38);
-  background: rgb(23 23 23);
+  border-top: 1px solid transparent;
+  background: transparent;
   padding: 0;
 }
 

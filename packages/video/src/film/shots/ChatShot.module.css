@@ -1,18 +1,17 @@
-.ChatShot_isolatedComposer {
+.ChatShot_root {
   position: absolute;
-  left: 50%;
-  bottom: 122px;
-  width: min(960px, calc(100% - 160px));
-  transform: translateX(-50%);
-}
-
-.ChatShot_square {
-  bottom: 160px;
-  width: min(720px, calc(100% - 96px));
+  inset: 0;
 }
 
 .ChatShot_appReveal {
   position: absolute;
   inset: 0;
   transform-origin: 50% 48%;
+}
+
+.ChatShot_composerMotion {
+  position: absolute;
+  z-index: 4;
+  transform-origin: 50% 50%;
+  will-change: left, top, width, transform;
 }

@@ -6,6 +6,7 @@ import {chatShotViewForFrame} from '../state/chat';
 import {Caret} from './Caret';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
+import {useVideoConfig} from 'remotion';
 import './ChatShot.module.css';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 
@@ -14,37 +15,76 @@ const styles = makeStyles('ChatShot');
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
-  const appReveal = ease(frame, 96, 132);
-
-  if (frame < 96) {
-    return (
-      <div className={`${styles.isolatedComposer} ${variant === 'square' ? styles.square : ''}`}>
-        <ChatComposer state={view.composer} />
-      </div>
-    );
-  }
+  const {height, width} = useVideoConfig();
+  const appReveal = ease(frame, 58, 112);
+  const composerDock = ease(frame, 50, 122);
+  const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
 
   return (
-    <div
-      className={styles.appReveal}
-      style={{
-        opacity: appReveal,
-        transform: `translateY(${mix(-28, 0, appReveal)}px) scale(${mix(0.986, 1, appReveal)})`,
-      }}
-    >
-      <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
-        <div style={{height: '100%', ...view.conversationStyle}}>
-          <ThreadConversation
-            assistant={view.conversation.assistant}
-            createdAt={view.conversation.createdAt}
-            messageStyles={view.messageStyles}
-            systemMessage={view.conversation.systemMessage}
-            userMessage={<>{view.conversation.userMessage.text}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
-          >
-            <Cursor frame={frame} {...view.cursorPath} />
-          </ThreadConversation>
-        </div>
-      </AppWindow>
+    <div className={styles.root}>
+      <div
+        className={styles.appReveal}
+        style={{
+          opacity: appReveal,
+          transform: `translateY(${mix(22, 0, appReveal)}px) scale(${mix(0.99, 1, appReveal)})`,
+        }}
+      >
+        <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
+          <div style={{height: '100%', ...view.conversationStyle}}>
+            <ThreadConversation
+              assistant={view.conversation.assistant}
+              createdAt={view.conversation.createdAt}
+              messageStyles={view.messageStyles}
+              systemMessage={view.conversation.systemMessage}
+              userMessage={<>{view.conversation.userMessage.text}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
+            >
+              <Cursor frame={frame} {...view.cursorPath} />
+            </ThreadConversation>
+          </div>
+        </AppWindow>
+      </div>
+      <div
+        className={styles.composerMotion}
+        style={{
+          left: composerRect.left,
+          top: composerRect.top,
+          width: composerRect.width,
+          transform: `translate(-50%, -50%) scale(${mix(1.04, 1, composerDock)})`,
+        }}
+      >
+        <ChatComposer formStyle={{width: '100%'}} state={view.composer} />
+      </div>
     </div>
   );
+}
+
+function composerPlacement({
+  dock,
+  height,
+  layout,
+  variant,
+  width,
+}: {
+  dock: number;
+  height: number;
+  layout: ReturnType<typeof useAppWindowLayout>;
+  variant?: 'landscape' | 'square';
+  width: number;
+}) {
+  const windowLeft = Number(layout.windowStyle.left ?? 0);
+  const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowWidth = Number(layout.windowStyle.width ?? width);
+  const windowHeight = Number(layout.windowStyle.height ?? height);
+  const mainLeft = windowLeft + 72;
+  const mainWidth = windowWidth - 72;
+  const finalWidth = Math.min(mainWidth * 0.8, 1060);
+  const startWidth = variant === 'square' ? Math.min(720, width - 96) : Math.min(960, width - 160);
+  const finalCenterX = mainLeft + mainWidth / 2;
+  const finalCenterY = windowTop + windowHeight - (variant === 'square' ? 84 : 76);
+
+  return {
+    left: mix(width / 2, finalCenterX, dock),
+    top: mix(height / 2, finalCenterY, dock),
+    width: mix(startWidth, finalWidth, dock),
+  };
 }

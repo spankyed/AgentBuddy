@@ -6,7 +6,9 @@ Non-negotiables:
 - Use real Remotion-driven sequencing and motion, not Electron/Playwright screenshots.
 - Keep UI components split into source-mirrored files, not giant one-off shot files.
 - Do not add fake/ad-hoc plugin UIs, loading indicators, chrome, or decorative filler that does not exist in the app.
-- Each chapter should reveal progressively: start with one or two focused components, then expand to the full app surface when the story earns it.
+- Each chapter must reveal progressively: start with one or two focused components centered in frame, then animate those same components into their real position inside the full app UI. Do not cut abruptly from an isolated component to the entire app.
+- The transition from component focus to full UI is a primary quality bar. App chrome, sidebars, panels, and neighboring surfaces should slide/fade/scale into place around the already-visible component so the viewer understands where it lives.
+- Chapter 1 is the benchmark for this reveal grammar: the chat input starts centered, then moves down into its real composer position while the thread canvas, header, toolbar, and bottom tabs assemble around it.
 - The montage should show real AgentBuddy surfaces and pay off prior actions, not random feature tiles.
 - The final screen should be plain black with `clientlabs.com` and `June 19th`.
 

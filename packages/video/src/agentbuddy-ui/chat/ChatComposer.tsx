@@ -1,3 +1,4 @@
+import type {CSSProperties} from 'react';
 import {AttachmentStrip} from './AttachmentStrip';
 import {BottomThreadTabs} from './BottomThreadTabs';
 import {ComposerActionBar} from './ComposerActionBar';
@@ -7,13 +8,13 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('ChatComposer');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/input.vue.
-export function ChatComposer({state}: {state: ChatComposerState}) {
+export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSProperties; outerStyle?: CSSProperties; state: ChatComposerState}) {
   const hasTextContent = Boolean(state.text?.trim());
   const hasAttachments = Boolean(state.attachments?.length);
   const sendDisabled = state.disabled || (!hasTextContent && !hasAttachments);
   return (
-    <footer className={styles.outer}>
-      <form className={styles.form}>
+    <footer className={styles.outer} style={outerStyle}>
+      <form className={styles.form} style={formStyle}>
         <div className={styles.inputCard} data-onboarding-id="agent-chat-input">
           <AttachmentStrip attachments={state.attachments} />
           <div className={styles.editor}>
