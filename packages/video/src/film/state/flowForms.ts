@@ -60,12 +60,12 @@ export const replaceObsoleteAppsFormState: FlowNodeFormState = {
 export function replaceObsoleteAppsFormStateForFrame(frame: number): FlowNodeFormState {
   const local = Math.max(0, frame - 236);
   const description = textReveal(replaceObsoleteAppsDescription, local, 4, 42);
-  const codeSource = local > 92 ? replaceObsoleteAppsLogSnippet : replaceObsoleteAppsCode;
-  const code = local > 92 ? textReveal(codeSource, local, 92, 108) : textReveal(codeSource, local, 8, 72);
+  const codeSource = local > 82 ? replaceObsoleteAppsLogSnippet : replaceObsoleteAppsCode;
+  const code = local > 82 ? textReveal(codeSource, local, 82, 96) : textReveal(codeSource, local, 8, 72);
 
   return {
     ...replaceObsoleteAppsFormState,
-    canAddNextStep: local > 124,
+    canAddNextStep: local > 104,
     sections: replaceObsoleteAppsFormState.sections.map(section => ({
       ...section,
       fields: section.fields?.map(field => {

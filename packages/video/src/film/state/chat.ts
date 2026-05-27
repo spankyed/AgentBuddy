@@ -451,7 +451,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           },
         }] : []),
       ],
-      bottomTabs: frame > 20
+      bottomTabs: frame > 96
         ? {
             ...launchComposerState.bottomTabs!,
             active: frame > 246 ? 'active' : frame > 166 && frame < 210 ? 'recent' : 'active',

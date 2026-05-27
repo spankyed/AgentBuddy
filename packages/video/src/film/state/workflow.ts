@@ -93,7 +93,7 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
     })),
     edges: flow.edges
       .filter(edge => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to))
-      .map(edge => ({...edge, animated: frame > 236 && edge.to === 'log-result'})),
+      .map(edge => ({...edge, animated: false})),
     selectedNodeId,
     viewport: frame > 236 ? {x: -180, y: 0, zoom: 1} : undefined,
   };

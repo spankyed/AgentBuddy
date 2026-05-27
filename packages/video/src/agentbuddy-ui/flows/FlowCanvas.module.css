@@ -60,10 +60,11 @@
 
 .FlowCanvas_edge {
   fill: none;
-  stroke: #666;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: rgb(115 115 115 / 86%);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
   marker-end: url(#flow-arrow);
 }
 
@@ -77,13 +78,12 @@
 }
 
 .FlowCanvas_selectedEdge {
-  stroke: #3b82f6;
-  stroke-width: 2.5;
+  stroke: rgb(147 197 253 / 90%);
+  stroke-width: 1.75;
 }
 
 .FlowCanvas_animatedEdge {
-  stroke-dasharray: 5 5;
-  animation: FlowCanvas_dashFlow 0.5s linear infinite;
+  animation: none;
 }
 
 @keyframes FlowCanvas_dashFlow {
@@ -93,7 +93,7 @@
 }
 
 .FlowCanvas_edgeMarker {
-  fill: #666;
+  fill: rgb(115 115 115 / 86%);
 }
 
 .FlowCanvas_controls {

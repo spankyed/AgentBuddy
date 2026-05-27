@@ -19,7 +19,9 @@ type CodeReviewProps = {
 export function CodeReview({state, variant, view}: CodeReviewProps) {
   return (
     <div className={cx(styles.root, variant === 'square' && styles.compact)}>
-      {view.leftSurface === 'terminal' ? (
+      {view.leftSurface === 'blank' ? (
+        <div className={styles.blankSurface} />
+      ) : view.leftSurface === 'terminal' ? (
         <CodeTerminalSurface state={state.terminal} />
       ) : view.leftSurface === 'app-preview' ? (
         <AppPreviewSurface />
