@@ -177,6 +177,15 @@ function NoteLine({frame, line}: {frame: number; line: {caretVisible?: boolean; 
   const before = line.text.slice(0, markerIndex);
   const referenceAndAfter = line.text.slice(markerIndex + marker.length);
   const fullTitle = 'Create launch PR flow';
+  if (referenceAndAfter.length < fullTitle.length) {
+    return (
+      <>
+        {line.text}
+        <Caret frame={frame} visible={Boolean(line.caretVisible)} />
+      </>
+    );
+  }
+
   const title = referenceAndAfter.slice(0, Math.min(fullTitle.length, referenceAndAfter.length));
   const shownSuffix = referenceAndAfter.length > fullTitle.length ? referenceAndAfter.slice(fullTitle.length) : '';
 
