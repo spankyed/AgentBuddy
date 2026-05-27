@@ -2,7 +2,7 @@ import type {CSSProperties, ReactNode} from 'react';
 import {AbsoluteFill, Sequence, useCurrentFrame} from 'remotion';
 import {makeStyles} from '../agentbuddy-ui/primitives/makeStyles';
 import {theme} from '../ui/theme';
-import {captionViewForFrame, ease, filmProgressForFrame, mix, shotAtFrame, shots, type FilmShot} from './state/timeline';
+import {captionViewForFrame, ease, mix, shots, type FilmShot} from './state/timeline';
 import {ChatShot} from './shots/ChatShot';
 import {BoardShot} from './shots/BoardShot';
 import {ChapterCard} from './shots/ChapterCard';
@@ -24,14 +24,11 @@ export const AgentBuddyFilmSquare = () => <Film variant="square" />;
 function Film({variant}: {variant: Variant}) {
   const frame = useCurrentFrame();
   let cursor = 0;
-  const progress = filmProgressForFrame(frame);
-  const activeShot = shotAtFrame(frame);
 
   return (
     <AbsoluteFill className={styles.root} style={{
       '--film-blue': theme.blue,
       '--film-font': theme.font,
-      '--film-progress': progress,
       '--film-teal': theme.teal,
       '--film-text': theme.text,
     } as CSSProperties}>
@@ -50,11 +47,6 @@ function Film({variant}: {variant: Variant}) {
           </Sequence>
         );
       })}
-      {activeShot?.id === 'final' || activeShot?.chapter ? null : (
-        <div className={styles.progress}>
-          <div className={styles.progressFill} />
-        </div>
-      )}
     </AbsoluteFill>
   );
 }

@@ -18,21 +18,6 @@
   will-change: opacity, transform;
 }
 
-.AgentBuddyFilm_progress {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 3px;
-  background: rgb(255 255 255 / 10%);
-}
-
-.AgentBuddyFilm_progressFill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--film-teal), var(--film-blue), #fff);
-  width: calc(var(--film-progress) * 100%);
-}
-
 .AgentBuddyFilm_caption,
 .AgentBuddyFilm_captionRight,
 .AgentBuddyFilm_captionSquare,
