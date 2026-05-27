@@ -1,3 +1,15 @@
+Current working goal:
+
+Polish the existing Remotion launch film into a professional AgentBuddy demo by reviewing the rendered video in motion, fixing visible fidelity and pacing issues as they appear, and keeping every UI surface grounded in near-1:1 replicas of the real Vue app. Prioritize concrete improvements over broad audits: when a section looks wrong, patch the component/state/timing that causes it, render again, and continue through the film.
+
+Non-negotiables:
+- Use real Remotion-driven sequencing and motion, not Electron/Playwright screenshots.
+- Keep UI components split into source-mirrored files, not giant one-off shot files.
+- Do not add fake/ad-hoc plugin UIs, loading indicators, chrome, or decorative filler that does not exist in the app.
+- Each chapter should reveal progressively: start with one or two focused components, then expand to the full app surface when the story earns it.
+- The montage should show real AgentBuddy surfaces and pay off prior actions, not random feature tiles.
+- The final screen should be plain black with `clientlabs.com` and `June 19th`.
+
 intro: AgentBuddy is:
 
 \-- 1
