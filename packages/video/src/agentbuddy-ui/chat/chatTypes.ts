@@ -27,7 +27,9 @@ export type ChatComposerState = {
       threads: Array<{
         id: string;
         meta?: string;
+        pinned?: boolean;
         status?: string;
+        time?: string;
         title: string;
       }>;
     };

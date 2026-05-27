@@ -14,8 +14,9 @@ export function BottomThreadTabs({active = 'active', activeLabel, activePinned, 
       </button>
       {recentThreadsMenu ? <RecentThreadsMenu menu={recentThreadsMenu} /> : null}
       <button data-active={active === 'active'} data-pressed={pressed === 'active'} type="button">
-        {activePinned ? <Icons.Star size={14} /> : <Icons.Square size={14} />}
+        <Icons.PanelLeft size={14} />
         {activeLabel}
+        {activePinned ? <Icons.Pin className={styles.bottomTabPinnedIcon} size={12} /> : null}
       </button>
       <button data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={14} />{newThreadLabel}</button>
     </div>
@@ -25,14 +26,23 @@ export function BottomThreadTabs({active = 'active', activeLabel, activePinned, 
 function RecentThreadsMenu({menu}: {menu: NonNullable<BottomThreadTabsProps['recentThreadsMenu']>}) {
   return (
     <div className={styles.recentThreadsMenu}>
-      <div className={styles.recentThreadsHeader}>Recent Threads</div>
       {menu.threads.map(thread => (
         <div className={thread.id === menu.activeId ? styles.recentThreadActive : styles.recentThread} key={thread.id}>
-          <div>
+          <span className={thread.status === 'active' ? styles.recentThreadDotActive : styles.recentThreadDot} />
+          <div className={styles.recentThreadTitle}>
             <strong>{thread.title}</strong>
             {thread.meta ? <small>{thread.meta}</small> : null}
           </div>
-          {thread.status ? <span>{thread.status}</span> : null}
+          {thread.pinned ? <Icons.Pin className={styles.recentThreadPin} size={12} /> : null}
+          <small className={styles.recentThreadTime}>{thread.time}</small>
+          <button className={styles.recentThreadAction} type="button">
+            <Icons.FileText size={12} />
+            Details
+          </button>
+          <button className={styles.recentThreadAction} type="button">
+            <Icons.PanelLeft size={12} />
+            Artifacts
+          </button>
         </div>
       ))}
     </div>

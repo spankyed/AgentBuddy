@@ -509,9 +509,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
               ? {
                   activeId: frame > 196 ? 'launch-dev-complete' : undefined,
                   threads: [
-                    {id: 'launch-dev-complete', title: 'Launch PR implementation', meta: 'completed just now', status: 'done'},
-                    {id: 'launch-plan', title: 'Launch Operating Plan', meta: 'active thread', status: 'active'},
-                    {id: 'release-checks', title: 'Release checklist', meta: 'queued', status: 'next'},
+                    {id: 'launch-dev-complete', title: 'Launch PR implementation', meta: 'completed just now', pinned: true, status: 'done', time: 'now'},
+                    {id: 'launch-plan', title: 'Launch Operating Plan', meta: 'active thread', status: 'active', time: '2m'},
+                    {id: 'release-checks', title: 'Release checklist', meta: 'queued', status: 'next', time: '8m'},
                   ],
                 }
               : undefined,
