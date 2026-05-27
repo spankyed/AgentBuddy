@@ -13,7 +13,7 @@ export type FinalShotView = {
 };
 
 export const finalShotState = {
-  date: 'June 19th',
+  date: 'june 19th',
   link: 'clientlabs.com',
   motion: {
     link: {from: 24, to: 70, yFrom: 20, yTo: 0},

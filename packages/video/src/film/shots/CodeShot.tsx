@@ -16,11 +16,11 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
   const view = codeShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
   const {height, width} = useVideoConfig();
-  const appReveal = ease(frame, 34, 86);
-  const panelDock = ease(frame, 36, 92);
-  const panelExit = ease(frame, 88, 108);
-  const leftSurfaceReveal = ease(frame, 62, 104);
-  const fullPanelReveal = ease(frame, 108, 126);
+  const appReveal = ease(frame, 38, 92);
+  const panelDock = ease(frame, 42, 112);
+  const panelExit = ease(frame, 126, 154);
+  const leftSurfaceReveal = ease(frame, 88, 132);
+  const fullPanelReveal = ease(frame, 100, 132);
   const panelRect = codePanelPlacement({dock: panelDock, height, layout, variant, width});
   const cursor = codeCursorForFrame(frame);
 
@@ -33,7 +33,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
           transform: `translateY(${mix(24, 0, appReveal)}px) scale(${mix(0.988, 1, appReveal)})`,
         }}
       >
-        <AppWindow activePlugin="code" breadcrumbs={view.breadcrumbs} composer={frame > 112 ? view.composer : false} layout={layout}>
+        <AppWindow activePlugin="code" breadcrumbs={view.breadcrumbs} composer={frame > 150 ? view.composer : false} layout={layout}>
           <div style={{height: '100%', opacity: appReveal}}>
             <CodeReview
               leftSurfaceStyle={{
@@ -50,7 +50,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
           </div>
         </AppWindow>
       </div>
-      {frame < 110 ? (
+      {frame < 154 ? (
         <div
           className={styles.panelMotion}
           style={{
