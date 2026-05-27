@@ -23,15 +23,17 @@ type ThreadConversationProps = {
     user?: CSSProperties;
   };
   systemMessage?: ReactNode;
+  topInset?: number;
   userMessage: ReactNode;
 };
 
 // Reusable thread conversation surface for app-like scenes. Film shots provide
 // frame-derived text/cursor overlays; message rendering stays here.
-export function ThreadConversation({assistant, children, createdAt, messageStyles, systemMessage, userMessage}: ThreadConversationProps) {
+export function ThreadConversation({assistant, children, createdAt, messageStyles, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
   const hasAssistantContent = Boolean(assistant.toolActivity || assistant.artifact || assistant.markdown.trim());
   return (
     <ThreadChatCanvas>
+      {topInset > 0 ? <div style={{height: topInset}} /> : null}
       {systemMessage ? <div style={messageStyles?.system}><MessageBubble sender="system">{systemMessage}</MessageBubble></div> : null}
       <div style={messageStyles?.user}><MessageBubble sender="user" createdAt={createdAt} isTail>{userMessage}</MessageBubble></div>
       {hasAssistantContent ? (

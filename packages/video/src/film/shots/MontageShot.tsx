@@ -76,6 +76,7 @@ function montageShotViewForFrame(frame: number) {
             assistant: {opacity: ease(frame, 28, 44), transform: `translateY(${mix(18, 0, ease(frame, 28, 44))}px)`},
             user: {opacity: ease(frame, 18, 28), transform: `translateY(${mix(14, 0, ease(frame, 18, 28))}px)`},
           }}
+          topInset={96}
           userMessage={command}
         />
       ),
