@@ -16,12 +16,12 @@ const styles = makeStyles('NotesShot');
 
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesShotViewForFrame(frame);
-  const layout = useAppWindowLayout({hasRightRail: frame > 170, variant});
+  const layout = useAppWindowLayout({hasRightRail: frame > 204, variant});
   const {height, width} = useVideoConfig();
-  const taskListEnter = ease(frame, 176, 206);
-  const appReveal = ease(frame, 34, 82);
-  const homeDock = ease(frame, 42, 84);
-  const homeExit = ease(frame, 72, 92);
+  const taskListEnter = ease(frame, 210, 240);
+  const appReveal = ease(frame, 74, 124);
+  const homeDock = ease(frame, 72, 128);
+  const homeExit = ease(frame, 118, 146);
   const homePlacement = notesHomePlacement({dock: homeDock, height, layout, variant, width});
   const cursor = notesCursorForFrame(frame);
   const renderLine = (line: {caretVisible?: boolean; text: string}) => (
@@ -41,13 +41,13 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
         <AppWindow
           activePlugin="notes"
           breadcrumbs={view.breadcrumbs}
-          composer={frame > 96 ? view.composer : false}
+          composer={frame > 160 ? view.composer : false}
           layout={layout}
-          rightRail={frame > 170 ? <NotesRightRail state={view.rightRail} /> : undefined}
+          rightRail={frame > 204 ? <NotesRightRail state={view.rightRail} /> : undefined}
         >
-          <div style={{height: '100%', opacity: ease(frame, 82, 108)}}>
+          <div style={{height: '100%', opacity: ease(frame, 118, 150)}}>
             <NotesLayout
-              showTaskList={frame > 176}
+              showTaskList={frame > 210}
               taskListStyle={{
                 opacity: taskListEnter,
                 transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
@@ -63,7 +63,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
           </div>
         </AppWindow>
       </div>
-      {frame < 94 ? (
+      {frame < 148 ? (
         <div
           className={styles.homeMotion}
           style={{
@@ -91,39 +91,39 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
 }
 
 function notesCursorForFrame(frame: number) {
-  if (frame >= 28 && frame < 66) {
+  if (frame >= 52 && frame < 88) {
     return {
       from: [55, 68] as [number, number],
       to: [32, 48] as [number, number],
-      start: 28,
-      end: 58,
+      start: 52,
+      end: 80,
     };
   }
 
-  if (frame >= 104 && frame < 132) {
+  if (frame >= 150 && frame < 178) {
     return {
       from: [19, 31] as [number, number],
       to: [35, 31] as [number, number],
-      start: 104,
-      end: 124,
+      start: 150,
+      end: 170,
     };
   }
 
-  if (frame >= 156 && frame < 188) {
+  if (frame >= 190 && frame < 222) {
     return {
       from: [58, 72] as [number, number],
       to: [78, 37] as [number, number],
-      start: 156,
-      end: 178,
+      start: 190,
+      end: 212,
     };
   }
 
-  if (frame >= 188 && frame < 214) {
+  if (frame >= 222 && frame < 248) {
     return {
       from: [24, 43] as [number, number],
       to: [24, 23] as [number, number],
-      start: 188,
-      end: 204,
+      start: 222,
+      end: 238,
     };
   }
 

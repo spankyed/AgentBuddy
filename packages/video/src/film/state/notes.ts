@@ -195,18 +195,18 @@ export const notesEditorCopy = {
   title: {icon: '🔥', text: 'current'},
   beforeLines: ['recent notes', 'launch context stays connected'],
   animatedLines: [
-    {text: 'add launch image, resize it, and keep the tasklist beside the note', from: 34, to: 112, caretUntil: 116},
-    {text: 'mark resize image complete, then create the next todo', from: 128, to: 198},
-    {text: 'new todo: link #threads: Create launch PR flow back to the parent ticket', from: 168, to: 254, caretFrom: 168, caretUntil: 258},
+    {text: 'add launch image, resize it, and keep the tasklist beside the note', from: 132, to: 188, caretUntil: 192},
+    {text: 'mark resize image complete, then create the next todo', from: 220, to: 276},
+    {text: 'new todo: link #threads: Create launch PR flow back to the parent ticket', from: 248, to: 320, caretFrom: 248, caretUntil: 324},
   ],
 };
 
 export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
-  const checkboxPressed = frame > 190 && frame <= 204;
-  const markedComplete = frame > 204;
-  const addPressed = frame > 218 && frame <= 230;
-  const linkedTodoVisible = frame > 230;
-  const linkedTodoEnter = ease(frame, 230, 250);
+  const checkboxPressed = frame > 230 && frame <= 244;
+  const markedComplete = frame > 244;
+  const addPressed = frame > 258 && frame <= 270;
+  const linkedTodoVisible = frame > 270;
+  const linkedTodoEnter = ease(frame, 270, 292);
   const items = notesTaskListItems.map(item =>
     item.id === 'resize-image' && markedComplete
       ? {...item, completed: true, muted: true}
@@ -237,7 +237,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
 }
 
 export function notesViewForFrame(frame: number) {
-  const imageEnter = ease(frame, 72, 98);
+  const imageEnter = ease(frame, 150, 176);
   const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => ({
     caretVisible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
     id: `animated-${index}`,
@@ -246,19 +246,19 @@ export function notesViewForFrame(frame: number) {
 
   return {
     animatedLines,
-    image: frame > 72
+    image: frame > 150
       ? {
           alt: 'Launch checklist image',
-          bubbleOpen: frame > 100 && frame < 222,
-          resizeButtonPressed: frame > 112 && frame <= 124,
-          resizeOpen: frame > 118 && frame < 222,
-          sliderPressed: frame > 124 && frame < 210,
+          bubbleOpen: frame > 178 && frame < 248,
+          resizeButtonPressed: frame > 188 && frame <= 200,
+          resizeOpen: frame > 194 && frame < 248,
+          sliderPressed: frame > 200 && frame < 240,
           src: launchImageSrc,
           style: {
             opacity: imageEnter,
             transform: `translateY(${mix(18, 0, imageEnter)}px) scale(${mix(0.985, 1, imageEnter)})`,
           },
-          widthPercent: frame > 124 ? Math.round(76 - Math.min(1, (frame - 124) / 48) * 22) : 76,
+          widthPercent: frame > 200 ? Math.round(76 - Math.min(1, (frame - 200) / 48) * 22) : 76,
         }
       : undefined,
   };
@@ -266,11 +266,11 @@ export function notesViewForFrame(frame: number) {
 
 export function notesShotViewForFrame(frame: number): NotesShotView {
   const view = notesViewForFrame(frame);
-  const tasklistPressed = frame > 170 && frame < 186;
+  const tasklistPressed = frame > 204 && frame < 220;
   const home = {
     ...notesHomeState,
     recent: notesHomeState.recent.map(note => note.id === 'recent-current'
-      ? {...note, pressed: frame > 48 && frame < 64}
+      ? {...note, pressed: frame > 72 && frame < 88}
       : note
     ),
   };
