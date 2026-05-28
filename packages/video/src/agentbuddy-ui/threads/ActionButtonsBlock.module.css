@@ -19,6 +19,7 @@
   font-weight: 500;
   line-height: 1;
   padding: 0 1rem;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .ActionButtonsBlock_primary {
@@ -26,9 +27,25 @@
   color: white;
 }
 
+.ActionButtonsBlock_primary:hover {
+  background: rgb(29 78 216);
+}
+
+.ActionButtonsBlock_primary:active {
+  background: rgb(37 99 235);
+}
+
 .ActionButtonsBlock_secondary {
   background: rgb(209 213 219);
   color: rgb(31 41 55);
+}
+
+.ActionButtonsBlock_secondary:hover {
+  background: rgb(229 231 235);
+}
+
+.ActionButtonsBlock_secondary:active {
+  background: rgb(96 165 250);
 }
 
 .ActionButtonsBlock_success {
@@ -36,12 +53,25 @@
   color: white;
 }
 
+.ActionButtonsBlock_success:hover {
+  background: rgb(34 197 94);
+}
+
 .ActionButtonsBlock_danger {
   background: rgb(220 38 38);
   color: white;
 }
 
+.ActionButtonsBlock_danger:hover {
+  background: rgb(185 28 28);
+}
+
+.ActionButtonsBlock_danger:active {
+  background: rgb(153 27 27);
+}
+
 .ActionButtonsBlock_disabled {
   background: rgb(75 85 99);
   color: rgb(209 213 219);
+  cursor: not-allowed;
 }

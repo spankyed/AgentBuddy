@@ -1,5 +1,6 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import {ActionButtonsBlock} from './ActionButtonsBlock';
 import type {ChoiceBlockState, ChoiceOptionState} from './threadTypes';
 import './ChoiceBlock.module.css';
 
@@ -35,10 +36,13 @@ export function ChoiceBlock({state}: {state: ChoiceBlockState}) {
         </div>
       ) : null}
       {state.multiSelect ? (
-        <div className={styles.actions}>
-          <button className={canSubmit && !state.disabled ? styles.submit : styles.submitDisabled} disabled={!canSubmit || state.disabled} type="button">Submit</button>
-          <button className={styles.cancel} type="button">{state.skipOption?.label ?? 'Cancel'}</button>
-        </div>
+        <ActionButtonsBlock
+          state={{
+            buttons: ['submit', 'cancel'],
+            cancelLabel: state.skipOption?.label ?? 'Cancel',
+            submitDisabled: !canSubmit || state.disabled,
+          }}
+        />
       ) : null}
     </div>
   );
