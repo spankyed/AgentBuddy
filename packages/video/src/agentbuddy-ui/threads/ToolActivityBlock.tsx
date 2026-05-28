@@ -48,7 +48,7 @@ export function ToolActivityBlock({rowOpacities, state}: {rowOpacities?: number[
               key={item.id}
               className={styles.row}
               data-status={item.status}
-              style={{opacity}}
+              style={{opacity: item.status === 'denied' ? opacity * 0.5 : opacity}}
             >
               <StatusIcon status={item.status} />
               <span className={styles.tool}>{item.tool}</span>

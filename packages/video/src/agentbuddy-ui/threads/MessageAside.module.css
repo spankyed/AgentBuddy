@@ -19,7 +19,7 @@
   font-style: italic;
   padding: 0.25rem 0.5rem;
   text-align: left;
-  transition: background-color 140ms ease, color 140ms ease;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .MessageAside_button:hover {

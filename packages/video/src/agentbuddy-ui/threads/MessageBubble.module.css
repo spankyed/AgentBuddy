@@ -76,7 +76,7 @@
   font-size: 12px;
 }
 
-.MessageBubble_bubble:hover {
+.MessageBubble_bubble:not(.MessageBubble_cancelled):hover {
   box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
 
