@@ -46,9 +46,9 @@ export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteStat
 
 function referenceAutocompleteStyle(anchorCharacterIndex: number): CSSProperties {
   return {
-    bottom: '180px',
-    left: `calc(10% + 0.75rem + ${Math.min(Math.max(anchorCharacterIndex, 0), 36)}ch)`,
-    position: 'fixed',
+    bottom: 'calc(100% + 4px)',
+    left: `calc(1rem + ${Math.min(Math.max(anchorCharacterIndex, 0), 36)}ch)`,
+    position: 'absolute',
   } as CSSProperties;
 }
 

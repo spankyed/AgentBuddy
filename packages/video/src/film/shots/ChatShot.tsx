@@ -13,10 +13,6 @@ import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 
 const styles = makeStyles('ChatShot');
 const bottomTabsHeight = 38;
-const composerInputCardHeight = 116;
-const composerEditorCursorTop = 8;
-const composerEditorPaddingLeft = 6;
-const composerCharacterWidth = 8.5;
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
@@ -73,16 +69,6 @@ function withPopupPositions(
   viewportHeight: number,
 ) {
   const bottomTabsRect = bottomTabsPlacement(rect);
-  const referenceCursor = referenceCursorPlacement(rect, composer.referenceAutocomplete?.anchorCharacterIndex ?? 0);
-  const referenceAutocomplete = composer.referenceAutocomplete
-    ? {
-        ...composer.referenceAutocomplete,
-        popupPosition: composer.referenceAutocomplete.popupPosition ?? {
-          bottom: viewportHeight - referenceCursor.top + 4,
-          left: referenceCursor.left,
-        },
-      }
-    : undefined;
 
   return {
     ...composer,
@@ -101,7 +87,6 @@ function withPopupPositions(
             : undefined,
         }
       : undefined,
-    referenceAutocomplete,
   };
 }
 
@@ -111,14 +96,6 @@ function bottomTabsPlacement(rect: ReturnType<typeof composerPlacement>) {
     left: rect.left - width / 2,
     top: rect.top - bottomTabsHeight,
     width,
-  };
-}
-
-function referenceCursorPlacement(rect: ReturnType<typeof composerPlacement>, anchorCharacterIndex: number) {
-  const inputCardTop = rect.top - bottomTabsHeight - composerInputCardHeight;
-  return {
-    left: rect.left - rect.width / 2 + composerEditorPaddingLeft + Math.min(Math.max(anchorCharacterIndex, 0), 36) * composerCharacterWidth,
-    top: inputCardTop + composerEditorCursorTop,
   };
 }
 

@@ -309,11 +309,11 @@ export const ChatComposerReferencesDemo = () => (
             query: 'current',
             selectedCategory: 'notes',
             suggestions: [
-              {id: 'notes-current', label: 'current', shortCode: 'current', type: 'note'},
-              {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'root', type: 'tasklist'},
+              {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note'},
+              {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'notes-tasklist', type: 'tasklist'},
             ],
           },
-          references: [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'current', token: '#notes:current'}],
+          references: [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current', token: '#notes:current'}],
           text: 'Use #notes:current and this screenshot to turn launch context into tickets.',
         }}
       />
@@ -376,9 +376,9 @@ export const ChatComposerReferencePillsDemo = () => (
             {id: 'thread-launch', label: 'Launch PR implementation', refType: 'thread', shortCode: 'launch-pr', token: '#thread:launch-pr'},
             {id: 'doc-brief', label: 'Release brief', refType: 'document', shortCode: 'brief', token: '#doc:brief'},
             {id: 'folder-assets', label: 'Launch assets', refType: 'folder', shortCode: 'assets', token: '#folder:assets'},
-            {id: 'note-current', label: 'current', refType: 'note', shortCode: 'current', token: '#note:current'},
+            {id: 'note-current', label: 'current', refType: 'note', shortCode: 'notes-current', token: '#note:current'},
             {id: 'task-copy', label: 'Write launch copy', refType: 'task', shortCode: 'copy', token: '#task:copy'},
-            {id: 'tasklist-root', label: 'Tasklist', refType: 'tasklist', shortCode: 'root', token: '#tasklist:root'},
+            {id: 'tasklist-root', label: 'Tasklist', refType: 'tasklist', shortCode: 'notes-tasklist', token: '#tasklist:root'},
           ],
           text: 'Use #thread:launch-pr #doc:brief #folder:assets #note:current #task:copy #tasklist:root',
         }}

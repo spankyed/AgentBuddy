@@ -15,7 +15,7 @@ export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
         <Icons.FolderOpen size={16} />
         <span>In Project</span>
         <Icons.ChevronRight className={styles.newThreadContextChevron} size={12} />
-        {menu.openSubmenu === 'project' ? <ProjectSubmenu align="bottom" projects={menu.projects} /> : null}
+        {menu.openSubmenu === 'project' ? <ProjectSubmenu projects={menu.projects} /> : null}
       </div>
       <div className={styles.newThreadContextSeparator} />
       <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'child' ? 'true' : undefined}>
@@ -28,9 +28,9 @@ export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
   );
 }
 
-function ProjectSubmenu({align, projects}: {align?: 'bottom'; projects: NewThreadMenuState['projects']}) {
+function ProjectSubmenu({projects}: {projects: NewThreadMenuState['projects']}) {
   return (
-    <div className={styles.newThreadContextSubmenu} data-align={align}>
+    <div className={styles.newThreadContextSubmenu}>
       <div className={styles.newThreadContextMutedItem}>No project (ask me)</div>
       {projects.map(project => (
         <div key={project.name}>

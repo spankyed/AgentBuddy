@@ -24,15 +24,21 @@ export function ReferencePill({
       data-editor-mode={mode}
       data-ref-type={refType}
     >
-      <ReferenceIcon refType={refType} />
+      <span className={styles.referencePillIcon}>
+        <ReferenceIconSvg refType={refType} size={14} />
+      </span>
       <span className={styles.referencePillLabel}>{label}</span>
     </span>
   );
 }
 
 export function ReferenceIcon({tone = 'pill', refType}: {tone?: 'pill' | 'suggestion'; refType: ReferenceCategory | ReferenceRefType}) {
-  const className = tone === 'suggestion' ? styles.referenceSuggestionIcon : styles.referencePillIcon;
+  const className = tone === 'suggestion' ? styles.referenceSuggestionIcon : undefined;
   const size = tone === 'suggestion' ? 16 : 14;
+  return <ReferenceIconSvg className={className} refType={refType} size={size} />;
+}
+
+function ReferenceIconSvg({className, refType, size}: {className?: string; refType: ReferenceCategory | ReferenceRefType; size: number}) {
   const elements = referenceSvgElementsFor(refType);
   return (
     <svg

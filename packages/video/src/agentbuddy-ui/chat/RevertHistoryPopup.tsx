@@ -15,7 +15,7 @@ const actions: Array<{
   label: string;
 }> = [
   {id: 'revert', label: 'Revert', icon: Icons.Undo2},
-  {id: 'revert-with-files', label: 'Revert and rewind code', icon: Icons.FileCode},
+  {id: 'revert-with-files', label: 'Revert and rewind code', icon: Icons.FileCode2},
   {id: 'summarize-from-here', label: 'Summarize from here', icon: Icons.Sparkle},
 ];
 

@@ -185,7 +185,7 @@
   color: white;
   font: inherit;
   font-size: 14px;
-  padding: 0 0 0.125rem;
+  padding: 0.125rem 0;
 }
 
 .QuickPromptsPopup_deleteButton {
@@ -220,7 +220,7 @@
   color: white;
   font: inherit;
   font-size: 14px;
-  padding: 0 0 0.125rem;
+  padding: 0.125rem 0;
 }
 
 .QuickPromptsPopup_addPrompt textarea::placeholder {

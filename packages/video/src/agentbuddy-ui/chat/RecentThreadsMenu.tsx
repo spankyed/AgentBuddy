@@ -79,12 +79,7 @@ export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
 
 function recentThreadsMenuStyle(position: RecentThreadsMenuState['popupPosition']): CSSProperties | undefined {
   if (!position) {
-    return {
-      bottom: '96px',
-      left: '10%',
-      position: 'fixed',
-      width: '80%',
-    };
+    return undefined;
   }
 
   return {
@@ -102,10 +97,10 @@ function contextMenuPortalStyle(
 ): CSSProperties {
   if (!position) {
     return {
-      bottom: `${96 + bottomOffset}px`,
-      left: `calc(90% - ${menuWidth + 8}px)`,
-      position: 'fixed',
-      right: 'auto',
+      bottom: `calc(100% + ${bottomOffset}px)`,
+      position: 'absolute',
+      right: '0.5rem',
+      width: `${menuWidth}px`,
     };
   }
 
