@@ -1,19 +1,29 @@
 import {ease, mix} from '../state/timeline';
+import {getCursorAsset} from '../assets/cursors/cursorRegistry';
+import type {CursorAssetId, CursorThemeId} from '../assets/cursors/cursorRegistry';
 
 type CursorProps = {
   click?: boolean;
+  cursor?: CursorAssetId;
   end: number;
   frame: number;
   from: [number, number];
+  scale?: number;
   start: number;
+  theme?: CursorThemeId;
   to: [number, number];
 };
 
-export function Cursor({click = true, end, frame, from, start, to}: CursorProps) {
+export function Cursor({click = true, cursor, end, frame, from, scale = 1, start, theme, to}: CursorProps) {
+  const asset = getCursorAsset({cursor, theme});
   const p = ease(frame, start, end);
   const [x, y] = cursorPoint(from, to, p);
   const clickAmount = click ? Math.sin(ease(frame, end - 7, end) * Math.PI) : 0;
   const tilt = mix(-0.6, 0.8, Math.sin(p * Math.PI));
+  const width = 42 * scale;
+  const height = width * (asset.height / asset.width);
+  const hotspotX = (asset.hotspot[0] / asset.width) * width;
+  const hotspotY = (asset.hotspot[1] / asset.height) * height;
 
   return (
     <div
@@ -21,11 +31,11 @@ export function Cursor({click = true, end, frame, from, start, to}: CursorProps)
         position: 'absolute',
         left: `${x}%`,
         top: `${y}%`,
-        width: 26,
-        height: 30,
+        width,
+        height,
         pointerEvents: 'none',
-        transform: `translate(-2px, -2px) rotate(${tilt}deg) scale(${1 - clickAmount * 0.055})`,
-        transformOrigin: '2px 2px',
+        transform: `translate(${-hotspotX}px, ${-hotspotY}px) rotate(${tilt}deg) scale(${1 - clickAmount * 0.055})`,
+        transformOrigin: `${hotspotX}px ${hotspotY}px`,
         zIndex: 30,
       }}
     >
@@ -33,8 +43,8 @@ export function Cursor({click = true, end, frame, from, start, to}: CursorProps)
         <div
           style={{
             position: 'absolute',
-            left: 2,
-            top: 2,
+            left: hotspotX,
+            top: hotspotY,
             width: 18,
             height: 18,
             border: '1.25px solid rgb(255 255 255 / 0.68)',
@@ -44,25 +54,17 @@ export function Cursor({click = true, end, frame, from, start, to}: CursorProps)
           }}
         />
       ) : null}
-      <svg
-        aria-hidden="true"
-        focusable="false"
-        height="30"
-        viewBox="0 0 26 30"
-        width="26"
+      <div
         style={{
-          display: 'block',
+          width: '100%',
+          height: '100%',
+          backgroundImage: `url("${asset.file}")`,
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'contain',
           filter: 'drop-shadow(0 5px 8px rgb(0 0 0 / 0.62)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.72))',
         }}
-      >
-        <path
-          d="M3.55 3.2 3.4 23.8l5.82-5.35 3.92 8.45 3.2-1.48-3.88-8.35 7.72-.22L3.55 3.2Z"
-          fill="rgb(255 255 255)"
-          stroke="rgb(13 13 13)"
-          strokeLinejoin="round"
-          strokeWidth="1.55"
-        />
-      </svg>
+      />
     </div>
   );
 }
