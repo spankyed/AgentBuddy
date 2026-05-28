@@ -1,5 +1,6 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {ChatComposer} from '../../agentbuddy-ui/chat/ChatComposer';
+import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
 import {Cursor} from '../overlays/Cursor';
 import {chatShotViewForFrame} from '../state/chat';
@@ -68,11 +69,7 @@ function formatUserMessage(text: string) {
   return (
     <>
       {text.slice(0, tokenIndex)}
-      <span className={styles.noteReferencePill}>
-        <span>📝</span>
-        <span>notes:current</span>
-        <small>note</small>
-      </span>
+      <ReferencePill label="current" refType="note" />
       {text.slice(tokenIndex + token.length)}
     </>
   );

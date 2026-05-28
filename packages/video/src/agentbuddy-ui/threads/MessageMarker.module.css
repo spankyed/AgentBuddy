@@ -23,6 +23,12 @@
   font-size: 12px;
   font-style: italic;
   padding: 0.25rem 0.5rem;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.MessageMarker_button:hover {
+  background: rgb(38 38 38 / 50%);
+  color: rgb(229 229 229);
 }
 
 .MessageMarker_button span {

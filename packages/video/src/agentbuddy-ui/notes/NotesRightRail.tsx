@@ -85,7 +85,7 @@ function CreateMenu() {
   return (
     <div className={styles.menu}>
       <button type="button"><Icons.ListChecks size={14} /><span>New TaskList</span></button>
-      <button type="button"><Icons.Star size={14} /><span>Hide Favorites</span></button>
+      <button type="button"><Icons.Star className={styles.menuIconAccent} size={14} /><span>Hide Favorites</span></button>
       <button type="button"><Icons.Trash2 size={14} /><span>Trash</span></button>
     </div>
   );

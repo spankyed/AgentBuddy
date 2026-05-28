@@ -7,10 +7,8 @@ const styles = makeStyles('MessageAside');
 // Mirrors collapsed autoHide / asideText rendering in packages/renderer/src/plugins/threads/chat/message.vue.
 export function MessageAside({asUser, text}: {asUser?: boolean; text: string}) {
   const separator = text.indexOf(' \u2014 ');
-  const fallbackSeparator = separator === -1 ? text.indexOf(' - ') : separator;
-  const separatorLength = separator === -1 ? 3 : 3;
-  const outcome = fallbackSeparator === -1 ? text : text.slice(0, fallbackSeparator);
-  const context = fallbackSeparator === -1 ? '' : text.slice(fallbackSeparator + separatorLength);
+  const outcome = separator === -1 ? text : text.slice(0, separator);
+  const context = separator === -1 ? '' : text.slice(separator + 3);
 
   return (
     <div className={cx(styles.root, asUser && styles.asUser)}>

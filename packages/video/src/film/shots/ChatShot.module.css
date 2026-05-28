@@ -15,23 +15,3 @@
   transform-origin: 50% 50%;
   will-change: left, top, width, transform;
 }
-
-.ChatShot_noteReferencePill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  margin: 0 0.125rem;
-  border: 1px solid rgb(64 64 64);
-  border-radius: 0.375rem;
-  background: rgb(23 23 23);
-  color: rgb(229 229 229);
-  font-size: 0.875em;
-  line-height: 1;
-  padding: 0.125rem 0.375rem;
-  vertical-align: 0.08em;
-}
-
-.ChatShot_noteReferencePill small {
-  color: rgb(115 115 115);
-  font-size: 0.75em;
-}

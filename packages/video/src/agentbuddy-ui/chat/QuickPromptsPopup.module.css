@@ -42,6 +42,14 @@
   color: rgb(212 212 216);
 }
 
+.QuickPromptsPopup_header .QuickPromptsPopup_editButtonActive {
+  color: rgb(96 165 250);
+}
+
+.QuickPromptsPopup_header .QuickPromptsPopup_editButtonActive:hover {
+  color: rgb(147 197 253);
+}
+
 .QuickPromptsPopup_list {
   max-height: 240px;
   overflow-y: auto;
@@ -116,4 +124,119 @@
   font-size: 14px;
   padding: 1rem 0.75rem;
   text-align: center;
+}
+
+.QuickPromptsPopup_editItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+  background: rgb(23 23 23);
+  padding: 0.5rem 0.75rem 0.25rem 0.25rem;
+}
+
+.QuickPromptsPopup_dragHandle {
+  display: flex;
+  flex-shrink: 0;
+  color: rgb(82 82 82);
+  cursor: grab;
+  margin-top: 0.125rem;
+  padding: 0.25rem;
+}
+
+.QuickPromptsPopup_dragHandle:hover {
+  color: rgb(163 163 163);
+}
+
+.QuickPromptsPopup_editText {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: rgb(212 212 212);
+  cursor: text;
+  font-size: 14px;
+  line-height: 1.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.QuickPromptsPopup_editText:hover {
+  color: white;
+}
+
+.QuickPromptsPopup_editTextarea {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  padding: 0 0 0.125rem;
+}
+
+.QuickPromptsPopup_deleteButton {
+  display: flex;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(115 115 115);
+  padding: 0.25rem;
+}
+
+.QuickPromptsPopup_deleteButton:hover {
+  color: rgb(248 113 113);
+}
+
+.QuickPromptsPopup_addPrompt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid rgb(64 64 64 / 0.5);
+  padding: 0.5rem 0.75rem;
+}
+
+.QuickPromptsPopup_addPrompt textarea {
+  min-width: 0;
+  flex: 1;
+  max-height: calc(1.5em * 3 + 12px);
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  padding: 0 0 0.125rem;
+}
+
+.QuickPromptsPopup_addPrompt textarea::placeholder {
+  color: rgb(82 82 82);
+}
+
+.QuickPromptsPopup_addButtonReady,
+.QuickPromptsPopup_addButtonDisabled {
+  display: flex;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  padding: 0.25rem;
+}
+
+.QuickPromptsPopup_addButtonReady {
+  color: rgb(163 163 163);
+}
+
+.QuickPromptsPopup_addButtonReady:hover {
+  background: rgb(64 64 64 / 0.5);
+  color: white;
+}
+
+.QuickPromptsPopup_addButtonDisabled {
+  color: rgb(64 64 64);
+  cursor: not-allowed;
 }

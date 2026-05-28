@@ -11,6 +11,10 @@
   font-size: 14px;
 }
 
+.ChoiceBlock_responseHeader svg {
+  color: rgb(34 197 94);
+}
+
 .ChoiceBlock_responseValue {
   border: 1px solid rgb(37 99 235 / 0.3);
   border-radius: 0.5rem;
@@ -28,7 +32,13 @@
 
 .ChoiceBlock_choicesCompact {
   max-height: 10rem;
-  overflow: hidden;
+  overflow-y: auto;
+}
+
+.ChoiceBlock_choicesCompact .ChoiceBlock_text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .ChoiceBlock_choice,
@@ -95,6 +105,14 @@
   color: rgb(163 163 163);
   font-size: 12px;
   margin-top: 0.25rem;
+}
+
+.ChoiceBlock_choicesCompact .ChoiceBlock_description {
+  overflow: hidden;
+  color: rgb(115 115 115);
+  margin-top: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ChoiceBlock_custom {

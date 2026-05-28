@@ -17,6 +17,7 @@ type MessageBubbleProps = {
   autoHide?: boolean;
   createdAt?: string;
   expanded?: boolean;
+  forkable?: boolean;
   isCommand?: boolean;
   isTail?: boolean;
   references?: MessageReference[];
@@ -26,9 +27,17 @@ type MessageBubbleProps = {
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/message.vue bubble structure.
-export function MessageBubble({asUser, autoHide, children, createdAt, expanded, isCommand, isTail, references = [], sender, status, truncated}: MessageBubbleProps) {
+export function MessageBubble({asUser, autoHide, children, createdAt, expanded, forkable, isCommand, isTail, references = [], sender, status, truncated}: MessageBubbleProps) {
   if (sender === 'marker') return <MessageMarker expanded={expanded} text={String(children)} />;
-  if (sender === 'system') return <div className={styles.system}>{children}</div>;
+  if (sender === 'system') {
+    return (
+      <div className={cx(styles.row, styles.assistantRow)}>
+        <div className={styles.group}>
+          <div className={styles.system}>{children}</div>
+        </div>
+      </div>
+    );
+  }
   if (autoHide && !expanded) return <MessageAside asUser={asUser} text={String(children)} />;
   const isCollapsedTruncation = Boolean(truncated && !expanded);
   const canCollapse = Boolean((autoHide && expanded) || (sender === 'user' && truncated && expanded));
@@ -36,7 +45,7 @@ export function MessageBubble({asUser, autoHide, children, createdAt, expanded, 
     <div className={cx(styles.row, sender === 'user' ? styles.userRow : styles.assistantRow)}>
       <div className={styles.group}>
         <div className={styles.actions}>
-          <MessageActions collapsible={canCollapse} createdAt={createdAt} isTail={isTail} isUser={sender === 'user'} status={status} />
+          <MessageActions collapsible={canCollapse} createdAt={createdAt} forkable={forkable} isTail={isTail} isUser={sender === 'user'} status={status} />
         </div>
         <div className={cx(styles.bubble, sender === 'user' ? styles.userBubble : styles.assistantBubble, sender === 'user' && isCommand && styles.commandBubble, status === 'cancelled' && styles.cancelled, isCollapsedTruncation && styles.truncated)}>
           <MessageReferences references={references} />

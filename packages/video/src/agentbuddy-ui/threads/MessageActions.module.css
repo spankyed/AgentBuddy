@@ -5,7 +5,7 @@
   border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
   background: rgb(38 38 38);
-  box-shadow: 0 8px 22px rgb(0 0 0 / 32%);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 30%), 0 4px 6px -4px rgb(0 0 0 / 30%);
 }
 
 .MessageActions_timestamp {
@@ -19,8 +19,8 @@
 
 .MessageActions_root button {
   display: flex;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border: 0;

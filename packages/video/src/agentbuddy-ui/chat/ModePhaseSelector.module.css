@@ -9,6 +9,18 @@
   transition: all 0.2s ease;
 }
 
+.ModePhaseSelector_rootForced {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 0.5rem;
+  background: rgb(38 38 38);
+  color: rgb(163 163 163);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+}
+
 .ModePhaseSelector_mode,
 .ModePhaseSelector_phase {
   display: flex;
@@ -33,11 +45,11 @@
 }
 
 .ModePhaseSelector_phase {
-  background: rgb(37 99 235 / 20%);
+  background: transparent;
 }
 
 .ModePhaseSelector_phase:hover {
-  background: rgb(37 99 235 / 26%);
+  background: rgb(47 47 47);
 }
 
 .ModePhaseSelector_mode:disabled,

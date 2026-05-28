@@ -11,22 +11,25 @@ export function TextInputBlock({state}: {state: TextInputBlockState}) {
     return (
       <div className={styles.root}>
         <div className={styles.responseHeader}><Icons.Check size={16} /><span>{state.displayText || 'Response submitted'}</span></div>
-        <div className={styles.responseValue}>{state.response}</div>
+        <div className={styles.responseValue}>{responseText(state.response)}</div>
       </div>
     );
   }
 
+  const suggestions = state.suggestions ?? [];
+  const showSuggestions = Boolean(suggestions.length && !state.disabled);
+
   return (
     <div className={styles.root}>
-      {state.multiline ? (
-        <textarea className={styles.textarea} placeholder={state.placeholder ?? 'Enter text...'} readOnly rows={state.rows ?? 3} value={state.value ?? ''} />
-      ) : (
-        <input className={styles.input} placeholder={state.placeholder ?? 'Enter text...'} readOnly value={state.value ?? ''} />
-      )}
-      {state.suggestions?.length ? (
-        <div className={styles.suggestions}>{state.suggestions.map(text => <button className={styles.suggestion} key={text} type="button">{text}</button>)}</div>
+      {!state.multiline ? (
+        <input className={state.disabled ? styles.inputDisabled : styles.input} disabled={state.disabled} placeholder={state.placeholder ?? 'Enter text...'} readOnly value={state.value ?? ''} />
       ) : null}
-      {state.multiline ? (
+      {showSuggestions ? (
+        <div className={styles.suggestions}>{suggestions.map(text => <button className={styles.suggestion} key={text} type="button">{text}</button>)}</div>
+      ) : state.multiline ? (
+        <textarea className={state.disabled ? styles.textareaDisabled : styles.textarea} disabled={state.disabled} placeholder={state.placeholder ?? 'Enter text...'} readOnly rows={state.rows ?? 3} value={state.value ?? ''} />
+      ) : null}
+      {state.multiline && !showSuggestions ? (
         <div className={styles.actions}>
           <button className={styles.submit} type="button">Submit</button>
           <button className={styles.cancel} type="button">Cancel</button>
@@ -34,4 +37,12 @@ export function TextInputBlock({state}: {state: TextInputBlockState}) {
       ) : null}
     </div>
   );
+}
+
+function responseText(response: NonNullable<TextInputBlockState['response']>) {
+  if (typeof response === 'object') {
+    if ('cancelled' in response && response.cancelled === true) return 'Skipped';
+    return JSON.stringify(response);
+  }
+  return String(response);
 }

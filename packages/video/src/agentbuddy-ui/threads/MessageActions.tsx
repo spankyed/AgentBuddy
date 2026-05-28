@@ -8,12 +8,14 @@ const styles = makeStyles('MessageActions');
 export function MessageActions({
   collapsible,
   createdAt,
+  forkable = true,
   isTail,
   isUser,
   status,
 }: {
   collapsible?: boolean;
   createdAt?: string;
+  forkable?: boolean;
   isTail?: boolean;
   isUser?: boolean;
   status?: 'queued' | 'cancelled';
@@ -28,7 +30,7 @@ export function MessageActions({
       {status === 'cancelled' && isTail ? <button type="button" title="Resend message"><Icons.RotateCcw size={16} /></button> : null}
       {!status ? (
         <>
-          <button type="button" title="Fork conversation"><Icons.GitFork size={16} /></button>
+          {forkable ? <button type="button" title="Fork conversation"><Icons.GitFork size={16} /></button> : null}
           {collapsible ? <button type="button" title="Collapse"><Icons.ChevronsUpDown size={16} /></button> : null}
           <button type="button" title="Copy message text"><Icons.Copy size={16} /></button>
         </>

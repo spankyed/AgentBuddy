@@ -21,6 +21,14 @@
   color: rgb(245 245 245);
 }
 
+.NoteTreeItem_row:hover {
+  background: rgb(38 38 38);
+}
+
+.NoteTreeItem_row:not(.NoteTreeItem_completed):not(.NoteTreeItem_muted):hover {
+  color: rgb(229 229 229);
+}
+
 .NoteTreeItem_activeMuted {
   color: rgb(163 163 163);
 }
@@ -165,6 +173,7 @@
   line-height: 20px;
   padding: 0.375rem 0.5rem;
   text-align: left;
+  white-space: nowrap;
 }
 
 .NoteTreeItem_menu button:hover {
@@ -201,6 +210,10 @@
   color: rgb(163 163 163);
   padding: 0;
   transition: border-color 160ms ease, background 160ms ease;
+}
+
+.NoteTreeItem_checkbox:hover {
+  border-color: rgb(212 212 212);
 }
 
 .NoteTreeItem_checkboxChecked {

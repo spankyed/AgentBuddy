@@ -41,7 +41,7 @@
   padding: 0.75rem 1rem;
   color: rgb(245 245 245);
   font-size: 15px;
-  line-height: 1.55;
+  line-height: 1.625;
   transition: box-shadow 200ms ease, opacity 200ms ease;
 }
 
@@ -85,7 +85,7 @@
 }
 
 .MessageBubble_userBubble {
-  border: 1px solid rgb(64 64 64 / 60%);
+  border: 1px solid rgb(64 64 64 / 50%);
   background: rgb(38 38 38 / 80%);
 }
 

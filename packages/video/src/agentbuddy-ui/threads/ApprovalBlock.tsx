@@ -9,7 +9,7 @@ const styles = makeStyles('ApprovalBlock');
 export function ApprovalBlock({state}: {state: ApprovalBlockState}) {
   if (state.disabled && state.response) {
     const approved = state.response.approved;
-    const Icon = approved ? Icons.CircleCheck : Icons.AlertCircle;
+    const Icon = approved ? Icons.CircleCheck : Icons.CircleX;
     return (
       <div className={styles.root}>
         <div className={approved ? `${styles.response} ${styles.approved}` : `${styles.response} ${styles.denied}`}>
@@ -41,13 +41,20 @@ export function ApprovalBlock({state}: {state: ApprovalBlockState}) {
             <span>Auto-accept file edits for session</span>
           </label>
         ) : null}
-        {(state.options ?? defaultOptions(state)).map(option => <ApprovalButton key={option.label} option={option} />)}
+        {state.options ? (
+          state.options.map(option => <ApprovalButton key={option.label} option={option} />)
+        ) : (
+          <>
+            <ApprovalButton icon={Icons.CircleCheck} option={{label: state.approveLabel ?? 'Approve', variant: 'primary'}} />
+            <ApprovalButton icon={Icons.CircleX} option={{label: state.denyLabel ?? 'Deny', variant: 'neutral'}} />
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function ApprovalButton({option}: {option: ApprovalOptionState}) {
+function ApprovalButton({icon: Icon, option}: {icon?: typeof Icons.CircleCheck; option: ApprovalOptionState}) {
   const className = option.variant === 'primary'
     ? styles.buttonPrimary
     : option.variant === 'danger'
@@ -55,12 +62,10 @@ function ApprovalButton({option}: {option: ApprovalOptionState}) {
       : option.variant === 'secondary'
         ? styles.buttonSecondary
         : styles.button;
-  return <button className={className} type="button">{option.label}</button>;
-}
-
-function defaultOptions(state: ApprovalBlockState): ApprovalOptionState[] {
-  return [
-    {label: state.approveLabel ?? 'Approve', variant: 'primary'},
-    {label: state.denyLabel ?? 'Deny', variant: 'neutral'},
-  ];
+  return (
+    <button className={className} type="button">
+      {Icon ? <Icon size={16} /> : null}
+      {option.label}
+    </button>
+  );
 }

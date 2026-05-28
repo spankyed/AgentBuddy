@@ -50,9 +50,7 @@ function CodePreview({input}: {input: Record<string, unknown>}) {
 
 function BashPreview({command}: {command: string}) {
   return (
-    <div className={styles.commandShell}>
-      <MonacoCodeViewer height={56} language="shell" value={`$ ${command}`} />
-    </div>
+    <pre className={styles.commandShell}>{`$ ${command}`}</pre>
   );
 }
 
@@ -60,11 +58,9 @@ function JsonPreview({input}: {input: Record<string, unknown>}) {
   const fieldCount = Object.keys(input).length;
   const value = JSON.stringify(input, null, 2);
   return (
-    <details className={styles.details} open>
+    <details className={styles.details}>
       <summary>View input ({fieldCount} {fieldCount === 1 ? 'field' : 'fields'})</summary>
-      <div className={styles.jsonShell}>
-        <MonacoCodeViewer height={Math.min(256, Math.max(96, value.split('\n').length * 20 + 24))} language="json" value={value} />
-      </div>
+      <pre className={styles.jsonShell}>{value}</pre>
     </details>
   );
 }

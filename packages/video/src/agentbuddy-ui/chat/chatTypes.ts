@@ -1,4 +1,5 @@
 import type {CSSProperties} from 'react';
+import type {ReferenceCategory, ReferenceRefType} from './referenceConfig';
 
 export type ChatAttachment = {
   label: string;
@@ -13,60 +14,129 @@ export type QuickPromptState = {
   text: string;
 };
 
+export type RevertHistoryMessageState = {
+  canSummarize?: boolean;
+  createdAt?: string;
+  id: string;
+  selected?: boolean;
+  text: string;
+};
+
+export type {ReferenceCategory, ReferenceRefType};
+
 export type ChatComposerState = {
   attachments?: ChatAttachment[];
   bottomTabs?: {
     active?: 'active' | 'new' | 'recent';
+    activeEditing?: boolean;
     activeLabel: string;
     activePinned?: boolean;
     newThreadLabel: string;
+    newThreadMenu?: {
+      openSubmenu?: 'child' | 'project';
+      projects: Array<{
+        color: string;
+        directories: string[];
+        name: string;
+      }>;
+      threads: Array<{
+        id: string;
+        shortCode?: string;
+        title: string;
+      }>;
+    };
     pressed?: 'active' | 'new' | 'recent';
     recentLabel: string;
     recentThreadsMenu?: {
       activeId?: string;
+      archiveContextMenuThreadId?: string;
+      contextMenu?: {
+        copyText?: string;
+        isArchived?: boolean;
+        threadId: string;
+      };
+      currentId?: string;
+      editingName?: string;
+      editingThreadId?: string;
       threads: Array<{
+        busy?: boolean;
+        dotColor?: string;
         id: string;
-        meta?: string;
         pinned?: boolean;
-        status?: string;
         time?: string;
         title: string;
       }>;
     };
   };
   busy?: boolean;
+  chatStatus?: {
+    busy?: boolean;
+    color: string;
+  };
+  commandActive?: boolean;
   disabled?: boolean;
+  dropActive?: boolean;
+  forcedMode?: string;
   mode: string;
   modeOptions?: ChatModeOption[];
   openSelector?: 'mode' | 'phase';
   phase?: string;
   placeholder: string;
-  referenceAutocomplete?: {
-    activeId?: string;
-    query: string;
-    suggestions: Array<{
-      icon?: string;
-      id: string;
-      label: string;
-      typeLabel?: string;
-    }>;
-  };
+  referenceAutocomplete?: ReferenceAutocompleteState;
   referenceButtonPressed?: boolean;
   references?: Array<{
-    icon?: string;
     id: string;
     label: string;
+    refType: ReferenceRefType;
+    shortCode?: string;
     token: string;
-    typeLabel?: string;
   }>;
   quickPrompts?: QuickPromptState[];
   quickPromptsButtonPressed?: boolean;
+  quickPromptsEditing?: boolean;
+  quickPromptsEditingId?: string;
+  quickPromptsEditingText?: string;
+  quickPromptsNewText?: string;
   quickPromptsOpen?: boolean;
   quickPromptPressedId?: string;
+  recording?: boolean;
+  revertHistory?: {
+    level?: 'actions' | 'messages';
+    messages: RevertHistoryMessageState[];
+    selectedAction?: 'revert' | 'revert-with-files' | 'summarize-from-here';
+    selectedMessageId?: string;
+  };
   sendPressed?: boolean;
+  speechSupported?: boolean;
   statusLine?: string;
   text?: string;
 };
+
+export type ReferenceAutocompleteState = {
+  activeId?: string;
+  anchorCharacterIndex: number;
+  categoryQuery: string;
+  query: string;
+} & (
+  | {
+      level: 'category';
+      selectedCategory: null;
+      suggestions: Array<{
+        id: ReferenceCategory;
+        label: string;
+      }>;
+    }
+  | {
+      level: 'items';
+      selectedCategory: ReferenceCategory;
+      suggestions: Array<{
+        id: string;
+        label: string;
+        shortCode: string;
+        type: ReferenceRefType;
+      }>;
+    }
+);
 
 export type ChatModeOption = {
   disabled?: boolean;

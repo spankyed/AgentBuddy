@@ -2,6 +2,9 @@ import type {CSSProperties, ReactNode} from 'react';
 import {AttachmentStrip} from './AttachmentStrip';
 import {BottomThreadTabs} from './BottomThreadTabs';
 import {ComposerActionBar} from './ComposerActionBar';
+import {ReferenceAutocomplete} from './ReferenceAutocomplete';
+import {ReferencePill} from './ReferencePill';
+import {RevertHistoryPopup} from './RevertHistoryPopup';
 import type {ChatComposerState} from './chatTypes';
 import './ChatComposer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
@@ -15,16 +18,27 @@ export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSPro
   return (
     <footer className={styles.outer} style={outerStyle}>
       <form className={styles.form} style={formStyle}>
-        <div className={styles.inputCard} data-onboarding-id="agent-chat-input">
+        <div
+          className={styles.inputCard}
+          data-command-active={state.commandActive || undefined}
+          data-disabled={state.disabled || undefined}
+          data-drop-active={state.dropActive || undefined}
+          data-onboarding-id="agent-chat-input"
+          data-recording={state.recording || undefined}
+        >
           <AttachmentStrip attachments={state.attachments} />
+          {state.chatStatus ? <ChatStatusIndicator busy={state.chatStatus.busy} color={state.chatStatus.color} /> : null}
           <div className={styles.editor}>
             <span className={state.text ? styles.text : styles.placeholder}>
               {state.text ? <ComposerText state={state} /> : state.placeholder}
             </span>
           </div>
+          {state.revertHistory ? <RevertHistoryPopup state={state.revertHistory} /> : null}
           {state.referenceAutocomplete ? <ReferenceAutocomplete state={state.referenceAutocomplete} /> : null}
           <ComposerActionBar
+            busy={state.busy}
             disabled={state.disabled}
+            forcedMode={state.forcedMode}
             mode={state.mode}
             modeOptions={state.modeOptions}
             openSelector={state.openSelector}
@@ -32,16 +46,34 @@ export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSPro
             referenceButtonPressed={state.referenceButtonPressed}
             quickPrompts={state.quickPrompts}
             quickPromptsButtonPressed={state.quickPromptsButtonPressed}
+            quickPromptsEditing={state.quickPromptsEditing}
+            quickPromptsEditingId={state.quickPromptsEditingId}
+            quickPromptsEditingText={state.quickPromptsEditingText}
+            quickPromptsNewText={state.quickPromptsNewText}
             quickPromptsOpen={state.quickPromptsOpen}
             quickPromptPressedId={state.quickPromptPressedId}
+            recording={state.recording}
             sendDisabled={sendDisabled}
             sendPressed={state.sendPressed}
+            speechSupported={state.speechSupported}
           />
           {state.statusLine ? <div className={styles.statusLine}>{state.statusLine}</div> : null}
         </div>
       </form>
       {state.bottomTabs ? <BottomThreadTabs {...state.bottomTabs} /> : null}
     </footer>
+  );
+}
+
+function ChatStatusIndicator({busy, color}: {busy?: boolean; color: string}) {
+  const dotStyle = busy ? undefined : {backgroundColor: color};
+  return (
+    <div className={styles.statusIndicator}>
+      <span className={styles.statusIndicatorDotWrap}>
+        <span className={busy ? styles.statusIndicatorDotBusy : styles.statusIndicatorDot} style={dotStyle} />
+        <span className={busy ? styles.statusIndicatorGlowBusy : styles.statusIndicatorGlow} style={dotStyle} />
+      </span>
+    </div>
   );
 }
 
@@ -52,48 +84,33 @@ function ComposerText({state}: {state: ChatComposerState}) {
 
   const parts: Array<string | ReactNode> = [text];
   for (const reference of references) {
+    if (!reference.token) continue;
     const nextParts: Array<string | ReactNode> = [];
+    let occurrence = 0;
     for (const part of parts) {
       if (typeof part !== 'string') {
         nextParts.push(part);
         continue;
       }
 
-      const tokenIndex = part.indexOf(reference.token);
+      let remaining = part;
+      let tokenIndex = remaining.indexOf(reference.token);
       if (tokenIndex === -1) {
         nextParts.push(part);
         continue;
       }
 
-      nextParts.push(part.slice(0, tokenIndex));
-      nextParts.push(<ReferencePill key={reference.id} icon={reference.icon} label={reference.label} typeLabel={reference.typeLabel} />);
-      nextParts.push(part.slice(tokenIndex + reference.token.length));
+      while (tokenIndex !== -1) {
+        nextParts.push(remaining.slice(0, tokenIndex));
+        nextParts.push(<ReferencePill key={`${reference.id}-${occurrence}`} label={reference.label} refType={reference.refType} />);
+        occurrence += 1;
+        remaining = remaining.slice(tokenIndex + reference.token.length);
+        tokenIndex = remaining.indexOf(reference.token);
+      }
+      nextParts.push(remaining);
     }
     parts.splice(0, parts.length, ...nextParts);
   }
 
   return <>{parts}</>;
-}
-
-function ReferencePill({icon = '#', label, typeLabel}: {icon?: string; label: string; typeLabel?: string}) {
-  return (
-    <span className={styles.referencePill} data-ref-type={typeLabel ?? 'thread'}>
-      <span className={styles.referenceIcon}>{icon}</span>
-      <span>{label}</span>
-    </span>
-  );
-}
-
-function ReferenceAutocomplete({state}: {state: NonNullable<ChatComposerState['referenceAutocomplete']>}) {
-  return (
-    <div className={styles.referenceAutocomplete}>
-      {state.suggestions.map(suggestion => (
-        <div className={suggestion.id === state.activeId ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
-          <span className={styles.referenceIcon}>{suggestion.icon ?? '#'}</span>
-          <span>{suggestion.label}</span>
-          {suggestion.typeLabel ? <small>{suggestion.typeLabel}</small> : null}
-        </div>
-      ))}
-    </div>
-  );
 }

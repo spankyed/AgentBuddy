@@ -153,7 +153,7 @@ export type TextInputBlockState = {
   displayText?: string;
   multiline?: boolean;
   placeholder?: string;
-  response?: string;
+  response?: string | {cancelled?: boolean} | Record<string, unknown>;
   rows?: number;
   suggestions?: string[];
   value?: string;
@@ -164,7 +164,8 @@ export type FilePickerBlockState = {
   disabled?: boolean;
   displayText?: string;
   fileType?: 'file' | 'directory' | 'both';
-  response?: string | string[];
+  isLoading?: boolean;
+  response?: string | string[] | {path?: string | string[]};
   selectedPaths?: string[];
 };
 
@@ -176,7 +177,7 @@ export type ProjectSelectBlockState = {
     directories: string[];
     name: string;
   }>;
-  response?: string;
+  response?: string | {path?: string};
 };
 
 export type QuestionBlockState = {
@@ -198,6 +199,23 @@ export type ButtonGroupBlockState = {
     id: string;
     label: string;
     state?: string;
+    states?: Record<string, {
+      disabled?: boolean;
+      label: string;
+      variant?: 'primary' | 'secondary' | 'success' | 'danger';
+    }>;
+    toggleStates?: {
+      off: {
+        disabled?: boolean;
+        label: string;
+        variant?: 'primary' | 'secondary' | 'success' | 'danger';
+      };
+      on: {
+        disabled?: boolean;
+        label: string;
+        variant?: 'primary' | 'secondary' | 'success' | 'danger';
+      };
+    };
     variant?: 'primary' | 'secondary' | 'success' | 'danger';
   }>;
   disabled?: boolean;

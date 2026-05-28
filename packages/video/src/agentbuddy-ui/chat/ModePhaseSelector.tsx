@@ -6,6 +6,7 @@ const styles = makeStyles('ModePhaseSelector');
 
 type ModePhaseSelectorProps = {
   disabled?: boolean;
+  forcedMode?: string;
   mode: string;
   modeOptions?: ChatModeOption[];
   openSelector?: 'mode' | 'phase';
@@ -13,18 +14,29 @@ type ModePhaseSelectorProps = {
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/ModePhaseSelector.vue.
-export function ModePhaseSelector({disabled, mode, modeOptions = [], openSelector, phase}: ModePhaseSelectorProps) {
+export function ModePhaseSelector({disabled, forcedMode, mode, modeOptions = [], openSelector, phase}: ModePhaseSelectorProps) {
   const visibleModes = modeOptions.filter(option => !option.hidden);
   const currentMode = visibleModes.find(option => option.name === mode);
   const phases = currentMode?.phases ?? [];
   const currentPhase = phases.find(option => option.name === phase);
+  const forcedModeName = modeOptions.find(option => option.name === forcedMode)?.name ?? 'Birth';
+  const hasPhases = phases.length > 0;
+  const currentModeName = currentMode?.name ?? 'Select mode';
+  const currentPhaseName = currentPhase?.name ?? 'Select phase';
+  if (forcedMode) {
+    return (
+      <div className={styles.rootForced}>
+        <span>{forcedModeName}</span>
+      </div>
+    );
+  }
   return (
     <div className={styles.root}>
       <button className={styles.mode} disabled={disabled} type="button">
-        <span>{mode}</span>
+        <span>{currentModeName}</span>
         <Icons.ChevronDown className={openSelector === 'mode' ? styles.chevronUp : styles.chevronDown} size={14} />
       </button>
-      {phase ? (
+      {hasPhases ? (
         <>
           <span className={styles.divider} />
           <button
@@ -33,7 +45,7 @@ export function ModePhaseSelector({disabled, mode, modeOptions = [], openSelecto
             style={currentPhase?.color ? {backgroundColor: `${currentPhase.color}33`} : undefined}
             type="button"
           >
-            <span>{phase}</span>
+            <span>{currentPhaseName}</span>
             <Icons.ChevronDown className={openSelector === 'phase' ? styles.chevronUp : styles.chevronDown} size={14} />
           </button>
         </>

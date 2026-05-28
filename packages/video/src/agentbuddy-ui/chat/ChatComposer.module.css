@@ -5,7 +5,7 @@
 }
 
 .ChatComposer_form {
-  width: min(80%, 1060px);
+  width: 80%;
   margin: 0 auto;
   flex-shrink: 0;
   overflow: visible;
@@ -18,21 +18,40 @@
   flex-direction: column;
   overflow: visible;
   max-height: 148px;
-  border: 1px solid rgb(64 64 64);
+  border: 1px solid rgb(60 60 60);
   border-radius: 0.5rem;
   background: rgb(38 38 38);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.ChatComposer_inputCard[data-disabled="true"] {
+  opacity: 0.5;
+}
+
+.ChatComposer_inputCard[data-command-active="true"] {
+  border-color: rgba(180, 180, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(180, 180, 255, 0.1), 0 0 12px -2px rgba(180, 180, 255, 0.15);
+}
+
+.ChatComposer_inputCard[data-drop-active="true"] {
+  border-color: rgba(100, 180, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(100, 180, 255, 0.15), 0 0 12px -2px rgba(100, 180, 255, 0.2);
+}
+
+.ChatComposer_inputCard[data-recording="true"] {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15), 0 0 12px -2px rgba(239, 68, 68, 0.2);
+}
+
 .ChatComposer_attachmentStrip {
   display: flex;
   align-items: end;
-  gap: 0.375rem;
-  margin: 0 0.75rem;
-  padding-top: 0.5rem;
-  overflow-x: hidden;
+  gap: 0.5rem;
+  margin: 0 1rem;
+  padding-top: 0.75rem;
+  overflow-x: auto;
   overflow-y: hidden;
-  max-height: 56px;
+  max-height: 88px;
 }
 
 .ChatComposer_imageAttachment,
@@ -49,8 +68,8 @@
 }
 
 .ChatComposer_imageAttachment {
-  width: 52px;
-  height: 52px;
+  width: 80px;
+  height: 80px;
   overflow: hidden;
 }
 
@@ -78,8 +97,8 @@
   border-radius: 0 0 0.5rem 0.5rem;
   background: linear-gradient(to top, rgb(23 23 23) 40%, rgb(23 23 23 / 0));
   color: rgb(163 163 163);
-  font-size: 10px;
-  padding: 0.75rem 0.25rem 0.125rem;
+  font-size: 11px;
+  padding: 0.125rem 0.375rem;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -189,22 +208,32 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  margin: 0 0.125rem;
   border-radius: 10px;
   color: rgb(147 197 253);
   background: rgb(96 165 250 / 0.15);
   cursor: pointer;
   font-size: 0.95em;
   line-height: 1.4;
+  text-decoration: none;
   padding: 1px 7px;
   user-select: none;
   vertical-align: text-bottom;
   white-space: nowrap;
 }
 
+.ChatComposer_referencePill:hover {
+  filter: brightness(1.2);
+  text-decoration: none;
+}
+
 .ChatComposer_referencePill[data-ref-type="document"] {
   background: rgb(168 85 247 / 0.15);
   color: rgb(196 148 255);
+}
+
+.ChatComposer_referencePill[data-ref-type="folder"] {
+  background: rgb(96 165 250 / 0.15);
+  color: rgb(147 197 253);
 }
 
 .ChatComposer_referencePill[data-ref-type="note"],
@@ -214,18 +243,34 @@
   color: rgb(134 239 172);
 }
 
-.ChatComposer_referenceIcon {
+.ChatComposer_referencePillIcon,
+.ChatComposer_referenceSuggestionIcon {
   display: flex;
   flex-shrink: 0;
   align-items: center;
+}
+
+.ChatComposer_referencePillIcon {
   color: currentColor;
   font-size: 0.875em;
 }
 
+.ChatComposer_referencePillLabel {
+  overflow: hidden;
+  max-width: 180px;
+  text-overflow: ellipsis;
+}
+
+.ChatComposer_referenceSuggestionIcon {
+  width: 16px;
+  height: 16px;
+  color: rgb(163 163 163);
+}
+
 .ChatComposer_referenceAutocomplete {
   position: absolute;
-  left: 0.75rem;
-  bottom: calc(100% + 0.5rem);
+  left: var(--reference-anchor-x, 0.75rem);
+  bottom: calc(100% + 4px);
   z-index: 9999;
   min-width: 220px;
   max-width: 320px;
@@ -236,6 +281,26 @@
   background: rgb(30 30 30);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   padding: 4px;
+}
+
+.ChatComposer_referenceSuggestionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgb(50 50 50);
+  color: rgb(163 163 163);
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-bottom: 2px;
+  padding: 6px 10px;
+}
+
+.ChatComposer_referenceSuggestionHeader:hover {
+  color: rgb(212 212 212);
+}
+
+.ChatComposer_referenceSuggestionBack {
+  font-size: 0.9rem;
 }
 
 .ChatComposer_referenceSuggestion,
@@ -258,20 +323,25 @@
   color: rgb(245 245 245);
 }
 
-.ChatComposer_referenceSuggestion > span:nth-child(2),
-.ChatComposer_referenceSuggestionActive > span:nth-child(2) {
+.ChatComposer_referenceSuggestionLabel {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.ChatComposer_referenceSuggestion small,
-.ChatComposer_referenceSuggestionActive small {
+.ChatComposer_referenceSuggestionCode {
   margin-left: auto;
   color: rgb(115 115 115);
   flex-shrink: 0;
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 0.75rem;
+}
+
+.ChatComposer_referenceSuggestionEmpty {
+  color: rgb(115 115 115);
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  text-align: center;
 }
 
 .ChatComposer_actionBar {
@@ -319,11 +389,24 @@
   color: rgb(115 115 115);
 }
 
+.ChatComposer_recordingButton {
+  color: rgb(248 113 113);
+  animation: ChatComposer_recordingPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 .ChatComposer_quickPromptsAnchor {
   position: relative;
   display: inline-flex;
 }
 
+.ChatComposer_rightActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ChatComposer_pauseButton,
 .ChatComposer_sendButton {
   display: flex;
   flex-shrink: 0;
@@ -341,6 +424,19 @@
   transition: background 140ms ease, transform 140ms ease;
 }
 
+.ChatComposer_pauseButton {
+  background: rgb(64 64 64);
+  color: rgb(245 245 245);
+}
+
+.ChatComposer_pauseButton:hover {
+  background: rgb(82 82 82);
+}
+
+.ChatComposer_pauseIcon {
+  flex-shrink: 0;
+}
+
 .ChatComposer_sendButton:disabled {
   background: rgb(75 85 99);
   color: rgb(209 213 219);
@@ -356,23 +452,101 @@
   transform: rotate(-45deg);
 }
 
+.ChatComposer_statusIndicator {
+  position: absolute;
+  top: -6.4px;
+  left: -6.4px;
+  z-index: 40;
+  display: flex;
+  max-width: 80%;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(212 212 212);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.ChatComposer_statusIndicatorDotWrap {
+  position: relative;
+  display: inline-block;
+}
+
+.ChatComposer_statusIndicatorDot,
+.ChatComposer_statusIndicatorDotBusy {
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  transition: background-color 300ms ease-in-out;
+}
+
+.ChatComposer_statusIndicatorGlow,
+.ChatComposer_statusIndicatorGlowBusy {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  opacity: 0.4;
+  filter: blur(1px);
+  transform: scale(2);
+  transition: background-color 300ms ease-in-out;
+}
+
+.ChatComposer_statusIndicatorDotBusy,
+.ChatComposer_statusIndicatorGlowBusy {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #a3e635,
+    #a855f7,
+    #3b82f6,
+    #a3e635
+  );
+  animation: ChatComposer_thinkingRotate 3s linear infinite;
+}
+
+.ChatComposer_statusIndicatorGlowBusy {
+  opacity: 0.7;
+  filter: blur(3px) saturate(2) brightness(1.3);
+}
+
 .ChatComposer_statusLine {
   position: absolute;
-  right: 0.75rem;
-  bottom: -1.1rem;
+  z-index: 40;
+  right: -0.5rem;
+  top: -0.625rem;
+  max-width: calc(60% + 1rem);
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 9999px;
+  background: rgb(38 38 38);
   color: rgb(82 82 82);
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 11px;
+  line-height: 1rem;
+  padding: 0.125rem 0.5rem;
+  text-overflow: ellipsis;
+  transition: color 140ms ease, border-color 140ms ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.ChatComposer_statusLine:hover {
+  border-color: rgb(115 115 115);
+  color: rgb(212 212 216);
 }
 
 .ChatComposer_bottomTabs {
   position: relative;
   display: grid;
+  width: 80%;
   height: 38px;
   grid-template-columns: minmax(10rem, 1fr) minmax(18rem, 1.25fr) minmax(10rem, 1fr);
   align-items: center;
   color: rgb(82 82 82);
+  cursor: pointer;
   font-size: 13px;
-  padding: 0 6%;
+  margin: -1rem auto 0;
+  padding-top: 1rem;
 }
 
 .ChatComposer_bottomTabSlot {
@@ -393,46 +567,210 @@
   justify-content: flex-end;
 }
 
-.ChatComposer_bottomTabs button {
+.ChatComposer_bottomTabButton {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   border: 0;
-  border-radius: 0.375rem;
   background: transparent;
   color: inherit;
   font: inherit;
   min-width: 0;
   max-width: 100%;
-  padding: 0.25rem 0.625rem;
-  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+  padding: 0 1.25rem 0.5rem;
+  transition: color 140ms ease;
 }
 
-.ChatComposer_bottomTabs button[data-active="true"] {
-  background: rgb(38 38 38 / 50%);
-  color: rgb(212 212 216);
+.ChatComposer_bottomTabButton[data-active="true"] {
+  color: inherit;
 }
 
-.ChatComposer_bottomTabs button[data-pressed="true"] {
-  background: rgb(64 64 64 / 70%);
-  color: rgb(245 245 245);
-  transform: translateY(1px) scale(0.98);
+.ChatComposer_bottomTabButton[data-pressed="true"] {
+  color: inherit;
 }
 
-.ChatComposer_bottomTabs button:hover {
-  background: rgb(38 38 38 / 55%);
+.ChatComposer_bottomTabButton:hover {
   color: rgb(229 229 229);
 }
 
-.ChatComposer_bottomTabs button span {
+.ChatComposer_bottomTabButton span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.ChatComposer_bottomTabActiveThreadButton {
+  max-width: 100%;
+  justify-content: center;
+}
+
+.ChatComposer_bottomTabDashboardIcon {
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.ChatComposer_bottomTabDashboardIcon:hover {
+  color: rgb(229 229 229);
+}
+
+.ChatComposer_bottomTabActiveTitle {
+  min-width: 3ch;
+  cursor: pointer;
+  text-align: center;
+  text-decoration-color: rgb(82 82 82);
+  text-underline-offset: 4px;
+  transition: color 140ms ease, text-decoration-color 140ms ease;
+}
+
+.ChatComposer_bottomTabActiveTitle:hover {
+  color: rgb(229 229 229);
+  text-decoration-line: underline;
+}
+
+.ChatComposer_bottomTabActiveRenameInput {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgb(82 82 91);
+  border-radius: 0.25rem;
+  outline: none;
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.125rem 0.375rem;
+  text-align: center;
+}
+
 .ChatComposer_bottomTabPinnedIcon {
   color: rgb(96 165 250);
+}
+
+.ChatComposer_newThreadContextMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.5rem);
+  z-index: 70;
+  width: max-content;
+  min-width: 158px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(23 23 23);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  color: rgb(229 229 229);
+  padding: 0.25rem 0;
+  text-align: left;
+}
+
+.ChatComposer_newThreadContextMenuSub,
+.ChatComposer_newThreadContextSubItem,
+.ChatComposer_newThreadContextMutedItem,
+.ChatComposer_newThreadContextChildItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(229 229 229);
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  padding: 0.5rem 0.75rem;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.ChatComposer_newThreadContextMenuSub:hover,
+.ChatComposer_newThreadContextMenuSub[data-open="true"],
+.ChatComposer_newThreadContextSubItem:hover,
+.ChatComposer_newThreadContextChildItem:hover {
+  background: rgb(38 38 38);
+}
+
+.ChatComposer_newThreadContextMenuSub span,
+.ChatComposer_newThreadContextSubItem span,
+.ChatComposer_newThreadContextChildItem span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ChatComposer_newThreadContextChevron {
+  color: rgb(115 115 115);
+  flex-shrink: 0;
+}
+
+.ChatComposer_newThreadContextSubmenu {
+  position: absolute;
+  right: calc(100% + 0.25rem);
+  top: -0.25rem;
+  z-index: 80;
+  min-width: 200px;
+  max-width: 280px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(23 23 23);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  padding: 0.25rem 0;
+}
+
+.ChatComposer_newThreadContextMutedItem {
+  color: rgb(163 163 163);
+}
+
+.ChatComposer_newThreadContextMutedItem:hover {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+}
+
+.ChatComposer_newThreadContextProjectHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(115 115 115);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  padding: 0.375rem 0.75rem;
+  user-select: none;
+}
+
+.ChatComposer_newThreadContextProjectHeader span {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.ChatComposer_newThreadContextProjectHeader small,
+.ChatComposer_newThreadContextChildItem small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ChatComposer_newThreadContextChildItem {
+  min-width: 0;
+}
+
+.ChatComposer_newThreadContextChildItem small {
+  color: rgb(115 115 115);
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ChatComposer_newThreadContextEmpty {
+  color: rgb(115 115 115);
+  font-size: 0.75rem;
+  font-style: italic;
+  padding: 0.5rem 0.75rem;
+}
+
+.ChatComposer_newThreadContextSeparator {
+  height: 1px;
+  background: rgb(64 64 64);
+  margin: 0.25rem 0;
 }
 
 .ChatComposer_recentThreadsMenu {
@@ -440,20 +778,49 @@
   left: 0;
   bottom: calc(100% + 0.5rem);
   z-index: 50;
-  width: min(820px, 80vw);
+  width: 100%;
   max-height: 320px;
   overflow-y: auto;
   border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
   background: rgb(23 23 23);
-  box-shadow: 0 20px 40px rgb(0 0 0 / 45%);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 10%), 0 8px 10px -6px rgb(0 0 0 / 10%);
   color: rgb(212 212 216);
   text-align: left;
   padding: 0.25rem;
 }
 
+.ChatComposer_recentThreadsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.ChatComposer_recentThreadsEmpty {
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  color: rgb(64 64 64);
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.ChatComposer_recentThreadsEmpty p {
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.ChatComposer_recentThreadsEmpty small {
+  color: rgb(82 82 82);
+  font-size: 0.75rem;
+}
+
 .ChatComposer_recentThread,
 .ChatComposer_recentThreadActive {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -462,6 +829,15 @@
   cursor: pointer;
   padding: 0.5rem 0.75rem;
   transition: background 140ms ease, color 140ms ease;
+}
+
+.ChatComposer_recentThread:hover {
+  background: rgb(38 38 38);
+  color: white;
+}
+
+.ChatComposer_recentThread:hover .ChatComposer_recentThreadTitle span {
+  color: white;
 }
 
 .ChatComposer_recentThread[data-current="true"],
@@ -474,8 +850,13 @@
   color: white;
 }
 
+.ChatComposer_recentThreadActive[data-current="true"] {
+  background: rgb(59 130 246 / 0.15);
+}
+
 .ChatComposer_recentThreadDot,
-.ChatComposer_recentThreadDotActive {
+.ChatComposer_recentThreadDotBusy {
+  display: block;
   width: 6px;
   height: 6px;
   flex: 0 0 auto;
@@ -483,8 +864,37 @@
   background: rgb(82 82 82);
 }
 
-.ChatComposer_recentThreadDotActive {
-  background: rgb(20 184 166);
+.ChatComposer_recentThreadDotBusy,
+.ChatComposer_recentThreadDotGlow {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #a3e635,
+    #a855f7,
+    #3b82f6,
+    #a3e635
+  );
+  animation: ChatComposer_thinkingRotate 3s linear infinite;
+}
+
+.ChatComposer_recentThreadDotBusy {
+  filter: saturate(1.5) brightness(1.2);
+}
+
+.ChatComposer_recentThreadDotGlow {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  filter: blur(3px) saturate(2) brightness(1.3);
+  opacity: 0.7;
+  transform: scale(2);
+}
+
+.ChatComposer_recentThreadDotWrap {
+  position: relative;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
 }
 
 .ChatComposer_recentThreadTitle {
@@ -502,8 +912,17 @@
   white-space: nowrap;
 }
 
-.ChatComposer_recentThreadActive .ChatComposer_recentThreadTitle span {
-  color: white;
+.ChatComposer_recentThreadRenameInput {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid rgb(82 82 91);
+  border-radius: 0.25rem;
+  outline: none;
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.125rem 0.375rem;
 }
 
 .ChatComposer_recentThreadPinButton {
@@ -518,8 +937,18 @@
 }
 
 .ChatComposer_recentThread:hover .ChatComposer_recentThreadPinButton,
-.ChatComposer_recentThreadActive .ChatComposer_recentThreadPinButton {
+.ChatComposer_recentThread[data-pinned="true"] .ChatComposer_recentThreadPinButton,
+.ChatComposer_recentThreadActive[data-pinned="true"] .ChatComposer_recentThreadPinButton {
   opacity: 1;
+}
+
+.ChatComposer_recentThreadPinButton:hover {
+  color: rgb(212 212 212);
+}
+
+.ChatComposer_recentThread[data-pinned="true"] .ChatComposer_recentThreadPinButton:hover,
+.ChatComposer_recentThreadActive[data-pinned="true"] .ChatComposer_recentThreadPinButton:hover {
+  color: rgb(147 197 253);
 }
 
 .ChatComposer_recentThreadPin,
@@ -531,11 +960,15 @@
   color: rgb(96 165 250);
 }
 
+.ChatComposer_recentThreadPinButton:hover .ChatComposer_recentThreadPinActive {
+  color: rgb(147 197 253);
+}
+
 .ChatComposer_recentThreadTime {
   flex: 0 0 auto;
   color: rgb(82 82 82);
-  font-size: 11px;
-  tab-size: 4;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .ChatComposer_recentThreadActions {
@@ -563,4 +996,143 @@
 .ChatComposer_recentThreadActions button:hover {
   background: rgb(64 64 64);
   color: white;
+}
+
+.ChatComposer_recentThreadArchivePlaceholder {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  visibility: hidden;
+  color: rgb(163 163 163);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.375rem;
+}
+
+.ChatComposer_recentThreadActions .ChatComposer_recentThreadArchiveButton {
+  padding: 0.25rem 0.375rem;
+}
+
+.ChatComposer_recentThreadActions .ChatComposer_recentThreadArchiveButton:hover {
+  background: rgb(251 191 36 / 0.1);
+  color: rgb(251 191 36);
+}
+
+.ChatComposer_threadContextMenu {
+  min-width: 160px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(38 38 38);
+  box-shadow: 0 10px 38px -10px rgb(0 0 0 / 75%), 0 10px 20px -15px rgb(0 0 0 / 40%);
+  color: rgb(245 245 245);
+  padding: 0.25rem;
+}
+
+.ChatComposer_threadContextMenuPortal {
+  position: absolute;
+  right: 0.5rem;
+  z-index: 80;
+}
+
+.ChatComposer_archiveDeleteMenuPortal {
+  position: absolute;
+  right: 0.5rem;
+  z-index: 80;
+}
+
+.ChatComposer_archiveDeleteMenu {
+  min-width: 120px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(38 38 38);
+  box-shadow: 0 10px 38px -10px rgb(0 0 0 / 75%), 0 10px 20px -15px rgb(0 0 0 / 40%);
+  padding: 0.25rem;
+}
+
+.ChatComposer_archiveDeleteMenuItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(248 113 113);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  transition: background 140ms ease;
+  white-space: nowrap;
+}
+
+.ChatComposer_archiveDeleteMenuItem:hover {
+  background: rgb(64 64 64);
+}
+
+.ChatComposer_threadContextMenuItem,
+.ChatComposer_threadContextMenuDeleteItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(245 245 245);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  transition: background 140ms ease;
+}
+
+.ChatComposer_threadContextMenuItem:hover,
+.ChatComposer_threadContextMenuDeleteItem:hover {
+  background: rgb(64 64 64);
+}
+
+.ChatComposer_threadContextMenuItem span,
+.ChatComposer_threadContextMenuDeleteItem span {
+  flex: 1;
+}
+
+.ChatComposer_threadContextMenuNeutralIcon {
+  color: rgb(163 163 163);
+}
+
+.ChatComposer_threadContextMenuArchiveIcon {
+  color: rgb(251 191 36);
+}
+
+.ChatComposer_threadContextMenuDeleteItem {
+  color: rgb(248 113 113);
+}
+
+.ChatComposer_threadContextMenuSeparator {
+  height: 1px;
+  background: rgb(64 64 64);
+  margin: 0.25rem 0;
+}
+
+@keyframes ChatComposer_thinkingRotate {
+  to {
+    --thinking-angle: 360deg;
+  }
+}
+
+@property --thinking-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes ChatComposer_recordingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }

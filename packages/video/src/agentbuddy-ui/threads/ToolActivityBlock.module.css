@@ -1,7 +1,7 @@
 .ToolActivityBlock_root {
   margin-bottom: 0.75rem;
   overflow: hidden;
-  border: 1px solid rgb(64 64 64 / 80%);
+  border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
   background: rgb(38 38 38 / 40%);
 }
@@ -44,6 +44,21 @@
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ToolActivityBlock_streamingDots {
+  display: flex;
+  align-self: baseline;
+  flex-shrink: 0;
+  gap: 0.25rem;
+}
+
+.ToolActivityBlock_streamingDots span {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: rgb(115 115 115);
+  animation: ToolActivityBlock_streamingPulse 1.2s ease-in-out infinite;
 }
 
 .ToolActivityBlock_spacer {
@@ -136,7 +151,7 @@
   color: rgb(115 115 115);
   font-size: 10px;
   min-width: 2.5rem;
-  tab-size: 4;
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
@@ -199,4 +214,9 @@
 
 @keyframes ToolActivityBlock_spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes ToolActivityBlock_streamingPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }

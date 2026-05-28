@@ -1,0 +1,84 @@
+import {Icons} from '../primitives/Icon';
+import {makeStyles} from '../primitives/makeStyles';
+import type {ChatComposerState, RevertHistoryMessageState} from './chatTypes';
+import './RevertHistoryPopup.module.css';
+
+const styles = makeStyles('RevertHistoryPopup');
+
+type RevertHistoryState = NonNullable<ChatComposerState['revertHistory']>;
+type RevertActionId = 'revert' | 'revert-with-files' | 'summarize-from-here';
+
+const actions: Array<{
+  icon: typeof Icons.Undo2;
+  id: RevertActionId;
+  label: string;
+}> = [
+  {id: 'revert', label: 'Revert', icon: Icons.Undo2},
+  {id: 'revert-with-files', label: 'Revert and rewind code', icon: Icons.FileCode},
+  {id: 'summarize-from-here', label: 'Summarize from here', icon: Icons.Sparkle},
+];
+
+// Mirrors packages/renderer/src/plugins/threads/chat/RevertHistoryPopup.vue.
+export function RevertHistoryPopup({state}: {state: RevertHistoryState}) {
+  if (state.messages.length === 0) return null;
+  const level = state.level ?? 'messages';
+  const selectedMessage = selectedMessageForState(state);
+
+  return (
+    <div className={styles.root}>
+      {level === 'messages'
+        ? state.messages.map(message => <MessageRow key={message.id} message={message} selected={message.id === selectedMessage?.id} />)
+        : (
+          <>
+            {actions.map(action => (
+              <ActionRow
+                action={action}
+                disabled={action.id === 'summarize-from-here' && selectedMessage?.canSummarize === false}
+                key={action.id}
+                selected={action.id === state.selectedAction}
+              />
+            ))}
+            <div className={styles.hint}>
+              <span className={styles.hintKey}>Enter</span>
+              <span>confirm</span>
+              <span className={styles.hintSep}>·</span>
+              <span className={styles.hintKey}>←</span>
+              <span>back</span>
+            </div>
+          </>
+        )}
+    </div>
+  );
+}
+
+function MessageRow({message, selected}: {message: RevertHistoryMessageState; selected?: boolean}) {
+  return (
+    <div className={selected ? styles.itemSelected : styles.item} title={message.text}>
+      <span className={styles.time}>{message.createdAt ?? ''}</span>
+      <span className={styles.snippet}>{snippet(message.text)}</span>
+      <Icons.ChevronRight className={styles.caret} size={14} />
+    </div>
+  );
+}
+
+function ActionRow({action, disabled, selected}: {action: typeof actions[number]; disabled?: boolean; selected?: boolean}) {
+  const Icon = action.icon;
+  const className = disabled ? styles.itemDisabled : selected ? styles.itemSelected : styles.item;
+  return (
+    <div className={className} title={disabled ? 'No prior assistant turn to summarize' : undefined}>
+      <Icon className={styles.icon} size={14} />
+      <span className={styles.snippet}>{action.label}</span>
+    </div>
+  );
+}
+
+function selectedMessageForState(state: RevertHistoryState) {
+  if (state.selectedMessageId) return state.messages.find(message => message.id === state.selectedMessageId) ?? null;
+  return state.messages.find(message => message.selected) ?? state.messages[state.messages.length - 1] ?? null;
+}
+
+function snippet(text: string) {
+  const oneLine = text.replace(/\s+/g, ' ').trim();
+  if (!oneLine) return '(empty)';
+  return oneLine.length > 72 ? `${oneLine.slice(0, 72)}…` : oneLine;
+}

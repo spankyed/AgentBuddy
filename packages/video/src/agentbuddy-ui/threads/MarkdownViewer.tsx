@@ -1,5 +1,7 @@
 import {Icons} from '../primitives/Icon';
 import {MonacoCodeViewer} from '../code/MonacoCodeViewer';
+import {ReferencePill} from '../chat/ReferencePill';
+import {referenceTypeForProtocol} from '../chat/referenceConfig';
 import './MarkdownViewer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 
@@ -204,10 +206,19 @@ function renderInlineMarkdown(text: string) {
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
   return parts.map((part, index) => {
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (link) return <a href={link[2]} key={index}>{link[1]}</a>;
+    if (link) {
+      const refType = referenceTypeFromHref(link[2]);
+      if (refType) return <ReferencePill href={link[2]} key={index} label={link[1]} refType={refType} />;
+      return <a href={link[2]} key={index}>{link[1]}</a>;
+    }
     if (part.startsWith('`') && part.endsWith('`')) return <code key={index}>{part.slice(1, -1)}</code>;
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={index}>{part.slice(2, -2)}</strong>;
     if (part.startsWith('*') && part.endsWith('*')) return <em key={index}>{part.slice(1, -1)}</em>;
     return <span key={index}>{part}</span>;
   });
+}
+
+function referenceTypeFromHref(href: string) {
+  const protocol = href.match(/^([a-z]+):\/\//i)?.[1];
+  return protocol ? referenceTypeForProtocol(protocol) : null;
 }

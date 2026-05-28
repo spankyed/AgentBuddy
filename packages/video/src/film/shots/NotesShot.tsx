@@ -2,7 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
-import {Icons} from '../../agentbuddy-ui/primitives/Icon';
+import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {notesEditorViewForFrame, notesHomeViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
 import {Cursor} from '../overlays/Cursor';
@@ -178,10 +178,7 @@ function NoteLine({frame, line}: {frame: number; line: {caretVisible?: boolean; 
   return (
     <>
       {before}
-      <span className={styles.threadPill}>
-        <Icons.MessageSquare size={13} />
-        <span>{title}</span>
-      </span>
+      <ReferencePill label={title} refType="thread" />
       {shownSuffix}
       <Caret frame={frame} visible={Boolean(line.caretVisible)} />
     </>

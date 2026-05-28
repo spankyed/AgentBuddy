@@ -21,7 +21,9 @@
 }
 
 .TextInputBlock_input,
-.TextInputBlock_textarea {
+.TextInputBlock_inputDisabled,
+.TextInputBlock_textarea,
+.TextInputBlock_textareaDisabled {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid rgb(82 82 91);
@@ -33,7 +35,16 @@
   padding: 0.5rem 0.75rem;
 }
 
-.TextInputBlock_textarea {
+.TextInputBlock_inputDisabled,
+.TextInputBlock_textareaDisabled {
+  border-color: rgb(63 63 70);
+  background: rgb(64 64 64 / 0.5);
+  color: rgb(113 113 122);
+  cursor: not-allowed;
+}
+
+.TextInputBlock_textarea,
+.TextInputBlock_textareaDisabled {
   resize: none;
 }
 
@@ -50,6 +61,7 @@
   color: rgb(212 212 216);
   font-size: 14px;
   padding: 0.25rem 0.75rem;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .TextInputBlock_actions {

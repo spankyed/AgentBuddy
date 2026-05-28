@@ -30,7 +30,7 @@ export function ChoiceBlock({state}: {state: ChoiceBlockState}) {
       {state.allowCustom ? (
         <div className={styles.custom}>
           <label>Or enter custom response:</label>
-          <textarea placeholder={state.customPlaceholder ?? 'Enter a custom response...'} readOnly rows={1} />
+          <textarea placeholder={state.customPlaceholder ?? 'Type your custom response...'} readOnly rows={1} />
         </div>
       ) : null}
       {state.multiSelect ? (

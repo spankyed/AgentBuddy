@@ -39,7 +39,7 @@ export function QuestionBlock({state}: {state: QuestionBlockState}) {
       {currentQuestion.allowCustom !== false ? (
         <div className={styles.custom}>
           <label>Or enter custom response:</label>
-          <textarea placeholder={state.customPlaceholder ?? 'Enter a response...'} readOnly rows={1} />
+          <textarea placeholder={state.customPlaceholder ?? 'Type your response...'} readOnly rows={1} />
         </div>
       ) : null}
       <div className={styles.actions}>

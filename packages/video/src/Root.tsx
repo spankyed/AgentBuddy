@@ -19,10 +19,25 @@ import {
   CodeSurfaceDemo,
   ChatSurfaceDemo,
   ChatComposerDemo,
+  ChatComposerActiveThreadRenameDemo,
+  ChatComposerInputStatesDemo,
+  ChatComposerMixedAttachmentsDemo,
   ChatComposerModeMenuDemo,
+  ChatComposerNewThreadChildMenuDemo,
+  ChatComposerNewThreadProjectMenuDemo,
   ChatComposerPhaseMenuDemo,
+  ChatComposerQuickPromptsEditingDemo,
+  ChatComposerRevertActionsDemo,
+  ChatComposerRevertHistoryDemo,
+  ChatComposerReferenceEmptyStatesDemo,
+  ChatComposerReferenceCategoriesDemo,
+  ChatComposerReferenceItemTypesDemo,
+  ChatComposerReferencePillsDemo,
   ChatComposerRecentThreadsDemo,
+  ChatComposerRecentThreadsEmptyDemo,
+  ChatComposerRecentThreadsRenameDemo,
   ChatComposerReferencesDemo,
+  ChatComposerStatusLineDemo,
   ChatComposerWithAttachmentDemo,
   CodeReviewDemo,
   ContentBlocksDemo,
@@ -225,11 +240,26 @@ export const RemotionRoot = () => {
       <Composition id="SettingsHelpDemo" component={SettingsHelpDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsHelpExpandedDemo" component={SettingsHelpExpandedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerDemo" component={ChatComposerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerActiveThreadRenameDemo" component={ChatComposerActiveThreadRenameDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerWithAttachmentDemo" component={ChatComposerWithAttachmentDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerMixedAttachmentsDemo" component={ChatComposerMixedAttachmentsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerStatusLineDemo" component={ChatComposerStatusLineDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerInputStatesDemo" component={ChatComposerInputStatesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerModeMenuDemo" component={ChatComposerModeMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerNewThreadProjectMenuDemo" component={ChatComposerNewThreadProjectMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerNewThreadChildMenuDemo" component={ChatComposerNewThreadChildMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerPhaseMenuDemo" component={ChatComposerPhaseMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerQuickPromptsEditingDemo" component={ChatComposerQuickPromptsEditingDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerRevertHistoryDemo" component={ChatComposerRevertHistoryDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerRevertActionsDemo" component={ChatComposerRevertActionsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerReferenceCategoriesDemo" component={ChatComposerReferenceCategoriesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerReferenceEmptyStatesDemo" component={ChatComposerReferenceEmptyStatesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerReferenceItemTypesDemo" component={ChatComposerReferenceItemTypesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerReferencePillsDemo" component={ChatComposerReferencePillsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerReferencesDemo" component={ChatComposerReferencesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerRecentThreadsDemo" component={ChatComposerRecentThreadsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerRecentThreadsEmptyDemo" component={ChatComposerRecentThreadsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerRecentThreadsRenameDemo" component={ChatComposerRecentThreadsRenameDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="TaskListPanelDemo" component={TaskListPanelDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="TaskListPanelMenuDemo" component={TaskListPanelMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="TaskListPanelRowMenuDemo" component={TaskListPanelRowMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

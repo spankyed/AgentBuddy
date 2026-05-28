@@ -331,7 +331,7 @@ export const noteBlockDemoState: NoteBlockState = {
 };
 
 export const markdownBlockDemoState: MarkdownBlockState = {
-  content: '### Launch checklist\n- [x] Real UI surfaces\n- [x] PR flow complete\n- [ ] Blueprint fidelity reviewed\n\n| Review | Owner |\n| --- | --- |\n| code/pr | ready |\n| flows | needs pass |\n\n```ts\nconst surface = \"renderer-faithful\";\n```\n\nRead the [release note](agentbuddy://notes/current).',
+  content: '### Launch checklist\n- [x] Real UI surfaces\n- [x] PR flow complete\n- [ ] Review [release note](note://current)\n\n| Review | Owner |\n| --- | --- |\n| code/pr | ready |\n| flows | needs pass |\n\n```ts\nconst surface = \"renderer-faithful\";\n```',
   label: 'Generated summary',
 };
 
@@ -453,6 +453,33 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const showLaunchWork = frame > 174 && frame < 292;
   const showLaunchArtifact = frame > 226 && frame < 314;
   const showQuickPromptResponse = frame > 402;
+  const typedNoteReference = view.prompt.includes('#notes:current');
+  const referenceAutocomplete = frame > 96 && frame < 136
+    ? typedNoteReference
+      ? {
+          activeId: 'notes-current',
+          anchorCharacterIndex: Math.max(view.prompt.indexOf('#'), 0),
+          categoryQuery: 'notes:',
+          level: 'items' as const,
+          query: 'current',
+          selectedCategory: 'notes' as const,
+          suggestions: [
+            {id: 'notes-current', label: 'current', shortCode: 'current', type: 'note' as const},
+            {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'root', type: 'tasklist' as const},
+          ],
+        }
+      : {
+          activeId: 'notes',
+          anchorCharacterIndex: Math.max(view.prompt.indexOf('#'), 0),
+          categoryQuery: '',
+          level: 'category' as const,
+          query: 'notes',
+          selectedCategory: null,
+          suggestions: [
+            {id: 'notes' as const, label: 'Notes'},
+          ],
+        }
+    : undefined;
   const stableLoadedMessageStyles = {
     assistant: {
       opacity: 1,
@@ -467,23 +494,13 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       transform: 'translateY(0px)',
     },
   };
-  const typedNoteReference = view.prompt.includes('#notes:current');
   return {
     breadcrumbs: recentThreadLoaded ? ['Threads', 'Launch PR implementation'] : chatShotState.breadcrumbs,
     composer: {
       ...launchComposerState,
-      referenceAutocomplete: frame > 96 && frame < 136
-        ? {
-            activeId: 'notes-current',
-            query: typedNoteReference ? 'notes:current' : 'notes',
-            suggestions: [
-              {id: 'notes-current', icon: '📝', label: 'current', typeLabel: 'note'},
-              {id: 'notes-tasklist', icon: '📝', label: 'Tasklist', typeLabel: 'tasklist'},
-            ],
-          }
-        : undefined,
+      referenceAutocomplete,
       references: typedNoteReference && frame < 176
-        ? [{id: 'notes-current', icon: '📝', label: 'current', token: '#notes:current', typeLabel: 'note'}]
+        ? [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'current', token: '#notes:current'}]
         : undefined,
       attachments: [
         ...(frame > 132 && frame < 166 ? [{
@@ -511,10 +528,11 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             recentThreadsMenu: frame > 286 && frame < 314
               ? {
                   activeId: frame > 302 ? 'launch-dev-complete' : undefined,
+                  currentId: 'launch-plan',
                   threads: [
-                    {id: 'launch-dev-complete', title: 'Launch PR implementation', meta: 'completed just now', pinned: true, status: 'done', time: 'now'},
-                    {id: 'launch-plan', title: 'Launch Operating Plan', meta: 'active thread', status: 'active', time: '2m'},
-                    {id: 'release-checks', title: 'Release checklist', meta: 'queued', status: 'next', time: '8m'},
+                    {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, time: 'now'},
+                    {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, time: '2m'},
+                    {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', time: '8m'},
                   ],
                 }
               : undefined,
