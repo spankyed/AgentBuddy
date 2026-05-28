@@ -9,7 +9,6 @@ type QuickPromptsPopupProps = {
   editingId?: string;
   editingText?: string;
   newPromptText?: string;
-  pressedPromptId?: string;
   prompts: Array<{
     id: string;
     text: string;
@@ -17,7 +16,7 @@ type QuickPromptsPopupProps = {
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/QuickPromptsPopup.vue.
-export function QuickPromptsPopup({editing, editingId, editingText, newPromptText, pressedPromptId, prompts}: QuickPromptsPopupProps) {
+export function QuickPromptsPopup({editing, editingId, editingText, newPromptText, prompts}: QuickPromptsPopupProps) {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -41,7 +40,7 @@ export function QuickPromptsPopup({editing, editingId, editingText, newPromptTex
           ))
         ) : prompts.length ? (
           prompts.map((prompt, index) => (
-            <div className={styles.item} data-pressed={pressedPromptId === prompt.id} key={prompt.id}>
+            <div className={styles.item} key={prompt.id}>
               <button data-prompt-id={prompt.id} type="button">
                 <span className={styles.index}>{index + 1}</span>
                 <span className={styles.text}>

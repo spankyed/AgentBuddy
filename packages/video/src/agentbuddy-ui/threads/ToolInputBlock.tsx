@@ -15,7 +15,7 @@ export function ToolInputBlock({state}: {state: ToolInputBlockState}) {
     <div className={styles.root}>
       {fileName ? (
         <div className={styles.header} title={filePath}>
-          <Icons.FileEdit size={14} />
+          <Icons.FileCode size={14} />
           <span>{fileName}</span>
         </div>
       ) : null}

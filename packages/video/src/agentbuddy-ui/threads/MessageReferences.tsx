@@ -51,7 +51,7 @@ function FileReference({reference}: {reference: MessageReference}) {
       </span>
       <span className={styles.fileText}>
         <span>{reference.name}</span>
-        <small>{reference.typeLabel ?? 'Document'}</small>
+        <small>{reference.typeLabel ?? ''}</small>
       </span>
     </div>
   );

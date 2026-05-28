@@ -14,7 +14,7 @@ export function BottomThreadTabs({active = 'active', activeEditing, activeLabel,
       <div className={styles.bottomTabSlot} data-slot="recent">
         <button className={styles.bottomTabButton} data-active={active === 'recent'} data-pressed={pressed === 'recent'} type="button">
           {recentThreadsMenu ? <Icons.ChevronUp size={16} /> : <Icons.History size={16} />}
-          <span>{recentLabel}</span>
+          <ResponsiveBottomTabLabel label={recentLabel} />
         </button>
       </div>
       <div className={styles.bottomTabSlot} data-slot="active">
@@ -31,10 +31,21 @@ export function BottomThreadTabs({active = 'active', activeEditing, activeLabel,
         </span>
       </div>
       <div className={styles.bottomTabSlot} data-slot="new">
-        <button className={styles.bottomTabButton} data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={16} /><span>{newThreadLabel}</span></button>
+        <button className={styles.bottomTabButton} data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={16} /><ResponsiveBottomTabLabel label={newThreadLabel} /></button>
         {newThreadMenu ? <NewThreadContextMenu menu={newThreadMenu} /> : null}
       </div>
       {recentThreadsMenu ? <RecentThreadsMenu menu={recentThreadsMenu} /> : null}
     </div>
+  );
+}
+
+function ResponsiveBottomTabLabel({label}: {label: string}) {
+  const [first, ...rest] = label.split(' ');
+  if (!rest.length) return <span>{label}</span>;
+  return (
+    <span>
+      {first}
+      <span className={styles.bottomTabResponsiveText}>{` ${rest.join(' ')}`}</span>
+    </span>
   );
 }

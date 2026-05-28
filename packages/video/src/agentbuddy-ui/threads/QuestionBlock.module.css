@@ -86,7 +86,7 @@
 .QuestionBlock_selected {
   border-color: rgb(37 99 235);
   background: rgb(37 99 235 / 0.2);
-  box-shadow: 0 0 0 2px rgb(37 99 235 / 0.4);
+  box-shadow: 0 0 0 2px rgb(37 99 235 / 0.5);
 }
 
 .QuestionBlock_choiceInner {

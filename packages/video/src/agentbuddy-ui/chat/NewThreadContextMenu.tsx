@@ -1,3 +1,5 @@
+import type {CSSProperties} from 'react';
+import {createPortal} from 'react-dom';
 import type {ChatComposerState} from './chatTypes';
 import {Icons} from '../primitives/Icon';
 import './ChatComposer.module.css';
@@ -7,10 +9,13 @@ const styles = makeStyles('ChatComposer');
 
 type NewThreadMenuState = NonNullable<NonNullable<ChatComposerState['bottomTabs']>['newThreadMenu']>;
 
-// Mirrors the New thread context menu in packages/renderer/src/plugins/threads/chat/recent-threads.vue.
+/*
+ * Mirrors the New thread context menu in packages/renderer/src/plugins/threads/chat/recent-threads.vue.
+ * Fixed-positioned menus are portaled to body, matching Reka's ContextMenuPortal.
+ */
 export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
-  return (
-    <div className={styles.newThreadContextMenu}>
+  const popup = (
+    <div className={styles.newThreadContextMenu} style={newThreadMenuStyle(menu.popupPosition)}>
       <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'project' ? 'true' : undefined}>
         <Icons.FolderOpen size={16} />
         <span>In Project</span>
@@ -26,6 +31,31 @@ export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(popup, document.body);
+  }
+
+  return popup;
+}
+
+function newThreadMenuStyle(position: NewThreadMenuState['popupPosition']): CSSProperties {
+  const left = position?.left ?? 0;
+  const top = position?.top;
+  const bottom = position?.bottom ?? 0;
+  return top == null
+    ? {
+        bottom: `${bottom}px`,
+        left: `${left}px`,
+        position: 'fixed',
+        right: 'auto',
+      }
+    : {
+        left: `${left}px`,
+        position: 'fixed',
+        right: 'auto',
+        top: `${top}px`,
+      };
 }
 
 function ProjectSubmenu({projects}: {projects: NewThreadMenuState['projects']}) {

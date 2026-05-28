@@ -36,7 +36,7 @@ export function ProjectSelectBlock({state}: {state: ProjectSelectBlockState}) {
             <span className={styles.name}>{project.name}</span>
             <span className={styles.path}>{project.directories[0] ?? ''}</span>
           </span>
-          {!state.disabled ? <Icons.ChevronRight size={16} /> : null}
+          <Icons.ChevronRight size={16} />
         </button>
       ))}
     </div>

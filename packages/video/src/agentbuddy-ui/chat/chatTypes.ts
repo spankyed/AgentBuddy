@@ -44,6 +44,11 @@ export type ChatComposerState = {
     newThreadLabel: string;
     newThreadMenu?: {
       openSubmenu?: 'child' | 'project';
+      popupPosition?: {
+        bottom?: number;
+        left: number;
+        top?: number;
+      };
       projects: Array<{
         color: string;
         directories: string[];
@@ -63,11 +68,21 @@ export type ChatComposerState = {
       contextMenu?: {
         copyText?: string;
         isArchived?: boolean;
+        popupPosition?: {
+          bottom?: number;
+          left: number;
+          top?: number;
+        };
         threadId: string;
       };
       currentId?: string;
       editingName?: string;
       editingThreadId?: string;
+      archiveContextMenuPosition?: {
+        bottom?: number;
+        left: number;
+        top?: number;
+      };
       popupPosition?: {
         bottom: number;
         left: number;
@@ -78,6 +93,7 @@ export type ChatComposerState = {
         dotColor?: string;
         id: string;
         pinned?: boolean;
+        shortCode?: string;
         timestamp?: number | string;
         time?: string;
         title: string;
@@ -108,7 +124,7 @@ export type ChatComposerState = {
   forcedMode?: string;
   mode: string;
   modeOptions?: ChatModeOption[];
-  openSelector?: 'mode' | 'phase';
+  openSelector?: 'mode' | 'more-actions' | 'phase';
   phase?: string;
   placeholder: string;
   referenceAutocomplete?: ReferenceAutocompleteState;
@@ -127,11 +143,15 @@ export type ChatComposerState = {
   quickPromptsEditingText?: string;
   quickPromptsNewText?: string;
   quickPromptsOpen?: boolean;
-  quickPromptPressedId?: string;
   recording?: boolean;
   revertHistory?: {
     level?: 'actions' | 'messages';
     messages: RevertHistoryMessageState[];
+    popupPosition?: {
+      bottom: number;
+      left: number;
+      maxWidth?: number;
+    };
     selectedAction?: 'revert' | 'revert-with-files' | 'summarize-from-here';
     selectedMessageId?: string;
   };

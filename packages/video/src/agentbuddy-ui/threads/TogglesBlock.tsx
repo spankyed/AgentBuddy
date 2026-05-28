@@ -18,6 +18,9 @@ export function TogglesBlock({state}: {state: TogglesBlockState}) {
       </div>
     );
   }
+  if (state.disabled) {
+    return <div className={styles.empty} />;
+  }
 
   return (
     <div className={styles.root}>

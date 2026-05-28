@@ -1,5 +1,6 @@
 import {useCurrentFrame} from 'remotion';
 import {ChatComposer} from '../../agentbuddy-ui/chat/ChatComposer';
+import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {ActionButtonsBlock} from '../../agentbuddy-ui/threads/ActionButtonsBlock';
 import {ApprovalBlock} from '../../agentbuddy-ui/threads/ApprovalBlock';
 import {ButtonGroupBlock} from '../../agentbuddy-ui/threads/ButtonGroupBlock';
@@ -67,6 +68,34 @@ const recentThreadTimestamps = {
   twoMinutesAgo: '2026-05-27T19:50:00',
   eightMinutesAgo: '2026-05-27T19:44:00',
 };
+const referenceDemoPopupPosition = {
+  bottom: 220,
+  left: 200,
+};
+const referenceDemoUpperPopupPosition = {
+  bottom: 432,
+  left: 200,
+};
+const recentThreadsDemoPopupPosition = {
+  bottom: 214,
+  left: 144,
+  width: 1152,
+};
+const newThreadDemoPopupPosition = {
+  bottom: 214,
+  left: 1112,
+};
+type ReferenceAutocompleteDemoState = NonNullable<ChatComposerState['referenceAutocomplete']>;
+
+function referenceAutocompleteDemoState<T extends ReferenceAutocompleteDemoState>(
+  state: T,
+  slot: 'lower' | 'upper' = 'lower',
+): T {
+  return {
+    ...state,
+    popupPosition: slot === 'upper' ? referenceDemoUpperPopupPosition : referenceDemoPopupPosition,
+  };
+}
 
 export const ChatComposerDemo = () => (
   <SurfaceFrame>
@@ -251,7 +280,7 @@ export const ChatComposerReferenceCategoriesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             activeId: 'notes',
             anchorCharacterIndex: 4,
             categoryQuery: '',
@@ -263,7 +292,7 @@ export const ChatComposerReferenceCategoriesDemo = () => (
               {id: 'documents', label: 'Library'},
               {id: 'notes', label: 'Notes'},
             ],
-          },
+          }),
           text: 'Use #',
         }}
       />
@@ -277,7 +306,7 @@ export const ChatComposerReferenceFilteredCategoriesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             activeId: 'notes',
             anchorCharacterIndex: 4,
             categoryQuery: '',
@@ -287,7 +316,7 @@ export const ChatComposerReferenceFilteredCategoriesDemo = () => (
             suggestions: [
               {id: 'notes', label: 'Notes'},
             ],
-          },
+          }),
           text: 'Use #no',
         }}
       />
@@ -301,7 +330,7 @@ export const ChatComposerReferencesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             activeId: 'notes-current',
             anchorCharacterIndex: 4,
             categoryQuery: 'notes:',
@@ -312,7 +341,7 @@ export const ChatComposerReferencesDemo = () => (
               {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note'},
               {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'notes-tasklist', type: 'tasklist'},
             ],
-          },
+          }),
           references: [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current', token: '#notes:current'}],
           text: 'Use #notes:current and this screenshot to turn launch context into tickets.',
         }}
@@ -327,7 +356,7 @@ export const ChatComposerReferenceItemTypesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             activeId: 'thread-launch',
             anchorCharacterIndex: 4,
             categoryQuery: 'threads:',
@@ -338,7 +367,7 @@ export const ChatComposerReferenceItemTypesDemo = () => (
               {id: 'thread-launch', label: 'Launch PR implementation', shortCode: 'AB-104', type: 'thread'},
               {id: 'thread-film', label: 'Polish launch film UI', shortCode: 'AB-123', type: 'thread'},
             ],
-          },
+          }, 'upper'),
           text: 'Use #threads:launch',
         }}
       />
@@ -347,7 +376,7 @@ export const ChatComposerReferenceItemTypesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             activeId: 'doc-release',
             anchorCharacterIndex: 4,
             categoryQuery: 'library:',
@@ -358,7 +387,7 @@ export const ChatComposerReferenceItemTypesDemo = () => (
               {id: 'doc-release', label: 'Release brief', shortCode: 'release-brief', type: 'document'},
               {id: 'folder-assets', label: 'Launch assets', shortCode: 'launch-assets', type: 'folder'},
             ],
-          },
+          }),
           text: 'Use #library:launch',
         }}
       />
@@ -393,14 +422,14 @@ export const ChatComposerReferenceEmptyStatesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             anchorCharacterIndex: 4,
             categoryQuery: '',
             level: 'category',
             query: 'zzz',
             selectedCategory: null,
             suggestions: [],
-          },
+          }, 'upper'),
           text: 'Use #zzz',
         }}
       />
@@ -409,14 +438,14 @@ export const ChatComposerReferenceEmptyStatesDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          referenceAutocomplete: {
+          referenceAutocomplete: referenceAutocompleteDemoState({
             anchorCharacterIndex: 4,
             categoryQuery: 'notes:',
             level: 'items',
             query: 'zzz',
             selectedCategory: 'notes',
             suggestions: [],
-          },
+          }),
           text: 'Use #notes:zzz',
         }}
       />
@@ -438,8 +467,8 @@ export const ChatComposerRecentThreadsDemo = () => (
             recentLabel: 'Recent Threads',
             recentThreadsMenu: {
               activeId: 'launch-dev-complete',
-              archiveContextMenuThreadId: 'release-checks',
               currentId: 'launch-plan',
+              popupPosition: recentThreadsDemoPopupPosition,
               threads: [
                 {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
                 {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
@@ -466,6 +495,7 @@ export const ChatComposerRecentThreadsEmptyDemo = () => (
             pressed: 'recent',
             recentLabel: 'Recent Threads',
             recentThreadsMenu: {
+              popupPosition: recentThreadsDemoPopupPosition,
               threads: [],
             },
           },
@@ -489,6 +519,7 @@ export const ChatComposerRecentThreadsRenameDemo = () => (
             recentLabel: 'Recent Threads',
             recentThreadsMenu: {
               activeId: 'launch-dev-complete',
+              archiveContextMenuThreadId: 'release-checks',
               contextMenu: {
                 copyText: 'launch-plan',
                 threadId: 'launch-plan',
@@ -496,6 +527,7 @@ export const ChatComposerRecentThreadsRenameDemo = () => (
               currentId: 'launch-plan',
               editingName: 'Launch Operating Plan',
               editingThreadId: 'launch-plan',
+              popupPosition: recentThreadsDemoPopupPosition,
               threads: [
                 {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
                 {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
@@ -541,6 +573,7 @@ export const ChatComposerNewThreadProjectMenuDemo = () => (
             newThreadLabel: 'New thread',
             newThreadMenu: {
               openSubmenu: 'project',
+              popupPosition: newThreadDemoPopupPosition,
               projects: [
                 {name: 'Clientlabs', color: '#38bdf8', directories: [filmProjectDirectories.clientlabs.path]},
                 {name: 'AgentBuddy', color: '#a78bfa', directories: [filmProjectDirectories.agentBuddy.path, `${filmProjectDirectories.agentBuddy.path}/packages/video`]},
@@ -568,6 +601,7 @@ export const ChatComposerNewThreadChildMenuDemo = () => (
             newThreadLabel: 'New thread',
             newThreadMenu: {
               openSubmenu: 'child',
+              popupPosition: newThreadDemoPopupPosition,
               projects: [],
               threads: [
                 {id: 'launch-plan', shortCode: 'AB-104', title: 'Launch Operating Plan'},

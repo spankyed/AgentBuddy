@@ -1,3 +1,5 @@
+import type {CSSProperties} from 'react';
+import {createPortal} from 'react-dom';
 import {Icons} from '../primitives/Icon';
 import {cx} from '../primitives/classNames';
 import {makeStyles} from '../primitives/makeStyles';
@@ -19,14 +21,18 @@ const actions: Array<{
   {id: 'summarize-from-here', label: 'Summarize from here', icon: Icons.Sparkle},
 ];
 
-// Mirrors packages/renderer/src/plugins/threads/chat/RevertHistoryPopup.vue.
+/*
+ * Mirrors packages/renderer/src/plugins/threads/chat/RevertHistoryPopup.vue.
+ * Positioned popups are portaled to body, like Vue's Teleport, so fixed
+ * coordinates are not captured by transformed film wrappers.
+ */
 export function RevertHistoryPopup({state}: {state: RevertHistoryState}) {
   if (state.messages.length === 0) return null;
   const level = state.level ?? 'messages';
   const selectedMessage = selectedMessageForState(state);
 
-  return (
-    <div className={styles.root}>
+  const popup = (
+    <div className={styles.root} style={revertHistoryStyle(state.popupPosition)}>
       {level === 'messages'
         ? state.messages.map(message => <MessageRow key={message.id} message={message} selected={message.id === selectedMessage?.id} />)
         : (
@@ -50,6 +56,22 @@ export function RevertHistoryPopup({state}: {state: RevertHistoryState}) {
         )}
     </div>
   );
+
+  if (state.popupPosition && typeof document !== 'undefined') {
+    return createPortal(popup, document.body);
+  }
+
+  return popup;
+}
+
+function revertHistoryStyle(position: RevertHistoryState['popupPosition']): CSSProperties | undefined {
+  if (!position) return undefined;
+  return {
+    bottom: `${position.bottom}px`,
+    left: `${position.left}px`,
+    maxWidth: `${position.maxWidth ?? 520}px`,
+    position: 'fixed',
+  };
 }
 
 function MessageRow({message, selected}: {message: RevertHistoryMessageState; selected?: boolean}) {

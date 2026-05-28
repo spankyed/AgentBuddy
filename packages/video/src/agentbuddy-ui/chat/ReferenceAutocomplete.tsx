@@ -1,4 +1,5 @@
 import type {CSSProperties} from 'react';
+import {createPortal} from 'react-dom';
 import {ReferenceIcon} from './ReferencePill';
 import {referenceCategoryLabel} from './referenceConfig';
 import type {ChatComposerState} from './chatTypes';
@@ -9,29 +10,29 @@ const styles = makeStyles('ChatComposer');
 
 type ReferenceAutocompleteState = NonNullable<ChatComposerState['referenceAutocomplete']>;
 
-// Mirrors packages/renderer/src/core/components/tiptap/ReferenceSuggestionPopup.vue.
+/*
+ * Mirrors packages/renderer/src/core/components/tiptap/ReferenceSuggestionPopup.vue.
+ * Positioned popups are portaled to body, like Vue's Teleport, so fixed
+ * coordinates are not captured by transformed film wrappers.
+ */
 export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteState}) {
   const activeCategoryLabel = referenceCategoryLabel(state.selectedCategory);
-  if (state.level === 'items') {
-    return (
-      <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
-        <div className={styles.referenceSuggestionHeader}>
-          <span className={styles.referenceSuggestionBack}>←</span>
-          <span>{activeCategoryLabel}</span>
-        </div>
-        {state.suggestions.map((suggestion, index) => (
-          <div className={isActiveReferenceSuggestion(state.activeId, suggestion.id, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
-            <ReferenceIcon tone="suggestion" refType={suggestion.type} />
-            <span className={styles.referenceSuggestionLabel}>{suggestion.label}</span>
-            <span className={styles.referenceSuggestionCode} title={suggestion.shortCode}>{shortReferenceCode(suggestion.shortCode)}</span>
-          </div>
-        ))}
-        {state.suggestions.length === 0 ? <div className={styles.referenceSuggestionEmpty}>No matching items</div> : null}
+  const popup = state.level === 'items' ? (
+    <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
+      <div className={styles.referenceSuggestionHeader}>
+        <span className={styles.referenceSuggestionBack}>←</span>
+        <span>{activeCategoryLabel}</span>
       </div>
-    );
-  }
-
-  return (
+      {state.suggestions.map((suggestion, index) => (
+        <div className={isActiveReferenceSuggestion(state.activeId, suggestion.id, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
+          <ReferenceIcon tone="suggestion" refType={suggestion.type} />
+          <span className={styles.referenceSuggestionLabel}>{suggestion.label}</span>
+          <span className={styles.referenceSuggestionCode} title={suggestion.shortCode}>{shortReferenceCode(suggestion.shortCode)}</span>
+        </div>
+      ))}
+      {state.suggestions.length === 0 ? <div className={styles.referenceSuggestionEmpty}>No matching items</div> : null}
+    </div>
+  ) : (
     <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
       {state.suggestions.map((suggestion, index) => (
         <div className={isActiveReferenceSuggestion(state.activeId, suggestion.id, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
@@ -42,19 +43,23 @@ export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteStat
       {state.suggestions.length === 0 ? <div className={styles.referenceSuggestionEmpty}>No matching categories</div> : null}
     </div>
   );
-}
 
-function referenceAutocompleteStyle(anchorCharacterIndex: number): CSSProperties {
-  return {
-    bottom: 'calc(100% - 8px)',
-    left: `calc(1rem + ${Math.min(Math.max(anchorCharacterIndex, 0), 36)}ch)`,
-    position: 'absolute',
-  } as CSSProperties;
+  if (typeof document !== 'undefined') {
+    return createPortal(popup, document.body);
+  }
+
+  return popup;
 }
 
 function referenceAutocompleteStyleForState(state: ReferenceAutocompleteState): CSSProperties {
   const position = state.popupPosition;
-  if (!position) return referenceAutocompleteStyle(state.anchorCharacterIndex);
+  if (!position) {
+    return {
+      bottom: '0px',
+      left: `${state.anchorCharacterIndex}px`,
+      position: 'fixed',
+    };
+  }
 
   const isFullEditor = state.variant === 'full';
   return {

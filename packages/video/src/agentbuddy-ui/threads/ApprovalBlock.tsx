@@ -10,7 +10,8 @@ export function ApprovalBlock({state}: {state: ApprovalBlockState}) {
   const isDisabled = Boolean(state.disabled || state.requireReason && !state.reason?.trim());
 
   if (state.disabled && state.response) {
-    const approved = state.response.approved;
+    const approved = isApprovedResponse(state.response);
+    const reason = responseReason(state.response);
     const Icon = approved ? Icons.CircleCheck : Icons.CircleX;
     return (
       <div className={styles.root}>
@@ -18,10 +19,10 @@ export function ApprovalBlock({state}: {state: ApprovalBlockState}) {
           <Icon size={20} />
           <span>{approved ? 'Approved' : 'Denied'}</span>
         </div>
-        {state.response.reason ? (
+        {reason ? (
           <div className={styles.reasonBox}>
             <small>Reason:</small>
-            {state.response.reason}
+            {reason}
           </div>
         ) : null}
       </div>
@@ -37,7 +38,7 @@ export function ApprovalBlock({state}: {state: ApprovalBlockState}) {
         </div>
       ) : null}
       <div className={styles.actions}>
-        {state.autoAcceptOption ? (
+        {state.autoAcceptOption && !state.options?.length ? (
           <label className={styles.autoAccept}>
             <input className={styles.checkbox} readOnly type="checkbox" />
             <span>Auto-accept file edits for session</span>
@@ -46,14 +47,27 @@ export function ApprovalBlock({state}: {state: ApprovalBlockState}) {
         {state.options ? (
           state.options.map(option => <ApprovalButton disabled={isDisabled} key={option.label} option={option} />)
         ) : (
-          <>
+          <div className={styles.defaultActions}>
             <ApprovalButton disabled={isDisabled} icon={Icons.CircleCheck} option={{label: state.approveLabel ?? 'Approve', variant: 'primary'}} />
             <ApprovalButton disabled={isDisabled} icon={Icons.CircleX} option={{label: state.denyLabel ?? 'Deny', variant: 'neutral'}} />
-          </>
+          </div>
         )}
       </div>
     </div>
   );
+}
+
+function responseReason(response: ApprovalBlockState['response']) {
+  if (response && typeof response === 'object' && 'reason' in response) return response.reason;
+  return undefined;
+}
+
+function isApprovedResponse(response: ApprovalBlockState['response']) {
+  if (response == null) return false;
+  if (typeof response === 'boolean') return response;
+  if ('approved' in response && response.approved !== undefined) return Boolean(response.approved);
+  if ('decision' in response) return response.decision === 'accept' || response.decision === 'acceptForSession';
+  return false;
 }
 
 function ApprovalButton({disabled, icon: Icon, option}: {disabled?: boolean; icon?: typeof Icons.CircleCheck; option: ApprovalOptionState}) {

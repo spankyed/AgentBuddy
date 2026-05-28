@@ -4,6 +4,10 @@
   padding-top: 0.25rem;
 }
 
+.TogglesBlock_empty {
+  display: block;
+}
+
 .TogglesBlock_response {
   display: flex;
   align-items: center;
@@ -41,6 +45,7 @@
   height: 0.875rem;
   border-radius: 999px;
   background: white;
+  transition: transform 150ms ease;
 }
 
 .TogglesBlock_switchOn .TogglesBlock_knob {

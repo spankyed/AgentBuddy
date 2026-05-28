@@ -1,7 +1,7 @@
 .MarkdownViewer_wrapper {
   color: rgb(245 245 245);
-  font-size: inherit;
-  line-height: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 .MarkdownViewer_prose > *:first-child {
@@ -72,6 +72,10 @@
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   font-size: 0.875em;
   padding: 0.15em 0.35em;
+}
+
+.MarkdownViewer_prose strong {
+  font-weight: 600;
 }
 
 .MarkdownViewer_codeBlock {
@@ -263,4 +267,12 @@
   padding: 2px 8px;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.MarkdownViewer_prose a[data-ref-type] {
+  text-decoration: none;
+}
+
+.MarkdownViewer_prose a[data-ref-type]:hover::after {
+  display: none;
 }

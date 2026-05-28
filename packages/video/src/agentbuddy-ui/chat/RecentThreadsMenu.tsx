@@ -1,4 +1,5 @@
 import type {CSSProperties} from 'react';
+import {createPortal} from 'react-dom';
 import type {ChatComposerState} from './chatTypes';
 import {RecentThreadContextMenu} from './RecentThreadContextMenu';
 import {RecentThreadRow} from './RecentThreadRow';
@@ -13,7 +14,11 @@ type RecentThreadsMenuState = NonNullable<NonNullable<ChatComposerState['bottomT
 const rendererRecentThreadRowHeight = 36;
 const rendererContextMenuSideOffset = 2;
 
-// Mirrors packages/renderer/src/plugins/threads/chat/recent-threads.vue.
+/*
+ * Mirrors packages/renderer/src/plugins/threads/chat/recent-threads.vue.
+ * Fixed-positioned menus are portaled to body, like Vue's Teleport, so they
+ * are not captured by transformed film wrappers.
+ */
 export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
   const contextThread = menu.contextMenu
     ? menu.threads.find(thread => thread.id === menu.contextMenu?.threadId)
@@ -29,7 +34,7 @@ export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
     Math.max(0, menu.threads.length - archiveContextThreadIndex - 1) * rendererRecentThreadRowHeight - 8,
   );
 
-  return (
+  const popup = (
     <>
       <div className={styles.recentThreadsMenu} style={recentThreadsMenuStyle(menu.popupPosition)}>
         {menu.threads.length === 0 ? (
@@ -56,10 +61,10 @@ export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
       {contextThread ? (
         <div
           className={styles.threadContextMenuPortal}
-          style={contextMenuPortalStyle(menu.popupPosition, contextBottomOffset, 160)}
+          style={contextMenuPortalStyle(menu.contextMenu?.popupPosition, menu.popupPosition, contextBottomOffset, 160)}
         >
           <RecentThreadContextMenu
-            copyText={menu.contextMenu?.copyText ?? contextThread.id}
+            copyText={menu.contextMenu?.copyText ?? contextThread.shortCode ?? contextThread.id}
             isArchived={menu.contextMenu?.isArchived ?? false}
             isPinned={!!contextThread.pinned}
           />
@@ -68,45 +73,55 @@ export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
       {archiveContextThread ? (
         <div
           className={styles.archiveDeleteMenuPortal}
-          style={contextMenuPortalStyle(menu.popupPosition, archiveContextBottomOffset, 120)}
+          style={contextMenuPortalStyle(menu.archiveContextMenuPosition, menu.popupPosition, archiveContextBottomOffset, 120)}
         >
           <ArchiveDeleteMenu />
         </div>
       ) : null}
     </>
   );
-}
 
-function recentThreadsMenuStyle(position: RecentThreadsMenuState['popupPosition']): CSSProperties | undefined {
-  if (!position) {
-    return undefined;
+  if (typeof document !== 'undefined') {
+    return createPortal(popup, document.body);
   }
 
+  return popup;
+}
+
+function recentThreadsMenuStyle(position: RecentThreadsMenuState['popupPosition']): CSSProperties {
   return {
-    bottom: `${position.bottom}px`,
-    left: `${position.left}px`,
+    bottom: `${position?.bottom ?? 0}px`,
+    left: `${position?.left ?? 0}px`,
     position: 'fixed',
-    width: `${position.width}px`,
+    width: `${position?.width ?? 320}px`,
   };
 }
 
 function contextMenuPortalStyle(
+  menuPosition: {bottom?: number; left: number; top?: number} | undefined,
   position: RecentThreadsMenuState['popupPosition'],
   bottomOffset: number,
   menuWidth: number,
 ): CSSProperties {
-  if (!position) {
-    return {
-      bottom: `calc(100% + ${bottomOffset}px)`,
-      position: 'absolute',
-      right: '0.5rem',
-      width: `${menuWidth}px`,
-    };
+  if (menuPosition) {
+    return menuPosition.top == null
+      ? {
+          bottom: `${menuPosition.bottom ?? 0}px`,
+          left: `${menuPosition.left}px`,
+          position: 'fixed',
+          right: 'auto',
+        }
+      : {
+          left: `${menuPosition.left}px`,
+          position: 'fixed',
+          right: 'auto',
+          top: `${menuPosition.top}px`,
+        };
   }
 
   return {
-    bottom: `${position.bottom + bottomOffset}px`,
-    left: `${position.left + position.width - menuWidth - 8}px`,
+    bottom: `${(position?.bottom ?? 0) + bottomOffset}px`,
+    left: `${(position?.left ?? 0) + (position?.width ?? 320) - menuWidth - 8}px`,
     position: 'fixed',
     right: 'auto',
   };

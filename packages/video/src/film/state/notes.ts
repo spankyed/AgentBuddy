@@ -1,6 +1,7 @@
 import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
 import type {NoteImageBlockState} from '../../agentbuddy-ui/notes/NoteImageBlock';
 import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurface';
+import type {ReferenceRefType} from '../../agentbuddy-ui/chat/referenceConfig';
 import {ease, mix, textReveal} from './timeline';
 
 const launchImageSrc = svgDataUri(`
@@ -51,6 +52,12 @@ export type NotesTaskListPanelState = {
 export type NotesEditorLineView = {
   caretVisible?: boolean;
   id: string;
+  references?: Array<{
+    id: string;
+    label: string;
+    refType: ReferenceRefType;
+    token: string;
+  }>;
   text: string;
 };
 
@@ -239,6 +246,13 @@ const todoNoteCopy = {
   ],
 };
 
+const launchPrFlowReference = {
+  id: 'thread-launch-pr-flow',
+  label: 'Create launch PR flow',
+  refType: 'thread' as const,
+  token: '#threads: Create launch PR flow',
+};
+
 export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
   const checkboxPressed = frame > 230 && frame <= 244;
   const markedComplete = frame > 244;
@@ -258,7 +272,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
   if (linkedTodoVisible) {
     items.splice(3, 0, {
       id: 'launch-thread',
-      title: '#threads: Create launch PR flow',
+      title: 'Create launch PR flow',
       noteType: 'task',
       style: {
         opacity: linkedTodoEnter,
@@ -276,11 +290,15 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
 
 export function notesViewForFrame(frame: number) {
   const imageEnter = ease(frame, 150, 176);
-  const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => ({
-    caretVisible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
-    id: `animated-${index}`,
-    text: textReveal(line.text, frame, line.from, line.to),
-  }));
+  const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => {
+    const text = textReveal(line.text, frame, line.from, line.to);
+    return {
+      caretVisible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
+      id: `animated-${index}`,
+      references: text.includes(launchPrFlowReference.token) ? [launchPrFlowReference] : undefined,
+      text,
+    };
+  });
 
   return {
     animatedLines,

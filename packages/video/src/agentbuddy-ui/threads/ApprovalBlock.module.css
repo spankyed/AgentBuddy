@@ -74,6 +74,7 @@
 
 .ApprovalBlock_actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
@@ -87,6 +88,13 @@
   font-size: 12px;
   margin-right: auto;
   user-select: none;
+}
+
+.ApprovalBlock_defaultActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .ApprovalBlock_checkbox {

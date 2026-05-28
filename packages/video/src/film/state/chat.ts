@@ -35,8 +35,11 @@ export type ChatShotView = {
   composer: ChatComposerState;
   conversation: {
     assistant: {
+      approval?: ApprovalBlockState;
       artifact?: PlanArtifactState;
       markdown: string;
+      markdownBlock?: MarkdownBlockState;
+      thinking?: ThinkingBlockState;
       toolActivity?: ReturnType<typeof toolActivityViewForFrame>;
     };
     createdAt: string;
@@ -137,7 +140,7 @@ export const chatShotState = {
   cursorPath: {from: [58, 74] as [number, number], to: [82, 84] as [number, number], start: 34, end: 96},
   systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
-  response: {text: 'Plan artifact created. I pinned the launch thread and linked the release checklist.', from: 190, to: 250},
+  response: {text: 'Claude Code is ready to implement - review the plan and approve.', from: 190, to: 218},
 };
 
 const commitMessageResponse = `Here's the commit message:
@@ -150,6 +153,19 @@ and queue the next implementation pass from the same surface.
 \`\`\``;
 
 const completedDevThreadResponse = 'The launch film branch is ready for the commit pass. I aligned the chat input, Recent Threads menu, source-control panel, PR flow, and flow-blueprint surfaces against the real app UI, then ran the video checks.';
+
+const launchPlanMarkdown = `### AgentBuddy Launch Film Execution Pass
+
+#### Context
+The launch cut is being rebuilt as a Remotion-driven product film using faithful AgentBuddy UI replicas. The current pass needs focused cleanup: no invented artifact cards in chat, no fake transitions, and no ad-hoc component styling.
+
+Goal: turn the launch context into a short implementation pass that keeps the thread handoff visible, then continue from the completed thread through Recent Threads.
+
+#### Implementation plan
+- Replace the artifact-style launch checklist with this normal Claude Code plan message.
+- Preserve the referenced note and screenshot context while creating execution tickets.
+- Open the completed implementation thread from Recent Threads after approval.
+- Send the quick prompt from that completed thread to generate the commit path.`;
 
 const completedDevThreadActivity: ToolActivityBlockState = {
   defaultOpen: false,
@@ -164,10 +180,6 @@ const completedDevThreadActivity: ToolActivityBlockState = {
 };
 
 export const chatToolActivity: ToolActivityBlockState = {
-  artifactRef: {
-    artifactId: 'launch-operating-plan',
-    label: 'Launch Operating Plan',
-  },
   defaultOpen: false,
   entries: [
     {id: 'read-launch-notes', tool: 'Read', summary: 'notes/agentbuddy/tasklist/current.md', status: 'ok', durationMs: 312, outputSummary: 'Launch notes loaded'},
@@ -244,11 +256,25 @@ export const approvalBlockDemoState: ApprovalBlockState = {
   reasonPlaceholder: 'Enter your reason...',
 };
 
+export const launchPlanApprovalState: ApprovalBlockState = {
+  options: [
+    {label: 'Yes, clear context and auto-accept edits', variant: 'primary'},
+    {label: 'Yes, auto-accept edits', variant: 'secondary'},
+    {label: 'Deny', variant: 'neutral'},
+  ],
+};
+
+export const launchPlanThinkingState: ThinkingBlockState = {
+  defaultOpen: false,
+  label: 'Thinking',
+  state: 'streaming',
+  content: 'Preparing the execution pass from the approved launch plan. Loading the completed implementation thread and preserving the launch context.',
+};
+
 export const approvalBlockRespondedState: ApprovalBlockState = {
   disabled: true,
   response: {
     approved: true,
-    reason: 'Use the real UI replica path and continue.',
   },
 };
 
@@ -459,9 +485,10 @@ export function chatViewForFrame(frame: number) {
 export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   const imageAttachmentEnter = ease(frame, 132, 148);
-  const recentThreadLoaded = frame >= 314;
-  const showLaunchWork = frame > 174 && frame < 292;
-  const showLaunchArtifact = frame > 226 && frame < 314;
+  const recentThreadLoaded = frame >= 326;
+  const showPlan = frame >= 190 && frame < 326;
+  const showPlanApproval = frame >= 218 && frame < 278;
+  const showPlanThinking = frame >= 278 && frame < 326;
   const showQuickPromptResponse = frame > 402;
   const typedNoteReference = view.prompt.includes('#notes:current');
   const referenceAutocomplete = frame > 96 && frame < 136
@@ -536,9 +563,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
                 : (frame > 320 && frame < 334) || (frame > 420 && frame < 438)
                   ? 'active'
                   : undefined,
-            recentThreadsMenu: frame > 286 && frame < 314
+            recentThreadsMenu: frame > 302 && frame < 326
               ? {
-                  activeId: frame > 302 ? 'launch-dev-complete' : undefined,
+                  activeId: frame > 316 ? 'launch-dev-complete' : undefined,
                   currentId: 'launch-plan',
                   threads: [
                     {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
@@ -552,19 +579,25 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       referenceButtonPressed: frame > 96 && frame <= 108,
       quickPromptsButtonPressed: frame > 336 && frame <= 348,
       quickPromptsOpen: frame > 346 && frame < 382,
-      quickPromptPressedId: frame > 360 && frame < 376 ? 'qp-write-commit' : undefined,
       sendPressed: (frame > 154 && frame < 166) || (frame > 390 && frame < 402),
       text: frame > 78 && frame < 166 ? view.prompt : frame > 376 && frame < 402 ? 'write a commit' : undefined,
     },
     conversation: {
       assistant: {
-        artifact: !recentThreadLoaded && showLaunchArtifact ? launchPlanArtifact : undefined,
-        markdown: showQuickPromptResponse ? view.response : recentThreadLoaded ? completedDevThreadResponse : view.response,
+        approval: showPlanApproval ? launchPlanApprovalState : undefined,
+        artifact: undefined,
+        markdown: showQuickPromptResponse
+          ? view.response
+          : recentThreadLoaded
+            ? completedDevThreadResponse
+            : showPlan || showPlanThinking
+              ? 'Claude Code is ready to implement - review the plan and approve.'
+              : view.response,
+        markdownBlock: showPlan ? {label: 'Plan', content: launchPlanMarkdown} : undefined,
+        thinking: showPlanThinking ? launchPlanThinkingState : undefined,
         toolActivity: recentThreadLoaded && !showQuickPromptResponse
           ? completedDevThreadActivityViewForFrame(frame)
-          : showLaunchWork
-            ? toolActivityViewForFrame(frame)
-            : undefined,
+          : undefined,
       },
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
@@ -578,6 +611,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       transform: `translateY(${view.conversationY}px)`,
     },
     messageStyles: recentThreadLoaded && !showQuickPromptResponse ? stableLoadedMessageStyles : view.messageStyles,
-    cursorPath: chatShotState.cursorPath,
+    cursorPath: showPlanApproval || showPlanThinking
+      ? {from: [82, 84] as [number, number], to: [30, 67] as [number, number], start: 244, end: 278}
+      : chatShotState.cursorPath,
   };
 }

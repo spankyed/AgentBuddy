@@ -1,9 +1,10 @@
+import type {ReactNode} from 'react';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
-import {notesEditorViewForFrame, notesHomeViewForFrame} from '../state/notes';
+import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../state/notes';
 import {Caret} from './Caret';
 import {Cursor} from '../overlays/Cursor';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -70,10 +71,10 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
   const layout = useAppWindowLayout({animate: false, hasRightRail: true, variant});
   const taskListEnter = ease(frame, 88, 112);
   const cursor = notesEditorCursorForFrame(frame);
-  const renderLine = (line: {caretVisible?: boolean; text: string}) => (
+  const renderLine = (line: NotesEditorLineView) => (
     <NoteLine frame={frame} line={line} />
   );
-  const visibleLine = (line: {caretVisible?: boolean; text: string}) => line.text.length > 0 || Boolean(line.caretVisible);
+  const visibleLine = (line: NotesEditorLineView) => line.text.length > 0 || Boolean(line.caretVisible);
 
   return (
     <div className={styles.root}>
@@ -148,10 +149,8 @@ function notesEditorCursorForFrame(frame: number) {
   return null;
 }
 
-function NoteLine({frame, line}: {frame: number; line: {caretVisible?: boolean; text: string}}) {
-  const marker = '#threads: ';
-  const markerIndex = line.text.indexOf(marker);
-  if (markerIndex === -1) {
+function NoteLine({frame, line}: {frame: number; line: NotesEditorLineView}) {
+  if (!line.references?.length) {
     return (
       <>
         {line.text}
@@ -160,26 +159,30 @@ function NoteLine({frame, line}: {frame: number; line: {caretVisible?: boolean; 
     );
   }
 
-  const before = line.text.slice(0, markerIndex);
-  const referenceAndAfter = line.text.slice(markerIndex + marker.length);
-  const fullTitle = 'Create launch PR flow';
-  if (referenceAndAfter.length < fullTitle.length) {
-    return (
-      <>
-        {line.text}
-        <Caret frame={frame} visible={Boolean(line.caretVisible)} />
-      </>
-    );
-  }
+  const parts = line.references.reduce<Array<string | ReactNode>>((currentParts, reference) => {
+    const nextParts: Array<string | ReactNode> = [];
+    for (const part of currentParts) {
+      if (typeof part !== 'string') {
+        nextParts.push(part);
+        continue;
+      }
 
-  const title = referenceAndAfter.slice(0, Math.min(fullTitle.length, referenceAndAfter.length));
-  const shownSuffix = referenceAndAfter.length > fullTitle.length ? referenceAndAfter.slice(fullTitle.length) : '';
+      const tokenIndex = part.indexOf(reference.token);
+      if (tokenIndex === -1) {
+        nextParts.push(part);
+        continue;
+      }
+
+      nextParts.push(part.slice(0, tokenIndex));
+      nextParts.push(<ReferencePill key={reference.id} label={reference.label} refType={reference.refType} />);
+      nextParts.push(part.slice(tokenIndex + reference.token.length));
+    }
+    return nextParts;
+  }, [line.text]);
 
   return (
     <>
-      {before}
-      <ReferencePill label={title} refType="thread" />
-      {shownSuffix}
+      {parts}
       <Caret frame={frame} visible={Boolean(line.caretVisible)} />
     </>
   );

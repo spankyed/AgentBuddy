@@ -46,8 +46,9 @@ export type ApprovalBlockState = {
   reason?: string;
   reasonPlaceholder?: string;
   requireReason?: boolean;
-  response?: {
-    approved: boolean;
+  response?: boolean | {
+    approved?: boolean;
+    decision?: 'accept' | 'acceptForSession' | 'deny' | string;
     reason?: string;
   };
 };

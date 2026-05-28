@@ -1,5 +1,6 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import {ActionButtonsBlock} from './ActionButtonsBlock';
 import type {TextInputBlockState} from './threadTypes';
 import './TextInputBlock.module.css';
 
@@ -18,6 +19,7 @@ export function TextInputBlock({state}: {state: TextInputBlockState}) {
 
   const suggestions = state.suggestions ?? [];
   const showSuggestions = Boolean(suggestions.length && !state.disabled);
+  const canSubmit = Boolean((state.value ?? '').trim());
 
   return (
     <div className={styles.root}>
@@ -30,10 +32,12 @@ export function TextInputBlock({state}: {state: TextInputBlockState}) {
         <textarea className={state.disabled ? styles.textareaDisabled : styles.textarea} disabled={state.disabled} placeholder={state.placeholder ?? 'Enter text...'} readOnly rows={state.rows ?? 3} value={state.value ?? ''} />
       ) : null}
       {state.multiline ? (
-        <div className={styles.actions}>
-          <button className={styles.submit} type="button">Submit</button>
-          <button className={styles.cancel} type="button">Cancel</button>
-        </div>
+        <ActionButtonsBlock
+          state={{
+            buttons: ['submit', 'cancel'],
+            submitDisabled: !canSubmit || state.disabled,
+          }}
+        />
       ) : null}
     </div>
   );

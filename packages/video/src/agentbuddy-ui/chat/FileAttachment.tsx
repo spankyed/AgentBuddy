@@ -14,7 +14,7 @@ export function FileAttachment({attachment}: {attachment: ChatFileAttachment}) {
       </span>
       <span className={styles.fileText}>
         <span>{attachment.label}</span>
-        <small>{attachment.typeLabel ?? 'Document'}</small>
+        <small>{attachment.typeLabel ?? ''}</small>
       </span>
       <button className={styles.attachmentRemove} type="button" aria-label={`Remove ${attachment.label}`}>
         <Icons.X size={10} />

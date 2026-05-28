@@ -237,7 +237,7 @@ function renderInlineMarkdown(text: string) {
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
       const refType = referenceTypeFromHref(link[2]);
-      if (refType) return <ReferencePill key={index} label={link[1]} mode="viewer" refType={refType} />;
+      if (refType) return <ReferencePill href={link[2]} key={index} label={link[1]} mode="viewer" refType={refType} />;
       return <a href={link[2]} key={index}>{link[1]}</a>;
     }
     if (part.startsWith('`') && part.endsWith('`')) return <code key={index}>{part.slice(1, -1)}</code>;

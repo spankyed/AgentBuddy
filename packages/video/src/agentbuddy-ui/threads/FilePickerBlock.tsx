@@ -13,8 +13,8 @@ export function FilePickerBlock({state}: {state: FilePickerBlockState}) {
     <div className={styles.root}>
       {state.disabled && paths.length ? <div className={styles.responseHeader}><Icons.Check size={16} /><span>{state.displayText || 'Selected files:'}</span></div> : null}
       {paths.map((path, index) => <PathRow disabled={Boolean(state.disabled || state.isLoading)} key={`${path}-${index}`} path={path} response={isResponse} />)}
-      {!state.disabled ? (
-        <button className={state.isLoading ? styles.browseDisabled : styles.browse} disabled={state.isLoading} type="button">
+      {!isResponse ? (
+        <button className={state.disabled || state.isLoading ? styles.browseDisabled : styles.browse} disabled={state.disabled || state.isLoading} type="button">
           {state.isLoading ? <Icons.Loader2 size={16} /> : <Icons.FolderOpen size={16} />}
           <span>{state.isLoading ? 'Processing...' : browseText(state)}</span>
         </button>

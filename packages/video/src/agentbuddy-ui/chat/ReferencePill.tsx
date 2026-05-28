@@ -7,27 +7,39 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('ChatComposer');
 
 export function ReferencePill({
+  href,
   label,
   mode = 'editable',
   refType,
   selected,
 }: {
+  href?: string;
   label: string;
   mode?: 'editable' | 'viewer';
   refType: ReferenceRefType;
   selected?: boolean;
 }) {
-  return (
-    <span
-      className={cx(styles.referencePill, selected && styles.referencePillSelected)}
-      contentEditable={false}
-      data-editor-mode={mode}
-      data-ref-type={refType}
-    >
+  const content = (
+    <>
       <span className={styles.referencePillIcon}>
         <ReferenceIconSvg refType={refType} size={14} />
       </span>
       <span className={styles.referencePillLabel}>{label}</span>
+    </>
+  );
+
+  const className = cx(styles.referencePill, selected && styles.referencePillSelected);
+  if (href) {
+    return (
+      <a className={className} data-editor-mode={mode} data-ref-type={refType} href={href}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <span className={className} contentEditable={false} data-editor-mode={mode} data-ref-type={refType}>
+      {content}
     </span>
   );
 }

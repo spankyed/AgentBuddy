@@ -15,7 +15,7 @@ type MessageBubbleProps = {
   children: ReactNode;
   asUser?: boolean;
   autoHide?: boolean;
-  createdAt?: string;
+  createdAt?: number | string;
   expanded?: boolean;
   forkable?: boolean;
   isCommand?: boolean;

@@ -14,7 +14,7 @@ export function MessageActions({
   status,
 }: {
   collapsible?: boolean;
-  createdAt?: string;
+  createdAt?: number | string;
   forkable?: boolean;
   isTail?: boolean;
   isUser?: boolean;
@@ -23,7 +23,7 @@ export function MessageActions({
   const showRevert = Boolean(isUser && (isTail || !status));
   return (
     <div className={styles.root}>
-      {createdAt ? <span className={styles.timestamp}>{createdAt}</span> : null}
+      {createdAt ? <span className={styles.timestamp}>{formatTime(createdAt)}</span> : null}
       {showRevert ? <button type="button" title={status ? 'Revert to input' : 'Revert (right-click for options)'}><Icons.Undo2 size={16} /></button> : null}
       {status === 'queued' ? <button type="button" title="Cancel queued message"><Icons.X size={16} /></button> : null}
       {status === 'cancelled' ? <button type="button" title="Copy message text"><Icons.Copy size={16} /></button> : null}
@@ -37,4 +37,10 @@ export function MessageActions({
       ) : null}
     </div>
   );
+}
+
+function formatTime(createdAt: number | string) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return createdAt;
+  return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 }

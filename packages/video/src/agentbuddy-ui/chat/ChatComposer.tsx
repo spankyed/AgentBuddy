@@ -53,7 +53,6 @@ export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSPro
             quickPromptsEditingText={state.quickPromptsEditingText}
             quickPromptsNewText={state.quickPromptsNewText}
             quickPromptsOpen={state.quickPromptsOpen}
-            quickPromptPressedId={state.quickPromptPressedId}
             recording={state.recording}
             sendDisabled={sendDisabled}
             sendPressed={state.sendPressed}

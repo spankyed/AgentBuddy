@@ -14,6 +14,13 @@ export function ThinkingBlock({state}: {state: ThinkingBlockState}) {
         <Icons.ChevronRight className={isOpen ? styles.chevronOpen : styles.chevron} size={16} />
         <Icons.Brain className={styles.brain} size={16} />
         <span className={styles.label}>{state.label}</span>
+        {state.state === 'streaming' ? (
+          <span className={styles.streamingDots} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+        ) : null}
       </button>
       {isOpen ? (
         <div className={styles.content}>
