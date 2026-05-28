@@ -1,13 +1,14 @@
 import {Icons} from '../primitives/Icon';
-import {MonacoCodeViewer} from '../code/MonacoCodeViewer';
 import {ReferencePill} from '../chat/ReferencePill';
 import {referenceTypeForProtocol} from '../chat/referenceConfig';
+import {SubDocumentLink, parseSubDocumentHref} from '../notes/SubDocumentLink';
 import './MarkdownViewer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 
 const styles = makeStyles('MarkdownViewer');
 
 type MarkdownBlock =
+  | {icon?: string | null; noteId?: string; text: string; type: 'sub-document-link'}
   | {items: Array<{checked?: boolean; text: string}>; type: 'list' | 'ordered-list' | 'task-list'}
   | {language?: string; text: string; type: 'code'}
   | {rows: string[][]; type: 'table'}
@@ -15,12 +16,14 @@ type MarkdownBlock =
   | {level: 1 | 2 | 3; text: string; type: 'heading'}
   | {text: string; type: 'paragraph' | 'quote'};
 
-// Film replica of TiptapEditor mode="viewer" variant="chat" for markdown
-// generated in thread messages and plan artifacts.
-export function MarkdownViewer({content}: {content: string}) {
-  const blocks = parseMarkdownBlocks(content);
+type MarkdownViewerVariant = 'chat' | 'full';
+
+// Film replica of TiptapEditor mode="viewer". Chat is the default because
+// thread messages and plan artifacts use the reduced chat viewer config.
+export function MarkdownViewer({content, variant = 'chat'}: {content: string; variant?: MarkdownViewerVariant}) {
+  const blocks = parseMarkdownBlocks(content, variant);
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} data-variant={variant}>
       <div className={styles.prose}>
         {blocks.map((block, index) => renderBlock(block, index))}
       </div>
@@ -34,6 +37,9 @@ function renderBlock(block: MarkdownBlock, index: number) {
     if (block.level === 1) return <h1 key={index}>{children}</h1>;
     if (block.level === 2) return <h2 key={index}>{children}</h2>;
     return <h3 key={index}>{children}</h3>;
+  }
+  if (block.type === 'sub-document-link') {
+    return <SubDocumentLink icon={block.icon} key={index} noteId={block.noteId} title={block.text} />;
   }
   if (block.type === 'list') {
     return <ul key={index}>{block.items.map(item => <li key={item.text}>{renderInlineMarkdown(item.text)}</li>)}</ul>;
@@ -56,9 +62,7 @@ function renderBlock(block: MarkdownBlock, index: number) {
   if (block.type === 'code') {
     return (
       <div className={styles.codeBlock} key={index}>
-        <div className={styles.codeEditor}>
-          <MonacoCodeViewer height={codeBlockHeight(block.text)} language={block.language} value={block.text} />
-        </div>
+        <pre><code>{block.text}</code></pre>
         <button aria-label="Copy code" className={styles.copyCode} type="button"><Icons.Copy size={13} /></button>
       </div>
     );
@@ -82,12 +86,7 @@ function renderBlock(block: MarkdownBlock, index: number) {
   return null;
 }
 
-function codeBlockHeight(text: string) {
-  const lineCount = Math.max(1, text.split('\n').length);
-  return Math.min(220, Math.max(72, lineCount * 20 + 24));
-}
-
-function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
+function parseMarkdownBlocks(markdown: string, variant: MarkdownViewerVariant): MarkdownBlock[] {
   const blocks: MarkdownBlock[] = [];
   const lines = markdown.split('\n');
   let list: Extract<MarkdownBlock, {type: 'list' | 'ordered-list' | 'task-list'}> | null = null;
@@ -155,6 +154,12 @@ function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
       continue;
     }
 
+    if (variant === 'full' && line.includes('](document://')) {
+      flushList();
+      pushLineWithSubDocumentLinks(blocks, line);
+      continue;
+    }
+
     const task = line.match(/^[-*]\s+\[([ xX])\]\s+(.+)$/);
     if (task) {
       if (!list || list.type !== 'task-list') {
@@ -202,13 +207,37 @@ function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
   return blocks;
 }
 
+function pushLineWithSubDocumentLinks(blocks: MarkdownBlock[], line: string) {
+  const documentLinkPattern = /\[([^\]]+)\]\((document:\/\/[^)]+)\)/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = documentLinkPattern.exec(line))) {
+    const textBefore = line.slice(cursor, match.index).trim();
+    if (textBefore) blocks.push({text: textBefore, type: 'paragraph'});
+
+    const parsed = parseSubDocumentHref(match[2]);
+    blocks.push({
+      icon: parsed?.icon,
+      noteId: parsed?.noteId,
+      text: match[1],
+      type: 'sub-document-link',
+    });
+
+    cursor = match.index + match[0].length;
+  }
+
+  const textAfter = line.slice(cursor).trim();
+  if (textAfter) blocks.push({text: textAfter, type: 'paragraph'});
+}
+
 function renderInlineMarkdown(text: string) {
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
   return parts.map((part, index) => {
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
       const refType = referenceTypeFromHref(link[2]);
-      if (refType) return <ReferencePill href={link[2]} key={index} label={link[1]} refType={refType} />;
+      if (refType) return <ReferencePill key={index} label={link[1]} mode="viewer" refType={refType} />;
       return <a href={link[2]} key={index}>{link[1]}</a>;
     }
     if (part.startsWith('`') && part.endsWith('`')) return <code key={index}>{part.slice(1, -1)}</code>;

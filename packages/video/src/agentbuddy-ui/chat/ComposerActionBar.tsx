@@ -52,7 +52,9 @@ export function ComposerActionBar({busy, disabled, forcedMode, mode, modeOptions
           ) : null}
         </span>
         {speechSupported ? <ComposerIconButton className={recording ? styles.recordingButton : undefined} disabled={disabled} icon={recording ? Icons.MicOff : Icons.Mic} label={recording ? 'Stop listening' : 'Voice input'} /> : null}
-        <ModePhaseSelector disabled={disabled} forcedMode={forcedMode} mode={mode} modeOptions={modeOptions} openSelector={openSelector} phase={phase} />
+        <div className={styles.modeSelectorSlot} data-open={openSelector || undefined}>
+          <ModePhaseSelector disabled={disabled} forcedMode={forcedMode} mode={mode} modeOptions={modeOptions} openSelector={openSelector} phase={phase} />
+        </div>
       </div>
       <div className={styles.rightActions}>
         {busy ? (

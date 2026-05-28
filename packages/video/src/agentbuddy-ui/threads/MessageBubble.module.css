@@ -14,10 +14,6 @@
   min-width: 0;
 }
 
-.MessageBubble_assistantRow .MessageBubble_group {
-  width: min(760px, 100%);
-}
-
 .MessageBubble_actions {
   position: absolute;
   right: -1rem;
@@ -35,7 +31,7 @@
 
 .MessageBubble_bubble {
   position: relative;
-  max-width: 760px;
+  max-width: 100%;
   overflow: hidden;
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
@@ -95,17 +91,9 @@
 }
 
 .MessageBubble_assistantBubble {
-  width: 100%;
   box-sizing: border-box;
-  max-height: min(520px, calc(100vh - 310px));
-  overflow-y: auto;
   border: 1px solid rgb(64 64 64 / 60%);
   background: transparent;
-  scrollbar-width: none;
-}
-
-.MessageBubble_assistantBubble::-webkit-scrollbar {
-  display: none;
 }
 
 .MessageBubble_cancelled {
@@ -113,14 +101,10 @@
 }
 
 .MessageBubble_system {
-  width: max-content;
-  max-width: 100%;
-  border-radius: 0.25rem;
   padding: 0.25rem 0.5rem;
   color: rgb(115 115 115);
   font-size: 12px;
   font-style: italic;
-  text-align: left;
 }
 
 @keyframes MessageBubble_fadeIn {

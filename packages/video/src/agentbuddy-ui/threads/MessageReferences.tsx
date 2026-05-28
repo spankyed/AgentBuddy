@@ -4,18 +4,27 @@ import './MessageReferences.module.css';
 
 const styles = makeStyles('MessageReferences');
 
-export type MessageReference = {
-  isImage?: boolean;
+export type MessageFileReference = {
+  isImage?: false;
   name: string;
   previewUrl?: string;
   typeLabel?: string;
 };
 
+export type MessageImageReference = {
+  isImage: true;
+  name: string;
+  previewUrl: string;
+  typeLabel?: string;
+};
+
+export type MessageReference = MessageFileReference | MessageImageReference;
+
 // Mirrors the references/files/images strip in packages/renderer/src/plugins/threads/chat/message.vue.
 export function MessageReferences({references}: {references: MessageReference[]}) {
   if (references.length === 0) return null;
-  const images = references.filter(reference => reference.isImage);
-  const files = references.filter(reference => !reference.isImage);
+  const images = references.filter((reference): reference is MessageImageReference => reference.isImage === true);
+  const files = references.filter((reference): reference is MessageFileReference => reference.isImage !== true);
 
   return (
     <div className={styles.root}>
@@ -25,10 +34,10 @@ export function MessageReferences({references}: {references: MessageReference[]}
   );
 }
 
-function ImageReference({reference}: {reference: MessageReference}) {
+function ImageReference({reference}: {reference: MessageImageReference}) {
   return (
     <div className={styles.image} title={reference.name}>
-      {reference.previewUrl ? <img src={reference.previewUrl} alt="" /> : <span className={styles.imageFallback} />}
+      <img src={reference.previewUrl} alt="" />
       <span className={styles.imageLabel}>{reference.name.replace(/\.[^.]+$/, '')}</span>
     </div>
   );

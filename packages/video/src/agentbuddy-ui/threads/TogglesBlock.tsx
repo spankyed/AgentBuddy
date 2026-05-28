@@ -6,10 +6,11 @@ const styles = makeStyles('TogglesBlock');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/interactions/blocks/TogglesBlock.vue.
 export function TogglesBlock({state}: {state: TogglesBlockState}) {
-  if (state.disabled && state.response) {
+  const responseToggles = responseValues(state.response);
+  if (state.disabled && responseToggles) {
     return (
       <div className={styles.response}>
-        {Object.entries(state.response).map(([id, value]) => (
+        {Object.entries(responseToggles).map(([id, value]) => (
           <span className={styles.responseItem} key={id}>
             {labelFor(id, state)}: <span className={value ? styles.on : styles.off}>{value ? 'On' : 'Off'}</span>
           </span>
@@ -33,4 +34,12 @@ export function TogglesBlock({state}: {state: TogglesBlockState}) {
 
 function labelFor(id: string, state: TogglesBlockState) {
   return state.toggles.find(toggle => toggle.id === id)?.label ?? id;
+}
+
+function responseValues(response: TogglesBlockState['response']) {
+  if (!response || typeof response !== 'object' || Array.isArray(response)) return null;
+  if ('toggles' in response && response.toggles && typeof response.toggles === 'object' && !Array.isArray(response.toggles)) {
+    return response.toggles as Record<string, boolean>;
+  }
+  return null;
 }

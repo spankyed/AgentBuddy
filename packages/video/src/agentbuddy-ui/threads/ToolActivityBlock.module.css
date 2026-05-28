@@ -1,5 +1,5 @@
 .ToolActivityBlock_root {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   overflow: hidden;
   border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
@@ -105,7 +105,6 @@
 
 .ToolActivityBlock_previewSummary {
   min-width: 0;
-  max-width: 190px;
   overflow: hidden;
   color: rgb(82 82 82);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

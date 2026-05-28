@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {cx} from '../primitives/classNames';
 import {makeStyles} from '../primitives/makeStyles';
 import type {ChatComposerState, RevertHistoryMessageState} from './chatTypes';
 import './RevertHistoryPopup.module.css';
@@ -54,7 +55,7 @@ export function RevertHistoryPopup({state}: {state: RevertHistoryState}) {
 function MessageRow({message, selected}: {message: RevertHistoryMessageState; selected?: boolean}) {
   return (
     <div className={selected ? styles.itemSelected : styles.item} title={message.text}>
-      <span className={styles.time}>{message.createdAt ?? ''}</span>
+      <span className={styles.time}>{formatTime(message.createdAt)}</span>
       <span className={styles.snippet}>{snippet(message.text)}</span>
       <Icons.ChevronRight className={styles.caret} size={14} />
     </div>
@@ -63,7 +64,9 @@ function MessageRow({message, selected}: {message: RevertHistoryMessageState; se
 
 function ActionRow({action, disabled, selected}: {action: typeof actions[number]; disabled?: boolean; selected?: boolean}) {
   const Icon = action.icon;
-  const className = disabled ? styles.itemDisabled : selected ? styles.itemSelected : styles.item;
+  const className = disabled
+    ? cx(styles.itemDisabled, selected && styles.itemSelected)
+    : selected ? styles.itemSelected : styles.item;
   return (
     <div className={className} title={disabled ? 'No prior assistant turn to summarize' : undefined}>
       <Icon className={styles.icon} size={14} />
@@ -81,4 +84,11 @@ function snippet(text: string) {
   const oneLine = text.replace(/\s+/g, ' ').trim();
   if (!oneLine) return '(empty)';
   return oneLine.length > 72 ? `${oneLine.slice(0, 72)}…` : oneLine;
+}
+
+function formatTime(createdAt?: number | string) {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 }

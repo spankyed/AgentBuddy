@@ -12,6 +12,11 @@ import './ChatShot.module.css';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 
 const styles = makeStyles('ChatShot');
+const bottomTabsHeight = 38;
+const composerInputCardHeight = 116;
+const composerEditorCursorTop = 8;
+const composerEditorPaddingLeft = 6;
+const composerCharacterWidth = 8.5;
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
@@ -20,6 +25,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const appReveal = ease(frame, 58, 112);
   const composerDock = ease(frame, 50, 122);
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
+  const composer = withPopupPositions(view.composer, composerRect, height);
   const initialCursor = initialChatCursorForFrame(frame);
 
   return (
@@ -54,11 +60,66 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
           transform: `translate(-50%, ${mix(-50, -100, composerDock)}%) scale(${mix(1.04, 1, composerDock)})`,
         }}
       >
-        <ChatComposer formStyle={{width: '100%'}} state={view.composer} />
+        <ChatComposer formStyle={{width: '100%'}} state={composer} />
       </div>
       {initialCursor ? <Cursor frame={frame} {...initialCursor} /> : null}
     </div>
   );
+}
+
+function withPopupPositions(
+  composer: ReturnType<typeof chatShotViewForFrame>['composer'],
+  rect: ReturnType<typeof composerPlacement>,
+  viewportHeight: number,
+) {
+  const bottomTabsRect = bottomTabsPlacement(rect);
+  const referenceCursor = referenceCursorPlacement(rect, composer.referenceAutocomplete?.anchorCharacterIndex ?? 0);
+  const referenceAutocomplete = composer.referenceAutocomplete
+    ? {
+        ...composer.referenceAutocomplete,
+        popupPosition: composer.referenceAutocomplete.popupPosition ?? {
+          bottom: viewportHeight - referenceCursor.top + 4,
+          left: referenceCursor.left,
+        },
+      }
+    : undefined;
+
+  return {
+    ...composer,
+    bottomTabs: composer.bottomTabs
+      ? {
+          ...composer.bottomTabs,
+          recentThreadsMenu: composer.bottomTabs.recentThreadsMenu
+            ? {
+                ...composer.bottomTabs.recentThreadsMenu,
+                popupPosition: composer.bottomTabs.recentThreadsMenu.popupPosition ?? {
+                  bottom: viewportHeight - bottomTabsRect.top + 8,
+                  left: bottomTabsRect.left,
+                  width: bottomTabsRect.width,
+                },
+              }
+            : undefined,
+        }
+      : undefined,
+    referenceAutocomplete,
+  };
+}
+
+function bottomTabsPlacement(rect: ReturnType<typeof composerPlacement>) {
+  const width = rect.width * 0.8;
+  return {
+    left: rect.left - width / 2,
+    top: rect.top - bottomTabsHeight,
+    width,
+  };
+}
+
+function referenceCursorPlacement(rect: ReturnType<typeof composerPlacement>, anchorCharacterIndex: number) {
+  const inputCardTop = rect.top - bottomTabsHeight - composerInputCardHeight;
+  return {
+    left: rect.left - rect.width / 2 + composerEditorPaddingLeft + Math.min(Math.max(anchorCharacterIndex, 0), 36) * composerCharacterWidth,
+    top: inputCardTop + composerEditorCursorTop,
+  };
 }
 
 function formatUserMessage(text: string) {

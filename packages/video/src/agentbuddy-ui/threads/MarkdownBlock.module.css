@@ -19,10 +19,27 @@
 
 .MarkdownBlock_content {
   max-height: 20rem;
-  overflow: hidden;
+  overflow-y: auto;
   color: rgb(229 229 229);
   font-size: 14px;
   line-height: 1.55;
   padding: 0.75rem 1rem;
   white-space: pre-wrap;
+}
+
+.MarkdownBlock_copyButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(115 115 115);
+  padding: 0.25rem;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.MarkdownBlock_copyButton:hover {
+  background: rgb(64 64 64);
+  color: rgb(229 229 229);
 }

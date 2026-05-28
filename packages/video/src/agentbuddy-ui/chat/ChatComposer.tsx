@@ -1,6 +1,7 @@
 import type {CSSProperties, ReactNode} from 'react';
 import {AttachmentStrip} from './AttachmentStrip';
 import {BottomThreadTabs} from './BottomThreadTabs';
+import {CommandSuggestionPopup} from './CommandSuggestionPopup';
 import {ComposerActionBar} from './ComposerActionBar';
 import {ReferenceAutocomplete} from './ReferenceAutocomplete';
 import {ReferencePill} from './ReferencePill';
@@ -34,6 +35,7 @@ export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSPro
             </span>
           </div>
           {state.revertHistory ? <RevertHistoryPopup state={state.revertHistory} /> : null}
+          {state.commandSuggestion ? <CommandSuggestionPopup state={state.commandSuggestion} /> : null}
           {state.referenceAutocomplete ? <ReferenceAutocomplete state={state.referenceAutocomplete} /> : null}
           <ComposerActionBar
             busy={state.busy}

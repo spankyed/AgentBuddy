@@ -14,7 +14,7 @@ export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteStat
   const activeCategoryLabel = referenceCategoryLabel(state.selectedCategory);
   if (state.level === 'items') {
     return (
-      <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyle(state.anchorCharacterIndex)}>
+      <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
         <div className={styles.referenceSuggestionHeader}>
           <span className={styles.referenceSuggestionBack}>←</span>
           <span>{activeCategoryLabel}</span>
@@ -32,11 +32,11 @@ export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteStat
   }
 
   return (
-    <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyle(state.anchorCharacterIndex)}>
+    <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
       {state.suggestions.map((suggestion, index) => (
         <div className={isActiveReferenceSuggestion(state.activeId, suggestion.id, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
           <ReferenceIcon tone="suggestion" refType={suggestion.id} />
-          <span className={styles.referenceSuggestionLabel}>{suggestion.label}</span>
+          <span>{suggestion.label}</span>
         </div>
       ))}
       {state.suggestions.length === 0 ? <div className={styles.referenceSuggestionEmpty}>No matching categories</div> : null}
@@ -46,8 +46,23 @@ export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteStat
 
 function referenceAutocompleteStyle(anchorCharacterIndex: number): CSSProperties {
   return {
-    '--reference-anchor-x': `calc(0.75rem + ${Math.min(Math.max(anchorCharacterIndex, 0), 36)}ch)`,
+    bottom: '180px',
+    left: `calc(10% + 0.75rem + ${Math.min(Math.max(anchorCharacterIndex, 0), 36)}ch)`,
+    position: 'fixed',
   } as CSSProperties;
+}
+
+function referenceAutocompleteStyleForState(state: ReferenceAutocompleteState): CSSProperties {
+  const position = state.popupPosition;
+  if (!position) return referenceAutocompleteStyle(state.anchorCharacterIndex);
+
+  const isFullEditor = state.variant === 'full';
+  return {
+    bottom: position.bottom == null || isFullEditor && position.top != null ? 'auto' : `${position.bottom}px`,
+    left: `${position.left}px`,
+    position: 'fixed',
+    top: position.top == null ? 'auto' : `${position.top}px`,
+  };
 }
 
 function isActiveReferenceSuggestion(activeId: string | undefined, suggestionId: string, index: number) {

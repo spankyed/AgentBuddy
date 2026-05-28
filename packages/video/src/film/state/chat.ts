@@ -23,6 +23,13 @@ import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {filmProjects} from './paths';
 import {ease, mix, textReveal} from './timeline';
 
+const launchNotePreviewUrl = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%20160%22%3E%3Crect%20width%3D%22160%22%20height%3D%22160%22%20fill%3D%22%231b1b1b%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2224%22%20width%3D%22120%22%20height%3D%22112%22%20rx%3D%2210%22%20fill%3D%22%23262626%22%20stroke%3D%22%23525252%22%2F%3E%3Cpath%20d%3D%22M38%2054h84M38%2074h70M38%2094h92M38%20114h48%22%20stroke%3D%22%23d4d4d4%22%20stroke-width%3D%226%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%22118%22%20r%3D%2212%22%20fill%3D%22%233b82f6%22%2F%3E%3C%2Fsvg%3E';
+const recentThreadTimestamps = {
+  now: '2026-05-27T19:52:00',
+  twoMinutesAgo: '2026-05-27T19:50:00',
+  eightMinutesAgo: '2026-05-27T19:44:00',
+};
+
 export type ChatShotView = {
   breadcrumbs: string[];
   composer: ChatComposerState;
@@ -89,7 +96,7 @@ export const launchComposerState: ChatComposerState = {
 
 export const launchComposerWithAttachmentState: ChatComposerState = {
   ...launchComposerState,
-  attachments: [{type: 'image', label: 'image 1'}],
+  attachments: [{type: 'image', label: 'image 1', previewUrl: launchNotePreviewUrl}],
 };
 
 export const launchComposerModeMenuState: ChatComposerState = {
@@ -111,7 +118,7 @@ export const messageBubbleDemoState = {
     {
       isImage: true,
       name: 'launch-note.png',
-      previewUrl: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%20160%22%3E%3Crect%20width%3D%22160%22%20height%3D%22160%22%20fill%3D%22%231b1b1b%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2224%22%20width%3D%22120%22%20height%3D%22112%22%20rx%3D%2210%22%20fill%3D%22%23262626%22%20stroke%3D%22%23525252%22%2F%3E%3Cpath%20d%3D%22M38%2054h84M38%2074h70M38%2094h92M38%20114h48%22%20stroke%3D%22%23d4d4d4%22%20stroke-width%3D%226%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%22118%22%20r%3D%2212%22%20fill%3D%22%233b82f6%22%2F%3E%3C%2Fsvg%3E',
+      previewUrl: launchNotePreviewUrl,
       typeLabel: 'Image',
     },
     {name: 'release-brief.md', typeLabel: 'Markdown'},
@@ -374,6 +381,9 @@ export const contextUsageBlockDemoState: ContextUsageBlockState = {
     {type: 'note', path: '/AgentBuddy/Tasklist/current.md', tokens: 7400},
     {type: 'brief', path: '/AgentBuddy/Videos/launch-film.md', tokens: 5200},
   ],
+  skills: [
+    {name: 'launch-film-fidelity', source: 'workspace', tokens: 8200},
+  ],
 };
 
 export const textInputBlockDemoState: TextInputBlockState = {
@@ -464,8 +474,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           query: 'current',
           selectedCategory: 'notes' as const,
           suggestions: [
-            {id: 'notes-current', label: 'current', shortCode: 'current', type: 'note' as const},
-            {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'root', type: 'tasklist' as const},
+            {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note' as const},
+            {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'notes-tasklist', type: 'tasklist' as const},
           ],
         }
       : {
@@ -500,12 +510,13 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       ...launchComposerState,
       referenceAutocomplete,
       references: typedNoteReference && frame < 176
-        ? [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'current', token: '#notes:current'}]
+        ? [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current', token: '#notes:current'}]
         : undefined,
       attachments: [
         ...(frame > 132 && frame < 166 ? [{
           type: 'image' as const,
           label: 'image 1',
+          previewUrl: launchNotePreviewUrl,
           style: {
             opacity: imageAttachmentEnter,
             transform: `translateY(${mix(10, 0, imageAttachmentEnter)}px) scale(${mix(0.975, 1, imageAttachmentEnter)})`,
@@ -530,9 +541,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
                   activeId: frame > 302 ? 'launch-dev-complete' : undefined,
                   currentId: 'launch-plan',
                   threads: [
-                    {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, time: 'now'},
-                    {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, time: '2m'},
-                    {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', time: '8m'},
+                    {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
+                    {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
+                    {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', timestamp: recentThreadTimestamps.eightMinutesAgo},
                   ],
                 }
               : undefined,

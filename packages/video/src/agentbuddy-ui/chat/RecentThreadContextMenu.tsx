@@ -10,32 +10,32 @@ export function RecentThreadContextMenu({copyText, isArchived, isPinned}: {copyT
     <div className={styles.threadContextMenu} data-copy-text={copyText}>
       <button className={styles.threadContextMenuItem} type="button">
         <Icons.Pencil className={styles.threadContextMenuNeutralIcon} size={14} />
-        <span>Rename</span>
+        Rename
       </button>
       <button className={styles.threadContextMenuItem} type="button">
         <Icons.Copy className={styles.threadContextMenuNeutralIcon} size={14} />
-        <span>Copy Id</span>
+        Copy Id
       </button>
       <div className={styles.threadContextMenuSeparator} />
       <button className={styles.threadContextMenuItem} type="button">
         <Icons.Pin className={styles.threadContextMenuNeutralIcon} size={14} />
-        <span>{isPinned ? 'Unpin' : 'Pin'}</span>
+        {isPinned ? 'Unpin' : 'Pin'}
       </button>
       {isArchived ? (
         <button className={styles.threadContextMenuItem} type="button">
           <Icons.ArchiveRestore className={styles.threadContextMenuArchiveIcon} size={14} />
-          <span>Unarchive</span>
+          Unarchive
         </button>
       ) : !isPinned ? (
         <button className={styles.threadContextMenuItem} type="button">
           <Icons.Archive className={styles.threadContextMenuArchiveIcon} size={14} />
-          <span>Archive</span>
+          Archive
         </button>
       ) : null}
       <div className={styles.threadContextMenuSeparator} />
       <button className={styles.threadContextMenuDeleteItem} type="button">
         <Icons.Trash2 size={14} />
-        <span>Delete</span>
+        Delete
       </button>
     </div>
   );

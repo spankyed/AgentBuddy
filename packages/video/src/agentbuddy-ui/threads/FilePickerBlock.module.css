@@ -11,6 +11,10 @@
   font-size: 14px;
 }
 
+.FilePickerBlock_responseHeader svg {
+  color: rgb(34 197 94);
+}
+
 .FilePickerBlock_path,
 .FilePickerBlock_pathResponse {
   display: flex;
@@ -19,6 +23,12 @@
   border-radius: 0.5rem;
   font-size: 14px;
   padding: 0.5rem 0.75rem;
+}
+
+.FilePickerBlock_path svg,
+.FilePickerBlock_pathResponse svg {
+  color: rgb(163 163 163);
+  flex-shrink: 0;
 }
 
 .FilePickerBlock_path {
@@ -54,6 +64,10 @@
   color: rgb(229 229 229);
   font-size: 14px;
   padding: 0.5rem 1rem;
+}
+
+.FilePickerBlock_browse:hover {
+  background: rgb(82 82 91);
 }
 
 .FilePickerBlock_browseDisabled {

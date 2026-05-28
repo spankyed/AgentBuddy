@@ -74,7 +74,7 @@ export type ChoiceBlockState = {
   disabled?: boolean;
   displayText?: string;
   multiSelect?: boolean;
-  response?: string | string[];
+  response?: string | string[] | {cancelled?: boolean; value?: string};
   selectedIds?: string[];
   skipOption?: {
     id: string;
@@ -106,7 +106,7 @@ export type ToggleState = {
 
 export type TogglesBlockState = {
   disabled?: boolean;
-  response?: Record<string, boolean>;
+  response?: {toggles?: Record<string, boolean>};
   toggles: ToggleState[];
 };
 
@@ -133,6 +133,7 @@ export type ContextUsageBlockState = {
     tokens: number;
   }>;
   maxTokens: number;
+  memoryFilesOpen?: boolean;
   memoryFiles?: Array<{
     path: string;
     tokens: number;
@@ -145,6 +146,7 @@ export type ContextUsageBlockState = {
     source: string;
     tokens: number;
   }>;
+  skillsOpen?: boolean;
   totalTokens: number;
 };
 
@@ -181,10 +183,11 @@ export type ProjectSelectBlockState = {
 };
 
 export type QuestionBlockState = {
+  customValue?: string;
   customPlaceholder?: string;
   currentStep?: number;
   disabled?: boolean;
-  response?: string | Record<string, string>;
+  response?: string | Record<string, string> | {cancelled?: boolean};
   questions: Array<{
     allowCustom?: boolean;
     multiSelect?: boolean;

@@ -45,6 +45,15 @@
   cursor: not-allowed;
 }
 
+.RevertHistoryPopup_itemDisabled:hover {
+  background: transparent;
+}
+
+.RevertHistoryPopup_itemDisabled.RevertHistoryPopup_itemSelected {
+  background: rgb(35 35 40);
+  box-shadow: none;
+}
+
 .RevertHistoryPopup_time {
   min-width: 3.2em;
   flex-shrink: 0;

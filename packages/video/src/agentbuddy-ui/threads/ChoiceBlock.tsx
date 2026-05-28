@@ -8,7 +8,7 @@ const styles = makeStyles('ChoiceBlock');
 // Mirrors packages/renderer/src/plugins/threads/chat/interactions/inputs/ChoiceInput.vue.
 export function ChoiceBlock({state}: {state: ChoiceBlockState}) {
   if (state.disabled && state.response) {
-    const value = Array.isArray(state.response) ? state.response.join(', ') : state.response;
+    const value = choiceResponseText(state.response);
     return (
       <div className={styles.root}>
         <div className={styles.responseHeader}>
@@ -21,12 +21,13 @@ export function ChoiceBlock({state}: {state: ChoiceBlockState}) {
   }
 
   const selectedIds = new Set(state.selectedIds ?? []);
+  const canSubmit = selectedIds.size > 0;
   return (
     <div className={styles.root}>
       <div className={state.compact ? styles.choicesCompact : styles.choices}>
-        {state.choices.map(choice => <ChoiceOption choice={choice} key={choice.id} multiSelect={state.multiSelect} selected={selectedIds.has(choice.id)} />)}
+        {state.choices.map(choice => <ChoiceOption choice={choice} disabled={state.disabled} key={choice.id} multiSelect={state.multiSelect} selected={selectedIds.has(choice.id)} />)}
       </div>
-      {state.skipOption && !state.multiSelect ? <button className={styles.skip} type="button">{state.skipOption.label}</button> : null}
+      {state.skipOption && !state.multiSelect && !state.disabled ? <button className={styles.skip} type="button">{state.skipOption.label}</button> : null}
       {state.allowCustom ? (
         <div className={styles.custom}>
           <label>Or enter custom response:</label>
@@ -35,7 +36,7 @@ export function ChoiceBlock({state}: {state: ChoiceBlockState}) {
       ) : null}
       {state.multiSelect ? (
         <div className={styles.actions}>
-          <button className={styles.submit} type="button">Submit</button>
+          <button className={canSubmit && !state.disabled ? styles.submit : styles.submitDisabled} disabled={!canSubmit || state.disabled} type="button">Submit</button>
           <button className={styles.cancel} type="button">{state.skipOption?.label ?? 'Cancel'}</button>
         </div>
       ) : null}
@@ -43,12 +44,21 @@ export function ChoiceBlock({state}: {state: ChoiceBlockState}) {
   );
 }
 
-function ChoiceOption({choice, multiSelect, selected}: {choice: ChoiceOptionState; multiSelect?: boolean; selected?: boolean}) {
+function choiceResponseText(response: NonNullable<ChoiceBlockState['response']>) {
+  if (Array.isArray(response)) return response.join(', ');
+  if (typeof response === 'object') {
+    if (response.cancelled) return 'Skipped';
+    return response.value ?? JSON.stringify(response);
+  }
+  return response;
+}
+
+function ChoiceOption({choice, disabled, multiSelect, selected}: {choice: ChoiceOptionState; disabled?: boolean; multiSelect?: boolean; selected?: boolean}) {
   const controlClass = multiSelect
     ? selected ? styles.controlMultiSelected : styles.controlMulti
     : selected ? styles.controlSelected : styles.control;
   return (
-    <div className={selected ? styles.selected : styles.choice}>
+    <div className={selected ? styles.selected : disabled ? styles.disabledChoice : styles.choice}>
       <div className={styles.inner}>
         <span className={controlClass}>{selected ? <Icons.Check size={12} /> : null}</span>
         <span className={styles.text}>

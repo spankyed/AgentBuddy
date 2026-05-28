@@ -16,7 +16,7 @@ type ModePhaseSelectorProps = {
 // Mirrors packages/renderer/src/plugins/threads/chat/ModePhaseSelector.vue.
 export function ModePhaseSelector({disabled, forcedMode, mode, modeOptions = [], openSelector, phase}: ModePhaseSelectorProps) {
   const visibleModes = modeOptions.filter(option => !option.hidden);
-  const currentMode = visibleModes.find(option => option.name === mode);
+  const currentMode = modeOptions.find(option => option.name === mode);
   const phases = currentMode?.phases ?? [];
   const currentPhase = phases.find(option => option.name === phase);
   const forcedModeName = modeOptions.find(option => option.name === forcedMode)?.name ?? 'Birth';
@@ -32,29 +32,31 @@ export function ModePhaseSelector({disabled, forcedMode, mode, modeOptions = [],
   }
   return (
     <div className={styles.root}>
-      <button className={styles.mode} disabled={disabled} type="button">
-        <span>{currentModeName}</span>
-        <Icons.ChevronDown className={openSelector === 'mode' ? styles.chevronUp : styles.chevronDown} size={14} />
-      </button>
-      {hasPhases ? (
-        <>
-          <span className={styles.divider} />
-          <button
-            className={styles.phase}
-            disabled={disabled}
-            style={currentPhase?.color ? {backgroundColor: `${currentPhase.color}33`} : undefined}
-            type="button"
-          >
-            <span>{currentPhaseName}</span>
-            <Icons.ChevronDown className={openSelector === 'phase' ? styles.chevronUp : styles.chevronDown} size={14} />
-          </button>
-        </>
-      ) : null}
+      <div className={styles.selector}>
+        <button className={styles.mode} disabled={disabled} type="button">
+          <span className={styles.buttonLabel}>{currentModeName}</span>
+          <Icons.ChevronDown className={openSelector === 'mode' ? styles.chevronUp : styles.chevronDown} size={14} />
+        </button>
+        {hasPhases ? (
+          <>
+            <span className={styles.divider} />
+            <button
+              className={styles.phase}
+              disabled={disabled}
+              style={currentPhase?.color ? {backgroundColor: `${currentPhase.color}33`} : undefined}
+              type="button"
+            >
+              <span className={styles.buttonLabel}>{currentPhaseName}</span>
+              <Icons.ChevronDown className={openSelector === 'phase' ? styles.chevronUp : styles.chevronDown} size={14} />
+            </button>
+          </>
+        ) : null}
+      </div>
       {openSelector === 'mode' && visibleModes.length > 0 ? (
         <div className={styles.modeMenu}>
           {visibleModes.map(option => (
             <div className={option.disabled ? styles.menuItemDisabled : styles.menuItem} key={option.name}>
-              <span>{option.name}</span>
+              <span className={styles.menuItemLabel}>{option.name}</span>
               {option.name === mode ? <Icons.Check className={styles.check} size={16} /> : null}
             </div>
           ))}
@@ -68,7 +70,7 @@ export function ModePhaseSelector({disabled, forcedMode, mode, modeOptions = [],
               key={option.name}
               style={option.color ? {backgroundColor: `${option.color}33`} : undefined}
             >
-              <span>{option.name}</span>
+              <span className={styles.phaseMenuLabel}>{option.name}</span>
               {option.name === phase ? <Icons.Check className={styles.check} size={16} /> : null}
             </div>
           ))}

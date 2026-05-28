@@ -8,6 +8,7 @@ import {ContextUsageBlock} from '../../agentbuddy-ui/threads/ContextUsageBlock';
 import {FilePickerBlock} from '../../agentbuddy-ui/threads/FilePickerBlock';
 import {LinkBlock} from '../../agentbuddy-ui/threads/LinkBlock';
 import {MarkdownBlock} from '../../agentbuddy-ui/threads/MarkdownBlock';
+import {MarkdownViewer} from '../../agentbuddy-ui/threads/MarkdownViewer';
 import {MessageBubble} from '../../agentbuddy-ui/threads/MessageBubble';
 import {NoteBlock} from '../../agentbuddy-ui/threads/NoteBlock';
 import {PlanArtifactCard} from '../../agentbuddy-ui/threads/PlanArtifactCard';
@@ -57,9 +58,15 @@ import {
   toolInputWriteDemoState,
   toolActivityViewForFrame,
 } from '../../film/state/chat';
+import {filmProjectDirectories} from '../../film/state/paths';
 import {DemoBottomSlot, DemoSlot, DemoStack} from '../DemoLayout';
 
 const launchPreviewUrl = new URL('../../../../../resources/draft-final.png', import.meta.url).toString();
+const recentThreadTimestamps = {
+  now: '2026-05-27T19:52:00',
+  twoMinutesAgo: '2026-05-27T19:50:00',
+  eightMinutesAgo: '2026-05-27T19:44:00',
+};
 
 export const ChatComposerDemo = () => (
   <SurfaceFrame>
@@ -104,7 +111,7 @@ export const ChatComposerMixedAttachmentsDemo = () => (
 export const ChatComposerStatusLineDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
-      <ChatComposer state={{...launchComposerState, chatStatus: {color: '#10b981'}, statusLine: '~/Develop/Projects/AgentBuddy'}} />
+      <ChatComposer state={{...launchComposerState, chatStatus: {color: '#10b981'}, statusLine: filmProjectDirectories.agentBuddy.displayPath}} />
     </DemoBottomSlot>
   </SurfaceFrame>
 );
@@ -195,6 +202,49 @@ export const ChatComposerInputStatesDemo = () => (
   </SurfaceFrame>
 );
 
+export const ChatComposerCommandSuggestionDemo = () => (
+  <SurfaceFrame>
+    <DemoBottomSlot>
+      <ChatComposer
+        state={{
+          ...launchComposerState,
+          commandActive: true,
+          commandSuggestion: {
+            activeIndex: 1,
+            anchorCharacterIndex: 1,
+            query: 'la',
+            suggestions: [
+              {name: 'launch-film'},
+              {name: 'launch-plan'},
+              {name: 'load-context'},
+            ],
+          },
+          text: '/la',
+        }}
+      />
+    </DemoBottomSlot>
+  </SurfaceFrame>
+);
+
+export const ChatComposerCommandSuggestionEmptyDemo = () => (
+  <SurfaceFrame>
+    <DemoBottomSlot>
+      <ChatComposer
+        state={{
+          ...launchComposerState,
+          commandActive: true,
+          commandSuggestion: {
+            anchorCharacterIndex: 1,
+            query: 'zz',
+            suggestions: [],
+          },
+          text: '/zz',
+        }}
+      />
+    </DemoBottomSlot>
+  </SurfaceFrame>
+);
+
 export const ChatComposerReferenceCategoriesDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
@@ -215,6 +265,30 @@ export const ChatComposerReferenceCategoriesDemo = () => (
             ],
           },
           text: 'Use #',
+        }}
+      />
+    </DemoBottomSlot>
+  </SurfaceFrame>
+);
+
+export const ChatComposerReferenceFilteredCategoriesDemo = () => (
+  <SurfaceFrame>
+    <DemoBottomSlot>
+      <ChatComposer
+        state={{
+          ...launchComposerState,
+          referenceAutocomplete: {
+            activeId: 'notes',
+            anchorCharacterIndex: 4,
+            categoryQuery: '',
+            level: 'category',
+            query: 'no',
+            selectedCategory: null,
+            suggestions: [
+              {id: 'notes', label: 'Notes'},
+            ],
+          },
+          text: 'Use #no',
         }}
       />
     </DemoBottomSlot>
@@ -367,9 +441,9 @@ export const ChatComposerRecentThreadsDemo = () => (
               archiveContextMenuThreadId: 'release-checks',
               currentId: 'launch-plan',
               threads: [
-                {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, time: 'now'},
-                {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, time: '2m'},
-                {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', time: '8m'},
+                {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
+                {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
+                {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', timestamp: recentThreadTimestamps.eightMinutesAgo},
               ],
             },
           },
@@ -423,9 +497,9 @@ export const ChatComposerRecentThreadsRenameDemo = () => (
               editingName: 'Launch Operating Plan',
               editingThreadId: 'launch-plan',
               threads: [
-                {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, time: 'now'},
-                {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, time: '2m'},
-                {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', time: '8m'},
+                {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
+                {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
+                {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', timestamp: recentThreadTimestamps.eightMinutesAgo},
               ],
             },
           },
@@ -468,8 +542,8 @@ export const ChatComposerNewThreadProjectMenuDemo = () => (
             newThreadMenu: {
               openSubmenu: 'project',
               projects: [
-                {name: 'Clientlabs', color: '#38bdf8', directories: ['/Users/spankyed/Develop/Projects/Clientlabs']},
-                {name: 'AgentBuddy', color: '#a78bfa', directories: ['/Users/spankyed/Develop/Projects/AgentBuddy', '/Users/spankyed/Develop/Projects/AgentBuddy/packages/video']},
+                {name: 'Clientlabs', color: '#38bdf8', directories: [filmProjectDirectories.clientlabs.path]},
+                {name: 'AgentBuddy', color: '#a78bfa', directories: [filmProjectDirectories.agentBuddy.path, `${filmProjectDirectories.agentBuddy.path}/packages/video`]},
               ],
               threads: [],
             },
@@ -621,6 +695,28 @@ export const ContentBlocksDemo = () => (
         <SessionListBlock state={sessionListBlockDemoState} />
         <ContextUsageBlock state={contextUsageBlockDemoState} />
       </DemoStack>
+    </DemoSlot>
+  </SurfaceFrame>
+);
+
+export const FullMarkdownViewerDemo = () => (
+  <SurfaceFrame>
+    <DemoSlot style={{left: 320, top: 120, width: 640}}>
+      <MarkdownViewer
+        content={[
+          '# Launch notes',
+          '',
+          'Open [Tasklist](document://tasklist-current?icon=%F0%9F%93%9D) and attach it to [Launch PR implementation](thread://launch-pr).',
+          '',
+          '- [x] Capture launch context',
+          '- [ ] Ship release automation',
+          '',
+          '```ts',
+          'const surface = "AgentBuddy";',
+          '```',
+        ].join('\n')}
+        variant="full"
+      />
     </DemoSlot>
   </SurfaceFrame>
 );

@@ -100,6 +100,7 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `ChatComposerRevertHistoryDemo` | `packages/video/out/component-demos/chat-composer-revert-history-demo.mp4` |
 | `ChatComposerRevertActionsDemo` | `packages/video/out/component-demos/chat-composer-revert-actions-demo.mp4` |
 | `ChatComposerReferenceCategoriesDemo` | `packages/video/out/component-demos/chat-composer-reference-categories-demo.mp4` |
+| `ChatComposerReferenceFilteredCategoriesDemo` | `packages/video/out/component-demos/chat-composer-reference-filtered-categories-demo.mp4` |
 | `ChatComposerReferenceEmptyStatesDemo` | `packages/video/out/component-demos/chat-composer-reference-empty-states-demo.mp4` |
 | `ChatComposerReferenceItemTypesDemo` | `packages/video/out/component-demos/chat-composer-reference-item-types-demo.mp4` |
 | `ChatComposerReferencePillsDemo` | `packages/video/out/component-demos/chat-composer-reference-pills-demo.mp4` |

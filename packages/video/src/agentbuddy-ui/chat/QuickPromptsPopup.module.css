@@ -2,13 +2,13 @@
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
-  z-index: 20;
+  z-index: 50;
   width: 256px;
   overflow: hidden;
   border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
   background: rgb(23 23 23);
-  box-shadow: 0 20px 46px rgb(0 0 0 / 45%);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 10%), 0 8px 10px -6px rgb(0 0 0 / 10%);
   transform: translateX(-50%);
 }
 
@@ -34,6 +34,7 @@
 .QuickPromptsPopup_header button {
   display: grid;
   place-items: center;
+  border-radius: 0.25rem;
   color: rgb(115 115 115);
   padding: 0.25rem;
 }
@@ -72,6 +73,11 @@
 
 .QuickPromptsPopup_item > button:first-child:hover {
   background: rgb(38 38 38);
+  color: white;
+}
+
+.QuickPromptsPopup_item > button:first-child:hover .QuickPromptsPopup_text,
+.QuickPromptsPopup_item[data-pressed="true"] .QuickPromptsPopup_text {
   color: white;
 }
 
@@ -117,6 +123,10 @@
 
 .QuickPromptsPopup_item:hover .QuickPromptsPopup_copy {
   opacity: 1;
+}
+
+.QuickPromptsPopup_copy:hover {
+  color: white;
 }
 
 .QuickPromptsPopup_empty {

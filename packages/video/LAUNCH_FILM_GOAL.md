@@ -66,6 +66,9 @@ Code and PR:
 Flows:
 
 - Treat flows as blueprints, not runtime/composer/status UI.
+- Start the workflow chapter with only the listener node on a plain black background.
+- Attach the switch node while still isolated, then progressively reveal the real app canvas, header, toolbar, palette, and follow-on nodes.
+- Do not show the full flow canvas or app shell at the start of the workflow shot.
 - Do not show brain-plugin status indicators on flow nodes.
 - Route edges as app-like elbow paths that attach to real handles.
 

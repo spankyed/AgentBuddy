@@ -1,3 +1,5 @@
+import type {CSSProperties} from 'react';
+
 export type FlowNodeKind = 'action' | 'create' | 'keep_alive' | 'listener' | 'schedule' | 'llm' | 'flow' | 'switch' | 'fire' | 'kill' | 'entry' | 'event';
 
 export type FlowPaletteItemState = {
@@ -31,6 +33,7 @@ export type FlowNodeState = {
   label: string;
   subtitle?: string;
   exits?: string[];
+  style?: CSSProperties;
   width?: number;
   x: number;
   y: number;
@@ -85,6 +88,11 @@ export type FlowCanvasState = {
   canvas?: {
     height: number;
     width: number;
+  };
+  chrome?: {
+    backButtonStyle?: CSSProperties;
+    controlsStyle?: CSSProperties;
+    paletteStyle?: CSSProperties;
   };
   editingNodeId?: string;
   edges: FlowEdgeState[];

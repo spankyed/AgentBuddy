@@ -18,15 +18,17 @@ export function BottomThreadTabs({active = 'active', activeEditing, activeLabel,
         </button>
       </div>
       <div className={styles.bottomTabSlot} data-slot="active">
-        <button className={`${styles.bottomTabButton} ${styles.bottomTabActiveThreadButton}`} data-active={active === 'active'} data-pressed={pressed === 'active'} type="button">
-          <Icons.PanelLeft className={styles.bottomTabDashboardIcon} size={14} />
+        <span className={styles.bottomTabActiveGroup} data-active={active === 'active'} data-pressed={pressed === 'active'}>
+          <span className={styles.bottomTabDashboardIconWrap} title="Toggle inline dashboard">
+            <Icons.PanelLeft className={styles.bottomTabDashboardIcon} size={14} />
+          </span>
           {activeEditing ? (
             <input className={styles.bottomTabActiveRenameInput} readOnly size={Math.max(activeLabel.length + 1, 1)} value={activeLabel} />
           ) : (
-            <span className={styles.bottomTabActiveTitle}>{activeLabel}</span>
+            <span className={styles.bottomTabActiveTitle} title="Thread Artifacts">{activeLabel}</span>
           )}
           {activePinned ? <Icons.Pin className={styles.bottomTabPinnedIcon} size={12} /> : null}
-        </button>
+        </span>
       </div>
       <div className={styles.bottomTabSlot} data-slot="new">
         <button className={styles.bottomTabButton} data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={16} /><span>{newThreadLabel}</span></button>

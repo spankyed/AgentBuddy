@@ -1,4 +1,5 @@
 import {makeStyles} from '../primitives/makeStyles';
+import {Icons} from '../primitives/Icon';
 import type {SessionListBlockState} from './threadTypes';
 import './SessionListBlock.module.css';
 
@@ -17,8 +18,9 @@ export function SessionListBlock({state}: {state: SessionListBlockState}) {
           <div className={styles.row} key={session.id}>
             <span className={styles.id}>{session.id.slice(0, 8)}</span>
             <span className={session.title === '(untitled)' ? `${styles.name} ${styles.untitled}` : styles.name}>{session.title}</span>
-            <span className={styles.size}>{formatSize(session.size)}</span>
+            {session.size ? <span className={styles.size}>{formatSize(session.size)}</span> : null}
             <span className={styles.date}>{formatDate(session.modifiedAt)}</span>
+            <button className={styles.copy} title="Copy session ID" type="button"><Icons.Copy size={12} /></button>
           </div>
         )) : <div className={styles.empty}>No sessions found.</div>}
       </div>
@@ -34,5 +36,10 @@ function formatSize(bytes: number) {
 
 function formatDate(iso: string) {
   if (!iso) return '';
-  return iso;
+  const date = new Date(iso);
+  const delta = Date.now() - date.getTime();
+  if (delta < 60_000) return 'just now';
+  if (delta < 3_600_000) return `${Math.round(delta / 60_000)}m ago`;
+  if (delta < 86_400_000) return `${Math.round(delta / 3_600_000)}h ago`;
+  return date.toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
 }

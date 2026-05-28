@@ -5,14 +5,14 @@
   border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
   background: rgb(38 38 38);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 30%), 0 4px 6px -4px rgb(0 0 0 / 30%);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
 }
 
 .MessageActions_timestamp {
   border-right: 1px solid rgb(64 64 64);
   color: rgb(163 163 163);
   font-size: 12px;
-  line-height: 1;
+  line-height: 1rem;
   padding: 0.375rem 0.75rem;
   white-space: nowrap;
 }

@@ -1,13 +1,23 @@
 import type {CSSProperties} from 'react';
 import type {ReferenceCategory, ReferenceRefType} from './referenceConfig';
 
-export type ChatAttachment = {
+export type ChatFileAttachment = {
   label: string;
   previewUrl?: string;
   style?: CSSProperties;
   typeLabel?: string;
-  type: 'file' | 'image';
+  type: 'file';
 };
+
+export type ChatImageAttachment = {
+  label: string;
+  previewUrl: string;
+  style?: CSSProperties;
+  typeLabel?: string;
+  type: 'image';
+};
+
+export type ChatAttachment = ChatFileAttachment | ChatImageAttachment;
 
 export type QuickPromptState = {
   id: string;
@@ -16,7 +26,7 @@ export type QuickPromptState = {
 
 export type RevertHistoryMessageState = {
   canSummarize?: boolean;
-  createdAt?: string;
+  createdAt?: number | string;
   id: string;
   selected?: boolean;
   text: string;
@@ -58,11 +68,17 @@ export type ChatComposerState = {
       currentId?: string;
       editingName?: string;
       editingThreadId?: string;
+      popupPosition?: {
+        bottom: number;
+        left: number;
+        width: number;
+      };
       threads: Array<{
         busy?: boolean;
         dotColor?: string;
         id: string;
         pinned?: boolean;
+        timestamp?: number | string;
         time?: string;
         title: string;
       }>;
@@ -74,6 +90,19 @@ export type ChatComposerState = {
     color: string;
   };
   commandActive?: boolean;
+  commandSuggestion?: {
+    activeIndex?: number;
+    anchorCharacterIndex?: number;
+    popupPosition?: {
+      bottom?: number;
+      left: number;
+      top?: number;
+    };
+    query: string;
+    suggestions: Array<{
+      name: string;
+    }>;
+  };
   disabled?: boolean;
   dropActive?: boolean;
   forcedMode?: string;
@@ -116,7 +145,13 @@ export type ReferenceAutocompleteState = {
   activeId?: string;
   anchorCharacterIndex: number;
   categoryQuery: string;
+  popupPosition?: {
+    bottom?: number;
+    left: number;
+    top?: number;
+  };
   query: string;
+  variant?: 'chat' | 'full';
 } & (
   | {
       level: 'category';

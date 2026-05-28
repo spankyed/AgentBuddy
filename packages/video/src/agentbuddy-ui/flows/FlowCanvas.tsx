@@ -22,9 +22,9 @@ export function FlowCanvas({hiddenNodeIds, state}: {hiddenNodeIds?: ReadonlySet<
 
   return (
     <div className={styles.root}>
-      <FlowPalette items={state.paletteItems} />
+      <FlowPalette items={state.paletteItems} style={state.chrome?.paletteStyle} />
       <section className={styles.editor} data-onboarding-id="flow-editor-canvas">
-        <button className={styles.backButton} type="button"><Icons.ArrowLeft size={15} />Back</button>
+        <button className={styles.backButton} style={state.chrome?.backButtonStyle} type="button"><Icons.ArrowLeft size={15} />Back</button>
         <div
           className={styles.viewport}
           style={{
@@ -55,11 +55,11 @@ export function FlowCanvas({hiddenNodeIds, state}: {hiddenNodeIds?: ReadonlySet<
               editing={state.editingNodeId === node.id}
               node={node}
               selected={state.selectedNodeId === node.id}
-              style={hiddenNodeIds?.has(node.id) ? {opacity: 0} : undefined}
+              style={hiddenNodeIds?.has(node.id) ? {...node.style, opacity: 0} : node.style}
             />
           ))}
         </div>
-        <FlowControls />
+        <FlowControls style={state.chrome?.controlsStyle} />
       </section>
     </div>
   );

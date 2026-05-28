@@ -29,7 +29,7 @@ export function TextInputBlock({state}: {state: TextInputBlockState}) {
       ) : state.multiline ? (
         <textarea className={state.disabled ? styles.textareaDisabled : styles.textarea} disabled={state.disabled} placeholder={state.placeholder ?? 'Enter text...'} readOnly rows={state.rows ?? 3} value={state.value ?? ''} />
       ) : null}
-      {state.multiline && !showSuggestions ? (
+      {state.multiline ? (
         <div className={styles.actions}>
           <button className={styles.submit} type="button">Submit</button>
           <button className={styles.cancel} type="button">Cancel</button>

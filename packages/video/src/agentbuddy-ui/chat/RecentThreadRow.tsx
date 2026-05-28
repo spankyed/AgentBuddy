@@ -30,23 +30,31 @@ export function RecentThreadRow({active, current, editingName, editingThreadId, 
       {editing ? (
         <input className={styles.recentThreadRenameInput} readOnly value={editingName ?? thread.title ?? ''} />
       ) : (
-        <div className={styles.recentThreadTitle}>
-          <span>{thread.title || 'Untitled'}</span>
-        </div>
+        <span className={styles.recentThreadTitle}>{thread.title || 'Untitled'}</span>
       )}
-      <button className={styles.recentThreadPinButton} type="button">
+      <button className={styles.recentThreadPinButton} title={thread.pinned ? 'Unpin thread' : 'Pin thread'} type="button">
         <Icons.Pin className={thread.pinned ? styles.recentThreadPinActive : styles.recentThreadPin} size={12} />
       </button>
-      <small className={styles.recentThreadTime}>{thread.time}</small>
+      <span className={styles.recentThreadTime}>{formatThreadTime(thread.timestamp, thread.time)}</span>
       <div className={styles.recentThreadActions}>
-        <button type="button"><Icons.FileText size={12} />Details</button>
-        <button type="button"><Icons.PanelLeft size={12} />Artifacts</button>
+        <button title="Open thread details" type="button"><Icons.FileText size={12} />Details</button>
+        <button title="Open thread artifacts" type="button"><Icons.PanelLeft size={12} />Artifacts</button>
         {thread.pinned ? (
           <span className={styles.recentThreadArchivePlaceholder}><Icons.Archive size={12} />Archive</span>
         ) : (
-          <button className={styles.recentThreadArchiveButton} type="button"><Icons.Archive size={12} />Archive</button>
+          <button className={styles.recentThreadArchiveButton} title="Archive thread (right-click to delete)" type="button"><Icons.Archive size={12} />Archive</button>
         )}
       </div>
     </div>
   );
+}
+
+function formatThreadTime(timestamp: number | string | undefined, fallback: string | undefined) {
+  if (timestamp == null) return fallback ?? '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return fallback ?? '';
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

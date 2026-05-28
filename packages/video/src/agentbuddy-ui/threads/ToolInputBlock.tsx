@@ -68,7 +68,7 @@ function JsonPreview({input}: {input: Record<string, unknown>}) {
 function truncateContent(content: string) {
   const maxLength = 2000;
   if (content.length <= maxLength) return content;
-  return `${content.slice(0, maxLength)}\n... (truncated)`;
+  return `${content.slice(0, maxLength)}\n… (truncated)`;
 }
 
 function getString(value: unknown) {

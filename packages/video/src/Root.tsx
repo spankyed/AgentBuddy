@@ -18,6 +18,8 @@ import {
   BrainSurfaceDemo,
   CodeSurfaceDemo,
   ChatSurfaceDemo,
+  ChatComposerCommandSuggestionDemo,
+  ChatComposerCommandSuggestionEmptyDemo,
   ChatComposerDemo,
   ChatComposerActiveThreadRenameDemo,
   ChatComposerInputStatesDemo,
@@ -31,6 +33,7 @@ import {
   ChatComposerRevertHistoryDemo,
   ChatComposerReferenceEmptyStatesDemo,
   ChatComposerReferenceCategoriesDemo,
+  ChatComposerReferenceFilteredCategoriesDemo,
   ChatComposerReferenceItemTypesDemo,
   ChatComposerReferencePillsDemo,
   ChatComposerRecentThreadsDemo,
@@ -41,6 +44,7 @@ import {
   ChatComposerWithAttachmentDemo,
   CodeReviewDemo,
   ContentBlocksDemo,
+  FullMarkdownViewerDemo,
   DatabaseAiLoadingDemo,
   DatabaseAiPromptDemo,
   DatabaseExamplesDemo,
@@ -245,6 +249,8 @@ export const RemotionRoot = () => {
       <Composition id="ChatComposerMixedAttachmentsDemo" component={ChatComposerMixedAttachmentsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerStatusLineDemo" component={ChatComposerStatusLineDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerInputStatesDemo" component={ChatComposerInputStatesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerCommandSuggestionDemo" component={ChatComposerCommandSuggestionDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerCommandSuggestionEmptyDemo" component={ChatComposerCommandSuggestionEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerModeMenuDemo" component={ChatComposerModeMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerNewThreadProjectMenuDemo" component={ChatComposerNewThreadProjectMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerNewThreadChildMenuDemo" component={ChatComposerNewThreadChildMenuDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -253,6 +259,7 @@ export const RemotionRoot = () => {
       <Composition id="ChatComposerRevertHistoryDemo" component={ChatComposerRevertHistoryDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerRevertActionsDemo" component={ChatComposerRevertActionsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerReferenceCategoriesDemo" component={ChatComposerReferenceCategoriesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatComposerReferenceFilteredCategoriesDemo" component={ChatComposerReferenceFilteredCategoriesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerReferenceEmptyStatesDemo" component={ChatComposerReferenceEmptyStatesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerReferenceItemTypesDemo" component={ChatComposerReferenceItemTypesDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatComposerReferencePillsDemo" component={ChatComposerReferencePillsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -280,6 +287,7 @@ export const RemotionRoot = () => {
       <Composition id="ToolInputBlocksDemo" component={ToolInputBlocksDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="InteractionControlsDemo" component={InteractionControlsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ContentBlocksDemo" component={ContentBlocksDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="FullMarkdownViewerDemo" component={FullMarkdownViewerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="MessageBubbleDemo" component={MessageBubbleDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PlanArtifactDemo" component={PlanArtifactDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PullRequestPanelDemo" component={PullRequestPanelDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -301,7 +309,7 @@ export const RemotionRoot = () => {
       <Composition id="CodeSurfaceDemo" component={CodeSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="NotesSurfaceDemo" component={NotesSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatSurfaceDemo" component={ChatSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={360} fps={fps} width={1440} height={900} />
     </>
   );
 };

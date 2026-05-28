@@ -2,6 +2,7 @@
   display: flex;
   width: 100%;
   padding-bottom: 0.75rem;
+  animation: MessageAside_fadeIn 300ms ease-out;
 }
 
 .MessageAside_asUser {
@@ -29,4 +30,15 @@
 .MessageAside_context {
   color: rgb(82 82 82);
   margin-left: 0.5rem;
+}
+
+@keyframes MessageAside_fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -64,23 +64,21 @@ export function flowNodeHeight(node: FlowNodeState) {
 
 export function flowNodePort(node: FlowNodeState, side: 'left' | 'right', exit?: number) {
   const width = flowNodeWidth(node);
-  const x = node.x + (side === 'right' ? width / 2 : -width / 2);
+  const x = node.x + (side === 'right' ? width : 0);
 
   if (side === 'right' && isSwitchNode(node) && typeof exit === 'number') {
-    const top = node.y - flowNodeHeight(node) / 2;
     return {
       x,
-      y: top + FLOW_NODE_GEOMETRY.switch.headerOffset + (exit + 0.5) * FLOW_NODE_GEOMETRY.switch.rowHeight,
+      y: node.y + FLOW_NODE_GEOMETRY.switch.headerOffset + (exit + 0.5) * FLOW_NODE_GEOMETRY.switch.rowHeight,
     };
   }
 
   if (side === 'right' && isTriggerNode(node) && typeof exit === 'number') {
-    const top = node.y - flowNodeHeight(node) / 2;
     return {
       x,
-      y: top + triggerHeaderOffset(node) + (exit + 0.5) * FLOW_NODE_GEOMETRY.trigger.rowHeight,
+      y: node.y + triggerHeaderOffset(node) + (exit + 0.5) * FLOW_NODE_GEOMETRY.trigger.rowHeight,
     };
   }
 
-  return {x, y: node.y};
+  return {x, y: node.y + flowNodeHeight(node) / 2};
 }

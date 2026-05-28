@@ -15,7 +15,7 @@ export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
         <Icons.FolderOpen size={16} />
         <span>In Project</span>
         <Icons.ChevronRight className={styles.newThreadContextChevron} size={12} />
-        {menu.openSubmenu === 'project' ? <ProjectSubmenu projects={menu.projects} /> : null}
+        {menu.openSubmenu === 'project' ? <ProjectSubmenu align="bottom" projects={menu.projects} /> : null}
       </div>
       <div className={styles.newThreadContextSeparator} />
       <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'child' ? 'true' : undefined}>
@@ -28,16 +28,16 @@ export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
   );
 }
 
-function ProjectSubmenu({projects}: {projects: NewThreadMenuState['projects']}) {
+function ProjectSubmenu({align, projects}: {align?: 'bottom'; projects: NewThreadMenuState['projects']}) {
   return (
-    <div className={styles.newThreadContextSubmenu}>
+    <div className={styles.newThreadContextSubmenu} data-align={align}>
       <div className={styles.newThreadContextMutedItem}>No project (ask me)</div>
       {projects.map(project => (
         <div key={project.name}>
           <div className={styles.newThreadContextSeparator} />
           <div className={styles.newThreadContextProjectHeader}>
-            <span style={{backgroundColor: project.color}} />
-            <small>{project.name}</small>
+            <span className={styles.newThreadContextProjectDot} style={{backgroundColor: project.color}} />
+            <span className={styles.newThreadContextProjectName}>{project.name}</span>
           </div>
           {project.directories.map(directory => (
             <div className={styles.newThreadContextSubItem} key={directory}>
@@ -56,11 +56,13 @@ function ChildThreadSubmenu({threads}: {threads: NewThreadMenuState['threads']})
     <div className={styles.newThreadContextSubmenu}>
       {threads.map(thread => (
         <div className={styles.newThreadContextChildItem} key={thread.id}>
-          <small>{thread.shortCode}</small>
-          <span>{thread.title || 'Untitled'}</span>
+          <div className={styles.newThreadContextChildBody}>
+            <small>{thread.shortCode}</small>
+            <span>{thread.title || 'Untitled'}</span>
+          </div>
         </div>
       ))}
-      {threads.length === 0 ? <div className={styles.newThreadContextEmpty}>No threads available</div> : null}
+      {threads.length === 0 ? <div className={styles.newThreadContextChildEmpty}>No threads available</div> : null}
     </div>
   );
 }

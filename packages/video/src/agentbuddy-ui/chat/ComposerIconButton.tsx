@@ -14,7 +14,7 @@ type ComposerIconButtonProps = {
 
 export function ComposerIconButton({className, disabled, icon: Icon, label, pressed}: ComposerIconButtonProps) {
   return (
-    <button className={cx(styles.iconButton, className)} data-pressed={pressed || undefined} disabled={disabled} title={label} type="button">
+    <button aria-label={label} className={cx(styles.iconButton, className)} data-pressed={pressed || undefined} disabled={disabled} title={label} type="button">
       <Icon size={20} />
     </button>
   );

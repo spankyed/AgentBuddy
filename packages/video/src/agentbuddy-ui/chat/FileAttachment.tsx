@@ -1,12 +1,12 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
-import type {ChatAttachment} from './chatTypes';
+import type {ChatFileAttachment} from './chatTypes';
 import './ChatComposer.module.css';
 
 const styles = makeStyles('ChatComposer');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/FileBlock.vue.
-export function FileAttachment({attachment}: {attachment: ChatAttachment}) {
+export function FileAttachment({attachment}: {attachment: ChatFileAttachment}) {
   return (
     <div className={styles.fileAttachment} style={attachment.style} title={attachment.label}>
       <span className={styles.fileIcon}>

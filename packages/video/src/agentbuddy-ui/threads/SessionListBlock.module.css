@@ -27,7 +27,7 @@
 
 .SessionListBlock_list {
   max-height: 25rem;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .SessionListBlock_row {
@@ -36,6 +36,11 @@
   gap: 0.75rem;
   border-bottom: 1px solid rgb(38 38 38 / 0.5);
   padding: 0.625rem 1rem;
+  transition: background-color 150ms ease;
+}
+
+.SessionListBlock_row:hover {
+  background: rgb(38 38 38 / 0.3);
 }
 
 .SessionListBlock_row:last-child {
@@ -76,6 +81,25 @@
 .SessionListBlock_date {
   width: 4rem;
   text-align: right;
+}
+
+.SessionListBlock_copy {
+  display: flex;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(82 82 91);
+  opacity: 0;
+  padding: 0.25rem;
+  transition: color 150ms ease, opacity 150ms ease;
+}
+
+.SessionListBlock_row:hover .SessionListBlock_copy {
+  opacity: 1;
+}
+
+.SessionListBlock_copy:hover {
+  color: rgb(212 212 216);
 }
 
 .SessionListBlock_empty {

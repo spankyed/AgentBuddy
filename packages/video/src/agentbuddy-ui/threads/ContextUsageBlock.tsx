@@ -1,3 +1,4 @@
+import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import type {ContextUsageBlockState} from './threadTypes';
 import './ContextUsageBlock.module.css';
@@ -54,14 +55,41 @@ export function ContextUsageBlock({state}: {state: ContextUsageBlockState}) {
       </div>
       {state.memoryFiles?.length ? (
         <div className={styles.details}>
-          <p className={styles.detailsTitle}>Memory Files</p>
-          {state.memoryFiles.map(file => (
-            <div className={styles.detailRow} key={file.path}>
-              <span className={styles.detailType}>{file.type}</span>
-              <span className={styles.detailName}>{shortenPath(file.path)}</span>
-              <span className={styles.tokens}>{fmt(file.tokens)}</span>
+          <div className={styles.detailsSummary} data-open={state.memoryFilesOpen ? 'true' : undefined}>
+            <Icons.ChevronRight size={14} />
+            <span>Memory Files</span>
+            <span className={styles.detailsCount}>{state.memoryFiles.length}</span>
+          </div>
+          {state.memoryFilesOpen ? (
+            <div className={styles.detailsBody}>
+              {state.memoryFiles.map(file => (
+                <div className={styles.detailRow} key={file.path}>
+                  <span className={styles.detailType}>{file.type}</span>
+                  <span className={styles.detailName}>{shortenPath(file.path)}</span>
+                  <span className={styles.tokens}>{fmt(file.tokens)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : null}
+        </div>
+      ) : null}
+      {state.skills?.length ? (
+        <div className={styles.details}>
+          <div className={styles.detailsSummary} data-open={state.skillsOpen ? 'true' : undefined}>
+            <Icons.ChevronRight size={14} />
+            <span>Skills</span>
+            <span className={styles.detailsCount}>{state.skills.length}</span>
+          </div>
+          {state.skillsOpen ? (
+            <div className={styles.detailsBody}>
+              {state.skills.map(skill => (
+                <div className={styles.skillRow} key={skill.name}>
+                  <span className={styles.skillName}>{skill.name}</span>
+                  <span className={styles.tokens}>{fmt(skill.tokens)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -92,5 +120,5 @@ function barWidth(percentage: number) {
 function shortenPath(path: string) {
   const segments = path.split('/').filter(Boolean);
   if (segments.length <= 3) return path;
-  return `.../${segments.slice(-3).join('/')}`;
+  return `…/${segments.slice(-3).join('/')}`;
 }

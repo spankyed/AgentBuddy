@@ -21,6 +21,7 @@ export function QuestionBlock({state}: {state: QuestionBlockState}) {
   const selectedIds = new Set(state.selectedIds ?? []);
   const isWizard = state.questions.length > 1;
   const isLast = currentStep >= state.questions.length - 1;
+  const canSubmit = selectedIds.size > 0 || Boolean(state.customValue?.trim());
 
   return (
     <div className={styles.root}>
@@ -33,30 +34,31 @@ export function QuestionBlock({state}: {state: QuestionBlockState}) {
       <div className={styles.question}>{currentQuestion.question}</div>
       <div className={styles.choices}>
         {currentQuestion.options.map(option => (
-          <QuestionChoice key={option.id} multiSelect={currentQuestion.multiSelect} option={option} selected={selectedIds.has(option.id)} />
+          <QuestionChoice disabled={state.disabled} key={option.id} multiSelect={currentQuestion.multiSelect} option={option} selected={selectedIds.has(option.id)} />
         ))}
       </div>
       {currentQuestion.allowCustom !== false ? (
         <div className={styles.custom}>
           <label>Or enter custom response:</label>
-          <textarea placeholder={state.customPlaceholder ?? 'Type your response...'} readOnly rows={1} />
+          <textarea disabled={state.disabled} placeholder={state.customPlaceholder ?? 'Type your response...'} readOnly rows={1} value={state.customValue ?? ''} />
         </div>
       ) : null}
       <div className={styles.actions}>
-        {isWizard && currentStep > 0 ? <button className={styles.back} type="button">Back</button> : null}
-        <button className={styles.cancel} type="button">Cancel</button>
-        <button className={styles.submit} type="button">{isLast ? 'Submit' : 'Next'}</button>
+        {isWizard && currentStep > 0 ? <button className={state.disabled ? styles.backDisabled : styles.back} disabled={state.disabled} type="button">Back</button> : null}
+        <span className={styles.actionSpacer} />
+        <button className={state.disabled ? styles.cancelDisabled : styles.cancel} disabled={state.disabled} type="button">Cancel</button>
+        <button className={canSubmit && !state.disabled ? styles.submit : styles.submitDisabled} disabled={!canSubmit || state.disabled} type="button">{isLast ? 'Submit' : 'Next'}</button>
       </div>
     </div>
   );
 }
 
-function QuestionChoice({multiSelect, option, selected}: {multiSelect?: boolean; option: ChoiceOptionState; selected?: boolean}) {
+function QuestionChoice({disabled, multiSelect, option, selected}: {disabled?: boolean; multiSelect?: boolean; option: ChoiceOptionState; selected?: boolean}) {
   const controlClass = multiSelect
     ? selected ? styles.controlMultiSelected : styles.controlMulti
     : selected ? styles.controlSelected : styles.control;
   return (
-    <div className={selected ? styles.selected : styles.choice}>
+    <div className={selected ? styles.selected : disabled ? styles.choiceDisabled : styles.choice}>
       <div className={styles.choiceInner}>
         <span className={controlClass}>{selected ? <Icons.Check size={12} /> : null}</span>
         <span>
@@ -76,5 +78,7 @@ function stepClass(index: number, currentStep: number) {
 
 function responseText(response: NonNullable<QuestionBlockState['response']>) {
   if (typeof response === 'string') return response;
-  return Object.values(response).join(', ');
+  if (response.cancelled) return 'Skipped';
+  const values = Object.values(response);
+  return values.length > 1 ? values.join(', ') : String(values[0] ?? '');
 }

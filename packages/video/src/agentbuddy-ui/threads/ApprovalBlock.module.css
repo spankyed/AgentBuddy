@@ -52,9 +52,10 @@
   font-size: 12px;
 }
 
-.ApprovalBlock_textarea {
+.ApprovalBlock_textarea,
+.ApprovalBlock_textareaDisabled {
   min-height: 5.25rem;
-  resize: none;
+  resize: vertical;
   border: 1px solid rgb(82 82 91);
   border-radius: 0.5rem;
   background: rgb(64 64 64);
@@ -62,6 +63,13 @@
   font: inherit;
   font-size: 14px;
   padding: 0.5rem 0.75rem;
+}
+
+.ApprovalBlock_textareaDisabled {
+  border-color: rgb(64 64 64);
+  background: rgb(64 64 64 / 0.5);
+  color: rgb(115 115 115);
+  cursor: not-allowed;
 }
 
 .ApprovalBlock_actions {
@@ -75,13 +83,16 @@
   align-items: center;
   gap: 0.5rem;
   color: rgb(163 163 163);
+  cursor: pointer;
   font-size: 12px;
   margin-right: auto;
+  user-select: none;
 }
 
 .ApprovalBlock_checkbox {
   width: 0.875rem;
   height: 0.875rem;
+  accent-color: rgb(37 99 235);
   border: 1px solid rgb(115 115 115);
   border-radius: 0.25rem;
   background: rgb(64 64 64);
@@ -90,7 +101,8 @@
 .ApprovalBlock_button,
 .ApprovalBlock_buttonPrimary,
 .ApprovalBlock_buttonDanger,
-.ApprovalBlock_buttonSecondary {
+.ApprovalBlock_buttonSecondary,
+.ApprovalBlock_buttonDisabled {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -100,11 +112,16 @@
   font-size: 14px;
   font-weight: 500;
   padding: 0.5rem 1rem;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
-.ApprovalBlock_button,
-.ApprovalBlock_buttonSecondary {
+.ApprovalBlock_button {
   background: rgb(82 82 91);
+  color: rgb(229 229 229);
+}
+
+.ApprovalBlock_button:hover {
+  background: rgb(115 115 115);
 }
 
 .ApprovalBlock_buttonPrimary {
@@ -112,7 +129,30 @@
   color: white;
 }
 
+.ApprovalBlock_buttonPrimary:hover {
+  background: rgb(34 197 94);
+}
+
 .ApprovalBlock_buttonDanger {
   background: rgb(220 38 38);
   color: white;
+}
+
+.ApprovalBlock_buttonDanger:hover {
+  background: rgb(239 68 68);
+}
+
+.ApprovalBlock_buttonSecondary {
+  background: rgb(37 99 235);
+  color: white;
+}
+
+.ApprovalBlock_buttonSecondary:hover {
+  background: rgb(59 130 246);
+}
+
+.ApprovalBlock_buttonDisabled {
+  background: rgb(64 64 64);
+  color: rgb(115 115 115);
+  cursor: not-allowed;
 }

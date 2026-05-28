@@ -13,7 +13,7 @@ export function MarkdownBlock({state}: {state: MarkdownBlockState}) {
       {state.label ? (
         <div className={styles.header}>
           <span className={styles.label}>{state.label}</span>
-          <Icons.Copy size={14} />
+          <button className={styles.copyButton} title="Copy to clipboard" type="button"><Icons.Copy size={14} /></button>
         </div>
       ) : null}
       <div className={styles.content}>
