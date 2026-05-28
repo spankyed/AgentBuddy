@@ -1,3 +1,7 @@
+import {staticFile} from 'remotion';
+
+// Asset names mirror ful1e5/apple_cursor/svg so new cursor themes can reuse
+// the same typed ids and only swap the directory passed to buildAppleCursorTheme.
 export type CursorThemeId = 'apple-source' | 'apple-white';
 
 export type CursorAssetId =
@@ -184,4 +188,3 @@ function buildAppleCursorTheme(directory: 'apple' | 'apple-white') {
     ]),
   ) as Record<CursorAssetId, CursorAsset>;
 }
-import {staticFile} from 'remotion';
