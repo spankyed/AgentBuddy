@@ -100,11 +100,8 @@
 }
 
 .GitFileItem_action {
-  opacity: 0;
+  opacity: 1;
 }
-
-.GitFileItem_root:hover .GitFileItem_action,
-.GitFileItem_selected .GitFileItem_action { opacity: 1; }
 
 .GitFileItem_openAction:hover,
 .GitFileItem_action:hover {

@@ -14,29 +14,31 @@ export function PRInfo({state}: {state: PullRequestPanelState}) {
   return (
     <section className={styles.root}>
       <div className={styles.header}>
-        <div className={styles.titleBlock}>
-          <h3>{state.title}</h3>
-          <div className={styles.branchRow}>
-            <Icons.GitBranch size={10} />
-            <span>{headBranch}</span>
-            <Icons.ArrowRight size={10} />
-            <span>{baseBranch}</span>
+        <div className={styles.headerTop}>
+          <div className={styles.titleBlock}>
+            <h3>{state.title}</h3>
+            <div className={styles.branchRow}>
+              <Icons.GitBranch size={10} />
+              <span>{headBranch}</span>
+              <Icons.ArrowRight size={10} />
+              <span>{baseBranch}</span>
+            </div>
+          </div>
+          <div className={styles.headerActions}>
+            <span className={styles.number}>#{pr?.number}</span>
+            {pr?.state === 'OPEN' ? <button type="button" title="Edit PR"><Icons.Pencil size={14} /></button> : null}
+            <button type="button" title="View on GitHub"><Icons.ExternalLink size={14} /></button>
           </div>
         </div>
-        <div className={styles.headerActions}>
-          <span className={styles.number}>#{pr?.number}</span>
-          {pr?.state === 'OPEN' ? <button type="button" title="Edit PR"><Icons.Pencil size={14} /></button> : null}
-          <button type="button" title="View on GitHub"><Icons.ExternalLink size={14} /></button>
+        <div className={styles.meta}>
+          <span className={styles.state} data-state={badgeState}>{statusLabel(pr)}</span>
+          {pr?.authorName ? <span>·</span> : null}
+          {pr?.authorName ? <span>{pr.authorName}</span> : null}
+          {pr?.createdAt ? <span>·</span> : null}
+          {pr?.createdAt ? <span>{pr.createdAt}</span> : null}
+          <span>·</span>
+          <span>{pr?.commitCount ?? state.changedFiles.length} commits</span>
         </div>
-      </div>
-      <div className={styles.meta}>
-        <span className={styles.state} data-state={badgeState}>{statusLabel(pr)}</span>
-        {pr?.authorName ? <span>·</span> : null}
-        {pr?.authorName ? <span>{pr.authorName}</span> : null}
-        {pr?.createdAt ? <span>·</span> : null}
-        {pr?.createdAt ? <span>{pr.createdAt}</span> : null}
-        <span>·</span>
-        <span>{pr?.commitCount ?? state.changedFiles.length} commits</span>
       </div>
       <div className={styles.body}>{renderBody(state.body)}</div>
       <PRComments state={state} />

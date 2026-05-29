@@ -5,8 +5,8 @@
   min-height: 0;
   overflow: hidden;
   color: rgb(245 245 245);
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .NoteEditor_scroller {
@@ -23,12 +23,16 @@
 
 .NoteEditor_editor {
   min-height: 0;
-  padding: 0.25rem 3rem 2rem 3.5rem;
+  padding: 0.1rem 0 2rem 3.25rem;
 }
 
 .NoteEditor_list {
-  margin: 0;
-  padding-left: 22px;
+  margin: 0.25em 0;
+  padding-left: 1.2em;
+}
+
+.NoteEditor_list li + li {
+  margin-top: 0.15em;
 }
 
 .NoteEditor_connected {
@@ -38,5 +42,5 @@
 .NoteEditor_rule {
   height: 1px;
   background: rgb(64 64 64);
-  margin: 28px 0;
+  margin: 0.75em 0;
 }

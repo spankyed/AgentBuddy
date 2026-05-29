@@ -355,10 +355,10 @@ export function notesShotViewForFrame(frame: number): NotesShotView {
 }
 
 export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
-  const greeting = textReveal(notesHomeState.greeting, frame, 8, 44);
+  const greeting = textReveal(notesHomeState.greeting, frame, -4, 40);
   const showSearch = frame >= 44;
   const showRecent = frame >= 62;
-  const newNotePressed = frame >= 108 && frame < 124;
+  const newNotePressed = frame >= 136 && frame < 154;
 
   return {
     ...notesHomeState,

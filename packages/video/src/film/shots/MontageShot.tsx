@@ -18,39 +18,17 @@ import './MontageShot.module.css';
 
 const styles = makeStyles('MontageShot');
 
-const segmentStarts = [0, 72, 142, 222, 292];
-const segmentEnds = [72, 142, 222, 292, 360];
-
 export function MontageShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = montageShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
-  const segmentIndex = segmentIndexForFrame(frame);
-  const segmentStart = segmentStarts[Math.max(0, segmentIndex)];
-  const segmentEnd = segmentEnds[Math.max(0, segmentIndex)];
-  const enter = ease(frame, segmentStart, segmentStart + 10);
-  const exit = 1 - ease(frame, segmentEnd - 4, segmentEnd);
-  const visibility = Math.min(enter, exit);
 
   return (
-    <div
-      className={styles.segment}
-      style={{
-        opacity: visibility,
-        transform: `translateY(${mix(18, 0, enter) + mix(0, -10, 1 - exit)}px) scale(${mix(0.992, 1, enter)})`,
-      }}
-    >
+    <div className={styles.segment}>
       <AppWindow activePlugin={view.activePlugin} breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
         {view.surface}
       </AppWindow>
     </div>
   );
-}
-
-function segmentIndexForFrame(frame: number) {
-  for (let index = segmentStarts.length - 1; index >= 0; index -= 1) {
-    if (frame >= segmentStarts[index]) return index;
-  }
-  return 0;
 }
 
 function montageShotViewForFrame(frame: number) {

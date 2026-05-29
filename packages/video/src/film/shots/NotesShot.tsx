@@ -13,12 +13,13 @@ import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 import './NotesShot.module.css';
 
 const styles = makeStyles('NotesShot');
+const notesHomeDuration = 156;
 
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  if (frame < 124) {
+  if (frame < notesHomeDuration) {
     return <NotesOpenShot frame={frame} variant={variant} />;
   }
-  return <NotesEditorShot frame={frame - 124} variant={variant} />;
+  return <NotesEditorShot frame={frame - notesHomeDuration} variant={variant} />;
 }
 
 function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
@@ -69,6 +70,7 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
   const view = notesEditorViewForFrame(frame);
   const taskListVisible = frame >= 88;
   const layout = useAppWindowLayout({animate: false, hasRightRail: true, variant});
+  const editorEnter = ease(frame, 0, 12);
   const taskListEnter = ease(frame, 88, 112);
   const cursor = notesEditorCursorForFrame(frame);
   const renderLine = (line: NotesEditorLineView) => (
@@ -78,40 +80,48 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
 
   return (
     <div className={styles.root}>
-      <AppWindow
-        activePlugin="notes"
-        breadcrumbs={view.breadcrumbs}
-        composer={false}
-        layout={layout}
-        rightRail={<NotesRightRail state={view.rightRail} />}
+      <div
+        style={{
+          height: '100%',
+          opacity: editorEnter,
+          transform: `translateY(${mix(8, 0, editorEnter)}px)`,
+        }}
       >
-        <NotesLayout
-          showTaskList={taskListVisible}
-          taskListStyle={{
-            opacity: taskListEnter,
-            transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
-          }}
-          taskList={view.taskList}
-          editor={{
-            beforeLines: view.editor.beforeLines.filter(visibleLine).map(renderLine),
-            afterLines: view.editor.afterLines.filter(visibleLine).map(renderLine),
-            image: view.editor.image,
-            title: view.editor.title,
-          }}
-        />
-      </AppWindow>
+        <AppWindow
+          activePlugin="notes"
+          breadcrumbs={view.breadcrumbs}
+          composer={false}
+          layout={layout}
+          rightRail={<NotesRightRail state={view.rightRail} />}
+        >
+          <NotesLayout
+            showTaskList={taskListVisible}
+            taskListStyle={{
+              opacity: taskListEnter,
+              transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
+            }}
+            taskList={view.taskList}
+            editor={{
+              beforeLines: view.editor.beforeLines.filter(visibleLine).map(renderLine),
+              afterLines: view.editor.afterLines.filter(visibleLine).map(renderLine),
+              image: view.editor.image,
+              title: view.editor.title,
+            }}
+          />
+        </AppWindow>
+      </div>
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
 }
 
 function notesHomeCursorForFrame(frame: number) {
-  if (frame >= 88 && frame < 126) {
+  if (frame >= 118 && frame < 154) {
     return {
       from: [50, 58] as [number, number],
       to: [67, 28] as [number, number],
-      start: 88,
-      end: 116,
+      start: 118,
+      end: 146,
     };
   }
 
@@ -130,7 +140,7 @@ function notesEditorCursorForFrame(frame: number) {
 
   if (frame >= 120 && frame < 150) {
     return {
-      from: [35, 42] as [number, number],
+      from: [20, 36] as [number, number],
       to: [17, 29] as [number, number],
       start: 120,
       end: 140,
@@ -139,8 +149,8 @@ function notesEditorCursorForFrame(frame: number) {
 
   if (frame >= 158 && frame < 184) {
     return {
-      from: [18, 29] as [number, number],
-      to: [32, 29] as [number, number],
+      from: [20, 32] as [number, number],
+      to: [23, 24] as [number, number],
       start: 158,
       end: 174,
     };

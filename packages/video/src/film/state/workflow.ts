@@ -106,7 +106,7 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
     ...(frame >= 322 ? [logActionNode] : []),
   ];
   const edges = [
-    ...(frame >= 256 ? [flow.edges[0]] : []),
+    ...(frame >= 226 ? [flow.edges[0]] : []),
     ...(frame >= 316 ? [flow.edges[1]] : []),
     ...(frame >= 338 ? [flow.edges[2]] : []),
   ];

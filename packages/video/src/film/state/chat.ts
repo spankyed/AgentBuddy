@@ -513,7 +513,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const showPlanThinking = frame >= 278 && frame < recentThreadLoadedStart;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const typedNoteReference = view.prompt.includes('#notes:current');
-  const noteReferencePromptContent: ChatComposerInlineNode[] | undefined = typedNoteReference
+  const selectedNoteReference = typedNoteReference && frame >= 136;
+  const noteReferencePromptContent: ChatComposerInlineNode[] | undefined = selectedNoteReference
     ? [
         {type: 'text', text: 'Use '},
         {type: 'reference', refId: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current'},

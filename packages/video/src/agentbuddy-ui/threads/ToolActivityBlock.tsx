@@ -57,7 +57,7 @@ export function ToolActivityBlock({rowOpacities, state}: {rowOpacities?: number[
                 {item.outputSummary && item.status !== 'running' ? <span className={styles.output}>{item.outputSummary}</span> : null}
               </div>
               {item.durationMs != null || item.status === 'running' ? (
-                <small>{item.status === 'running' ? 'running' : formatDuration(item.durationMs)}</small>
+                <small>{item.durationMs != null ? formatDuration(item.durationMs) : 'running'}</small>
               ) : null}
             </div>
           ))}

@@ -84,11 +84,14 @@
 }
 
 .MessageReferences_fileText {
+  display: flex;
   min-width: 0;
   flex: 1;
+  flex-direction: column;
 }
 
 .MessageReferences_fileText span {
+  display: block;
   overflow: hidden;
   color: rgb(229 229 229);
   font-size: 14px;
@@ -97,6 +100,7 @@
 }
 
 .MessageReferences_fileText small {
+  display: block;
   color: rgb(115 115 115);
   font-size: 12px;
 }

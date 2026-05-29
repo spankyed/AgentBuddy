@@ -12,6 +12,7 @@ await fs.mkdir(path.dirname(output), {recursive: true});
 
 const serveUrl = await bundle({
   entryPoint: path.join(packageDir, 'src/index.ts'),
+  publicDir: path.join(packageDir, 'public'),
   webpackOverride: config => config,
 });
 

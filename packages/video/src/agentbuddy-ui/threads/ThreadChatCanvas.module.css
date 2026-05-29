@@ -4,7 +4,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: transparent;
+  background: rgb(28 28 28);
 }
 
 .ThreadChatCanvas_messagesWrapper {
@@ -22,11 +22,14 @@
   left: 0;
   z-index: 5;
   height: 40px;
-  background: linear-gradient(to bottom, transparent, rgb(23 23 23));
+  background: linear-gradient(to bottom, transparent, rgb(28 28 28));
   pointer-events: none;
 }
 
 .ThreadChatCanvas_messagesScroller {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
   height: 100%;
   overflow-y: auto;
   scrollbar-width: none;

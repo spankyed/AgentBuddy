@@ -32,8 +32,10 @@ export function CommitMessageBox({
             {menuOpen ? (
               <div className={styles.menu}>
                 <button className={styles.menuItem} data-pressed={menuActionPressed || undefined} type="button">
-                  <Icons.Archive size={13} />
-                  <span>Stash Staged Changes</span>
+                  Stash All Changes
+                </button>
+                <button className={styles.menuItem} type="button">
+                  Stash Staged Only
                 </button>
               </div>
             ) : null}

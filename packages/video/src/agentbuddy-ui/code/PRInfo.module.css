@@ -12,11 +12,17 @@
 
 .PRInfo_header {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding-bottom: 0.75rem;
+}
+
+.PRInfo_headerTop {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  border-bottom: 1px solid rgb(38 38 38);
-  padding-bottom: 0.75rem;
 }
 
 .PRInfo_titleBlock {
@@ -25,7 +31,7 @@
 
 .PRInfo_titleBlock h3 {
   margin: 0;
-  color: rgb(229 229 229);
+  color: rgb(245 245 245);
   font-size: 16px;
   font-weight: 500;
   line-height: 1.35;
@@ -77,12 +83,11 @@
 }
 
 .PRInfo_meta {
-  margin-top: 0.5rem;
   flex-wrap: wrap;
 }
 
 .PRInfo_state {
-  border-radius: 0.25rem;
+  border-radius: 9999px;
   background: rgb(20 83 45 / 50%);
   color: rgb(74 222 128);
   font-size: 11px;
@@ -112,7 +117,7 @@
 }
 
 .PRInfo_body {
-  color: rgb(229 229 229);
+  color: rgb(212 212 212);
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-line;

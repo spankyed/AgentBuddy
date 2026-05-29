@@ -64,9 +64,5 @@ function boardCursorForFrame(frame: number):
     return {end: 228, from: [86, 14], start: 208, to: [59, 11]};
   }
 
-  if (frame >= 236 && frame < 278) {
-    return {end: 270, from: [28, 34], start: 236, to: [50, 38]};
-  }
-
   return null;
 }

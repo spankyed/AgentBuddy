@@ -77,33 +77,25 @@
   left: -0.25rem;
   top: calc(100% + 0.25rem);
   z-index: 5;
-  width: 190px;
+  width: 11rem;
   overflow: hidden;
   border: 1px solid rgb(64 64 64);
-  border-radius: 0.375rem;
+  border-radius: 0.25rem;
   background: rgb(23 23 23);
-  box-shadow: 0 18px 48px rgb(0 0 0 / 42%);
-  padding: 0.25rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
 }
 
 .CommitMessageBox_menuItem {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 0.5rem;
   border: 0;
-  border-radius: 0.25rem;
   background: transparent;
   color: rgb(212 212 216);
   font: inherit;
-  font-size: 0.8125rem;
-  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
-}
-
-.CommitMessageBox_menuItem svg {
-  color: rgb(163 163 163);
-  flex-shrink: 0;
 }
 
 .CommitMessageBox_menuItem[data-pressed="true"] {

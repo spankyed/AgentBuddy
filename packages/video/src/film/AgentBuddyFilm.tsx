@@ -53,8 +53,8 @@ function Film({variant}: {variant: Variant}) {
 
 function ShotLayer({children, shot}: {children: ReactNode; shot: FilmShot}) {
   const frame = useCurrentFrame();
-  const enterMode = shot.transition?.enter ?? 'float';
-  const exitMode = shot.transition?.exit ?? 'fade';
+  const enterMode = shot.transition?.enter ?? 'cut';
+  const exitMode = shot.transition?.exit ?? 'hold';
   const enter = shot.chapter || enterMode === 'cut' ? 1 : ease(frame, 0, 18);
   const exit = shot.chapter || exitMode === 'hold' ? 0 : ease(frame, shot.duration - 4, shot.duration);
   const opacity = Math.min(enter, 1 - exit);

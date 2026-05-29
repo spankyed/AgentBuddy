@@ -4,7 +4,7 @@
   flex: 1;
   flex-direction: column;
   gap: 0.75rem;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 0.75rem;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .CreatePRForm_editor {
-  min-height: 88px;
+  min-height: 80px;
   max-height: 200px;
   flex: 1;
   overflow-y: auto;
