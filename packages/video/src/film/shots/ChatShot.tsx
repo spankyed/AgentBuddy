@@ -2,6 +2,7 @@ import type {ReactNode} from 'react';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {ChatComposer} from '../../agentbuddy-ui/chat/ChatComposer';
 import type {ChatComposerInlineNode} from '../../agentbuddy-ui/chat/chatTypes';
+import {EmptyThreadQuote} from '../../agentbuddy-ui/threads/EmptyThreadQuote';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
 import {Cursor} from '../overlays/Cursor';
@@ -29,6 +30,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
   const composer = withPopupPositions(view.composer, composerRect, composerDock, height);
   const initialCursor = initialChatCursorForFrame(frame);
+  const quote = emptyThreadQuoteForFrame(frame, composerRect, composerDock, height);
 
   return (
     <div className={styles.root}>
@@ -73,6 +75,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
       >
         <ChatComposer formStyle={{width: '100%'}} state={composer} />
       </div>
+      {quote ? <EmptyThreadQuote style={quote.style} text={quote.text} /> : null}
       {initialCursor ? <Cursor frame={frame} {...initialCursor} /> : null}
     </div>
   );
@@ -285,6 +288,30 @@ function initialChatCursorForFrame(frame: number):
   }
 
   return null;
+}
+
+function emptyThreadQuoteForFrame(
+  frame: number,
+  rect: ReturnType<typeof composerPlacement>,
+  dock: number,
+  viewportHeight: number,
+) {
+  const enter = ease(frame, 36, 56);
+  const exit = ease(frame, 92, 122);
+  const opacity = Math.min(enter, 1 - exit);
+  if (opacity <= 0) return null;
+
+  const inputTop = composerInputTop(rect, dock, true);
+  return {
+    style: {
+      left: rect.left - rect.width / 2,
+      opacity,
+      top: Math.max(118, inputTop - 176),
+      transform: `translateY(${mix(8, 0, enter) - exit * 6}px)`,
+      width: rect.width,
+    },
+    text: '"My therapist says I have attachment issues. I say I have context windows."',
+  };
 }
 
 function composerPlacement({
