@@ -8,13 +8,13 @@ const styles = makeStyles('ChatComposer');
 
 type BottomThreadTabsProps = NonNullable<ChatComposerState['bottomTabs']>;
 
-export function BottomThreadTabs({active = 'active', activeEditing, activeLabel, activePinned, newThreadLabel, newThreadMenu, pressed, recentLabel, recentThreadsMenu}: BottomThreadTabsProps) {
+export function BottomThreadTabs({active = 'active', activeEditing, activeLabel, newThreadMenu, pressed, recentThreadsMenu}: BottomThreadTabsProps) {
   return (
     <div className={styles.bottomTabs}>
       <div className={styles.bottomTabSlot} data-slot="recent">
         <button className={styles.bottomTabButton} data-active={active === 'recent'} data-pressed={pressed === 'recent'} type="button">
           {recentThreadsMenu ? <Icons.ChevronUp size={16} /> : <Icons.History size={16} />}
-          <ResponsiveBottomTabLabel label={recentLabel} />
+          <ResponsiveBottomTabLabel first="Recent" rest="Threads" />
         </button>
       </div>
       <div className={styles.bottomTabSlot} data-slot="active">
@@ -27,11 +27,10 @@ export function BottomThreadTabs({active = 'active', activeEditing, activeLabel,
           ) : (
             <span className={styles.bottomTabActiveTitle} title="Thread Artifacts">{activeLabel}</span>
           )}
-          {activePinned ? <Icons.Pin className={styles.bottomTabPinnedIcon} size={12} /> : null}
         </span>
       </div>
       <div className={styles.bottomTabSlot} data-slot="new">
-        <button className={styles.bottomTabButton} data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={16} /><ResponsiveBottomTabLabel label={newThreadLabel} /></button>
+        <button className={styles.bottomTabButton} data-active={active === 'new'} data-pressed={pressed === 'new'} type="button"><Icons.Plus size={16} /><ResponsiveBottomTabLabel first="New" rest="thread" /></button>
         {newThreadMenu ? <NewThreadContextMenu menu={newThreadMenu} /> : null}
       </div>
       {recentThreadsMenu ? <RecentThreadsMenu menu={recentThreadsMenu} /> : null}
@@ -39,13 +38,11 @@ export function BottomThreadTabs({active = 'active', activeEditing, activeLabel,
   );
 }
 
-function ResponsiveBottomTabLabel({label}: {label: string}) {
-  const [first, ...rest] = label.split(' ');
-  if (!rest.length) return <span>{label}</span>;
+function ResponsiveBottomTabLabel({first, rest}: {first: string; rest: string}) {
   return (
     <span>
       {first}
-      <span className={styles.bottomTabResponsiveText}>{` ${rest.join(' ')}`}</span>
+      <span className={styles.bottomTabResponsiveText}>{` ${rest}`}</span>
     </span>
   );
 }

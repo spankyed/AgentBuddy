@@ -1,6 +1,7 @@
 import type {CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import type {ChatComposerState} from './chatTypes';
+import {cx} from '../primitives/classNames';
 import './ChatComposer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 
@@ -15,21 +16,29 @@ type CommandSuggestionState = NonNullable<ChatComposerState['commandSuggestion']
  */
 export function CommandSuggestionPopup({state}: {state: CommandSuggestionState}) {
   const popup = (
-    <div className={styles.commandSuggestionPopup} style={commandSuggestionStyleForState(state)}>
+    <div className={cx(styles.commandSuggestionPopup, 'command-suggestion-popup')} style={commandSuggestionStyleForState(state)}>
       {state.suggestions.map((command, index) => (
-        <div className={index === (state.activeIndex ?? 0) ? styles.commandSuggestionItemActive : styles.commandSuggestionItem} key={command.name}>
-          <span className={styles.commandSuggestionName}>/{command.name}</span>
+        <div className={commandSuggestionItemClassName(index === (state.activeIndex ?? 0))} key={command.name}>
+          <span className={cx(styles.commandSuggestionName, 'command-suggestion-name')}>/{command.name}</span>
         </div>
       ))}
-      {state.suggestions.length === 0 ? <div className={styles.commandSuggestionEmpty}>No matching commands</div> : null}
+      {state.suggestions.length === 0 ? <div className={cx(styles.commandSuggestionEmpty, 'command-suggestion-empty')}>No matching commands</div> : null}
     </div>
   );
 
-  if (state.popupPosition && typeof document !== 'undefined') {
+  if (typeof document !== 'undefined') {
     return createPortal(popup, document.body);
   }
 
   return popup;
+}
+
+function commandSuggestionItemClassName(selected: boolean) {
+  return cx(
+    selected ? styles.commandSuggestionItemActive : styles.commandSuggestionItem,
+    'command-suggestion-item',
+    selected && 'is-selected',
+  );
 }
 
 function commandSuggestionStyleForState(state: CommandSuggestionState): CSSProperties {
@@ -44,8 +53,8 @@ function commandSuggestionStyleForState(state: CommandSuggestionState): CSSPrope
   }
 
   return {
-    bottom: 'calc(100% + 4px)',
-    left: `calc(1rem + ${Math.min(Math.max(state.anchorCharacterIndex ?? 0, 0), 36)}ch)`,
-    position: 'absolute',
+    bottom: '0px',
+    left: '0px',
+    position: 'fixed',
   };
 }

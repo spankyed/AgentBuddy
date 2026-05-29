@@ -15,3 +15,16 @@
   transform-origin: 50% 50%;
   will-change: left, top, width, transform;
 }
+
+.ChatShot_viewerWrapper {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ChatShot_viewerProse {
+  outline: none;
+}
+
+.ChatShot_viewerProse p {
+  margin: 0;
+}

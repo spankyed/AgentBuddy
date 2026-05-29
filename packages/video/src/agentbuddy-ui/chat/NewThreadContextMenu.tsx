@@ -8,6 +8,10 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('ChatComposer');
 
 type NewThreadMenuState = NonNullable<NonNullable<ChatComposerState['bottomTabs']>['newThreadMenu']>;
+const rendererSubmenuWidth = 200;
+const rendererSubmenuSideOffset = 4;
+const rendererProjectTriggerOffset = 0;
+const rendererChildTriggerOffset = 45;
 
 /*
  * Mirrors the New thread context menu in packages/renderer/src/plugins/threads/chat/recent-threads.vue.
@@ -15,21 +19,23 @@ type NewThreadMenuState = NonNullable<NonNullable<ChatComposerState['bottomTabs'
  */
 export function NewThreadContextMenu({menu}: {menu: NewThreadMenuState}) {
   const popup = (
-    <div className={styles.newThreadContextMenu} style={newThreadMenuStyle(menu.popupPosition)}>
-      <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'project' ? 'true' : undefined}>
-        <Icons.FolderOpen size={16} />
-        <span>In Project</span>
-        <Icons.ChevronRight className={styles.newThreadContextChevron} size={12} />
-        {menu.openSubmenu === 'project' ? <ProjectSubmenu projects={menu.projects} /> : null}
+    <>
+      <div className={styles.newThreadContextMenu} style={newThreadMenuStyle(menu.popupPosition)}>
+        <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'project' ? 'true' : undefined}>
+          <Icons.FolderOpen size={16} />
+          <span>In Project</span>
+          <Icons.ChevronRight className={styles.newThreadContextChevron} size={12} />
+        </div>
+        <div className={styles.newThreadContextSeparator} />
+        <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'child' ? 'true' : undefined}>
+          <Icons.GitBranchPlus size={16} />
+          <span>As Child of</span>
+          <Icons.ChevronRight className={styles.newThreadContextChevron} size={12} />
+        </div>
       </div>
-      <div className={styles.newThreadContextSeparator} />
-      <div className={styles.newThreadContextMenuSub} data-open={menu.openSubmenu === 'child' ? 'true' : undefined}>
-        <Icons.GitBranchPlus size={16} />
-        <span>As Child of</span>
-        <Icons.ChevronRight className={styles.newThreadContextChevron} size={12} />
-        {menu.openSubmenu === 'child' ? <ChildThreadSubmenu threads={menu.threads} /> : null}
-      </div>
-    </div>
+      {menu.openSubmenu === 'project' ? <ProjectSubmenu position={menu.popupPosition} projects={menu.projects} /> : null}
+      {menu.openSubmenu === 'child' ? <ChildThreadSubmenu position={menu.popupPosition} threads={menu.threads} /> : null}
+    </>
   );
 
   if (typeof document !== 'undefined') {
@@ -58,9 +64,31 @@ function newThreadMenuStyle(position: NewThreadMenuState['popupPosition']): CSSP
       };
 }
 
-function ProjectSubmenu({projects}: {projects: NewThreadMenuState['projects']}) {
+function newThreadSubmenuStyle(position: NewThreadMenuState['popupPosition'], trigger: 'child' | 'project'): CSSProperties {
+  const triggerOffset = trigger === 'project' ? rendererProjectTriggerOffset : rendererChildTriggerOffset;
+  const base = {
+    left: `${(position?.left ?? 0) - rendererSubmenuWidth - rendererSubmenuSideOffset}px`,
+    minWidth: `${rendererSubmenuWidth}px`,
+    position: 'fixed' as const,
+    right: 'auto',
+  };
+
+  if (position?.top != null) {
+    return {
+      ...base,
+      top: `${position.top + triggerOffset}px`,
+    };
+  }
+
+  return {
+    ...base,
+    bottom: `${position?.bottom ?? 0}px`,
+  };
+}
+
+function ProjectSubmenu({position, projects}: {position: NewThreadMenuState['popupPosition']; projects: NewThreadMenuState['projects']}) {
   return (
-    <div className={styles.newThreadContextSubmenu}>
+    <div className={styles.newThreadContextSubmenu} style={newThreadSubmenuStyle(position, 'project')}>
       <div className={styles.newThreadContextMutedItem}>No project (ask me)</div>
       {projects.map(project => (
         <div key={project.name}>
@@ -81,14 +109,14 @@ function ProjectSubmenu({projects}: {projects: NewThreadMenuState['projects']}) 
   );
 }
 
-function ChildThreadSubmenu({threads}: {threads: NewThreadMenuState['threads']}) {
+function ChildThreadSubmenu({position, threads}: {position: NewThreadMenuState['popupPosition']; threads: NewThreadMenuState['threads']}) {
   return (
-    <div className={styles.newThreadContextSubmenu}>
+    <div className={styles.newThreadContextSubmenu} style={newThreadSubmenuStyle(position, 'child')}>
       {threads.map(thread => (
         <div className={styles.newThreadContextChildItem} key={thread.id}>
           <div className={styles.newThreadContextChildBody}>
             <small>{thread.shortCode}</small>
-            <span>{thread.title || 'Untitled'}</span>
+            <span>{thread.topic || 'Untitled'}</span>
           </div>
         </div>
       ))}

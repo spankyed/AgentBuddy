@@ -29,10 +29,14 @@ export function ChatComposer({formStyle, outerStyle, state}: {formStyle?: CSSPro
         >
           <AttachmentStrip attachments={state.attachments} />
           {state.chatStatus ? <ChatStatusIndicator busy={state.chatStatus.busy} color={state.chatStatus.color} /> : null}
-          <div className={styles.editor}>
-            <span className={state.text ? styles.text : styles.placeholder}>
-              {state.text ? <ComposerText state={state} /> : state.placeholder}
-            </span>
+          <div className={`${styles.editorShell} tiptap-wrapper tiptap-input tiptap-input-chat`}>
+            <div className={`${styles.editor} ProseMirror`} contentEditable={!state.disabled} suppressContentEditableWarning>
+              <p>
+                <span className={state.text ? styles.text : styles.placeholder}>
+                  {state.text ? <ComposerText state={state} /> : state.placeholder}
+                </span>
+              </p>
+            </div>
           </div>
           {state.revertHistory ? <RevertHistoryPopup state={state.revertHistory} /> : null}
           {state.commandSuggestion ? <CommandSuggestionPopup state={state.commandSuggestion} /> : null}
@@ -79,39 +83,13 @@ function ChatStatusIndicator({busy, color}: {busy?: boolean; color: string}) {
 }
 
 function ComposerText({state}: {state: ChatComposerState}) {
-  const text = state.text ?? '';
-  const references = state.references ?? [];
-  if (references.length === 0) return <>{text}</>;
-
-  const parts: Array<string | ReactNode> = [text];
-  for (const reference of references) {
-    if (!reference.token) continue;
-    const nextParts: Array<string | ReactNode> = [];
-    let occurrence = 0;
-    for (const part of parts) {
-      if (typeof part !== 'string') {
-        nextParts.push(part);
-        continue;
-      }
-
-      let remaining = part;
-      let tokenIndex = remaining.indexOf(reference.token);
-      if (tokenIndex === -1) {
-        nextParts.push(part);
-        continue;
-      }
-
-      while (tokenIndex !== -1) {
-        nextParts.push(remaining.slice(0, tokenIndex));
-        nextParts.push(<ReferencePill key={`${reference.id}-${occurrence}`} label={reference.label} refType={reference.refType} />);
-        occurrence += 1;
-        remaining = remaining.slice(tokenIndex + reference.token.length);
-        tokenIndex = remaining.indexOf(reference.token);
-      }
-      nextParts.push(remaining);
-    }
-    parts.splice(0, parts.length, ...nextParts);
-  }
-
-  return <>{parts}</>;
+  if (!state.content?.length) return <>{state.text ?? ''}</>;
+  return (
+    <>
+      {state.content.map((node, index) => {
+        if (node.type === 'text') return <span key={`text-${index}`}>{node.text}</span>;
+        return <ReferencePill key={node.refId} label={node.label} refType={node.refType} selected={node.selected} />;
+      })}
+    </>
+  );
 }

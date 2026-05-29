@@ -69,6 +69,7 @@
   align-items: center;
   padding: 0.5rem 2rem 0.5rem 0.75rem;
   text-align: left;
+  white-space: nowrap;
 }
 
 .QuickPromptsPopup_item > button:first-child:hover {
@@ -105,6 +106,7 @@
   top: 50%;
   display: grid;
   place-items: center;
+  border-radius: 0.25rem;
   color: rgb(115 115 115);
   opacity: 0;
   padding: 0.25rem;
@@ -175,6 +177,7 @@
   color: white;
   font: inherit;
   font-size: 14px;
+  line-height: 1.25rem;
   padding: 0.125rem 0;
 }
 
@@ -210,6 +213,7 @@
   color: white;
   font: inherit;
   font-size: 14px;
+  line-height: 1.25rem;
   padding: 0.125rem 0;
 }
 
@@ -239,4 +243,8 @@
 .QuickPromptsPopup_addButtonDisabled {
   color: rgb(64 64 64);
   cursor: not-allowed;
+}
+
+.QuickPromptsPopup_pointerEventsNone {
+  pointer-events: none;
 }

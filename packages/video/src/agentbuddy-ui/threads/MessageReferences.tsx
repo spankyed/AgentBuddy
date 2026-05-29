@@ -5,26 +5,28 @@ import './MessageReferences.module.css';
 const styles = makeStyles('MessageReferences');
 
 export type MessageFileReference = {
-  isImage?: false;
+  isImage?: boolean;
   name: string;
+  path?: string;
   previewUrl?: string;
   typeLabel?: string;
 };
 
 export type MessageImageReference = {
-  isImage: true;
   name: string;
-  previewUrl: string;
-  typeLabel?: string;
+  url: string;
 };
 
-export type MessageReference = MessageFileReference | MessageImageReference;
+export type MessageReferencesState = {
+  files?: MessageFileReference[];
+  images?: MessageImageReference[];
+};
 
 // Mirrors the references/files/images strip in packages/renderer/src/plugins/threads/chat/message.vue.
-export function MessageReferences({references}: {references: MessageReference[]}) {
-  if (references.length === 0) return null;
-  const images = references.filter((reference): reference is MessageImageReference => reference.isImage === true);
-  const files = references.filter((reference): reference is MessageFileReference => reference.isImage !== true);
+export function MessageReferences({references}: {references?: MessageReferencesState}) {
+  const images = references?.images ?? [];
+  const files = references?.files ?? [];
+  if (images.length === 0 && files.length === 0) return null;
 
   return (
     <div className={styles.root}>
@@ -37,17 +39,18 @@ export function MessageReferences({references}: {references: MessageReference[]}
 function ImageReference({reference}: {reference: MessageImageReference}) {
   return (
     <div className={styles.image} title={reference.name}>
-      <img src={reference.previewUrl} alt="" />
+      <img src={reference.url} alt="" />
       <span className={styles.imageLabel}>{reference.name.replace(/\.[^.]+$/, '')}</span>
     </div>
   );
 }
 
-function FileReference({reference}: {reference: MessageReference}) {
+function FileReference({reference}: {reference: MessageFileReference}) {
+  const canShowPreview = Boolean(reference.isImage && reference.previewUrl);
   return (
     <div className={styles.file} title={reference.name}>
       <span className={styles.fileIcon}>
-        <Icons.File size={20} />
+        {canShowPreview ? <img src={reference.previewUrl} alt="" /> : <Icons.File size={20} />}
       </span>
       <span className={styles.fileText}>
         <span>{reference.name}</span>

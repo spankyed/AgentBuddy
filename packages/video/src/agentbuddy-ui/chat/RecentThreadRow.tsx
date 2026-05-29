@@ -13,29 +13,41 @@ type RecentThreadRowProps = {
   current?: boolean;
   editingName?: string;
   editingThreadId?: string;
+  stateConfig?: {
+    busy?: boolean;
+    color?: string;
+  };
   thread: RecentThreadRowState;
 };
 
 // Mirrors the row body in packages/renderer/src/plugins/threads/chat/recent-threads.vue.
-export function RecentThreadRow({active, current, editingName, editingThreadId, thread}: RecentThreadRowProps) {
-  const dotStyle = thread.busy || !thread.dotColor ? undefined : {backgroundColor: thread.dotColor};
+export function RecentThreadRow({active, current, editingName, editingThreadId, stateConfig, thread}: RecentThreadRowProps) {
+  const isBusy = stateConfig?.busy ?? false;
+  const dotStyle = isBusy || !stateConfig?.color ? undefined : {backgroundColor: stateConfig.color};
   const editing = thread.id === editingThreadId;
+  const topic = thread.topic || 'Untitled';
 
   return (
-    <div className={active ? styles.recentThreadActive : styles.recentThread} data-current={current ? 'true' : undefined} data-pinned={thread.pinned ? 'true' : undefined}>
+    <div className={active ? styles.recentThreadActive : styles.recentThread} data-current={current ? 'true' : undefined}>
       <span className={styles.recentThreadDotWrap}>
-        <span className={thread.busy ? styles.recentThreadDotBusy : styles.recentThreadDot} style={dotStyle} />
-        {thread.busy ? <span className={styles.recentThreadDotGlow} /> : null}
+        <span className={isBusy ? styles.recentThreadDotBusy : styles.recentThreadDot} style={dotStyle} />
+        {isBusy ? <span className={styles.recentThreadDotGlow} /> : null}
       </span>
       {editing ? (
-        <input className={styles.recentThreadRenameInput} readOnly value={editingName ?? thread.title ?? ''} />
+        <input className={styles.recentThreadRenameInput} readOnly value={editingName ?? topic} />
       ) : (
-        <span className={styles.recentThreadTitle}>{thread.title || 'Untitled'}</span>
+        <span className={styles.recentThreadTitle}>{topic}</span>
       )}
-      <button className={styles.recentThreadPinButton} title={thread.pinned ? 'Unpin thread' : 'Pin thread'} type="button">
-        <Icons.Pin className={thread.pinned ? styles.recentThreadPinActive : styles.recentThreadPin} size={12} />
-      </button>
-      <span className={styles.recentThreadTime}>{formatThreadTime(thread.timestamp, thread.time)}</span>
+      {thread.pinned ? (
+        <button className={styles.recentThreadPinButtonPinned} title="Unpin thread" type="button">
+          <Icons.Pin size={12} />
+        </button>
+      ) : (
+        <button className={styles.recentThreadPinButton} title="Pin thread" type="button">
+          <Icons.Pin size={12} />
+        </button>
+      )}
+      <span className={styles.recentThreadTime}>{formatThreadTime(thread.timestamp)}</span>
       <div className={styles.recentThreadActions}>
         <button title="Open thread details" type="button"><Icons.FileText size={12} />Details</button>
         <button title="Open thread artifacts" type="button"><Icons.PanelLeft size={12} />Artifacts</button>
@@ -49,10 +61,10 @@ export function RecentThreadRow({active, current, editingName, editingThreadId, 
   );
 }
 
-function formatThreadTime(timestamp: number | string | undefined, fallback: string | undefined) {
-  if (timestamp == null) return fallback ?? '';
+function formatThreadTime(timestamp: number | string | undefined) {
+  if (timestamp == null) return '';
   const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return fallback ?? '';
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',

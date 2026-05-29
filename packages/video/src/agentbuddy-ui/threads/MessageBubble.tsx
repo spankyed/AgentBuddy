@@ -5,7 +5,7 @@ import {makeStyles} from '../primitives/makeStyles';
 import {MessageActions} from './MessageActions';
 import {MessageAside} from './MessageAside';
 import {MessageMarker} from './MessageMarker';
-import {MessageReferences, type MessageReference} from './MessageReferences';
+import {MessageReferences, type MessageReferencesState} from './MessageReferences';
 import {MessageStatusIndicator} from './MessageStatusIndicator';
 import './MessageBubble.module.css';
 
@@ -20,14 +20,14 @@ type MessageBubbleProps = {
   forkable?: boolean;
   isCommand?: boolean;
   isTail?: boolean;
-  references?: MessageReference[];
+  references?: MessageReferencesState;
   sender: 'assistant' | 'marker' | 'system' | 'user';
   status?: 'queued' | 'cancelled';
   truncated?: boolean;
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/message.vue bubble structure.
-export function MessageBubble({asUser, autoHide, children, createdAt, expanded, forkable, isCommand, isTail, references = [], sender, status, truncated}: MessageBubbleProps) {
+export function MessageBubble({asUser, autoHide, children, createdAt, expanded, forkable, isCommand, isTail, references, sender, status, truncated}: MessageBubbleProps) {
   if (sender === 'marker') return <MessageMarker expanded={expanded} text={String(children)} />;
   if (sender === 'system') {
     return (

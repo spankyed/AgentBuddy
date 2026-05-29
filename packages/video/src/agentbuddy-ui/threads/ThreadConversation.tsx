@@ -3,11 +3,11 @@ import {ApprovalBlock} from './ApprovalBlock';
 import {MarkdownViewer} from './MarkdownViewer';
 import {MarkdownBlock} from './MarkdownBlock';
 import {MessageBubble} from './MessageBubble';
-import {PlanArtifactCard} from './PlanArtifactCard';
+import {PromptBlock} from './PromptBlock';
 import {ThinkingBlock} from './ThinkingBlock';
 import {ThreadChatCanvas} from './ThreadChatCanvas';
 import {ToolActivityBlock} from './ToolActivityBlock';
-import type {ApprovalBlockState, MarkdownBlockState, PlanArtifactState, ThinkingBlockState, ToolActivityBlockState} from './threadTypes';
+import type {ApprovalBlockState, MarkdownBlockState, PromptBlockState, ThinkingBlockState, ToolActivityBlockState} from './threadTypes';
 import {makeStyles} from '../primitives/makeStyles';
 import './ThreadConversation.module.css';
 
@@ -16,9 +16,9 @@ const styles = makeStyles('ThreadConversation');
 type ThreadConversationProps = {
   assistant: {
     approval?: ApprovalBlockState;
-    artifact?: PlanArtifactState;
     markdown: string;
     markdownBlock?: MarkdownBlockState;
+    promptBlock?: PromptBlockState;
     thinking?: ThinkingBlockState;
     toolActivity?: {
       rowOpacities?: number[];
@@ -40,8 +40,8 @@ type ThreadConversationProps = {
 // Reusable thread conversation surface for app-like scenes. Film shots provide
 // frame-derived text/cursor overlays; message rendering stays here.
 export function ThreadConversation({assistant, children, createdAt, messageStyles, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
-  const hasAssistantContent = Boolean(assistant.toolActivity || assistant.artifact || assistant.markdown.trim() || assistant.markdownBlock || assistant.approval || assistant.thinking);
-  const hasInteractionBlocks = Boolean(assistant.markdownBlock || assistant.approval || assistant.thinking || assistant.artifact);
+  const hasAssistantContent = Boolean(assistant.toolActivity || assistant.markdown.trim() || assistant.markdownBlock || assistant.promptBlock || assistant.approval || assistant.thinking);
+  const hasInteractionBlocks = Boolean(assistant.markdownBlock || assistant.promptBlock || assistant.approval || assistant.thinking);
   return (
     <ThreadChatCanvas>
       {topInset > 0 ? <div style={{height: topInset}} /> : null}
@@ -59,9 +59,9 @@ export function ThreadConversation({assistant, children, createdAt, messageStyle
             {hasInteractionBlocks ? (
               <div className={styles.interactionBlocks}>
                 {assistant.markdownBlock ? <MarkdownBlock state={assistant.markdownBlock} /> : null}
+                {assistant.promptBlock ? <PromptBlock state={assistant.promptBlock} /> : null}
                 {assistant.approval ? <ApprovalBlock state={assistant.approval} /> : null}
                 {assistant.thinking ? <ThinkingBlock state={assistant.thinking} /> : null}
-                {assistant.artifact ? <PlanArtifactCard artifact={assistant.artifact} /> : null}
               </div>
             ) : null}
           </MessageBubble>

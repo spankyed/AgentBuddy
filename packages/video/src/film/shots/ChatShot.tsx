@@ -1,8 +1,8 @@
 import type {ReactNode} from 'react';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {ChatComposer} from '../../agentbuddy-ui/chat/ChatComposer';
+import type {ChatComposerInlineNode} from '../../agentbuddy-ui/chat/chatTypes';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
-import {REFERENCE_TYPES} from '../../agentbuddy-ui/chat/referenceConfig';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
 import {Cursor} from '../overlays/Cursor';
 import {chatShotViewForFrame} from '../state/chat';
@@ -18,7 +18,7 @@ const bottomTabsHeight = 38;
 const composerInputHeight = 112;
 const composerEditorInsetLeft = 16;
 const composerEditorInsetTop = 12;
-const referencePopupAboveCursorOffset = 32;
+const referencePopupAboveCursorOffset = 4;
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
@@ -46,9 +46,18 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
               createdAt={view.conversation.createdAt}
               messageStyles={view.messageStyles}
               systemMessage={view.conversation.systemMessage}
-              userMessage={<>{formatUserMessage(view.conversation.userMessage.text, view.composer.references)}<Caret frame={frame} visible={view.conversation.userMessage.caretVisible} /></>}
+              userMessage={
+                <div className={`${styles.viewerWrapper} tiptap-wrapper tiptap-viewer tiptap-viewer-chat`}>
+                  <div className={`${styles.viewerProse} ProseMirror`} contentEditable={false}>
+                    <p>
+                      {formatUserMessage(view.conversation.userMessage.text, view.conversation.userMessage.content)}
+                      <Caret frame={frame} visible={view.conversation.userMessage.caretVisible} />
+                    </p>
+                  </div>
+                </div>
+              }
             >
-              <Cursor frame={frame} {...view.cursorPath} />
+              {view.cursorPath ? <Cursor frame={frame} {...view.cursorPath} /> : null}
             </ThreadConversation>
           </div>
         </AppWindow>
@@ -87,6 +96,7 @@ function withPopupPositions(
         ...composer.referenceAutocomplete,
         popupPosition: composer.referenceAutocomplete.popupPosition ?? referencePopupPlacement(
           composer.referenceAutocomplete.anchorCharacterIndex,
+          textBeforeAnchor(composer, composer.referenceAutocomplete.anchorCharacterIndex),
           dock,
           Boolean(composer.bottomTabs),
           rect,
@@ -99,6 +109,7 @@ function withPopupPositions(
         ...composer.commandSuggestion,
         popupPosition: composer.commandSuggestion.popupPosition ?? commandSuggestionPopupPlacement(
           composer.commandSuggestion.anchorCharacterIndex ?? 0,
+          textBeforeAnchor(composer, composer.commandSuggestion.anchorCharacterIndex ?? 0),
           dock,
           Boolean(composer.bottomTabs),
           rect,
@@ -144,6 +155,7 @@ function withPopupPositions(
 
 function commandSuggestionPopupPlacement(
   anchorCharacterIndex: number,
+  anchorText: string,
   dock: number,
   hasBottomTabs: boolean,
   rect: ReturnType<typeof composerPlacement>,
@@ -154,7 +166,7 @@ function commandSuggestionPopupPlacement(
   const clampedAnchor = Math.min(Math.max(anchorCharacterIndex, 0), 36);
   return {
     bottom: viewportHeight - (composerTop + composerEditorInsetTop) + 4,
-    left: composerLeft + composerEditorInsetLeft + clampedAnchor * 8.4,
+    left: composerLeft + composerEditorInsetLeft + estimatedInlineTextWidth(anchorText, clampedAnchor),
   };
 }
 
@@ -177,11 +189,13 @@ function newThreadMenuPlacement(rect: ReturnType<typeof bottomTabsPlacement>) {
   return {
     bottom: rect.bottom + 8,
     left: rect.left + rect.width - 184,
+    top: rect.top - 90,
   };
 }
 
 function referencePopupPlacement(
   anchorCharacterIndex: number,
+  anchorText: string,
   dock: number,
   hasBottomTabs: boolean,
   rect: ReturnType<typeof composerPlacement>,
@@ -192,8 +206,27 @@ function referencePopupPlacement(
   const clampedAnchor = Math.min(Math.max(anchorCharacterIndex, 0), 36);
   return {
     bottom: viewportHeight - (composerTop + composerEditorInsetTop) + referencePopupAboveCursorOffset,
-    left: composerLeft + composerEditorInsetLeft + clampedAnchor * 8.4,
+    left: composerLeft + composerEditorInsetLeft + estimatedInlineTextWidth(anchorText, clampedAnchor),
   };
+}
+
+function textBeforeAnchor(
+  composer: ReturnType<typeof chatShotViewForFrame>['composer'],
+  anchorCharacterIndex: number,
+) {
+  return composer.text?.slice(0, anchorCharacterIndex) ?? '';
+}
+
+function estimatedInlineTextWidth(text: string, fallbackCharacters: number) {
+  if (!text) return fallbackCharacters * 7.3;
+  return text.split('').reduce((width, character) => {
+    if (character === ' ') return width + 3.9;
+    if ('il.,:;!|'.includes(character)) return width + 3.8;
+    if ('mwMW@#'.includes(character)) return width + 12;
+    if (/[A-Z]/.test(character)) return width + 9.2;
+    if (/[0-9]/.test(character)) return width + 8;
+    return width + 7.3;
+  }, 0);
 }
 
 function composerInputTop(
@@ -219,55 +252,17 @@ function bottomTabsPlacement(rect: ReturnType<typeof composerPlacement>, viewpor
 
 function formatUserMessage(
   text: string,
-  references: NonNullable<ReturnType<typeof chatShotViewForFrame>['composer']['references']> | undefined,
+  content: ChatComposerInlineNode[] | undefined,
 ) {
-  const renderedParts = (references ?? []).reduce<Array<string | ReactNode>>((currentParts, reference) => {
-    if (!reference.token) return currentParts;
-    const nextParts: Array<string | ReactNode> = [];
-    let occurrence = 0;
-
-    for (const part of currentParts) {
-      if (typeof part !== 'string') {
-        nextParts.push(part);
-        continue;
-      }
-
-      let remaining = part;
-      let tokenIndex = remaining.indexOf(reference.token);
-      if (tokenIndex === -1) {
-        nextParts.push(part);
-        continue;
-      }
-
-      while (tokenIndex !== -1) {
-        nextParts.push(remaining.slice(0, tokenIndex));
-        nextParts.push(
-          <ReferencePill
-            href={referenceHref(reference)}
-            key={`${reference.id}-${occurrence}`}
-            label={reference.label}
-            mode="viewer"
-            refType={reference.refType}
-          />,
-        );
-        occurrence += 1;
-        remaining = remaining.slice(tokenIndex + reference.token.length);
-        tokenIndex = remaining.indexOf(reference.token);
-      }
-      nextParts.push(remaining);
-    }
-
-    return nextParts;
-  }, [text]);
-
-  return <>{renderedParts}</>;
-}
-
-function referenceHref(
-  reference: NonNullable<ReturnType<typeof chatShotViewForFrame>['composer']['references']>[number],
-) {
-  if (!reference.shortCode) return undefined;
-  return `${REFERENCE_TYPES[reference.refType].protocol}://${reference.shortCode}`;
+  if (!content?.length) return <>{text}</>;
+  return (
+    <>
+      {content.map((node, index) => {
+        if (node.type === 'text') return <span key={`text-${index}`}>{node.text}</span>;
+        return <ReferencePill key={node.refId} label={node.label} refType={node.refType} />;
+      })}
+    </>
+  );
 }
 
 function initialChatCursorForFrame(frame: number):
@@ -281,8 +276,12 @@ function initialChatCursorForFrame(frame: number):
     return {end: 166, from: [82, 59], start: 138, to: [82, 87]};
   }
 
+  if (frame >= 314 && frame < 348) {
+    return {end: 344, from: [26, 92], start: 314, to: [31, 66]};
+  }
+
   if (frame >= 410 && frame < 438) {
-    return {end: 432, from: [84, 86], start: 410, to: [49, 94]};
+    return {end: 436, from: [22, 73], start: 410, to: [86, 86]};
   }
 
   return null;

@@ -1,6 +1,7 @@
 import {Composition} from 'remotion';
 import {AgentBuddyFilm, AgentBuddyFilmSquare} from './film/AgentBuddyFilm';
 import {totalFrames} from './film/state/timeline';
+import './global.css';
 import {
   ActionDetailDemo,
   ActionCollapsedSectionsDemo,

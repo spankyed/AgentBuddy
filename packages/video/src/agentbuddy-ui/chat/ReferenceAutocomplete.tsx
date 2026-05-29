@@ -3,6 +3,7 @@ import {createPortal} from 'react-dom';
 import {ReferenceIcon} from './ReferencePill';
 import {referenceCategoryLabel} from './referenceConfig';
 import type {ChatComposerState} from './chatTypes';
+import {cx} from '../primitives/classNames';
 import './ChatComposer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 
@@ -18,29 +19,29 @@ type ReferenceAutocompleteState = NonNullable<ChatComposerState['referenceAutoco
 export function ReferenceAutocomplete({state}: {state: ReferenceAutocompleteState}) {
   const activeCategoryLabel = referenceCategoryLabel(state.selectedCategory);
   const popup = state.level === 'items' ? (
-    <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
-      <div className={styles.referenceSuggestionHeader}>
-        <span className={styles.referenceSuggestionBack}>←</span>
+    <div className={cx(styles.referenceAutocomplete, 'reference-suggestion-popup')} style={referenceAutocompleteStyleForState(state)}>
+      <div className={cx(styles.referenceSuggestionHeader, 'reference-suggestion-header')}>
+        <span className={cx(styles.referenceSuggestionBack, 'reference-suggestion-back')}>←</span>
         <span>{activeCategoryLabel}</span>
       </div>
       {state.suggestions.map((suggestion, index) => (
-        <div className={isActiveReferenceSuggestion(state.activeId, suggestion.id, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
-          <ReferenceIcon tone="suggestion" refType={suggestion.type} />
-          <span className={styles.referenceSuggestionLabel}>{suggestion.label}</span>
-          <span className={styles.referenceSuggestionCode} title={suggestion.shortCode}>{shortReferenceCode(suggestion.shortCode)}</span>
+        <div className={referenceSuggestionClassName(state.selectedIndex, index)} key={suggestion.id}>
+          <ReferenceIcon className="reference-suggestion-icon" tone="suggestion" refType={suggestion.type} />
+          <span className={cx(styles.referenceSuggestionLabel, 'reference-suggestion-label')}>{suggestion.label}</span>
+          <span className={cx(styles.referenceSuggestionCode, 'reference-suggestion-code')} title={suggestion.shortCode}>{shortReferenceCode(suggestion.shortCode)}</span>
         </div>
       ))}
-      {state.suggestions.length === 0 ? <div className={styles.referenceSuggestionEmpty}>No matching items</div> : null}
+      {state.suggestions.length === 0 ? <div className={cx(styles.referenceSuggestionEmpty, 'reference-suggestion-empty')}>No matching items</div> : null}
     </div>
   ) : (
-    <div className={styles.referenceAutocomplete} style={referenceAutocompleteStyleForState(state)}>
+    <div className={cx(styles.referenceAutocomplete, 'reference-suggestion-popup')} style={referenceAutocompleteStyleForState(state)}>
       {state.suggestions.map((suggestion, index) => (
-        <div className={isActiveReferenceSuggestion(state.activeId, suggestion.id, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion} key={suggestion.id}>
-          <ReferenceIcon tone="suggestion" refType={suggestion.id} />
-          <span>{suggestion.label}</span>
+        <div className={referenceSuggestionClassName(state.selectedIndex, index)} key={suggestion}>
+          <ReferenceIcon className="reference-suggestion-icon" tone="suggestion" refType={suggestion} />
+          <span>{referenceCategoryLabel(suggestion)}</span>
         </div>
       ))}
-      {state.suggestions.length === 0 ? <div className={styles.referenceSuggestionEmpty}>No matching categories</div> : null}
+      {state.suggestions.length === 0 ? <div className={cx(styles.referenceSuggestionEmpty, 'reference-suggestion-empty')}>No matching categories</div> : null}
     </div>
   );
 
@@ -56,7 +57,7 @@ function referenceAutocompleteStyleForState(state: ReferenceAutocompleteState): 
   if (!position) {
     return {
       bottom: '0px',
-      left: `${state.anchorCharacterIndex}px`,
+      left: '0px',
       position: 'fixed',
     };
   }
@@ -70,8 +71,16 @@ function referenceAutocompleteStyleForState(state: ReferenceAutocompleteState): 
   };
 }
 
-function isActiveReferenceSuggestion(activeId: string | undefined, suggestionId: string, index: number) {
-  return activeId ? suggestionId === activeId : index === 0;
+function isActiveReferenceSuggestion(selectedIndex: number | undefined, index: number) {
+  return index === (selectedIndex ?? 0);
+}
+
+function referenceSuggestionClassName(selectedIndex: number | undefined, index: number) {
+  return cx(
+    isActiveReferenceSuggestion(selectedIndex, index) ? styles.referenceSuggestionActive : styles.referenceSuggestion,
+    'reference-suggestion-item',
+    isActiveReferenceSuggestion(selectedIndex, index) && 'is-selected',
+  );
 }
 
 function shortReferenceCode(shortCode: string) {

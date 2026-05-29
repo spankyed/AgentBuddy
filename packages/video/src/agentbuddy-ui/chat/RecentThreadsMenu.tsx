@@ -20,6 +20,7 @@ const rendererContextMenuSideOffset = 2;
  * are not captured by transformed film wrappers.
  */
 export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
+  const selectedIndex = menu.selectedIndex ?? -1;
   const contextThread = menu.contextMenu
     ? menu.threads.find(thread => thread.id === menu.contextMenu?.threadId)
     : undefined;
@@ -45,13 +46,14 @@ export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
           </div>
         ) : (
           <div className={styles.recentThreadsList}>
-            {menu.threads.map(thread => (
+            {menu.threads.map((thread, index) => (
               <RecentThreadRow
-                active={thread.id === menu.activeId}
+                active={selectedIndex >= 0 && index === selectedIndex}
                 current={thread.id === menu.currentId}
                 editingName={menu.editingName}
                 editingThreadId={menu.editingThreadId}
                 key={thread.id}
+                stateConfig={menu.threadStates?.[thread.id]}
                 thread={thread}
               />
             ))}
@@ -64,7 +66,7 @@ export function RecentThreadsMenu({menu}: {menu: RecentThreadsMenuState}) {
           style={contextMenuPortalStyle(menu.contextMenu?.popupPosition, menu.popupPosition, contextBottomOffset, 160)}
         >
           <RecentThreadContextMenu
-            copyText={menu.contextMenu?.copyText ?? contextThread.shortCode ?? contextThread.id}
+            copyText={contextThread.shortCode ?? contextThread.id}
             isArchived={menu.contextMenu?.isArchived ?? false}
             isPinned={!!contextThread.pinned}
           />

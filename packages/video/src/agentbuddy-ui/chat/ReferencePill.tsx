@@ -7,47 +7,35 @@ import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('ChatComposer');
 
 export function ReferencePill({
-  href,
   label,
-  mode = 'editable',
   refType,
   selected,
 }: {
-  href?: string;
   label: string;
-  mode?: 'editable' | 'viewer';
   refType: ReferenceRefType;
   selected?: boolean;
 }) {
   const content = (
     <>
-      <span className={styles.referencePillIcon}>
+      <span className={cx(styles.referencePillIcon, 'reference-pill-icon')}>
         <ReferenceIconSvg refType={refType} size={14} />
       </span>
-      <span className={styles.referencePillLabel}>{label}</span>
+      <span className={cx(styles.referencePillLabel, 'reference-pill-label')}>{label}</span>
     </>
   );
 
-  const className = cx(styles.referencePill, selected && styles.referencePillSelected);
-  if (href) {
-    return (
-      <a className={className} data-editor-mode={mode} data-ref-type={refType} href={href}>
-        {content}
-      </a>
-    );
-  }
-
+  const className = cx(styles.referencePill, 'reference-pill', selected && 'ProseMirror-selectednode');
   return (
-    <span className={className} contentEditable={false} data-editor-mode={mode} data-ref-type={refType}>
+    <span className={className} contentEditable={false} data-ref-type={refType}>
       {content}
     </span>
   );
 }
 
-export function ReferenceIcon({tone = 'pill', refType}: {tone?: 'pill' | 'suggestion'; refType: ReferenceCategory | ReferenceRefType}) {
-  const className = tone === 'suggestion' ? styles.referenceSuggestionIcon : undefined;
+export function ReferenceIcon({className, tone = 'pill', refType}: {className?: string; tone?: 'pill' | 'suggestion'; refType: ReferenceCategory | ReferenceRefType}) {
+  const iconClassName = tone === 'suggestion' ? cx(styles.referenceSuggestionIcon, className) : className;
   const size = tone === 'suggestion' ? 16 : 14;
-  return <ReferenceIconSvg className={className} refType={refType} size={size} />;
+  return <ReferenceIconSvg className={iconClassName} refType={refType} size={size} />;
 }
 
 function ReferenceIconSvg({className, refType, size}: {className?: string; refType: ReferenceCategory | ReferenceRefType; size: number}) {

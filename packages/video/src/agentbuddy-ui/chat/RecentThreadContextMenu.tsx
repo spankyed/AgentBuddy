@@ -7,12 +7,12 @@ const styles = makeStyles('ChatComposer');
 // Mirrors packages/renderer/src/plugins/threads/canvas/components/thread-context-menu.vue.
 export function RecentThreadContextMenu({copyText, isArchived, isPinned}: {copyText: string; isArchived: boolean; isPinned: boolean}) {
   return (
-    <div className={styles.threadContextMenu} data-copy-text={copyText}>
+    <div className={styles.threadContextMenu}>
       <button className={styles.threadContextMenuItem} type="button">
         <Icons.Pencil className={styles.threadContextMenuNeutralIcon} size={14} />
         Rename
       </button>
-      <button className={styles.threadContextMenuItem} type="button">
+      <button className={styles.threadContextMenuItem} onClick={() => copyThreadId(copyText)} type="button">
         <Icons.Copy className={styles.threadContextMenuNeutralIcon} size={14} />
         Copy Id
       </button>
@@ -39,4 +39,9 @@ export function RecentThreadContextMenu({copyText, isArchived, isPinned}: {copyT
       </button>
     </div>
   );
+}
+
+function copyThreadId(copyText: string) {
+  if (typeof navigator === 'undefined') return;
+  void navigator.clipboard?.writeText(copyText);
 }

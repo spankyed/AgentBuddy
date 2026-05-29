@@ -34,14 +34,26 @@ export type RevertHistoryMessageState = {
 
 export type {ReferenceCategory, ReferenceRefType};
 
+export type ChatComposerInlineNode =
+  | {
+      text: string;
+      type: 'text';
+    }
+  | {
+      label: string;
+      refId: string;
+      refType: ReferenceRefType;
+      selected?: boolean;
+      shortCode: string;
+      type: 'reference';
+    };
+
 export type ChatComposerState = {
   attachments?: ChatAttachment[];
   bottomTabs?: {
     active?: 'active' | 'new' | 'recent';
     activeEditing?: boolean;
     activeLabel: string;
-    activePinned?: boolean;
-    newThreadLabel: string;
     newThreadMenu?: {
       openSubmenu?: 'child' | 'project';
       popupPosition?: {
@@ -57,16 +69,14 @@ export type ChatComposerState = {
       threads: Array<{
         id: string;
         shortCode?: string;
-        title: string;
+        timestamp: number;
+        topic: string;
       }>;
     };
     pressed?: 'active' | 'new' | 'recent';
-    recentLabel: string;
     recentThreadsMenu?: {
-      activeId?: string;
       archiveContextMenuThreadId?: string;
       contextMenu?: {
-        copyText?: string;
         isArchived?: boolean;
         popupPosition?: {
           bottom?: number;
@@ -88,15 +98,17 @@ export type ChatComposerState = {
         left: number;
         width: number;
       };
-      threads: Array<{
+      selectedIndex?: number;
+      threadStates?: Record<string, {
         busy?: boolean;
-        dotColor?: string;
+        color?: string;
+      }>;
+      threads: Array<{
         id: string;
         pinned?: boolean;
         shortCode?: string;
-        timestamp?: number | string;
-        time?: string;
-        title: string;
+        timestamp: number;
+        topic: string;
       }>;
     };
   };
@@ -127,15 +139,9 @@ export type ChatComposerState = {
   openSelector?: 'mode' | 'more-actions' | 'phase';
   phase?: string;
   placeholder: string;
+  content?: ChatComposerInlineNode[];
   referenceAutocomplete?: ReferenceAutocompleteState;
   referenceButtonPressed?: boolean;
-  references?: Array<{
-    id: string;
-    label: string;
-    refType: ReferenceRefType;
-    shortCode?: string;
-    token: string;
-  }>;
   quickPrompts?: QuickPromptState[];
   quickPromptsButtonPressed?: boolean;
   quickPromptsEditing?: boolean;
@@ -162,7 +168,6 @@ export type ChatComposerState = {
 };
 
 export type ReferenceAutocompleteState = {
-  activeId?: string;
   anchorCharacterIndex: number;
   categoryQuery: string;
   popupPosition?: {
@@ -171,15 +176,13 @@ export type ReferenceAutocompleteState = {
     top?: number;
   };
   query: string;
+  selectedIndex?: number;
   variant?: 'chat' | 'full';
 } & (
   | {
       level: 'category';
       selectedCategory: null;
-      suggestions: Array<{
-        id: ReferenceCategory;
-        label: string;
-      }>;
+      suggestions: ReferenceCategory[];
     }
   | {
       level: 'items';

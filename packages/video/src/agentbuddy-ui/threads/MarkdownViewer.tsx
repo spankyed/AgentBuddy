@@ -232,12 +232,12 @@ function pushLineWithSubDocumentLinks(blocks: MarkdownBlock[], line: string) {
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+  const parts = splitInlineMarkdown(text);
   return parts.map((part, index) => {
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
       const refType = referenceTypeFromHref(link[2]);
-      if (refType) return <ReferencePill href={link[2]} key={index} label={link[1]} mode="viewer" refType={refType} />;
+      if (refType) return <ReferencePill key={index} label={link[1]} refType={refType} />;
       return <a href={link[2]} key={index}>{link[1]}</a>;
     }
     if (part.startsWith('`') && part.endsWith('`')) return <code key={index}>{part.slice(1, -1)}</code>;
@@ -245,6 +245,58 @@ function renderInlineMarkdown(text: string) {
     if (part.startsWith('*') && part.endsWith('*')) return <em key={index}>{part.slice(1, -1)}</em>;
     return <span key={index}>{part}</span>;
   });
+}
+
+function splitInlineMarkdown(text: string) {
+  const parts: string[] = [];
+  let cursor = 0;
+  const tokenPattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+
+  while (cursor < text.length) {
+    const linkStart = text.indexOf('[', cursor);
+    tokenPattern.lastIndex = cursor;
+    const nextToken = tokenPattern.exec(text);
+    const tokenStart = nextToken?.index ?? -1;
+
+    if (linkStart !== -1 && (tokenStart === -1 || linkStart < tokenStart)) {
+      const parsed = readMarkdownLink(text, linkStart);
+      if (parsed) {
+        if (linkStart > cursor) parts.push(text.slice(cursor, linkStart));
+        parts.push(parsed.raw);
+        cursor = parsed.end;
+        continue;
+      }
+    }
+
+    if (nextToken) {
+      if (nextToken.index > cursor) parts.push(text.slice(cursor, nextToken.index));
+      parts.push(nextToken[0]);
+      cursor = nextToken.index + nextToken[0].length;
+      continue;
+    }
+
+    parts.push(text.slice(cursor));
+    break;
+  }
+
+  return parts.filter(Boolean);
+}
+
+function readMarkdownLink(text: string, start: number) {
+  const labelEnd = text.indexOf(']', start + 1);
+  if (labelEnd === -1 || text[labelEnd + 1] !== '(') return null;
+
+  let depth = 0;
+  for (let index = labelEnd + 2; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '(') depth += 1;
+    if (char === ')') {
+      if (depth === 0) return {end: index + 1, raw: text.slice(start, index + 1)};
+      depth -= 1;
+    }
+  }
+
+  return null;
 }
 
 function referenceTypeFromHref(href: string) {

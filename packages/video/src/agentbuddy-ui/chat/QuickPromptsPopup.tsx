@@ -23,11 +23,11 @@ export function QuickPromptsPopup({editing, editingId, editingText, newPromptTex
         <span>Quick Prompts</span>
         <button className={editing ? styles.editButtonActive : undefined} type="button"><Icons.Pencil size={14} /></button>
       </div>
-      <div className={styles.list}>
+      <div className={editing ? `${styles.list} quick-prompts-list` : styles.list}>
         {editing ? (
           prompts.map(prompt => (
             <div className={styles.editItem} key={prompt.id}>
-              <span className={styles.dragHandle} title="Drag to reorder"><Icons.GripVertical size={12} /></span>
+              <span className={styles.dragHandle} data-handle title="Drag to reorder"><Icons.GripVertical className={styles.pointerEventsNone} size={12} /></span>
               {editingId === prompt.id ? (
                 <textarea className={styles.editTextarea} readOnly rows={1} value={editingText ?? prompt.text} />
               ) : (
@@ -41,7 +41,7 @@ export function QuickPromptsPopup({editing, editingId, editingText, newPromptTex
         ) : prompts.length ? (
           prompts.map((prompt, index) => (
             <div className={styles.item} key={prompt.id}>
-              <button data-prompt-id={prompt.id} type="button">
+              <button data-prompt-id={prompt.id} title={prompt.text} type="button">
                 <span className={styles.index}>{index + 1}</span>
                 <span className={styles.text}>
                   {prompt.text.split('\n')[0]}

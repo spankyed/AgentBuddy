@@ -23,6 +23,7 @@ import {TogglesBlock} from '../../agentbuddy-ui/threads/TogglesBlock';
 import {ToolActivityBlock} from '../../agentbuddy-ui/threads/ToolActivityBlock';
 import {ToolInputBlock} from '../../agentbuddy-ui/threads/ToolInputBlock';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
+import {REFERENCE_CATEGORIES} from '../../agentbuddy-ui/chat/referenceConfig';
 import {ChatShot} from '../../film/shots/ChatShot';
 import {
   actionButtonsBlockDemoState,
@@ -64,9 +65,16 @@ import {DemoBottomSlot, DemoSlot, DemoStack} from '../DemoLayout';
 
 const launchPreviewUrl = new URL('../../../../../resources/draft-final.png', import.meta.url).toString();
 const recentThreadTimestamps = {
-  now: '2026-05-27T19:52:00',
-  twoMinutesAgo: '2026-05-27T19:50:00',
-  eightMinutesAgo: '2026-05-27T19:44:00',
+  now: new Date('2026-05-27T19:52:00').getTime(),
+  twoMinutesAgo: new Date('2026-05-27T19:50:00').getTime(),
+  eightMinutesAgo: new Date('2026-05-27T19:44:00').getTime(),
+};
+
+const referenceCategorySuggestions = (query = '') => {
+  const normalizedQuery = query.toLowerCase();
+  return REFERENCE_CATEGORIES
+    .filter(category => category.label.toLowerCase().includes(normalizedQuery))
+    .map(category => category.id);
 };
 const referenceDemoPopupPosition = {
   bottom: 220,
@@ -76,6 +84,10 @@ const referenceDemoUpperPopupPosition = {
   bottom: 432,
   left: 200,
 };
+const commandDemoPopupPosition = {
+  bottom: 214,
+  left: 160,
+};
 const recentThreadsDemoPopupPosition = {
   bottom: 214,
   left: 144,
@@ -84,6 +96,7 @@ const recentThreadsDemoPopupPosition = {
 const newThreadDemoPopupPosition = {
   bottom: 214,
   left: 1112,
+  top: 604,
 };
 type ReferenceAutocompleteDemoState = NonNullable<ChatComposerState['referenceAutocomplete']>;
 
@@ -241,6 +254,7 @@ export const ChatComposerCommandSuggestionDemo = () => (
           commandSuggestion: {
             activeIndex: 1,
             anchorCharacterIndex: 1,
+            popupPosition: commandDemoPopupPosition,
             query: 'la',
             suggestions: [
               {name: 'launch-film'},
@@ -264,6 +278,7 @@ export const ChatComposerCommandSuggestionEmptyDemo = () => (
           commandActive: true,
           commandSuggestion: {
             anchorCharacterIndex: 1,
+            popupPosition: commandDemoPopupPosition,
             query: 'zz',
             suggestions: [],
           },
@@ -281,17 +296,13 @@ export const ChatComposerReferenceCategoriesDemo = () => (
         state={{
           ...launchComposerState,
           referenceAutocomplete: referenceAutocompleteDemoState({
-            activeId: 'notes',
             anchorCharacterIndex: 4,
             categoryQuery: '',
             level: 'category',
             query: '',
+            selectedIndex: 2,
             selectedCategory: null,
-            suggestions: [
-              {id: 'threads', label: 'Threads'},
-              {id: 'documents', label: 'Library'},
-              {id: 'notes', label: 'Notes'},
-            ],
+            suggestions: referenceCategorySuggestions(),
           }),
           text: 'Use #',
         }}
@@ -307,15 +318,12 @@ export const ChatComposerReferenceFilteredCategoriesDemo = () => (
         state={{
           ...launchComposerState,
           referenceAutocomplete: referenceAutocompleteDemoState({
-            activeId: 'notes',
             anchorCharacterIndex: 4,
             categoryQuery: '',
             level: 'category',
             query: 'no',
             selectedCategory: null,
-            suggestions: [
-              {id: 'notes', label: 'Notes'},
-            ],
+            suggestions: referenceCategorySuggestions('no'),
           }),
           text: 'Use #no',
         }}
@@ -331,7 +339,6 @@ export const ChatComposerReferencesDemo = () => (
         state={{
           ...launchComposerState,
           referenceAutocomplete: referenceAutocompleteDemoState({
-            activeId: 'notes-current',
             anchorCharacterIndex: 4,
             categoryQuery: 'notes:',
             level: 'items',
@@ -342,8 +349,12 @@ export const ChatComposerReferencesDemo = () => (
               {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'notes-tasklist', type: 'tasklist'},
             ],
           }),
-          references: [{id: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current', token: '#notes:current'}],
-          text: 'Use #notes:current and this screenshot to turn launch context into tickets.',
+          content: [
+            {type: 'text', text: 'Use '},
+            {type: 'reference', refId: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
+            {type: 'text', text: ' and this screenshot to turn launch context into tickets.'},
+          ],
+          text: 'Use current and this screenshot to turn launch context into tickets.',
         }}
       />
     </DemoBottomSlot>
@@ -357,7 +368,6 @@ export const ChatComposerReferenceItemTypesDemo = () => (
         state={{
           ...launchComposerState,
           referenceAutocomplete: referenceAutocompleteDemoState({
-            activeId: 'thread-launch',
             anchorCharacterIndex: 4,
             categoryQuery: 'threads:',
             level: 'items',
@@ -377,7 +387,6 @@ export const ChatComposerReferenceItemTypesDemo = () => (
         state={{
           ...launchComposerState,
           referenceAutocomplete: referenceAutocompleteDemoState({
-            activeId: 'doc-release',
             anchorCharacterIndex: 4,
             categoryQuery: 'library:',
             level: 'items',
@@ -401,15 +410,21 @@ export const ChatComposerReferencePillsDemo = () => (
       <ChatComposer
         state={{
           ...launchComposerState,
-          references: [
-            {id: 'thread-launch', label: 'Launch PR implementation', refType: 'thread', shortCode: 'launch-pr', token: '#thread:launch-pr'},
-            {id: 'doc-brief', label: 'Release brief', refType: 'document', shortCode: 'brief', token: '#doc:brief'},
-            {id: 'folder-assets', label: 'Launch assets', refType: 'folder', shortCode: 'assets', token: '#folder:assets'},
-            {id: 'note-current', label: 'current', refType: 'note', shortCode: 'notes-current', token: '#note:current'},
-            {id: 'task-copy', label: 'Write launch copy', refType: 'task', shortCode: 'copy', token: '#task:copy'},
-            {id: 'tasklist-root', label: 'Tasklist', refType: 'tasklist', shortCode: 'notes-tasklist', token: '#tasklist:root'},
+          content: [
+            {type: 'text', text: 'Use '},
+            {type: 'reference', refId: 'thread-launch', label: 'Launch PR implementation', refType: 'thread', shortCode: 'launch-pr'},
+            {type: 'text', text: ' '},
+            {type: 'reference', refId: 'doc-brief', label: 'Release brief', refType: 'document', shortCode: 'brief'},
+            {type: 'text', text: ' '},
+            {type: 'reference', refId: 'folder-assets', label: 'Launch assets', refType: 'folder', shortCode: 'assets'},
+            {type: 'text', text: ' '},
+            {type: 'reference', refId: 'note-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
+            {type: 'text', text: ' '},
+            {type: 'reference', refId: 'task-copy', label: 'Write launch copy', refType: 'task', shortCode: 'copy'},
+            {type: 'text', text: ' '},
+            {type: 'reference', refId: 'tasklist-root', label: 'Tasklist', refType: 'tasklist', shortCode: 'notes-tasklist'},
           ],
-          text: 'Use #thread:launch-pr #doc:brief #folder:assets #note:current #task:copy #tasklist:root',
+          text: 'Use Launch PR implementation Release brief Launch assets current Write launch copy Tasklist',
         }}
       />
     </DemoBottomSlot>
@@ -462,17 +477,20 @@ export const ChatComposerRecentThreadsDemo = () => (
           bottomTabs: {
             active: 'recent',
             activeLabel: 'AgentBuddy launch film',
-            newThreadLabel: 'New thread',
             pressed: 'recent',
-            recentLabel: 'Recent Threads',
             recentThreadsMenu: {
-              activeId: 'launch-dev-complete',
               currentId: 'launch-plan',
               popupPosition: recentThreadsDemoPopupPosition,
+              selectedIndex: 0,
+              threadStates: {
+                'launch-dev-complete': {color: '#22c55e'},
+                'launch-plan': {busy: true},
+                'release-checks': {color: '#f59e0b'},
+              },
               threads: [
-                {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
-                {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
-                {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', timestamp: recentThreadTimestamps.eightMinutesAgo},
+                {id: 'launch-dev-complete', topic: 'Launch PR implementation', pinned: true, shortCode: 'AB-104', timestamp: recentThreadTimestamps.now},
+                {id: 'launch-plan', topic: 'Launch Operating Plan', shortCode: 'AB-101', timestamp: recentThreadTimestamps.twoMinutesAgo},
+                {id: 'release-checks', topic: 'Release checklist', shortCode: 'AB-118', timestamp: recentThreadTimestamps.eightMinutesAgo},
               ],
             },
           },
@@ -491,9 +509,7 @@ export const ChatComposerRecentThreadsEmptyDemo = () => (
           bottomTabs: {
             active: 'recent',
             activeLabel: 'AgentBuddy launch film',
-            newThreadLabel: 'New thread',
             pressed: 'recent',
-            recentLabel: 'Recent Threads',
             recentThreadsMenu: {
               popupPosition: recentThreadsDemoPopupPosition,
               threads: [],
@@ -514,24 +530,25 @@ export const ChatComposerRecentThreadsRenameDemo = () => (
           bottomTabs: {
             active: 'recent',
             activeLabel: 'AgentBuddy launch film',
-            newThreadLabel: 'New thread',
             pressed: 'recent',
-            recentLabel: 'Recent Threads',
             recentThreadsMenu: {
-              activeId: 'launch-dev-complete',
-              archiveContextMenuThreadId: 'release-checks',
               contextMenu: {
-                copyText: 'launch-plan',
                 threadId: 'launch-plan',
               },
               currentId: 'launch-plan',
               editingName: 'Launch Operating Plan',
               editingThreadId: 'launch-plan',
               popupPosition: recentThreadsDemoPopupPosition,
+              selectedIndex: 0,
+              threadStates: {
+                'launch-dev-complete': {color: '#22c55e'},
+                'launch-plan': {busy: true},
+                'release-checks': {color: '#f59e0b'},
+              },
               threads: [
-                {id: 'launch-dev-complete', title: 'Launch PR implementation', dotColor: '#22c55e', pinned: true, timestamp: recentThreadTimestamps.now},
-                {id: 'launch-plan', title: 'Launch Operating Plan', busy: true, timestamp: recentThreadTimestamps.twoMinutesAgo},
-                {id: 'release-checks', title: 'Release checklist', dotColor: '#f59e0b', timestamp: recentThreadTimestamps.eightMinutesAgo},
+                {id: 'launch-dev-complete', topic: 'Launch PR implementation', pinned: true, shortCode: 'AB-104', timestamp: recentThreadTimestamps.now},
+                {id: 'launch-plan', topic: 'Launch Operating Plan', shortCode: 'AB-101', timestamp: recentThreadTimestamps.twoMinutesAgo},
+                {id: 'release-checks', topic: 'Release checklist', shortCode: 'AB-118', timestamp: recentThreadTimestamps.eightMinutesAgo},
               ],
             },
           },
@@ -551,9 +568,7 @@ export const ChatComposerActiveThreadRenameDemo = () => (
             active: 'active',
             activeEditing: true,
             activeLabel: 'AgentBuddy launch film',
-            newThreadLabel: 'New thread',
             pressed: 'active',
-            recentLabel: 'Recent Threads',
           },
         }}
       />
@@ -570,7 +585,6 @@ export const ChatComposerNewThreadProjectMenuDemo = () => (
           bottomTabs: {
             active: 'new',
             activeLabel: 'AgentBuddy launch film',
-            newThreadLabel: 'New thread',
             newThreadMenu: {
               openSubmenu: 'project',
               popupPosition: newThreadDemoPopupPosition,
@@ -581,7 +595,6 @@ export const ChatComposerNewThreadProjectMenuDemo = () => (
               threads: [],
             },
             pressed: 'new',
-            recentLabel: 'Recent Threads',
           },
         }}
       />
@@ -598,19 +611,17 @@ export const ChatComposerNewThreadChildMenuDemo = () => (
           bottomTabs: {
             active: 'new',
             activeLabel: 'AgentBuddy launch film',
-            newThreadLabel: 'New thread',
             newThreadMenu: {
               openSubmenu: 'child',
               popupPosition: newThreadDemoPopupPosition,
               projects: [],
               threads: [
-                {id: 'launch-plan', shortCode: 'AB-104', title: 'Launch Operating Plan'},
-                {id: 'release-checks', shortCode: 'AB-118', title: 'Release checklist'},
-                {id: 'film-polish', shortCode: 'AB-123', title: 'Polish launch film UI'},
+                {id: 'launch-plan', shortCode: 'AB-104', timestamp: recentThreadTimestamps.now, topic: 'Launch Operating Plan'},
+                {id: 'release-checks', shortCode: 'AB-118', timestamp: recentThreadTimestamps.twoMinutesAgo, topic: 'Release checklist'},
+                {id: 'film-polish', shortCode: 'AB-123', timestamp: recentThreadTimestamps.eightMinutesAgo, topic: 'Polish launch film UI'},
               ],
             },
             pressed: 'new',
-            recentLabel: 'Recent Threads',
           },
         }}
       />
@@ -740,7 +751,7 @@ export const FullMarkdownViewerDemo = () => (
         content={[
           '# Launch notes',
           '',
-          'Open [Tasklist](document://tasklist-current?icon=%F0%9F%93%9D) and attach it to [Launch PR implementation](thread://launch-pr).',
+          'Open [Tasklist](tasklist://tasklist-current) and attach it to [Launch PR implementation](thread://launch-pr).',
           '',
           '- [x] Capture launch context',
           '- [ ] Ship release automation',
