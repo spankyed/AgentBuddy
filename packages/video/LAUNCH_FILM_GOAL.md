@@ -6,6 +6,8 @@ Ship a polished Remotion-driven AgentBuddy launch film that feels authored and c
 
 The film is built from reusable React/Remotion replicas of AgentBuddy UI, not Electron captures, Playwright screenshots, screenshot carousels, or invented product screens.
 
+`packages/video/STORYBOARD.md` is the source of truth for the film's persona, project, story, canonical names, thread IDs, branch, command, chapter beats, and continuity map. If implementation state, copy, or timing conflicts with `STORYBOARD.md`, update the implementation to match the storyboard unless the storyboard itself is intentionally revised first.
+
 ## Non-Negotiables
 
 - Every app-like surface must be source-backed by renderer code, renderer styles, or current app screenshots.
@@ -18,11 +20,13 @@ The film is built from reusable React/Remotion replicas of AgentBuddy UI, not El
 
 Required for this launch film:
 
+- Story continuity: one session following Sam shipping Supafan's checkout flow, exactly as defined in `STORYBOARD.md`.
+- Shared canonical state: threads, recent threads, dashboard tabs, kanban cards, notes references, branch/worktree/PR data, workflow command, logs, and database results must reuse the same names/IDs across chapters.
 - App chrome and toolbar, including correct icons, active states, and pinned lower plugins.
 - Chat and threads: composer, messages, tool activity, references, artifacts, recent threads, and thread board navigation.
 - Notes: home, search, new note, editor, right rail, tasklist panel, task rows, and checkbox completion.
 - Code and PR: source control, pull request files/create/details views, terminal, Monaco-backed code views, and a separate chrome-like localhost preview prop.
-- Flows: blueprint canvas, palette, nodes, handles, and real elbow-edge routing.
+- Flows: blueprint canvas, palette, nodes, handles, and real elbow-edge routing for the `/supafan deploy-checkout` workflow.
 - Final lockup: brand copy on plain black, not inside app chrome.
 
 Out of scope until rebuilt with the same fidelity:
@@ -39,18 +43,22 @@ Out of scope until rebuilt with the same fidelity:
 
 ## Chapter Beats
 
+Do not invent chapter story beats in this file. The detailed beats live in `packages/video/STORYBOARD.md`; this section only captures implementation constraints.
+
 Chat and threads:
 
-- Show a real conversation with composer, messages, tool activity, references, and artifacts.
+- Follow `STORYBOARD.md` Chapter 1 exactly: Sam starts in `Checkout flow implementation`, references `#notes:current`, receives a checkout implementation plan, opens recent threads, switches to `Stripe payment integration`, and sends the review quick prompt.
 - Navigate to the thread board by clicking the real thread title/control.
 - Avoid black frames and grow-in transitions during navigation.
 
+Board:
+
+- Follow `STORYBOARD.md` Chapter 2 exactly: dashboard tabs, artifact sidebar, `Add discount code support` create form, linked parent `Checkout flow implementation`, list/kanban state, and card movement must remain continuous with Chat and Notes.
+- Do not create, pin, select, move, or change thread state without a visible mouse action when the app would require one.
+
 Notes:
 
-- Start on the real Notes home layout.
-- Type `Good afternoon` in place where the real home content belongs, without a fake surrounding card.
-- Reveal search, `+ New note`, and Recently visited in the real home layout.
-- Click `+ New note`, enter the note editor, and type the launch note content.
+- Follow `STORYBOARD.md` Chapter 3 exactly: Supafan notes home, checkout-current note, tasklist panel, receipt email completion, and `#threads: Add discount code support` reference.
 - Show the Notes right rail only after leaving home.
 - Use the right rail to open Tasklist, then show the tasklist left panel.
 - Open a todo note and mark it complete using real task row and checkbox styling.
@@ -58,6 +66,7 @@ Notes:
 
 Code and PR:
 
+- Follow `STORYBOARD.md` Chapter 4 exactly: `~/Supafan`, `sam/checkout-flow`, checkout-service diff, receipt/discount files, checkout tests, PR #42, and Sam as author.
 - Match the real source-control hierarchy: panel header, directory selector, feature toolbar, branch selector, commit message, changes, commits, worktrees, and terminal.
 - Include PR files/diff, publish branch, create PR, and PR details states.
 - Use Monaco for code viewers.
@@ -66,11 +75,17 @@ Code and PR:
 Flows:
 
 - Treat flows as blueprints, not runtime/composer/status UI.
+- Follow `STORYBOARD.md` Chapter 5 exactly: `/supafan deploy-checkout`, deploy checkout flow list, listener, switch, migrations action, notify action.
 - Start the workflow chapter with only the listener node on a plain black background.
 - Attach the switch node while still isolated, then progressively reveal the real app canvas, header, toolbar, palette, and follow-on nodes.
 - Do not show the full flow canvas or app shell at the start of the workflow shot.
 - Do not show brain-plugin status indicators on flow nodes.
 - Route edges as app-like elbow paths that attach to real handles.
+
+Montage:
+
+- Follow `STORYBOARD.md` Chapter 6 exactly: command, logs, database, and settings must continue the Supafan checkout deploy story.
+- Do not include unrelated obsolete-app, AgentBuddy-launch-film, fake plugin, or filler-grid beats.
 
 Final:
 
