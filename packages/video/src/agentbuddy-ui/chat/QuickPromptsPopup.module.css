@@ -24,7 +24,8 @@
 }
 
 .QuickPromptsPopup_header button,
-.QuickPromptsPopup_item button {
+.QuickPromptsPopup_item button,
+.QuickPromptsPopup_itemActive button {
   border: 0;
   background: transparent;
   color: inherit;
