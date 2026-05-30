@@ -37,8 +37,8 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const view = chatShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
   const {height, width} = useVideoConfig();
-  const appReveal = ease(frame, 58, 112);
-  const composerDock = ease(frame, 50, 122);
+  const appReveal = ease(frame, 126, 178);
+  const composerDock = ease(frame, 118, 178);
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
   const composer = withPopupPositions(view.composer, composerRect, composerDock, height);
   const targets = chatTargetsForFrame({composerRect, dock: composerDock, height, layout, variant, width});
@@ -283,22 +283,22 @@ function formatUserMessage(
 }
 
 function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
-  if (frame >= 24 && frame < 62) {
+  if (frame >= 124 && frame < 164) {
     return cursorMove(targets, {
-      end: 58,
+      end: 158,
       from: viewportPoint(width, height, 0.52, 0.53),
-      start: 24,
+      start: 124,
       to: 'newThread',
-      toPoint: {anchor: [0.52, 0.5]},
+      toPoint: {anchor: [0.42, 0.5], offset: [0, 7]},
     });
   }
 
-  if (frame >= 138 && frame < 174) {
+  if (frame >= 176 && frame < 210) {
     return cursorMove(targets, {
-      end: 166,
+      end: 204,
       from: 'newThread',
-      fromPoint: {anchor: [0.52, 0.5]},
-      start: 138,
+      fromPoint: {anchor: [0.42, 0.5], offset: [0, 7]},
+      start: 176,
       to: 'sendButton',
     });
   }
@@ -452,8 +452,8 @@ function emptyThreadQuoteForFrame(
   layout: ReturnType<typeof useAppWindowLayout>,
   variant?: 'landscape' | 'square',
 ) {
-  const enter = ease(frame, 64, 80);
-  const exit = ease(frame, 166, 178);
+  const enter = ease(frame, 132, 150);
+  const exit = ease(frame, 198, 210);
   const opacity = Math.min(enter, 1 - exit);
   if (opacity <= 0) return null;
 

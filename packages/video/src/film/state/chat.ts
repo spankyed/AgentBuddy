@@ -147,7 +147,7 @@ export const chatShotState = {
   breadcrumbs: ['Threads', 'Launch Thread'],
   createdAt: '9:41 AM',
   systemMessage: undefined,
-  prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
+  prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 24, to: 116, caretUntil: 210},
   response: {text: 'Claude Code is ready to implement - review the plan and approve.', from: 190, to: 218},
 };
 
@@ -485,7 +485,7 @@ export function completedDevThreadActivityViewForFrame(frame: number) {
 
 export function chatViewForFrame(frame: number) {
   const quickPromptActive = frame > quickPromptResponseStart;
-  const sentUserMessageStyle = frame >= 178
+  const sentUserMessageStyle = frame >= 210
     ? {opacity: 1, transform: 'translateY(0px)'}
     : {opacity: 0, transform: 'translateY(0px)'};
   const messageReveal = (from: number) => {
@@ -501,8 +501,8 @@ export function chatViewForFrame(frame: number) {
     response: quickPromptActive
       ? textReveal(commitMessageResponse, frame, quickPromptResponseStart, quickPromptResponseEnd)
       : textReveal(chatShotState.response.text, frame, 226, 260),
-    conversationOpacity: ease(frame, 110, 146),
-    conversationY: 28 - ease(frame, 110, 146) * 28,
+    conversationOpacity: ease(frame, 194, 224),
+    conversationY: 28 - ease(frame, 194, 224) * 28,
     messageStyles: {
       assistant: messageReveal(quickPromptActive ? 404 : 190),
       system: messageReveal(150),
@@ -514,17 +514,19 @@ export function chatViewForFrame(frame: number) {
 
 export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
-  const imageAttachmentEnter = ease(frame, 132, 148);
+  const imageAttachmentEnter = ease(frame, 118, 134);
   const recentThreadLoaded = frame >= recentThreadLoadedStart;
-  const showInitialThinking = frame >= 190 && frame < 226;
+  const showInitialThinking = frame >= 222 && frame < 246;
   const showInitialResponse = frame >= 226 && frame < 306;
   const showPlan = frame >= 260 && frame < 306;
   const showPlanApproval = frame >= 278 && frame < 306;
   const showApprovedSummary = frame >= 306 && frame < recentThreadLoadedStart;
   const showPlanToolActivity = frame >= 306 && frame < recentThreadLoadedStart;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
-  const typedNoteReference = view.prompt.includes('#notes:current');
-  const selectedNoteReference = typedNoteReference && frame >= 136;
+  const referenceStartIndex = 'Use '.length;
+  const referenceCompleteText = 'Use #notes:current ';
+  const selectedNoteReference = view.prompt.startsWith(referenceCompleteText);
+  const typedReferenceText = referenceTextFromPrompt(view.prompt);
   const noteReferencePromptContent: ChatComposerInlineNode[] | undefined = selectedNoteReference
     ? [
         {type: 'text', text: 'Use '},
@@ -532,13 +534,13 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
         {type: 'text', text: view.prompt.slice('#notes:current'.length + 'Use '.length)},
       ]
     : undefined;
-  const referenceAutocomplete = frame > 96 && frame < 136
-    ? typedNoteReference
+  const referenceAutocomplete = typedReferenceText && !selectedNoteReference
+    ? typedReferenceText.startsWith('notes:')
       ? {
-          anchorCharacterIndex: Math.max(view.prompt.indexOf('#'), 0),
+          anchorCharacterIndex: referenceStartIndex,
           categoryQuery: 'notes:',
           level: 'items' as const,
-          query: 'current',
+          query: typedReferenceText.slice('notes:'.length),
           selectedCategory: 'notes' as const,
           suggestions: [
             {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note' as const},
@@ -546,12 +548,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           ],
         }
       : {
-          anchorCharacterIndex: Math.max(view.prompt.indexOf('#'), 0),
+          anchorCharacterIndex: referenceStartIndex,
           categoryQuery: '',
           level: 'category' as const,
-          query: 'notes',
+          query: typedReferenceText,
           selectedCategory: null,
-          suggestions: referenceCategorySuggestions('notes'),
+          suggestions: referenceCategorySuggestions(typedReferenceText),
         }
     : undefined;
   const stableLoadedMessageStyles = {
@@ -573,9 +575,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     composer: {
       ...launchComposerState,
       referenceAutocomplete,
-      content: frame < 174 ? noteReferencePromptContent : undefined,
+      content: frame < 210 ? noteReferencePromptContent : undefined,
       attachments: [
-        ...(frame > 132 && frame < 174 ? [{
+        ...(frame > 118 && frame < 210 ? [{
           type: 'image' as const,
           label: 'image 1',
           previewUrl: launchNotePreviewUrl,
@@ -585,12 +587,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           },
         }] : []),
       ],
-      bottomTabs: frame > 28
+      bottomTabs: frame > 118
         ? {
             ...launchComposerState.bottomTabs!,
             activeLabel: recentThreadLoaded ? 'Launch PR implementation' : launchComposerState.bottomTabs!.activeLabel,
-            active: frame >= recentThreadLoadedStart ? 'active' : frame > recentThreadsClickStart && frame < recentThreadLoadedStart ? 'recent' : frame > 54 ? 'active' : undefined,
-            pressed: frame > 36 && frame < 58
+            active: frame >= recentThreadLoadedStart ? 'active' : frame > recentThreadsClickStart && frame < recentThreadLoadedStart ? 'recent' : frame > 150 ? 'active' : undefined,
+            pressed: frame > 142 && frame < 160
               ? 'new'
               : frame > recentThreadsClickStart && frame < recentThreadsClickEnd
                 ? 'recent'
@@ -615,11 +617,11 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
               : undefined,
           }
         : undefined,
-      referenceButtonPressed: frame > 96 && frame <= 108,
+      referenceButtonPressed: Boolean(typedReferenceText && !selectedNoteReference),
       quickPromptsButtonPressed: frame > quickPromptClickStart && frame <= quickPromptClickEnd,
       quickPromptsOpen: frame > quickPromptMenuStart && frame < quickPromptMenuEnd,
-      sendPressed: (frame >= 166 && frame < 174) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
-      text: frame > 78 && frame < 174 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? 'write a commit' : undefined,
+      sendPressed: (frame >= 198 && frame < 206) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
+      text: frame >= chatShotState.prompt.from && frame < 210 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? 'write a commit' : undefined,
     },
     conversation: {
       additionalAssistantMessages: [
@@ -677,7 +679,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
-        caretVisible: frame < 174 && view.promptCaretVisible,
+        caretVisible: frame < 210 && view.promptCaretVisible,
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
         text: showQuickPromptResponse ? 'write a commit' : recentThreadLoaded ? 'Polish the launch film UI and prepare the PR path.' : view.prompt,
       },
@@ -688,4 +690,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     },
     messageStyles: recentThreadLoaded && !showQuickPromptResponse ? stableLoadedMessageStyles : view.messageStyles,
   };
+}
+
+function referenceTextFromPrompt(prompt: string) {
+  const hashIndex = prompt.indexOf('#');
+  if (hashIndex === -1) return '';
+  const afterHash = prompt.slice(hashIndex + 1);
+  if (!afterHash) return '';
+  return afterHash.split(/\s/, 1)[0] ?? '';
 }
