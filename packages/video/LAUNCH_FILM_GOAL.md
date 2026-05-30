@@ -6,7 +6,18 @@ Ship a polished Remotion-driven AgentBuddy launch film that feels authored and c
 
 The film is built from reusable React/Remotion replicas of AgentBuddy UI, not Electron captures, Playwright screenshots, screenshot carousels, or invented product screens.
 
-`packages/video/STORYBOARD.md` is the source of truth for the film's persona, project, story, canonical names, thread IDs, branch, command, chapter beats, and continuity map. If implementation state, copy, or timing conflicts with `STORYBOARD.md`, update the implementation to match the storyboard unless the storyboard itself is intentionally revised first.
+## Source Of Truth
+
+`packages/video/STORYBOARD.md` is the canonical source for the launch film.
+
+Use the storyboard for:
+
+- Persona, project, product story, and overall narrative arc.
+- Canonical thread names, IDs, statuses, tags, branch names, paths, commands, authors, and repo names.
+- Chapter order, visible beats, copy, typed text, menus, cards, plan content, PR content, workflow labels, and montage content.
+- Cross-chapter continuity, including any item that appears in more than one place.
+
+If this goal file, film state, shot timing, component copy, or rendered output conflicts with `STORYBOARD.md`, treat the storyboard as correct. Change implementation to match the storyboard. Only change the storyboard first when intentionally revising the film's story.
 
 ## Non-Negotiables
 
@@ -20,7 +31,7 @@ The film is built from reusable React/Remotion replicas of AgentBuddy UI, not El
 
 Required for this launch film:
 
-- Story continuity: one session following Sam shipping Supafan's checkout flow, exactly as defined in `STORYBOARD.md`.
+- Story continuity: one session following the exact story defined in `STORYBOARD.md`.
 - Shared canonical state: threads, recent threads, dashboard tabs, kanban cards, notes references, branch/worktree/PR data, workflow command, logs, and database results must reuse the same names/IDs across chapters.
 - App chrome and toolbar, including correct icons, active states, and pinned lower plugins.
 - Chat and threads: composer, messages, tool activity, references, artifacts, recent threads, and thread board navigation.
@@ -41,56 +52,17 @@ Out of scope until rebuilt with the same fidelity:
 - Do not hide missing states with black frames, crossfades, centered cards, or whole-app scale transitions.
 - Product UI and film-only props must remain visually and structurally separate.
 
-## Chapter Beats
+## Chapter Rules
 
-Do not invent chapter story beats in this file. The detailed beats live in `packages/video/STORYBOARD.md`; this section only captures implementation constraints.
+Do not duplicate or invent story beats in this file. Detailed chapter content lives in `packages/video/STORYBOARD.md`; this section only captures implementation rules.
 
-Chat and threads:
-
-- Follow `STORYBOARD.md` Chapter 1 exactly: Sam starts in `Checkout flow implementation`, references `#notes:current`, receives a checkout implementation plan, opens recent threads, switches to `Stripe payment integration`, and sends the review quick prompt.
-- Navigate to the thread board by clicking the real thread title/control.
-- Avoid black frames and grow-in transitions during navigation.
-
-Board:
-
-- Follow `STORYBOARD.md` Chapter 2 exactly: dashboard tabs, artifact sidebar, `Add discount code support` create form, linked parent `Checkout flow implementation`, list/kanban state, and card movement must remain continuous with Chat and Notes.
-- Do not create, pin, select, move, or change thread state without a visible mouse action when the app would require one.
-
-Notes:
-
-- Follow `STORYBOARD.md` Chapter 3 exactly: Supafan notes home, checkout-current note, tasklist panel, receipt email completion, and `#threads: Add discount code support` reference.
-- Show the Notes right rail only after leaving home.
-- Use the right rail to open Tasklist, then show the tasklist left panel.
-- Open a todo note and mark it complete using real task row and checkbox styling.
-- Do not show the chat composer or bottom thread tabs in Notes shots unless the real Notes plugin would.
-
-Code and PR:
-
-- Follow `STORYBOARD.md` Chapter 4 exactly: `~/Supafan`, `sam/checkout-flow`, checkout-service diff, receipt/discount files, checkout tests, PR #42, and Sam as author.
-- Match the real source-control hierarchy: panel header, directory selector, feature toolbar, branch selector, commit message, changes, commits, worktrees, and terminal.
-- Include PR files/diff, publish branch, create PR, and PR details states.
-- Use Monaco for code viewers.
-- Show localhost output in a separate chrome-like film prop, never as an in-app fake browser.
-
-Flows:
-
-- Treat flows as blueprints, not runtime/composer/status UI.
-- Follow `STORYBOARD.md` Chapter 5 exactly: `/supafan deploy-checkout`, deploy checkout flow list, listener, switch, migrations action, notify action.
-- Start the workflow chapter with only the listener node on a plain black background.
-- Attach the switch node while still isolated, then progressively reveal the real app canvas, header, toolbar, palette, and follow-on nodes.
-- Do not show the full flow canvas or app shell at the start of the workflow shot.
-- Do not show brain-plugin status indicators on flow nodes.
-- Route edges as app-like elbow paths that attach to real handles.
-
-Montage:
-
-- Follow `STORYBOARD.md` Chapter 6 exactly: command, logs, database, and settings must continue the Supafan checkout deploy story.
-- Do not include unrelated obsolete-app, AgentBuddy-launch-film, fake plugin, or filler-grid beats.
-
-Final:
-
-- Use only brand copy on black.
-- Do not wrap the final lockup in app chrome.
+- Chat and threads: use the storyboard's prompt, reference flow, thinking state, plan message, recent thread switch, quick prompt flow, and board navigation. Navigate with real controls. Avoid black frames and grow-in transitions.
+- Board: use the storyboard's dashboard, create form, linked parent, list/kanban state, and card movement. Do not create, pin, select, move, or change thread state without a visible mouse action when the real app would require one.
+- Notes: use the storyboard's Notes home, editor, right rail, tasklist panel, typed lines, image resize, checkbox completion, and thread reference chip. Do not show chat composer or thread tabs in Notes shots unless the real Notes plugin would.
+- Code and PR: use the storyboard's project path, branch, files, diff, terminal, publish branch, create PR, PR details, checks, and PR file list. Use Monaco for code viewers. Show localhost output in a separate chrome-like film prop, never as an in-app fake browser.
+- Flows: use the storyboard's blueprint workflow. Start isolated with only the listener node, attach the switch node, then progressively reveal the real app canvas, header, toolbar, palette, and follow-on nodes. Do not show brain-plugin runtime/status UI. Route edges as app-like elbow paths attached to real handles.
+- Montage: use only the storyboard's command, logs, database, and settings beats. Do not include unrelated obsolete-app, AgentBuddy-launch-film, fake plugin, or filler-grid beats.
+- Final: use only brand copy on black. Do not wrap the final lockup in app chrome.
 
 ## Working Loop
 
