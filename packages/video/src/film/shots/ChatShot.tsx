@@ -313,11 +313,22 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
+  if (frame >= 346 && frame < 378) {
+    return cursorMove(targets, {
+      end: 370,
+      from: 'recentThreads',
+      fromPoint: {anchor: [0.42, 0.5]},
+      start: 346,
+      to: 'recentThreadRowFirst',
+      toPoint: {anchor: [0.28, 0.5]},
+    });
+  }
+
   if (frame >= 410 && frame < 438) {
     return cursorMove(targets, {
       end: 436,
       from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.44, 0.5]},
+      fromPoint: {anchor: [0.28, 0.5]},
       start: 410,
       to: 'quickPromptSend',
     });
