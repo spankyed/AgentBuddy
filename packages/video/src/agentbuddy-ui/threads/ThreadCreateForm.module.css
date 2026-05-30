@@ -91,6 +91,17 @@
 .ThreadCreateForm_titleInput {
   min-width: 0;
   flex: 1;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.ThreadCreateForm_titleInputText,
+.ThreadCreateForm_titleInputPlaceholder {
+  vertical-align: middle;
+}
+
+.ThreadCreateForm_titleInputPlaceholder {
+  color: rgb(82 82 82);
 }
 
 .ThreadCreateForm_statusSelect {
@@ -188,6 +199,26 @@
 .ThreadCreateForm_editorPlaceholder,
 .ThreadCreateForm_threadSearch {
   color: rgb(82 82 82);
+}
+
+.ThreadCreateForm_caret {
+  display: inline-block;
+  width: 1px;
+  height: 1.15em;
+  margin-left: 1px;
+  background: rgb(229 229 229);
+  transform: translateY(0.18em);
+  animation: ThreadCreateForm_caretBlink 1s steps(1, end) infinite;
+}
+
+@keyframes ThreadCreateForm_caretBlink {
+  0%, 52% {
+    opacity: 1;
+  }
+
+  53%, 100% {
+    opacity: 0;
+  }
 }
 
 .ThreadCreateForm_collapsible,

@@ -198,6 +198,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
         ...boardShotState.createForm,
         createPressed: createFrame > 102 && createFrame < 114,
         instructions: textReveal(boardShotState.createForm.instructions, createFrame, 34, 78),
+        instructionsCaretVisible: createFrame > 28 && createFrame < 78,
         linkPressed: createFrame > 82 && createFrame <= 90,
         linkedThreadsOpen: createFrame > 64,
         linkInputVisible: createFrame > 64 && createFrame <= 92,
@@ -206,6 +207,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
         parentThread: createFrame > 90 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,
         title: textReveal(boardShotState.createForm.title, createFrame, 10, 34),
+        titleCaretVisible: createFrame >= 0 && createFrame < 34,
       }
     : undefined;
   return {

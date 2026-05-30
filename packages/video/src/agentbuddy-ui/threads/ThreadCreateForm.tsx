@@ -7,6 +7,7 @@ const styles = makeStyles('ThreadCreateForm');
 export type ThreadCreateFormState = {
   createPressed?: boolean;
   instructions: string;
+  instructionsCaretVisible?: boolean;
   linkPressed?: boolean;
   linkedThreadsOpen?: boolean;
   linkInputVisible?: boolean;
@@ -26,6 +27,7 @@ export type ThreadCreateFormState = {
   tags?: string[];
   tagsOpen?: boolean;
   title: string;
+  titleCaretVisible?: boolean;
 };
 
 // Mirrors packages/renderer/src/plugins/threads/canvas/ThreadDetail.vue in create mode.
@@ -40,7 +42,10 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
           <span className={styles.headerLabel}>Title</span>
         </div>
         <div className={styles.headerCenter}>
-          <input className={styles.titleInput} data-onboarding-id="thread-topic-input" placeholder="Enter thread topic" readOnly value={state.title} />
+          <div className={styles.titleInput} data-onboarding-id="thread-topic-input">
+            <span className={state.title ? styles.titleInputText : styles.titleInputPlaceholder}>{state.title || 'Enter thread topic'}</span>
+            {state.titleCaretVisible ? <span className={styles.caret} /> : null}
+          </div>
           <select className={styles.statusSelect} disabled value="Backlog">
             <option>Backlog</option>
           </select>
@@ -60,6 +65,7 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
               <div className={styles.gutter}>1</div>
               <div className={state.instructions ? styles.editorText : styles.editorPlaceholder}>
                 {state.instructions || 'Enter instructions for the agent'}
+                {state.instructionsCaretVisible ? <span className={styles.caret} /> : null}
               </div>
             </div>
           </section>
