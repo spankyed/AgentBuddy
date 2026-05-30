@@ -313,10 +313,10 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 346 && frame < 364) {
+  if (frame >= 346 && frame < 362) {
     return cursorMove(targets, {
       click: false,
-      end: 360,
+      end: 358,
       from: 'recentThreads',
       fromPoint: {anchor: [0.42, 0.5]},
       start: 346,
@@ -325,21 +325,21 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 364 && frame < 390) {
+  if (frame >= 362 && frame < 390) {
     return cursorMove(targets, {
       click: false,
       end: 389,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 364,
+      start: 362,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.16, 0.5]},
     });
   }
 
-  if (frame >= 390 && frame < 402) {
+  if (frame >= 390 && frame < 414) {
     return cursorMove(targets, {
-      end: 400,
+      end: 408,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
       start: 390,
@@ -348,12 +348,12 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 424 && frame < 452) {
+  if (frame >= 438 && frame < 466) {
     return cursorMove(targets, {
-      end: 450,
+      end: 464,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 424,
+      start: 438,
       to: 'quickPromptSend',
     });
   }
