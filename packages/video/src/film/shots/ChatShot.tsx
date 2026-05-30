@@ -283,21 +283,10 @@ function formatUserMessage(
 }
 
 function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
-  if (frame >= 124 && frame < 164) {
-    return cursorMove(targets, {
-      end: 158,
-      from: viewportPoint(width, height, 0.52, 0.53),
-      start: 124,
-      to: 'newThread',
-      toPoint: {anchor: [0.42, 0.5], offset: [0, 7]},
-    });
-  }
-
   if (frame >= 176 && frame < 210) {
     return cursorMove(targets, {
       end: 204,
-      from: 'newThread',
-      fromPoint: {anchor: [0.42, 0.5], offset: [0, 7]},
+      from: viewportPoint(width, height, 0.52, 0.53),
       start: 176,
       to: 'sendButton',
     });

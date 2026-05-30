@@ -592,9 +592,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             ...launchComposerState.bottomTabs!,
             activeLabel: recentThreadLoaded ? 'Launch PR implementation' : launchComposerState.bottomTabs!.activeLabel,
             active: frame >= recentThreadLoadedStart ? 'active' : frame > recentThreadsClickStart && frame < recentThreadLoadedStart ? 'recent' : frame > 150 ? 'active' : undefined,
-            pressed: frame > 142 && frame < 160
-              ? 'new'
-              : frame > recentThreadsClickStart && frame < recentThreadsClickEnd
+            pressed: frame > recentThreadsClickStart && frame < recentThreadsClickEnd
                 ? 'recent'
                 : (frame > recentThreadSelectStart && frame < recentThreadLoadedStart) || (frame > quickPromptSendStart && frame < quickPromptSendEnd)
                   ? 'active'
