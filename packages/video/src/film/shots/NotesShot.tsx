@@ -154,7 +154,7 @@ function notesEditorCursorForFrame(frame: number): CursorPath | null {
 function notesHomeCursorTargets(): Record<string, TargetRect> {
   return {
     homeCenter: percentTarget(49, 55, 6, 6),
-    newNoteButton: percentTarget(65.5, 26.5, 3, 3),
+    newNoteButton: percentTarget(72.2, 24.4, 7.4, 4.4),
   };
 }
 
