@@ -25,6 +25,7 @@ type ThreadConversationProps = {
       state: ToolActivityBlockState;
     };
   };
+  additionalAssistantMessages?: AssistantConversationMessage[];
   children?: ReactNode;
   createdAt?: number | string;
   messageStyles?: {
@@ -37,37 +38,59 @@ type ThreadConversationProps = {
   userMessage: ReactNode;
 };
 
+type AssistantConversationMessage = ThreadConversationProps['assistant'] & {
+  autoHide?: boolean;
+  style?: CSSProperties;
+};
+
 // Reusable thread conversation surface for app-like scenes. Film shots provide
 // frame-derived text/cursor overlays; message rendering stays here.
-export function ThreadConversation({assistant, children, createdAt, messageStyles, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
-  const hasAssistantContent = Boolean(assistant.toolActivity || assistant.markdown.trim() || assistant.markdownBlock || assistant.promptBlock || assistant.approval || assistant.thinking);
-  const hasInteractionBlocks = Boolean(assistant.markdownBlock || assistant.promptBlock || assistant.approval || assistant.thinking);
+export function ThreadConversation({additionalAssistantMessages, assistant, children, createdAt, messageStyles, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
   return (
     <ThreadChatCanvas>
       {topInset > 0 ? <div style={{height: topInset}} /> : null}
       {systemMessage ? <div style={messageStyles?.system}><MessageBubble sender="system">{systemMessage}</MessageBubble></div> : null}
       <div style={messageStyles?.user}><MessageBubble sender="user" createdAt={createdAt} isTail>{userMessage}</MessageBubble></div>
-      {hasAssistantContent ? (
-        <div style={messageStyles?.assistant}>
-          <MessageBubble sender="assistant" createdAt={createdAt}>
-            {assistant.toolActivity ? (
-              <div className={styles.toolBlocks}>
-                <ToolActivityBlock rowOpacities={assistant.toolActivity.rowOpacities} state={assistant.toolActivity.state} />
-              </div>
-            ) : null}
-            {assistant.markdown.trim() ? <MarkdownViewer content={assistant.markdown} /> : null}
-            {hasInteractionBlocks ? (
-              <div className={styles.interactionBlocks}>
-                {assistant.markdownBlock ? <MarkdownBlock state={assistant.markdownBlock} /> : null}
-                {assistant.promptBlock ? <PromptBlock state={assistant.promptBlock} /> : null}
-                {assistant.approval ? <ApprovalBlock state={assistant.approval} /> : null}
-                {assistant.thinking ? <ThinkingBlock state={assistant.thinking} /> : null}
-              </div>
-            ) : null}
-          </MessageBubble>
-        </div>
-      ) : null}
+      <AssistantMessage createdAt={createdAt} message={assistant} style={messageStyles?.assistant} />
+      {additionalAssistantMessages?.map((message, index) => (
+        <AssistantMessage createdAt={createdAt} key={index} message={message} style={message.style} />
+      ))}
       {children}
     </ThreadChatCanvas>
+  );
+}
+
+function AssistantMessage({createdAt, message, style}: {createdAt?: number | string; message: AssistantConversationMessage; style?: CSSProperties}) {
+  const hasAssistantContent = Boolean(message.toolActivity || message.markdown.trim() || message.markdownBlock || message.promptBlock || message.approval || message.thinking);
+  const hasInteractionBlocks = Boolean(message.markdownBlock || message.promptBlock || message.approval || message.thinking);
+  if (!hasAssistantContent) return null;
+  if (message.autoHide) {
+    return (
+      <div style={style}>
+        <MessageBubble autoHide sender="assistant" createdAt={createdAt}>
+          {message.markdown}
+        </MessageBubble>
+      </div>
+    );
+  }
+  return (
+    <div style={style}>
+      <MessageBubble autoHide={message.autoHide} sender="assistant" createdAt={createdAt}>
+        {message.toolActivity ? (
+          <div className={styles.toolBlocks}>
+            <ToolActivityBlock rowOpacities={message.toolActivity.rowOpacities} state={message.toolActivity.state} />
+          </div>
+        ) : null}
+        {message.markdown.trim() ? <MarkdownViewer content={message.markdown} /> : null}
+        {hasInteractionBlocks ? (
+          <div className={styles.interactionBlocks}>
+            {message.markdownBlock ? <MarkdownBlock state={message.markdownBlock} /> : null}
+            {message.promptBlock ? <PromptBlock state={message.promptBlock} /> : null}
+            {message.approval ? <ApprovalBlock state={message.approval} /> : null}
+            {message.thinking ? <ThinkingBlock state={message.thinking} /> : null}
+          </div>
+        ) : null}
+      </MessageBubble>
+    </div>
   );
 }

@@ -42,6 +42,19 @@ export type ChatShotView = {
   breadcrumbs: string[];
   composer: ChatComposerState;
   conversation: {
+    additionalAssistantMessages?: Array<{
+      approval?: ApprovalBlockState;
+      autoHide?: boolean;
+      markdown: string;
+      markdownBlock?: MarkdownBlockState;
+      promptBlock?: PromptBlockState;
+      style?: {
+        opacity: number;
+        transform: string;
+      };
+      thinking?: ThinkingBlockState;
+      toolActivity?: ReturnType<typeof toolActivityViewForFrame>;
+    }>;
     assistant: {
       approval?: ApprovalBlockState;
       markdown: string;
@@ -479,6 +492,9 @@ export function completedDevThreadActivityViewForFrame(frame: number) {
 
 export function chatViewForFrame(frame: number) {
   const quickPromptActive = frame > quickPromptResponseStart;
+  const sentUserMessageStyle = frame >= 178
+    ? {opacity: 1, transform: 'translateY(0px)'}
+    : {opacity: 0, transform: 'translateY(0px)'};
   const messageReveal = (from: number) => {
     const progress = ease(frame, from, from + 18);
     return {
@@ -491,13 +507,13 @@ export function chatViewForFrame(frame: number) {
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: quickPromptActive
       ? textReveal(commitMessageResponse, frame, quickPromptResponseStart, quickPromptResponseEnd)
-      : textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
+      : textReveal(chatShotState.response.text, frame, 226, 260),
     conversationOpacity: ease(frame, 110, 146),
     conversationY: 28 - ease(frame, 110, 146) * 28,
     messageStyles: {
       assistant: messageReveal(quickPromptActive ? 404 : 190),
       system: messageReveal(150),
-      user: messageReveal(quickPromptActive ? 388 : 154),
+      user: quickPromptActive ? messageReveal(388) : sentUserMessageStyle,
     },
     toolActivity: undefined,
   };
@@ -507,10 +523,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   const imageAttachmentEnter = ease(frame, 132, 148);
   const recentThreadLoaded = frame >= recentThreadLoadedStart;
-  const showPlan = frame >= 190 && frame < recentThreadLoadedStart;
-  const showPlanApproval = frame >= 218 && frame < 278;
-  const showPlanApproved = frame >= 278 && frame < recentThreadLoadedStart;
-  const showPlanThinking = frame >= 278 && frame < recentThreadLoadedStart;
+  const showInitialThinking = frame >= 190 && frame < 226;
+  const showInitialResponse = frame >= 226 && frame < 306;
+  const showPlan = frame >= 260 && frame < 306;
+  const showPlanApproval = frame >= 278 && frame < 306;
+  const showApprovedSummary = frame >= 306 && frame < recentThreadLoadedStart;
+  const showPlanToolActivity = frame >= 306 && frame < recentThreadLoadedStart;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const typedNoteReference = view.prompt.includes('#notes:current');
   const selectedNoteReference = typedNoteReference && frame >= 136;
@@ -562,9 +580,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     composer: {
       ...launchComposerState,
       referenceAutocomplete,
-      content: frame < 176 ? noteReferencePromptContent : undefined,
+      content: frame < 174 ? noteReferencePromptContent : undefined,
       attachments: [
-        ...(frame > 132 && frame < 166 ? [{
+        ...(frame > 132 && frame < 174 ? [{
           type: 'image' as const,
           label: 'image 1',
           previewUrl: launchNotePreviewUrl,
@@ -579,7 +597,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             ...launchComposerState.bottomTabs!,
             activeLabel: recentThreadLoaded ? 'Launch PR implementation' : launchComposerState.bottomTabs!.activeLabel,
             active: frame >= recentThreadLoadedStart ? 'active' : frame > recentThreadsClickStart && frame < recentThreadLoadedStart ? 'recent' : frame > 54 ? 'active' : undefined,
-            pressed: frame > 36 && frame < 54
+            pressed: frame > 36 && frame < 58
               ? 'new'
               : frame > recentThreadsClickStart && frame < recentThreadsClickEnd
                 ? 'recent'
@@ -607,22 +625,58 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       referenceButtonPressed: frame > 96 && frame <= 108,
       quickPromptsButtonPressed: frame > quickPromptClickStart && frame <= quickPromptClickEnd,
       quickPromptsOpen: frame > quickPromptMenuStart && frame < quickPromptMenuEnd,
-      sendPressed: (frame > 154 && frame < 166) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
-      text: frame > 78 && frame < 166 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? 'write a commit' : undefined,
+      sendPressed: (frame >= 166 && frame < 174) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
+      text: frame > 78 && frame < 174 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? 'write a commit' : undefined,
     },
     conversation: {
+      additionalAssistantMessages: [
+        ...(showPlan ? [{
+          approval: showPlanApproval ? launchPlanApprovalState : undefined,
+          markdown: '',
+          markdownBlock: {label: 'Plan', content: launchPlanMarkdown},
+          promptBlock: showPlanApproval ? {content: 'Approve this plan and start implementing?'} : undefined,
+          style: {
+            opacity: ease(frame, 260, 274),
+            transform: `translateY(${(1 - ease(frame, 260, 274)) * 18}px)`,
+          },
+        }] : []),
+        ...(showApprovedSummary ? [{
+          autoHide: true,
+          markdown: 'Approved launch execution plan — implementation started',
+          style: {
+            opacity: ease(frame, 306, 316),
+            transform: `translateY(${(1 - ease(frame, 306, 316)) * 12}px)`,
+          },
+        }] : []),
+        ...(showPlanToolActivity ? [{
+          markdown: '',
+          style: {
+            opacity: ease(frame, 312, 326),
+            transform: `translateY(${(1 - ease(frame, 312, 326)) * 18}px)`,
+          },
+          toolActivity: {
+            rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, 314 + index * 8, 326 + index * 8)),
+            state: chatToolActivity,
+          },
+        }] : []),
+      ],
       assistant: {
-        approval: showPlanApproval ? launchPlanApprovalState : showPlanApproved ? approvalBlockRespondedState : undefined,
+        approval: undefined,
         markdown: showQuickPromptResponse
           ? view.response
           : recentThreadLoaded
             ? completedDevThreadResponse
-            : showPlan || showPlanThinking
-              ? 'Claude Code is ready to implement - review the plan and approve.'
-              : view.response,
-        markdownBlock: showPlan ? {label: 'Plan', content: launchPlanMarkdown} : undefined,
-        promptBlock: showPlanApproval ? {content: 'Approve this plan and start implementing?'} : undefined,
-        thinking: showPlanThinking ? launchPlanThinkingState : undefined,
+            : showInitialResponse
+              ? view.response
+              : '',
+        markdownBlock: undefined,
+        promptBlock: undefined,
+        thinking: showInitialThinking ? {
+          defaultOpen: true,
+          label: 'Thinking',
+          state: 'streaming',
+          content: 'Reviewing the current tasklist, referenced notes, and screenshot before writing the implementation plan.',
+        } : undefined,
         toolActivity: recentThreadLoaded && !showQuickPromptResponse
           ? completedDevThreadActivityViewForFrame(frame)
           : undefined,
@@ -630,7 +684,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
-        caretVisible: frame < 166 && view.promptCaretVisible,
+        caretVisible: frame < 174 && view.promptCaretVisible,
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
         text: showQuickPromptResponse ? 'write a commit' : recentThreadLoaded ? 'Polish the launch film UI and prepare the PR path.' : view.prompt,
       },
@@ -641,7 +695,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     },
     messageStyles: recentThreadLoaded && !showQuickPromptResponse ? stableLoadedMessageStyles : view.messageStyles,
     cursorPath: showPlanApproval
-      ? {from: [82, 84] as [number, number], to: [31, 71] as [number, number], start: 244, end: 274}
+      ? {from: [82, 84] as [number, number], to: [31, 76] as [number, number], start: 286, end: 306}
       : undefined,
   };
 }

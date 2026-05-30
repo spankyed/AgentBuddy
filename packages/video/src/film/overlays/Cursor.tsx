@@ -47,10 +47,11 @@ export function Cursor({click = true, cursor, end, frame, from, scale = 1, start
             top: hotspotY,
             width: 18,
             height: 18,
-            border: '1.25px solid rgb(255 255 255 / 0.68)',
+            border: '1.5px solid rgb(255 255 255 / 0.82)',
+            background: 'rgb(255 255 255 / 0.1)',
             borderRadius: 999,
-            opacity: clickAmount * 0.24,
-            transform: `translate(-50%, -50%) scale(${mix(0.55, 1.72, clickAmount)})`,
+            opacity: clickAmount * 0.58,
+            transform: `translate(-50%, -50%) scale(${mix(0.48, 2.08, clickAmount)})`,
           }}
         />
       ) : null}

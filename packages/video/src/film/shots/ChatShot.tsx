@@ -30,7 +30,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
   const composer = withPopupPositions(view.composer, composerRect, composerDock, height);
   const initialCursor = initialChatCursorForFrame(frame);
-  const quote = emptyThreadQuoteForFrame(frame, composerRect, composerDock, height);
+  const quote = emptyThreadQuoteForFrame(frame, layout, variant);
 
   return (
     <div className={styles.root}>
@@ -44,6 +44,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
         <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
           <div style={{height: '100%', ...view.conversationStyle}}>
             <ThreadConversation
+              additionalAssistantMessages={view.conversation.additionalAssistantMessages}
               assistant={view.conversation.assistant}
               createdAt={view.conversation.createdAt}
               messageStyles={view.messageStyles}
@@ -271,11 +272,11 @@ function formatUserMessage(
 function initialChatCursorForFrame(frame: number):
   | {end: number; from: [number, number]; start: number; to: [number, number]}
   | null {
-  if (frame >= 24 && frame < 54) {
-    return {end: 54, from: [52, 53], start: 24, to: [74, 55.5]};
+  if (frame >= 24 && frame < 62) {
+    return {end: 58, from: [52, 53], start: 24, to: [75.5, 61.2]};
   }
 
-  if (frame >= 138 && frame < 166) {
+  if (frame >= 138 && frame < 174) {
     return {end: 166, from: [74, 55.5], start: 138, to: [82, 87]};
   }
 
@@ -292,23 +293,30 @@ function initialChatCursorForFrame(frame: number):
 
 function emptyThreadQuoteForFrame(
   frame: number,
-  rect: ReturnType<typeof composerPlacement>,
-  dock: number,
-  viewportHeight: number,
+  layout: ReturnType<typeof useAppWindowLayout>,
+  variant?: 'landscape' | 'square',
 ) {
-  const enter = ease(frame, 36, 56);
-  const exit = ease(frame, 92, 122);
+  const enter = ease(frame, 64, 80);
+  const exit = ease(frame, 166, 178);
   const opacity = Math.min(enter, 1 - exit);
   if (opacity <= 0) return null;
 
-  const inputTop = composerInputTop(rect, dock, true);
+  const windowLeft = Number(layout.windowStyle.left ?? 0);
+  const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowWidth = Number(layout.windowStyle.width ?? 1440);
+  const windowHeight = Number(layout.windowStyle.height ?? 900);
+  const mainLeft = windowLeft + 72;
+  const mainTop = windowTop + 42;
+  const mainWidth = windowWidth - 72;
+  const mainHeight = windowHeight - 42 - composerInputHeight - bottomTabsHeight - (variant === 'square' ? 34 : 28);
+
   return {
     style: {
-      left: rect.left - rect.width / 2,
+      left: mainLeft,
       opacity,
-      top: Math.max(118, inputTop - 176),
+      top: mainTop + mainHeight * 0.48,
       transform: `translateY(${mix(8, 0, enter) - exit * 6}px)`,
-      width: rect.width,
+      width: mainWidth,
     },
     text: '"My therapist says I have attachment issues. I say I have context windows."',
   };

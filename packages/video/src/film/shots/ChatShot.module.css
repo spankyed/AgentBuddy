@@ -16,6 +16,10 @@
   will-change: left, top, width, transform;
 }
 
+.ChatShot_root .MessageBubble_row {
+  animation: none;
+}
+
 .ChatShot_viewerWrapper {
   font-size: 15px;
   line-height: 1.5;
