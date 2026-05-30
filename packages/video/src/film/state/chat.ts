@@ -164,19 +164,9 @@ const completedDevThreadResponse = 'The launch film branch is ready for the comm
 
 const launchPlanMarkdown = `## AgentBuddy Launch Film -> Execution Pass
 
-### Context
-The launch thread has the current tasklist, the referenced notes, and the product screenshot in one place. The next step is to turn that context into implementation work without leaving the thread.
-
-Goal: create the execution tickets, pin the launch thread, and prepare the source-control path for a shippable PR.
-
-### Key Discovery
-The existing tasklist already identifies the film polish work: chat fidelity, notes navigation, code/PR flow, and flow-blueprint review. The screenshot gives enough product context to keep those tasks tied to the same launch surface.
-
-### Implementation Plan
 - Create execution tickets from the current tasklist and screenshot.
-- Pin the launch operating thread for the implementation pass.
-- Generate the branch plan and PR checklist from the same thread.
-- Queue the release workflow after the PR path is ready.`;
+- Pin the launch thread for the implementation pass.
+- Prepare the branch plan and PR checklist.`;
 
 const completedDevThreadActivity: ToolActivityBlockState = {
   defaultOpen: false,

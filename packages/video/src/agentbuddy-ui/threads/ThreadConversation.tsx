@@ -67,7 +67,7 @@ function AssistantMessage({createdAt, message, style}: {createdAt?: number | str
   if (message.autoHide) {
     return (
       <div style={style}>
-        <MessageBubble autoHide sender="assistant" createdAt={createdAt}>
+        <MessageBubble asUser autoHide sender="assistant" createdAt={createdAt}>
           {message.markdown}
         </MessageBubble>
       </div>
