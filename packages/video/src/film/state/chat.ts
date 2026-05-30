@@ -443,17 +443,17 @@ export const projectSelectRespondedState: ProjectSelectBlockState = {
   ],
 };
 
-const recentThreadsClickStart = 314;
-const recentThreadsClickEnd = 326;
-const recentThreadsMenuStart = 346;
-const recentThreadsMenuEnd = 418;
-const recentThreadSelectStart = 356;
-const recentThreadLoadedStart = 418;
-const quickPromptClickStart = 428;
-const quickPromptClickEnd = 440;
-const quickPromptMenuStart = 438;
-const quickPromptMenuEnd = 490;
-const quickPromptTextStart = 466;
+const recentThreadsClickStart = 346;
+const recentThreadsClickEnd = 358;
+const recentThreadsMenuStart = 378;
+const recentThreadsMenuEnd = 448;
+const recentThreadSelectStart = 388;
+const recentThreadLoadedStart = 448;
+const quickPromptClickStart = 456;
+const quickPromptClickEnd = 468;
+const quickPromptMenuStart = 466;
+const quickPromptMenuEnd = 500;
+const quickPromptTextStart = 476;
 const quickPromptSendStart = 492;
 const quickPromptSendEnd = 504;
 const quickPromptResponseStart = 506;
@@ -506,12 +506,12 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   const imageAttachmentEnter = ease(frame, 118, 134);
   const recentThreadLoaded = frame >= recentThreadLoadedStart;
-  const showInitialThinking = frame >= 222 && frame < 306;
-  const showInitialResponse = frame >= 246 && frame < 306;
-  const showPlan = frame >= 260 && frame < 306;
-  const showPlanApproval = frame >= 278 && frame < 306;
-  const showApprovedSummary = frame >= 306 && frame < recentThreadLoadedStart;
-  const showPlanToolActivity = frame >= 306 && frame < recentThreadLoadedStart;
+  const showInitialThinking = frame >= 222 && frame < 334;
+  const showInitialResponse = frame >= 246 && frame < 334;
+  const showPlan = frame >= 310 && frame < 334;
+  const showPlanApproval = frame >= 322 && frame < 334;
+  const showApprovedSummary = frame >= 334 && frame < recentThreadLoadedStart;
+  const showPlanToolActivity = frame >= 334 && frame < recentThreadLoadedStart;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const referenceStartIndex = 'Use '.length;
   const referenceCompleteText = 'Use #notes:current ';
@@ -619,26 +619,26 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           markdownBlock: {label: 'Plan', content: launchPlanMarkdown},
           promptBlock: showPlanApproval ? {content: 'Approve this plan and start implementing?'} : undefined,
           style: {
-            opacity: ease(frame, 260, 274),
-            transform: `translateY(${(1 - ease(frame, 260, 274)) * 18}px)`,
+            opacity: ease(frame, 310, 322),
+            transform: `translateY(${(1 - ease(frame, 310, 322)) * 18}px)`,
           },
         }] : []),
         ...(showApprovedSummary ? [{
           autoHide: true,
           markdown: 'Approved launch execution plan — implementation started',
           style: {
-            opacity: ease(frame, 306, 316),
-            transform: `translateY(${(1 - ease(frame, 306, 316)) * 12}px)`,
+            opacity: ease(frame, 334, 344),
+            transform: `translateY(${(1 - ease(frame, 334, 344)) * 12}px)`,
           },
         }] : []),
         ...(showPlanToolActivity ? [{
           markdown: '',
           style: {
-            opacity: ease(frame, 312, 326),
-            transform: `translateY(${(1 - ease(frame, 312, 326)) * 18}px)`,
+            opacity: ease(frame, 340, 354),
+            transform: `translateY(${(1 - ease(frame, 340, 354)) * 18}px)`,
           },
           toolActivity: {
-            rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, 314 + index * 8, 326 + index * 8)),
+            rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, 342 + index * 8, 354 + index * 8)),
             state: chatToolActivity,
           },
         }] : []),

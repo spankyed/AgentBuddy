@@ -292,68 +292,68 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 286 && frame < 310) {
+  if (frame >= 318 && frame < 342) {
     return cursorMove(targets, {
-      end: 306,
+      end: 338,
       from: 'sendButton',
-      start: 286,
+      start: 318,
       to: 'approvePlanPrimary',
       toPoint: {anchor: [0.42, 0.5]},
     });
   }
 
-  if (frame >= 314 && frame < 346) {
+  if (frame >= 346 && frame < 378) {
     return cursorMove(targets, {
-      end: 344,
+      end: 376,
       from: 'approvePlanPrimary',
       fromPoint: {anchor: [0.42, 0.5]},
-      start: 314,
+      start: 346,
       to: 'recentThreads',
       toPoint: {anchor: [0.42, 0.5]},
     });
   }
 
-  if (frame >= 346 && frame < 362) {
+  if (frame >= 378 && frame < 394) {
     return cursorMove(targets, {
       click: false,
-      end: 358,
+      end: 390,
       from: 'recentThreads',
       fromPoint: {anchor: [0.42, 0.5]},
-      start: 346,
+      start: 378,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.16, 0.5]},
     });
   }
 
-  if (frame >= 362 && frame < 390) {
+  if (frame >= 394 && frame < 418) {
     return cursorMove(targets, {
       click: false,
-      end: 389,
+      end: 417,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 362,
+      start: 394,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.16, 0.5]},
     });
   }
 
-  if (frame >= 390 && frame < 414) {
+  if (frame >= 418 && frame < 444) {
     return cursorMove(targets, {
-      end: 408,
+      end: 436,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 390,
+      start: 418,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.16, 0.5]},
     });
   }
 
-  if (frame >= 438 && frame < 466) {
+  if (frame >= 466 && frame < 494) {
     return cursorMove(targets, {
-      end: 464,
+      end: 492,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 438,
+      start: 466,
       to: 'quickPromptSend',
     });
   }
