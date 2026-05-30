@@ -83,6 +83,7 @@ function boardCursorForFrame(frame: number):
 
   if (frame >= 198 && frame < 228) {
     return cursorMove(targets, {
+      click: false,
       end: 216,
       from: 'linkThreadButton',
       fromPoint: {anchor: [0.55, 0.5]},
