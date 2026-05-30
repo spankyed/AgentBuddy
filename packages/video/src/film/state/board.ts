@@ -68,7 +68,7 @@ export const boardShotState: {
     parentThread: {
       relation: 'parent_of',
       status: 'Active',
-      tags: ['launch'],
+      tags: ['claude-code'],
       title: 'Launch operating plan',
     },
     tags: [],

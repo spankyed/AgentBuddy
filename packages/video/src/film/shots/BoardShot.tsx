@@ -154,6 +154,6 @@ function boardCursorTargets(): Record<string, TargetRect> {
     instructionsField: percentTarget(46, 34, 12, 5),
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
     linkActionButton: percentTarget(82, 40, 4.5, 3),
-    linkThreadButton: percentTarget(87, 33.2, 9, 3),
+    linkThreadButton: percentTarget(73.9, 44.9, 8.8, 3.6),
   };
 }
