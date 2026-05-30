@@ -608,6 +608,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       referenceButtonPressed: Boolean(typedReferenceText && !selectedNoteReference),
       quickPromptsButtonPressed: frame > quickPromptClickStart && frame <= quickPromptClickEnd,
       quickPromptsOpen: frame > quickPromptMenuStart && frame < quickPromptMenuEnd,
+      quickPromptsSelectedIndex: frame > quickPromptMenuStart + 14 && frame < quickPromptMenuEnd ? 0 : undefined,
       sendPressed: (frame >= 198 && frame < 206) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
       text: frame >= chatShotState.prompt.from && frame < 210 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? 'write a commit' : undefined,
     },

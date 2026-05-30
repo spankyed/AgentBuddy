@@ -27,6 +27,7 @@ type ComposerActionBarProps = {
   quickPromptsEditingText?: string;
   quickPromptsNewText?: string;
   quickPromptsOpen?: boolean;
+  quickPromptsSelectedIndex?: number;
   recording?: boolean;
   sendDisabled?: boolean;
   sendPressed?: boolean;
@@ -34,7 +35,7 @@ type ComposerActionBarProps = {
 };
 
 // Mirrors the button row in packages/renderer/src/plugins/threads/chat/input.vue.
-export function ComposerActionBar({busy, disabled, forcedMode, mode, modeOptions, openSelector, phase, quickPrompts, quickPromptsButtonPressed, quickPromptsEditing, quickPromptsEditingId, quickPromptsEditingText, quickPromptsNewText, quickPromptsOpen, recording, referenceButtonPressed, sendDisabled, sendPressed, speechSupported = true}: ComposerActionBarProps) {
+export function ComposerActionBar({busy, disabled, forcedMode, mode, modeOptions, openSelector, phase, quickPrompts, quickPromptsButtonPressed, quickPromptsEditing, quickPromptsEditingId, quickPromptsEditingText, quickPromptsNewText, quickPromptsOpen, quickPromptsSelectedIndex, recording, referenceButtonPressed, sendDisabled, sendPressed, speechSupported = true}: ComposerActionBarProps) {
   const moreActionsRef = useRef<HTMLSpanElement>(null);
   const leftMenuItems = [
     {className: referenceButtonPressed ? styles.moreActionsMenuItemActive : undefined, icon: Icons.Hash, label: 'Add reference'},
@@ -77,6 +78,7 @@ export function ComposerActionBar({busy, disabled, forcedMode, mode, modeOptions
               editingText={quickPromptsEditingText}
               newPromptText={quickPromptsNewText}
               prompts={quickPrompts ?? []}
+              selectedIndex={quickPromptsSelectedIndex}
             />
           ) : null}
         </span>

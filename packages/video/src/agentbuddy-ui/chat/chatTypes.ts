@@ -149,6 +149,7 @@ export type ChatComposerState = {
   quickPromptsEditingText?: string;
   quickPromptsNewText?: string;
   quickPromptsOpen?: boolean;
+  quickPromptsSelectedIndex?: number;
   recording?: boolean;
   revertHistory?: {
     level?: 'actions' | 'messages';

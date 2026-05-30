@@ -13,10 +13,11 @@ type QuickPromptsPopupProps = {
     id: string;
     text: string;
   }>;
+  selectedIndex?: number;
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/QuickPromptsPopup.vue.
-export function QuickPromptsPopup({editing, editingId, editingText, newPromptText, prompts}: QuickPromptsPopupProps) {
+export function QuickPromptsPopup({editing, editingId, editingText, newPromptText, prompts, selectedIndex}: QuickPromptsPopupProps) {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -40,7 +41,7 @@ export function QuickPromptsPopup({editing, editingId, editingText, newPromptTex
           ))
         ) : prompts.length ? (
           prompts.map((prompt, index) => (
-            <div className={styles.item} key={prompt.id}>
+            <div className={index === selectedIndex ? styles.itemActive : styles.item} key={prompt.id}>
               <button data-prompt-id={prompt.id} title={prompt.text} type="button">
                 <span className={styles.index}>{index + 1}</span>
                 <span className={styles.text}>
