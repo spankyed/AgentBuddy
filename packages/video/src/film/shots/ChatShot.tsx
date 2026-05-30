@@ -28,6 +28,8 @@ type ChatTargetId =
   | 'activeThreadTitle'
   | 'approvePlanPrimary'
   | 'newThread'
+  | 'quickPromptFirst'
+  | 'quickPromptsButton'
   | 'quickPromptSend'
   | 'recentThreadRowFirst'
   | 'recentThreads'
@@ -348,12 +350,44 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 466 && frame < 494) {
+  if (frame >= 456 && frame < 470) {
     return cursorMove(targets, {
-      end: 492,
+      end: 466,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 466,
+      start: 456,
+      to: 'quickPromptsButton',
+    });
+  }
+
+  if (frame >= 470 && frame < 490) {
+    return cursorMove(targets, {
+      click: false,
+      end: 486,
+      from: 'quickPromptsButton',
+      start: 470,
+      to: 'quickPromptFirst',
+      toPoint: {anchor: [0.25, 0.5]},
+    });
+  }
+
+  if (frame >= 490 && frame < 508) {
+    return cursorMove(targets, {
+      end: 502,
+      from: 'quickPromptFirst',
+      fromPoint: {anchor: [0.25, 0.5]},
+      start: 490,
+      to: 'quickPromptFirst',
+      toPoint: {anchor: [0.25, 0.5]},
+    });
+  }
+
+  if (frame >= 516 && frame < 540) {
+    return cursorMove(targets, {
+      end: 536,
+      from: 'quickPromptFirst',
+      fromPoint: {anchor: [0.25, 0.5]},
+      start: 516,
       to: 'quickPromptSend',
     });
   }
@@ -381,6 +415,10 @@ function chatTargetsForFrame({
   const composerTop = composerInputTop(composerRect, dock, true);
   const inputWidth = composerRect.width;
   const actionBarTop = composerTop + composerInputHeight - 44;
+  const actionButtonTop = actionBarTop + 2;
+  const actionButtonSize = 32;
+  const quickPromptButtonLeft = composerLeft + 88;
+  const quickPromptMenuTop = actionBarTop - 154;
   const sendWidth = 92;
   const sendHeight = 32;
   const bottomButtonHeight = 28;
@@ -416,6 +454,18 @@ function chatTargetsForFrame({
       left: bottomTabs.left + bottomTabs.width - newThreadButtonWidth,
       top: bottomButtonTop,
       width: newThreadButtonWidth,
+    },
+    quickPromptFirst: {
+      height: 36,
+      left: quickPromptButtonLeft + actionButtonSize / 2 - 128,
+      top: quickPromptMenuTop + 38,
+      width: 256,
+    },
+    quickPromptsButton: {
+      height: actionButtonSize,
+      left: quickPromptButtonLeft,
+      top: actionButtonTop,
+      width: actionButtonSize,
     },
     quickPromptSend: {
       height: sendHeight,

@@ -451,13 +451,13 @@ const recentThreadSelectStart = 388;
 const recentThreadLoadedStart = 448;
 const quickPromptClickStart = 456;
 const quickPromptClickEnd = 468;
-const quickPromptMenuStart = 466;
-const quickPromptMenuEnd = 500;
-const quickPromptTextStart = 476;
-const quickPromptSendStart = 492;
-const quickPromptSendEnd = 504;
-const quickPromptResponseStart = 506;
-const quickPromptResponseEnd = 508;
+const quickPromptMenuStart = 470;
+const quickPromptMenuEnd = 510;
+const quickPromptTextStart = 512;
+const quickPromptSendStart = 526;
+const quickPromptSendEnd = 538;
+const quickPromptResponseStart = 542;
+const quickPromptResponseEnd = 568;
 
 export function toolActivityViewForFrame(frame: number) {
   return {
