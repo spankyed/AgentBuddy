@@ -1,5 +1,6 @@
 import type {CSSProperties} from 'react';
 import {KanbanBoard} from './KanbanBoard';
+import {ThreadListView} from './ThreadListView';
 import {ThreadsHeader} from './ThreadsHeader';
 import type {KanbanBoardState, KanbanCardState, ThreadsHeaderState} from './threadTypes';
 import './ThreadsBoardSurface.module.css';
@@ -18,10 +19,12 @@ type ThreadsBoardSurfaceProps = {
 
 // Reusable board surface matching the renderer's threads canvas header + kanban stack.
 export function ThreadsBoardSurface({board, header, movingCard}: ThreadsBoardSurfaceProps) {
+  const activeView = header.activeView ?? 'kanban';
+
   return (
     <div className={styles.root}>
       <ThreadsHeader state={header} />
-      <KanbanBoard state={board} movingCard={movingCard} />
+      {activeView === 'list' ? <ThreadListView board={board} /> : <KanbanBoard state={board} movingCard={movingCard} />}
     </div>
   );
 }

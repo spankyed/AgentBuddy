@@ -43,8 +43,9 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
         </div>
         <div className={styles.headerCenter}>
           <div className={styles.titleInput} data-onboarding-id="thread-topic-input">
+            {!state.title && state.titleCaretVisible ? <span className={styles.leadingCaret} /> : null}
             <span className={state.title ? styles.titleInputText : styles.titleInputPlaceholder}>{state.title || 'Enter thread topic'}</span>
-            {state.titleCaretVisible ? <span className={styles.caret} /> : null}
+            {state.title && state.titleCaretVisible ? <span className={styles.caret} /> : null}
           </div>
           <select className={styles.statusSelect} disabled value="Backlog">
             <option>Backlog</option>
@@ -64,8 +65,9 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
             <div className={styles.editor}>
               <div className={styles.gutter}>1</div>
               <div className={state.instructions ? styles.editorText : styles.editorPlaceholder}>
+                {!state.instructions && state.instructionsCaretVisible ? <span className={styles.leadingCaret} /> : null}
                 {state.instructions || 'Enter instructions for the agent'}
-                {state.instructionsCaretVisible ? <span className={styles.caret} /> : null}
+                {state.instructions && state.instructionsCaretVisible ? <span className={styles.caret} /> : null}
               </div>
             </div>
           </section>

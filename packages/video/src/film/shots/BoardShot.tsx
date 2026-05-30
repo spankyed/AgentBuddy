@@ -56,22 +56,36 @@ function boardCursorForFrame(frame: number):
     return cursorMove(targets, {end: 84, from: 'dashboardArea', start: 58, to: 'createThreadButton'}, 'percent');
   }
 
-  if (frame >= 142 && frame < 170) {
-    return cursorMove(targets, {end: 164, from: 'boardCenter', start: 142, to: 'activeCard'}, 'percent');
-  }
-
   if (frame >= 178 && frame < 208) {
-    return cursorMove(targets, {end: 198, from: 'activeCard', start: 178, to: 'createThreadButton'}, 'percent');
+    return cursorMove(targets, {end: 198, from: 'instructionsField', start: 178, to: 'createSaveButton'}, 'percent');
   }
 
-  if (frame >= 208 && frame < 236) {
+  if (frame >= 208 && frame < 238) {
     return cursorMove(targets, {
       end: 228,
-      from: 'createThreadButton',
-      fromPoint: {anchor: [0.25, 0.5]},
+      from: 'createSaveButton',
+      fromPoint: {anchor: [0.5, 0.5]},
       start: 208,
-      to: 'boardToolbar',
-      toPoint: {anchor: [0.58, 0.5]},
+      to: 'kanbanViewButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    }, 'percent');
+  }
+
+  if (frame >= 238 && frame < 264) {
+    return cursorMove(targets, {
+      end: 258,
+      from: 'kanbanViewButton',
+      start: 238,
+      to: 'activeCard',
+    }, 'percent');
+  }
+
+  if (frame >= 264 && frame < 306) {
+    return cursorMove(targets, {
+      end: 304,
+      from: 'activeCard',
+      start: 264,
+      to: 'inProgressDrop',
     }, 'percent');
   }
 
@@ -80,10 +94,14 @@ function boardCursorForFrame(frame: number):
 
 function boardCursorTargets(): Record<string, TargetRect> {
   return {
-    activeCard: percentTarget(75, 46, 6, 6),
+    activeCard: percentTarget(27, 38, 6, 6),
     boardCenter: percentTarget(51, 47, 6, 6),
     boardToolbar: percentTarget(56, 9.5, 7, 3),
+    createSaveButton: percentTarget(94.5, 11.8, 5, 3),
     createThreadButton: percentTarget(91, 9.6, 5, 3),
     dashboardArea: percentTarget(65, 21, 6, 6),
+    inProgressDrop: percentTarget(48, 34, 6, 6),
+    instructionsField: percentTarget(46, 34, 12, 5),
+    kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
   };
 }
