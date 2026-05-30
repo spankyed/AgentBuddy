@@ -17,6 +17,7 @@ first and treat it as the contract for what should be visible.
 Use the storyboard for:
 
 - Persona, project, product story, and overall narrative arc.
+- Non-negotiable visible chapter headings and title-card copy.
 - Canonical thread names, IDs, statuses, tags, branch names, paths, commands, authors, and repo names.
 - Chapter order, visible beats, copy, typed text, menus, cards, plan content, PR content, workflow labels, and montage content.
 - Cross-chapter continuity, including any item that appears in more than one place.
@@ -32,6 +33,9 @@ Before adding or changing a shot:
 
 ## Non-Negotiables
 
+- The visible chapter headings are the original launch-film copy, not story-state labels:
+  AgentBuddy is...; More than just an AI chat; More than just a note taker; More than just an IDE; More than just a workflow engine; AgentBuddy is a revolution / to put the full power of AI into the hands of the people.
+- The Sam/Supafan checkout story is internal continuity for UI content only. Do not rename title cards to checkout, branch, deploy, PR, or release-specific copy.
 - Every app-like surface must be source-backed by renderer code, renderer styles, or current app screenshots.
 - Shared replicas live in `packages/video/src/agentbuddy-ui/**`; shots compose those replicas instead of creating local fake UI.
 - Film-only elements, captions, cursor layers, camera choreography, and external preview windows live outside `agentbuddy-ui`.
@@ -53,7 +57,7 @@ Required for this launch film:
 
 Out of scope until rebuilt with the same fidelity:
 
-- Brain, database, logs, settings, prompts, actions, library, and any montage beat that depends on unfinished plugin UI.
+- Brain, settings, prompts, actions, library, and any montage beat that depends on unfinished plugin UI.
 
 ## Motion Standard
 
@@ -72,7 +76,7 @@ Do not duplicate or invent story beats in this file. Detailed chapter content li
 - Notes: use the storyboard's Notes home, editor, right rail, tasklist panel, typed lines, image resize, checkbox completion, and thread reference chip. Do not show chat composer or thread tabs in Notes shots unless the real Notes plugin would.
 - Code and PR: use the storyboard's project path, branch, files, diff, terminal, publish branch, create PR, PR details, checks, and PR file list. Use Monaco for code viewers. Show localhost output in a separate chrome-like film prop, never as an in-app fake browser.
 - Flows: use the storyboard's blueprint workflow. Start isolated with only the listener node, attach the switch node, then progressively reveal the real app canvas, header, toolbar, palette, and follow-on nodes. Do not show brain-plugin runtime/status UI. Route edges as app-like elbow paths attached to real handles.
-- Montage: use only the storyboard's command, logs, database, and settings beats. Do not include unrelated obsolete-app, AgentBuddy-launch-film, fake plugin, or filler-grid beats.
+- Montage: use only the storyboard's command, logs, and database beats. Do not include settings/default-configuration edits, unrelated obsolete-app, AgentBuddy-launch-film, fake plugin, or filler-grid beats.
 - Final: use only brand copy on black. Do not wrap the final lockup in app chrome.
 
 ## Working Loop

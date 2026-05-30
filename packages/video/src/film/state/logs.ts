@@ -173,7 +173,7 @@ export const logsLaunchReleaseState: LogsSurfaceState = {
       meta: {
         branch: launchFilmStory.branch,
         command: launchFilmStory.command,
-        threadId: launchFilmStory.threads.stripePaymentIntegration.id,
+        threadId: launchFilmStory.threads.deployChecklist.id,
       },
       source: 'flows',
       timestamp: now,

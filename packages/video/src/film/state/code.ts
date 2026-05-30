@@ -21,7 +21,7 @@ export type CodeShotView = {
 export const codeShotState: CodeShotState = {
   breadcrumbs: ['Code'],
   chromeDemoBreadcrumbs: ['Code'],
-  generatedCommitMessage: 'feat(checkout): wire Stripe payment flow with receipts',
+  generatedCommitMessage: 'feat(checkout): wire Stripe flow, receipts, and discounts',
   review: {
     baseDirectory: filmProjects.supafan,
     branch: launchFilmStory.branch,
@@ -49,6 +49,7 @@ export const codeShotState: CodeShotState = {
     changes: [
       {path: 'packages/api/src/webhooks/stripe-webhook.ts', status: 'modified'},
       {path: 'packages/api/src/services/receipt-service.ts', status: 'added'},
+      {path: 'packages/api/src/services/discount-service.ts', status: 'added'},
       {path: 'packages/worker/src/jobs/payout-worker.ts', status: 'modified'},
     ],
     commits: [
@@ -66,6 +67,7 @@ export const codeShotState: CodeShotState = {
       body: [
         'Wire Stripe checkout sessions and webhook handler',
         'Add receipt email generation via Resend',
+        'Add discount code validation service',
         'Keep the payment flow consistent with creator payout path',
       ].join('\n'),
       branchPublished: false,
@@ -79,7 +81,7 @@ export const codeShotState: CodeShotState = {
       comments: [
         {
           authorName: launchFilmStory.author,
-          body: 'This is ready for review. The checkout flow now validates Stripe signatures, sends receipts, and keeps the payout path intact.',
+          body: 'This is ready for review. The checkout flow now validates Stripe signatures, sends receipts, applies discount codes, and keeps the payout path intact.',
           createdAt: 'just now',
           id: 'discussion-1',
           viewerDidAuthor: true,
@@ -207,6 +209,7 @@ export const expandedTerminalPanelState: TerminalPanelState = {
     '✓ checkout-service.test.ts (4 tests)',
     '✓ stripe-webhook.test.ts (3 tests)',
     '✓ receipt-service.test.ts (2 tests)',
+    '✓ discount-service.test.ts (3 tests)',
     'All tests passed',
   ].join('\n'),
 };

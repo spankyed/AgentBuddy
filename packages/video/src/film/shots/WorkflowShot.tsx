@@ -69,8 +69,8 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
               />
             ) : null}
           </svg>
-          <FlowNode node={isolatedNode} selected />
-          {frame >= switchStartFrame ? <FlowNode node={isolatedSwitchNode} selected={frame >= switchStartFrame + 46} /> : null}
+          <FlowNode node={isolatedNode} />
+          {frame >= switchStartFrame ? <FlowNode node={isolatedSwitchNode} /> : null}
         </div>
       ) : null}
       {shouldRenderApp ? (

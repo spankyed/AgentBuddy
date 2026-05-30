@@ -274,6 +274,7 @@ export type ThreadsHeaderState = {
 export type KanbanCardState = {
   tags?: string[];
   title: string;
+  updatedAt?: string;
 };
 
 export type KanbanColumnState = {

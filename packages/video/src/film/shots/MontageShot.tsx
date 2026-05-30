@@ -1,14 +1,12 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import {LogsSurface} from '../../agentbuddy-ui/logs/LogsSurface';
-import {SettingsSurface} from '../../agentbuddy-ui/settings/SettingsSurface';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
 import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import type {PluginId} from '../../agentbuddy-ui/chrome/Toolbar';
 import {launchComposerState} from '../state/chat';
 import {databaseMessagesBeforeDateState, databaseMessageLookupState} from '../state/database';
 import {logsLaunchReleaseStateForFrame} from '../state/logs';
-import {settingsProvidersStateForFrame} from '../state/settings';
 import {launchFilmStory} from '../state/launchStory';
 import {ease, mix, textReveal} from '../state/timeline';
 import {useAppWindowLayout} from '../appWindowLayout';
@@ -33,14 +31,20 @@ export function MontageShot({frame, variant}: {frame: number; variant?: 'landsca
 function montageShotViewForFrame(frame: number) {
   if (frame < 72) {
     const command = launchFilmStory.command;
+    const composerState = {
+      ...launchComposerState,
+      bottomTabs: {
+        ...launchComposerState.bottomTabs!,
+        active: 'active' as const,
+        activeLabel: launchFilmStory.threads.deployChecklist.title,
+      },
+      sendPressed: frame > 20 && frame < 28,
+      text: frame < 24 ? textReveal(command, frame, 4, 20) : '',
+    };
     return {
       activePlugin: 'threads' as PluginId,
-      breadcrumbs: ['Threads'],
-      composer: {
-        ...launchComposerState,
-        sendPressed: frame > 20 && frame < 28,
-        text: frame < 24 ? textReveal(command, frame, 4, 20) : '',
-      },
+      breadcrumbs: ['Threads', launchFilmStory.threads.deployChecklist.title],
+      composer: composerState,
       surface: (
         <ThreadConversation
           assistant={{
@@ -69,7 +73,7 @@ function montageShotViewForFrame(frame: number) {
     };
   }
 
-  if (frame < 222) {
+  if (frame < 252) {
     return {
       activePlugin: 'database' as PluginId,
       breadcrumbs: ['Database'],
@@ -79,16 +83,16 @@ function montageShotViewForFrame(frame: number) {
   }
 
   return {
-    activePlugin: 'settings' as PluginId,
-    breadcrumbs: ['Settings'],
+    activePlugin: 'logs' as PluginId,
+    breadcrumbs: ['Logs'],
     composer: false as const,
-    surface: <SettingsSurface state={settingsProvidersStateForFrame(frame)} />,
+    surface: <LogsSurface state={logsLaunchReleaseStateForFrame(frame + 48)} />,
   };
 }
 
 function databaseStateForMontageFrame(frame: number): DatabaseSurfaceState {
-  const state = frame < 182 ? databaseMessageLookupState : databaseMessagesBeforeDateState;
-  const segmentStart = frame < 182 ? 142 : 182;
+  const state = frame < 196 ? databaseMessageLookupState : databaseMessagesBeforeDateState;
+  const segmentStart = frame < 196 ? 142 : 196;
   const local = frame - segmentStart;
   const query = textReveal(state.currentQuery, local, 0, 4);
 

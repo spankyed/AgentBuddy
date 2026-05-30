@@ -145,7 +145,7 @@ export const messageBubbleDemoState = {
 };
 
 export const chatShotState = {
-  breadcrumbs: ['Threads', 'Checkout Thread'],
+  breadcrumbs: ['Threads', launchFilmStory.threads.checkoutImplementation.title],
   createdAt: '9:41 AM',
   systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.', from: 24, to: 186, caretUntil: 270},

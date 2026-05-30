@@ -111,12 +111,6 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
     ...(frame >= 316 ? [flow.edges[1]] : []),
     ...(frame >= 338 ? [flow.edges[2]] : []),
   ];
-  const selectedNodeId =
-    frame > 84 && frame < 154 ? 'listener'
-      : frame > 154 && frame < 226 ? 'switch'
-          : frame > 226 && frame < 252 ? 'notify-releases'
-          : frame > 252 ? 'run-migrations'
-            : 'listener';
   return {
     ...flow,
     chrome: {
@@ -134,10 +128,8 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
         width: `${mix(0, 240, paletteReveal)}px`,
       },
     },
-    editingNodeId: frame > 252 ? 'run-migrations' : undefined,
     edges: edges.map(edge => ({...edge, animated: false})),
     nodes,
-    selectedNodeId,
     viewport: frame > 252 ? {x: -180, y: 0, zoom: 1} : undefined,
   };
 }

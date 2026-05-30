@@ -26,17 +26,25 @@ export type FilmCaptionView = {
 };
 
 export const shots: FilmShot[] = [
-  {id: 'intro-title', chapter: {eyebrow: '0', title: 'Sam is shipping checkout'}, duration: 78},
-  {id: 'chat-title', chapter: {eyebrow: '1', title: 'Plan checkout from one thread'}, duration: 84},
+  {id: 'intro-title', chapter: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 78},
+  {id: 'chat-title', chapter: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 84},
   {id: 'chat', duration: 630, transition: {exit: 'hold'}},
   {id: 'board', duration: 300, transition: {enter: 'cut'}},
-  {id: 'notes-title', chapter: {eyebrow: '2', title: 'Spec checkout beside tasks'}, duration: 84},
+  {id: 'notes-title', chapter: {eyebrow: '2', title: 'More than just a note taker'}, duration: 84},
   {id: 'notes', duration: 330},
-  {id: 'code-title', chapter: {eyebrow: '3', title: 'Ship the checkout branch'}, duration: 84},
+  {id: 'code-title', chapter: {eyebrow: '3', title: 'More than just an IDE'}, duration: 84},
   {id: 'code', duration: 420},
-  {id: 'workflow-title', chapter: {eyebrow: '4', title: 'Automate the deploy path'}, duration: 84},
+  {id: 'workflow-title', chapter: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 84},
   {id: 'workflow', duration: 360},
-  {id: 'montage-title', chapter: {eyebrow: '5', title: 'Run the release system', subtitle: '/supafan deploy-checkout'}, duration: 108},
+  {
+    id: 'montage-title',
+    chapter: {
+      eyebrow: '5',
+      title: 'AgentBuddy is a revolution',
+      subtitle: 'to put the full power of AI into the hands of the people',
+    },
+    duration: 108,
+  },
   {id: 'montage', duration: 360},
   {id: 'final', duration: 180},
 ];

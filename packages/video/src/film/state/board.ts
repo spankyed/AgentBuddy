@@ -44,8 +44,9 @@ export const boardShotState: {
 } = {
   breadcrumbs: ['Threads', 'Board'],
   dashboard: {
-    activeTabId: launchFilmStory.threads.checkoutImplementation.id,
+    activeTabId: launchFilmStory.threads.stripePaymentIntegration.id,
     artifactSidebar: [
+      {id: launchFilmStory.threads.stripePaymentIntegration.id, title: launchFilmStory.threads.stripePaymentIntegration.title, meta: 'done'},
       {id: launchFilmStory.threads.checkoutImplementation.id, title: launchFilmStory.threads.checkoutImplementation.title, meta: 'approved'},
       {id: launchFilmStory.threads.deployChecklist.id, title: launchFilmStory.threads.deployChecklist.title, meta: 'ready'},
       {id: launchFilmStory.threads.receiptEmailTemplates.id, title: launchFilmStory.threads.receiptEmailTemplates.title, meta: 'next'},
@@ -59,6 +60,7 @@ export const boardShotState: {
     },
     tabs: [
       {id: launchFilmStory.threads.deployChecklist.id, label: launchFilmStory.threads.deployChecklist.title, pinned: true},
+      {id: launchFilmStory.threads.stripePaymentIntegration.id, label: launchFilmStory.threads.stripePaymentIntegration.title, pinned: true},
       {id: launchFilmStory.threads.checkoutImplementation.id, label: launchFilmStory.threads.checkoutImplementation.title},
       {id: launchFilmStory.threads.receiptEmailTemplates.id, label: launchFilmStory.threads.receiptEmailTemplates.title},
     ],
@@ -86,12 +88,15 @@ export const boardShotState: {
   board: {
     columns: [
       {
-        cards: [{title: 'Draft creator payout spec', tags: ['payout']}, {title: launchFilmStory.threads.addDiscountCodeSupport.title, tags: ['checkout']}],
+        cards: [
+          {title: 'Draft creator payout spec', tags: ['parent'], updatedAt: '12m ago'},
+          {title: launchFilmStory.threads.addDiscountCodeSupport.title, tags: ['checkout'], updatedAt: 'just now'},
+        ],
         title: 'Backlog',
         tone: 'neutral',
       },
       {
-        cards: [{title: 'Wire receipt email templates', tags: ['receipts']}],
+        cards: [{title: 'Wire receipt email templates', tags: ['receipts'], updatedAt: '4m ago'}],
         title: 'In Progress',
         tone: 'blue',
       },
@@ -105,6 +110,8 @@ export const boardShotState: {
   movingCard: {
     card: {
       title: launchFilmStory.threads.addDiscountCodeSupport.title,
+      tags: ['checkout'],
+      updatedAt: 'just now',
     },
     motion: {
       from: 282,
@@ -228,9 +235,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
             newThreadPressed: frame > 72 && frame < 86,
             pressedView: undefined,
           },
-          hoveredTabId: frame >= 24 && frame < 66 ? launchFilmStory.threads.checkoutImplementation.id : undefined,
-          pinPressed: frame > 52 && frame < 66,
-          pinned: frame >= 66,
+          hoveredTabId: frame >= 24 && frame < 66 ? launchFilmStory.threads.stripePaymentIntegration.id : undefined,
         }
       : undefined,
     header: {

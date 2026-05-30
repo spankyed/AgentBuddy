@@ -52,29 +52,18 @@ function boardCursorForFrame(frame: number):
   | null {
   const targets = boardCursorTargets();
 
-  if (frame >= 22 && frame < 44) {
+  if (frame >= 22 && frame < 54) {
     return cursorMove(targets, {
       click: false,
-      end: 40,
+      end: 48,
       from: 'dashboardArea',
       start: 22,
       to: 'activeDashboardTab',
     }, 'percent');
   }
 
-  if (frame >= 44 && frame < 70) {
-    return cursorMove(targets, {
-      end: 64,
-      from: 'activeDashboardTab',
-      fromPoint: {anchor: [0.82, 0.5]},
-      start: 44,
-      to: 'activeTabPin',
-      toPoint: {anchor: [0.5, 0.5]},
-    }, 'percent');
-  }
-
-  if (frame >= 70 && frame < 92) {
-    return cursorMove(targets, {end: 84, from: 'activeTabPin', start: 70, to: 'createThreadButton'}, 'percent');
+  if (frame >= 54 && frame < 92) {
+    return cursorMove(targets, {end: 84, from: 'activeDashboardTab', start: 54, to: 'createThreadButton'}, 'percent');
   }
 
   if (frame >= 174 && frame < 198) {
@@ -144,8 +133,7 @@ function boardCursorForFrame(frame: number):
 function boardCursorTargets(): Record<string, TargetRect> {
   return {
     activeCard: percentTarget(27, 38, 6, 6),
-    activeDashboardTab: percentTarget(7.4, 18.1, 12.7, 3.2),
-    activeTabPin: percentTarget(18.6, 18.1, 2, 3.2),
+    activeDashboardTab: percentTarget(21.2, 16.2, 13.4, 3.2),
     boardCenter: percentTarget(51, 47, 6, 6),
     boardToolbar: percentTarget(56, 9.5, 7, 3),
     createSaveButton: percentTarget(94.5, 11.8, 5, 3),

@@ -1,5 +1,22 @@
 # Launch Film Storyboard
 
+## Non-Negotiable Visible Chapter Copy
+
+The Sam/Supafan checkout story is the internal continuity spine. It keeps the UI state coherent across chat, board, notes, code, workflow, and montage, but it must not replace the launch-film chapter headings.
+
+Visible title cards use the original launch-film copy:
+
+| Shot | Visible copy |
+|---|---|
+| Intro | AgentBuddy is... |
+| Chat | More than just an AI chat |
+| Notes | More than just a note taker |
+| Code | More than just an IDE |
+| Workflow | More than just a workflow engine |
+| Montage / lockup | AgentBuddy is a revolution / to put the full power of AI into the hands of the people |
+
+Do not rename these headings to story-specific task names like checkout, Supafan, deploy, PR, branch, or release. Those names belong inside the UI only.
+
 ## The Story
 
 **Sam** is a solo indie hacker building **Supafan** — a creator storefront platform where creators sell digital products (courses, templates, assets). Think Gumroad meets Lemon Squeezy. Sam's been building for a few months and is picking up paying creators.
@@ -26,7 +43,7 @@ These are the canonical names, IDs, and values that must appear consistently acr
 
 | Thread | Role |
 |---|---|
-| Add discount code support | Created in Board's "New Thread" form, linked to parent AB-42. Also appears as a kanban card that moves from Backlog → In Progress, and as a `#threads:` reference in Notes |
+| Add discount code support | Created in Board's "New Thread" form, linked to parent AB-42. Also appears as a kanban card that moves from Backlog → In Progress, and as a tasklist overview line in Notes |
 
 ### Branch & project
 
@@ -50,7 +67,7 @@ These are the canonical names, IDs, and values that must appear consistently acr
 
 Sam is in the "Checkout flow implementation" thread. They paste a screenshot and reference their notes to scope the checkout feature.
 
-**Breadcrumbs**: "Threads > Checkout Thread" initially, switches to "Threads > Stripe payment integration" after loading a recent thread.
+**Breadcrumbs**: "Threads > Checkout flow implementation" initially, switches to "Threads > Stripe payment integration" after loading a recent thread.
 
 **User prompt** (typed with caret): `"Use #notes:current and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes."`
 - `#notes:current` triggers the reference autocomplete (category list → notes items → selects "current")
@@ -129,8 +146,8 @@ Sam navigates from Chat to the thread board. We see the dashboard, create a new 
 **Flow**: Dashboard view → click "New Thread" → fill form → switch to kanban → drag card
 
 ### Dashboard view
-- **Tabs**: Deploy checklist (pinned), Checkout flow implementation (active), Receipt email templates
-- **Artifact sidebar**: Checkout flow implementation (approved), Deploy checklist (ready), Receipt email templates (next)
+- **Tabs**: Deploy checklist (pinned), Stripe payment integration (pinned, active), Checkout flow implementation, Receipt email templates
+- **Artifact sidebar**: Stripe payment integration (done), Checkout flow implementation (approved), Deploy checklist (ready), Receipt email templates (next)
 - **Artifact shown**: Same plan artifact from Chat, but status = "approved"
 
 ### Create form
@@ -153,31 +170,40 @@ Sam navigates from Chat to the thread board. We see the dashboard, create a new 
 
 ## Chapter 3: Notes
 
-Sam opens Notes home, navigates to their checkout spec note, works in the editor with the tasklist panel open.
+Sam opens Notes home, creates a checkout note, then uses the real notes side rail to move into the tasklist overview and complete the receipt email todo.
 
 ### Notes Home
 - **Greeting**: "Good afternoon"
 - **Recent**: current (💳, just now, active), Tasklist (📝, 4m ago), api (🔌, 18m ago)
 - **Favorites**: current (💳), Roadmap (🗺️), Design (🎨)
+- **Action**: click "+ New note"
 
-### Notes Editor
-- **Breadcrumbs**: Notes > Supafan > Tasklist > Current
-- **Title**: 💳 current
-- **Before lines** (static): "Stripe webhook integration", "checkout session flow works in staging"
-- **Animated lines** (typed during shot):
-  1. "add checkout diagram, resize it, and keep tasks nearby"
-  2. "mark receipt emails complete, then create the next todo"
-  3. "new todo: link #threads: Add discount code support back to the parent ticket"
-- Line 3 contains an inline **thread reference chip**: `#threads: Add discount code support` — this is the same thread created in the Board chapter
+### New Note Editor
+- **Breadcrumbs**: Notes > Supafan > Checkout Notes
+- **Title**: 📝 Checkout notes
+- **Typed lines**:
+  1. "Stripe webhook integration"
+  2. "checkout session flow works in staging"
+  3. "add checkout diagram, resize it, and keep tasks nearby"
+- **Right rail**: visible once Sam leaves Notes home
+- **Action**: click "Tasklist" in the right rail
 
-### Image block
-- SVG showing a Supafan checkout flow diagram (replace the current launch plan SVG)
-- Resize interaction: 76% → 54% width
+### Tasklist Overview
+- **Breadcrumbs**: Notes > Supafan > Tasklist
+- **Title**: 📝 Tasklist
+- **Lines**:
+  1. "Stripe webhooks"
+  2. "current"
+  3. "receipt emails"
+  4. "Add discount code support"
+  5. "Checkout work stays beside the note instead of becoming another app."
+- **Continuity**: "Add discount code support" is the same thread created in the Board chapter.
+- **Action**: click "receipt emails" in the tasklist panel
 
-### Tasklist panel (right side)
+### Tasklist Panel (left side)
 1. Stripe webhooks (🔧)
 2. **current** (💳) — active
-3. receipt emails — *gets marked complete during animation*
+3. receipt emails — *clicked, then marked complete*
 4. checkout UI
 5. discount codes
 6. creator payouts
@@ -186,9 +212,15 @@ Sam opens Notes home, navigates to their checkout spec note, works in the editor
 9. pricing tiers (💰)
 10. analytics dashboard
 
-**Interactions**:
-- Checkbox press on "receipt emails" → marks complete
-- Add button on "current" → new todo "Add discount code support" slides in (linked to thread)
+### Receipt Emails Todo
+- **Breadcrumbs**: Notes > Supafan > Tasklist > receipt emails
+- **Title**: receipt emails
+- **Lines**:
+  1. "Configure Resend transport"
+  2. "Render order summary template"
+  3. "Keep the linked checkout context visible"
+  4. "Completed from the tasklist panel."
+- **Interaction**: checkbox press on "receipt emails" marks it complete in the tasklist panel.
 
 ### Right rail
 - **Favorites**: current (💳), api (🔌), Roadmap (🗺️)
@@ -221,7 +253,7 @@ Sam is in the code plugin, working on the checkout branch. Source control shows 
 
 ### Files
 - **Staged**: `packages/api/src/services/checkout-service.ts` (modified)
-- **Changed**: `packages/api/src/webhooks/stripe-webhook.ts` (modified), `packages/api/src/services/receipt-service.ts` (added), `packages/worker/src/jobs/payout-worker.ts` (modified)
+- **Changed**: `packages/api/src/webhooks/stripe-webhook.ts` (modified), `packages/api/src/services/receipt-service.ts` (added), `packages/api/src/services/discount-service.ts` (added), `packages/worker/src/jobs/payout-worker.ts` (modified)
 
 ### Commits (author: sam)
 1. `a1b2c3d` — "Add Stripe checkout session and webhook handler" — 2m ago
@@ -231,7 +263,7 @@ Sam is in the code plugin, working on the checkout branch. Source control shows 
 ### Commit flow
 - Commit message starts as typed "incomplete work", gets stashed
 - Switch to main worktree
-- Generated commit message: `"feat(checkout): wire Stripe payment flow with receipts"`
+- Generated commit message: `"feat(checkout): wire Stripe flow, receipts, and discounts"`
 
 ### Terminal (brief appearance)
 ```
@@ -242,13 +274,14 @@ $ npm test -- --filter checkout
  ✓ checkout-service.test.ts (4 tests)
  ✓ stripe-webhook.test.ts (3 tests)
  ✓ receipt-service.test.ts (2 tests)
+ ✓ discount-service.test.ts (3 tests)
 All tests passed
 ```
 
 ### PR flow
 - **Publish branch** (progress bar)
 - **Create PR**: title "Checkout flow", base: main, head: sam/checkout-flow
-- **PR body**: "Wire Stripe checkout sessions and webhook handler\nAdd receipt email generation via Resend\nKeep the payment flow consistent with creator payout path"
+- **PR body**: "Wire Stripe checkout sessions and webhook handler\nAdd receipt email generation via Resend\nAdd discount code validation service\nKeep the payment flow consistent with creator payout path"
 - **PR #42**: OPEN → MERGED, CLEAN merge, APPROVED review
 - **Checks**: CI passed, Preview deploy ready
 - **PR files**: checkout-service.ts, stripe-webhook.ts (added), receipt-service.ts (added), discount-service.ts (added), payout-worker.ts (modified)
@@ -284,17 +317,18 @@ The deploy automation. Starts with just the listener node on black, progressivel
 Quick flashes across plugin surfaces showing the deploy in action.
 
 ### Threads (frames 0–72)
+- Active thread: Deploy checklist
 - Command typed: `/supafan deploy-checkout`
 - Response: `"Matched the deploy-checkout command, ran migrations, and notified the #releases channel."`
 
 ### Logs (frames 72–142)
 - Entries referencing the deploy-checkout pipeline, database migrations, command routing
 
-### Database (frames 142–222)
+### Database (frames 142–252)
 - Query results referencing checkout/payment messages
 
-### Settings (frames 222–360)
-- Provider configuration (keep current interaction pattern)
+### Logs (frames 252–360)
+- Return to deploy logs and completion output. Do not show Settings or mutate default app configuration in the launch film.
 
 ---
 
@@ -307,15 +341,15 @@ Chat                    Board                   Notes                   Code    
  implementation"        Artifact sidebar
  AB-42 (busy)           Create form parent
 
-"Stripe payment         —                       —                       Commit: "Add Stripe     —
- integration"                                                           checkout session..."
+"Stripe payment         Dashboard tab           —                       Commit: "Add Stripe     —
+ integration"           (pinned, active)                                checkout session..."
  AB-47 (pinned, green)
 
 "Deploy checklist"      Dashboard tab (pinned)  —                       —                       —
  AB-53 (amber)
 
-"Add discount code      Kanban card (moving)    Animated line 3         PR file:                —
- support"               Create form title       (#threads: reference)   discount-service.ts
+"Add discount code      Kanban card (moving)    Tasklist overview       PR file:                —
+ support"               Create form title       line                    discount-service.ts
                                                 Linked todo in tasklist
 
 sam/checkout-flow       —                       —                       Branch, worktree,       —
@@ -334,9 +368,11 @@ checkout-service.ts     —                       —                       Diff
 
 ---
 
-## State files to update
+## Implementation Source Of Truth
 
-| File | What changes |
+`STORYBOARD.md` is the source of truth for story, continuity, and chapter beats. State files and shot logic should be changed as needed to make the rendered film match this document. Do not preserve a stale animation, component state, or demo beat just because it already exists.
+
+| File | What it owns |
 |---|---|
 | `state/launchStory.ts` | Central story constants — all thread names/IDs, branch, command, flow labels. Other files import from here. |
 | `state/chat.ts` | All prompt/response text, plan content, tool activity, recent threads, thinking block |
@@ -348,4 +384,4 @@ checkout-service.ts     —                       —                       Diff
 | `state/logs.ts` | Log entries referencing checkout/deploy |
 | Montage-related state (MontageShot.tsx or wherever montage data lives) | Command, response text |
 
-All changes are data-only. No component, type, or animation logic changes needed. Text lengths may differ, so verify reveal animations complete before scene cuts after updating.
+When the film diverges from this storyboard, update the state, shot composition, or reusable UI component required to restore continuity. Avoid invented settings/default-configuration beats unless the storyboard explicitly calls for them.

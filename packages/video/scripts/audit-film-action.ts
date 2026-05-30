@@ -3,7 +3,7 @@ import {boardViewForFrame} from '../src/film/state/board';
 import {chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
 import {finalViewForFrame} from '../src/film/state/final';
-import {notesViewForFrame} from '../src/film/state/notes';
+import {notesEditorViewForFrame} from '../src/film/state/notes';
 import {workflowStateForFrame} from '../src/film/state/workflow';
 
 type Check = {
@@ -25,18 +25,19 @@ const workflowSource = readFileSync(new URL('../src/film/state/workflow.ts', imp
 const checks: Check[] = [
   {
     area: 'notes',
-    message: 'notes shot reveals first edited line',
-    pass: notesViewForFrame(20).animatedLines[0].text !== notesViewForFrame(120).animatedLines[0].text,
+    message: 'notes shot types new note title',
+    pass: notesEditorViewForFrame(0).editor.title.text !== notesEditorViewForFrame(30).editor.title.text,
   },
   {
     area: 'notes',
-    message: 'notes shot reveals second edited line',
-    pass: notesViewForFrame(110).animatedLines[1].text !== notesViewForFrame(210).animatedLines[1].text,
+    message: 'notes shot types checkout note lines',
+    pass: notesEditorViewForFrame(12).editor.beforeLines[0].text !== notesEditorViewForFrame(40).editor.beforeLines[0].text
+      && notesEditorViewForFrame(30).editor.beforeLines[1].text !== notesEditorViewForFrame(58).editor.beforeLines[1].text,
   },
   {
     area: 'notes',
-    message: 'notes shot reveals third edited line',
-    pass: notesViewForFrame(150).animatedLines[2].text !== notesViewForFrame(250).animatedLines[2].text,
+    message: 'notes shot transitions from new note to tasklist overview',
+    pass: notesEditorViewForFrame(70).breadcrumbs.join('/') !== notesEditorViewForFrame(100).breadcrumbs.join('/'),
   },
   {
     area: 'chat',

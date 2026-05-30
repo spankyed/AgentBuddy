@@ -138,11 +138,11 @@ function notesEditorCursorForFrame(frame: number): CursorPath | null {
     return cursorMove(targets, {end: 140, from: 'taskListPanelMiddle', start: 120, to: 'taskListCurrentRow'}, 'percent');
   }
 
-  if (frame >= 158 && frame < 184) {
+  if (frame >= 150 && frame < 172) {
     return cursorMove(targets, {
-      end: 174,
+      end: 162,
       from: 'taskListPanelMiddle',
-      start: 158,
+      start: 150,
       to: 'taskCheckbox',
       toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]},
     }, 'percent');

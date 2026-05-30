@@ -7,6 +7,9 @@ import {renderMedia, selectComposition} from '@remotion/renderer';
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const compositionId = process.argv[2] ?? 'AgentBuddyFilm';
 const output = path.resolve(packageDir, process.argv[3] ?? `out/${compositionId}.mp4`);
+const concurrency = process.env.REMOTION_CONCURRENCY
+  ? Number(process.env.REMOTION_CONCURRENCY)
+  : undefined;
 
 await fs.mkdir(path.dirname(output), {recursive: true});
 
@@ -20,6 +23,7 @@ const composition = await selectComposition({serveUrl, id: compositionId});
 
 await renderMedia({
   composition,
+  concurrency,
   serveUrl,
   codec: 'h264',
   outputLocation: output,
