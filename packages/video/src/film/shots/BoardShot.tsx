@@ -52,8 +52,12 @@ function boardCursorForFrame(frame: number):
   | null {
   const targets = boardCursorTargets();
 
-  if (frame >= 58 && frame < 92) {
-    return cursorMove(targets, {end: 84, from: 'dashboardArea', start: 58, to: 'createThreadButton'}, 'percent');
+  if (frame >= 38 && frame < 70) {
+    return cursorMove(targets, {end: 64, from: 'dashboardArea', start: 38, to: 'threadPinButton'}, 'percent');
+  }
+
+  if (frame >= 70 && frame < 92) {
+    return cursorMove(targets, {end: 84, from: 'threadPinButton', start: 70, to: 'createThreadButton'}, 'percent');
   }
 
   if (frame >= 174 && frame < 198) {
@@ -132,5 +136,6 @@ function boardCursorTargets(): Record<string, TargetRect> {
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
     linkActionButton: percentTarget(82, 40, 4.5, 3),
     linkThreadButton: percentTarget(87, 33.2, 9, 3),
+    threadPinButton: percentTarget(76.8, 22.5, 2.5, 3.2),
   };
 }

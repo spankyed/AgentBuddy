@@ -57,7 +57,7 @@ export const boardShotState: {
       },
     },
     tabs: [
-      {id: 'release-checklist', label: 'Release checklist'},
+      {id: 'release-checklist', label: 'Release checklist', pinned: true},
       {id: 'launch-operating-plan', label: 'Launch operating plan'},
       {id: 'write-commit', label: 'Write commit'},
     ],
