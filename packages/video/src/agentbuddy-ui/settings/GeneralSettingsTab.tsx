@@ -49,7 +49,9 @@ export function GeneralSettingsTab({state}: {state: SettingsSurfaceState}) {
         </div>
       </aside>
       <main className={styles.content}>
-        <CurrentPanel state={state} />
+        <div style={state.generalContentOffsetY ? {transform: `translateY(-${state.generalContentOffsetY}px)`} : undefined}>
+          <CurrentPanel state={state} />
+        </div>
         <SaveStatus status={state.saveStatus} />
       </main>
     </div>

@@ -63,12 +63,14 @@ export const filmProjectDirectories = {
   agentBuddy: homeDirectoryState('Develop/Projects/AgentBuddy'),
   clientlabs: homeDirectoryState('Develop/Projects/Clientlabs'),
   launch: homeDirectoryState('Develop/Projects/Launch'),
+  supafan: homeDirectoryState('Supafan', 'Supafan'),
 };
 
 export const filmProjects = {
   agentBuddy: filmProjectDirectories.agentBuddy.path,
   clientlabs: filmProjectDirectories.clientlabs.path,
   launch: filmProjectDirectories.launch.path,
+  supafan: filmProjectDirectories.supafan.path,
 };
 
 export const filmExportDirectories = {

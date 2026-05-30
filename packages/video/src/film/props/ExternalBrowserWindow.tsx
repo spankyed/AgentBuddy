@@ -21,8 +21,22 @@ export function ExternalBrowserWindow() {
         </div>
       </div>
       <main className={styles.page}>
-        <p>Local app preview</p>
-        <h1>&ldquo;anti-gravity&rdquo; sucks</h1>
+        <section className={styles.storefront}>
+          <p className={styles.eyebrow}>Supafan checkout preview</p>
+          <h1>Ship a digital product in minutes.</h1>
+          <div className={styles.checkoutCard}>
+            <div>
+              <span className={styles.productLabel}>Creator Kit</span>
+              <strong>$49.00</strong>
+            </div>
+            <div className={styles.checkoutRows}>
+              <span>Stripe payment</span>
+              <span>Receipt email</span>
+              <span>Discount code</span>
+            </div>
+            <button>Complete checkout</button>
+          </div>
+        </section>
       </main>
     </div>
   );

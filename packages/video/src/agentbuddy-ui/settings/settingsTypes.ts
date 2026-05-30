@@ -116,6 +116,7 @@ export type SettingsSurfaceState = {
   };
   faqs: Array<{answer: string; expanded?: boolean; id: string; question: string}>;
   generalNavItem: GeneralSettingsNavId;
+  generalContentOffsetY?: number;
   homeDirectory?: string;
   homeDisplayName?: string;
   plugins: PluginSettingsItem[];

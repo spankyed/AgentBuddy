@@ -1,4 +1,5 @@
 import type {FlowCanvasState, FlowsListState} from '../../agentbuddy-ui/flows/flowTypes';
+import {launchFilmStory} from './launchStory';
 import {ease, mix} from './timeline';
 
 export type WorkflowShotState = {
@@ -28,28 +29,28 @@ export const releaseAutomationWorkflow: WorkflowShotState = {
     ],
     nodes: [
       {id: 'listener', kind: 'listener', label: 'start command listener', subtitle: 'user.command', exits: ['exit 1'], x: 330, y: 260},
-      {id: 'switch', kind: 'switch', label: 'is /replace-obsolete-apps', branches: [{label: '/replace-obsolete-apps'}, {isElse: true, label: 'Else'}], x: 580, y: 260},
-      {id: 'delete-apps', kind: 'action', label: 'Find and delete obsolete apps', x: 890, y: 210, width: 286},
-      {id: 'log-result', kind: 'action', label: 'Log obsolete apps removed', x: 890, y: 340, width: 286},
+      {id: 'switch', kind: 'switch', label: launchFilmStory.flow.switchLabel, branches: [{label: launchFilmStory.command}, {isElse: true, label: 'Else'}], x: 580, y: 260},
+      {id: 'run-migrations', kind: 'action', label: launchFilmStory.flow.actionLabels.migrations, x: 890, y: 210, width: 286},
+      {id: 'notify-releases', kind: 'action', label: launchFilmStory.flow.actionLabels.notify, x: 890, y: 340, width: 286},
     ],
     edges: [
       {from: 'listener', fromExit: 0, kind: 'transitions_to', to: 'switch'},
-      {from: 'switch', fromExit: 0, kind: 'transitions_to', to: 'delete-apps'},
-      {from: 'switch', fromExit: 1, kind: 'transitions_to', to: 'log-result'},
+      {from: 'switch', fromExit: 0, kind: 'transitions_to', to: 'run-migrations'},
+      {from: 'switch', fromExit: 1, kind: 'transitions_to', to: 'notify-releases'},
     ],
   },
 };
 
 export const flowsListState: FlowsListState = {
   rootFlowId: 'root',
-  selectedFlowId: 'release-automation',
-  focusedFlowId: 'release-automation',
+  selectedFlowId: launchFilmStory.flow.id,
+  focusedFlowId: launchFilmStory.flow.id,
   flows: [
-    {id: 'root', label: 'Root Flow', description: 'Default entrypoint for AgentBuddy'},
-    {id: 'release-automation', label: 'Release Automation', description: 'Launch film publishing path'},
-    {id: 'onboarding', label: 'Start Onboarding', description: 'Tour completion trigger'},
-    {id: 'claude-code-work-mode', label: 'Claude Code Work Mode', description: 'Development workspace loop'},
-    {id: 'daily-summary', label: 'Daily Summary', description: 'Scheduled memory digest'},
+    {id: 'root', label: 'Root Flow', description: 'Default entrypoint for Supafan'},
+    {id: launchFilmStory.flow.id, label: launchFilmStory.flow.title, description: 'Checkout feature deploy pipeline'},
+    {id: 'post-purchase-flow', label: 'Post-purchase Flow', description: 'Receipt and payout automation'},
+    {id: 'creator-onboarding', label: 'Creator Onboarding', description: 'New creator setup wizard'},
+    {id: 'daily-digest', label: 'Daily Digest', description: 'Scheduled sales summary'},
   ],
 };
 
@@ -61,7 +62,7 @@ export const flowsListSearchState: FlowsListState = {
 
 export const flowsListMenuState: FlowsListState = {
   ...flowsListState,
-  menuFlowId: 'release-automation',
+  menuFlowId: launchFilmStory.flow.id,
 };
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {
@@ -113,8 +114,8 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
   const selectedNodeId =
     frame > 84 && frame < 154 ? 'listener'
       : frame > 154 && frame < 226 ? 'switch'
-        : frame > 226 && frame < 252 ? 'log-result'
-          : frame > 252 ? 'delete-apps'
+          : frame > 226 && frame < 252 ? 'notify-releases'
+          : frame > 252 ? 'run-migrations'
             : 'listener';
   return {
     ...flow,
@@ -133,7 +134,7 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
         width: `${mix(0, 240, paletteReveal)}px`,
       },
     },
-    editingNodeId: frame > 252 ? 'delete-apps' : undefined,
+    editingNodeId: frame > 252 ? 'run-migrations' : undefined,
     edges: edges.map(edge => ({...edge, animated: false})),
     nodes,
     selectedNodeId,

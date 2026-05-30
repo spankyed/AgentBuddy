@@ -1,4 +1,5 @@
 import type {LogsSurfaceState} from '../../agentbuddy-ui/logs/logTypes';
+import {launchFilmStory} from './launchStory';
 import {textReveal} from './timeline';
 
 const now = Date.parse('2026-05-25T14:35:16Z');
@@ -14,11 +15,11 @@ export const logsSurfaceState: LogsSurfaceState = {
     {
       id: 'log-release-run',
       level: 'info',
-      message: 'Release workflow started for AgentBuddy launch film',
+      message: 'Deploy checkout workflow started for Supafan',
       meta: {
-        flowId: 'release-automation',
-        removed: ['anti-gravity', 'cursor', 'vscode', 'notion', 'obsidian', 'tick-tick'],
-        steps: ['capture context', 'render demos', 'publish assets'],
+        flowId: launchFilmStory.flow.id,
+        branch: launchFilmStory.branch,
+        steps: ['run database migrations', 'deploy checkout workers', 'notify releases channel'],
       },
       source: 'flows',
       timestamp: now,
@@ -38,7 +39,7 @@ export const logsSurfaceState: LogsSurfaceState = {
     {
       id: 'log-actions',
       level: 'info',
-      message: 'Action template "Publish launch report" saved',
+      message: 'Action template "Deploy checkout" saved',
       source: 'actions',
       timestamp: now - 19_000,
     },
@@ -133,7 +134,7 @@ export const logsCombinedContentState: LogsSurfaceState = {
           ...log,
           meta: {
             attempt: 1,
-            endpoint: 'assets.launch.clientlabs.dev',
+            endpoint: 'assets.supafan.dev',
             retryScheduled: true,
           },
         }
@@ -150,7 +151,7 @@ export const logsHasMoreState: LogsSurfaceState = {
     return {
       id: `log-history-${index}`,
       level,
-      message: `Historical launch log event ${String(index + 1).padStart(3, '0')}`,
+      message: `Historical checkout log event ${String(index + 1).padStart(3, '0')}`,
       source,
       timestamp: now - index * 1000,
     };
@@ -161,18 +162,18 @@ export const logsHasMoreState: LogsSurfaceState = {
 export const logsLaunchReleaseState: LogsSurfaceState = {
   ...logsSurfaceState,
   expandedContent: {
-    'log-obsolete-apps': 'meta',
+    'log-launch-release': 'meta',
   },
   filterLevel: 'all',
   logs: [
     {
-      id: 'log-obsolete-apps',
+      id: 'log-launch-release',
       level: 'info',
-      message: 'all obsolete apps removed',
+      message: 'deploy-checkout pipeline completed',
       meta: {
-        command: '/replace-obsolete-apps',
-        removed: ['anti-gravity', 'cursor', 'vscode', 'notion', 'obsidian', 'tick-tick'],
-        threadId: 'thread-replace-obsolete-apps',
+        branch: launchFilmStory.branch,
+        command: launchFilmStory.command,
+        threadId: launchFilmStory.threads.stripePaymentIntegration.id,
       },
       source: 'flows',
       timestamp: now,
@@ -180,9 +181,9 @@ export const logsLaunchReleaseState: LogsSurfaceState = {
     {
       id: 'log-publish-pr',
       level: 'debug',
-      message: 'Deleted 6 obsolete application records',
+      message: 'Database migrations completed for checkout tables',
       meta: {
-        action: 'Find and delete obsolete apps',
+        action: launchFilmStory.flow.actionLabels.migrations,
         durationMs: 1284,
       },
       source: 'actions',
@@ -191,21 +192,21 @@ export const logsLaunchReleaseState: LogsSurfaceState = {
     {
       id: 'log-command-route',
       level: 'info',
-      message: 'Matched user.command route: /replace-obsolete-apps',
+      message: `Matched user.command route: ${launchFilmStory.command}`,
       meta: {
-        branch: '/replace-obsolete-apps',
-        flowId: 'root-flow',
+        branch: launchFilmStory.branch,
+        flowId: launchFilmStory.flow.id,
       },
-      source: 'brain',
+      source: 'flows',
       timestamp: now - 11_000,
     },
   ],
-  searchTerm: 'obsolete',
+  searchTerm: 'deploy checkout',
 };
 
 export function logsLaunchReleaseStateForFrame(frame: number): LogsSurfaceState {
   const local = Math.max(0, frame - 72);
-  const searchTerm = textReveal('all obsolete apps removed', local, 4, 30);
+  const searchTerm = textReveal('deploy-checkout pipeline completed', local, 4, 30);
   return {
     ...logsLaunchReleaseState,
     expandedContent: local > 38 ? logsLaunchReleaseState.expandedContent : {},

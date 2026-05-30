@@ -38,7 +38,7 @@ function ThreadRow({card, index, status}: {card: KanbanCardState; index: number;
       </div>
       <span className={styles.status}>{status}</span>
       <div className={styles.tags}>
-        {(card.tags ?? ['launch']).map(tag => <span key={tag}>{tag}</span>)}
+        {card.tags?.map(tag => <span key={tag}>{tag}</span>)}
       </div>
       <span className={styles.updated}>{index === 0 ? 'just now' : `${index + 2}m ago`}</span>
     </div>

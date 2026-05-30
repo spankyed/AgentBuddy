@@ -1,4 +1,5 @@
 import type {SettingsProjectDirectory, SettingsSurfaceState} from '../../agentbuddy-ui/settings/settingsTypes';
+import {launchFilmStory} from './launchStory';
 import {filmExportDirectories, filmHomeDirectory, filmPathState, filmProjectDirectories, filmProjects, filmSetupPackDirectories, type FilmDirectoryState} from './paths';
 
 function projectDirectory(directory: FilmDirectoryState): SettingsProjectDirectory {
@@ -13,14 +14,14 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
   applicationHotkeys: {
     custom: [
       {id: 'hotkey_quick_prompt', eventName: 'QUICK_PROMPT.OPEN', shortcut: '⌘ K'},
-      {id: 'hotkey_launch_context', eventName: 'LAUNCH.CONTEXT_CAPTURE', shortcut: '⌘ ⇧ L'},
+      {id: 'hotkey_checkout_context', eventName: 'CHECKOUT.CONTEXT_CAPTURE', shortcut: '⌘ ⇧ C'},
     ],
     switchPluginDown: {key: 'ArrowDown', modifiers: ['cmd']},
     switchPluginUp: {key: 'ArrowUp', modifiers: ['cmd']},
     toggleInspectionPanel: {key: 'i', modifiers: ['cmd']},
   },
   faqs: [
-    {answer: 'AgentBuddy stores local configuration on this device and uses it to drive workflows, plugin state, and launch-film demos.', id: 'faq-local', question: 'Where are settings stored?'},
+    {answer: 'AgentBuddy stores local configuration on this device and uses it to drive workflows, plugin state, and Supafan checkout work.', id: 'faq-local', question: 'Where are settings stored?'},
     {answer: 'Providers can be configured from the General > Providers view. Keys are masked once saved.', id: 'faq-providers', question: 'How do provider keys work?'},
     {answer: 'Setup packs import compiled actions, prompts, flows, library docs, and notes.', id: 'faq-setup', question: 'What is a setup pack?'},
   ],
@@ -38,9 +39,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {id: 'database', label: 'Database', visible: true},
     {id: 'logs', label: 'Logs', visible: true},
   ],
-  customProviders: [
-    {hasKey: true, id: 'clientlabs-api', name: 'Clientlabs API'},
-  ],
+  customProviders: [],
   cliProviders: [
     {installCmd: 'npm install -g @github/copilot', installHint: 'Install via npm', key: 'copilot', label: 'Copilot CLI', placeholder: 'Path override (auto-detected if empty)'},
     {installCmd: 'npm install -g @anthropic-ai/claude-code', installHint: 'Install via npm', key: 'claude-code', label: 'Claude Code CLI', placeholder: 'Path override (auto-detected if empty)', status: 'success', value: '/opt/homebrew/bin/claude'},
@@ -56,8 +55,8 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {description: 'Command, Embed, Rerank', hasKey: false, key: 'cohere', label: 'Cohere', placeholder: 'Enter Cohere API key'},
   ],
   projects: [
-    {color: '#3b82f6', directories: [projectDirectory(filmProjectDirectories.agentBuddy)], name: 'AgentBuddy'},
-    {color: '#22c55e', directories: [projectDirectory(filmProjectDirectories.clientlabs)], name: 'Clientlabs'},
+    {color: '#3b82f6', directories: [projectDirectory(filmProjectDirectories.supafan)], name: launchFilmStory.persona.project},
+    {color: '#22c55e', directories: [projectDirectory(filmProjectDirectories.launch)], name: 'Creator Tools'},
     {color: '#f59e0b', directories: [projectDirectory(filmProjectDirectories.launch)], name: 'Launch'},
   ],
   saveStatus: 'saved',
@@ -82,7 +81,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       autoFetchRemote: true,
       closeTerminalOnTabClose: true,
       confirmTerminalClose: true,
-      defaultBaseDirectory: filmProjects.agentBuddy,
+      defaultBaseDirectory: filmProjects.supafan,
       enablePreview: true,
       enableShellIntegration: true,
       hotkeys: {
@@ -100,7 +99,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       showWorktrees: true,
       terminalScripts: [
         {id: 'dev', label: 'dev', command: 'npm run dev'},
-        {id: 'verify', label: 'verify', command: 'npm run verify'},
+        {id: 'checkout-tests', label: 'checkout tests', command: 'npm test -- --filter checkout'},
       ],
     },
     database: {
@@ -113,8 +112,8 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       exportDirectory: filmExportDirectories.flows,
       flows: [
         {id: 'root-flow', label: 'Root Flow'},
-        {id: 'launch-release', label: 'Launch Release'},
-        {id: 'run-onboarding', label: 'Run Onboarding'},
+        {id: launchFilmStory.flow.id, label: launchFilmStory.flow.title},
+        {id: 'post-purchase-flow', label: 'Post-purchase Flow'},
       ],
       needsRestart: true,
       rootFlowId: 'root-flow',
@@ -124,8 +123,8 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       exportFormat: 'markdown',
       tags: [
         {name: 'Reference', color: '#3B82F6'},
-        {name: 'Research', color: '#22C55E'},
-        {name: 'Launch', color: '#A855F7'},
+        {name: 'Payments', color: '#22C55E'},
+        {name: 'Checkout', color: '#A855F7'},
       ],
     },
     logs: {
@@ -176,8 +175,8 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
         ],
         quickPromptNumberKeyInserts: true,
         quickPrompts: [
-          {id: 'qp-ship', text: 'Turn this launch plan into implementation tickets'},
-          {id: 'qp-review', text: 'Review the current branch and call out fidelity gaps'},
+          {id: 'qp-ship', text: 'Turn this checkout plan into implementation tickets'},
+          {id: 'qp-review', text: 'Review the checkout branch and call out release blockers'},
         ],
         skipRevertConfirm: false,
       },
@@ -199,16 +198,16 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
         {label: 'Blocked', color: '#F97316'},
       ],
       tags: [
-        {name: 'launch', color: '#3B82F6'},
-        {name: 'film', color: '#A855F7'},
-        {name: 'ui', color: '#14B8A6'},
+        {name: 'checkout', color: '#3B82F6'},
+        {name: 'payments', color: '#A855F7'},
+        {name: 'stripe', color: '#14B8A6'},
       ],
     },
   },
   settingsJson: JSON.stringify({
     general: {
       application: {hotkeys: {switchPluginDown: 'Cmd+Down', switchPluginUp: 'Cmd+Up'}},
-      personal: {name: 'Spanky', phoneNumber: '(555) 120-4420'},
+      personal: {name: launchFilmStory.persona.name, phoneNumber: '(555) 120-4420'},
     },
     plugins: {_meta: {visibility: {actions: false, prompts: false}}},
   }, null, 2),
@@ -221,7 +220,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
       street: '120 Kent Ave',
       street2: 'Suite 4',
     },
-    name: 'Spanky',
+    name: launchFilmStory.persona.name,
     phoneNumber: '(555) 120-4420',
   },
 };
@@ -248,26 +247,26 @@ export const settingsSetupPackSelectingState: SettingsSurfaceState = {
     restartBrain: true,
     selection: {
       actions: ['create_ticket', 'publish_branch'],
-      prompts: ['launch_release_notes'],
-      flows: ['root-flow'],
-      library: ['launch-system'],
+      prompts: ['checkout_release_notes'],
+      flows: [launchFilmStory.flow.id],
+      library: ['checkout-system'],
       notes: [],
       settings: [],
     },
     status: 'selecting',
     types: {
       actions: [
-        {key: 'create_ticket', description: 'Create execution tickets from launch context'},
+        {key: 'create_ticket', description: 'Create implementation tickets from checkout context'},
         {key: 'publish_branch', description: 'Publish and prepare branch metadata'},
       ],
       prompts: [
-        {key: 'launch_release_notes', description: 'Generate launch-ready release notes'},
+        {key: 'checkout_release_notes', description: 'Generate checkout-ready release notes'},
       ],
       flows: [
-        {key: 'root-flow', childCount: 5, description: 'AgentBuddy root automation flow'},
+        {key: launchFilmStory.flow.id, childCount: 4, description: 'Supafan checkout deploy flow'},
       ],
       library: [
-        {key: 'launch-system', description: 'Launch operating system reference'},
+        {key: 'checkout-system', description: 'Checkout system reference'},
       ],
       notes: [],
       settings: [],
@@ -326,9 +325,10 @@ export const settingsProvidersState: SettingsSurfaceState = {
 export function settingsProvidersStateForFrame(frame: number): SettingsSurfaceState {
   const local = Math.max(0, frame - 292);
   const editing = local > 22 && local < 56;
-  const value = local > 34 ? 'sk-clientlabs-live-••••' : local > 28 ? 'sk-clientlabs' : '';
+  const value = local > 34 ? 'gemini-demo-key-••••' : local > 28 ? 'gemini-demo-key' : '';
   return {
     ...settingsProvidersState,
+    generalContentOffsetY: 684,
     saveStatus: local > 64 ? 'saved' : local > 56 ? 'saving' : 'idle',
     providers: settingsProvidersState.providers.map(provider => (
       provider.key === 'google'

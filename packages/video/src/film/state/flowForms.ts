@@ -1,40 +1,41 @@
 import type {FlowNodeFormState} from '../../agentbuddy-ui/flows/flowTypes';
+import {launchFilmStory} from './launchStory';
 import {textReveal} from './timeline';
 
-const replaceObsoleteAppsDescription = 'Find obsolete productivity apps and remove them from the local app registry.';
+const deployCheckoutDescription = 'Run the checkout deploy path: apply database migrations, verify the checkout branch, and notify the releases channel.';
 
-const replaceObsoleteAppsCode = `export async function run({ database, logs }) {
-  const obsolete = [
-    "anti-gravity", "cursor", "vscode", "notion",
-    "obsidian", "tick-tick",
-  ];
-  const removed = await database.apps.deleteMany({
-    where: { slug: { in: obsolete } },
+const deployCheckoutCode = `export async function run({ flows, code, logs }) {
+  await code.ensureBranch("${launchFilmStory.branch}");
+  await flows.run("database.migrate", {
+    scope: "checkout",
   });
-  await logs.info("all obsolete apps removed", { removed });
+  await logs.info("checkout deploy complete", {
+    command: "${launchFilmStory.command}",
+    threadId: "${launchFilmStory.threads.deployChecklist.id}",
+  });
 }`;
 
-export const replaceObsoleteAppsFormState: FlowNodeFormState = {
+export const deployCheckoutFormState: FlowNodeFormState = {
   canAddNextStep: true,
   nodeKind: 'action',
-  nodeLabel: 'Find and delete obsolete apps',
+  nodeLabel: launchFilmStory.flow.actionLabels.migrations,
   sections: [
     {
       fields: [
         {label: 'Mode', type: 'select', value: 'Code'},
-        {label: 'Description', type: 'textarea', value: replaceObsoleteAppsDescription},
+        {label: 'Description', type: 'textarea', value: deployCheckoutDescription},
       ],
       title: 'Action',
     },
     {
       fields: [
         {
-          filePath: 'actions/replace-obsolete-apps.ts',
+          filePath: 'actions/deploy-checkout.ts',
           height: 220,
           label: 'Code',
           language: 'typescript',
           type: 'code',
-          value: replaceObsoleteAppsCode,
+          value: deployCheckoutCode,
         },
       ],
       title: 'Code',
@@ -42,15 +43,15 @@ export const replaceObsoleteAppsFormState: FlowNodeFormState = {
   ],
 };
 
-export function replaceObsoleteAppsFormStateForFrame(frame: number): FlowNodeFormState {
+export function deployCheckoutFormStateForFrame(frame: number): FlowNodeFormState {
   const local = Math.max(0, frame - 252);
-  const description = textReveal(replaceObsoleteAppsDescription, local, 4, 42);
-  const code = textReveal(replaceObsoleteAppsCode, local, 8, 84);
+  const description = textReveal(deployCheckoutDescription, local, 4, 42);
+  const code = textReveal(deployCheckoutCode, local, 8, 84);
 
   return {
-    ...replaceObsoleteAppsFormState,
+    ...deployCheckoutFormState,
     canAddNextStep: local > 104,
-    sections: replaceObsoleteAppsFormState.sections.map(section => ({
+    sections: deployCheckoutFormState.sections.map(section => ({
       ...section,
       fields: section.fields?.map(field => {
         if (field.label === 'Description') return {...field, value: description};
@@ -77,9 +78,9 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
       },
       {
         fields: [
-          {label: 'repository', required: true, value: 'AgentBuddy'},
-          {label: 'branch', required: true, value: 'as/react-launch-film'},
-          {label: 'brief', type: 'textarea', value: 'Align the launch film surfaces with the real app UI and prepare the PR path.'},
+          {label: 'repository', required: true, value: launchFilmStory.repo},
+          {label: 'branch', required: true, value: launchFilmStory.branch},
+          {label: 'brief', type: 'textarea', value: 'Wire checkout deployment around Stripe, receipts, discount codes, and the PR path.'},
         ],
         title: 'Field mappings',
       },
@@ -93,7 +94,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
       {
         action: {icon: 'external', label: 'Open Flow'},
         fields: [
-          {label: 'Flow', type: 'select', value: 'Release Automation', description: 'Create branch, publish, and prepare a pull request from one blueprint.'},
+          {label: 'Flow', type: 'select', value: launchFilmStory.flow.title, description: 'Run migrations and notify the release channel from one blueprint.'},
         ],
         title: 'Flow',
       },
@@ -101,7 +102,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
         items: [
           {
             fields: [
-              {label: 'Payload', value: '$.event.data.launch', description: 'This value will be passed as the payload to the flow entry event.'},
+              {label: 'Payload', value: '$.event.data.checkout', description: 'This value will be passed as the payload to the flow entry event.'},
             ],
             label: 'Entry Parameter',
           },
@@ -113,7 +114,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {
     canAddNextStep: true,
     nodeKind: 'switch',
-    nodeLabel: 'route release path',
+    nodeLabel: 'route checkout command',
     sections: [
       {
         action: {icon: 'plus', label: 'Add Branch'},
@@ -121,16 +122,16 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
           {
             badge: '1',
             fields: [
-              {label: 'Label', value: 'ready_to_publish'},
-              {label: 'Key', value: 'branch.ready'},
+              {label: 'Label', value: launchFilmStory.command},
+              {label: 'Key', value: 'command.text'},
               {label: 'Operator', type: 'select', value: 'equals'},
-              {label: 'Value', value: 'true'},
+              {label: 'Value', value: launchFilmStory.command},
             ],
-            label: 'Publish branch',
+            label: 'Deploy checkout',
           },
           {
             badge: 'else',
-            description: 'Continue editing the action template until the branch is ready.',
+            description: 'Ignore commands that do not match the checkout deploy route.',
             label: 'Fallback',
             tone: 'warning',
           },
@@ -167,7 +168,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
       {
         fields: [
           {label: 'Scope', type: 'segmented', options: [{label: 'Global', selected: true}, {label: 'Local'}, {label: 'Entry'}]},
-          {label: 'Event tag', value: 'release.command'},
+          {label: 'Event tag', value: 'user.command'},
           {label: 'Enable Debounce', type: 'checkbox', checked: true, value: 'Enable Debounce'},
           {label: 'Milliseconds', value: '500'},
         ],
@@ -178,7 +179,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {
     canAddNextStep: true,
     nodeKind: 'schedule',
-    nodeLabel: 'run release checks',
+    nodeLabel: 'run checkout checks',
     sections: [
       {
         fields: [
@@ -196,11 +197,11 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {
     canAddNextStep: true,
     nodeKind: 'fire',
-    nodeLabel: 'notify release flow',
+    nodeLabel: launchFilmStory.flow.actionLabels.notify,
     sections: [
       {
         fields: [
-          {label: 'Event type', value: 'release.preview.ready'},
+          {label: 'Event type', value: 'checkout.deploy.ready'},
           {label: 'Scope', type: 'segmented', options: [{label: 'Local', selected: true}, {label: 'Global'}]},
         ],
         title: 'Event type',
@@ -221,7 +222,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {
     canAddNextStep: true,
     nodeKind: 'create',
-    nodeLabel: 'create launch thread',
+    nodeLabel: `create ${launchFilmStory.threads.addDiscountCodeSupport.title}`,
     sections: [
       {
         fields: [
@@ -236,12 +237,12 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
   {
     canAddNextStep: true,
     nodeKind: 'llm',
-    nodeLabel: 'draft release summary',
+    nodeLabel: 'draft checkout summary',
     sections: [
       {
         fields: [
           {label: 'Model', type: 'select', value: 'Claude 3.5 Sonnet', description: '200k context window - $3/1k in, $15/1k out'},
-          {label: 'Prompt Template', type: 'select', value: 'Release summary'},
+          {label: 'Prompt Template', type: 'select', value: 'Checkout deploy summary'},
         ],
         title: 'Model',
       },
@@ -249,7 +250,7 @@ export const flowNodeFormDemoStates: FlowNodeFormState[] = [
         items: [
           {
             fields: [
-              {label: 'launch_notes', value: '$.event.data.notes', description: 'Source launch notes from the triggering context.'},
+              {label: 'checkout_notes', value: '$.event.data.notes', description: 'Source checkout notes from the triggering context.'},
               {label: 'pr_plan', value: '$.lastStep.result', description: 'Use the previous step output as PR plan context.'},
             ],
             label: 'Field Mappings',

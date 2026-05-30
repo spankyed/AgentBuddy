@@ -1,4 +1,5 @@
 import type {CodeReviewState, CodeReviewViewState, TerminalPanelState} from '../../agentbuddy-ui/code/codeTypes';
+import {launchFilmStory} from './launchStory';
 import {filmProjects} from './paths';
 import {ease, textReveal} from './timeline';
 
@@ -20,93 +21,91 @@ export type CodeShotView = {
 export const codeShotState: CodeShotState = {
   breadcrumbs: ['Code'],
   chromeDemoBreadcrumbs: ['Code'],
-  generatedCommitMessage: 'feat(video): align launch film surfaces',
+  generatedCommitMessage: 'feat(checkout): wire Stripe payment flow with receipts',
   review: {
-    baseDirectory: filmProjects.agentBuddy,
-    branch: 'as/react-launch-film',
+    baseDirectory: filmProjects.supafan,
+    branch: launchFilmStory.branch,
     branchSync: {
       commitsAhead: 4,
       commitsBehind: 0,
       hasUpstream: true,
     },
     diff: {
-      fileName: 'prepare-launch-pr.ts',
+      fileName: 'checkout-service.ts',
       lineStart: 24,
       lines: [
-        {kind: 'context', text: 'export async function run(context) {'},
-        {kind: 'add', text: '  const branch = await code.publishBranch(context.branch);'},
-        {kind: 'add', text: '  const body = await thread.summarize("launch-pr");'},
-        {kind: 'remove', text: '  return github.draftPullRequest(context);'},
-        {kind: 'add', text: '  return github.preparePullRequest({ branch, body });'},
-        {kind: 'add', text: '  await logs.info("launch PR prepared");'},
+        {kind: 'context', text: 'export async function processCheckout(cart, customer) {'},
+        {kind: 'add', text: '  const session = await stripe.checkout.create(cart);'},
+        {kind: 'add', text: '  const receipt = await receipts.generate(session);'},
+        {kind: 'remove', text: '  return createGenericOrder(cart);'},
+        {kind: 'add', text: '  return stripe.confirmPayment({ session, receipt });'},
+        {kind: 'add', text: "  await analytics.track('checkout.completed', session.id);"},
         {kind: 'context', text: '}'},
       ],
     },
     staged: [
-      {path: 'packages/video/src/film/AgentBuddyFilm.tsx', status: 'modified'},
+      {path: 'packages/api/src/services/checkout-service.ts', status: 'modified'},
     ],
     changes: [
-      {path: 'packages/video/src/agentbuddy-ui/threads/KanbanBoard.tsx', status: 'modified'},
-      {path: 'packages/video/src/agentbuddy-ui/code/CodeDiffView.tsx', status: 'added'},
-      {path: 'packages/video/src/film/state/timeline.ts', status: 'modified'},
+      {path: 'packages/api/src/webhooks/stripe-webhook.ts', status: 'modified'},
+      {path: 'packages/api/src/services/receipt-service.ts', status: 'added'},
+      {path: 'packages/worker/src/jobs/payout-worker.ts', status: 'modified'},
     ],
     commits: [
-      {authorName: 'spankyed', hash: '9f42c8a', title: 'Improve launch film code surface', time: '2m ago'},
-      {authorName: 'spankyed', hash: '77bb1e4', title: 'Align tasklist rows with renderer', time: '18m ago'},
-      {authorName: 'spankyed', hash: '43d0ac9', title: 'Add Remotion app chrome primitives', time: '1h ago'},
+      {authorName: launchFilmStory.author, hash: 'a1b2c3d', title: 'Add Stripe checkout session and webhook handler', time: '2m ago'},
+      {authorName: launchFilmStory.author, hash: 'e4f5g6h', title: 'Wire receipt email generation with Resend', time: '18m ago'},
+      {authorName: launchFilmStory.author, hash: 'i7j8k9l', title: 'Add checkout service and cart validation', time: '1h ago'},
     ],
     stashes: [],
     worktrees: [
-      {branch: 'as/react-launch-film', path: '~/AgentBuddy', current: true},
-      {branch: 'master', path: '~/AgentBuddy-master'},
+      {branch: launchFilmStory.branch, path: launchFilmStory.projectPath, current: true},
+      {branch: launchFilmStory.baseBranch, path: '~/Supafan-main'},
     ],
     pullRequest: {
-      baseBranch: 'master',
+      baseBranch: launchFilmStory.baseBranch,
       body: [
-        'Align launch film surfaces with the real app UI',
-        'Add the publish branch and create PR views',
-        'Keep flow blueprints status-free and source-backed',
+        'Wire Stripe checkout sessions and webhook handler',
+        'Add receipt email generation via Resend',
+        'Keep the payment flow consistent with creator payout path',
       ].join('\n'),
       branchPublished: false,
       changedFiles: [
-        {path: 'packages/video/src/agentbuddy-ui/code/PullRequestPanel.tsx', status: 'added'},
-        {path: 'packages/video/src/agentbuddy-ui/code/PRComparison.tsx', status: 'added'},
-        {path: 'packages/video/src/agentbuddy-ui/code/CreatePRForm.tsx', status: 'added'},
-        {path: 'packages/video/src/agentbuddy-ui/code/PRInfo.tsx', status: 'added'},
-        {path: 'packages/video/src/agentbuddy-ui/code/PRActionBar.tsx', status: 'added'},
-        {path: 'packages/video/src/film/state/code.ts', status: 'modified'},
-        {path: 'packages/video/src/compositions/demos/CodeDemos.tsx', status: 'modified'},
+        {path: 'packages/api/src/services/checkout-service.ts', status: 'modified'},
+        {path: 'packages/api/src/webhooks/stripe-webhook.ts', status: 'added'},
+        {path: 'packages/api/src/services/receipt-service.ts', status: 'added'},
+        {path: 'packages/api/src/services/discount-service.ts', status: 'added'},
+        {path: 'packages/worker/src/jobs/payout-worker.ts', status: 'modified'},
       ],
       comments: [
         {
-          authorName: 'spankyed',
-          body: 'This is ready for review. The launch film now uses source-mirrored UI components instead of screenshot captures.',
+          authorName: launchFilmStory.author,
+          body: 'This is ready for review. The checkout flow now validates Stripe signatures, sends receipts, and keeps the payout path intact.',
           createdAt: 'just now',
           id: 'discussion-1',
           viewerDidAuthor: true,
         },
       ],
       checks: [
-        'Preview build passed',
-        'Release checks passed',
+        'CI passed',
+        'Preview deploy ready',
       ],
       createdPr: {
-        authorName: 'spankyed',
-        baseBranch: 'master',
+        authorName: launchFilmStory.author,
+        baseBranch: launchFilmStory.baseBranch,
         commitCount: 9,
         createdAt: 'just now',
-        headBranch: 'as/react-launch-film',
+        headBranch: launchFilmStory.branch,
         isDraft: false,
         mergeStateStatus: 'CLEAN',
         mergeable: 'MERGEABLE',
-        number: 128,
+        number: 42,
         reviewDecision: 'APPROVED',
         state: 'OPEN',
         statusCheckRollup: [
-          {conclusion: 'SUCCESS', name: 'Preview build', status: 'COMPLETED'},
-          {conclusion: 'SUCCESS', name: 'Release checks', status: 'COMPLETED'},
+          {conclusion: 'SUCCESS', name: 'CI', status: 'COMPLETED'},
+          {conclusion: 'SUCCESS', name: 'Preview deploy', status: 'COMPLETED'},
         ],
-        url: 'https://github.com/clientlabs/agentbuddy/pull/128',
+        url: 'https://github.com/supafan/supafan/pull/42',
       },
       fileTree: [
         {
@@ -116,54 +115,35 @@ export const codeShotState: CodeShotState = {
           count: 7,
           children: [
             {
-              id: 'packages/video',
-              label: 'video',
+              id: 'packages/api',
+              label: 'api',
               type: 'folder',
-              count: 7,
+              count: 3,
               children: [
                 {
-                  id: 'packages/video/src',
+                  id: 'packages/api/src',
                   label: 'src',
                   type: 'folder',
-                  count: 7,
+                  count: 3,
                   children: [
                     {
-                      id: 'packages/video/src/agentbuddy-ui',
-                      label: 'agentbuddy-ui',
+                      id: 'packages/api/src/services',
+                      label: 'services',
                       type: 'folder',
-                      count: 5,
+                      count: 3,
                       children: [
-                        {
-                          id: 'packages/video/src/agentbuddy-ui/code',
-                          label: 'code',
-                          type: 'folder',
-                          count: 5,
-                          children: [
-                            {id: 'PullRequestPanel.tsx', label: 'PullRequestPanel.tsx', type: 'file', status: 'added'},
-                            {id: 'PRComparison.tsx', label: 'PRComparison.tsx', type: 'file', status: 'added'},
-                            {id: 'CreatePRForm.tsx', label: 'CreatePRForm.tsx', type: 'file', status: 'added'},
-                            {id: 'PRInfo.tsx', label: 'PRInfo.tsx', type: 'file', status: 'added'},
-                            {id: 'PRActionBar.tsx', label: 'PRActionBar.tsx', type: 'file', status: 'added'},
-                          ],
-                        },
+                        {id: 'checkout-service.ts', label: 'checkout-service.ts', type: 'file', status: 'modified'},
+                        {id: 'receipt-service.ts', label: 'receipt-service.ts', type: 'file', status: 'added'},
+                        {id: 'discount-service.ts', label: 'discount-service.ts', type: 'file', status: 'added'},
                       ],
                     },
                     {
-                      id: 'packages/video/src/film',
-                      label: 'film',
+                      id: 'packages/api/src/webhooks',
+                      label: 'webhooks',
                       type: 'folder',
                       count: 1,
                       children: [
-                        {id: 'code.ts', label: 'code.ts', type: 'file', status: 'modified'},
-                      ],
-                    },
-                    {
-                      id: 'packages/video/src/compositions',
-                      label: 'compositions',
-                      type: 'folder',
-                      count: 1,
-                      children: [
-                        {id: 'CodeDemos.tsx', label: 'CodeDemos.tsx', type: 'file', status: 'modified'},
+                        {id: 'stripe-webhook.ts', label: 'stripe-webhook.ts', type: 'file', status: 'added'},
                       ],
                     },
                   ],
@@ -173,42 +153,43 @@ export const codeShotState: CodeShotState = {
           ],
         },
       ],
-      headBranch: 'as/react-launch-film',
+      headBranch: launchFilmStory.branch,
       openPullRequests: [
-        {number: 128, state: 'OPEN', title: 'React launch film'},
-        {number: 124, state: 'OPEN', title: 'Improve launch film code surface'},
-        {isDraft: true, number: 119, state: 'DRAFT', title: 'Flow blueprint polish'},
+        {number: 42, state: 'OPEN', title: 'Checkout flow'},
+        {number: 38, state: 'OPEN', title: 'Creator dashboard analytics'},
+        {isDraft: true, number: 35, state: 'DRAFT', title: 'Product variant picker'},
       ],
       reviewThreads: [
         {
           comments: [
             {
               authorName: 'reviewbot',
-              body: 'Verified the PR panel keeps the same branch and action layout as the app.',
+              body: 'Verified the webhook handler validates Stripe signatures correctly.',
               createdAt: 'just now',
               id: 'review-comment-1',
             },
           ],
           diffLines: [
             {kind: 'meta', text: '@@ -24,7 +24,8 @@'},
-            {kind: 'context', text: ' export function PullRequestPanel(props) {'},
-            {kind: 'removed', text: '-  return <FakePrScaffold />;'},
-            {kind: 'added', text: '+  return <PullRequestPanel state={state} />;'},
+            {kind: 'context', text: ' export async function handleStripeWebhook(event) {'},
+            {kind: 'removed', text: '-  return orders.markPaid(event.data.object.id);'},
+            {kind: 'added', text: '+  await stripe.verifySignature(event);'},
+            {kind: 'added', text: '+  return checkout.confirmPayment(event.data.object);'},
           ],
           id: 'review-thread-1',
           isResolved: false,
           location: 'Comment on line +25',
-          path: 'packages/video/src/agentbuddy-ui/code/PullRequestPanel.tsx',
+          path: 'packages/api/src/webhooks/stripe-webhook.ts',
         },
       ],
       selectedCommentTab: 'discussion',
-      title: 'React launch film',
+      title: 'Checkout flow',
     },
     terminal: {
-      activeTerminalId: 'terminal-launch',
+      activeTerminalId: 'terminal-checkout',
       expanded: false,
       terminals: [
-        {id: 'terminal-launch', shell: 'zsh', title: 'AgentBuddy'},
+        {id: 'terminal-checkout', shell: 'zsh', title: 'Supafan'},
       ],
     },
   },
@@ -218,14 +199,15 @@ export const expandedTerminalPanelState: TerminalPanelState = {
   ...codeShotState.review.terminal,
   expanded: true,
   output: [
-    '$ npm run dev',
+    '$ npm test -- --filter checkout',
     '',
-    '> agentbuddy-launch-film@0.1.0 dev',
-    '> vite --host 127.0.0.1',
+    '> supafan@0.4.0 test',
+    '> vitest run --filter checkout',
     '',
-    'Local: http://127.0.0.1:5173',
-    'rendered local app preview',
-    'launch film preview ready',
+    '✓ checkout-service.test.ts (4 tests)',
+    '✓ stripe-webhook.test.ts (3 tests)',
+    '✓ receipt-service.test.ts (2 tests)',
+    'All tests passed',
   ].join('\n'),
 };
 
@@ -275,14 +257,14 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
   const stashedInitialWork = frame >= 142;
   const stagedReviewedWork = frame >= 142 && frame < 214;
   const committedReviewedWork = frame >= 214;
-  const checkedOutMainWorktree = frame >= 154;
+  const checkedOutMainWorktree = frame >= 154 && frame < 184;
   const reviewState: CodeReviewState = {
     ...codeShotState.review,
-    branch: checkedOutMainWorktree ? 'master' : codeShotState.review.branch,
+    branch: checkedOutMainWorktree ? launchFilmStory.baseBranch : codeShotState.review.branch,
     changes: stagedReviewedWork || committedReviewedWork ? [] : initialChanges,
     commits: committedReviewedWork
       ? [
-          {authorName: 'spankyed', hash: 'c0ffee1', title: codeShotState.generatedCommitMessage, time: 'just now'},
+          {authorName: launchFilmStory.author, hash: 'c0ffee1', title: codeShotState.generatedCommitMessage, time: 'just now'},
           ...codeShotState.review.commits,
         ]
       : codeShotState.review.commits,
@@ -294,9 +276,9 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
     stashes: stashedInitialWork
       ? [
           {
-            branch: 'as/react-launch-film',
+            branch: launchFilmStory.branch,
             date: 'just now',
-            message: 'WIP on as/react-launch-film: incomplete work',
+            message: `WIP on ${launchFilmStory.branch}: incomplete work`,
             ref: 'stash@{0}',
           },
         ]
@@ -305,8 +287,8 @@ export function codeShotViewForFrame(frame: number): CodeShotView {
     terminal: frame > 220 && frame < 316 ? expandedTerminalPanelState : codeShotState.review.terminal,
     worktrees: codeShotState.review.worktrees.map(worktree => ({
       ...worktree,
-      current: checkedOutMainWorktree ? worktree.branch === 'master' : worktree.branch === 'as/react-launch-film',
-      pressed: frame > 142 && frame < 154 && worktree.branch === 'master',
+      current: checkedOutMainWorktree ? worktree.branch === launchFilmStory.baseBranch : worktree.branch === launchFilmStory.branch,
+      pressed: frame > 142 && frame < 154 && worktree.branch === launchFilmStory.baseBranch,
     })),
   };
 

@@ -10,6 +10,10 @@ The film is built from reusable React/Remotion replicas of AgentBuddy UI, not El
 
 `packages/video/STORYBOARD.md` is the canonical source for the launch film.
 
+This goal file does not define the story. It defines how we build and judge the film.
+When implementing, reviewing, or fixing any shot, read the relevant storyboard section
+first and treat it as the contract for what should be visible.
+
 Use the storyboard for:
 
 - Persona, project, product story, and overall narrative arc.
@@ -18,6 +22,13 @@ Use the storyboard for:
 - Cross-chapter continuity, including any item that appears in more than one place.
 
 If this goal file, film state, shot timing, component copy, or rendered output conflicts with `STORYBOARD.md`, treat the storyboard as correct. Change implementation to match the storyboard. Only change the storyboard first when intentionally revising the film's story.
+
+Before adding or changing a shot:
+
+- Confirm the beat exists in `packages/video/STORYBOARD.md`.
+- Reuse storyboard names, IDs, paths, tags, branches, commands, status labels, and copy.
+- Do not introduce new threads, plugin states, feature names, or fake product surfaces unless the storyboard is updated first.
+- Keep implementation details in `packages/video/src/**`; keep narrative decisions in `packages/video/STORYBOARD.md`.
 
 ## Non-Negotiables
 

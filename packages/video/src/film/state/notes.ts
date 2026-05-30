@@ -2,6 +2,7 @@ import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/n
 import type {NoteImageBlockState} from '../../agentbuddy-ui/notes/NoteImageBlock';
 import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import type {ReferenceRefType} from '../../agentbuddy-ui/chat/referenceConfig';
+import {launchFilmStory} from './launchStory';
 import {ease, mix, textReveal} from './timeline';
 
 const launchImageSrc = svgDataUri(`
@@ -12,25 +13,25 @@ const launchImageSrc = svgDataUri(`
   <circle cx="24" cy="18" r="5" fill="#ff5f57"/>
   <circle cx="42" cy="18" r="5" fill="#ffbd2e"/>
   <circle cx="60" cy="18" r="5" fill="#28c840"/>
-  <text x="94" y="22" fill="#a3a3a3" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">THREADS / LAUNCH PLAN</text>
+  <text x="94" y="22" fill="#a3a3a3" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">CHECKOUT / STRIPE FLOW</text>
   <rect x="36" y="62" width="210" height="42" rx="7" fill="#202020" stroke="#303030"/>
-  <text x="52" y="87" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Launch AgentBuddy</text>
+  <text x="52" y="87" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Supafan checkout</text>
   <rect x="352" y="66" width="320" height="42" rx="8" fill="#172033" stroke="#27456f"/>
-  <text x="368" y="91" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="14">Turn launch context into execution tickets.</text>
+  <text x="368" y="91" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="14">Scope Stripe checkout and receipts.</text>
   <rect x="72" y="142" width="274" height="118" rx="8" fill="#1d1d1d" stroke="#303030"/>
   <text x="92" y="168" fill="#a3a3a3" font-family="Inter, Arial, sans-serif" font-size="13">Agent is working</text>
   <circle cx="96" cy="196" r="4" fill="#14b8a6"/>
-  <text x="112" y="200" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Capture launch context</text>
+  <text x="112" y="200" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Design payment flow</text>
   <circle cx="96" cy="220" r="4" fill="#14b8a6"/>
-  <text x="112" y="224" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Create execution tickets</text>
+  <text x="112" y="224" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Wire receipt emails</text>
   <circle cx="96" cy="244" r="4" fill="#f59e0b"/>
-  <text x="112" y="248" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Prepare release workflow</text>
+  <text x="112" y="248" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Stub discount codes</text>
   <rect x="390" y="130" width="250" height="150" rx="8" fill="#1d1d1d" stroke="#303030"/>
-  <text x="410" y="158" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Launch Operating Plan</text>
+  <text x="410" y="158" fill="#f5f5f5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Checkout Implementation Plan</text>
   <line x1="410" y1="188" x2="616" y2="188" stroke="#2f2f2f"/>
-  <text x="410" y="212" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Capture launch context</text>
+  <text x="410" y="212" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Stripe integration</text>
   <text x="592" y="212" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="12">done</text>
-  <text x="410" y="238" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Create execution tickets</text>
+  <text x="410" y="238" fill="#e5e5e5" font-family="Inter, Arial, sans-serif" font-size="13">Receipt emails</text>
   <text x="592" y="238" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="12">done</text>
 </svg>
 `);
@@ -88,16 +89,16 @@ export type NotesShotView = {
 };
 
 export const notesTaskListItems: NoteTreeNodeState[] = [
-  {id: 'default', title: 'default setup', icon: '🚧', noteType: 'task'},
-  {id: 'current', title: 'current', icon: '🔥', noteType: 'task'},
-  {id: 'resize-image', title: 'resize image in note', noteType: 'task'},
-  {id: 'phone', title: 'phone app', noteType: 'task'},
-  {id: 'bugs', title: 'bugs', icon: '🪲', noteType: 'task'},
-  {id: 'manager', title: 'manager mode', noteType: 'task'},
-  {id: 'bg', title: 'bg processes', noteType: 'task'},
-  {id: 'chat', title: 'chat layout redesign', noteType: 'task', completed: true, muted: true},
-  {id: 'roadmap', title: 'V1 Roadmap', icon: '🗺️', noteType: 'task'},
-  {id: 'artifacts', title: 'artifacts & msg blocks', noteType: 'task'},
+  {id: 'stripe-webhooks', title: 'Stripe webhooks', icon: '🔧', noteType: 'task'},
+  {id: 'current', title: 'current', icon: '💳', noteType: 'task'},
+  {id: 'receipt-emails', title: 'receipt emails', noteType: 'task'},
+  {id: 'checkout-ui', title: 'checkout UI', noteType: 'task'},
+  {id: 'discount-codes', title: 'discount codes', noteType: 'task'},
+  {id: 'creator-payouts', title: 'creator payouts', noteType: 'task'},
+  {id: 'product-variants', title: 'product variants', noteType: 'task'},
+  {id: 'landing-page', title: 'landing page redesign', noteType: 'task', completed: true, muted: true},
+  {id: 'pricing-tiers', title: 'pricing tiers', icon: '💰', noteType: 'task'},
+  {id: 'analytics-dashboard', title: 'analytics dashboard', noteType: 'task'},
 ];
 
 export const notesTaskListState: NotesTaskListPanelState = {
@@ -133,16 +134,16 @@ export const notesTaskListRowMenuState = {
 };
 
 export const notesRailFavorites: NoteTreeNodeState[] = [
-  {id: 'fav-current', icon: '🔥', title: 'current', noteType: 'document'},
-  {id: 'fav-cli', icon: '💻', title: 'cli', noteType: 'document'},
-  {id: 'fav-videos', icon: '🎬', title: 'Videos', noteType: 'document'},
+  {id: 'fav-current', icon: '💳', title: 'current', noteType: 'document'},
+  {id: 'fav-api', icon: '🔌', title: 'api', noteType: 'document'},
+  {id: 'fav-roadmap', icon: '🗺️', title: 'Roadmap', noteType: 'document'},
 ];
 
 export const notesRailTree: NoteTreeNodeState[] = [
-  {id: 'clientlabs', icon: '🌐', title: 'Clientlabs', noteType: 'document'},
-  {id: 'agentbuddy', icon: '🚀', title: 'Agentbuddy', noteType: 'document'},
+  {id: 'supafan', icon: '⚡', title: 'Supafan', noteType: 'document'},
+  {id: 'payments', icon: '💳', title: 'Payments', noteType: 'document'},
   {id: 'tasklist', icon: '📝', title: 'Tasklist', noteType: 'tasklist'},
-  {id: 'brand', icon: '⭐', title: 'Brand & Content', noteType: 'document'},
+  {id: 'design', icon: '🎨', title: 'Design', noteType: 'document'},
 ];
 
 export const notesRightRailState: NotesRightRailState = {
@@ -155,14 +156,14 @@ export const notesRightRailState: NotesRightRailState = {
 export const notesHomeState: NotesShotView['home'] = {
   greeting: 'Good afternoon',
   recent: [
-    {id: 'recent-current', icon: '🔥', title: 'current', noteType: 'document', updatedAt: 'just now', active: true},
+    {id: 'recent-current', icon: '💳', title: 'current', noteType: 'document', updatedAt: 'just now', active: true},
     {id: 'recent-tasklist', icon: '📝', title: 'Tasklist', noteType: 'tasklist', updatedAt: '4m ago'},
-    {id: 'recent-cli', icon: '💻', title: 'cli', noteType: 'document', updatedAt: '18m ago'},
+    {id: 'recent-api', icon: '🔌', title: 'api', noteType: 'document', updatedAt: '18m ago'},
   ],
   favorites: [
-    {id: 'fav-current', icon: '🔥', title: 'current', noteType: 'document', updatedAt: 'just now'},
-    {id: 'fav-videos', icon: '🎬', title: 'Videos', noteType: 'document', updatedAt: 'today'},
-    {id: 'fav-brand', icon: '⭐', title: 'Brand & Content', noteType: 'document', updatedAt: 'yesterday'},
+    {id: 'fav-current', icon: '💳', title: 'current', noteType: 'document', updatedAt: 'just now'},
+    {id: 'fav-roadmap', icon: '🗺️', title: 'Roadmap', noteType: 'document', updatedAt: 'today'},
+    {id: 'fav-design', icon: '🎨', title: 'Design', noteType: 'document', updatedAt: 'yesterday'},
   ],
 };
 
@@ -170,7 +171,7 @@ export const notesRightRailSearchState: NotesRightRailState = {
   ...notesRightRailState,
   search: {
     active: true,
-    query: 'launch',
+    query: 'checkout',
   },
 };
 
@@ -184,8 +185,8 @@ export const notesRightRailTrashState: NotesRightRailState = {
   trash: {
     visible: true,
     items: [
-      {id: 'trash-old-plan', icon: '🧾', title: 'old launch outline', noteType: 'document', deletedAge: '2d'},
-      {id: 'trash-draft', icon: '📝', title: 'draft tutorial carousel', noteType: 'document', deletedAge: '5d'},
+      {id: 'trash-old-plan', icon: '🧾', title: 'old checkout outline', noteType: 'document', deletedAge: '2d'},
+      {id: 'trash-draft', icon: '📝', title: 'draft payout notes', noteType: 'document', deletedAge: '5d'},
     ],
   },
 };
@@ -199,47 +200,47 @@ export const notesRightRailTrashActionsState: NotesRightRailState = {
 };
 
 export const notesEditorCopy = {
-  breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist', 'Current'],
-  title: {icon: '🔥', text: 'current'},
-  beforeLines: ['recent notes', 'launch context stays connected'],
+  breadcrumbs: ['Notes', 'Supafan', 'Tasklist', 'Current'],
+  title: {icon: '💳', text: 'current'},
+  beforeLines: ['Stripe webhook integration', 'checkout session flow works in staging'],
   animatedLines: [
-    {text: 'add launch image, resize it, and keep tasks nearby', from: 132, to: 176, caretUntil: 180},
-    {text: 'mark resize image complete, then create the next todo', from: 220, to: 276},
-    {text: 'new todo: link #threads: Create launch PR flow back to the parent ticket', from: 248, to: 320, caretFrom: 248, caretUntil: 324},
+    {text: 'add checkout diagram, resize it, and keep tasks nearby', from: 132, to: 176, caretUntil: 180},
+    {text: 'mark receipt emails complete, then create the next todo', from: 220, to: 276},
+    {text: `new todo: link #threads: ${launchFilmStory.threads.addDiscountCodeSupport.title} back to the parent ticket`, from: 248, to: 320, caretFrom: 248, caretUntil: 324},
   ],
 };
 
 const newNoteCopy = {
-  breadcrumbs: ['Notes', 'AgentBuddy', 'Launch Notes'],
-  title: {icon: '📝', text: 'Launch notes'},
+  breadcrumbs: ['Notes', 'Supafan', 'Checkout Notes'],
+  title: {icon: '📝', text: 'Checkout notes'},
   lines: [
-    'recent notes',
-    'launch context stays connected',
-    'add launch image, resize it, and keep tasks nearby',
+    'Stripe webhook integration',
+    'checkout session flow works in staging',
+    'add checkout diagram, resize it, and keep tasks nearby',
   ],
 };
 
 const tasklistOverviewCopy = {
-  breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist'],
+  breadcrumbs: ['Notes', 'Supafan', 'Tasklist'],
   title: {icon: '📝', text: 'Tasklist'},
   beforeLines: [
-    'default setup',
+    'Stripe webhooks',
     'current',
-    'resize image in note',
-    'Create launch PR flow',
+    'receipt emails',
+    launchFilmStory.threads.addDiscountCodeSupport.title,
   ],
   afterLines: [
-    'Launch work stays beside the note instead of becoming another app.',
+    'Checkout work stays beside the note instead of becoming another app.',
   ],
 };
 
 const todoNoteCopy = {
-  breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist', 'resize image in note'],
-  title: {icon: '', text: 'resize image in note'},
+  breadcrumbs: ['Notes', 'Supafan', 'Tasklist', 'receipt emails'],
+  title: {icon: '', text: 'receipt emails'},
   beforeLines: [
-    'Open the launch image block',
-    'Resize it to fit the note',
-    'Keep the linked launch context visible',
+    'Configure Resend transport',
+    'Render order summary template',
+    'Keep the linked checkout context visible',
   ],
   afterLines: [
     'Completed from the tasklist panel.',
@@ -247,10 +248,10 @@ const todoNoteCopy = {
 };
 
 const launchPrFlowReference = {
-  id: 'thread-launch-pr-flow',
-  label: 'Create launch PR flow',
+  id: launchFilmStory.threads.addDiscountCodeSupport.id,
+  label: launchFilmStory.threads.addDiscountCodeSupport.title,
   refType: 'thread' as const,
-  token: '#threads: Create launch PR flow',
+  token: `#threads: ${launchFilmStory.threads.addDiscountCodeSupport.title}`,
 };
 
 export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
@@ -260,9 +261,9 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
   const linkedTodoVisible = frame > 270;
   const linkedTodoEnter = ease(frame, 270, 292);
   const items = notesTaskListItems.map(item =>
-    item.id === 'resize-image' && markedComplete
+    item.id === 'receipt-emails' && markedComplete
       ? {...item, completed: true, muted: true}
-      : item.id === 'resize-image' && checkboxPressed
+      : item.id === 'receipt-emails' && checkboxPressed
         ? {...item, checkboxPressed: true, pressed: true}
         : item.id === 'current' && addPressed
           ? {...item, addPressed: true, pressed: true}
@@ -272,7 +273,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
   if (linkedTodoVisible) {
     items.splice(3, 0, {
       id: 'launch-thread',
-      title: 'Create launch PR flow',
+      title: launchFilmStory.threads.addDiscountCodeSupport.title,
       noteType: 'task',
       style: {
         opacity: linkedTodoEnter,
@@ -283,7 +284,7 @@ export function notesTaskListForFrame(frame: number): NotesTaskListPanelState {
 
   return {
     ...notesTaskListState,
-    activeId: linkedTodoVisible ? 'launch-thread' : markedComplete ? 'resize-image' : notesTaskListState.activeId,
+    activeId: linkedTodoVisible ? 'launch-thread' : markedComplete ? 'receipt-emails' : notesTaskListState.activeId,
     items,
   };
 }
@@ -304,7 +305,7 @@ export function notesViewForFrame(frame: number) {
     animatedLines,
     image: frame > 150
       ? {
-          alt: 'Launch checklist image',
+          alt: 'Supafan checkout flow diagram',
           bubbleOpen: frame > 178 && frame < 248,
           resizeButtonPressed: frame > 188 && frame <= 200,
           resizeOpen: frame > 194 && frame < 248,
@@ -447,10 +448,10 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
     },
     home: notesHomeState,
     rightRail,
-    taskList: {
+      taskList: {
       ...taskList,
-      activeId: 'resize-image',
-      items: taskList.items.map(item => item.id === 'resize-image'
+      activeId: 'receipt-emails',
+      items: taskList.items.map(item => item.id === 'receipt-emails'
         ? {...item, checkboxPressed: todoCompletePressed, completed: todoComplete, muted: todoComplete}
         : item
       ),
@@ -469,7 +470,7 @@ function notesTaskListForEditorFrame(frame: number): NotesTaskListPanelState {
     ...notesTaskListState,
     activeId: tasklistActive && todoActive ? 'resize-image' : null,
     items: notesTaskListItems.map(item => {
-      if (item.id === 'resize-image') {
+      if (item.id === 'receipt-emails') {
         return {
           ...item,
           checkboxPressed: todoCompletePressed,

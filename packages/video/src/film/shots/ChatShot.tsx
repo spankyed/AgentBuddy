@@ -556,7 +556,7 @@ function emptyThreadQuoteForFrame(
       transform: `translateY(${mix(8, 0, enter)}px)`,
       width: mainWidth,
     },
-    text: '"My therapist says I have attachment issues. I say I have context windows."',
+    text: '"Every creator gets paid. Every buyer gets a receipt."',
   };
 }
 

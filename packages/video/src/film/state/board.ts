@@ -2,6 +2,7 @@ import type {KanbanBoardState, KanbanCardState, ThreadsHeaderState} from '../../
 import type {ThreadCreateFormState} from '../../agentbuddy-ui/threads/ThreadCreateForm';
 import type {ThreadDashboardSurfaceState} from '../../agentbuddy-ui/threads/ThreadDashboardSurface';
 import {launchPlanArtifact} from './chat';
+import {launchFilmStory} from './launchStory';
 import {ease, mix, textReveal} from './timeline';
 
 export type BoardShotView = {
@@ -43,11 +44,11 @@ export const boardShotState: {
 } = {
   breadcrumbs: ['Threads', 'Board'],
   dashboard: {
-    activeTabId: 'launch-operating-plan',
+    activeTabId: launchFilmStory.threads.checkoutImplementation.id,
     artifactSidebar: [
-      {id: 'launch-operating-plan', title: 'Launch operating plan', meta: 'approved'},
-      {id: 'release-checklist', title: 'Release checklist', meta: 'ready'},
-      {id: 'write-commit', title: 'Write commit', meta: 'next'},
+      {id: launchFilmStory.threads.checkoutImplementation.id, title: launchFilmStory.threads.checkoutImplementation.title, meta: 'approved'},
+      {id: launchFilmStory.threads.deployChecklist.id, title: launchFilmStory.threads.deployChecklist.title, meta: 'ready'},
+      {id: launchFilmStory.threads.receiptEmailTemplates.id, title: launchFilmStory.threads.receiptEmailTemplates.title, meta: 'next'},
     ],
     artifact: {
       ...launchPlanArtifact,
@@ -57,23 +58,23 @@ export const boardShotState: {
       },
     },
     tabs: [
-      {id: 'release-checklist', label: 'Release checklist', pinned: true},
-      {id: 'launch-operating-plan', label: 'Launch operating plan'},
-      {id: 'write-commit', label: 'Write commit'},
+      {id: launchFilmStory.threads.deployChecklist.id, label: launchFilmStory.threads.deployChecklist.title, pinned: true},
+      {id: launchFilmStory.threads.checkoutImplementation.id, label: launchFilmStory.threads.checkoutImplementation.title},
+      {id: launchFilmStory.threads.receiptEmailTemplates.id, label: launchFilmStory.threads.receiptEmailTemplates.title},
     ],
   },
   createForm: {
-    instructions: 'Create the launch PR flow from the current operating plan. Link it to the parent launch thread and keep the branch publish path visible.',
-    linkedThreadQuery: 'Launch operating plan',
+    instructions: 'Create the discount code validation endpoint and checkout price adjustment. Link it to the parent checkout thread and keep the Stripe integration visible.',
+    linkedThreadQuery: launchFilmStory.threads.checkoutImplementation.title,
     parentThread: {
       relation: 'parent_of',
-      shortCode: 'AB-101',
+      shortCode: launchFilmStory.threads.checkoutImplementation.shortCode,
       status: 'Active',
-      tags: ['claude-code'],
-      title: 'Launch operating plan',
+      tags: ['checkout'],
+      title: launchFilmStory.threads.checkoutImplementation.title,
     },
     tags: [],
-    title: 'Create launch PR flow',
+    title: launchFilmStory.threads.addDiscountCodeSupport.title,
   },
   header: {
     activeView: 'kanban',
@@ -85,12 +86,12 @@ export const boardShotState: {
   board: {
     columns: [
       {
-        cards: [{title: 'Draft launch distribution plan', tags: ['parent']}, {title: 'Create launch PR flow'}],
+        cards: [{title: 'Draft creator payout spec', tags: ['payout']}, {title: launchFilmStory.threads.addDiscountCodeSupport.title, tags: ['checkout']}],
         title: 'Backlog',
         tone: 'neutral',
       },
       {
-        cards: [{title: 'Write commit from quick prompt'}],
+        cards: [{title: 'Wire receipt email templates', tags: ['receipts']}],
         title: 'In Progress',
         tone: 'blue',
       },
@@ -103,7 +104,7 @@ export const boardShotState: {
   },
   movingCard: {
     card: {
-      title: 'Create launch PR flow',
+      title: launchFilmStory.threads.addDiscountCodeSupport.title,
     },
     motion: {
       from: 282,
@@ -120,7 +121,7 @@ export const boardShotState: {
 
 export const threadsHeaderSearchState: ThreadsHeaderState = {
   ...boardShotState.header,
-  searchKeyword: 'launch',
+  searchKeyword: 'checkout',
 };
 
 export const threadsHeaderFilterState: ThreadsHeaderState = {
@@ -136,8 +137,8 @@ export const threadsHeaderFilterState: ThreadsHeaderState = {
       {label: 'Done', color: '#16a34a'},
     ],
     tags: [
-      {label: 'launch', selected: true, color: '#7c3aed'},
-      {label: 'video', color: '#0891b2'},
+      {label: 'checkout', selected: true, color: '#7c3aed'},
+      {label: 'payments', color: '#0891b2'},
       {label: 'bug', color: '#dc2626'},
     ],
     chatStates: [
@@ -186,7 +187,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
       return {
         ...column,
         cards: droppedCard
-          ? [...column.cards, {...boardShotState.movingCard.card, tags: ['claude-code']}]
+          ? [...column.cards, {...boardShotState.movingCard.card, tags: ['checkout']}]
           : column.cards,
         count: droppedCard ? column.cards.length + 1 : column.cards.length,
       };
@@ -227,7 +228,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
             newThreadPressed: frame > 72 && frame < 86,
             pressedView: undefined,
           },
-          hoveredTabId: frame >= 24 && frame < 66 ? 'launch-operating-plan' : undefined,
+          hoveredTabId: frame >= 24 && frame < 66 ? launchFilmStory.threads.checkoutImplementation.id : undefined,
           pinPressed: frame > 52 && frame < 66,
           pinned: frame >= 66,
         }

@@ -2,7 +2,7 @@ import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
 import {FlowNode} from '../../agentbuddy-ui/flows/FlowNode';
 import {FlowNodeForm} from '../../agentbuddy-ui/flows/FlowNodeForm';
-import {replaceObsoleteAppsFormStateForFrame} from '../state/flowForms';
+import {deployCheckoutFormStateForFrame} from '../state/flowForms';
 import {releaseAutomationWorkflow, workflowShotViewForFrame} from '../state/workflow';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
@@ -101,7 +101,7 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
                   opacity: formReveal,
                   transform: `translateX(${mix(42, 0, formReveal)}px)`,
                 }}
-                state={replaceObsoleteAppsFormStateForFrame(frame)}
+                state={deployCheckoutFormStateForFrame(frame)}
               />
             ) : null}
           </AppWindow>

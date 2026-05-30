@@ -21,6 +21,7 @@ import type {
 } from '../../agentbuddy-ui/threads/threadTypes';
 import type {ChatComposerInlineNode, ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {REFERENCE_CATEGORIES} from '../../agentbuddy-ui/chat/referenceConfig';
+import {launchFilmStory} from './launchStory';
 import {filmProjects} from './paths';
 import {ease, mix, textReveal, textRevealLinear} from './timeline';
 
@@ -107,7 +108,7 @@ export const launchComposerState: ChatComposerState = {
     {id: 'qp-link-parent', text: 'link this to the parent ticket'},
   ],
   bottomTabs: {
-    activeLabel: 'AgentBuddy launch film',
+    activeLabel: launchFilmStory.threads.checkoutImplementation.title,
   },
 };
 
@@ -127,72 +128,70 @@ export const launchComposerPhaseMenuState: ChatComposerState = {
 };
 
 export const messageBubbleDemoState = {
-  aside: 'Approved launch plan - 4 tickets created',
+  aside: 'Approved checkout plan - 3 tickets created',
   createdAt: '9:41 AM',
-  longUser: 'Use the attached launch notes and screenshot to turn this into a concise execution path. Keep the release positioning tight, create tickets for the launch film, source-control polish, PR flow, and flow-blueprint review, then produce a single plan that can be shipped from the same work surface.',
+  longUser: 'Use the attached checkout notes and screenshot to turn this into a concise execution path. Cover Stripe payments, receipts, discount codes, and creator payouts.',
   marker: '3 compacted messages',
   references: {
     files: [{name: 'release-brief.md', typeLabel: 'Markdown'}],
     images: [{name: 'launch-note.png', url: launchNotePreviewUrl}],
   },
-  system: 'Launch AgentBuddy',
-  user: 'Turn this launch brief into tickets, notes, and a shippable PR plan.',
-  commandUser: '/launch-film create tickets from the current tasklist',
-  queuedUser: 'Queue the release checklist after this plan is approved.',
+  system: 'Checkout flow implementation',
+  user: 'Turn this checkout brief into tickets, notes, and a shippable PR plan.',
+  commandUser: '/checkout create tickets from the current tasklist',
+  queuedUser: 'Queue the deploy checklist after this plan is approved.',
   cancelledUser: 'Draft the old tutorial carousel again.',
-  assistant: 'I found the launch context and turned it into an execution plan.',
+  assistant: 'I found the checkout context and turned it into an execution plan.',
 };
 
 export const chatShotState = {
-  breadcrumbs: ['Threads', 'Launch Thread'],
+  breadcrumbs: ['Threads', 'Checkout Thread'],
   createdAt: '9:41 AM',
   systemMessage: undefined,
-  prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 24, to: 186, caretUntil: 270},
-  response: {text: 'I’ll turn this into an implementation pass: create the tickets, preserve the referenced context, and prepare the branch and PR path before editing code.', from: 306, to: 346},
+  prompt: {text: 'Use #notes:current and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.', from: 24, to: 186, caretUntil: 270},
+  response: {text: 'I’ll scope the checkout feature from the tasklist: create the Stripe integration, wire receipt emails, add the discount engine, and prepare the creator payout stub.', from: 306, to: 346},
 };
 
 const reviewQuickPromptText = 'Conduct a thorough review of these changes for bugs and completeness, than report back with findings';
 
-const completedDevThreadResponse = 'The launch film branch is ready for the commit pass. I aligned the chat input, Recent Threads menu, source-control panel, PR flow, and flow-blueprint surfaces against the real app UI, then ran the video checks.';
+const completedDevThreadResponse = 'The checkout flow is wired. Stripe webhook handles payment_intent.succeeded, receipt emails send via Resend, and discount validation works. All three paths pass integration tests.';
 
-const launchPlanMarkdown = `## AgentBuddy Launch Film -> Execution Pass
+const launchPlanMarkdown = `## Supafan Checkout -> Implementation Pass
 
 ### Context
 
-The launch thread has the current tasklist, referenced notes, and product screenshot in one place. The next step is to turn that context into implementation work without leaving the thread.
+The checkout thread has the current tasklist, payment requirements, and a product screenshot in one place. The next step is to turn that context into implementation work without leaving the thread.
 
-Goal: create the execution tickets, pin the launch thread, and prepare the source-control path for a shippable PR.
+Goal: create the implementation tickets, wire the Stripe integration, and prepare the deploy path for a shippable PR.
 
 ### Key Discovery
 
-The existing tasklist already identifies the film polish work: chat fidelity, notes navigation, code/PR flow, flow-blueprint review, and final render checks.
-
-The screenshot gives enough product context to keep those tasks tied to the same launch surface instead of splitting the work across disconnected tools.
+The existing tasklist identifies three pillars: Stripe checkout sessions (webhook-driven), receipt emails (Resend transport), and discount codes (validation middleware). A shared PaymentProvider interface keeps all three behind one dispatch surface.
 
 ### Implementation Plan
 
-- Create execution tickets from the current tasklist and screenshot.
-- Pin the launch thread for the implementation pass.
-- Prepare the branch plan and PR checklist.
-- Keep the notes/tasklist context linked to the parent thread.
-- Review the launch film for ghost actions, abrupt transitions, and non-1:1 UI states.
-- Render the landscape cut and capture focused stills for any remaining issues.
+- Create implementation tickets for each checkout component.
+- Design the PaymentProvider interface and session flow.
+- Wire Stripe checkout.session.completed webhook handler.
+- Configure Resend receipt emails with order summary template.
+- Stub discount code validation endpoint.
+- Run integration tests across all payment paths.
 
 ### Files
 
-\`packages/video/src/film/state/chat.ts\` - tighten chat timing and plan handoff.
+\`packages/api/src/services/checkout-service.ts\` - session creation and payment confirmation.
 
-\`packages/video/src/agentbuddy-ui/threads\` - align thread interaction blocks with the renderer UI.
+\`packages/api/src/webhooks/stripe-webhook.ts\` - Stripe event handling.
 
-\`packages/video/src/film/shots\` - keep cursor actions attached to visible UI changes.`;
+\`packages/api/src/services/receipt-service.ts\` - Resend email transport.`;
 
 const completedDevThreadActivity: ToolActivityBlockState = {
   defaultOpen: false,
   entries: [
-    {id: 'inspect-ui', tool: 'Read', summary: 'packages/video/src/agentbuddy-ui', status: 'ok', durationMs: 420, outputSummary: 'UI surfaces reviewed'},
-    {id: 'patch-chat', tool: 'Edit', summary: 'chat input, recent threads, thread state handoff', status: 'ok', durationMs: 1300, outputSummary: 'Composer and thread transition aligned'},
-    {id: 'patch-code-pr', tool: 'Edit', summary: 'source control and pull request panels', status: 'ok', durationMs: 1900, outputSummary: 'PR path ready for launch film'},
-    {id: 'render-video', tool: 'Bash', summary: 'npm run video:render', status: 'ok', durationMs: 8600, outputSummary: 'Landscape cut rendered'},
+    {id: 'inspect-services', tool: 'Read', summary: 'packages/api/src/services', status: 'ok', durationMs: 420, outputSummary: 'Service directory reviewed'},
+    {id: 'patch-payment', tool: 'Edit', summary: 'checkout service, Stripe webhooks, receipt emails', status: 'ok', durationMs: 1300, outputSummary: 'Payment flow wired'},
+    {id: 'patch-discounts', tool: 'Edit', summary: 'discount engine and validation middleware', status: 'ok', durationMs: 1900, outputSummary: 'Discount codes ready'},
+    {id: 'test-checkout', tool: 'Bash', summary: 'npm test -- --filter checkout', status: 'ok', durationMs: 8600, outputSummary: 'Integration tests passed'},
   ],
   phase: launchComposerState.phase,
   state: 'done',
@@ -201,27 +200,27 @@ const completedDevThreadActivity: ToolActivityBlockState = {
 export const chatToolActivity: ToolActivityBlockState = {
   defaultOpen: false,
   entries: [
-    {id: 'read-launch-notes', tool: 'Read', summary: 'notes/agentbuddy/tasklist/current.md', status: 'ok', durationMs: 312, outputSummary: 'Launch notes loaded'},
-    {id: 'create-tickets', tool: 'Task', summary: 'create execution tickets from launch context', status: 'ok', durationMs: 1280, outputSummary: '4 tickets created'},
-    {id: 'write-plan', tool: 'Write', summary: 'packages/video/src/film/state/launch-plan.ts', status: 'running'},
-    {id: 'compile-flows', tool: 'Bash', summary: 'npm run compile:flows', status: 'running', durationMs: 5200},
+    {id: 'read-checkout-notes', tool: 'Read', summary: 'notes/supafan/tasklist/current.md', status: 'ok', durationMs: 312, outputSummary: 'Checkout tasklist loaded'},
+    {id: 'create-tickets', tool: 'Task', summary: 'create implementation tickets from checkout scope', status: 'ok', durationMs: 1280, outputSummary: '3 tickets created'},
+    {id: 'write-checkout-service', tool: 'Write', summary: 'packages/api/src/services/checkout-service.ts', status: 'running'},
+    {id: 'typecheck', tool: 'Bash', summary: 'npm run typecheck', status: 'running', durationMs: 5200},
   ],
   phase: launchComposerState.phase,
   state: 'streaming',
 };
 
 export const launchPlanArtifact: PlanArtifactState = {
-  id: 'launch-operating-plan',
-  title: 'Launch Operating Plan',
+  id: 'checkout-implementation-plan',
+  title: 'Checkout Implementation Plan',
   content: {
     status: 'in-progress',
-    nextStep: 'Review release checklist',
-    notes: '### Launch path\n- [x] Capture **launch context**\n- [x] Create execution tickets\n- [x] Pin launch thread\n- [ ] Review release checklist\n\n| Surface | State |\n| --- | --- |\n| Thread plan | active |\n| Parent ticket | linked |\n\n> Conversation becomes work.',
+    nextStep: 'Review deploy checklist',
+    notes: '### Checkout path\n- [x] Design **payment flow**\n- [x] Create tickets\n- [x] Wire Stripe integration\n- [ ] Review deploy checklist\n\n| Surface | State |\n| --- | --- |\n| Stripe | wired |\n| Receipts | wired |\n| Discounts | stubbed |\n\n> Every creator gets paid. Every buyer gets a receipt.',
     steps: [
-      {id: 'capture-context', title: 'Capture launch context', status: 'done'},
-      {id: 'execution-tickets', title: 'Create execution tickets', status: 'done'},
-      {id: 'pin-thread', title: 'Pin launch thread', status: 'done'},
-      {id: 'release-checklist', title: 'Review release checklist', status: 'running'},
+      {id: 'design-payment-flow', title: 'Design payment flow', status: 'done'},
+      {id: 'create-tickets', title: 'Create tickets', status: 'done'},
+      {id: 'wire-stripe', title: 'Wire Stripe integration', status: 'done'},
+      {id: 'deploy-checklist', title: 'Review deploy checklist', status: 'running'},
     ],
   },
 };
@@ -230,7 +229,7 @@ export const thinkingBlockDemoState: ThinkingBlockState = {
   defaultOpen: true,
   label: 'Thinking',
   state: 'done',
-  content: 'Need to preserve the launch thread context, create a PR path, and keep the flow blueprint as design-time automation rather than runtime execution.',
+  content: 'Need to preserve the checkout thread context, create a PR path, and keep the deploy blueprint as design-time automation before runtime execution.',
 };
 
 export const toolInputBlockDemoState: ToolInputBlockState = {
@@ -271,7 +270,7 @@ export const approvalBlockDemoState: ApprovalBlockState = {
   approveLabel: 'Approve',
   autoAcceptOption: true,
   denyLabel: 'Deny',
-  reason: 'This matches the launch-film direction.',
+  reason: 'This matches the checkout implementation direction.',
   reasonPlaceholder: 'Enter your reason...',
 };
 
@@ -287,7 +286,7 @@ export const launchPlanThinkingState: ThinkingBlockState = {
   defaultOpen: true,
   label: 'Thinking',
   state: 'streaming',
-  content: 'Preparing the execution pass from the approved launch plan. Loading the completed implementation thread and preserving the launch context.',
+  content: 'Preparing the implementation pass from the approved checkout plan. Loading the completed Stripe thread and preserving the payment context.',
 };
 
 export const approvalBlockRespondedState: ApprovalBlockState = {
@@ -337,7 +336,7 @@ export const questionBlockDemoState: QuestionBlockState = {
       allowCustom: true,
       options: [
         {id: 'pr-flow', label: 'PR flow', description: 'Publish branch, create PR, then show details.'},
-        {id: 'tasklist', label: 'Tasklist', description: 'Edit notes, tasks, and launch context.'},
+        {id: 'tasklist', label: 'Tasklist', description: 'Edit notes, tasks, and checkout context.'},
         {id: 'flows', label: 'Flow blueprints', description: 'Show automation as design-time blueprints.'},
       ],
       question: 'Which launch surface should lead the next cut?',
@@ -373,38 +372,38 @@ export const buttonGroupRespondedState: ButtonGroupBlockState = {
 };
 
 export const promptBlockDemoState: PromptBlockState = {
-  content: 'Confirm the launch cut should emphasize real product surfaces over tutorial walkthroughs.',
+  content: 'Confirm the checkout pass should keep Stripe, receipts, and discounts in one implementation thread.',
 };
 
 export const noteBlockDemoState: NoteBlockState = {
-  content: 'Flow blueprints stay design-time only. No runtime status indicators in the flow plugin shot.',
-  label: 'Launch note',
+  content: 'The deploy checkout blueprint stays design-time only. Runtime work appears in logs after the command runs.',
+  label: 'Checkout note',
   variant: 'warning',
 };
 
 export const markdownBlockDemoState: MarkdownBlockState = {
-  content: '### Launch checklist\n- [x] Real UI surfaces\n- [x] PR flow complete\n- [ ] Review [release note](note://current)\n\n| Review | Owner |\n| --- | --- |\n| code/pr | ready |\n| flows | needs pass |\n\n```ts\nconst surface = \"renderer-faithful\";\n```',
+  content: '### Checkout checklist\n- [x] Stripe sessions\n- [x] Receipt emails\n- [ ] Review [deploy note](note://current)\n\n| Surface | Owner |\n| --- | --- |\n| code/pr | sam |\n| deploy flow | ready |\n\n```ts\nconst branch = \"sam/checkout-flow\";\n```',
   label: 'Generated summary',
 };
 
 export const togglesBlockDemoState: TogglesBlockState = {
   toggles: [
     {id: 'ship-pr', label: 'Create PR after publish', default: true},
-    {id: 'notify-launch', label: 'Notify launch thread', description: 'Post the final checklist', default: false},
+    {id: 'notify-checkout', label: 'Notify deploy thread', description: 'Post the final checkout checklist', default: false},
   ],
 };
 
 export const sessionListBlockDemoState: SessionListBlockState = {
   sessions: [
-    {id: '9f42c8a710ef', title: 'React launch film', modifiedAt: '2m ago', size: 428_000},
-    {id: '77bb1a4d52a0', title: 'Flow blueprint review', modifiedAt: '18m ago', size: 214_000},
+    {id: '9f42c8a710ef', title: launchFilmStory.threads.checkoutImplementation.title, modifiedAt: '2m ago', size: 428_000},
+    {id: '77bb1a4d52a0', title: launchFilmStory.threads.stripePaymentIntegration.title, modifiedAt: '18m ago', size: 214_000},
     {id: '43d0ac921eb4', title: '(untitled)', modifiedAt: '1h ago', size: 92_000},
   ],
 };
 
 export const linkBlockDemoState: LinkBlockState = {
   links: [
-    {icon: 'file-text', label: 'Open launch note'},
+    {icon: 'file-text', label: 'Open checkout note'},
     {icon: 'message-square', label: 'View source thread'},
     {icon: 'external-link', label: 'Open PR'},
   ],
@@ -423,20 +422,20 @@ export const contextUsageBlockDemoState: ContextUsageBlockState = {
     {name: 'Messages', tokens: 64_400, percentage: 32.2},
   ],
   memoryFiles: [
-    {type: 'note', path: '/AgentBuddy/Tasklist/current.md', tokens: 7400},
-    {type: 'brief', path: '/AgentBuddy/Videos/launch-film.md', tokens: 5200},
+    {type: 'note', path: '/Supafan/Tasklist/current.md', tokens: 7400},
+    {type: 'brief', path: '/Supafan/Payments/checkout-flow.md', tokens: 5200},
   ],
   skills: [
-    {name: 'launch-film-fidelity', source: 'workspace', tokens: 8200},
+    {name: 'checkout-flow-fidelity', source: 'workspace', tokens: 8200},
   ],
 };
 
 export const textInputBlockDemoState: TextInputBlockState = {
   multiline: true,
-  placeholder: 'Enter launch note...',
+  placeholder: 'Enter checkout note...',
   rows: 2,
-  suggestions: ['Tighten the launch cut', 'Show the PR flow'],
-  value: 'Focus on the real app surfaces.',
+  suggestions: ['Review checkout coverage', 'Show the PR flow'],
+  value: 'Focus on the checkout work surfaces.',
 };
 
 export const filePickerBlockDemoState: FilePickerBlockState = {
@@ -447,17 +446,17 @@ export const filePickerBlockDemoState: FilePickerBlockState = {
 
 export const projectSelectBlockDemoState: ProjectSelectBlockState = {
   projects: [
-    {name: 'AgentBuddy', color: '#3b82f6', directories: [filmProjects.agentBuddy]},
-    {name: 'Clientlabs', color: '#10b981', directories: [filmProjects.clientlabs]},
+    {name: 'Supafan', color: '#3b82f6', directories: [filmProjects.supafan]},
+    {name: 'Acme Tools', color: '#10b981', directories: [filmProjects.launch]},
   ],
 };
 
 export const projectSelectRespondedState: ProjectSelectBlockState = {
   disabled: true,
   displayText: 'Selected project:',
-  response: filmProjects.agentBuddy,
+  response: filmProjects.supafan,
   projects: [
-    {name: 'AgentBuddy', color: '#3b82f6', directories: [filmProjects.agentBuddy]},
+    {name: 'Supafan', color: '#3b82f6', directories: [filmProjects.supafan]},
   ],
 };
 
@@ -578,7 +577,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     },
   };
   return {
-    breadcrumbs: recentThreadLoaded ? ['Threads', 'Launch PR implementation'] : chatShotState.breadcrumbs,
+    breadcrumbs: recentThreadLoaded ? ['Threads', launchFilmStory.threads.stripePaymentIntegration.title] : chatShotState.breadcrumbs,
     composer: {
       ...launchComposerState,
       referenceAutocomplete,
@@ -597,7 +596,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       bottomTabs: frame > 188
         ? {
             ...launchComposerState.bottomTabs!,
-            activeLabel: recentThreadLoaded ? 'Launch PR implementation' : launchComposerState.bottomTabs!.activeLabel,
+            activeLabel: recentThreadLoaded ? launchFilmStory.threads.stripePaymentIntegration.title : launchComposerState.bottomTabs!.activeLabel,
             active: frame >= recentThreadLoadedStart ? 'active' : frame > recentThreadsClickStart && frame < recentThreadLoadedStart ? 'recent' : frame > 150 ? 'active' : undefined,
             pressed: frame > recentThreadsClickStart && frame < recentThreadsClickEnd
                 ? 'recent'
@@ -606,17 +605,17 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
                   : undefined,
             recentThreadsMenu: frame > recentThreadsMenuStart && frame < recentThreadsMenuEnd
               ? {
-                  currentId: 'launch-plan',
+                  currentId: launchFilmStory.threads.checkoutImplementation.id,
                   selectedIndex: frame > recentThreadSelectStart ? 0 : -1,
                   threadStates: {
-                    'launch-dev-complete': {color: '#22c55e'},
-                    'launch-plan': {busy: true},
-                    'release-checks': {color: '#f59e0b'},
+                    [launchFilmStory.threads.stripePaymentIntegration.id]: {color: '#22c55e'},
+                    [launchFilmStory.threads.checkoutImplementation.id]: {busy: true},
+                    [launchFilmStory.threads.deployChecklist.id]: {color: '#f59e0b'},
                   },
                   threads: [
-                    {id: 'launch-dev-complete', topic: 'Launch PR implementation', pinned: true, shortCode: 'AB-104', timestamp: recentThreadTimestamps.now},
-                    {id: 'launch-plan', topic: 'Launch Operating Plan', shortCode: 'AB-101', timestamp: recentThreadTimestamps.twoMinutesAgo},
-                    {id: 'release-checks', topic: 'Release checklist', shortCode: 'AB-118', timestamp: recentThreadTimestamps.eightMinutesAgo},
+                    {id: launchFilmStory.threads.stripePaymentIntegration.id, topic: launchFilmStory.threads.stripePaymentIntegration.title, pinned: true, shortCode: launchFilmStory.threads.stripePaymentIntegration.shortCode, timestamp: recentThreadTimestamps.now},
+                    {id: launchFilmStory.threads.checkoutImplementation.id, topic: launchFilmStory.threads.checkoutImplementation.title, shortCode: launchFilmStory.threads.checkoutImplementation.shortCode, timestamp: recentThreadTimestamps.twoMinutesAgo},
+                    {id: launchFilmStory.threads.deployChecklist.id, topic: launchFilmStory.threads.deployChecklist.title, shortCode: launchFilmStory.threads.deployChecklist.shortCode, timestamp: recentThreadTimestamps.eightMinutesAgo},
                   ],
                 }
               : undefined,
@@ -647,7 +646,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
         }] : []),
         ...(showApprovedSummary ? [{
           autoHide: true,
-          markdown: 'Approved launch execution plan — implementation started',
+          markdown: 'Approved checkout implementation plan - work started',
           style: {
             opacity: ease(frame, 394, 404),
             transform: `translateY(${(1 - ease(frame, 394, 404)) * 12}px)`,
@@ -680,7 +679,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           defaultOpen: true,
           label: 'Thinking',
           state: frame >= chatShotState.response.from ? 'done' : 'streaming',
-          content: 'Inspecting the current tasklist, referenced note, and screenshot so the next step can be scoped before any code edits.',
+          content: 'Examining the tasklist and screenshot to identify the checkout components and determine the right Stripe integration pattern before creating tickets.',
         } : undefined,
         toolActivity: recentThreadLoaded && !showQuickPromptResponse
           ? completedDevThreadActivityViewForFrame(frame)
@@ -691,7 +690,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       userMessage: {
         caretVisible: frame < 270 && view.promptCaretVisible,
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
-        text: quickPromptSent ? reviewQuickPromptText : recentThreadLoaded ? 'Polish the launch film UI and prepare the PR path.' : view.prompt,
+        text: quickPromptSent ? reviewQuickPromptText : recentThreadLoaded ? 'Polish the checkout flow and prepare the PR path.' : view.prompt,
       },
     },
     conversationStyle: {

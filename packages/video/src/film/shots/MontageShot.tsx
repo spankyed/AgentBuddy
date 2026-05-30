@@ -1,5 +1,4 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
-import {BrainSurface} from '../../agentbuddy-ui/brain/BrainSurface';
 import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import {LogsSurface} from '../../agentbuddy-ui/logs/LogsSurface';
 import {SettingsSurface} from '../../agentbuddy-ui/settings/SettingsSurface';
@@ -7,10 +6,10 @@ import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation
 import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import type {PluginId} from '../../agentbuddy-ui/chrome/Toolbar';
 import {launchComposerState} from '../state/chat';
-import {brainLaunchCommandStateForFrame} from '../state/brain';
 import {databaseMessagesBeforeDateState, databaseMessageLookupState} from '../state/database';
 import {logsLaunchReleaseStateForFrame} from '../state/logs';
 import {settingsProvidersStateForFrame} from '../state/settings';
+import {launchFilmStory} from '../state/launchStory';
 import {ease, mix, textReveal} from '../state/timeline';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -33,7 +32,7 @@ export function MontageShot({frame, variant}: {frame: number; variant?: 'landsca
 
 function montageShotViewForFrame(frame: number) {
   if (frame < 72) {
-    const command = '/replace-obsolete-apps';
+    const command = launchFilmStory.command;
     return {
       activePlugin: 'threads' as PluginId,
       breadcrumbs: ['Threads'],
@@ -46,7 +45,7 @@ function montageShotViewForFrame(frame: number) {
         <ThreadConversation
           assistant={{
             markdown: frame > 24
-              ? textReveal('Matched obsolete apps, queued the database cleanup, and opened the execution trace.', frame, 24, 58)
+              ? textReveal('Matched the deploy-checkout command, ran migrations, and notified the #releases channel.', frame, 24, 58)
               : '',
           }}
           createdAt="just now"
@@ -76,15 +75,6 @@ function montageShotViewForFrame(frame: number) {
       breadcrumbs: ['Database'],
       composer: false as const,
       surface: <DatabaseSurface state={databaseStateForMontageFrame(frame)} />,
-    };
-  }
-
-  if (frame < 292) {
-    return {
-      activePlugin: 'brain' as PluginId,
-      breadcrumbs: ['Brain'],
-      composer: false as const,
-      surface: <BrainSurface state={brainLaunchCommandStateForFrame(frame)} />,
     };
   }
 

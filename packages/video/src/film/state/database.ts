@@ -1,4 +1,5 @@
 import type {DatabaseSurfaceState, QueryExample} from '../../agentbuddy-ui/database/databaseTypes';
+import {launchFilmStory} from './launchStory';
 import {filmDatabaseBackupDirectory} from './paths';
 
 const queryExamples: QueryExample[] = [
@@ -41,10 +42,10 @@ export const databaseSurfaceState: DatabaseSurfaceState = {
   isLoading: false,
   mode: 'query',
   queryResult: [
-    {id: 'thread-replace-obsolete-apps', status: 'active', topic: 'AgentBuddy launch film', updatedAt: '2026-05-25T14:18:22Z'},
-    {id: 'thread-release-plan', status: 'active', topic: 'Release checklist', updatedAt: '2026-05-25T13:42:09Z'},
-    {id: 'thread-pr-review', status: 'active', topic: 'PR review surface', updatedAt: '2026-05-25T12:57:44Z'},
-    {id: 'thread-demo-script', status: 'active', topic: 'Demo script polish', updatedAt: '2026-05-25T12:11:03Z'},
+    {id: launchFilmStory.threads.checkoutImplementation.id, status: 'active', topic: launchFilmStory.threads.checkoutImplementation.title, updatedAt: '2026-05-25T14:18:22Z'},
+    {id: launchFilmStory.threads.stripePaymentIntegration.id, status: 'active', topic: launchFilmStory.threads.stripePaymentIntegration.title, updatedAt: '2026-05-25T13:42:09Z'},
+    {id: launchFilmStory.threads.addDiscountCodeSupport.id, status: 'active', topic: launchFilmStory.threads.addDiscountCodeSupport.title, updatedAt: '2026-05-25T12:57:44Z'},
+    {id: launchFilmStory.threads.deployChecklist.id, status: 'active', topic: launchFilmStory.threads.deployChecklist.title, updatedAt: '2026-05-25T12:11:03Z'},
   ],
   schema: {
     attributes: [
@@ -86,22 +87,27 @@ export const databasePrimitiveArrayState: DatabaseSurfaceState = {
   .where('status', 'active')
   .pluck('topic');`,
   executionTime: 6.41,
-  queryResult: ['AgentBuddy launch film', 'Release checklist', 'PR review surface', 'Demo script polish'],
+  queryResult: [
+    launchFilmStory.threads.checkoutImplementation.title,
+    launchFilmStory.threads.stripePaymentIntegration.title,
+    launchFilmStory.threads.addDiscountCodeSupport.title,
+    launchFilmStory.threads.deployChecklist.title,
+  ],
 };
 
 export const databaseObjectResultState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   currentQuery: `return qx(EARS.Entity.Thread)
-  .where('id', 'thread-replace-obsolete-apps')
+  .where('id', '${launchFilmStory.threads.checkoutImplementation.id}')
   .first()
   .pickAll();`,
   executionTime: 12.82,
   queryResult: {
-    id: 'thread-replace-obsolete-apps',
-    owner: 'spankyed',
+    id: launchFilmStory.threads.checkoutImplementation.id,
+    owner: launchFilmStory.author,
     priority: 'current',
     status: 'active',
-    topic: 'AgentBuddy launch film',
+    topic: launchFilmStory.threads.checkoutImplementation.title,
     updatedAt: '2026-05-25T14:18:22Z',
   },
 };
@@ -158,7 +164,7 @@ export const databaseEmptyArrayState: DatabaseSurfaceState = {
 
 export const databaseAiLoadingState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
-  aiPrompt: 'Show the five most active launch threads',
+  aiPrompt: 'Show the five most active checkout threads',
   isAiPromptOpen: false,
   isAiQueryLoading: true,
   queryResult: null,
@@ -167,7 +173,7 @@ export const databaseAiLoadingState: DatabaseSurfaceState = {
 
 export const databaseAiPromptState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
-  aiPrompt: 'Show the five most active launch threads',
+  aiPrompt: 'Show the five most active checkout threads',
   isAiPromptOpen: true,
   queryResult: null,
   successMessage: '',
@@ -177,7 +183,7 @@ export const databaseBackupExportState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   backup: {
     activeTab: 'export',
-    backupName: 'agentbuddy-launch-film',
+    backupName: 'supafan-checkout-flow',
     backupNamePlaceholder: 'backup-2026-05-25',
     exportPath: filmDatabaseBackupDirectory,
     exportPathPlaceholder: '~/Documents/AgentBuddy Backups',
@@ -201,19 +207,19 @@ export const databaseBackupImportState: DatabaseSurfaceState = {
       size: 47 * 1024 * 1024,
       timestamp: 1769448640000,
     },
-    importPath: `${filmDatabaseBackupDirectory}/agentbuddy-launch-film`,
+    importPath: `${filmDatabaseBackupDirectory}/supafan-checkout-flow`,
   },
 };
 
 export const databaseTraceState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   trace: {
-    currentFlowId: 'flow-release-automation',
+    currentFlowId: launchFilmStory.flow.id,
     events: [
       {
         id: 'trace-event-1',
-        label: 'Release automation',
-        metadata: {trigger: 'code.branch.published', branch: 'as/react-launch-film'},
+        label: 'Deploy checkout',
+        metadata: {trigger: 'code.branch.published', branch: launchFilmStory.branch},
         nodeType: 'event',
         startedAt: '10:34 AM',
         status: 'completed',
@@ -223,7 +229,7 @@ export const databaseTraceState: DatabaseSurfaceState = {
         children: [
           {
             id: 'trace-event-2a',
-            label: 'Create PR summary',
+                  label: 'Run database migrations',
             metadata: {provider: 'codex', tokens: 1842},
             nodeType: 'step',
             startedAt: '10:35 AM',
@@ -232,8 +238,8 @@ export const databaseTraceState: DatabaseSurfaceState = {
           },
         ],
         id: 'trace-event-2',
-        label: 'Publish launch workflow',
-        metadata: {flowId: 'release-automation', result: 'ready'},
+        label: 'Deploy checkout workflow',
+        metadata: {flowId: launchFilmStory.flow.id, result: 'ready'},
         nodeType: 'flow',
         startedAt: '10:35 AM',
         status: 'active',
@@ -242,9 +248,9 @@ export const databaseTraceState: DatabaseSurfaceState = {
     ],
     expandedEventIds: ['trace-event-2'],
     flows: [
-      {completedAt: '42.18ms', id: 'flow-release-automation', label: 'Release automation', startedAt: '10:34 AM', status: 'active'},
-      {completedAt: '1.4s', id: 'flow-onboarding', label: 'Start Onboarding', startedAt: '10:18 AM', status: 'completed'},
-      {completedAt: '812ms', id: 'flow-asset-check', label: 'Asset checks', startedAt: '9:57 AM', status: 'completed'},
+      {completedAt: '42.18ms', id: launchFilmStory.flow.id, label: launchFilmStory.flow.title, startedAt: '10:34 AM', status: 'active'},
+      {completedAt: '1.4s', id: 'flow-post-purchase', label: 'Post-purchase Flow', startedAt: '10:18 AM', status: 'completed'},
+      {completedAt: '812ms', id: 'flow-sales-digest', label: 'Daily Digest', startedAt: '9:57 AM', status: 'completed'},
     ],
     hasMore: true,
   },
@@ -264,23 +270,23 @@ export const databaseGraphState: DatabaseSurfaceState = {
   graph: {
     currentLayout: 'd3-force',
     edges: [
-      {id: 'edge-thread-message', source: 'thread-replace-obsolete-apps', target: 'message-launch-plan', type: 'contains'},
-      {id: 'edge-thread-note', source: 'thread-replace-obsolete-apps', target: 'note-tasklist', type: 'references'},
-      {id: 'edge-thread-flow', source: 'thread-release-plan', target: 'flow-release-automation', type: 'triggers'},
-      {id: 'edge-flow-action', source: 'flow-release-automation', target: 'action-publish-report', type: 'runs'},
-      {id: 'edge-thread-prompt', source: 'thread-demo-script', target: 'prompt-launch-copy', type: 'uses'},
+      {id: 'edge-thread-message', source: launchFilmStory.threads.checkoutImplementation.id, target: 'message-checkout-plan', type: 'contains'},
+      {id: 'edge-thread-note', source: launchFilmStory.threads.checkoutImplementation.id, target: 'note-tasklist', type: 'references'},
+      {id: 'edge-thread-flow', source: launchFilmStory.threads.deployChecklist.id, target: launchFilmStory.flow.id, type: 'triggers'},
+      {id: 'edge-flow-action', source: launchFilmStory.flow.id, target: 'action-run-migrations', type: 'runs'},
+      {id: 'edge-thread-discount', source: launchFilmStory.threads.addDiscountCodeSupport.id, target: 'service-discount', type: 'uses'},
     ],
     nodes: [
-      {connections: 2, id: 'thread-replace-obsolete-apps', label: 'Launch film', owner: 'spankyed', status: 'active', type: 'Thread'},
-      {connections: 1, id: 'message-launch-plan', label: 'Plan', role: 'assistant', type: 'Message'},
-      {connections: 1, id: 'note-tasklist', label: 'Tasklist', path: 'AgentBuddy / Tasklist', type: 'Artifact'},
-      {connections: 2, id: 'thread-release-plan', label: 'Release plan', status: 'active', type: 'Thread'},
-      {connections: 2, id: 'flow-release-automation', label: 'Release automation', type: 'Flow'},
-      {connections: 1, id: 'action-publish-report', label: 'Publish report', type: 'Node'},
-      {connections: 1, id: 'thread-demo-script', label: 'Demo script', status: 'active', type: 'Thread'},
-      {connections: 1, id: 'prompt-launch-copy', label: 'Launch copy', type: 'Node'},
+      {connections: 2, id: launchFilmStory.threads.checkoutImplementation.id, label: 'Checkout flow', owner: launchFilmStory.author, status: 'active', type: 'Thread'},
+      {connections: 1, id: 'message-checkout-plan', label: 'Plan', role: 'assistant', type: 'Message'},
+      {connections: 1, id: 'note-tasklist', label: 'Tasklist', path: 'Supafan / Tasklist', type: 'Artifact'},
+      {connections: 2, id: launchFilmStory.threads.deployChecklist.id, label: 'Deploy checklist', status: 'active', type: 'Thread'},
+      {connections: 2, id: launchFilmStory.flow.id, label: launchFilmStory.flow.title, type: 'Flow'},
+      {connections: 1, id: 'action-run-migrations', label: 'Run migrations', type: 'Node'},
+      {connections: 1, id: launchFilmStory.threads.addDiscountCodeSupport.id, label: 'Discount codes', status: 'active', type: 'Thread'},
+      {connections: 1, id: 'service-discount', label: 'Discount service', type: 'Node'},
     ],
-    selectedNodeId: 'thread-replace-obsolete-apps',
+    selectedNodeId: launchFilmStory.threads.checkoutImplementation.id,
     zoomLevel: 1,
   },
   queryResult: null,
@@ -290,7 +296,7 @@ export const databaseGraphState: DatabaseSurfaceState = {
 export const databaseMessageLookupState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   currentQuery: `return qx(EARS.Entity.Message)
-  .where('text', 'contains', 'replace-obsolete-apps')
+  .where('text', 'contains', 'deploy-checkout')
   .orderBy('timestamp', 'desc')
   .limit(1)
   .pick(['text', 'sender', 'timestamp', 'threadId']);`,
@@ -298,8 +304,8 @@ export const databaseMessageLookupState: DatabaseSurfaceState = {
   queryResult: [
     {
       sender: 'user',
-      text: '/replace-obsolete-apps',
-      threadId: 'thread-replace-obsolete-apps',
+      text: launchFilmStory.command,
+      threadId: launchFilmStory.threads.checkoutImplementation.id,
       timestamp: '2026-05-25T14:34:18Z',
     },
   ],
@@ -310,25 +316,25 @@ export const databaseMessageLookupState: DatabaseSurfaceState = {
 export const databaseMessagesBeforeDateState: DatabaseSurfaceState = {
   ...databaseSurfaceState,
   currentQuery: `return qx(EARS.Entity.Message)
-  .where('timestamp', '<', '2026-06-19')
-  .where('text', 'contains', 'all obsolete apps removed')
+  .where('timestamp', '<', '2026-05-26')
+  .where('text', 'contains', 'deploy-checkout pipeline completed')
   .orderBy('timestamp', 'desc')
   .pick(['text', 'sender', 'timestamp']);`,
   executionTime: 14.33,
   queryResult: [
     {
       sender: 'assistant',
-      text: 'all obsolete apps removed',
+      text: 'deploy-checkout pipeline completed',
       timestamp: '2026-05-25T14:35:16Z',
     },
     {
       sender: 'user',
-      text: '/replace-obsolete-apps',
+      text: launchFilmStory.command,
       timestamp: '2026-05-25T14:34:18Z',
     },
     {
       sender: 'assistant',
-      text: 'Removed launch context, branch, pull request, and review checklist from the app registry.',
+      text: 'Ran checkout migrations, validated receipt jobs, and notified #releases.',
       timestamp: '2026-05-25T14:34:03Z',
     },
   ],

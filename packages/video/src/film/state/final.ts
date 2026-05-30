@@ -13,8 +13,8 @@ export type FinalShotView = {
 };
 
 export const finalShotState = {
-  date: 'june 19th',
-  link: 'clientlabs.com',
+  date: 'The AI operating system for modern work.',
+  link: 'AgentBuddy',
   motion: {
     link: {from: -8, to: 46, yFrom: 20, yTo: 0},
     date: {from: 34, to: 72},
