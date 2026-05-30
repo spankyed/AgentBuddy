@@ -109,12 +109,12 @@ function boardCursorForFrame(frame: number):
     return cursorMove(targets, {end: 258, from: 'linkActionButton', start: 244, to: 'createSaveButton'}, 'percent');
   }
 
-  if (frame >= 264 && frame < 282) {
+  if (frame >= 270 && frame < 284) {
     return cursorMove(targets, {
-      end: 276,
+      end: 282,
       from: 'createSaveButton',
       fromPoint: {anchor: [0.5, 0.5]},
-      start: 264,
+      start: 270,
       to: 'kanbanViewButton',
       toPoint: {anchor: [0.5, 0.5]},
     }, 'percent');

@@ -14,12 +14,14 @@ export type ThreadCreateFormState = {
   linkInputVisible?: boolean;
   linkedThreadQuery?: string;
   linkedThreadCandidate?: {
+    shortCode?: string;
     relation: string;
     status: string;
     tags: string[];
     title: string;
   };
   parentThread?: {
+    shortCode?: string;
     relation: string;
     status: string;
     tags: string[];
@@ -149,7 +151,19 @@ function LinkedThreads({state}: {state: ThreadCreateFormState}) {
                 </select>
               </td>
               <td colSpan={2}>
-                <div className={styles.threadSearch}>{state.linkedThreadQuery || 'Search for threads...'}</div>
+                <div className={styles.combobox}>
+                  <div className={styles.threadSearch}>{state.linkedThreadQuery || 'Search for threads...'}</div>
+                  {state.linkedThreadCandidate ? (
+                    <div className={styles.comboboxContent}>
+                      <div className={styles.comboboxViewport}>
+                        <div className={styles.comboboxItem} data-highlighted="true">
+                          <span>{state.linkedThreadCandidate.title || 'Untitled thread...'}</span>
+                          {state.linkedThreadCandidate.shortCode ? <small>{state.linkedThreadCandidate.shortCode}</small> : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </td>
               <td colSpan={2}>
                 <div className={styles.linkActions}>
@@ -157,22 +171,6 @@ function LinkedThreads({state}: {state: ThreadCreateFormState}) {
                   <button className={styles.cancelButton} type="button">Cancel</button>
                 </div>
               </td>
-            </tr>
-          ) : null}
-          {state.linkInputVisible && state.linkedThreadCandidate ? (
-            <tr className={styles.candidateRow}>
-              <td />
-              <td><span className={styles.relation}>{state.linkedThreadCandidate.relation}</span></td>
-              <td>
-                <div className={styles.threadTitleCell}>
-                  <span className={styles.statusDot} />
-                  <span className={styles.threadTitle}>{state.linkedThreadCandidate.title}</span>
-                </div>
-              </td>
-              <td>
-                <div className={styles.tags}>{state.linkedThreadCandidate.tags.map(tag => <span className={styles.tag} key={tag}>{tag}</span>)}</div>
-              </td>
-              <td><span className={styles.status}>{state.linkedThreadCandidate.status}</span></td>
             </tr>
           ) : null}
         </tbody>

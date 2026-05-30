@@ -57,6 +57,11 @@
   color: rgb(245 245 245);
 }
 
+.ThreadsHeader_iconButton[data-hovered="true"] {
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+}
+
 .ThreadsHeader_iconButton[data-pressed="true"],
 .ThreadsHeader_activeIconButton[data-pressed="true"] {
   background: rgb(82 82 82);

@@ -67,6 +67,7 @@ export const boardShotState: {
     linkedThreadQuery: 'Launch operating plan',
     parentThread: {
       relation: 'parent_of',
+      shortCode: 'AB-101',
       status: 'Active',
       tags: ['claude-code'],
       title: 'Launch operating plan',
@@ -233,9 +234,10 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
       : undefined,
     header: {
       ...boardShotState.header,
-      activeView: dashboardVisible ? 'dashboard' : frame < 276 ? 'list' : 'kanban',
+      activeView: dashboardVisible ? 'dashboard' : frame < 282 ? 'list' : 'kanban',
+      hoveredView: frame > 272 && frame < 282 ? 'kanban' : undefined,
       newThreadPressed: frame > 72 && frame < 86,
-      pressedView: frame > 264 && frame < 276 ? 'kanban' : undefined,
+      pressedView: undefined,
     },
     mode: dashboardVisible ? 'dashboard' : createVisible ? 'create' : 'board',
     movingCard: draggingCard

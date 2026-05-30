@@ -261,6 +261,7 @@ export type ThreadsHeaderState = {
     visible: boolean;
   };
   filterLabel: string;
+  hoveredView?: 'list' | 'kanban' | 'dashboard';
   newThreadLabel: string;
   newThreadPressed?: boolean;
   pressedView?: 'list' | 'kanban' | 'dashboard';
