@@ -90,3 +90,9 @@ export function mix(from: number, to: number, progress: number) {
 export function textReveal(text: string, local: number, from: number, to: number) {
   return text.slice(0, Math.floor(mix(0, text.length, ease(local, from, to))));
 }
+
+export function textRevealLinear(text: string, local: number, from: number, to: number) {
+  if (local <= from) return '';
+  if (local >= to) return text;
+  return text.slice(0, Math.floor(mix(0, text.length, (local - from) / (to - from))));
+}
