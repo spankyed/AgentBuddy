@@ -1,4 +1,5 @@
 import {Icons} from '../primitives/Icon';
+import {TextCaret} from '../primitives/TextCaret';
 import {makeStyles} from '../primitives/makeStyles';
 import './ThreadCreateForm.module.css';
 
@@ -43,9 +44,9 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
         </div>
         <div className={styles.headerCenter}>
           <div className={styles.titleInput} data-onboarding-id="thread-topic-input">
-            {!state.title && state.titleCaretVisible ? <span className={styles.leadingCaret} /> : null}
+            {!state.title && state.titleCaretVisible ? <TextCaret leading /> : null}
             <span className={state.title ? styles.titleInputText : styles.titleInputPlaceholder}>{state.title || 'Enter thread topic'}</span>
-            {state.title && state.titleCaretVisible ? <span className={styles.caret} /> : null}
+            {state.title && state.titleCaretVisible ? <TextCaret /> : null}
           </div>
           <select className={styles.statusSelect} disabled value="Backlog">
             <option>Backlog</option>
@@ -65,9 +66,9 @@ export function ThreadCreateForm({state}: {state: ThreadCreateFormState}) {
             <div className={styles.editor}>
               <div className={styles.gutter}>1</div>
               <div className={state.instructions ? styles.editorText : styles.editorPlaceholder}>
-                {!state.instructions && state.instructionsCaretVisible ? <span className={styles.leadingCaret} /> : null}
+                {!state.instructions && state.instructionsCaretVisible ? <TextCaret leading /> : null}
                 {state.instructions || 'Enter instructions for the agent'}
-                {state.instructions && state.instructionsCaretVisible ? <span className={styles.caret} /> : null}
+                {state.instructions && state.instructionsCaretVisible ? <TextCaret /> : null}
               </div>
             </div>
           </section>

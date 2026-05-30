@@ -4,8 +4,8 @@ import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
+import {TextCaret} from '../../agentbuddy-ui/primitives/TextCaret';
 import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../state/notes';
-import {Caret} from './Caret';
 import {Cursor} from '../overlays/Cursor';
 import {cursorMove, percentTarget} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
@@ -173,7 +173,7 @@ function NoteLine({frame, line}: {frame: number; line: NotesEditorLineView}) {
     return (
       <>
         {line.text}
-        <Caret frame={frame} visible={Boolean(line.caretVisible)} />
+        <TextCaret frame={frame} visible={Boolean(line.caretVisible)} />
       </>
     );
   }
@@ -202,7 +202,7 @@ function NoteLine({frame, line}: {frame: number; line: NotesEditorLineView}) {
   return (
     <>
       {parts}
-      <Caret frame={frame} visible={Boolean(line.caretVisible)} />
+      <TextCaret frame={frame} visible={Boolean(line.caretVisible)} />
     </>
   );
 }

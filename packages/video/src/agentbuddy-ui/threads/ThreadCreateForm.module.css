@@ -201,34 +201,6 @@
   color: rgb(82 82 82);
 }
 
-.ThreadCreateForm_caret,
-.ThreadCreateForm_leadingCaret {
-  display: inline-block;
-  width: 1px;
-  height: 1.15em;
-  background: rgb(229 229 229);
-  transform: translateY(0.18em);
-  animation: ThreadCreateForm_caretBlink 1s steps(1, end) infinite;
-}
-
-.ThreadCreateForm_caret {
-  margin-left: 1px;
-}
-
-.ThreadCreateForm_leadingCaret {
-  margin-right: 4px;
-}
-
-@keyframes ThreadCreateForm_caretBlink {
-  0%, 52% {
-    opacity: 1;
-  }
-
-  53%, 100% {
-    opacity: 0;
-  }
-}
-
 .ThreadCreateForm_collapsible,
 .ThreadCreateForm_linkedSection {
   border-top: 1px solid rgb(38 38 38);

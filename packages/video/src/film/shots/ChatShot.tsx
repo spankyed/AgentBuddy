@@ -5,9 +5,9 @@ import type {ChatComposerInlineNode} from '../../agentbuddy-ui/chat/chatTypes';
 import {EmptyThreadQuote} from '../../agentbuddy-ui/threads/EmptyThreadQuote';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
+import {TextCaret} from '../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../overlays/Cursor';
 import {chatShotViewForFrame} from '../state/chat';
-import {Caret} from './Caret';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
 import {cursorMove, targetDebugOverlay, viewportPoint} from '../interaction/cursorTargets';
@@ -69,7 +69,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
                   <div className={`${styles.viewerProse} ProseMirror`} contentEditable={false}>
                     <p>
                       {formatUserMessage(view.conversation.userMessage.text, view.conversation.userMessage.content)}
-                      <Caret frame={frame} visible={view.conversation.userMessage.caretVisible} />
+                      <TextCaret frame={frame} visible={view.conversation.userMessage.caretVisible} />
                     </p>
                   </div>
                 </div>
