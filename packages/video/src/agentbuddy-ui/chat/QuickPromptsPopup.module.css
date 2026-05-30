@@ -61,6 +61,7 @@
 .QuickPromptsPopup_item,
 .QuickPromptsPopup_itemActive {
   position: relative;
+  color: rgb(212 212 216);
 }
 
 .QuickPromptsPopup_item > button:first-child,
@@ -69,22 +70,24 @@
   width: 100%;
   min-width: 0;
   align-items: center;
+  color: inherit;
+  font-size: 14px;
   padding: 0.5rem 2rem 0.5rem 0.75rem;
   text-align: left;
   white-space: nowrap;
 }
 
-.QuickPromptsPopup_item > button:first-child:hover {
-  background: rgb(38 38 38);
+.QuickPromptsPopup_item:hover,
+.QuickPromptsPopup_itemActive {
+  background: rgb(38 38 38) !important;
   color: white;
 }
 
 .QuickPromptsPopup_itemActive > button:first-child {
-  background: rgb(38 38 38);
-  color: white;
+  background: transparent !important;
 }
 
-.QuickPromptsPopup_item > button:first-child:hover .QuickPromptsPopup_text,
+.QuickPromptsPopup_item:hover .QuickPromptsPopup_text,
 .QuickPromptsPopup_itemActive .QuickPromptsPopup_text {
   color: white;
 }
@@ -98,8 +101,7 @@
 .QuickPromptsPopup_text {
   min-width: 0;
   overflow: hidden;
-  color: rgb(212 212 216);
-  font-size: 14px;
+  color: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -127,7 +129,13 @@
 }
 
 .QuickPromptsPopup_copy:hover {
+  background: rgb(64 64 64 / 0.5);
   color: white;
+}
+
+.QuickPromptsPopup_itemActive .QuickPromptsPopup_copy {
+  background: rgb(212 212 216);
+  color: rgb(23 23 23);
 }
 
 .QuickPromptsPopup_empty {
