@@ -13,7 +13,7 @@ export function BottomThreadTabs({active = 'active', activeEditing, activeLabel,
     <div className={styles.bottomTabs}>
       <div className={styles.bottomTabSlot} data-slot="recent">
         <button className={styles.bottomTabButton} data-active={active === 'recent'} data-pressed={pressed === 'recent'} type="button">
-          {recentThreadsMenu ? <Icons.ChevronUp size={16} /> : <Icons.History size={16} />}
+          <Icons.History size={16} />
           <ResponsiveBottomTabLabel first="Recent" rest="Threads" />
         </button>
       </div>
