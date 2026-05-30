@@ -226,6 +226,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
             newThreadPressed: frame > 72 && frame < 86,
             pressedView: undefined,
           },
+          hoveredTabId: frame >= 24 && frame < 66 ? 'launch-operating-plan' : undefined,
           pinPressed: frame > 52 && frame < 66,
           pinned: frame >= 66,
         }

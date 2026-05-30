@@ -16,6 +16,7 @@ export type ThreadDashboardSurfaceState = {
   }>;
   artifact: PlanArtifactState;
   header?: ThreadsHeaderState;
+  hoveredTabId?: string;
   pinPressed?: boolean;
   pinned?: boolean;
   tabs: Array<{
@@ -35,11 +36,27 @@ export function ThreadDashboardSurface({state}: {state: ThreadDashboardSurfaceSt
       {state.header ? <ThreadsHeader state={state.header} /> : null}
       {pinnedTabs.length > 0 ? (
         <div className={styles.pinnedRow}>
-          {pinnedTabs.map(tab => <ThreadTab active={tab.id === state.activeTabId} key={tab.id} pinned tab={tab} />)}
+          {pinnedTabs.map(tab => (
+            <ThreadTab
+              active={tab.id === state.activeTabId}
+              hovered={tab.id === state.hoveredTabId}
+              key={tab.id}
+              pinned
+              tab={tab}
+            />
+          ))}
         </div>
       ) : null}
       <div className={styles.tabRow}>
-        {regularTabs.map(tab => <ThreadTab active={tab.id === state.activeTabId} key={tab.id} tab={tab} />)}
+        {regularTabs.map(tab => (
+          <ThreadTab
+            active={tab.id === state.activeTabId}
+            hovered={tab.id === state.hoveredTabId}
+            key={tab.id}
+            pinPressed={tab.id === state.activeTabId && state.pinPressed}
+            tab={tab}
+          />
+        ))}
       </div>
       <div className={styles.body} data-sidebar={state.artifactSidebar?.length ? 'true' : 'false'}>
         {state.artifactSidebar?.length ? (
@@ -75,12 +92,28 @@ export function ThreadDashboardSurface({state}: {state: ThreadDashboardSurfaceSt
   );
 }
 
-function ThreadTab({active, pinned, tab}: {active?: boolean; pinned?: boolean; tab: {id: string; label: string}}) {
+function ThreadTab({
+  active,
+  hovered,
+  pinPressed,
+  pinned,
+  tab,
+}: {
+  active?: boolean;
+  hovered?: boolean;
+  pinPressed?: boolean;
+  pinned?: boolean;
+  tab: {id: string; label: string};
+}) {
   return (
-    <div className={active ? styles.tabActive : styles.tab}>
+    <div className={active ? styles.tabActive : styles.tab} data-hovered={hovered || undefined}>
       <span className={styles.tabDot} />
       <span className={styles.tabLabel}>{tab.label}</span>
-      <Icons.Pin className={pinned ? styles.tabPinPinned : styles.tabPin} size={12} />
+      <Icons.Pin
+        className={pinned ? styles.tabPinPinned : styles.tabPin}
+        data-pressed={pinPressed || undefined}
+        size={12}
+      />
     </div>
   );
 }

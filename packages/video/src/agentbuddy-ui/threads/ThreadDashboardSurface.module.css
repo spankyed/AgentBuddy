@@ -38,6 +38,12 @@
   color: white;
 }
 
+.ThreadDashboardSurface_tab[data-hovered="true"],
+.ThreadDashboardSurface_tabActive[data-hovered="true"] {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
 .ThreadDashboardSurface_tabDot {
   width: 6px;
   height: 6px;
@@ -69,6 +75,16 @@
 .ThreadDashboardSurface_tabPinPinned {
   color: rgb(96 165 250);
   opacity: 1;
+}
+
+.ThreadDashboardSurface_tab[data-hovered="true"] .ThreadDashboardSurface_tabPin,
+.ThreadDashboardSurface_tabActive[data-hovered="true"] .ThreadDashboardSurface_tabPin {
+  color: rgb(96 165 250);
+  opacity: 1;
+}
+
+.ThreadDashboardSurface_tabPin[data-pressed="true"] {
+  transform: translateY(1px) scale(0.9);
 }
 
 .ThreadDashboardSurface_body {

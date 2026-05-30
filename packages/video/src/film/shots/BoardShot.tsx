@@ -52,12 +52,29 @@ function boardCursorForFrame(frame: number):
   | null {
   const targets = boardCursorTargets();
 
-  if (frame >= 38 && frame < 70) {
-    return cursorMove(targets, {end: 64, from: 'dashboardArea', start: 38, to: 'threadPinButton'}, 'percent');
+  if (frame >= 22 && frame < 44) {
+    return cursorMove(targets, {
+      click: false,
+      end: 40,
+      from: 'dashboardArea',
+      start: 22,
+      to: 'activeDashboardTab',
+    }, 'percent');
+  }
+
+  if (frame >= 44 && frame < 70) {
+    return cursorMove(targets, {
+      end: 64,
+      from: 'activeDashboardTab',
+      fromPoint: {anchor: [0.82, 0.5]},
+      start: 44,
+      to: 'activeTabPin',
+      toPoint: {anchor: [0.5, 0.5]},
+    }, 'percent');
   }
 
   if (frame >= 70 && frame < 92) {
-    return cursorMove(targets, {end: 84, from: 'threadPinButton', start: 70, to: 'createThreadButton'}, 'percent');
+    return cursorMove(targets, {end: 84, from: 'activeTabPin', start: 70, to: 'createThreadButton'}, 'percent');
   }
 
   if (frame >= 174 && frame < 198) {
@@ -126,6 +143,8 @@ function boardCursorForFrame(frame: number):
 function boardCursorTargets(): Record<string, TargetRect> {
   return {
     activeCard: percentTarget(27, 38, 6, 6),
+    activeDashboardTab: percentTarget(28.7, 11.4, 15, 3),
+    activeTabPin: percentTarget(36.2, 11.4, 2.2, 3),
     boardCenter: percentTarget(51, 47, 6, 6),
     boardToolbar: percentTarget(56, 9.5, 7, 3),
     createSaveButton: percentTarget(94.5, 11.8, 5, 3),
@@ -136,6 +155,5 @@ function boardCursorTargets(): Record<string, TargetRect> {
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
     linkActionButton: percentTarget(82, 40, 4.5, 3),
     linkThreadButton: percentTarget(87, 33.2, 9, 3),
-    threadPinButton: percentTarget(76.8, 22.5, 2.5, 3.2),
   };
 }
