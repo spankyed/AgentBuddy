@@ -62,7 +62,7 @@ export function ThreadConversation({additionalAssistantMessages, assistant, chil
 
 function AssistantMessage({createdAt, message, style}: {createdAt?: number | string; message: AssistantConversationMessage; style?: CSSProperties}) {
   const hasAssistantContent = Boolean(message.toolActivity || message.markdown.trim() || message.markdownBlock || message.promptBlock || message.approval || message.thinking);
-  const hasInteractionBlocks = Boolean(message.markdownBlock || message.promptBlock || message.approval || message.thinking);
+  const hasInteractionBlocks = Boolean(message.markdownBlock || message.promptBlock || message.approval);
   if (!hasAssistantContent) return null;
   if (message.autoHide) {
     return (
@@ -81,13 +81,17 @@ function AssistantMessage({createdAt, message, style}: {createdAt?: number | str
             <ToolActivityBlock rowOpacities={message.toolActivity.rowOpacities} state={message.toolActivity.state} />
           </div>
         ) : null}
+        {message.thinking ? (
+          <div className={styles.interactionBlocks}>
+            <ThinkingBlock state={message.thinking} />
+          </div>
+        ) : null}
         {message.markdown.trim() ? <MarkdownViewer content={message.markdown} /> : null}
         {hasInteractionBlocks ? (
           <div className={styles.interactionBlocks}>
             {message.markdownBlock ? <MarkdownBlock state={message.markdownBlock} /> : null}
             {message.promptBlock ? <PromptBlock state={message.promptBlock} /> : null}
             {message.approval ? <ApprovalBlock state={message.approval} /> : null}
-            {message.thinking ? <ThinkingBlock state={message.thinking} /> : null}
           </div>
         ) : null}
       </MessageBubble>

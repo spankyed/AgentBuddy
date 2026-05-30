@@ -148,7 +148,7 @@ export const chatShotState = {
   createdAt: '9:41 AM',
   systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 24, to: 116, caretUntil: 210},
-  response: {text: 'Claude Code is ready to implement - review the plan and approve.', from: 190, to: 218},
+  response: {text: 'I’ll turn this into an implementation pass: create the tickets, preserve the referenced context, and prepare the branch and PR path before editing code.', from: 246, to: 286},
 };
 
 const commitMessageResponse = `Here's the commit message:
@@ -500,7 +500,7 @@ export function chatViewForFrame(frame: number) {
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: quickPromptActive
       ? textReveal(commitMessageResponse, frame, quickPromptResponseStart, quickPromptResponseEnd)
-      : textReveal(chatShotState.response.text, frame, 226, 260),
+      : textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
     conversationOpacity: ease(frame, 194, 224),
     conversationY: 28 - ease(frame, 194, 224) * 28,
     messageStyles: {
@@ -516,8 +516,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const view = chatViewForFrame(frame);
   const imageAttachmentEnter = ease(frame, 118, 134);
   const recentThreadLoaded = frame >= recentThreadLoadedStart;
-  const showInitialThinking = frame >= 222 && frame < 246;
-  const showInitialResponse = frame >= 226 && frame < 306;
+  const showInitialThinking = frame >= 222 && frame < 306;
+  const showInitialResponse = frame >= 246 && frame < 306;
   const showPlan = frame >= 260 && frame < 306;
   const showPlanApproval = frame >= 278 && frame < 306;
   const showApprovedSummary = frame >= 306 && frame < recentThreadLoadedStart;
@@ -667,8 +667,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
         thinking: showInitialThinking ? {
           defaultOpen: true,
           label: 'Thinking',
-          state: 'streaming',
-          content: 'Reviewing the current tasklist, referenced notes, and screenshot before writing the implementation plan.',
+          state: frame >= chatShotState.response.from ? 'done' : 'streaming',
+          content: 'Inspecting the current tasklist, referenced note, and screenshot so the next step can be scoped before any code edits.',
         } : undefined,
         toolActivity: recentThreadLoaded && !showQuickPromptResponse
           ? completedDevThreadActivityViewForFrame(frame)
