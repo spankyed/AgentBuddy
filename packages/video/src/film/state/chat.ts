@@ -102,7 +102,7 @@ export const launchComposerState: ChatComposerState = {
   ],
   phase: 'Plan',
   quickPrompts: [
-    {id: 'qp-write-commit', text: 'write a commit'},
+    {id: 'qp-review', text: 'Conduct a thorough review of these changes for bugs and completeness, than report back with findings'},
     {id: 'qp-create-ticket', text: 'create the next thread from this plan'},
     {id: 'qp-link-parent', text: 'link this to the parent ticket'},
   ],
@@ -151,14 +151,7 @@ export const chatShotState = {
   response: {text: 'I’ll turn this into an implementation pass: create the tickets, preserve the referenced context, and prepare the branch and PR path before editing code.', from: 246, to: 286},
 };
 
-const commitMessageResponse = `Here's the commit message:
-
-\`\`\`
-feat(video): turn launch context into execution tickets
-
-Create the launch operating plan, link the parent thread,
-and queue the next implementation pass from the same surface.
-\`\`\``;
+const reviewQuickPromptText = 'Conduct a thorough review of these changes for bugs and completeness, than report back with findings';
 
 const completedDevThreadResponse = 'The launch film branch is ready for the commit pass. I aligned the chat input, Recent Threads menu, source-control panel, PR flow, and flow-blueprint surfaces against the real app UI, then ran the video checks.';
 
@@ -456,8 +449,8 @@ const quickPromptMenuEnd = 510;
 const quickPromptTextStart = 512;
 const quickPromptSendStart = 526;
 const quickPromptSendEnd = 538;
-const quickPromptResponseStart = 542;
-const quickPromptResponseEnd = 568;
+const quickPromptResponseStart = 600;
+const quickPromptResponseEnd = 600;
 
 export function toolActivityViewForFrame(frame: number) {
   return {
@@ -474,7 +467,7 @@ export function completedDevThreadActivityViewForFrame(frame: number) {
 }
 
 export function chatViewForFrame(frame: number) {
-  const quickPromptActive = frame > quickPromptResponseStart;
+  const quickPromptSent = frame > quickPromptSendEnd;
   const sentUserMessageStyle = frame >= 210
     ? {opacity: 1, transform: 'translateY(0px)'}
     : {opacity: 0, transform: 'translateY(0px)'};
@@ -488,15 +481,13 @@ export function chatViewForFrame(frame: number) {
   return {
     prompt: textReveal(chatShotState.prompt.text, frame, chatShotState.prompt.from, chatShotState.prompt.to),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
-    response: quickPromptActive
-      ? textReveal(commitMessageResponse, frame, quickPromptResponseStart, quickPromptResponseEnd)
-      : textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
+    response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
     conversationOpacity: ease(frame, 194, 224),
     conversationY: 28 - ease(frame, 194, 224) * 28,
     messageStyles: {
-      assistant: messageReveal(quickPromptActive ? 404 : 190),
+      assistant: messageReveal(190),
       system: messageReveal(150),
-      user: quickPromptActive ? messageReveal(388) : sentUserMessageStyle,
+      user: quickPromptSent ? messageReveal(quickPromptSendEnd) : sentUserMessageStyle,
     },
     toolActivity: undefined,
   };
@@ -512,6 +503,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const showPlanApproval = frame >= 322 && frame < 334;
   const showApprovedSummary = frame >= 334 && frame < recentThreadLoadedStart;
   const showPlanToolActivity = frame >= 334 && frame < recentThreadLoadedStart;
+  const quickPromptSent = frame > quickPromptSendEnd;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const referenceStartIndex = 'Use '.length;
   const referenceCompleteText = 'Use #notes:current ';
@@ -610,7 +602,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       quickPromptsOpen: frame > quickPromptMenuStart && frame < quickPromptMenuEnd,
       quickPromptsSelectedIndex: frame > quickPromptMenuStart + 14 && frame < quickPromptMenuEnd ? 0 : undefined,
       sendPressed: (frame >= 198 && frame < 206) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
-      text: frame >= chatShotState.prompt.from && frame < 210 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? 'write a commit' : undefined,
+      text: frame >= chatShotState.prompt.from && frame < 210 ? view.prompt : frame > quickPromptTextStart && frame < quickPromptSendStart ? reviewQuickPromptText : undefined,
     },
     conversation: {
       additionalAssistantMessages: [
@@ -670,7 +662,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       userMessage: {
         caretVisible: frame < 210 && view.promptCaretVisible,
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
-        text: showQuickPromptResponse ? 'write a commit' : recentThreadLoaded ? 'Polish the launch film UI and prepare the PR path.' : view.prompt,
+        text: quickPromptSent ? reviewQuickPromptText : recentThreadLoaded ? 'Polish the launch film UI and prepare the PR path.' : view.prompt,
       },
     },
     conversationStyle: {

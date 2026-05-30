@@ -392,6 +392,16 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
+  if (frame >= 542 && frame < 570) {
+    return cursorMove(targets, {
+      end: 564,
+      from: 'quickPromptSend',
+      start: 542,
+      to: 'activeThreadTitle',
+      toPoint: {anchor: [0.5, 0.5]},
+    });
+  }
+
   return null;
 }
 
