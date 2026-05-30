@@ -1,5 +1,6 @@
 import {ease, mix} from '../state/timeline';
 import {getCursorAsset} from '../assets/cursors/cursorRegistry';
+import {createPortal} from 'react-dom';
 import type {CursorAssetId, CursorThemeId} from '../assets/cursors/cursorRegistry';
 import type {CoordinateSpace, Point} from '../interaction/cursorTargets';
 
@@ -27,10 +28,10 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
   const hotspotX = (asset.hotspot[0] / asset.width) * width;
   const hotspotY = (asset.hotspot[1] / asset.height) * height;
 
-  return (
+  const element = (
     <div
       style={{
-        position: 'absolute',
+        position: typeof document !== 'undefined' ? 'fixed' : 'absolute',
         left: coordinateSpace === 'px' ? `${x}px` : `${x}%`,
         top: coordinateSpace === 'px' ? `${y}px` : `${y}%`,
         width,
@@ -38,7 +39,7 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
         pointerEvents: 'none',
         transform: `translate(${-hotspotX}px, ${-hotspotY}px) rotate(${tilt}deg) scale(${1 - clickAmount * 0.055})`,
         transformOrigin: `${hotspotX}px ${hotspotY}px`,
-        zIndex: 30,
+        zIndex: 2147483647,
       }}
     >
       {clickAmount > 0 ? (
@@ -70,6 +71,12 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
       />
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(element, document.body);
+  }
+
+  return element;
 }
 
 function cursorPoint(from: Point, to: Point, progress: number, coordinateSpace: CoordinateSpace) {

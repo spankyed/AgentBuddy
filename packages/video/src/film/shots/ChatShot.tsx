@@ -302,7 +302,7 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 314 && frame < 348) {
+  if (frame >= 314 && frame < 346) {
     return cursorMove(targets, {
       end: 344,
       from: 'approvePlanPrimary',
@@ -313,10 +313,10 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 346 && frame < 366) {
+  if (frame >= 346 && frame < 364) {
     return cursorMove(targets, {
       click: false,
-      end: 364,
+      end: 360,
       from: 'recentThreads',
       fromPoint: {anchor: [0.42, 0.5]},
       start: 346,
@@ -325,13 +325,13 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 366 && frame < 390) {
+  if (frame >= 364 && frame < 390) {
     return cursorMove(targets, {
       click: false,
       end: 389,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.16, 0.5]},
-      start: 366,
+      start: 364,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.16, 0.5]},
     });

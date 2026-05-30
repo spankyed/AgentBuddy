@@ -445,7 +445,7 @@ export const projectSelectRespondedState: ProjectSelectBlockState = {
 
 const recentThreadsClickStart = 314;
 const recentThreadsClickEnd = 326;
-const recentThreadsMenuStart = 328;
+const recentThreadsMenuStart = 346;
 const recentThreadsMenuEnd = 404;
 const recentThreadSelectStart = 360;
 const recentThreadLoadedStart = 404;
