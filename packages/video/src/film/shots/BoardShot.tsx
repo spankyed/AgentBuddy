@@ -143,8 +143,8 @@ function boardCursorForFrame(frame: number):
 function boardCursorTargets(): Record<string, TargetRect> {
   return {
     activeCard: percentTarget(27, 38, 6, 6),
-    activeDashboardTab: percentTarget(28.7, 11.4, 15, 3),
-    activeTabPin: percentTarget(36.2, 11.4, 2.2, 3),
+    activeDashboardTab: percentTarget(7.4, 18.1, 12.7, 3.2),
+    activeTabPin: percentTarget(18.6, 18.1, 2, 3.2),
     boardCenter: percentTarget(51, 47, 6, 6),
     boardToolbar: percentTarget(56, 9.5, 7, 3),
     createSaveButton: percentTarget(94.5, 11.8, 5, 3),
