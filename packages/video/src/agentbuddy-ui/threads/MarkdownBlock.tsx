@@ -8,6 +8,8 @@ const styles = makeStyles('MarkdownBlock');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/interactions/blocks/MarkdownBlock.vue.
 export function MarkdownBlock({state}: {state: MarkdownBlockState}) {
+  const hasOverflow = state.content.length > 520;
+
   return (
     <div className={styles.root}>
       {state.label ? (
@@ -18,6 +20,7 @@ export function MarkdownBlock({state}: {state: MarkdownBlockState}) {
       ) : null}
       <div className={styles.content}>
         <MarkdownViewer content={state.content} />
+        {hasOverflow ? <div className={styles.scrollbar}><span /></div> : null}
       </div>
     </div>
   );

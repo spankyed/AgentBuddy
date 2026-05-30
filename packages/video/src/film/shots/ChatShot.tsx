@@ -296,7 +296,7 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
 
   if (frame >= 318 && frame < 342) {
     return cursorMove(targets, {
-      end: 338,
+      end: 334,
       from: 'sendButton',
       start: 318,
       to: 'approvePlanPrimary',
@@ -537,9 +537,7 @@ function emptyThreadQuoteForFrame(
   variant?: 'landscape' | 'square',
 ) {
   const enter = ease(frame, 132, 150);
-  const exit = ease(frame, 198, 210);
-  const opacity = Math.min(enter, 1 - exit);
-  if (opacity <= 0) return null;
+  if (frame >= 210) return null;
 
   const windowLeft = Number(layout.windowStyle.left ?? 0);
   const windowTop = Number(layout.windowStyle.top ?? 0);
@@ -553,9 +551,9 @@ function emptyThreadQuoteForFrame(
   return {
     style: {
       left: mainLeft,
-      opacity,
+      opacity: enter,
       top: mainTop + mainHeight * 0.48,
-      transform: `translateY(${mix(8, 0, enter) - exit * 6}px)`,
+      transform: `translateY(${mix(8, 0, enter)}px)`,
       width: mainWidth,
     },
     text: '"My therapist says I have attachment issues. I say I have context windows."',
