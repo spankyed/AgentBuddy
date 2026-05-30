@@ -79,12 +79,12 @@
 
 .QuickPromptsPopup_item:hover,
 .QuickPromptsPopup_itemActive {
-  background: rgb(38 38 38) !important;
+  background: rgb(38 38 38);
   color: white;
 }
 
 .QuickPromptsPopup_itemActive > button:first-child {
-  background: transparent !important;
+  background: transparent;
 }
 
 .QuickPromptsPopup_item:hover .QuickPromptsPopup_text,
@@ -134,8 +134,7 @@
 }
 
 .QuickPromptsPopup_itemActive .QuickPromptsPopup_copy {
-  background: rgb(212 212 216);
-  color: rgb(23 23 23);
+  color: rgb(115 115 115);
 }
 
 .QuickPromptsPopup_empty {
