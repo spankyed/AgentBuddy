@@ -159,7 +159,7 @@ function withPopupPositions(
             ? {
                 ...composer.bottomTabs.recentThreadsMenu,
                 popupPosition: composer.bottomTabs.recentThreadsMenu.popupPosition ?? {
-                  bottom: viewportHeight - composerInputTop(rect, dock, Boolean(composer.bottomTabs)) + 8,
+                  bottom: viewportHeight - (composerInputTop(rect, dock, Boolean(composer.bottomTabs)) + composerInputHeight - 12),
                   left: bottomTabsRect.left,
                   width: bottomTabsRect.width,
                 },
@@ -353,7 +353,7 @@ function chatTargetsForFrame({
   const recentButtonWidth = 160;
   const newThreadButtonWidth = 150;
   const activeThreadWidth = Math.min(320, bottomTabs.width * 0.34);
-  const recentMenuTop = composerTop - 8 - 116;
+  const recentMenuTop = composerTop + composerInputHeight - 12 - 116;
   const windowLeft = Number(layout.windowStyle.left ?? 0);
   const windowTop = Number(layout.windowStyle.top ?? 0);
   const windowWidth = Number(layout.windowStyle.width ?? width);
