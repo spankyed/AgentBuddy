@@ -3,6 +3,8 @@ import {ThreadDashboardSurface} from '../../agentbuddy-ui/threads/ThreadDashboar
 import {ThreadCreateForm} from '../../agentbuddy-ui/threads/ThreadCreateForm';
 import {ThreadsBoardSurface} from '../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {Cursor} from '../overlays/Cursor';
+import {cursorMove, percentTarget} from '../interaction/cursorTargets';
+import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {boardShotViewForFrame} from '../state/board';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -46,23 +48,42 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
 }
 
 function boardCursorForFrame(frame: number):
-  | {end: number; from: [number, number]; start: number; to: [number, number]}
+  | CursorPath
   | null {
+  const targets = boardCursorTargets();
+
   if (frame >= 58 && frame < 92) {
-    return {end: 84, from: [68, 24], start: 58, to: [93, 11]};
+    return cursorMove(targets, {end: 84, from: 'dashboardArea', start: 58, to: 'createThreadButton'}, 'percent');
   }
 
   if (frame >= 142 && frame < 170) {
-    return {end: 164, from: [54, 50], start: 142, to: [78, 49]};
+    return cursorMove(targets, {end: 164, from: 'boardCenter', start: 142, to: 'activeCard'}, 'percent');
   }
 
   if (frame >= 178 && frame < 208) {
-    return {end: 198, from: [78, 49], start: 178, to: [94, 14]};
+    return cursorMove(targets, {end: 198, from: 'activeCard', start: 178, to: 'createThreadButton'}, 'percent');
   }
 
   if (frame >= 208 && frame < 236) {
-    return {end: 228, from: [86, 14], start: 208, to: [59, 11]};
+    return cursorMove(targets, {
+      end: 228,
+      from: 'createThreadButton',
+      fromPoint: {anchor: [0.25, 0.5]},
+      start: 208,
+      to: 'boardToolbar',
+      toPoint: {anchor: [0.58, 0.5]},
+    }, 'percent');
   }
 
   return null;
+}
+
+function boardCursorTargets(): Record<string, TargetRect> {
+  return {
+    activeCard: percentTarget(75, 46, 6, 6),
+    boardCenter: percentTarget(51, 47, 6, 6),
+    boardToolbar: percentTarget(56, 9.5, 7, 3),
+    createThreadButton: percentTarget(91, 9.6, 5, 3),
+    dashboardArea: percentTarget(65, 21, 6, 6),
+  };
 }

@@ -4,6 +4,8 @@ import {CodeReview} from '../../agentbuddy-ui/code/CodeReview';
 import {PullRequestPanel} from '../../agentbuddy-ui/code/PullRequestPanel';
 import {ExternalBrowserWindow} from '../props/ExternalBrowserWindow';
 import {Cursor} from '../overlays/Cursor';
+import {cursorMove, percentTarget} from '../interaction/cursorTargets';
+import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {codeShotViewForFrame} from '../state/code';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
@@ -102,89 +104,64 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
   );
 }
 
-function codeCursorForFrame(frame: number) {
+function codeCursorForFrame(frame: number): CursorPath | null {
+  const targets = codeCursorTargets();
+
   if (frame >= 18 && frame < 46) {
-    return {
-      from: [48, 68] as [number, number],
-      to: [61, 20] as [number, number],
-      start: 18,
-      end: 38,
-    };
+    return cursorMove(targets, {end: 38, from: 'stageCenter', start: 18, to: 'sourceControlHeader'}, 'percent');
   }
 
   if (frame >= 92 && frame < 122) {
-    return {
-      from: [66, 36] as [number, number],
-      to: [96, 16] as [number, number],
-      start: 92,
-      end: 112,
-    };
+    return cursorMove(targets, {end: 112, from: 'sourceControlHeader', start: 92, to: 'pullRequestTab'}, 'percent');
   }
 
   if (frame >= 142 && frame < 166) {
-    return {
-      from: [92, 88] as [number, number],
-      to: [93, 21] as [number, number],
-      start: 142,
-      end: 156,
-    };
+    return cursorMove(targets, {end: 156, from: 'worktreeSection', start: 142, to: 'publishButton'}, 'percent');
   }
 
   if (frame >= 166 && frame < 190) {
-    return {
-      from: [93, 21] as [number, number],
-      to: [96, 27] as [number, number],
-      start: 166,
-      end: 180,
-    };
+    return cursorMove(targets, {end: 180, from: 'publishButton', start: 166, to: 'createPullRequestButton'}, 'percent');
   }
 
   if (frame >= 198 && frame < 222) {
-    return {
-      from: [88, 30] as [number, number],
-      to: [83, 42] as [number, number],
-      start: 198,
-      end: 214,
-    };
+    return cursorMove(targets, {end: 214, from: 'createPullRequestButton', start: 198, to: 'prDescription'}, 'percent');
   }
 
   if (frame >= 226 && frame < 252) {
-    return {
-      from: [83, 88] as [number, number],
-      to: [90, 90] as [number, number],
-      start: 226,
-      end: 244,
-    };
+    return cursorMove(targets, {end: 244, from: 'prDescription', start: 226, to: 'createPrPrimary'}, 'percent');
   }
 
   if (frame >= 316 && frame < 344) {
-    return {
-      from: [88, 42] as [number, number],
-      to: [92, 20] as [number, number],
-      start: 316,
-      end: 332,
-    };
+    return cursorMove(targets, {end: 332, from: 'commitArea', start: 316, to: 'sourceControlTab'}, 'percent');
   }
 
   if (frame >= 360 && frame < 386) {
-    return {
-      from: [88, 52] as [number, number],
-      to: [84, 53] as [number, number],
-      start: 360,
-      end: 376,
-    };
+    return cursorMove(targets, {end: 376, from: 'changedFiles', start: 360, to: 'commitButton'}, 'percent');
   }
 
   if (frame >= 392 && frame < 412) {
-    return {
-      from: [84, 53] as [number, number],
-      to: [73, 87] as [number, number],
-      start: 392,
-      end: 404,
-    };
+    return cursorMove(targets, {end: 404, from: 'commitButton', start: 392, to: 'terminalToggle'}, 'percent');
   }
 
   return null;
+}
+
+function codeCursorTargets(): Record<string, TargetRect> {
+  return {
+    changedFiles: percentTarget(85, 50, 8, 5),
+    commitArea: percentTarget(86, 39, 8, 6),
+    commitButton: percentTarget(82, 51.5, 8, 4),
+    createPrPrimary: percentTarget(86, 88.5, 8, 4),
+    createPullRequestButton: percentTarget(94.5, 25.5, 4, 3),
+    prDescription: percentTarget(80, 39, 10, 8),
+    publishButton: percentTarget(91, 19.5, 6, 3),
+    pullRequestTab: percentTarget(94, 14.5, 4, 3),
+    sourceControlHeader: percentTarget(59, 18, 6, 4),
+    sourceControlTab: percentTarget(90, 18.5, 4, 3),
+    stageCenter: percentTarget(46, 65, 6, 6),
+    terminalToggle: percentTarget(71, 85.5, 6, 4),
+    worktreeSection: percentTarget(89, 86, 6, 5),
+  };
 }
 
 function codePanelPlacement({

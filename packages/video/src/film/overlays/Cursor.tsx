@@ -1,23 +1,25 @@
 import {ease, mix} from '../state/timeline';
 import {getCursorAsset} from '../assets/cursors/cursorRegistry';
 import type {CursorAssetId, CursorThemeId} from '../assets/cursors/cursorRegistry';
+import type {CoordinateSpace, Point} from '../interaction/cursorTargets';
 
 type CursorProps = {
   click?: boolean;
+  coordinateSpace?: CoordinateSpace;
   cursor?: CursorAssetId;
   end: number;
   frame: number;
-  from: [number, number];
+  from: Point;
   scale?: number;
   start: number;
   theme?: CursorThemeId;
-  to: [number, number];
+  to: Point;
 };
 
-export function Cursor({click = true, cursor, end, frame, from, scale = 1, start, theme, to}: CursorProps) {
+export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, frame, from, scale = 1, start, theme, to}: CursorProps) {
   const asset = getCursorAsset({cursor, theme});
   const p = ease(frame, start, end);
-  const [x, y] = cursorPoint(from, to, p);
+  const [x, y] = cursorPoint(from, to, p, coordinateSpace);
   const clickAmount = click ? Math.sin(ease(frame, end - 7, end) * Math.PI) : 0;
   const tilt = mix(-0.6, 0.8, Math.sin(p * Math.PI));
   const width = 42 * scale;
@@ -29,8 +31,8 @@ export function Cursor({click = true, cursor, end, frame, from, scale = 1, start
     <div
       style={{
         position: 'absolute',
-        left: `${x}%`,
-        top: `${y}%`,
+        left: coordinateSpace === 'px' ? `${x}px` : `${x}%`,
+        top: coordinateSpace === 'px' ? `${y}px` : `${y}%`,
         width,
         height,
         pointerEvents: 'none',
@@ -70,18 +72,20 @@ export function Cursor({click = true, cursor, end, frame, from, scale = 1, start
   );
 }
 
-function cursorPoint(from: [number, number], to: [number, number], progress: number) {
+function cursorPoint(from: Point, to: Point, progress: number, coordinateSpace: CoordinateSpace) {
   const dx = to[0] - from[0];
   const dy = to[1] - from[1];
   const distance = Math.hypot(dx, dy);
-  const bend = Math.min(5.2, Math.max(1.5, distance * 0.1));
+  const bend = coordinateSpace === 'px'
+    ? Math.min(42, Math.max(14, distance * 0.1))
+    : Math.min(5.2, Math.max(1.5, distance * 0.1));
   const length = Math.max(distance, 0.0001);
   const side = dx + dy >= 0 ? 1 : -1;
-  const controlA: [number, number] = [
+  const controlA: Point = [
     mix(from[0], to[0], 0.34) + (-dy / length) * bend * side,
     mix(from[1], to[1], 0.32) + (dx / length) * bend * side,
   ];
-  const controlB: [number, number] = [
+  const controlB: Point = [
     mix(from[0], to[0], 0.76) + (-dy / length) * bend * side,
     mix(from[1], to[1], 0.72) + (dx / length) * bend * side,
   ];
@@ -90,5 +94,5 @@ function cursorPoint(from: [number, number], to: [number, number], progress: num
   return [
     inv ** 3 * from[0] + 3 * inv ** 2 * progress * controlA[0] + 3 * inv * progress ** 2 * controlB[0] + progress ** 3 * to[0],
     inv ** 3 * from[1] + 3 * inv ** 2 * progress * controlA[1] + 3 * inv * progress ** 2 * controlB[1] + progress ** 3 * to[1],
-  ] as [number, number];
+  ] as Point;
 }

@@ -10,6 +10,8 @@ import {chatShotViewForFrame} from '../state/chat';
 import {Caret} from './Caret';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
+import {cursorMove, targetDebugOverlay, viewportPoint} from '../interaction/cursorTargets';
+import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {useVideoConfig} from 'remotion';
 import './ChatShot.module.css';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -20,6 +22,16 @@ const composerInputHeight = 112;
 const composerEditorInsetLeft = 16;
 const composerEditorInsetTop = 12;
 const referencePopupAboveCursorOffset = 4;
+const showTargetDebug = false;
+
+type ChatTargetId =
+  | 'activeThreadTitle'
+  | 'approvePlanPrimary'
+  | 'newThread'
+  | 'quickPromptSend'
+  | 'recentThreadRowFirst'
+  | 'recentThreads'
+  | 'sendButton';
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
@@ -29,7 +41,8 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
   const composerDock = ease(frame, 50, 122);
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
   const composer = withPopupPositions(view.composer, composerRect, composerDock, height);
-  const initialCursor = initialChatCursorForFrame(frame);
+  const targets = chatTargetsForFrame({composerRect, dock: composerDock, height, layout, variant, width});
+  const cursorPath = chatCursorForFrame(frame, targets, width, height);
   const quote = emptyThreadQuoteForFrame(frame, layout, variant);
 
   return (
@@ -60,7 +73,6 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
                 </div>
               }
             >
-              {view.cursorPath ? <Cursor frame={frame} {...view.cursorPath} /> : null}
             </ThreadConversation>
           </div>
         </AppWindow>
@@ -77,7 +89,8 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
         <ChatComposer formStyle={{width: '100%'}} state={composer} />
       </div>
       {quote ? <EmptyThreadQuote style={quote.style} text={quote.text} /> : null}
-      {initialCursor ? <Cursor frame={frame} {...initialCursor} /> : null}
+      {showTargetDebug ? <TargetDebugOverlay targets={targets} /> : null}
+      {cursorPath ? <Cursor frame={frame} {...cursorPath} /> : null}
     </div>
   );
 }
@@ -269,26 +282,169 @@ function formatUserMessage(
   );
 }
 
-function initialChatCursorForFrame(frame: number):
-  | {end: number; from: [number, number]; start: number; to: [number, number]}
-  | null {
+function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
   if (frame >= 24 && frame < 62) {
-    return {end: 58, from: [52, 53], start: 24, to: [75.5, 61.2]};
+    return cursorMove(targets, {
+      end: 58,
+      from: viewportPoint(width, height, 0.52, 0.53),
+      start: 24,
+      to: 'newThread',
+      toPoint: {anchor: [0.52, 0.5]},
+    });
   }
 
   if (frame >= 138 && frame < 174) {
-    return {end: 166, from: [74, 55.5], start: 138, to: [82, 87]};
+    return cursorMove(targets, {
+      end: 166,
+      from: 'newThread',
+      fromPoint: {anchor: [0.52, 0.5]},
+      start: 138,
+      to: 'sendButton',
+    });
+  }
+
+  if (frame >= 286 && frame < 310) {
+    return cursorMove(targets, {
+      end: 306,
+      from: 'sendButton',
+      start: 286,
+      to: 'approvePlanPrimary',
+      toPoint: {anchor: [0.42, 0.5]},
+    });
   }
 
   if (frame >= 314 && frame < 348) {
-    return {end: 344, from: [26, 92], start: 314, to: [31, 66]};
+    return cursorMove(targets, {
+      end: 344,
+      from: 'approvePlanPrimary',
+      fromPoint: {anchor: [0.42, 0.5]},
+      start: 314,
+      to: 'recentThreads',
+      toPoint: {anchor: [0.42, 0.5]},
+    });
   }
 
   if (frame >= 410 && frame < 438) {
-    return {end: 436, from: [22, 73], start: 410, to: [86, 86]};
+    return cursorMove(targets, {
+      end: 436,
+      from: 'recentThreadRowFirst',
+      fromPoint: {anchor: [0.44, 0.5]},
+      start: 410,
+      to: 'quickPromptSend',
+    });
   }
 
   return null;
+}
+
+function chatTargetsForFrame({
+  composerRect,
+  dock,
+  height,
+  layout,
+  variant,
+  width,
+}: {
+  composerRect: ReturnType<typeof composerPlacement>;
+  dock: number;
+  height: number;
+  layout: ReturnType<typeof useAppWindowLayout>;
+  variant?: 'landscape' | 'square';
+  width: number;
+}): Record<ChatTargetId, TargetRect> {
+  const bottomTabs = bottomTabsPlacement(composerRect, height);
+  const composerLeft = composerRect.left - composerRect.width / 2;
+  const composerTop = composerInputTop(composerRect, dock, true);
+  const inputWidth = composerRect.width;
+  const actionBarTop = composerTop + composerInputHeight - 44;
+  const sendWidth = 92;
+  const sendHeight = 32;
+  const bottomButtonHeight = 28;
+  const bottomButtonTop = bottomTabs.top + bottomTabsHeight * (1 - dock) + 8;
+  const recentButtonWidth = 160;
+  const newThreadButtonWidth = 150;
+  const activeThreadWidth = Math.min(320, bottomTabs.width * 0.34);
+  const recentMenuTop = composerTop - 8 - 116;
+  const windowLeft = Number(layout.windowStyle.left ?? 0);
+  const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowWidth = Number(layout.windowStyle.width ?? width);
+  const windowHeight = Number(layout.windowStyle.height ?? height);
+  const mainLeft = windowLeft + 72;
+  const mainTop = windowTop + 42;
+  const mainWidth = windowWidth - 72;
+  const mainHeight = windowHeight - 42 - composerInputHeight - bottomTabsHeight - (variant === 'square' ? 34 : 28);
+
+  return {
+    activeThreadTitle: {
+      height: bottomButtonHeight,
+      left: bottomTabs.left + bottomTabs.width / 2 - activeThreadWidth / 2,
+      top: bottomButtonTop,
+      width: activeThreadWidth,
+    },
+    approvePlanPrimary: {
+      height: 32,
+      left: mainLeft + mainWidth * 0.12,
+      top: mainTop + mainHeight * 0.72,
+      width: 280,
+    },
+    newThread: {
+      height: bottomButtonHeight,
+      left: bottomTabs.left + bottomTabs.width - newThreadButtonWidth,
+      top: bottomButtonTop,
+      width: newThreadButtonWidth,
+    },
+    quickPromptSend: {
+      height: sendHeight,
+      left: composerLeft + inputWidth - sendWidth - 16,
+      top: actionBarTop,
+      width: sendWidth,
+    },
+    recentThreadRowFirst: {
+      height: 34,
+      left: bottomTabs.left,
+      top: recentMenuTop + 14,
+      width: bottomTabs.width,
+    },
+    recentThreads: {
+      height: bottomButtonHeight,
+      left: bottomTabs.left,
+      top: bottomButtonTop,
+      width: recentButtonWidth,
+    },
+    sendButton: {
+      height: sendHeight,
+      left: composerLeft + inputWidth - sendWidth - 16,
+      top: actionBarTop,
+      width: sendWidth,
+    },
+  };
+}
+
+function TargetDebugOverlay({targets}: {targets: Record<ChatTargetId, TargetRect>}) {
+  return (
+    <>
+      {targetDebugOverlay(targets).map(({id, rect}) => (
+        <div
+          key={id}
+          style={{
+            position: 'absolute',
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+            zIndex: 60,
+            border: '1px solid rgb(34 211 238 / 0.75)',
+            background: 'rgb(34 211 238 / 0.08)',
+            color: 'rgb(165 243 252)',
+            fontSize: 10,
+            pointerEvents: 'none',
+          }}
+        >
+          {id}
+        </div>
+      ))}
+    </>
+  );
 }
 
 function emptyThreadQuoteForFrame(

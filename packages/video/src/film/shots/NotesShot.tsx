@@ -7,6 +7,8 @@ import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../state/notes';
 import {Caret} from './Caret';
 import {Cursor} from '../overlays/Cursor';
+import {cursorMove, percentTarget} from '../interaction/cursorTargets';
+import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -115,48 +117,55 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
   );
 }
 
-function notesHomeCursorForFrame(frame: number) {
+function notesHomeCursorForFrame(frame: number): CursorPath | null {
+  const targets = notesHomeCursorTargets();
+
   if (frame >= 118 && frame < 154) {
-    return {
-      from: [50, 58] as [number, number],
-      to: [67, 28] as [number, number],
-      start: 118,
-      end: 146,
-    };
+    return cursorMove(targets, {end: 146, from: 'homeCenter', start: 118, to: 'newNoteButton'}, 'percent');
   }
 
   return null;
 }
 
-function notesEditorCursorForFrame(frame: number) {
+function notesEditorCursorForFrame(frame: number): CursorPath | null {
+  const targets = notesEditorCursorTargets();
+
   if (frame >= 62 && frame < 92) {
-    return {
-      from: [55, 52] as [number, number],
-      to: [83, 38] as [number, number],
-      start: 62,
-      end: 82,
-    };
+    return cursorMove(targets, {end: 82, from: 'editorBody', start: 62, to: 'rightRailTasklist'}, 'percent');
   }
 
   if (frame >= 120 && frame < 150) {
-    return {
-      from: [20, 36] as [number, number],
-      to: [17, 29] as [number, number],
-      start: 120,
-      end: 140,
-    };
+    return cursorMove(targets, {end: 140, from: 'taskListPanelMiddle', start: 120, to: 'taskListCurrentRow'}, 'percent');
   }
 
   if (frame >= 158 && frame < 184) {
-    return {
-      from: [20, 32] as [number, number],
-      to: [23, 24] as [number, number],
-      start: 158,
+    return cursorMove(targets, {
       end: 174,
-    };
+      from: 'taskListPanelMiddle',
+      start: 158,
+      to: 'taskCheckbox',
+      toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]},
+    }, 'percent');
   }
 
   return null;
+}
+
+function notesHomeCursorTargets(): Record<string, TargetRect> {
+  return {
+    homeCenter: percentTarget(49, 55, 6, 6),
+    newNoteButton: percentTarget(65.5, 26.5, 3, 3),
+  };
+}
+
+function notesEditorCursorTargets(): Record<string, TargetRect> {
+  return {
+    editorBody: percentTarget(52, 49, 6, 6),
+    rightRailTasklist: percentTarget(80, 35, 8, 5),
+    taskCheckbox: percentTarget(22.3, 22.5, 2, 3),
+    taskListCurrentRow: percentTarget(15, 27.5, 9, 4),
+    taskListPanelMiddle: percentTarget(18, 34, 5, 5),
+  };
 }
 
 function NoteLine({frame, line}: {frame: number; line: NotesEditorLineView}) {

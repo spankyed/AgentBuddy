@@ -89,12 +89,6 @@ export type ChatShotView = {
       transform: string;
     };
   };
-  cursorPath?: {
-    end: number;
-    from: [number, number];
-    start: number;
-    to: [number, number];
-  };
 };
 
 export const launchComposerState: ChatComposerState = {
@@ -152,7 +146,6 @@ export const messageBubbleDemoState = {
 export const chatShotState = {
   breadcrumbs: ['Threads', 'Launch Thread'],
   createdAt: '9:41 AM',
-  cursorPath: {from: [58, 74] as [number, number], to: [82, 84] as [number, number], start: 34, end: 96},
   systemMessage: undefined,
   prompt: {text: 'Use #notes:current and this screenshot to turn the launch into execution tickets.', from: 82, to: 148, caretUntil: 152},
   response: {text: 'Claude Code is ready to implement - review the plan and approve.', from: 190, to: 218},
@@ -694,8 +687,5 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       transform: `translateY(${view.conversationY}px)`,
     },
     messageStyles: recentThreadLoaded && !showQuickPromptResponse ? stableLoadedMessageStyles : view.messageStyles,
-    cursorPath: showPlanApproval
-      ? {from: [82, 84] as [number, number], to: [31, 76] as [number, number], start: 286, end: 306}
-      : undefined,
   };
 }
