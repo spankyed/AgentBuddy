@@ -47,29 +47,6 @@
   white-space: nowrap;
 }
 
-.ThinkingBlock_streamingDots {
-  display: flex;
-  align-self: baseline;
-  flex-shrink: 0;
-  gap: 0.25rem;
-}
-
-.ThinkingBlock_streamingDots span {
-  width: 0.25rem;
-  height: 0.25rem;
-  border-radius: 999px;
-  animation: ThinkingBlock_streamingPulse 1.2s ease-in-out infinite;
-  background: rgb(115 115 115);
-}
-
-.ThinkingBlock_streamingDots span:nth-child(2) {
-  animation-delay: 150ms;
-}
-
-.ThinkingBlock_streamingDots span:nth-child(3) {
-  animation-delay: 300ms;
-}
-
 .ThinkingBlock_content {
   max-height: 20rem;
   overflow-y: auto;
@@ -84,15 +61,4 @@
   line-height: 1.625;
   margin: 0;
   white-space: pre-wrap;
-}
-
-@keyframes ThinkingBlock_streamingPulse {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-
-  50% {
-    opacity: 1;
-  }
 }

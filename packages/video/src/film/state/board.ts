@@ -60,7 +60,7 @@ export const boardShotState: {
     },
     tabs: [
       {id: launchFilmStory.threads.deployChecklist.id, label: launchFilmStory.threads.deployChecklist.title, pinned: true},
-      {id: launchFilmStory.threads.stripePaymentIntegration.id, label: launchFilmStory.threads.stripePaymentIntegration.title, pinned: true},
+      {id: launchFilmStory.threads.stripePaymentIntegration.id, label: launchFilmStory.threads.stripePaymentIntegration.title},
       {id: launchFilmStory.threads.checkoutImplementation.id, label: launchFilmStory.threads.checkoutImplementation.title},
       {id: launchFilmStory.threads.receiptEmailTemplates.id, label: launchFilmStory.threads.receiptEmailTemplates.title},
     ],
@@ -175,6 +175,7 @@ export function boardViewForFrame(frame: number) {
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
   const dashboardVisible = frame < 88;
+  const dashboardThreadPinned = frame >= 60;
   const createVisible = frame >= 88 && frame < 264;
   const createFrame = Math.max(0, frame - 88);
   const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
@@ -229,6 +230,8 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     dashboard: dashboardVisible
       ? {
           ...boardShotState.dashboard,
+          pinPressed: frame >= 52 && frame < 60,
+          pinned: dashboardThreadPinned,
           header: {
             ...boardShotState.header,
             activeView: 'dashboard',

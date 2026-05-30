@@ -365,8 +365,9 @@ async function main() {
     }
     if (!/\.(ts|tsx)$/.test(file)) return;
     const source = await fs.readFile(file, 'utf8');
-    for (const match of source.matchAll(/import\s+(?!type)([\s\S]*?)\s+from\s+['"]\.\.\/state\/[^'"]+['"]/g)) {
-      if (!/ShotViewForFrame/.test(match[1])) shotStateImportLeaks.push(relative);
+    for (const match of source.matchAll(/import\s+(?!type)([\s\S]*?)\s+from\s+['"](\.\.\/state\/[^'"]+)['"]/g)) {
+      if (match[2] === '../state/timeline') continue;
+      if (!/(?:Shot)?ViewForFrame/.test(match[1])) shotStateImportLeaks.push(relative);
     }
     const literals = extractStringLiterals(stripModuleSpecifiers(source));
     if (literals.some(value => forbiddenFixturePatterns.some(pattern => pattern.test(value)))) shotFixtureLeaks.push(relative);

@@ -1,8 +1,6 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
 import {FlowNode} from '../../agentbuddy-ui/flows/FlowNode';
-import {FlowNodeForm} from '../../agentbuddy-ui/flows/FlowNodeForm';
-import {deployCheckoutFormStateForFrame} from '../state/flowForms';
 import {releaseAutomationWorkflow, workflowShotViewForFrame} from '../state/workflow';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
@@ -32,8 +30,6 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
   const frameReveal = ease(frame, appStartFrame + 34, appRevealEndFrame);
   const chromeReveal = ease(frame, chromeRevealStartFrame, chromeRevealEndFrame);
   const appClip = appRevealClip(backdropReveal);
-  const formStartFrame = 330;
-  const formReveal = ease(frame, formStartFrame, formStartFrame + 32);
   const isolatedNode = {
     ...releaseAutomationWorkflow.flow.nodes[0],
     x: mix(720, 535, isolatedPosition),
@@ -94,16 +90,6 @@ export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landsc
             <div style={{height: '100%'}}>
               <FlowCanvas hiddenNodeIds={hiddenAppNodeIds} state={view.flow} />
             </div>
-            {frame > formStartFrame ? (
-              <FlowNodeForm
-                overlayStyle={{opacity: formReveal}}
-                panelStyle={{
-                  opacity: formReveal,
-                  transform: `translateX(${mix(42, 0, formReveal)}px)`,
-                }}
-                state={deployCheckoutFormStateForFrame(frame)}
-              />
-            ) : null}
           </AppWindow>
         </div>
       ) : null}

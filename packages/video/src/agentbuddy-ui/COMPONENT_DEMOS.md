@@ -92,6 +92,8 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `ChatComposerMixedAttachmentsDemo` | `packages/video/out/component-demos/chat-composer-mixed-attachments-demo.mp4` |
 | `ChatComposerStatusLineDemo` | `packages/video/out/component-demos/chat-composer-status-line-demo.mp4` |
 | `ChatComposerInputStatesDemo` | `packages/video/out/component-demos/chat-composer-input-states-demo.mp4` |
+| `ChatComposerCommandSuggestionDemo` | `packages/video/out/component-demos/chat-composer-command-suggestion-demo.mp4` |
+| `ChatComposerCommandSuggestionEmptyDemo` | `packages/video/out/component-demos/chat-composer-command-suggestion-empty-demo.mp4` |
 | `ChatComposerModeMenuDemo` | `packages/video/out/component-demos/chat-composer-mode-menu-demo.mp4` |
 | `ChatComposerNewThreadProjectMenuDemo` | `packages/video/out/component-demos/chat-composer-new-thread-project-menu-demo.mp4` |
 | `ChatComposerNewThreadChildMenuDemo` | `packages/video/out/component-demos/chat-composer-new-thread-child-menu-demo.mp4` |
@@ -128,6 +130,7 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `ToolInputBlocksDemo` | `packages/video/out/component-demos/tool-input-blocks-demo.mp4` |
 | `InteractionControlsDemo` | `packages/video/out/component-demos/interaction-controls-demo.mp4` |
 | `ContentBlocksDemo` | `packages/video/out/component-demos/content-blocks-demo.mp4` |
+| `FullMarkdownViewerDemo` | `packages/video/out/component-demos/full-markdown-viewer-demo.mp4` |
 | `MessageBubbleDemo` | `packages/video/out/component-demos/message-bubble-demo.mp4` |
 | `PlanArtifactDemo` | `packages/video/out/component-demos/plan-artifact-demo.mp4` |
 | `PullRequestPanelDemo` | `packages/video/out/component-demos/pull-request-panel-demo.mp4` |

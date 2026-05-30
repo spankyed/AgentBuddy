@@ -130,19 +130,19 @@ function notesHomeCursorForFrame(frame: number): CursorPath | null {
 function notesEditorCursorForFrame(frame: number): CursorPath | null {
   const targets = notesEditorCursorTargets();
 
-  if (frame >= 62 && frame < 92) {
-    return cursorMove(targets, {end: 82, from: 'editorBody', start: 62, to: 'rightRailTasklist'}, 'percent');
+  if (frame >= 50 && frame < 80) {
+    return cursorMove(targets, {end: 70, from: 'editorBody', start: 50, to: 'rightRailTasklist'}, 'percent');
   }
 
-  if (frame >= 120 && frame < 150) {
-    return cursorMove(targets, {end: 140, from: 'taskListPanelMiddle', start: 120, to: 'taskListCurrentRow'}, 'percent');
+  if (frame >= 98 && frame < 128) {
+    return cursorMove(targets, {end: 116, from: 'taskListPanelMiddle', start: 98, to: 'taskListCurrentRow'}, 'percent');
   }
 
-  if (frame >= 150 && frame < 172) {
+  if (frame >= 126 && frame < 150) {
     return cursorMove(targets, {
-      end: 162,
+      end: 138,
       from: 'taskListPanelMiddle',
-      start: 150,
+      start: 126,
       to: 'taskCheckbox',
       toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]},
     }, 'percent');

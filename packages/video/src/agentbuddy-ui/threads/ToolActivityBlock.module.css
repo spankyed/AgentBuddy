@@ -45,21 +45,6 @@
   white-space: nowrap;
 }
 
-.ToolActivityBlock_streamingDots {
-  display: flex;
-  align-self: baseline;
-  flex-shrink: 0;
-  gap: 0.25rem;
-}
-
-.ToolActivityBlock_streamingDots span {
-  width: 0.25rem;
-  height: 0.25rem;
-  border-radius: 999px;
-  background: rgb(115 115 115);
-  animation: ToolActivityBlock_streamingPulse 1.2s ease-in-out infinite;
-}
-
 .ToolActivityBlock_spacer {
   min-width: 2rem;
   flex: 1;
@@ -212,9 +197,4 @@
 
 @keyframes ToolActivityBlock_spin {
   to { transform: rotate(360deg); }
-}
-
-@keyframes ToolActivityBlock_streamingPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
 }

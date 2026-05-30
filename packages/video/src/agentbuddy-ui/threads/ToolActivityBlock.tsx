@@ -20,13 +20,6 @@ export function ToolActivityBlock({rowOpacities, state}: {rowOpacities?: number[
         <Icons.ChevronRight className={isOpen ? styles.chevronOpen : styles.chevron} size={16} />
         <Icons.Wrench className={styles.wrench} size={16} />
         <span className={styles.label}>{label}</span>
-        {state.state === 'streaming' ? (
-          <span className={styles.streamingDots} aria-hidden="true">
-            <span style={{animationDelay: '0ms'}} />
-            <span style={{animationDelay: '150ms'}} />
-            <span style={{animationDelay: '300ms'}} />
-          </span>
-        ) : null}
         <span className={styles.spacer} />
         {preview ? (
           <>

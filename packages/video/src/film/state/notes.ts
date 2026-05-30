@@ -220,12 +220,12 @@ export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
 }
 
 export function notesEditorViewForFrame(frame: number): NotesShotView {
-  const tasklistPressed = frame >= 68 && frame < 88;
-  const tasklistActive = frame >= 88;
-  const todoPressed = frame >= 130 && frame < 148;
-  const todoActive = frame >= 148;
-  const todoCompletePressed = frame >= 156 && frame < 166;
-  const todoComplete = frame >= 166;
+  const tasklistPressed = frame >= 58 && frame < 76;
+  const tasklistActive = frame >= 76;
+  const todoPressed = frame >= 108 && frame < 122;
+  const todoActive = frame >= 122;
+  const todoCompletePressed = frame >= 134 && frame < 144;
+  const todoComplete = frame >= 144;
 
   const taskList = notesTaskListForEditorFrame(frame);
   const rightRail: NotesRightRailState = {
@@ -306,11 +306,11 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
 }
 
 function notesTaskListForEditorFrame(frame: number): NotesTaskListPanelState {
-  const tasklistActive = frame >= 88;
-  const todoActive = frame >= 148;
-  const todoPressed = frame >= 130 && frame < 148;
-  const todoCompletePressed = frame >= 156 && frame < 166;
-  const todoComplete = frame >= 166;
+  const tasklistActive = frame >= 76;
+  const todoActive = frame >= 122;
+  const todoPressed = frame >= 108 && frame < 122;
+  const todoCompletePressed = frame >= 134 && frame < 144;
+  const todoComplete = frame >= 144;
 
   return {
     ...notesTaskListState,
