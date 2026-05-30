@@ -105,7 +105,7 @@ export const boardShotState: {
       title: 'Create launch PR flow',
     },
     motion: {
-      from: 264,
+      from: 282,
       to: 304,
       fromLeft: 8,
       toLeft: 40,
@@ -166,7 +166,7 @@ export function boardViewForFrame(frame: number) {
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
   const dashboardVisible = frame < 88;
-  const createVisible = frame >= 88 && frame < 204;
+  const createVisible = frame >= 88 && frame < 264;
   const createFrame = Math.max(0, frame - 88);
   const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
   const droppedCard = frame >= boardShotState.movingCard.motion.to;
@@ -196,15 +196,15 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
-        createPressed: createFrame > 102 && createFrame < 114,
+        createPressed: createFrame > 158 && createFrame < 170,
         instructions: textReveal(boardShotState.createForm.instructions, createFrame, 42, 86),
         instructionsCaretVisible: createFrame >= 34 && createFrame < 86,
-        linkPressed: createFrame > 90 && createFrame <= 98,
-        linkedThreadsOpen: createFrame > 72,
-        linkInputVisible: createFrame > 72 && createFrame <= 100,
-        linkedThreadCandidate: createFrame > 84 && createFrame <= 98 ? boardShotState.createForm.parentThread : undefined,
-        linkedThreadQuery: createFrame > 80 ? boardShotState.createForm.linkedThreadQuery : '',
-        parentThread: createFrame > 98 ? boardShotState.createForm.parentThread : undefined,
+        linkPressed: createFrame > 124 && createFrame <= 136,
+        linkedThreadsOpen: createFrame >= 104,
+        linkInputVisible: createFrame >= 104 && createFrame <= 140,
+        linkedThreadCandidate: createFrame > 120 && createFrame <= 136 ? boardShotState.createForm.parentThread : undefined,
+        linkedThreadQuery: createFrame > 112 ? textReveal(boardShotState.createForm.linkedThreadQuery ?? '', createFrame, 112, 126) : '',
+        parentThread: createFrame > 136 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,
         title: textReveal(boardShotState.createForm.title, createFrame, 10, 34),
         titleCaretVisible: createFrame >= 0 && createFrame < 34,
@@ -232,9 +232,9 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
       : undefined,
     header: {
       ...boardShotState.header,
-      activeView: dashboardVisible ? 'dashboard' : frame < 234 ? 'list' : 'kanban',
+      activeView: dashboardVisible ? 'dashboard' : frame < 276 ? 'list' : 'kanban',
       newThreadPressed: frame > 72 && frame < 86,
-      pressedView: frame > 222 && frame < 234 ? 'kanban' : undefined,
+      pressedView: frame > 264 && frame < 276 ? 'kanban' : undefined,
     },
     mode: dashboardVisible ? 'dashboard' : createVisible ? 'create' : 'board',
     movingCard: draggingCard

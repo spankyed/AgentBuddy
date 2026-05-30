@@ -56,35 +56,62 @@ function boardCursorForFrame(frame: number):
     return cursorMove(targets, {end: 84, from: 'dashboardArea', start: 58, to: 'createThreadButton'}, 'percent');
   }
 
-  if (frame >= 178 && frame < 208) {
-    return cursorMove(targets, {end: 198, from: 'instructionsField', start: 178, to: 'createSaveButton'}, 'percent');
+  if (frame >= 174 && frame < 198) {
+    return cursorMove(targets, {end: 190, from: 'instructionsField', start: 174, to: 'linkThreadButton'}, 'percent');
   }
 
-  if (frame >= 208 && frame < 238) {
+  if (frame >= 198 && frame < 228) {
     return cursorMove(targets, {
-      end: 228,
+      end: 216,
+      from: 'linkThreadButton',
+      fromPoint: {anchor: [0.55, 0.5]},
+      start: 198,
+      to: 'linkActionButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    }, 'percent');
+  }
+
+  if (frame >= 228 && frame < 244) {
+    return cursorMove(targets, {
+      click: false,
+      end: 240,
+      from: 'linkActionButton',
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 228,
+      to: 'linkActionButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    }, 'percent');
+  }
+
+  if (frame >= 244 && frame < 264) {
+    return cursorMove(targets, {end: 258, from: 'linkActionButton', start: 244, to: 'createSaveButton'}, 'percent');
+  }
+
+  if (frame >= 264 && frame < 282) {
+    return cursorMove(targets, {
+      end: 276,
       from: 'createSaveButton',
       fromPoint: {anchor: [0.5, 0.5]},
-      start: 208,
+      start: 264,
       to: 'kanbanViewButton',
       toPoint: {anchor: [0.5, 0.5]},
     }, 'percent');
   }
 
-  if (frame >= 238 && frame < 264) {
+  if (frame >= 282 && frame < 292) {
     return cursorMove(targets, {
-      end: 258,
+      end: 290,
       from: 'kanbanViewButton',
-      start: 238,
+      start: 282,
       to: 'activeCard',
     }, 'percent');
   }
 
-  if (frame >= 264 && frame < 306) {
+  if (frame >= 292 && frame < 300) {
     return cursorMove(targets, {
-      end: 304,
+      end: 300,
       from: 'activeCard',
-      start: 264,
+      start: 292,
       to: 'inProgressDrop',
     }, 'percent');
   }
@@ -103,5 +130,7 @@ function boardCursorTargets(): Record<string, TargetRect> {
     inProgressDrop: percentTarget(48, 34, 6, 6),
     instructionsField: percentTarget(46, 34, 12, 5),
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
+    linkActionButton: percentTarget(82, 40, 4.5, 3),
+    linkThreadButton: percentTarget(87, 33.2, 9, 3),
   };
 }
