@@ -323,7 +323,7 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
       fromPoint: {anchor: [0.42, 0.5]},
       start: 378,
       to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.16, 0.5]},
+      toPoint: {anchor: [0.14, 0.68]},
     });
   }
 
@@ -332,10 +332,10 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
       click: false,
       end: 417,
       from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.16, 0.5]},
+      fromPoint: {anchor: [0.14, 0.68]},
       start: 394,
       to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.16, 0.5]},
+      toPoint: {anchor: [0.14, 0.68]},
     });
   }
 
@@ -343,10 +343,10 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     return cursorMove(targets, {
       end: 436,
       from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.16, 0.5]},
+      fromPoint: {anchor: [0.14, 0.68]},
       start: 418,
       to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.16, 0.5]},
+      toPoint: {anchor: [0.14, 0.68]},
     });
   }
 
@@ -354,7 +354,7 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     return cursorMove(targets, {
       end: 466,
       from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.16, 0.5]},
+      fromPoint: {anchor: [0.14, 0.68]},
       start: 456,
       to: 'quickPromptsButton',
     });
@@ -456,7 +456,7 @@ function chatTargetsForFrame({
     approvePlanPrimary: {
       height: 32,
       left: mainLeft + mainWidth * 0.145,
-      top: mainTop + mainHeight * 0.855,
+      top: mainTop + mainHeight * 0.915,
       width: 280,
     },
     newThread: {

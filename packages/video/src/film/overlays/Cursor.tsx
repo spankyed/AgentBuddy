@@ -4,6 +4,8 @@ import {createPortal} from 'react-dom';
 import type {CursorAssetId, CursorThemeId} from '../assets/cursors/cursorRegistry';
 import type {CoordinateSpace, Point} from '../interaction/cursorTargets';
 
+const clickPulseFrames = 7;
+
 type CursorProps = {
   click?: boolean;
   coordinateSpace?: CoordinateSpace;
@@ -21,8 +23,7 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
   const asset = getCursorAsset({cursor, theme});
   const p = ease(frame, start, end);
   const [x, y] = cursorPoint(from, to, p, coordinateSpace);
-  const clickAmount = click ? Math.sin(ease(frame, end - 7, end) * Math.PI) : 0;
-  const tilt = mix(-0.6, 0.8, Math.sin(p * Math.PI));
+  const clickAmount = click ? Math.sin(ease(frame, end - clickPulseFrames, end) * Math.PI) : 0;
   const width = 42 * scale;
   const height = width * (asset.height / asset.width);
   const hotspotX = (asset.hotspot[0] / asset.width) * width;
@@ -37,7 +38,7 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
         width,
         height,
         pointerEvents: 'none',
-        transform: `translate(${-hotspotX}px, ${-hotspotY}px) rotate(${tilt}deg) scale(${1 - clickAmount * 0.055})`,
+        transform: `translate(${-hotspotX}px, ${-hotspotY}px) scale(${1 - clickAmount * 0.055})`,
         transformOrigin: `${hotspotX}px ${hotspotY}px`,
         zIndex: 2147483647,
       }}
