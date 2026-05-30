@@ -79,7 +79,7 @@ export function ThreadDashboardSurface({state}: {state: ThreadDashboardSurfaceSt
               <span className={styles.dot} />
               <h2>{state.tabs.find(tab => tab.id === state.activeTabId)?.label}</h2>
             </div>
-            <button className={state.pinned ? styles.pinButtonActive : styles.pinButton} data-pressed={state.pinPressed || undefined} type="button">
+            <button className={state.pinned ? styles.pinButtonActive : styles.pinButton} type="button">
               <Icons.Pin size={14} />
             </button>
           </div>
