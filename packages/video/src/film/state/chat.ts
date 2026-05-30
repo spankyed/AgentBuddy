@@ -446,18 +446,18 @@ export const projectSelectRespondedState: ProjectSelectBlockState = {
 const recentThreadsClickStart = 314;
 const recentThreadsClickEnd = 326;
 const recentThreadsMenuStart = 320;
-const recentThreadsMenuEnd = 382;
-const recentThreadSelectStart = 368;
-const recentThreadLoadedStart = 382;
-const quickPromptClickStart = 368;
-const quickPromptClickEnd = 380;
-const quickPromptMenuStart = 378;
-const quickPromptMenuEnd = 414;
-const quickPromptTextStart = 406;
-const quickPromptSendStart = 436;
-const quickPromptSendEnd = 448;
-const quickPromptResponseStart = 450;
-const quickPromptResponseEnd = 500;
+const recentThreadsMenuEnd = 404;
+const recentThreadSelectStart = 360;
+const recentThreadLoadedStart = 404;
+const quickPromptClickStart = 414;
+const quickPromptClickEnd = 426;
+const quickPromptMenuStart = 424;
+const quickPromptMenuEnd = 476;
+const quickPromptTextStart = 452;
+const quickPromptSendStart = 478;
+const quickPromptSendEnd = 490;
+const quickPromptResponseStart = 492;
+const quickPromptResponseEnd = 508;
 
 export function toolActivityViewForFrame(frame: number) {
   return {

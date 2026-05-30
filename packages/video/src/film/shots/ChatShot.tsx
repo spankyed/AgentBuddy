@@ -313,23 +313,47 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 346 && frame < 378) {
+  if (frame >= 346 && frame < 366) {
     return cursorMove(targets, {
-      end: 370,
+      click: false,
+      end: 364,
       from: 'recentThreads',
       fromPoint: {anchor: [0.42, 0.5]},
       start: 346,
       to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.28, 0.5]},
+      toPoint: {anchor: [0.16, 0.5]},
     });
   }
 
-  if (frame >= 410 && frame < 438) {
+  if (frame >= 366 && frame < 390) {
     return cursorMove(targets, {
-      end: 436,
+      click: false,
+      end: 389,
       from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.28, 0.5]},
-      start: 410,
+      fromPoint: {anchor: [0.16, 0.5]},
+      start: 366,
+      to: 'recentThreadRowFirst',
+      toPoint: {anchor: [0.16, 0.5]},
+    });
+  }
+
+  if (frame >= 390 && frame < 402) {
+    return cursorMove(targets, {
+      end: 400,
+      from: 'recentThreadRowFirst',
+      fromPoint: {anchor: [0.16, 0.5]},
+      start: 390,
+      to: 'recentThreadRowFirst',
+      toPoint: {anchor: [0.16, 0.5]},
+    });
+  }
+
+  if (frame >= 424 && frame < 452) {
+    return cursorMove(targets, {
+      end: 450,
+      from: 'recentThreadRowFirst',
+      fromPoint: {anchor: [0.16, 0.5]},
+      start: 424,
       to: 'quickPromptSend',
     });
   }
@@ -402,7 +426,7 @@ function chatTargetsForFrame({
     recentThreadRowFirst: {
       height: 34,
       left: bottomTabs.left,
-      top: recentMenuTop + 14,
+      top: recentMenuTop - 22,
       width: bottomTabs.width,
     },
     recentThreads: {
