@@ -372,8 +372,8 @@ function chatTargetsForFrame({
     },
     approvePlanPrimary: {
       height: 32,
-      left: mainLeft + mainWidth * 0.12,
-      top: mainTop + mainHeight * 0.72,
+      left: mainLeft + mainWidth * 0.145,
+      top: composerTop - 54,
       width: 280,
     },
     newThread: {
