@@ -5,7 +5,6 @@ import { Edit, Trash2 } from 'lucide-vue-next'
 import { safeEvents } from '@/core/types/safe-events'
 import {
   targetIs,
-  TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
@@ -1352,15 +1351,11 @@ const flowsState = setup({
           return target !== null && context.flows.some(f => f.id === target);
         },
         target: '.view',
-        actions: [
-          assign(({ context }) => {
-            const result = goBack(context.navHistory)!;
-            return { navHistory: result.history };
-          }),
-          ({ context }) => {
-            trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: context.navHistory.stack[context.navHistory.index]! });
-          },
-        ],
+        actions: assign(({ context }) => {
+          const result = goBack(context.navHistory)!;
+          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          return { navHistory: result.history };
+        }),
       },
     ],
     NAVIGATE_FORWARD: [
@@ -1382,21 +1377,24 @@ const flowsState = setup({
           return target !== null && context.flows.some(f => f.id === target);
         },
         target: '.view',
-        actions: [
-          assign(({ context }) => {
-            const result = goForward(context.navHistory)!;
-            return { navHistory: result.history };
-          }),
-          ({ context }) => {
-            trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: context.navHistory.stack[context.navHistory.index]! });
-          },
-        ],
+        actions: assign(({ context }) => {
+          const result = goForward(context.navHistory)!;
+          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          return { navHistory: result.history };
+        }),
       },
     ],
-    ...TRAIL_CLICK([
-      ['.list', 'list'],
-      ['.view', 'view'],
-    ]),
+    TRAIL_CLICK: [
+      {
+        guard: { type: 'targetIs', params: { view: 'list' } },
+        target: '.list',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, null) })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'view' } },
+        target: '.view',
+      },
+    ],
   },
   states: {
     list: {

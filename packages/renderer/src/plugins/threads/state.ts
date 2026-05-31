@@ -1,5 +1,5 @@
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
-import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
+import { targetIs, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
@@ -1767,13 +1767,32 @@ const threadsState = setup({
       },
     ],
     // Breadcrumb trail clicks
-    ...TRAIL_CLICK([
-      ['.list', 'list'],
-      ['.kanban', 'kanban'],
-      ['.create', 'create'],
-      ['.view', 'view'],
-      ['.dashboard', 'dashboard'],
-    ]),
+    TRAIL_CLICK: [
+      {
+        guard: { type: 'targetIs', params: { view: 'list' } },
+        target: '.list',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'list') })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'kanban' } },
+        target: '.kanban',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'kanban') })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'create' } },
+        target: '.create',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'create') })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'view' } },
+        target: '.view',
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'dashboard' } },
+        target: '.dashboard',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'dashboard') })),
+      },
+    ],
     SELECT_THREAD: {
       target: '.view',
       actions: [

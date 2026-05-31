@@ -962,6 +962,7 @@ const notesState = setup({
                   currentNote: taskList,
                   selectedTaskId: noteId,
                   selectedTask: note,
+                  navHistory: pushNavHistory(context.navHistory, taskList.id),
                 }
               }
             }
@@ -972,6 +973,7 @@ const notesState = setup({
               currentNote: note,
               selectedTaskId: null,
               selectedTask: null,
+              navHistory: pushNavHistory(context.navHistory, noteId),
             }
           }),
           'sendViewNote',
