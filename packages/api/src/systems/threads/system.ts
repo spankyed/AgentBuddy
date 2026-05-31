@@ -689,6 +689,10 @@ export const threadsSystem = setup({
             sourceMessageId: messageId,
             newThreadId: result.id,
             sourceUserMessagesAfterFork,
+            agents: {
+              claudeCode: !!sourceContext.claudeCode,
+              codex: !!sourceContext.codex,
+            },
           },
         });
       } catch (err) {
