@@ -329,26 +329,33 @@ export default {
     ),
     // ─── DB query generation ──────────────────────────────────────────
     // The database system forwards GENERATE_AI_QUERY as a db.query brain
-    // event. Routes to the appropriate action based on mode.
+    // event. Gated on provider, then routes by mode.
     on(
       "db.query",
       [[
         branch([
           {
-            if: "$.event.data.payload.mode == 'transaction'",
+            if: "$.event.data.payload.provider == 'Claude Code'",
             steps: [
-              action("CC: DB Transaction", {
-                label: "db-transaction",
-                map: { prompt: "$.event.data.payload.prompt" },
-              }),
+              branch([
+                {
+                  if: "$.event.data.payload.mode == 'transaction'",
+                  steps: [
+                    action("CC: DB Transaction", {
+                      label: "db-transaction",
+                      map: { prompt: "$.event.data.payload.prompt" },
+                    }),
+                  ],
+                },
+              ], [
+                action("CC: DB Query", {
+                  label: "db-query",
+                  map: { prompt: "$.event.data.payload.prompt" },
+                }),
+              ], "DB Mode Router"),
             ],
           },
-        ], [
-          action("CC: DB Query", {
-            label: "db-query",
-            map: { prompt: "$.event.data.payload.prompt" },
-          }),
-        ], "DB Mode Router"),
+        ], undefined, "CC Provider Gate"),
       ]],
       "DB query generation",
     ),
@@ -356,14 +363,21 @@ export default {
     on(
       "commit.generate",
       [[
-        action("CC: Commit Message", {
-          label: "commit-message",
-          map: {
-            diff: "$.event.data.payload.diff",
-            branch: "$.event.data.payload.branch",
-            repoName: "$.event.data.payload.repoName",
+        branch([
+          {
+            if: "$.event.data.payload.provider == 'Claude Code'",
+            steps: [
+              action("CC: Commit Message", {
+                label: "commit-message",
+                map: {
+                  diff: "$.event.data.payload.diff",
+                  branch: "$.event.data.payload.branch",
+                  repoName: "$.event.data.payload.repoName",
+                },
+              }),
+            ],
           },
-        }),
+        ], undefined, "CC Commit Gate"),
       ]],
       "Commit message generation",
     ),

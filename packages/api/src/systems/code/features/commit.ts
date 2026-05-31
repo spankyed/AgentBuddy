@@ -6,6 +6,7 @@ import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
 import { sendToBrainSystem } from '@/services/event-emitter'
+import { repository } from '@/repository'
 
 const pluginId = 'code' as const
 
@@ -575,9 +576,12 @@ export const commitSystem = setup({
         const repoDir = context.gitRepository!.getWorkingDir()
         const repoName = repoDir.split('/').pop() || ''
 
+        const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as any
+        const provider = threadsSettings?.chat?.defaultMode || 'Claude Code'
+
         sendToBrainSystem({
           eventType: 'commit.generate',
-          payload: { diff: truncatedDiff, branch, repoName },
+          payload: { diff: truncatedDiff, branch, repoName, provider },
         })
       }).catch((error: any) => {
         const wrapped = emit(pluginId, {

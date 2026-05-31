@@ -247,6 +247,58 @@ export default {
       ]],
       "Thread forked",
     ),
+    // ─── DB query generation ──────────────────────────────────────────
+    on(
+      "db.query",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.provider == 'Codex'",
+            steps: [
+              branch([
+                {
+                  if: "$.event.data.payload.mode == 'transaction'",
+                  steps: [
+                    action("CDX: DB Transaction", {
+                      label: "db-transaction",
+                      map: { prompt: "$.event.data.payload.prompt" },
+                    }),
+                  ],
+                },
+              ], [
+                action("CDX: DB Query", {
+                  label: "db-query",
+                  map: { prompt: "$.event.data.payload.prompt" },
+                }),
+              ], "DB Mode Router"),
+            ],
+          },
+        ], undefined, "CDX Provider Gate"),
+      ]],
+      "DB query generation",
+    ),
+    // ─── Commit message generation ────────────────────────────────────
+    on(
+      "commit.generate",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.provider == 'Codex'",
+            steps: [
+              action("CDX: Commit Message", {
+                label: "commit-message",
+                map: {
+                  diff: "$.event.data.payload.diff",
+                  branch: "$.event.data.payload.branch",
+                  repoName: "$.event.data.payload.repoName",
+                },
+              }),
+            ],
+          },
+        ], undefined, "CDX Commit Gate"),
+      ]],
+      "Commit message generation",
+    ),
     // ─── CDX commands ─────────────────────────────────────────────────
     on(
       "user.command",

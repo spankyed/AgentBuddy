@@ -6,6 +6,8 @@ import { claudeCode } from '@/services/claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from '@/services/claude-code'
 import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
+import { codexExec } from '@/services/codex/runner'
+import type { CodexExecOptions, CodexExecResult } from '@/services/codex/runner'
 import { testCli, isCliName } from '@/core/shared/resolve-cli'
 import { configDir } from '@/services/claude-code/sessions'
 import fs from 'fs'
@@ -84,6 +86,14 @@ export interface CliServiceType {
     renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
     /** Check whether a session JSONL file exists under the given (or default) project directory. */
     sessionExists(id: string, opts?: { cwd?: string }): Promise<boolean>
+  }
+  /** Codex CLI wrapper for one-shot tasks. */
+  codex: {
+    /**
+     * Low-level one-shot CLI invocation via `codex exec`.
+     * `cwd` defaults to the configured project directory.
+     */
+    exec(args: readonly string[], opts?: Omit<CodexExecOptions, 'cwd'> & { cwd?: string }): Promise<CodexExecResult>
   }
 }
 
@@ -286,6 +296,12 @@ function createCliService(): CliServiceType {
         const cwd = opts?.cwd ?? resolveCwd()
         const info = await claudeCode.sessions.get(id, { cwd })
         return info !== null
+      },
+    },
+    codex: {
+      exec(args, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return codexExec(args, { ...opts, cwd })
       },
     },
   }

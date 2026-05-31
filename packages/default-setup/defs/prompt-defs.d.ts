@@ -1,3 +1,19 @@
+declare class PromptService {
+    getByLabel(label: string): any;
+    /**
+     * Execute a template with prompt context for accessing other prompts
+     * @param templateFn - The template function body
+     * @param templateParams - Parameters to pass to the template
+     */
+    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
+    /**
+     * Get and execute a prompt by label
+     * @param label - The prompt label
+     * @param templateParams - Parameters to pass to the template
+     */
+    usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
+}
+
 declare namespace EARS {
     export enum Entity {
         Agent = "Agent",
@@ -136,22 +152,6 @@ interface PromptEntity extends BaseEntity {
     sourceHash?: string;
     createdAt: number;
     updatedAt: number;
-}
-
-declare class PromptService {
-    getByLabel(label: string): PromptEntity | undefined;
-    /**
-     * Execute a template with prompt context for accessing other prompts
-     * @param templateFn - The template function body
-     * @param templateParams - Parameters to pass to the template
-     */
-    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
-    /**
-     * Get and execute a prompt by label
-     * @param label - The prompt label
-     * @param templateParams - Parameters to pass to the template
-     */
-    usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
 }
 
 /**

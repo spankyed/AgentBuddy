@@ -365,29 +365,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "completed" | "pending" | "in_progress";
+            status: "pending" | "in_progress" | "completed";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -971,21 +971,7 @@ interface SeedResult {
     settings: SeedCounts;
 }
 
-interface SecretEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Secret;
-    provider: SecretProvider;
-    encryptedValue: string;
-    customName?: string;
-    createdAt: number;
-    updatedAt?: number;
-}
 type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
-interface CreateSecretParams {
-    provider: SecretProvider;
-    value: string;
-    customName?: string;
-}
 interface SecretData {
     id: EARS.EntityId;
     provider: SecretProvider;
@@ -994,23 +980,167 @@ interface SecretData {
     updatedAt?: number;
 }
 
-interface NoteEntity extends BaseEntity {
-    entityType: EARS.Entity.Note;
-    title: string;
-    content: string;
-    icon: string | null;
-    noteType: 'document' | 'tasklist' | 'task';
-    completed: boolean;
-    hideCompletedChildren: boolean;
-    displayOrder: number;
-    savedDisplayOrder?: number;
-    createdAt: number;
-    updatedAt: number;
-    lastSeen: number;
-    favorite?: boolean;
-    deleted?: boolean;
-    deletedAt?: number;
+interface AgentPhase {
+    id: string;
+    name: string;
+    description: string;
+    color?: string;
 }
+interface AgentMode {
+    id: string;
+    name: string;
+    description: string;
+    phases?: AgentPhase[];
+    hidden?: boolean;
+    disabled?: boolean;
+}
+interface QuickPrompt {
+    id: string;
+    text: string;
+}
+interface CommandItem {
+    name: string;
+    placeholder: string;
+}
+type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
+interface SettingsData {
+    general: GeneralSettings;
+    plugins: PluginSettings;
+    internal: InternalSettings;
+    assistant: AssistantSettings;
+}
+interface GeneralSettings {
+    personal: PersonalInfo;
+    secrets: Secrets;
+    application: AppSettings;
+    projects: Project[];
+}
+interface Address {
+    street: string;
+    street2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+}
+interface PersonalInfo {
+    name?: string;
+    phoneNumber?: string;
+    address?: string | Address;
+}
+interface Secrets {
+    google?: string | null;
+    anthropic?: string | null;
+    openai?: string | null;
+    groq?: string | null;
+    mistral?: string | null;
+    cohere?: string | null;
+    custom?: Record<string, string>;
+    required: string[];
+    cliPaths?: Record<string, string>;
+}
+interface KeyboardShortcut {
+    key: string;
+    modifiers: string[];
+    global?: boolean;
+}
+interface CustomHotkey extends KeyboardShortcut {
+    id: string;
+    eventName: string;
+}
+interface ApplicationHotkeys {
+    switchPluginUp?: KeyboardShortcut;
+    switchPluginDown?: KeyboardShortcut;
+    toggleInspectionPanel?: KeyboardShortcut;
+    custom?: CustomHotkey[];
+}
+interface AppSettings {
+    hotkeys: ApplicationHotkeys;
+}
+interface Project {
+    name: string;
+    directories: string[];
+    color: string;
+}
+interface PluginVisibilitySettings {
+    [pluginId: string]: boolean;
+}
+interface Category {
+    name: string;
+    color: string;
+}
+interface ThreadStatusOption {
+    label: string;
+    color: string;
+}
+interface ThreadTagOption {
+    name: string;
+    color?: string;
+}
+interface ChatStateConfig {
+    id: string;
+    label: string;
+    color: string;
+    busy: boolean;
+}
+interface ThreadsSettings {
+    statuses: ThreadStatusOption[];
+    tags: ThreadTagOption[];
+    chatStates: ChatStateConfig[];
+    showOnlyRootThreads: boolean;
+    clickToChat: boolean;
+    recentThreadsLimit: number;
+    recentThreadsSortOrder: 'created' | 'visited' | 'message';
+    recordingLimitMinutes: number;
+    skipArchiveConfirm?: boolean;
+    chat?: AgentSettings;
+}
+interface NotesSettings {
+    tasklistPanelPosition: 'left' | 'right';
+}
+interface LogsSettings {
+    maxLogs: number;
+    excludedSources: string[];
+    showAppEvents?: boolean;
+}
+interface PluginSettings {
+    _meta?: {
+        visibility?: PluginVisibilitySettings;
+        lastActivePlugin?: string;
+    };
+    [pluginId: string]: any;
+}
+interface InternalSettings {
+    hasOnboarded: boolean;
+    lastInteractionTimestamp: number | null;
+    version: string;
+    seedHash: string | null;
+}
+interface AssistantSettings {
+    name: string;
+    birthdate: string | null;
+}
+interface FAQItem {
+    id: string;
+    question: string;
+    answer: string;
+    category?: string;
+    order?: number;
+}
+interface AgentSettings {
+    modes: AgentMode[];
+    hotkeys: {
+        textToSpeech?: KeyboardShortcut | null;
+        switchMode?: KeyboardShortcut | null;
+        [key: string]: KeyboardShortcut | null | undefined;
+    };
+    quickPrompts?: QuickPrompt[];
+    quickPromptNumberKeyInserts?: boolean;
+    skipRevertConfirm?: boolean;
+    defaultMode?: string;
+    defaultPhase?: string;
+}
+
 interface NoteDTO {
     id: string;
     title: string;
@@ -1459,16 +1589,16 @@ declare const LogEntry: z.ZodObject<{
     stack: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    timestamp: number;
     message: string;
+    timestamp: number;
     level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
 }, {
     id: string;
-    timestamp: number;
     message: string;
+    timestamp: number;
     level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
@@ -1561,25 +1691,6 @@ interface TNodeUpdate {
     status: TNodeEntity['status'];
     eventTNodeId?: EARS.EntityId;
 }
-/** ── Brain runner types ─────────────────────────────────────────────────── */
-interface ExecutionEvent {
-    type: string;
-    data: Record<string, unknown>;
-    timestamp?: TimestampMs;
-    source?: string;
-}
-interface StepRun {
-    id?: string;
-    label: string;
-    result: unknown;
-    timestamp: TimestampMs;
-}
-interface ExecutionContext {
-    flowTNodeId: EARS.EntityId;
-    event: ExecutionEvent;
-    steps: StepRun[];
-    lastStep?: Omit<StepRun, 'timestamp'>;
-}
 
 type OutgoingDatabaseEvents = {
     type: 'DATABASE_REFRESH';
@@ -1643,6 +1754,21 @@ type OutgoingDatabaseEvents = {
     error: string;
 };
 
+declare enum BinaryOperator {
+    EQUALS = "equals",
+    NOT_EQUALS = "not_equals",
+    GREATER_THAN = "greater_than",
+    LESS_THAN = "less_than",
+    GREATER_THAN_OR_EQUALS = "greater_than_or_equals",
+    LESS_THAN_OR_EQUALS = "less_than_or_equals",
+    CONTAINS = "contains",
+    STARTS_WITH = "starts_with",
+    ENDS_WITH = "ends_with",
+    MATCHES = "matches",
+    IS_EMPTY = "is_empty",
+    IS_NULL = "is_null"
+}
+
 interface FlowEntity extends BaseEntity {
     entityType: EARS.Entity.Flow;
     shortCode: string;
@@ -1678,20 +1804,6 @@ interface UpdateNode extends NodeBase {
     nodeType: 'update';
     entityId: string;
     onMissing?: 'fail' | 'ignore' | 'create';
-}
-declare enum BinaryOperator {
-    EQUALS = "equals",
-    NOT_EQUALS = "not_equals",
-    GREATER_THAN = "greater_than",
-    LESS_THAN = "less_than",
-    GREATER_THAN_OR_EQUALS = "greater_than_or_equals",
-    LESS_THAN_OR_EQUALS = "less_than_or_equals",
-    CONTAINS = "contains",
-    STARTS_WITH = "starts_with",
-    ENDS_WITH = "ends_with",
-    MATCHES = "matches",
-    IS_EMPTY = "is_empty",
-    IS_NULL = "is_null"
 }
 type Predicate = {
     key: string;
@@ -1775,10 +1887,6 @@ interface ActionNode extends NodeBase {
 type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode | ScheduleNode;
 /** Literal union of all nodeType strings (keeps Base clean) */
 type NodeKind = NodeEntity['nodeType'];
-type NodeCreateInput = Partial<NodeEntity> & {
-    actionId?: string;
-    promptTemplateId?: string;
-};
 type EdgeEntity = {
     id: EARS.EntityId;
     kind: EARS.RelKind;
@@ -1813,10 +1921,6 @@ interface ModelCatalogEntry {
     costPer1kInput?: number;
     costPer1kOutput?: number;
     capabilities?: string[];
-}
-interface FlowExtendedData {
-    nodes: NodeEntity[];
-    edges: EdgeEntity[];
 }
 
 type OutgoingFlowsEvents = {
@@ -3537,6 +3641,12 @@ type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & {
 type ThreadExtendedData = ThreadLinkedFields & {
     messages?: Partial<MessageEntity>[];
     tags?: string[];
+    topic?: string;
+    instructions?: string;
+    status?: string;
+    pinned?: boolean;
+    shortCode?: string;
+    timestamp?: number;
 };
 type ThreadConnectedData = {
     threads: ThreadExtended[];
@@ -3561,41 +3671,6 @@ type AgentThreadData = {
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
 };
-interface AgentPhase {
-    id: string;
-    name: string;
-    description: string;
-    color?: string;
-}
-interface AgentMode {
-    id: string;
-    name: string;
-    description: string;
-    phases?: AgentPhase[];
-    hidden?: boolean;
-    disabled?: boolean;
-}
-interface QuickPrompt {
-    id: string;
-    text: string;
-}
-interface CommandItem {
-    name: string;
-    placeholder: string;
-}
-interface AgentSettings {
-    modes: AgentMode[];
-    hotkeys: {
-        textToSpeech?: KeyboardShortcut | null;
-        switchMode?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    quickPrompts?: QuickPrompt[];
-    quickPromptNumberKeyInserts?: boolean;
-    skipRevertConfirm?: boolean;
-    defaultMode?: string;
-    defaultPhase?: string;
-}
 type AgentConnectedData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
@@ -4489,132 +4564,6 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boole
     readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
 };
 
-type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
-interface SettingsData {
-    general: GeneralSettings;
-    plugins: PluginSettings;
-    internal: InternalSettings;
-    assistant: AssistantSettings;
-}
-interface GeneralSettings {
-    personal: PersonalInfo;
-    secrets: Secrets;
-    application: AppSettings;
-    projects: Project[];
-}
-interface Address {
-    street: string;
-    street2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-}
-interface PersonalInfo {
-    name?: string;
-    phoneNumber?: string;
-    address?: string | Address;
-}
-interface Secrets {
-    google?: string | null;
-    anthropic?: string | null;
-    openai?: string | null;
-    groq?: string | null;
-    mistral?: string | null;
-    cohere?: string | null;
-    custom?: Record<string, string>;
-    required: string[];
-    cliPaths?: Record<string, string>;
-}
-interface KeyboardShortcut {
-    key: string;
-    modifiers: string[];
-    global?: boolean;
-}
-interface CustomHotkey extends KeyboardShortcut {
-    id: string;
-    eventName: string;
-}
-interface ApplicationHotkeys {
-    switchPluginUp?: KeyboardShortcut;
-    switchPluginDown?: KeyboardShortcut;
-    toggleInspectionPanel?: KeyboardShortcut;
-    custom?: CustomHotkey[];
-}
-interface AppSettings {
-    hotkeys: ApplicationHotkeys;
-}
-interface Project {
-    name: string;
-    directories: string[];
-    color: string;
-}
-interface PluginVisibilitySettings {
-    [pluginId: string]: boolean;
-}
-interface Category {
-    name: string;
-    color: string;
-}
-interface ThreadStatusOption {
-    label: string;
-    color: string;
-}
-interface ThreadTagOption {
-    name: string;
-    color?: string;
-}
-interface ChatStateConfig {
-    id: string;
-    label: string;
-    color: string;
-    busy: boolean;
-}
-interface ThreadsSettings {
-    statuses: ThreadStatusOption[];
-    tags: ThreadTagOption[];
-    chatStates: ChatStateConfig[];
-    showOnlyRootThreads: boolean;
-    clickToChat: boolean;
-    recentThreadsLimit: number;
-    recentThreadsSortOrder: 'created' | 'visited' | 'message';
-    recordingLimitMinutes: number;
-    skipArchiveConfirm?: boolean;
-    chat?: AgentSettings;
-}
-interface NotesSettings {
-    tasklistPanelPosition: 'left' | 'right';
-}
-interface LogsSettings {
-    maxLogs: number;
-    excludedSources: string[];
-    showAppEvents?: boolean;
-}
-interface PluginSettings {
-    _meta?: {
-        visibility?: PluginVisibilitySettings;
-        lastActivePlugin?: string;
-    };
-    [pluginId: string]: any;
-}
-interface InternalSettings {
-    hasOnboarded: boolean;
-    lastInteractionTimestamp: number | null;
-    version: string;
-    seedHash: string | null;
-}
-interface AssistantSettings {
-    name: string;
-    birthdate: string | null;
-}
-interface FAQItem {
-    id: string;
-    question: string;
-    answer: string;
-    category?: string;
-    order?: number;
-}
-
 interface FileInfo {
     name: string;
     path: string;
@@ -4966,6 +4915,26 @@ interface AuthStatus {
     [key: string]: unknown;
 }
 
+/**
+ * Low-level one-shot process primitive for the Codex CLI.
+ *
+ * Mirrors `claude-code/runner.ts:execOnce` but resolves the `codex` binary
+ * and uses Codex-appropriate env scrubbing.
+ */
+interface CodexExecOptions {
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+    input?: string;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    cliPath?: string;
+}
+interface CodexExecResult {
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+}
+
 interface CliServiceType {
     git: {
         commit(message: string): Promise<void>;
@@ -5071,6 +5040,16 @@ interface CliServiceType {
             cwd?: string;
         }): Promise<boolean>;
     };
+    /** Codex CLI wrapper for one-shot tasks. */
+    codex: {
+        /**
+         * Low-level one-shot CLI invocation via `codex exec`.
+         * `cwd` defaults to the configured project directory.
+         */
+        exec(args: readonly string[], opts?: Omit<CodexExecOptions, 'cwd'> & {
+            cwd?: string;
+        }): Promise<CodexExecResult>;
+    };
 }
 
 interface TextStreamOptions {
@@ -5145,47 +5124,6 @@ declare class SettingsService {
     getSettingValue(type: SETTINGS_SCOPE, label: string, path: string[]): any;
 }
 
-interface TerminalEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Terminal;
-    title: string;
-    customTitle?: string;
-    pid: number;
-    shell: string;
-    cwd: string;
-    active: boolean;
-    cols: number;
-    rows: number;
-    createdAt: number;
-    updatedAt: number;
-    closedAt?: number;
-}
-interface StartupData {
-    terminals: TerminalInfo[];
-}
-
-/**
- * Flow DSL Compiler
- *
- * Transforms track-based DSL format into EARS database format.
- * Each track creates a listener node + sequential step nodes.
- */
-
-type Relation = {
-    source: string;
-    kind: EARS.RelKind;
-    target: string;
-    info?: object;
-};
-interface CompiledRows {
-    entity: object[];
-    relation: Relation[];
-    role: Array<{
-        entityId: string;
-        role: string;
-    }>;
-}
-
 declare class LibraryService {
     get(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
     getByCode(shortCode: string): Promise<DocumentDTO | undefined>;
@@ -5215,15 +5153,15 @@ declare class LibraryService {
 }
 
 declare class ActionService {
-    getById(id: EARS.EntityId): ActionEntity | undefined;
-    getByLabel(label: string): ActionEntity | undefined;
-    getByCategory(category: string): ActionEntity[];
+    getById(id: EARS.EntityId): any;
+    getByLabel(label: string): any;
+    getByCategory(category: string): any;
     executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
     getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
 }
 
 declare class PromptService {
-    getByLabel(label: string): PromptEntity | undefined;
+    getByLabel(label: string): any;
     /**
      * Execute a template with prompt context for accessing other prompts
      * @param templateFn - The template function body
@@ -6207,432 +6145,7 @@ declare const services: {
     action: ActionService;
     library: LibraryService;
     browser: typeof browser;
-    repository: {
-        readonly actionQueries: {
-            readonly byId: (id: EARS.EntityId) => ActionEntity | undefined;
-            readonly all: () => ActionEntity[];
-            readonly byCategory: (category: string) => ActionEntity[];
-            readonly paginated: (page?: number, pageSize?: number) => {
-                items: ActionEntity[];
-                page: number;
-                pageSize: number;
-                totalCount: number;
-                totalPages: number;
-            };
-            readonly connectedData: (page?: number) => {
-                actions: ActionEntity[];
-                page: number;
-                totalPages: number;
-                totalCount: number;
-            };
-        };
-        readonly actionCommands: {
-            readonly create: (data: {
-                label: string;
-                description?: string;
-                category?: string;
-                input?: Record<string, any>;
-                actionFn: string;
-                output?: any;
-                sourceHash?: string;
-            }) => ActionEntity;
-            readonly update: (id: EARS.EntityId, updates: {
-                label?: string;
-                description?: string;
-                category?: string;
-                input?: Record<string, any>;
-                actionFn?: string;
-                output?: any;
-                sourceHash?: string;
-            }) => void;
-            readonly delete: (id: EARS.EntityId) => void;
-        };
-        readonly chatQueries: {
-            readonly hasRequiredApiKeys: () => boolean;
-            readonly threadArtifacts: (threadId: EARS.EntityId) => ArtifactItem[];
-            readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
-            readonly refreshThreadsData: () => RecentThreadRefreshData;
-            readonly connectedData: () => AgentConnectedData;
-            readonly messageById: (messageId: EARS.EntityId) => MessageEntity | null;
-        };
-        readonly chatCommands: {
-            readonly addMessage: (params: {
-                threadId: EARS.EntityId;
-                text: string;
-                sender: "user" | "assistant" | "system" | "marker";
-                blocks?: BlockConfig[];
-                forkable?: boolean;
-                references?: MessageReferences;
-                isCommand?: boolean;
-                command?: string;
-                autoHide?: boolean;
-                asUser?: boolean;
-                asideContext?: string;
-                blockResponse?: any;
-                responseTimestamp?: number;
-                asideText?: string;
-                compacted?: boolean;
-                context?: Record<string, unknown>;
-                skipRelink?: boolean;
-            }) => {
-                id: EARS.EntityId;
-                threadId: EARS.EntityId;
-                text: string;
-                sender: string;
-                timestamp: number;
-            };
-            readonly createThreadFromMessage: (text: string) => {
-                threadId: EARS.EntityId;
-                threadData: ReturnType<(input: ThreadCreateData & {
-                    id?: string;
-                }) => {
-                    id: EARS.EntityId;
-                    shortCode: string;
-                    timestamp: number;
-                    status: string;
-                }>;
-            };
-            readonly updateMessageBlockResponse: (params: {
-                messageId: EARS.EntityId;
-                response: any;
-            }) => {
-                messageId: EARS.EntityId;
-                responseTimestamp: number;
-                updatedAt: number;
-                blocks?: BlockConfig[];
-            };
-            readonly updateMessageState: (params: {
-                messageId: EARS.EntityId;
-                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context" | "compacted">>;
-            }) => {
-                messageId: EARS.EntityId;
-                updatedAt: number;
-                updates: typeof params.updates;
-            };
-            readonly createMarkerMessage: (params: {
-                threadId: EARS.EntityId;
-                text: string;
-            }) => {
-                id: EARS.EntityId;
-                threadId: EARS.EntityId;
-                text: string;
-                sender: string;
-                timestamp: number;
-                compactedMessageIds: EARS.EntityId[];
-            };
-            readonly toggleMarkerCompacted: (markerId: EARS.EntityId, compacted: boolean) => EARS.EntityId[];
-            readonly copyMessagesUpTo: (params: {
-                sourceThreadId: EARS.EntityId;
-                targetThreadId: EARS.EntityId;
-                upToMessageId: string;
-            }) => void;
-            readonly softDeleteMessagesAfter: (params: {
-                threadId: EARS.EntityId;
-                messageId: EARS.EntityId;
-            }) => {
-                deletedCount: number;
-                deletedIds: string[];
-            };
-            readonly createArtifact: (params: {
-                artifactType: ArtifactType;
-                title: string;
-                content: any;
-                threadId?: EARS.EntityId;
-            }) => {
-                artifactId: EARS.EntityId;
-            };
-            readonly updateArtifact: (artifactId: EARS.EntityId, patch: {
-                title?: string;
-                content?: unknown;
-            }) => void;
-            readonly findArtifactByType: (threadId: EARS.EntityId, artifactType: ArtifactType) => ArtifactEntity | undefined;
-        };
-        readonly brainQueries: {
-            readonly rootFlowTNode: () => EARS.EntityId | undefined;
-            readonly tNodeById: (id: EARS.EntityId) => TNodeEntity | null;
-            readonly flowEventNodes: (flowId: EARS.EntityId) => ListenerNode[];
-            readonly flowScheduleNodes: (flowId: EARS.EntityId) => ScheduleNode[];
-            readonly eventFirstStep: (eventNodeId: EARS.EntityId) => NodeEntity | undefined;
-            readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
-            readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
-            readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;
-            readonly eventTracks: (flowTNodeId: EARS.EntityId) => TrackEntity[];
-            readonly possibleEvents: (flowTNodeId: EARS.EntityId) => EventListenerEntity[];
-            readonly buildFlowHierarchy: (flowTNodeId: EARS.EntityId) => Array<{
-                flowTNodeId: EARS.EntityId;
-                label: string;
-            }>;
-            readonly extendedTNodeData: (tNodeId: EARS.EntityId) => FlowTNodeData;
-            readonly rootData: () => FlowTNodeData;
-        };
-        readonly brainCommands: {
-            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType"> & {
-                triggerType?: "listener" | "schedule";
-                cronExpression?: string;
-            }, flowTNodeId: EARS.EntityId) => TNodeEntity;
-            readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
-                flowTNode: TNodeEntity;
-                flowId: EARS.EntityId;
-                eventNodes: ListenerNode[];
-            };
-            readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {
-                tNode: TNodeEntity;
-                step: NodeEntity;
-            };
-            readonly createRootFlowTNode: () => {
-                rootFlow: FlowEntity;
-                rootFlowTNode: TNodeEntity;
-                eventNodes: ListenerNode[];
-                entryNode?: ListenerNode;
-            };
-            readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
-            readonly updateTNodeResult: (tNodeId: EARS.EntityId, result: any) => void;
-            readonly updateTNodeAttributes: (tNodeId: EARS.EntityId, attributes: any) => void;
-            readonly clearVolatileData: () => void;
-        };
-        readonly flowsQueries: {
-            readonly rootFlow: () => EARS.EntityId | undefined;
-            readonly getNodeActionId: (nodeId: EARS.EntityId) => EARS.EntityId | undefined;
-            readonly node: (nodeId: EARS.EntityId) => NodeEntity | undefined;
-            readonly flowNodes: (flowId: EARS.EntityId) => NodeEntity[];
-            readonly flowEdges: (flowId: EARS.EntityId) => EdgeEntity[];
-            readonly extendedData: (flowId: EARS.EntityId, include?: keyof FlowExtendedData | (keyof FlowExtendedData)[]) => FlowExtendedData;
-            readonly connectedData: () => FlowsConnectedData;
-        };
-        readonly flowsCommands: {
-            readonly createFlow: (flow?: Partial<FlowEntity>) => FlowEntity;
-            readonly createFlowWithEntryNode: (flow?: Partial<FlowEntity>) => {
-                flow: FlowEntity;
-                entryNode: NodeEntity;
-            };
-            readonly createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput) => NodeEntity;
-            readonly createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: {
-                sourceHandle?: string;
-                targetHandle?: string;
-            }) => {
-                relId: EARS.EntityId;
-            };
-            readonly updateFlowLabel: (flowId: EARS.EntityId, label: string) => void;
-            readonly updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput) => void;
-            readonly deleteNode: (nodeId: EARS.EntityId) => void;
-            readonly deleteEdge: (edgeId: EARS.EntityId) => void;
-            readonly updateEdge: (edgeId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource: EARS.EntityId, newTarget: EARS.EntityId) => {
-                newRelId: EARS.EntityId;
-            };
-            readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
-            readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
-            readonly deleteFlow: (flowId: EARS.EntityId) => void;
-            readonly reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1) => void;
-            readonly importFromDSL: (compiled: CompiledRows) => {
-                flowIds: EARS.EntityId[];
-            };
-        };
-        readonly libraryQueries: {
-            readonly getDocuments: (collectionId?: string) => DocumentDTO[];
-            readonly getDocument: (id: EARS.EntityId) => DocumentDTO | null;
-            readonly getDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
-            readonly getCollections: () => CollectionDTO[];
-            readonly getFolderContents: (folderId: EARS.EntityId | null) => Promise<FolderContents>;
-            readonly getFolderPath: (folderId: EARS.EntityId | null) => BreadcrumbItem[];
-            readonly getParentFolderId: (folderId: EARS.EntityId) => EARS.EntityId | null;
-            readonly getCollectionByName: (name: string) => CollectionDTO | null;
-            readonly getDocumentsInCollection: (collectionId: EARS.EntityId) => DocumentDTO[];
-            readonly getAllDocuments: () => DocumentDTO[];
-        };
-        readonly libraryCommands: {
-            readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, sourceHash?: string) => DocumentDTO;
-            readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, sourceHash?: string) => DocumentDTO;
-            readonly deleteDocument: (id: EARS.EntityId) => void;
-            readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string, sourceHash?: string) => CollectionDTO;
-            readonly updateCollection: (id: EARS.EntityId, name: string, description?: string, sourceHash?: string) => CollectionDTO;
-            readonly deleteCollection: (id: EARS.EntityId) => void;
-            readonly moveDocument: (documentId: EARS.EntityId, newCollectionId?: EARS.EntityId) => DocumentDTO;
-            readonly renameItem: (id: EARS.EntityId, name: string, type: "document" | "folder") => LibraryItem;
-            readonly deleteItems: (ids: EARS.EntityId[]) => void;
-            readonly moveItems: (ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null) => void;
-            readonly migrateDocumentShortCodes: () => void;
-            readonly migrateDisplayOrders: () => void;
-            readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId, id?: string) => CollectionDTO;
-            readonly updateSymlinkPath: (collectionId: EARS.EntityId, newPath: string) => CollectionDTO;
-            readonly updateDocumentTags: (documentId: EARS.EntityId, tags: string[]) => void;
-        };
-        readonly promptQueries: {
-            byId: (id: EARS.EntityId) => PromptEntity | undefined;
-            all: () => PromptEntity[];
-            byLabel: (label: string) => PromptEntity | undefined;
-            connectedData: (page?: number, pageSize?: number) => {
-                prompts: PromptEntity[];
-                page: number;
-                totalPages: number;
-                totalCount: number;
-            };
-        };
-        readonly promptCommands: {
-            create: (input: {
-                label: string;
-                description?: string;
-                templateFn: string;
-                inputs?: Record<string, any>;
-                category?: string;
-                sourceHash?: string;
-            }) => PromptEntity;
-            update: (id: EARS.EntityId, updates: {
-                label?: string;
-                description?: string;
-                templateFn?: string;
-                inputs?: Record<string, any>;
-                category?: string;
-                sourceHash?: string;
-            }) => void;
-            delete: (id: EARS.EntityId) => void;
-        };
-        readonly settingsQueries: {
-            getSettings: () => SettingsData;
-            getGeneralSettings: (label?: string) => any;
-            getInternalSettings: () => InternalSettings;
-            getAssistantSettings: () => AssistantSettings;
-            getPluginSettings: (pluginId: string) => any;
-        };
-        readonly settingsCommands: {
-            updateSettings(type: string, label: string | null, path: string[], value: any): void;
-            replaceSettings(data: SettingsData): void;
-            resetSettings: () => void;
-        };
-        readonly secretsQueries: {
-            getAllSecrets: () => SecretEntity[];
-            getSecret: (id: EARS.EntityId) => SecretEntity | null;
-            getSecretByProvider: (provider: SecretProvider, customName?: string) => SecretEntity | null;
-            getSecretsData: () => SecretData[];
-        };
-        readonly secretsCommands: {
-            createSecret: (params: CreateSecretParams) => EARS.EntityId;
-            updateSecret: (id: EARS.EntityId, value: string) => EARS.EntityId;
-            deleteSecret: (id: EARS.EntityId) => boolean;
-            deleteSecretByProvider: (provider: SecretProvider, customName?: string) => boolean;
-        };
-        readonly terminalQueries: {
-            byId: (id: EARS.EntityId) => TerminalEntity | undefined;
-            all: () => TerminalEntity[];
-            active: () => TerminalEntity[];
-            getStartupData: () => StartupData;
-        };
-        readonly terminalCommands: {
-            create: (terminalInfo: Partial<TerminalInfo> & {
-                id: EARS.EntityId;
-            }) => EARS.EntityId;
-            resize: (id: EARS.EntityId, cols: number, rows: number) => void;
-            rename: (id: EARS.EntityId, customTitle: string) => void;
-            updateCwd: (id: EARS.EntityId, cwd: string, title?: string) => void;
-            updatePid: (id: EARS.EntityId, pid: number) => void;
-            markClosed: (id: EARS.EntityId) => void;
-            delete: (id: EARS.EntityId) => void;
-        };
-        readonly threadQueries: {
-            readonly byId: (id: EARS.EntityId) => ThreadEntity | undefined;
-            readonly all: () => ThreadEntity[];
-            readonly allByRecency: () => ThreadEntity[];
-            readonly messages: (threadId: EARS.EntityId) => Partial<MessageEntity>[];
-            readonly linkedThreads: (threadId: EARS.EntityId) => any[];
-            readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
-            readonly archivedThreads: () => Partial<ThreadEntity>[];
-            readonly kanbanItems: () => {
-                content: {
-                    workItems: {
-                        id: any;
-                        name: string;
-                        time: string;
-                        date: string;
-                        priority: number;
-                        tags: never[];
-                        status: any;
-                        type: "work-item";
-                    }[];
-                };
-                metadata: {
-                    createdAt: number;
-                };
-            };
-            readonly connectedData: () => ThreadConnectedData;
-        };
-        readonly threadCommands: {
-            readonly create: (input: ThreadCreateData & {
-                id?: string;
-            }) => {
-                id: EARS.EntityId;
-                shortCode: string;
-                timestamp: number;
-                status: string;
-            };
-            readonly update: (id: EARS.EntityId, updates: {
-                topic?: string;
-                instructions?: string;
-                status?: string;
-                tags?: string[];
-                linkedThreads?: any[];
-                lastMessageTimestamp?: number;
-                lastVisitedTimestamp?: number;
-                forcedMode?: ThreadEntity["forcedMode"] | null;
-                context?: ThreadEntity["context"];
-                archived?: boolean;
-                chatState?: string;
-            }) => void;
-            readonly markAsVisited: (id: EARS.EntityId) => void;
-            readonly linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId) => void;
-            readonly forkCount: (sourceThreadId: EARS.EntityId) => number;
-            readonly setParent: (parentId: EARS.EntityId, childIds: EARS.EntityId[]) => {
-                reparented: string[];
-                skipped: string[];
-            };
-            readonly delete: (id: EARS.EntityId) => void;
-        };
-        readonly noteQueries: {
-            readonly byId: (id: EARS.EntityId) => NoteEntity | undefined;
-            readonly byIdDTO: (id: EARS.EntityId) => NoteDTO | undefined;
-            readonly all: () => NoteEntity[];
-            readonly allDTOs: () => NoteDTO[];
-            readonly children: (parentId: EARS.EntityId) => NoteDTO[];
-            readonly ancestorChain: (noteId: EARS.EntityId) => NoteDTO[];
-            readonly referencedBy: (noteId: EARS.EntityId) => EARS.EntityId[];
-            readonly trashedDTOs: () => NoteDTO[];
-            readonly expiredSoftDeleted: (maxAgeDays: number) => NoteEntity[];
-            readonly connectedData: () => {
-                notes: NoteDTO[];
-            };
-        };
-        readonly noteCommands: {
-            readonly create: (input: {
-                title: string;
-                content?: string;
-                icon?: string | null;
-                parentId?: string;
-                displayOrder?: number;
-                noteType?: "document" | "tasklist" | "task";
-                completed?: boolean;
-                id?: string;
-            }) => NoteEntity;
-            readonly update: (id: EARS.EntityId, updates: {
-                title?: string;
-                content?: string;
-                icon?: string | null;
-                displayOrder?: number;
-                savedDisplayOrder?: number | null;
-                lastSeen?: number;
-                completed?: boolean;
-                hideCompletedChildren?: boolean;
-                favorite?: boolean;
-            }, skipTimestamp?: boolean) => void;
-            readonly softDelete: (id: EARS.EntityId) => string[];
-            readonly restore: (id: EARS.EntityId) => string[];
-            readonly move: (id: EARS.EntityId, newParentId: EARS.EntityId | null) => {
-                oldParentId: string | null;
-            };
-            readonly reorder: (id: EARS.EntityId, newParentId: EARS.EntityId | null, newIndex: number) => {
-                oldParentId: string | null;
-                affectedIds: string[];
-            };
-            readonly delete: (id: EARS.EntityId) => void;
-        };
-    };
+    repository: any;
     settings: SettingsService;
     textStream: TextStreamService;
     chat: typeof chat;
@@ -6753,5 +6266,5 @@ type Services = typeof services;
 declare const services: Services;
 declare const params: ActionParams;
 
-export { ActionService, LibraryService, PromptService, params as params, services };
+export { ActionService, LibraryService, PromptService, params, services };
 export type { ActionEntity, ActionParams, Services, SettingsData };

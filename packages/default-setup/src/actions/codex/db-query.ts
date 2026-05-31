@@ -1,18 +1,19 @@
 /**
- * CC: DB Transaction — generates an EARS database transaction using Claude CLI.
+ * CDX: DB Query — generates a read-only EARS database query using Codex CLI.
  *
- * Triggered by the `db.query` brain event when mode is 'transaction'.
+ * Triggered by the `db.query` brain event when mode is 'query' (default)
+ * and the user's default mode is set to Codex.
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { formatProviderError } from '../_helpers/format-provider-error';
 
 export const meta: ActionMeta = {
-  label: 'CC: DB Transaction',
-  description: 'Generate an EARS database transaction using Claude CLI',
-  category: 'claude-code',
+  label: 'CDX: DB Query',
+  description: 'Generate a read-only EARS database query using Codex CLI',
+  category: 'codex',
   input: {
-    prompt: { type: 'string', description: 'Natural language transaction request from the user', required: true },
+    prompt: { type: 'string', description: 'Natural language query request from the user', required: true },
   },
 };
 
@@ -37,18 +38,21 @@ export async function action(
   try {
     const { schema, topology } = services.database.buildQueryContext();
 
-    const systemPrompt = services.prompt.usePrompt('DB Transaction System', { schema, topology });
+    const systemPrompt = services.prompt.usePrompt('DB Query System', { schema, topology });
 
     if (!systemPrompt) {
       services.emitter.sendToPlugin('database', {
         type: 'QUERY_ERROR',
-        error: 'DB Transaction prompt template not found. Import the setup pack.',
+        error: 'DB Query prompt template not found. Import the setup pack.',
       });
       return { success: false, error: 'Prompt not found' };
     }
 
-    const result = await services.cli.claudeCode.exec(
-      ['-p', userPrompt.trim(), '--system-prompt', systemPrompt],
+    // Codex CLI has no --system-prompt flag, so embed system context in the prompt
+    const prompt = `${systemPrompt}\n\n${userPrompt.trim()}`;
+
+    const result = await services.cli.codex.exec(
+      ['exec', prompt, '--sandbox', 'read-only', '--ask-for-approval', 'never'],
       { timeoutMs: 60_000, cwd: '/tmp' },
     );
 
@@ -57,7 +61,7 @@ export async function action(
     if (!query) {
       services.emitter.sendToPlugin('database', {
         type: 'QUERY_ERROR',
-        error: 'Claude returned an empty response.',
+        error: 'Codex returned an empty response.',
       });
       return { success: false, error: 'Empty response' };
     }
@@ -69,11 +73,11 @@ export async function action(
 
     return { success: true };
   } catch (error: any) {
-    const message = formatProviderError(error, 'Claude Code');
+    const errorMessage = formatProviderError(error, 'Codex');
     services.emitter.sendToPlugin('database', {
       type: 'QUERY_ERROR',
-      error: message,
+      error: errorMessage,
     });
-    return { success: false, error: message };
+    return { success: false, error: errorMessage };
   }
 }
