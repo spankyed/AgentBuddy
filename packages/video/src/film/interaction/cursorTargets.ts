@@ -24,6 +24,7 @@ export type CursorPath = {
   click?: boolean;
   coordinateSpace?: CoordinateSpace;
   end: number;
+  fade?: boolean;
   from: Point;
   start: number;
   to: Point;
@@ -37,6 +38,10 @@ export type TargetedCursorMove<TargetId extends string> = {
   start: number;
   to: Point | TargetId;
   toPoint?: TargetPointOptions;
+};
+
+export type CursorTimelineMove<TargetId extends string> = TargetedCursorMove<TargetId> & {
+  holdUntilNext?: boolean;
 };
 
 export function percentTarget(left: number, top: number, width = 0, height = 0): TargetRect {
@@ -69,6 +74,40 @@ export function cursorMove<TargetId extends string>(
     start: move.start,
     to: resolvePoint(targets, move.to, move.toPoint),
   };
+}
+
+export function cursorTimeline<TargetId extends string>(
+  targets: Record<TargetId, TargetRect>,
+  moves: Array<CursorTimelineMove<TargetId>>,
+  frame: number,
+  coordinateSpace: CoordinateSpace = 'px',
+): CursorPath | null {
+  const resolvedMoves = moves.map(move => cursorMove(targets, move, coordinateSpace));
+  const activeIndex = resolvedMoves.findIndex(move => frame >= move.start && frame < move.end);
+  if (activeIndex >= 0) {
+    return {
+      ...resolvedMoves[activeIndex],
+      fade: false,
+    };
+  }
+
+  for (let index = 0; index < resolvedMoves.length - 1; index += 1) {
+    const current = resolvedMoves[index];
+    const next = resolvedMoves[index + 1];
+    if (frame >= current.end && frame < next.start && moves[index].holdUntilNext !== false) {
+      return {
+        click: false,
+        coordinateSpace,
+        end: next.start,
+        fade: false,
+        from: current.to,
+        start: current.end,
+        to: current.to,
+      };
+    }
+  }
+
+  return null;
 }
 
 export function targetDebugOverlay<TargetId extends string>(

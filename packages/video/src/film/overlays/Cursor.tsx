@@ -12,6 +12,7 @@ type CursorProps = {
   coordinateSpace?: CoordinateSpace;
   cursor?: CursorAssetId;
   end: number;
+  fade?: boolean;
   frame: number;
   from: Point;
   scale?: number;
@@ -20,11 +21,11 @@ type CursorProps = {
   to: Point;
 };
 
-export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, frame, from, scale = 1, start, theme, to}: CursorProps) {
+export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, fade = true, frame, from, scale = 1, start, theme, to}: CursorProps) {
   const asset = getCursorAsset({cursor, theme});
   const p = ease(frame, start, end);
   const [x, y] = cursorPoint(from, to, p, coordinateSpace);
-  const opacity = cursorOpacityForFrame(frame, start, end);
+  const opacity = fade ? cursorOpacityForFrame(frame, start, end) : 1;
   const clickAmount = click ? Math.sin(ease(frame, end - clickPulseFrames, end) * Math.PI) : 0;
   const width = 42 * scale;
   const height = width * (asset.height / asset.width);

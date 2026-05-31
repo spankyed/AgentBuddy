@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {cursorOpacityForFrame} from '../src/film/overlays/Cursor';
+import {cursorTimeline, percentTarget} from '../src/film/interaction/cursorTargets';
 import {boardViewForFrame} from '../src/film/state/board';
 import {chatShotViewForFrame, chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
@@ -35,6 +36,22 @@ function chatApprovedSummaryDelayPass() {
   const afterDelay = chatShotViewForFrame(436).conversation.additionalAssistantMessages ?? [];
   return !beforeDelay.some(message => message.markdown.includes('Approved checkout implementation plan'))
     && afterDelay.some(message => message.markdown.includes('Approved checkout implementation plan'));
+}
+
+function persistentCursorTimelinePass() {
+  const targets = {
+    approve: percentTarget(10, 20, 4, 4),
+    recent: percentTarget(70, 20, 4, 4),
+  };
+  const held = cursorTimeline(targets, [
+    {start: 10, end: 20, from: 'approve', to: 'approve'},
+    {start: 40, end: 50, from: 'approve', to: 'recent'},
+  ], 30, 'percent');
+
+  return held?.fade === false
+    && held.click === false
+    && held.from[0] === held.to[0]
+    && held.from[1] === held.to[1];
 }
 
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
@@ -164,6 +181,11 @@ const checks: Check[] = [
     pass: cursorOpacityForFrame(18, 18, 38) === 0
       && cursorOpacityForFrame(28, 18, 38) > 0.95
       && cursorOpacityForFrame(38, 18, 38) === 0,
+  },
+  {
+    area: 'chat',
+    message: 'cursor timeline persists location between actions',
+    pass: persistentCursorTimelinePass(),
   },
   {
     area: 'final',

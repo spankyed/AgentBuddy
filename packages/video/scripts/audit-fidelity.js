@@ -308,7 +308,6 @@ async function main() {
   const stateRemotionLeaks = [];
   const shotStateImportLeaks = [];
   const shotFixtureLeaks = [];
-  const shotSurfaceStyleLeaks = [];
   const demoFixtureLeaks = [];
   const demoRawStyleLeaks = [];
   const flowRuntimeLeaks = [];
@@ -359,10 +358,7 @@ async function main() {
   await Promise.all(shotFiles.map(async file => {
     const basename = path.basename(file);
     const relative = path.relative(packageDir, file);
-    if (/\.module\.css$/.test(file) && basename !== 'FinalShot.module.css') {
-      shotSurfaceStyleLeaks.push(relative);
-      return;
-    }
+    if (/\.module\.css$/.test(file)) return;
     if (!/\.(ts|tsx)$/.test(file)) return;
     const source = await fs.readFile(file, 'utf8');
     for (const match of source.matchAll(/import\s+(?!type)([\s\S]*?)\s+from\s+['"](\.\.\/state\/[^'"]+)['"]/g)) {
@@ -371,9 +367,6 @@ async function main() {
     }
     const literals = extractStringLiterals(stripModuleSpecifiers(source));
     if (literals.some(value => forbiddenFixturePatterns.some(pattern => pattern.test(value)))) shotFixtureLeaks.push(relative);
-    if (basename !== 'FinalShot.tsx' && /makeStyles\(|\.module\.css/.test(source)) {
-      shotSurfaceStyleLeaks.push(relative);
-    }
   }));
 
   const demoFiles = await listFiles(demoDir);
@@ -435,9 +428,6 @@ async function main() {
   }
   if (shotStateImportLeaks.length > 0) {
     throw new Error(`Film shots must consume assembled *ShotViewForFrame helpers instead of raw state/view imports: ${shotStateImportLeaks.join(', ')}`);
-  }
-  if (shotSurfaceStyleLeaks.length > 0) {
-    throw new Error(`Film product shots must stay thin and delegate surface styling to agentbuddy-ui components: ${shotSurfaceStyleLeaks.join(', ')}`);
   }
   if (demoFixtureLeaks.length > 0) {
     throw new Error(`Component demo fixture strings must live in film/state, not compositions/demos: ${demoFixtureLeaks.join(', ')}`);

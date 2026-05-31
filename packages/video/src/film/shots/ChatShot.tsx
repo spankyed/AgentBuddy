@@ -10,7 +10,7 @@ import {Cursor} from '../overlays/Cursor';
 import {chatShotViewForFrame} from '../state/chat';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
-import {cursorMove, targetDebugOverlay, viewportPoint} from '../interaction/cursorTargets';
+import {cursorTimeline, targetDebugOverlay, viewportPoint} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {useVideoConfig} from 'remotion';
 import './ChatShot.module.css';
@@ -285,50 +285,38 @@ function formatUserMessage(
 }
 
 function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
-  if (frame >= 236 && frame < 270) {
-    return cursorMove(targets, {
+  return cursorTimeline(targets, [
+    {
       end: 264,
       from: viewportPoint(width, height, 0.52, 0.53),
       start: 236,
       to: 'sendButton',
-    });
-  }
-
-  if (frame >= 370 && frame < 400) {
-    return cursorMove(targets, {
+    },
+    {
       click: false,
       end: 396,
       from: 'sendButton',
       start: 370,
       to: 'approvePlanPrimary',
       toPoint: {anchor: [0.42, 0.5]},
-    });
-  }
-
-  if (frame >= 400 && frame < 420) {
-    return cursorMove(targets, {
+    },
+    {
       end: 414,
       from: 'approvePlanPrimary',
       fromPoint: {anchor: [0.42, 0.5]},
       start: 400,
       to: 'approvePlanPrimary',
       toPoint: {anchor: [0.42, 0.5]},
-    });
-  }
-
-  if (frame >= 424 && frame < 456) {
-    return cursorMove(targets, {
+    },
+    {
       end: 454,
       from: 'approvePlanPrimary',
       fromPoint: {anchor: [0.42, 0.5]},
       start: 424,
       to: 'recentThreads',
       toPoint: {anchor: [0.42, 0.5]},
-    });
-  }
-
-  if (frame >= 462 && frame < 486) {
-    return cursorMove(targets, {
+    },
+    {
       click: false,
       end: 482,
       from: 'recentThreads',
@@ -336,11 +324,8 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
       start: 462,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.14, 0.68]},
-    });
-  }
-
-  if (frame >= 486 && frame < 508) {
-    return cursorMove(targets, {
+    },
+    {
       click: false,
       end: 506,
       from: 'recentThreadRowFirst',
@@ -348,63 +333,46 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
       start: 486,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.14, 0.68]},
-    });
-  }
-
-  if (frame >= 508 && frame < 532) {
-    return cursorMove(targets, {
+    },
+    {
       end: 526,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.14, 0.68]},
       start: 508,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.14, 0.68]},
-    });
-  }
-
-  if (frame >= 540 && frame < 554) {
-    return cursorMove(targets, {
+    },
+    {
       end: 550,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.14, 0.68]},
       start: 540,
       to: 'quickPromptsButton',
-    });
-  }
-
-  if (frame >= 554 && frame < 574) {
-    return cursorMove(targets, {
+    },
+    {
       click: false,
       end: 570,
       from: 'quickPromptsButton',
       start: 554,
       to: 'quickPromptFirst',
       toPoint: {anchor: [0.25, 0.5]},
-    });
-  }
-
-  if (frame >= 574 && frame < 592) {
-    return cursorMove(targets, {
+    },
+    {
       end: 586,
       from: 'quickPromptFirst',
       fromPoint: {anchor: [0.25, 0.5]},
       start: 574,
       to: 'quickPromptFirst',
       toPoint: {anchor: [0.25, 0.5]},
-    });
-  }
-
-  if (frame >= 604 && frame < 628) {
-    return cursorMove(targets, {
+    },
+    {
       end: 624,
       from: 'quickPromptFirst',
       fromPoint: {anchor: [0.25, 0.5]},
       start: 604,
       to: 'quickPromptSend',
-    });
-  }
-
-  return null;
+    },
+  ], frame);
 }
 
 function chatTargetsForFrame({
