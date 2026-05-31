@@ -174,6 +174,8 @@ export default {
             threadId: "$.event.data.payload.threadId",
             approvalMode: "$.event.data.payload.approvalMode",
             sandbox: "$.event.data.payload.sandbox",
+            networkAccess: "$.event.data.payload.networkAccess",
+            webSearch: "$.event.data.payload.webSearch",
           },
         }),
       ]],

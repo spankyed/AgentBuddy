@@ -37,6 +37,8 @@ export interface CodexThreadState {
   model?: string;
   approvalMode?: 'user' | 'auto_review';
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
+  networkAccess?: boolean;
+  webSearch?: 'live' | 'cached' | 'disabled';
   startedAt?: number;
   turns?: number;
   totalTokens?: { input: number; output: number; reasoning?: number };
