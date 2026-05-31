@@ -44,6 +44,13 @@ export async function action(params: Record<string, any>, services: Services, _z
   const approvalMode = prior?.approvalMode ?? 'user';
   const sandbox = prior?.sandbox ?? 'workspace-write';
 
+  // ─── Fork-pending guard ────────────────────────────────────────────
+  if (prior?.forkPending) {
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+    if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+    return { success: true, queued: true };
+  }
+
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
     enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });

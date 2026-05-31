@@ -658,6 +658,17 @@ export const threadsSystem = setup({
           upToMessageId: messageId,
         });
 
+        // Set forkPending on the NEW thread so chat actions queue messages
+        // until the async handle-fork actions finish persisting session state.
+        const sourceThread = repository.threadQueries.byId(threadId as EARS.EntityId);
+        const sourceContext = (sourceThread as any)?.context ?? {};
+        const forkContext: Record<string, any> = {};
+        if (sourceContext.claudeCode) forkContext.claudeCode = { forkPending: true };
+        if (sourceContext.codex) forkContext.codex = { forkPending: true };
+        if (Object.keys(forkContext).length > 0) {
+          repository.threadCommands.update(result.id, { context: forkContext });
+        }
+
         services.chat.openThreadChatAndRefreshRecent(result.id);
 
         const brainActor = getActor(system, brain);

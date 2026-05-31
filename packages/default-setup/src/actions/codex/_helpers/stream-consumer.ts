@@ -505,7 +505,7 @@ export function createStreamConsumer(
   return { handlers: { onNotification, onApproval, onCrash }, finalize };
 }
 
-async function replayQueuedMessage(
+export async function replayQueuedMessage(
   services: Services,
   threadId: EntityId,
   queued: { text: string; mode?: string; phase?: string; messageId?: string; references?: any },

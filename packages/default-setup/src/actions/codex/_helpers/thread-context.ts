@@ -45,6 +45,8 @@ export interface CodexThreadState {
   recentTools?: Array<{ name: string; summary: string; at: number }>;
   sessionError?: string;
   isRunning?: boolean;
+  /** Set by backend forkThread; cleared by CDX: Handle Fork after state is ready. */
+  forkPending?: boolean;
   queuedMessage?: QueuedMessage;
   pendingApproval?: PendingApproval;
   pendingDirectorySelect?: {

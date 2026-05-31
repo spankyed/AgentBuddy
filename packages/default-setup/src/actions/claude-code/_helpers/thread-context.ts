@@ -136,6 +136,13 @@ export interface ClaudeCodeThreadState {
    */
   forkFrom?: { sessionId: string; cliUuid?: string };
   /**
+   * Set by the backend forkThread action before navigation. While true,
+   * the chat action queues incoming messages until handle-fork finishes
+   * persisting session state (sessionId, forkFrom, cwd). Cleared by
+   * CC: Handle Fork after state is ready.
+   */
+  forkPending?: boolean;
+  /**
    * One-shot flag set by CC: Handle Revert. When present, the next chat
    * action passes `--resume-session-at <cliUuid> --fork-session` to the CLI
    * so it creates a new session truncated to the revert point. Cleared after

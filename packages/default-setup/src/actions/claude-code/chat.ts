@@ -150,6 +150,18 @@ export async function action(
     revert: revertTo?.cliUuid ?? null,
   });
 
+  // ─── Fork-pending guard ────────────────────────────────────────────
+  // The backend forkThread action sets forkPending before navigation.
+  // Queue the message until CC: Handle Fork finishes persisting state.
+  if (prior?.forkPending) {
+    log.debug('fork in progress — queuing message', { threadId });
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+    if (userMessageId) {
+      services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+    }
+    return { success: true, queued: true };
+  }
+
   // ─── Concurrency guard ──────────────────────────────────────────────
   log.info('[concurrency-guard] state snapshot', {
     threadId,
