@@ -813,6 +813,8 @@ export const threadsSystem = setup({
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = threadsDef.typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
+      if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
+
       const result = repository.chatCommands.updateMessageBlockResponse({
         messageId: messageId as EARS.EntityId,
         response
