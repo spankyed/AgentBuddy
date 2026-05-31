@@ -20,6 +20,7 @@ declare global {
       shell: {
         openExternal: (url: string) => Promise<void>;
         showItemInFolder: (filePath: string) => Promise<void>;
+        openPath: (filePath: string) => Promise<void>;
       };
       media: {
         upload: (entityId: string, base64Data: string, mimeType: string) => Promise<string>;
