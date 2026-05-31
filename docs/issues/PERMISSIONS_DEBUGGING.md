@@ -58,7 +58,7 @@ Logs `[claude-code-query] initialize control_request sent` on every send.
 - `chat.ts` reads `readSessionPermissionMode` at action entry and passes it to `services.cli.claudeCode.query`
 - The `onPermissionRequest` closure at `chat.ts:117-175` has diagnostic logs at invoked / sent / received / timed-out
 - `awaitMessageResponse` default timeout raised from 120 s to 600 s, and a note block is emitted on timeout
-- Phase B session-artifact `awaiting-permission` status transition still fires inside the same closure
+- Phase B session-artifact `awaiting-input` status transition still fires inside the same closure
 
 None of that changed. If the closure never gets called, the whole UI surface is dead regardless of how polished it is.
 

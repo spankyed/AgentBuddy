@@ -149,14 +149,14 @@ export default {
       "cc.stream.paused",
       [[
         action("CC: Stream Paused", {
-          label: "awaiting-permission",
+          label: "awaiting-input",
           map: {
             threadId: "$.event.data.payload.threadId",
             toolName: "$.event.data.payload.toolName",
           },
         }),
       ]],
-      "Permission requested",
+      "Awaiting user input",
     ),
     on(
       "cc.stream.completed",
