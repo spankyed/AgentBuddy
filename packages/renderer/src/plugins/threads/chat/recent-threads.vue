@@ -79,7 +79,7 @@
               @click.stop="handleViewThread(thread.id)"
             >
               <FileText :size="12" />
-              Details
+              <span class="hidden @md:inline">Details</span>
             </button>
             <button
               type="button"
@@ -88,11 +88,11 @@
               @click.stop="handleViewArtifacts(thread.id)"
             >
               <PanelLeft :size="12" />
-              Artifacts
+              <span class="hidden @md:inline">Artifacts</span>
             </button>
             <span v-if="thread.pinned" class="invisible flex items-center gap-1.5 px-1.5 py-1 text-xs">
               <Archive :size="12" />
-              Archive
+              <span class="hidden @md:inline">Archive</span>
             </span>
             <ContextMenuRoot v-else>
               <ContextMenuTrigger as-child>
@@ -103,7 +103,7 @@
                   @click.stop="handleArchiveThread(thread.id)"
                 >
                   <Archive :size="12" />
-                  Archive
+                  <span class="hidden @md:inline">Archive</span>
                 </button>
               </ContextMenuTrigger>
               <ContextMenuPortal>
