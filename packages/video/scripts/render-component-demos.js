@@ -23,16 +23,20 @@ const serveUrl = await bundle({
   webpackOverride: config => config,
 });
 
-for (const row of rows) {
-  await fs.mkdir(path.dirname(row.output), {recursive: true});
-  const composition = await selectComposition({serveUrl, id: row.composition});
-  await renderMedia({
-    composition,
-    serveUrl,
-    codec: 'h264',
-    outputLocation: row.output,
-  });
-  console.log(`Rendered ${row.composition} -> ${path.relative(packageDir, row.output)}`);
+try {
+  for (const row of rows) {
+    await fs.mkdir(path.dirname(row.output), {recursive: true});
+    const composition = await selectComposition({serveUrl, id: row.composition});
+    await renderMedia({
+      composition,
+      serveUrl,
+      codec: 'h264',
+      outputLocation: row.output,
+    });
+    console.log(`Rendered ${row.composition} -> ${path.relative(packageDir, row.output)}`);
+  }
+} finally {
+  await fs.rm(serveUrl, {recursive: true, force: true});
 }
 
 function stripBackticks(value) {

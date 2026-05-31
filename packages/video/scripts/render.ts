@@ -19,14 +19,18 @@ const serveUrl = await bundle({
   webpackOverride: config => config,
 });
 
-const composition = await selectComposition({serveUrl, id: compositionId});
+try {
+  const composition = await selectComposition({serveUrl, id: compositionId});
 
-await renderMedia({
-  composition,
-  concurrency,
-  serveUrl,
-  codec: 'h264',
-  outputLocation: output,
-});
+  await renderMedia({
+    composition,
+    concurrency,
+    serveUrl,
+    codec: 'h264',
+    outputLocation: output,
+  });
 
-console.log(`Rendered ${compositionId} to ${output}`);
+  console.log(`Rendered ${compositionId} to ${output}`);
+} finally {
+  await fs.rm(serveUrl, {recursive: true, force: true});
+}
