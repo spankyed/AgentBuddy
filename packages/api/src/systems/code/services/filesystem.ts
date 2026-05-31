@@ -113,10 +113,6 @@ export class FileSystemRepository {
         throw this.createError('IO_ERROR', 'Cannot read directory as file', filePath)
       }
       
-      if (stats.size > MAX_FILE_SIZE) {
-        throw this.createError('FILE_TOO_LARGE', `File size exceeds ${MAX_FILE_SIZE} bytes`, filePath)
-      }
-      
       const ext = path.extname(validPath).slice(1).toLowerCase()
 
       if (VIDEO_EXTENSIONS.has(ext)) {
@@ -127,6 +123,10 @@ export class FileSystemRepository {
           size: stats.size,
           isVideo: true,
         }
+      }
+
+      if (stats.size > MAX_FILE_SIZE) {
+        throw this.createError('FILE_TOO_LARGE', `File size exceeds ${MAX_FILE_SIZE} bytes`, filePath)
       }
 
       const mimeType = IMAGE_MIME_TYPES[ext]

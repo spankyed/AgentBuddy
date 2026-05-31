@@ -4,6 +4,7 @@ const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp
 const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
 export const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
 export const videoExtensions = ['mp4', 'webm', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v']
+export const nativeVideoExtensions = ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v']
 
 export function getFileIcon(extension?: string) {
   if (!extension) return File
