@@ -114,6 +114,13 @@ function LinkedThreads({state}: {state: ThreadCreateFormState}) {
   return (
     <div className={styles.linkedTableWrap}>
       <table className={styles.linkedTable}>
+        <colgroup>
+          <col className={styles.removeCol} />
+          <col className={styles.relationCol} />
+          <col className={styles.labelCol} />
+          <col className={styles.tagsCol} />
+          <col className={styles.statusCol} />
+        </colgroup>
         {state.parentThread ? (
           <thead>
             <tr>
@@ -165,7 +172,7 @@ function LinkedThreads({state}: {state: ThreadCreateFormState}) {
                   ) : null}
                 </div>
               </td>
-              <td colSpan={2}>
+              <td className={styles.inputActionsCell}>
                 <div className={styles.linkActions}>
                   <button className={styles.linkButton} data-pressed={state.linkPressed || undefined} type="button">Link</button>
                   <button className={styles.cancelButton} type="button">Cancel</button>
