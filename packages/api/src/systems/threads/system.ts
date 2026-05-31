@@ -478,6 +478,7 @@ export const threadsSystem = setup({
         text,
         sender: 'user',
         references: sanitizedRefs,
+        ...(mode ? { context: { agent: mode } } : {}),
       });
 
       if (threadData) {
@@ -572,6 +573,7 @@ export const threadsSystem = setup({
         references: sanitizedRefs,
         isCommand: true,
         command,
+        ...(mode ? { context: { agent: mode } } : {}),
       });
 
       if (threadData) {
@@ -684,9 +686,22 @@ export const threadsSystem = setup({
         messageId: messageId as EARS.EntityId,
       });
       const deletedIds = new Set(deletion.deletedIds);
-      const deletedUserMessageCount = beforeMessages.filter((m: any) =>
-        deletedIds.has(m.id) && m.sender === 'user'
-      ).length;
+      const deletedMessages = beforeMessages.filter((m: any) => deletedIds.has(m.id));
+      const deletedUserMessageCount = deletedMessages.filter((m: any) => m.sender === 'user').length;
+
+      // Determine which agent flows had messages deleted so each flow can
+      // skip its revert handler when it isn't affected.
+      const agents = {
+        claudeCode: deletedMessages.some((m: any) =>
+          m.context?.cliUuid || m.context?.agent === 'Claude Code'
+        ),
+        codex: deletedMessages.some((m: any) =>
+          m.context?.agent === 'Codex'
+        ),
+      };
+      const codexDeletedUserMessageCount = agents.codex
+        ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
+        : 0;
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
@@ -702,6 +717,8 @@ export const threadsSystem = setup({
           kind: restoreFiles ? 'rewind' : 'revert',
           deletedMessageIds: deletion.deletedIds,
           deletedUserMessageCount,
+          agents,
+          codexDeletedUserMessageCount,
           ...(restoreFiles && userCliUuid ? { userCliUuid } : {}),
         },
       });
@@ -721,9 +738,20 @@ export const threadsSystem = setup({
         messageId: messageId as EARS.EntityId,
       });
       const deletedIds = new Set(deletion.deletedIds);
-      const deletedUserMessageCount = beforeMessages.filter((m: any) =>
-        deletedIds.has(m.id) && m.sender === 'user'
-      ).length;
+      const deletedMessages = beforeMessages.filter((m: any) => deletedIds.has(m.id));
+      const deletedUserMessageCount = deletedMessages.filter((m: any) => m.sender === 'user').length;
+
+      const agents = {
+        claudeCode: deletedMessages.some((m: any) =>
+          m.context?.cliUuid || m.context?.agent === 'Claude Code'
+        ),
+        codex: deletedMessages.some((m: any) =>
+          m.context?.agent === 'Codex'
+        ),
+      };
+      const codexDeletedUserMessageCount = agents.codex
+        ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
+        : 0;
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
@@ -731,7 +759,7 @@ export const threadsSystem = setup({
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
-        payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount },
+        payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount, agents, codexDeletedUserMessageCount },
       });
     },
     pauseTurn: ({ system, event }) => {

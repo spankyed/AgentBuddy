@@ -242,54 +242,62 @@ export default {
     on(
       "thread.revert",
       [[
-        // Stop the active turn first so the stream consumer exits cleanly
-        // before any revert/rewind/summarize handler mutates session state.
-        // Sequential within this track — pause completes before the branch.
-        action("CC: Pause Turn", {
-          label: "pause-before-revert",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-          },
-        }),
+        // Only handle reverts that affected Claude Code messages.
         branch([
           {
-            if: "$.event.data.payload.kind == 'revert'",
+            if: "$.event.data.payload.agents.claudeCode == true",
             steps: [
-              action("CC: Handle Revert", {
-                label: "revert",
+              // Stop the active turn first so the stream consumer exits cleanly
+              // before any revert/rewind/summarize handler mutates session state.
+              // Sequential within this track — pause completes before the branch.
+              action("CC: Pause Turn", {
+                label: "pause-before-revert",
                 map: {
                   threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
                 },
               }),
-            ],
-          },
-          {
-            if: "$.event.data.payload.kind == 'rewind'",
-            steps: [
-              action("CC: Handle Rewind", {
-                label: "rewind",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
-                  userCliUuid: "$.event.data.payload.userCliUuid",
+              branch([
+                {
+                  if: "$.event.data.payload.kind == 'revert'",
+                  steps: [
+                    action("CC: Handle Revert", {
+                      label: "revert",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                      },
+                    }),
+                  ],
                 },
-              }),
-            ],
-          },
-          {
-            if: "$.event.data.payload.kind == 'summarize'",
-            steps: [
-              action("CC: Handle Summarize", {
-                label: "summarize",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
+                {
+                  if: "$.event.data.payload.kind == 'rewind'",
+                  steps: [
+                    action("CC: Handle Rewind", {
+                      label: "rewind",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                        userCliUuid: "$.event.data.payload.userCliUuid",
+                      },
+                    }),
+                  ],
                 },
-              }),
+                {
+                  if: "$.event.data.payload.kind == 'summarize'",
+                  steps: [
+                    action("CC: Handle Summarize", {
+                      label: "summarize",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                      },
+                    }),
+                  ],
+                },
+              ], undefined, "Route Revert Kind"),
             ],
           },
-        ], undefined, "Route Revert Kind"),
+        ], undefined, "Gate CC Revert"),
       ]],
       "Thread reverted",
     ),
