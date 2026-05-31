@@ -37,6 +37,7 @@ export interface NotesContext {
   noteScrollPositions: Record<string, number>
   panelSearchActive: boolean
   navHistory: NavHistory<string | null>
+  viewedNoteId: string | null
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -155,6 +156,7 @@ const notesState = setup({
           return {
             currentNoteId: taskList.id,
             currentNote: taskList,
+            viewedNoteId: noteId,
             selectedNoteIds: [],
             selectedTaskId: noteId,
             selectedTask: note,
@@ -169,6 +171,7 @@ const notesState = setup({
       return {
         currentNoteId: noteId,
         currentNote: note,
+        viewedNoteId: noteId,
         selectedNoteIds: [],
         selectedTaskId: null,
         selectedTask: null,
@@ -184,6 +187,7 @@ const notesState = setup({
       return {
         currentNoteId: noteId,
         currentNote: note,
+        viewedNoteId: noteId,
         selectedNoteIds: [],
         selectedTaskId: null,
         selectedTask: null,
@@ -193,11 +197,12 @@ const notesState = setup({
     }),
 
     sendViewNote: ({ context }) => {
-      if (context.currentNoteId) {
+      const noteId = context.viewedNoteId ?? context.currentNoteId
+      if (noteId) {
         trpc.bus.send.mutate({
           systemId: id,
           type: 'VIEW_NOTE',
-          id: context.currentNoteId,
+          id: noteId,
         })
       }
     },
@@ -815,6 +820,7 @@ const notesState = setup({
     noteScrollPositions: {},
     panelSearchActive: false,
     navHistory: createNavHistory<string | null>(null),
+    viewedNoteId: null,
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -960,6 +966,7 @@ const notesState = setup({
                 return {
                   currentNoteId: taskList.id,
                   currentNote: taskList,
+                  viewedNoteId: noteId,
                   selectedTaskId: noteId,
                   selectedTask: note,
                   navHistory: pushNavHistory(context.navHistory, taskList.id),
@@ -971,6 +978,7 @@ const notesState = setup({
             return {
               currentNoteId: noteId,
               currentNote: note,
+              viewedNoteId: noteId,
               selectedTaskId: null,
               selectedTask: null,
               navHistory: pushNavHistory(context.navHistory, noteId),
@@ -1013,6 +1021,7 @@ const notesState = setup({
                   notes: [...context.notes, ev.note],
                   currentNoteId: taskList.id,
                   currentNote: taskList,
+                  viewedNoteId: ev.note.id,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
                   taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, taskList.id])],
@@ -1153,6 +1162,7 @@ const notesState = setup({
                   notes: updatedNotes,
                   currentNoteId: taskList.id,
                   currentNote: taskList,
+                  viewedNoteId: ev.note.id,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
                   taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, ...intermediateIds, taskList.id])],
