@@ -31,8 +31,8 @@ function chatTasklistReferenceSelectionPass() {
 }
 
 function chatApprovedSummaryDelayPass() {
-  const beforeDelay = chatShotViewForFrame(408).conversation.additionalAssistantMessages ?? [];
-  const afterDelay = chatShotViewForFrame(424).conversation.additionalAssistantMessages ?? [];
+  const beforeDelay = chatShotViewForFrame(428).conversation.additionalAssistantMessages ?? [];
+  const afterDelay = chatShotViewForFrame(436).conversation.additionalAssistantMessages ?? [];
   return !beforeDelay.some(message => message.markdown.includes('Approved checkout implementation plan'))
     && afterDelay.some(message => message.markdown.includes('Approved checkout implementation plan'));
 }

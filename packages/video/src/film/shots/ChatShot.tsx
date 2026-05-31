@@ -294,111 +294,113 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
     });
   }
 
-  if (frame >= 378 && frame < 402) {
+  if (frame >= 370 && frame < 400) {
     return cursorMove(targets, {
-      end: 394,
+      click: false,
+      end: 396,
       from: 'sendButton',
-      start: 378,
+      start: 370,
       to: 'approvePlanPrimary',
       toPoint: {anchor: [0.42, 0.5]},
     });
   }
 
-  if (frame >= 406 && frame < 438) {
+  if (frame >= 400 && frame < 420) {
     return cursorMove(targets, {
-      end: 436,
+      end: 414,
       from: 'approvePlanPrimary',
       fromPoint: {anchor: [0.42, 0.5]},
-      start: 406,
+      start: 400,
+      to: 'approvePlanPrimary',
+      toPoint: {anchor: [0.42, 0.5]},
+    });
+  }
+
+  if (frame >= 424 && frame < 456) {
+    return cursorMove(targets, {
+      end: 454,
+      from: 'approvePlanPrimary',
+      fromPoint: {anchor: [0.42, 0.5]},
+      start: 424,
       to: 'recentThreads',
       toPoint: {anchor: [0.42, 0.5]},
     });
   }
 
-  if (frame >= 438 && frame < 454) {
+  if (frame >= 462 && frame < 486) {
     return cursorMove(targets, {
       click: false,
-      end: 450,
+      end: 482,
       from: 'recentThreads',
       fromPoint: {anchor: [0.42, 0.5]},
-      start: 438,
+      start: 462,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.14, 0.68]},
     });
   }
 
-  if (frame >= 454 && frame < 478) {
+  if (frame >= 486 && frame < 508) {
     return cursorMove(targets, {
       click: false,
-      end: 477,
+      end: 506,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.14, 0.68]},
-      start: 454,
+      start: 486,
       to: 'recentThreadRowFirst',
       toPoint: {anchor: [0.14, 0.68]},
     });
   }
 
-  if (frame >= 478 && frame < 504) {
-    return cursorMove(targets, {
-      end: 496,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 478,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    });
-  }
-
-  if (frame >= 516 && frame < 530) {
+  if (frame >= 508 && frame < 532) {
     return cursorMove(targets, {
       end: 526,
       from: 'recentThreadRowFirst',
       fromPoint: {anchor: [0.14, 0.68]},
-      start: 516,
+      start: 508,
+      to: 'recentThreadRowFirst',
+      toPoint: {anchor: [0.14, 0.68]},
+    });
+  }
+
+  if (frame >= 540 && frame < 554) {
+    return cursorMove(targets, {
+      end: 550,
+      from: 'recentThreadRowFirst',
+      fromPoint: {anchor: [0.14, 0.68]},
+      start: 540,
       to: 'quickPromptsButton',
     });
   }
 
-  if (frame >= 530 && frame < 550) {
+  if (frame >= 554 && frame < 574) {
     return cursorMove(targets, {
       click: false,
-      end: 546,
+      end: 570,
       from: 'quickPromptsButton',
-      start: 530,
+      start: 554,
       to: 'quickPromptFirst',
       toPoint: {anchor: [0.25, 0.5]},
     });
   }
 
-  if (frame >= 550 && frame < 568) {
+  if (frame >= 574 && frame < 592) {
     return cursorMove(targets, {
-      end: 562,
+      end: 586,
       from: 'quickPromptFirst',
       fromPoint: {anchor: [0.25, 0.5]},
-      start: 550,
+      start: 574,
       to: 'quickPromptFirst',
       toPoint: {anchor: [0.25, 0.5]},
     });
   }
 
-  if (frame >= 576 && frame < 600) {
+  if (frame >= 604 && frame < 628) {
     return cursorMove(targets, {
-      end: 596,
+      end: 624,
       from: 'quickPromptFirst',
       fromPoint: {anchor: [0.25, 0.5]},
-      start: 576,
+      start: 604,
       to: 'quickPromptSend',
-    });
-  }
-
-  if (frame >= 602 && frame < 630) {
-    return cursorMove(targets, {
-      end: 628,
-      from: 'quickPromptSend',
-      start: 602,
-      to: 'activeThreadTitle',
-      toPoint: {anchor: [0.5, 0.5]},
     });
   }
 
