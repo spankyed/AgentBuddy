@@ -71,7 +71,7 @@
               <DropdownMenuTrigger as-child>
                 <button
                   type="button"
-                  class="p-2 transition-colors text-neutral-500 @md:hidden"
+                  class="p-2 transition-colors text-neutral-500 @lg:hidden"
                   :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
                   aria-label="More actions"
                   :disabled="disabled"
@@ -104,7 +104,7 @@
               <button
                 v-if="btn.action !== 'quick-message' && btn.action !== 'voice-input'"
                 type="button"
-                class="hidden @md:block p-2 transition-colors text-neutral-500"
+                class="hidden @lg:block p-2 transition-colors text-neutral-500"
                 :class="[disabled ? 'cursor-not-allowed opacity-50' : (!btn.class && 'hover:text-neutral-200'), btn.class]"
                 :aria-label="btn.label"
                 :disabled="disabled"
@@ -130,7 +130,7 @@
             <button
               v-if="speechSupported"
               type="button"
-              class="hidden @md:block p-2 transition-colors text-neutral-500"
+              class="hidden @lg:block p-2 transition-colors text-neutral-500"
               :class="[disabled ? 'cursor-not-allowed opacity-50' : (!isListening && 'hover:text-neutral-200'), isListening && 'text-red-400 animate-pulse']"
               :aria-label="isListening ? 'Stop listening' : 'Voice input'"
               :disabled="disabled"
@@ -161,18 +161,18 @@
               title="Pause agent work"
               type="button"
               variant="secondary"
-              class="px-2 @md:px-4"
+              class="px-2 @lg:px-4"
               @click.stop="emit('pause')"
             >
-              <span class="hidden @md:inline">Pause</span>
+              <span class="hidden @lg:inline">Pause</span>
               <PauseIcon :size="22" />
             </Button>
             <Button
               type="submit"
               :disabled="(!hasTextContent && !hasAttachments) || disabled"
-              class="px-2 @md:px-4"
+              class="px-2 @lg:px-4"
             >
-              <span class="hidden @md:inline">Send</span>
+              <span class="hidden @lg:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
             </Button>
 
