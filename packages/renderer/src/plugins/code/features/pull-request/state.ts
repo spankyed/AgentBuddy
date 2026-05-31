@@ -886,8 +886,10 @@ export const pullRequestState = setup({
         'pr.BASE_BRANCH_RECEIVED': { actions: 'handleBaseBranchReceived' },
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
-        // Reset check state to show "Checking..." during git changes and directory switches
+        // Full reset for directory switches — clears view, selection, and PR state
         'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, pendingManualPRNumber: null, prCheckCompleted: false, isGhChecking: true, viewMode: 'files' as const, prError: null }), 'refreshPrStatus'] },
+        // Lightweight refresh for git changes — re-checks PR status without resetting viewMode or manual selection
+        'pr.GIT_STATUS_REFRESHED': { actions: [assign({ diffStale: true, prCheckCompleted: false, isGhChecking: true, prError: null }), 'refreshPrStatus'] },
         'CODE_STARTUP': {
           actions: [
             assign({
