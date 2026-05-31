@@ -100,7 +100,7 @@ export function updateCodexState(
 }
 
 export function ensureSessionMarker(services: Services, threadId: EntityId): EntityId {
-  return services.artifact.findOrCreateByType(threadId, 'codex-session', { title: 'Codex session', content: {} }).artifactId;
+  return services.artifact.findOrCreateByType(threadId, 'codex-session', { title: 'Codex session', content: {}, color: 'blue' }).artifactId;
 }
 
 export function updateChatState(services: Services, threadId: EntityId, chatState: ChatState): void {

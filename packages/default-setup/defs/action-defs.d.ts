@@ -365,29 +365,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }, {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "pending" | "in_progress" | "completed";
+            status: "completed" | "pending" | "in_progress";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -400,18 +400,18 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
     action: "create" | "get" | "update";
-    status?: "active" | "paused" | "complete" | undefined;
+    status?: "complete" | "active" | "paused" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
     action: "create" | "get" | "update";
-    status?: "active" | "paused" | "complete" | undefined;
+    status?: "complete" | "active" | "paused" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
         action: "create" | "get" | "update";
-        status?: "active" | "paused" | "complete" | undefined;
+        status?: "complete" | "active" | "paused" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
@@ -3694,6 +3694,8 @@ interface ArtifactItem {
     type: ArtifactType;
     title: string;
     content: any;
+    /** Optional Tailwind color token (e.g. 'blue', 'purple') for the pill background. */
+    color?: string;
     metadata?: {
         createdAt: number;
         updatedAt?: number;
@@ -5933,6 +5935,7 @@ interface CreateArtifactOptions {
     title: string;
     content: any;
     threadId?: EARS.EntityId;
+    color?: string;
 }
 interface UpdateArtifactOptions {
     title?: string;
@@ -5980,6 +5983,7 @@ declare function updateAndNotify(artifactId: EARS.EntityId, options: UpdateArtif
 declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: ArtifactType, initial: {
     title: string;
     content: any;
+    color?: string;
 }): {
     artifactId: EARS.EntityId;
     created: boolean;

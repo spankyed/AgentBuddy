@@ -3696,6 +3696,8 @@ interface ArtifactItem {
     type: ArtifactType;
     title: string;
     content: any;
+    /** Optional Tailwind color token (e.g. 'blue', 'purple') for the pill background. */
+    color?: string;
     metadata?: {
         createdAt: number;
         updatedAt?: number;
@@ -5924,6 +5926,7 @@ interface CreateArtifactOptions {
     title: string;
     content: any;
     threadId?: EARS.EntityId;
+    color?: string;
 }
 interface UpdateArtifactOptions {
     title?: string;
@@ -5971,6 +5974,7 @@ declare function updateAndNotify(artifactId: EARS.EntityId, options: UpdateArtif
 declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: ArtifactType, initial: {
     title: string;
     content: any;
+    color?: string;
 }): {
     artifactId: EARS.EntityId;
     created: boolean;

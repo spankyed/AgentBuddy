@@ -3,7 +3,7 @@
     class="rounded-md cursor-pointer transition-colors shrink-0 whitespace-nowrap"
     :class="[
       compact ? 'px-1.5 py-1 max-w-48' : 'px-2.5 py-1.5',
-      isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+      pillClasses
     ]"
     :title="artifact.title"
     @click="$emit('select')"
@@ -16,10 +16,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList, BookText, StickyNote, Bot } from 'lucide-vue-next';
 import type { ArtifactItem, ArtifactType } from '@app/api';
 
-defineProps<{
+const props = defineProps<{
   artifact: ArtifactItem;
   isSelected: boolean;
   compact?: boolean;
@@ -28,6 +29,22 @@ defineProps<{
 defineEmits<{
   select: [];
 }>();
+
+const colorClasses: Record<string, { base: string; hover: string; text: string }> = {
+  blue:    { base: 'bg-blue-500/15',    hover: 'hover:bg-blue-500/25',    text: 'text-blue-400' },
+  purple:  { base: 'bg-purple-500/15',  hover: 'hover:bg-purple-500/25',  text: 'text-purple-400' },
+  emerald: { base: 'bg-emerald-500/15', hover: 'hover:bg-emerald-500/25', text: 'text-emerald-400' },
+  amber:   { base: 'bg-amber-500/15',   hover: 'hover:bg-amber-500/25',   text: 'text-amber-400' },
+  red:     { base: 'bg-red-500/15',     hover: 'hover:bg-red-500/25',     text: 'text-red-400' },
+  cyan:    { base: 'bg-cyan-500/15',    hover: 'hover:bg-cyan-500/25',    text: 'text-cyan-400' },
+};
+
+const pillClasses = computed(() => {
+  if (props.isSelected) return 'bg-blue-600 text-white';
+  const c = props.artifact.color && colorClasses[props.artifact.color];
+  if (c) return `${c.base} ${c.text} ${c.hover}`;
+  return 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
+});
 
 function getIcon(type: ArtifactType) {
   const icons: Record<ArtifactType, any> = {

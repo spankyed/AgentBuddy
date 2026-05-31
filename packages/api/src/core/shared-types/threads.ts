@@ -475,6 +475,8 @@ export interface ArtifactItem {
   type: ArtifactType;
   title: string;
   content: any;
+  /** Optional Tailwind color token (e.g. 'blue', 'purple') for the pill background. */
+  color?: string;
   metadata?: {
     createdAt: number;
     updatedAt?: number;

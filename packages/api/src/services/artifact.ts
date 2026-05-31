@@ -15,6 +15,7 @@ export interface CreateArtifactOptions {
   title: string;
   content: any;
   threadId?: EARS.EntityId;
+  color?: string;
 }
 
 export interface UpdateArtifactOptions {
@@ -57,6 +58,7 @@ export function createAndNotify(options: CreateArtifactOptions): { artifactId: E
         type: options.artifactType,
         title: options.title,
         content: options.content,
+        ...(options.color ? { color: options.color } : {}),
         metadata: {
           createdAt: Date.now()
         }
@@ -108,7 +110,7 @@ export function updateAndNotify(
 export function findOrCreateByType(
   threadId: EARS.EntityId,
   artifactType: ArtifactType,
-  initial: { title: string; content: any },
+  initial: { title: string; content: any; color?: string },
 ): { artifactId: EARS.EntityId; created: boolean } {
   const existing = repository.chatCommands.findArtifactByType(threadId, artifactType);
   if (existing?.id) {
@@ -118,6 +120,7 @@ export function findOrCreateByType(
     artifactType,
     title: initial.title,
     content: initial.content,
+    ...(initial.color ? { color: initial.color } : {}),
     threadId,
   });
   return { artifactId, created: true };

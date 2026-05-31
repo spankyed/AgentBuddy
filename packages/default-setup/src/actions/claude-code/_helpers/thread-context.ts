@@ -257,7 +257,7 @@ export function ensureSessionMarker(services: Services, threadId: EntityId): Ent
   const { artifactId } = services.artifact.findOrCreateByType(
     threadId,
     'claude-session',
-    { title: 'Claude Code session', content: {} },
+    { title: 'Claude Code session', content: {}, color: 'purple' },
   );
   return artifactId;
 }
