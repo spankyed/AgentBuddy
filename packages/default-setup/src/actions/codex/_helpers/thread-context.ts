@@ -142,6 +142,13 @@ export function requestTurnInterrupt(services: Services, threadId: string): bool
       } as any);
     }
     (services.codex as any).interruptTurn(prior.threadId, prior.turnId);
+
+    // Cancel queued message so finalize() doesn't replay it after the interrupt
+    const queued = dequeueMessage(services, threadId);
+    if (queued?.messageId) {
+      services.chat.updateMessageState(queued.messageId as any, { status: 'cancelled' } as any);
+    }
+
     persistCodexState(services, threadId, {
       isRunning: false,
       pendingApproval: undefined,
