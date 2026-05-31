@@ -163,7 +163,7 @@ export function killTurn(services: Services, threadId: string): void {
 
   // Interrupt the turn via app-server
   if (prior?.threadId && prior?.turnId) {
-    try { (services.codex as any).interruptTurn(prior.threadId, prior.turnId); } catch { /* best effort */ }
+    try { (services.codex as any).interruptTurn(prior.threadId, prior.turnId)?.catch?.(() => {}); } catch { /* best effort */ }
   }
 
   // Unregister consumer so stale notifications don't route
@@ -174,7 +174,7 @@ export function killTurn(services: Services, threadId: string): void {
   // Clear handle
   const handle = (services.codex as any).getHandle(threadId);
   if (handle) {
-    try { handle.abort(); } catch { /* already gone */ }
+    try { handle.abort()?.catch?.(() => {}); } catch { /* already gone */ }
     (services.codex as any).clearHandle(threadId);
   }
 
