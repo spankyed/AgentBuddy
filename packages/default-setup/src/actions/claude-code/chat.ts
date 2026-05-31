@@ -109,7 +109,7 @@ export async function action(
 
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
-  const resumeSessionId = prior?.sessionId || undefined;
+  let resumeSessionId = prior?.sessionId || undefined;
   let forkFrom = prior?.forkFrom;
   let revertTo = prior?.revertTo;
 
@@ -278,6 +278,18 @@ export async function action(
   const useWorktree = prior?.useWorktree ?? false;
   log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
 
+  // Worktree mismatch: the CLI can't resume a session across CWD changes
+  // because --worktree shifts the project bucket the JSONL is looked up from.
+  // Treat undefined sessionWorktree as non-worktree (pre-tracking sessions).
+  if (resumeSessionId && (prior?.sessionWorktree ?? false) !== useWorktree) {
+    log.info('[worktree] session/toggle mismatch — clearing session', {
+      threadId, resumeSessionId,
+      sessionWorktree: prior?.sessionWorktree, useWorktree,
+    });
+    persistClaudeState(services, threadId, { sessionId: undefined, sessionWorktree: undefined });
+    resumeSessionId = undefined;
+  }
+
   // Phase-aware system-prompt nudging (plan/edit/review).
   const tipLabel = phaseTipPromptLabel(phase);
   const phaseTip = tipLabel ? services.prompt.usePrompt(tipLabel, {}) : undefined;
@@ -433,6 +445,7 @@ export async function action(
       isFork: !!(forkFrom || revertTo),
       revertCliUuid: revertTo?.cliUuid,
       forkCliUuid: forkFrom?.cliUuid,
+      useWorktree,
     }, {
       writer, toolActivity, thinking, messageId: currentMessageId as EntityId,
     }).catch((err) => {

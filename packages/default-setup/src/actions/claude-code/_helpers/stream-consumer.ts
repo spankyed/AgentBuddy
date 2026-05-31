@@ -63,6 +63,8 @@ export interface ConsumerContext {
   revertCliUuid?: string;
   /** The --resume-session-at value when forking. */
   forkCliUuid?: string;
+  /** Whether this turn was invoked with --worktree. */
+  useWorktree?: boolean;
 }
 
 export interface ConsumerWriters {
@@ -169,6 +171,7 @@ export async function consumeStream(
             sessionId: line.session_id,
             lastTurnAt: Date.now(),
             cwd: line.cwd || undefined,
+            sessionWorktree: ctx.useWorktree ?? false,
           });
         }
         services.emitter.sendToBrainSystem({

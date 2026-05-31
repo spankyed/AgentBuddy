@@ -84,6 +84,8 @@ export interface ClaudeCodeThreadState {
   permissionMode?: PermissionMode;
   /** Whether to run in a git worktree for isolated file mutations. */
   useWorktree?: boolean;
+  /** Whether the current sessionId was created with --worktree. */
+  sessionWorktree?: boolean;
   /** Human-readable error when the session is broken (e.g. JSONL deleted). */
   sessionError?: string;
   /** Threshold percentages that have already fired an alert (avoids re-alerting). */
@@ -305,6 +307,7 @@ export function markSessionBroken(
   persistClaudeState(services, threadId as string, {
     sessionError: errorMessage,
     sessionId: undefined,
+    sessionWorktree: undefined,
   });
   updateChatState(services, threadId, 'error');
 }

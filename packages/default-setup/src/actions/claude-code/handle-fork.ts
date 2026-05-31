@@ -106,6 +106,7 @@ export async function action(
 
   persistClaudeState(services, newThreadId, {
     sessionId: sourceState.sessionId,
+    sessionWorktree: sourceState.sessionWorktree,
     lastTurnAt: sourceState.lastTurnAt,
     cwd: sourceState.cwd,
     forkFrom: { sessionId: sourceState.sessionId, cliUuid },
