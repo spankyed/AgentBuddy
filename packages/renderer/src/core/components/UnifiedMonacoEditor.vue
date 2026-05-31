@@ -562,3 +562,14 @@ defineExpose({
   z-index: 1001 !important;
 }
 </style>
+
+<style>
+/* Monaco renders button tooltips in a .context-view wrapper (position:fixed,
+   z-index:2575) outside the editor DOM tree. The tooltip overlaps the button
+   it describes (monaco-editor#5177), blocking clicks. pointer-events:none on
+   the entire wrapper lets clicks pass through to the button underneath.
+   :has() scopes this to tooltip hovers only — context menus etc. are unaffected. */
+.context-view:has(.monaco-hover[role="tooltip"]) {
+  pointer-events: none !important;
+}
+</style>
