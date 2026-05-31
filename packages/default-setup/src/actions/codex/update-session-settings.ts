@@ -54,9 +54,11 @@ export async function action(
         await (services.codex as any).respondToApproval(pending.requestId, 'acceptForSession');
       } catch { /* app-server may be gone */ }
 
+      const asideText = `✓ Approved — ${pending.summary || 'tool request'}`;
       services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
         responseTimestamp: Date.now(),
         blockResponse: { approved: true, decision: 'acceptForSession' },
+        asideText,
       } as any);
 
       patch.pendingApproval = undefined;

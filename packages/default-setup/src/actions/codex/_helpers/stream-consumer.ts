@@ -344,6 +344,43 @@ export function createStreamConsumer(
     // Append reason if present
     if (reason) approvalText += `\n\n**Reason:** ${reason}`;
 
+    // Auto-approve if auto_review mode is active (except plan approvals)
+    const currentState = getCodexState(services, threadId as string);
+    if (currentState?.approvalMode === 'auto_review' && method !== 'plan/approval') {
+      try {
+        (services.codex as any).respondToApproval(requestId, 'acceptForSession');
+      } catch { /* app-server may be gone */ }
+
+      const asideText = `✓ Approved — ${summary || 'tool request'}`;
+      services.chat.sendBlockMessage({
+        threadId,
+        text: approvalText,
+        blocks: [{
+          type: 'approval',
+          props: {
+            content: reason,
+            options: [
+              { label: 'Allow', variant: 'primary', flags: { decision: 'accept' } },
+              { label: 'Allow for session', variant: 'neutral', flags: { decision: 'acceptForSession' } },
+              { label: 'Deny', variant: 'danger', flags: { decision: 'decline' } },
+            ],
+          },
+        }],
+        forkable: false,
+        autoHide: true,
+        asUser: true,
+        asideText,
+        asideContext: summary,
+        state: {
+          responseTimestamp: Date.now(),
+          blockResponse: { approved: true, decision: 'acceptForSession' },
+          asideText,
+        },
+      } as any);
+
+      return;
+    }
+
     // Send approval block to chat
     const approvalMsg = services.chat.sendBlockMessage({
       threadId,
