@@ -28,7 +28,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, getClaudeState, killTurn, updateChatState } from './_helpers/thread-context';
+import { persistClaudeState, getClaudeState, killTurn, updateChatState, setRunning } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Summarize',
@@ -60,9 +60,13 @@ export async function action(
   // clean up plan drafts, approval blocks, queued messages, and all
   // mid-turn flags if the pause step was skipped or incomplete.
   killTurn(services, threadId);
+  // Re-acquire isRunning immediately after killTurn to prevent messages
+  // from slipping through during the validation window below.
+  setRunning(services, threadId, true);
 
   // Bail #1: no live session to compact.
   if (!state?.sessionId) {
+    setRunning(services, threadId, false);
     updateChatState(services, threadId as EntityId, 'idle');
     services.chat.sendBlockMessage({
       threadId: threadId as EntityId,
@@ -91,6 +95,7 @@ export async function action(
   // Bail #2: no prior assistant turn to anchor at. `/compact` needs a
   // non-empty transcript to summarize.
   if (!cliUuid) {
+    setRunning(services, threadId, false);
     updateChatState(services, threadId as EntityId, 'idle');
     services.chat.sendBlockMessage({
       threadId: threadId as EntityId,
@@ -129,7 +134,10 @@ export async function action(
 
   // Hand off to the existing chat action. It reads `revertTo`, applies
   // fork+truncate, and runs `/compact` against the truncated session.
-  // Fire-and-forget: the chat action streams its own response.
+  // Release isRunning so the chat action can re-acquire it synchronously
+  // (no race in single-threaded Node.js — setRunning(false) and the
+  // chat action's setRunning(true) execute in the same microtask).
+  setRunning(services, threadId, false);
   await services.action.getAndExecute('Claude Code Chat', {
     threadId,
     text: '/compact',

@@ -787,7 +787,7 @@ export function finalizeSessionError(
  * The caller dequeues the message *before* calling `setRunning(false)` so
  * there is no race window where a new incoming message could interleave.
  */
-async function replayQueuedMessage(
+export async function replayQueuedMessage(
   services: Services,
   threadId: EntityId,
   queued: { text: string; mode?: string; phase?: string; messageId?: string; references?: any },
