@@ -421,6 +421,15 @@ export const createApplicationState = () => setup({
       const resolvedId = pluginId || targetId;
       const newPlugin = context.plugins.find(p => p.id === resolvedId) || context.activePlugin;
 
+      // Un-expand chat when navigating to a plugin
+      if (context.panelSizes.chatMaximized) {
+        enqueue.assign(({ context }) => {
+          const newSizes = { ...context.panelSizes, chatMaximized: false };
+          localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+          return { panelSizes: newSizes };
+        });
+      }
+
       // Send plugin activation events
       if (context.activePlugin.id !== newPlugin.id) {
         system.get(context.activePlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
