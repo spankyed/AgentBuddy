@@ -41,6 +41,13 @@ const FALLBACK_PATHS: Record<CliName, string[]> = process.platform === 'win32'
 
 const resolvedCache = new Map<string, string>()
 
+const CLI_COMMANDS: Record<CliName, string> = {
+  copilot: 'copilot',
+  'claude-code': 'claude',
+  codex: 'codex',
+  gh: 'gh',
+}
+
 /**
  * Expand nvm glob patterns (e.g. ~/.nvm/versions/node/* /bin/copilot)
  * into actual paths sorted by version descending (newest first).
@@ -122,15 +129,16 @@ export async function resolveCliPath(
   }
 
   // 3. Slow check: bare command via PATH (execFile with 2s timeout)
-  const bareCmd = effective && !path.isAbsolute(effective) ? effective : 'claude'
+  const bareCmd = effective && !path.isAbsolute(effective) ? effective : CLI_COMMANDS[cli]
   if (await isExecutable(bareCmd)) {
     resolvedCache.set(cacheKey, bareCmd)
     return bareCmd
   }
 
-  // 4. Nothing found — return 'claude' so caller gets a recognizable ENOENT
-  resolvedCache.set(cacheKey, 'claude')
-  return 'claude'
+  // 4. Nothing found — return the provider command so caller gets a recognizable ENOENT
+  const fallbackCommand = CLI_COMMANDS[cli]
+  resolvedCache.set(cacheKey, fallbackCommand)
+  return fallbackCommand
 }
 
 /** Clear the resolution cache (e.g. when CLI paths are updated in settings). */
