@@ -434,10 +434,16 @@ export function updateMessageState(
   messageId: EARS.EntityId,
   updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>
 ): void {
-  const result = repository.chatCommands.updateMessageState({
-    messageId,
-    updates
-  });
+  let result;
+  try {
+    result = repository.chatCommands.updateMessageState({
+      messageId,
+      updates
+    });
+  } catch (err) {
+    console.error(`[chat] updateMessageState failed for ${messageId}:`, (err as Error)?.message);
+    return;
+  }
 
   // Emit UPDATE_MESSAGE_STATE event to frontend with all updated fields
   sendToPlugin('threads', {
