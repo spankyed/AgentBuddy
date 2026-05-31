@@ -23,7 +23,6 @@ import {TogglesBlock} from '../../agentbuddy-ui/threads/TogglesBlock';
 import {ToolActivityBlock} from '../../agentbuddy-ui/threads/ToolActivityBlock';
 import {ToolInputBlock} from '../../agentbuddy-ui/threads/ToolInputBlock';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
-import {REFERENCE_CATEGORIES} from '../../agentbuddy-ui/chat/referenceConfig';
 import {ChatShot} from '../../film/shots/ChatShot';
 import {
   actionButtonsBlockDemoState,
@@ -37,10 +36,35 @@ import {
   approvalBlockRespondedState,
   buttonGroupBlockDemoState,
   buttonGroupRespondedState,
+  chatComposerActiveThreadRenameDemoState,
+  chatComposerBusyRecordingDemoState,
+  chatComposerCommandActiveDemoState,
+  chatComposerCommandSuggestionDemoState,
+  chatComposerCommandSuggestionEmptyDemoState,
+  chatComposerDocumentReferenceItemsDemoState,
+  chatComposerDropActiveDemoState,
+  chatComposerMixedAttachmentsDemoState,
+  chatComposerNewThreadChildMenuDemoBaseState,
+  chatComposerNewThreadProjectMenuDemoBaseState,
+  chatComposerQuickPromptsEditingDemoState,
+  chatComposerRecentThreadsDemoBaseState,
+  chatComposerRecentThreadsEmptyDemoBaseState,
+  chatComposerRecentThreadsRenameDemoBaseState,
+  chatComposerReferenceCategoriesDemoState,
+  chatComposerReferenceEmptyCategoryDemoState,
+  chatComposerReferenceEmptyItemsDemoState,
+  chatComposerReferenceFilteredCategoriesDemoState,
+  chatComposerReferencePillsDemoState,
+  chatComposerReferencesDemoState,
+  chatComposerRevertActionsDemoState,
+  chatComposerRevertHistoryDemoState,
+  chatComposerStatusLineDemoState,
+  chatComposerThreadReferenceItemsDemoState,
   choiceBlockDemoState,
   choiceBlockRespondedState,
   contextUsageBlockDemoState,
   filePickerBlockDemoState,
+  fullMarkdownViewerDemoContent,
   linkBlockDemoState,
   markdownBlockDemoState,
   messageBubbleDemoState,
@@ -60,22 +84,9 @@ import {
   toolInputWriteDemoState,
   toolActivityViewForFrame,
 } from '../../film/state/chat';
-import {filmProjectDirectories} from '../../film/state/paths';
 import {DemoBottomSlot, DemoSlot, DemoStack} from '../DemoLayout';
 
 const launchPreviewUrl = new URL('../../../../../resources/draft-final.png', import.meta.url).toString();
-const recentThreadTimestamps = {
-  now: new Date('2026-05-27T19:52:00').getTime(),
-  twoMinutesAgo: new Date('2026-05-27T19:50:00').getTime(),
-  eightMinutesAgo: new Date('2026-05-27T19:44:00').getTime(),
-};
-
-const referenceCategorySuggestions = (query = '') => {
-  const normalizedQuery = query.toLowerCase();
-  return REFERENCE_CATEGORIES
-    .filter(category => category.label.toLowerCase().includes(normalizedQuery))
-    .map(category => category.id);
-};
 const referenceDemoPopupPosition = {
   bottom: 220,
   left: 200,
@@ -110,6 +121,55 @@ function referenceAutocompleteDemoState<T extends ReferenceAutocompleteDemoState
   };
 }
 
+function commandPopupState(state: ChatComposerState): ChatComposerState {
+  return {
+    ...state,
+    commandSuggestion: state.commandSuggestion
+      ? {...state.commandSuggestion, popupPosition: commandDemoPopupPosition}
+      : undefined,
+  };
+}
+
+function recentThreadsPopupState(state: ChatComposerState): ChatComposerState {
+  return {
+    ...state,
+    bottomTabs: state.bottomTabs
+      ? {
+          ...state.bottomTabs,
+          recentThreadsMenu: state.bottomTabs.recentThreadsMenu
+            ? {...state.bottomTabs.recentThreadsMenu, popupPosition: recentThreadsDemoPopupPosition}
+            : undefined,
+        }
+      : undefined,
+  };
+}
+
+function newThreadPopupState(state: ChatComposerState): ChatComposerState {
+  return {
+    ...state,
+    bottomTabs: state.bottomTabs
+      ? {
+          ...state.bottomTabs,
+          newThreadMenu: state.bottomTabs.newThreadMenu
+            ? {...state.bottomTabs.newThreadMenu, popupPosition: newThreadDemoPopupPosition}
+            : undefined,
+        }
+      : undefined,
+  };
+}
+
+function composerReferencePopupState(
+  state: ChatComposerState,
+  slot: 'lower' | 'upper' = 'lower',
+): ChatComposerState {
+  return {
+    ...state,
+    referenceAutocomplete: state.referenceAutocomplete
+      ? referenceAutocompleteDemoState(state.referenceAutocomplete, slot)
+      : undefined,
+  };
+}
+
 export const ChatComposerDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
@@ -130,21 +190,7 @@ export const ChatComposerMixedAttachmentsDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          attachments: [
-            {
-              type: 'file',
-              label: 'release-brief.md',
-              typeLabel: 'Document',
-            },
-            {
-              type: 'image',
-              label: 'launch-plan.png',
-              previewUrl: launchPreviewUrl,
-            },
-          ],
-        }}
+        state={chatComposerMixedAttachmentsDemoState(launchPreviewUrl)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -153,7 +199,7 @@ export const ChatComposerMixedAttachmentsDemo = () => (
 export const ChatComposerStatusLineDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
-      <ChatComposer state={{...launchComposerState, chatStatus: {color: '#10b981'}, statusLine: filmProjectDirectories.agentBuddy.displayPath}} />
+      <ChatComposer state={chatComposerStatusLineDemoState} />
     </DemoBottomSlot>
   </SurfaceFrame>
 );
@@ -162,14 +208,7 @@ export const ChatComposerQuickPromptsEditingDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          quickPromptsEditing: true,
-          quickPromptsEditingId: 'qp-create-ticket',
-          quickPromptsEditingText: 'create the next thread from this plan',
-          quickPromptsNewText: 'summarize the PR launch notes',
-          quickPromptsOpen: true,
-        }}
+        state={chatComposerQuickPromptsEditingDemoState}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -179,16 +218,7 @@ export const ChatComposerRevertHistoryDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          revertHistory: {
-            messages: [
-              {id: 'm1', text: 'Turn the launch notes into a plan and create execution tickets.', createdAt: '9:32 AM', canSummarize: false},
-              {id: 'm2', text: 'Use the screenshot and current tasklist to write a launch brief.', createdAt: '9:41 AM', canSummarize: true},
-              {id: 'm3', text: 'Polish the checkout flow and prepare the PR path.', createdAt: '9:58 AM', canSummarize: true, selected: true},
-            ],
-          },
-        }}
+        state={chatComposerRevertHistoryDemoState}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -198,17 +228,7 @@ export const ChatComposerRevertActionsDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          revertHistory: {
-            level: 'actions',
-            messages: [
-              {id: 'm1', text: 'Turn the launch notes into a plan and create execution tickets.', createdAt: '9:32 AM', canSummarize: false},
-            ],
-            selectedAction: 'summarize-from-here',
-            selectedMessageId: 'm1',
-          },
-        }}
+        state={chatComposerRevertActionsDemoState}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -233,13 +253,13 @@ export const ChatComposerPhaseMenuDemo = () => (
 export const ChatComposerInputStatesDemo = () => (
   <SurfaceFrame>
     <DemoSlot style={{left: 0, right: 0, bottom: 580}}>
-      <ChatComposer state={{...launchComposerState, commandActive: true, text: '/launch-film'}} />
+      <ChatComposer state={chatComposerCommandActiveDemoState} />
     </DemoSlot>
     <DemoSlot style={{left: 0, right: 0, bottom: 330}}>
-      <ChatComposer state={{...launchComposerState, dropActive: true, attachments: [{type: 'file', label: 'release-brief.md'}]}} />
+      <ChatComposer state={chatComposerDropActiveDemoState} />
     </DemoSlot>
     <DemoSlot style={{left: 0, right: 0, bottom: 80}}>
-      <ChatComposer state={{...launchComposerState, busy: true, recording: true}} />
+      <ChatComposer state={chatComposerBusyRecordingDemoState} />
     </DemoSlot>
   </SurfaceFrame>
 );
@@ -248,22 +268,7 @@ export const ChatComposerCommandSuggestionDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          commandActive: true,
-          commandSuggestion: {
-            activeIndex: 1,
-            anchorCharacterIndex: 1,
-            popupPosition: commandDemoPopupPosition,
-            query: 'la',
-            suggestions: [
-              {name: 'launch-film'},
-              {name: 'launch-plan'},
-              {name: 'load-context'},
-            ],
-          },
-          text: '/la',
-        }}
+        state={commandPopupState(chatComposerCommandSuggestionDemoState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -273,17 +278,7 @@ export const ChatComposerCommandSuggestionEmptyDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          commandActive: true,
-          commandSuggestion: {
-            anchorCharacterIndex: 1,
-            popupPosition: commandDemoPopupPosition,
-            query: 'zz',
-            suggestions: [],
-          },
-          text: '/zz',
-        }}
+        state={commandPopupState(chatComposerCommandSuggestionEmptyDemoState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -293,19 +288,7 @@ export const ChatComposerReferenceCategoriesDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: '',
-            level: 'category',
-            query: '',
-            selectedIndex: 2,
-            selectedCategory: null,
-            suggestions: referenceCategorySuggestions(),
-          }),
-          text: 'Use #',
-        }}
+        state={composerReferencePopupState(chatComposerReferenceCategoriesDemoState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -315,18 +298,7 @@ export const ChatComposerReferenceFilteredCategoriesDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: '',
-            level: 'category',
-            query: 'no',
-            selectedCategory: null,
-            suggestions: referenceCategorySuggestions('no'),
-          }),
-          text: 'Use #no',
-        }}
+        state={composerReferencePopupState(chatComposerReferenceFilteredCategoriesDemoState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -336,26 +308,7 @@ export const ChatComposerReferencesDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: 'notes:',
-            level: 'items',
-            query: 'current',
-            selectedCategory: 'notes',
-            suggestions: [
-              {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note'},
-              {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'notes-tasklist', type: 'tasklist'},
-            ],
-          }),
-          content: [
-            {type: 'text', text: 'Use '},
-            {type: 'reference', refId: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
-            {type: 'text', text: ' and this screenshot to turn launch context into tickets.'},
-          ],
-          text: 'Use current and this screenshot to turn launch context into tickets.',
-        }}
+        state={composerReferencePopupState(chatComposerReferencesDemoState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -365,40 +318,12 @@ export const ChatComposerReferenceItemTypesDemo = () => (
   <SurfaceFrame>
     <DemoSlot style={{left: 0, right: 0, bottom: 292}}>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: 'threads:',
-            level: 'items',
-            query: 'launch',
-            selectedCategory: 'threads',
-            suggestions: [
-              {id: 'thread-launch', label: 'Launch PR implementation', shortCode: 'AB-104', type: 'thread'},
-              {id: 'thread-checkout', label: 'Polish checkout UI', shortCode: 'AB-123', type: 'thread'},
-            ],
-          }, 'upper'),
-          text: 'Use #threads:launch',
-        }}
+        state={composerReferencePopupState(chatComposerThreadReferenceItemsDemoState, 'upper')}
       />
     </DemoSlot>
     <DemoSlot style={{left: 0, right: 0, bottom: 80}}>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: 'library:',
-            level: 'items',
-            query: 'launch',
-            selectedCategory: 'documents',
-            suggestions: [
-              {id: 'doc-release', label: 'Release brief', shortCode: 'release-brief', type: 'document'},
-              {id: 'folder-assets', label: 'Launch assets', shortCode: 'launch-assets', type: 'folder'},
-            ],
-          }),
-          text: 'Use #library:launch',
-        }}
+        state={composerReferencePopupState(chatComposerDocumentReferenceItemsDemoState)}
       />
     </DemoSlot>
   </SurfaceFrame>
@@ -408,24 +333,7 @@ export const ChatComposerReferencePillsDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          content: [
-            {type: 'text', text: 'Use '},
-            {type: 'reference', refId: 'thread-launch', label: 'Launch PR implementation', refType: 'thread', shortCode: 'launch-pr'},
-            {type: 'text', text: ' '},
-            {type: 'reference', refId: 'doc-brief', label: 'Release brief', refType: 'document', shortCode: 'brief'},
-            {type: 'text', text: ' '},
-            {type: 'reference', refId: 'folder-assets', label: 'Launch assets', refType: 'folder', shortCode: 'assets'},
-            {type: 'text', text: ' '},
-            {type: 'reference', refId: 'note-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
-            {type: 'text', text: ' '},
-            {type: 'reference', refId: 'task-copy', label: 'Write launch copy', refType: 'task', shortCode: 'copy'},
-            {type: 'text', text: ' '},
-            {type: 'reference', refId: 'tasklist-root', label: 'Tasklist', refType: 'tasklist', shortCode: 'notes-tasklist'},
-          ],
-          text: 'Use Launch PR implementation Release brief Launch assets current Write launch copy Tasklist',
-        }}
+        state={chatComposerReferencePillsDemoState}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -435,34 +343,12 @@ export const ChatComposerReferenceEmptyStatesDemo = () => (
   <SurfaceFrame>
     <DemoSlot style={{left: 0, right: 0, bottom: 292}}>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: '',
-            level: 'category',
-            query: 'zzz',
-            selectedCategory: null,
-            suggestions: [],
-          }, 'upper'),
-          text: 'Use #zzz',
-        }}
+        state={composerReferencePopupState(chatComposerReferenceEmptyCategoryDemoState, 'upper')}
       />
     </DemoSlot>
     <DemoSlot style={{left: 0, right: 0, bottom: 80}}>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          referenceAutocomplete: referenceAutocompleteDemoState({
-            anchorCharacterIndex: 4,
-            categoryQuery: 'notes:',
-            level: 'items',
-            query: 'zzz',
-            selectedCategory: 'notes',
-            suggestions: [],
-          }),
-          text: 'Use #notes:zzz',
-        }}
+        state={composerReferencePopupState(chatComposerReferenceEmptyItemsDemoState)}
       />
     </DemoSlot>
   </SurfaceFrame>
@@ -472,29 +358,7 @@ export const ChatComposerRecentThreadsDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          bottomTabs: {
-            active: 'recent',
-            activeLabel: 'Supafan checkout flow',
-            pressed: 'recent',
-            recentThreadsMenu: {
-              currentId: 'launch-plan',
-              popupPosition: recentThreadsDemoPopupPosition,
-              selectedIndex: 0,
-              threadStates: {
-                'launch-dev-complete': {color: '#22c55e'},
-                'launch-plan': {busy: true},
-                'release-checks': {color: '#f59e0b'},
-              },
-              threads: [
-                {id: 'launch-dev-complete', topic: 'Launch PR implementation', pinned: true, shortCode: 'AB-104', timestamp: recentThreadTimestamps.now},
-                {id: 'launch-plan', topic: 'Launch Operating Plan', shortCode: 'AB-101', timestamp: recentThreadTimestamps.twoMinutesAgo},
-                {id: 'release-checks', topic: 'Release checklist', shortCode: 'AB-118', timestamp: recentThreadTimestamps.eightMinutesAgo},
-              ],
-            },
-          },
-        }}
+        state={recentThreadsPopupState(chatComposerRecentThreadsDemoBaseState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -504,18 +368,7 @@ export const ChatComposerRecentThreadsEmptyDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          bottomTabs: {
-            active: 'recent',
-            activeLabel: 'Supafan checkout flow',
-            pressed: 'recent',
-            recentThreadsMenu: {
-              popupPosition: recentThreadsDemoPopupPosition,
-              threads: [],
-            },
-          },
-        }}
+        state={recentThreadsPopupState(chatComposerRecentThreadsEmptyDemoBaseState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -525,34 +378,7 @@ export const ChatComposerRecentThreadsRenameDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          bottomTabs: {
-            active: 'recent',
-            activeLabel: 'Supafan checkout flow',
-            pressed: 'recent',
-            recentThreadsMenu: {
-              contextMenu: {
-                threadId: 'launch-plan',
-              },
-              currentId: 'launch-plan',
-              editingName: 'Launch Operating Plan',
-              editingThreadId: 'launch-plan',
-              popupPosition: recentThreadsDemoPopupPosition,
-              selectedIndex: 0,
-              threadStates: {
-                'launch-dev-complete': {color: '#22c55e'},
-                'launch-plan': {busy: true},
-                'release-checks': {color: '#f59e0b'},
-              },
-              threads: [
-                {id: 'launch-dev-complete', topic: 'Launch PR implementation', pinned: true, shortCode: 'AB-104', timestamp: recentThreadTimestamps.now},
-                {id: 'launch-plan', topic: 'Launch Operating Plan', shortCode: 'AB-101', timestamp: recentThreadTimestamps.twoMinutesAgo},
-                {id: 'release-checks', topic: 'Release checklist', shortCode: 'AB-118', timestamp: recentThreadTimestamps.eightMinutesAgo},
-              ],
-            },
-          },
-        }}
+        state={recentThreadsPopupState(chatComposerRecentThreadsRenameDemoBaseState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -562,15 +388,7 @@ export const ChatComposerActiveThreadRenameDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          bottomTabs: {
-            active: 'active',
-            activeEditing: true,
-            activeLabel: 'Supafan checkout flow',
-            pressed: 'active',
-          },
-        }}
+        state={chatComposerActiveThreadRenameDemoState}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -580,23 +398,7 @@ export const ChatComposerNewThreadProjectMenuDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          bottomTabs: {
-            active: 'new',
-            activeLabel: 'Supafan checkout flow',
-            newThreadMenu: {
-              openSubmenu: 'project',
-              popupPosition: newThreadDemoPopupPosition,
-              projects: [
-                {name: 'Supafan', color: '#38bdf8', directories: [filmProjectDirectories.supafan.path]},
-                {name: 'Supafan main', color: '#a78bfa', directories: [`${filmProjectDirectories.supafan.path}-main`]},
-              ],
-              threads: [],
-            },
-            pressed: 'new',
-          },
-        }}
+        state={newThreadPopupState(chatComposerNewThreadProjectMenuDemoBaseState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -606,24 +408,7 @@ export const ChatComposerNewThreadChildMenuDemo = () => (
   <SurfaceFrame>
     <DemoBottomSlot>
       <ChatComposer
-        state={{
-          ...launchComposerState,
-          bottomTabs: {
-            active: 'new',
-            activeLabel: 'Supafan checkout flow',
-            newThreadMenu: {
-              openSubmenu: 'child',
-              popupPosition: newThreadDemoPopupPosition,
-              projects: [],
-              threads: [
-                {id: 'launch-plan', shortCode: 'AB-104', timestamp: recentThreadTimestamps.now, topic: 'Launch Operating Plan'},
-                {id: 'release-checks', shortCode: 'AB-118', timestamp: recentThreadTimestamps.twoMinutesAgo, topic: 'Release checklist'},
-                {id: 'checkout-polish', shortCode: 'AB-123', timestamp: recentThreadTimestamps.eightMinutesAgo, topic: 'Polish checkout UI'},
-              ],
-            },
-            pressed: 'new',
-          },
-        }}
+        state={newThreadPopupState(chatComposerNewThreadChildMenuDemoBaseState)}
       />
     </DemoBottomSlot>
   </SurfaceFrame>
@@ -748,18 +533,7 @@ export const FullMarkdownViewerDemo = () => (
   <SurfaceFrame>
     <DemoSlot style={{left: 320, top: 120, width: 640}}>
       <MarkdownViewer
-        content={[
-          '# Launch notes',
-          '',
-          'Open [Tasklist](tasklist://tasklist-current) and attach it to [Launch PR implementation](thread://launch-pr).',
-          '',
-          '- [x] Capture launch context',
-          '- [ ] Ship release automation',
-          '',
-          '```ts',
-          'const surface = "Supafan";',
-          '```',
-        ].join('\n')}
+        content={fullMarkdownViewerDemoContent}
         variant="full"
       />
     </DemoSlot>

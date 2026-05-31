@@ -7,11 +7,13 @@ import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {TextCaret} from '../../agentbuddy-ui/primitives/TextCaret';
 import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../state/notes';
 import {Cursor} from '../overlays/Cursor';
-import {cursorMove, percentTarget} from '../interaction/cursorTargets';
+import {cursorMove, percentTarget, viewportPoint} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+import {useVideoConfig} from 'remotion';
+import {notesHomeNewNoteButtonTarget} from './notesGeometry';
 import './NotesShot.module.css';
 
 const styles = makeStyles('NotesShot');
@@ -26,6 +28,7 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
 
 function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const home = notesHomeViewForFrame(frame);
+  const {height, width} = useVideoConfig();
   const baseLayout = useAppWindowLayout({animate: false, variant});
   const chromeReveal = ease(frame, 96, 120);
   const layout = {
@@ -35,7 +38,7 @@ function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' |
       opacity: 1,
     },
   };
-  const cursor = notesHomeCursorForFrame(frame);
+  const cursor = notesHomeCursorForFrame(frame, layout, width, height);
   const surfaceBackground = `rgb(23 23 23 / ${chromeReveal})`;
 
   return (
@@ -117,11 +120,22 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
   );
 }
 
-function notesHomeCursorForFrame(frame: number): CursorPath | null {
-  const targets = notesHomeCursorTargets();
+function notesHomeCursorForFrame(
+  frame: number,
+  layout: ReturnType<typeof useAppWindowLayout>,
+  width: number,
+  height: number,
+): CursorPath | null {
+  const targets = notesHomeCursorTargets(layout, width, height);
 
   if (frame >= 118 && frame < 154) {
-    return cursorMove(targets, {end: 146, from: 'homeCenter', start: 118, to: 'newNoteButton'}, 'percent');
+    return cursorMove(targets, {
+      end: 146,
+      from: viewportPoint(width, height, 0.52, 0.52),
+      start: 118,
+      to: 'newNoteButton',
+      toPoint: {anchor: [0.52, 0.5]},
+    });
   }
 
   return null;
@@ -151,10 +165,14 @@ function notesEditorCursorForFrame(frame: number): CursorPath | null {
   return null;
 }
 
-function notesHomeCursorTargets(): Record<string, TargetRect> {
+function notesHomeCursorTargets(
+  layout: ReturnType<typeof useAppWindowLayout>,
+  width: number,
+  height: number,
+): Record<string, TargetRect> {
   return {
     homeCenter: percentTarget(49, 55, 6, 6),
-    newNoteButton: percentTarget(72.2, 24.4, 7.4, 4.4),
+    newNoteButton: notesHomeNewNoteButtonTarget(layout, width),
   };
 }
 

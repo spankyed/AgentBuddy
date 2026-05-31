@@ -22,7 +22,7 @@ import type {
 import type {ChatComposerInlineNode, ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {REFERENCE_CATEGORIES} from '../../agentbuddy-ui/chat/referenceConfig';
 import {launchFilmStory} from './launchStory';
-import {filmProjects} from './paths';
+import {filmProjectDirectories, filmProjects} from './paths';
 import {ease, mix, textReveal, textRevealLinear} from './timeline';
 
 const launchNotePreviewUrl = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%20160%22%3E%3Crect%20width%3D%22160%22%20height%3D%22160%22%20fill%3D%22%231b1b1b%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2224%22%20width%3D%22120%22%20height%3D%22112%22%20rx%3D%2210%22%20fill%3D%22%23262626%22%20stroke%3D%22%23525252%22%2F%3E%3Cpath%20d%3D%22M38%2054h84M38%2074h70M38%2094h92M38%20114h48%22%20stroke%3D%22%23d4d4d4%22%20stroke-width%3D%226%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%22118%22%20r%3D%2212%22%20fill%3D%22%233b82f6%22%2F%3E%3C%2Fsvg%3E';
@@ -38,6 +38,8 @@ const referenceCategorySuggestions = (query = '') => {
     .filter(category => category.label.toLowerCase().includes(normalizedQuery))
     .map(category => category.id);
 };
+
+export const chatDemoRecentThreadTimestamps = recentThreadTimestamps;
 
 export type ChatShotView = {
   breadcrumbs: string[];
@@ -459,6 +461,340 @@ export const projectSelectRespondedState: ProjectSelectBlockState = {
     {name: 'Supafan', color: '#3b82f6', directories: [filmProjects.supafan]},
   ],
 };
+
+export const chatComposerStatusLineDemoState: ChatComposerState = {
+  ...launchComposerState,
+  chatStatus: {color: '#10b981'},
+  statusLine: filmProjectDirectories.agentBuddy.displayPath,
+};
+
+export const chatComposerQuickPromptsEditingDemoState: ChatComposerState = {
+  ...launchComposerState,
+  quickPromptsEditing: true,
+  quickPromptsEditingId: 'qp-create-ticket',
+  quickPromptsEditingText: 'create the next thread from this plan',
+  quickPromptsNewText: 'summarize the PR launch notes',
+  quickPromptsOpen: true,
+};
+
+export const chatComposerRevertHistoryDemoState: ChatComposerState = {
+  ...launchComposerState,
+  revertHistory: {
+    messages: [
+      {id: 'm1', text: 'Turn the launch notes into a plan and create execution tickets.', createdAt: '9:32 AM', canSummarize: false},
+      {id: 'm2', text: 'Use the screenshot and current tasklist to write a launch brief.', createdAt: '9:41 AM', canSummarize: true},
+      {id: 'm3', text: 'Polish the checkout flow and prepare the PR path.', createdAt: '9:58 AM', canSummarize: true, selected: true},
+    ],
+  },
+};
+
+export const chatComposerRevertActionsDemoState: ChatComposerState = {
+  ...launchComposerState,
+  revertHistory: {
+    level: 'actions',
+    messages: [
+      {id: 'm1', text: 'Turn the launch notes into a plan and create execution tickets.', createdAt: '9:32 AM', canSummarize: false},
+    ],
+    selectedAction: 'summarize-from-here',
+    selectedMessageId: 'm1',
+  },
+};
+
+export const chatComposerCommandActiveDemoState: ChatComposerState = {
+  ...launchComposerState,
+  commandActive: true,
+  text: '/launch-film',
+};
+
+export const chatComposerDropActiveDemoState: ChatComposerState = {
+  ...launchComposerState,
+  dropActive: true,
+  attachments: [{type: 'file', label: 'release-brief.md'}],
+};
+
+export const chatComposerBusyRecordingDemoState: ChatComposerState = {
+  ...launchComposerState,
+  busy: true,
+  recording: true,
+};
+
+export const chatComposerCommandSuggestionDemoState: ChatComposerState = {
+  ...launchComposerState,
+  commandActive: true,
+  commandSuggestion: {
+    activeIndex: 1,
+    anchorCharacterIndex: 1,
+    query: 'la',
+    suggestions: [
+      {name: 'launch-film'},
+      {name: 'launch-plan'},
+      {name: 'load-context'},
+    ],
+  },
+  text: '/la',
+};
+
+export const chatComposerCommandSuggestionEmptyDemoState: ChatComposerState = {
+  ...launchComposerState,
+  commandActive: true,
+  commandSuggestion: {
+    anchorCharacterIndex: 1,
+    query: 'zz',
+    suggestions: [],
+  },
+  text: '/zz',
+};
+
+export const chatComposerReferenceCategoriesDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: '',
+    level: 'category',
+    query: '',
+    selectedIndex: 2,
+    selectedCategory: null,
+    suggestions: referenceCategorySuggestions(),
+  },
+  text: 'Use #',
+};
+
+export const chatComposerReferenceFilteredCategoriesDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: '',
+    level: 'category',
+    query: 'no',
+    selectedCategory: null,
+    suggestions: referenceCategorySuggestions('no'),
+  },
+  text: 'Use #no',
+};
+
+export const chatComposerReferencesDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: 'notes:',
+    level: 'items',
+    query: 'current',
+    selectedCategory: 'notes',
+    suggestions: [
+      {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note'},
+      {id: 'notes-tasklist', label: 'Tasklist', shortCode: 'notes-tasklist', type: 'tasklist'},
+    ],
+  },
+  content: [
+    {type: 'text', text: 'Use '},
+    {type: 'reference', refId: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
+    {type: 'text', text: ' and this screenshot to turn launch context into tickets.'},
+  ],
+  text: 'Use current and this screenshot to turn launch context into tickets.',
+};
+
+export const chatComposerThreadReferenceItemsDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: 'threads:',
+    level: 'items',
+    query: 'launch',
+    selectedCategory: 'threads',
+    suggestions: [
+      {id: 'thread-launch', label: 'Launch PR implementation', shortCode: 'AB-104', type: 'thread'},
+      {id: 'thread-checkout', label: 'Polish checkout UI', shortCode: 'AB-123', type: 'thread'},
+    ],
+  },
+  text: 'Use #threads:launch',
+};
+
+export const chatComposerDocumentReferenceItemsDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: 'library:',
+    level: 'items',
+    query: 'launch',
+    selectedCategory: 'documents',
+    suggestions: [
+      {id: 'doc-release', label: 'Release brief', shortCode: 'release-brief', type: 'document'},
+      {id: 'folder-assets', label: 'Launch assets', shortCode: 'launch-assets', type: 'folder'},
+    ],
+  },
+  text: 'Use #library:launch',
+};
+
+export const chatComposerReferencePillsDemoState: ChatComposerState = {
+  ...launchComposerState,
+  content: [
+    {type: 'text', text: 'Use '},
+    {type: 'reference', refId: 'thread-launch', label: 'Launch PR implementation', refType: 'thread', shortCode: 'launch-pr'},
+    {type: 'text', text: ' '},
+    {type: 'reference', refId: 'doc-brief', label: 'Release brief', refType: 'document', shortCode: 'brief'},
+    {type: 'text', text: ' '},
+    {type: 'reference', refId: 'folder-assets', label: 'Launch assets', refType: 'folder', shortCode: 'assets'},
+    {type: 'text', text: ' '},
+    {type: 'reference', refId: 'note-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
+    {type: 'text', text: ' '},
+    {type: 'reference', refId: 'task-copy', label: 'Write launch copy', refType: 'task', shortCode: 'copy'},
+    {type: 'text', text: ' '},
+    {type: 'reference', refId: 'tasklist-root', label: 'Tasklist', refType: 'tasklist', shortCode: 'notes-tasklist'},
+  ],
+  text: 'Use Launch PR implementation Release brief Launch assets current Write launch copy Tasklist',
+};
+
+export const chatComposerReferenceEmptyCategoryDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: '',
+    level: 'category',
+    query: 'zzz',
+    selectedCategory: null,
+    suggestions: [],
+  },
+  text: 'Use #zzz',
+};
+
+export const chatComposerReferenceEmptyItemsDemoState: ChatComposerState = {
+  ...launchComposerState,
+  referenceAutocomplete: {
+    anchorCharacterIndex: 4,
+    categoryQuery: 'notes:',
+    level: 'items',
+    query: 'zzz',
+    selectedCategory: 'notes',
+    suggestions: [],
+  },
+  text: 'Use #notes:zzz',
+};
+
+export const chatComposerRecentThreadsDemoBaseState: ChatComposerState = {
+  ...launchComposerState,
+  bottomTabs: {
+    active: 'recent',
+    activeLabel: 'Supafan checkout flow',
+    pressed: 'recent',
+    recentThreadsMenu: {
+      currentId: 'launch-plan',
+      selectedIndex: 0,
+      threadStates: {
+        'launch-dev-complete': {color: '#22c55e'},
+        'launch-plan': {busy: true},
+        'release-checks': {color: '#f59e0b'},
+      },
+      threads: [
+        {id: 'launch-dev-complete', topic: 'Launch PR implementation', pinned: true, shortCode: 'AB-104', timestamp: recentThreadTimestamps.now},
+        {id: 'launch-plan', topic: 'Launch Operating Plan', shortCode: 'AB-101', timestamp: recentThreadTimestamps.twoMinutesAgo},
+        {id: 'release-checks', topic: 'Release checklist', shortCode: 'AB-118', timestamp: recentThreadTimestamps.eightMinutesAgo},
+      ],
+    },
+  },
+};
+
+export const chatComposerRecentThreadsEmptyDemoBaseState: ChatComposerState = {
+  ...launchComposerState,
+  bottomTabs: {
+    active: 'recent',
+    activeLabel: 'Supafan checkout flow',
+    pressed: 'recent',
+    recentThreadsMenu: {
+      threads: [],
+    },
+  },
+};
+
+export const chatComposerRecentThreadsRenameDemoBaseState: ChatComposerState = {
+  ...chatComposerRecentThreadsDemoBaseState,
+  bottomTabs: {
+    ...chatComposerRecentThreadsDemoBaseState.bottomTabs!,
+    recentThreadsMenu: {
+      ...chatComposerRecentThreadsDemoBaseState.bottomTabs!.recentThreadsMenu!,
+      contextMenu: {
+        threadId: 'launch-plan',
+      },
+      editingName: 'Launch Operating Plan',
+      editingThreadId: 'launch-plan',
+    },
+  },
+};
+
+export const chatComposerActiveThreadRenameDemoState: ChatComposerState = {
+  ...launchComposerState,
+  bottomTabs: {
+    active: 'active',
+    activeEditing: true,
+    activeLabel: 'Supafan checkout flow',
+    pressed: 'active',
+  },
+};
+
+export const chatComposerNewThreadProjectMenuDemoBaseState: ChatComposerState = {
+  ...launchComposerState,
+  bottomTabs: {
+    active: 'new',
+    activeLabel: 'Supafan checkout flow',
+    newThreadMenu: {
+      openSubmenu: 'project',
+      projects: [
+        {name: 'Supafan', color: '#38bdf8', directories: [filmProjectDirectories.supafan.path]},
+        {name: 'Supafan main', color: '#a78bfa', directories: [`${filmProjectDirectories.supafan.path}-main`]},
+      ],
+      threads: [],
+    },
+    pressed: 'new',
+  },
+};
+
+export const chatComposerNewThreadChildMenuDemoBaseState: ChatComposerState = {
+  ...launchComposerState,
+  bottomTabs: {
+    active: 'new',
+    activeLabel: 'Supafan checkout flow',
+    newThreadMenu: {
+      openSubmenu: 'child',
+      projects: [],
+      threads: [
+        {id: 'launch-plan', shortCode: 'AB-104', timestamp: recentThreadTimestamps.now, topic: 'Launch Operating Plan'},
+        {id: 'release-checks', shortCode: 'AB-118', timestamp: recentThreadTimestamps.twoMinutesAgo, topic: 'Release checklist'},
+        {id: 'checkout-polish', shortCode: 'AB-123', timestamp: recentThreadTimestamps.eightMinutesAgo, topic: 'Polish checkout UI'},
+      ],
+    },
+    pressed: 'new',
+  },
+};
+
+export const fullMarkdownViewerDemoContent = [
+  '# Launch notes',
+  '',
+  'Open [Tasklist](tasklist://tasklist-current) and attach it to [Launch PR implementation](thread://launch-pr).',
+  '',
+  '- [x] Capture launch context',
+  '- [ ] Ship release automation',
+  '',
+  '```ts',
+  'const surface = "Supafan";',
+  '```',
+].join('\n');
+
+export function chatComposerMixedAttachmentsDemoState(previewUrl: string): ChatComposerState {
+  return {
+    ...launchComposerState,
+    attachments: [
+      {
+        type: 'file',
+        label: 'release-brief.md',
+        typeLabel: 'Document',
+      },
+      {
+        type: 'image',
+        label: 'launch-plan.png',
+        previewUrl,
+      },
+    ],
+  };
+}
 
 const planApprovalEnd = 420;
 const recentThreadsClickStart = 438;

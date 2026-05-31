@@ -1,10 +1,13 @@
 import {readFileSync} from 'node:fs';
 import {cursorOpacityForFrame} from '../src/film/overlays/Cursor';
 import {cursorTimeline, percentTarget} from '../src/film/interaction/cursorTargets';
-import {boardViewForFrame} from '../src/film/state/board';
+import {boardShotState, boardViewForFrame} from '../src/film/state/board';
 import {chatShotViewForFrame, chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
 import {finalViewForFrame} from '../src/film/state/final';
+import {launchFilmStory} from '../src/film/state/launchStory';
+import {montageShotViewForFrame} from '../src/film/state/montage';
+import {notesHomeNewNoteButtonTarget} from '../src/film/shots/notesGeometry';
 import {notesEditorViewForFrame} from '../src/film/state/notes';
 import {workflowStateForFrame} from '../src/film/state/workflow';
 
@@ -54,6 +57,88 @@ function persistentCursorTimelinePass() {
     && held.from[1] === held.to[1];
 }
 
+function notesNewNoteCursorTargetPass() {
+  const width = 1920;
+  const target = notesHomeNewNoteButtonTarget({
+    windowStyle: {
+      left: 32,
+      top: 32,
+      width: width - 64,
+    },
+  }, width);
+  const clickPoint = {
+    x: target.left + target.width * 0.52,
+    y: target.top + target.height * 0.5,
+  };
+  return target.width >= 100
+    && target.height >= 32
+    && clickPoint.x > target.left
+    && clickPoint.x < target.left + target.width
+    && clickPoint.y > target.top
+    && clickPoint.y < target.top + target.height
+    && target.left < width * 0.74;
+}
+
+function boardStoryboardContinuityPass() {
+  const tabs = boardShotState.dashboard.tabs;
+  const stripeTab = tabs.find(tab => tab.id === launchFilmStory.threads.stripePaymentIntegration.id);
+  const deployTab = tabs.find(tab => tab.id === launchFilmStory.threads.deployChecklist.id);
+  const createForm = boardShotState.createForm;
+  const backlog = boardShotState.board.columns.find(column => column.title === 'Backlog');
+  const inProgress = boardShotState.board.columns.find(column => column.title === 'In Progress');
+
+  return boardShotState.dashboard.activeTabId === launchFilmStory.threads.stripePaymentIntegration.id
+    && stripeTab?.pinned === true
+    && deployTab?.pinned === true
+    && createForm.title === launchFilmStory.threads.addDiscountCodeSupport.title
+    && createForm.linkedThreadQuery === launchFilmStory.threads.checkoutImplementation.title
+    && createForm.parentThread?.shortCode === launchFilmStory.threads.checkoutImplementation.shortCode
+    && backlog?.cards.some(card => card.title === launchFilmStory.threads.addDiscountCodeSupport.title) === true
+    && inProgress?.cards.some(card => card.title === 'Wire receipt email templates') === true;
+}
+
+function notesStoryboardContinuityPass() {
+  const overview = notesEditorViewForFrame(100);
+  const receiptTodo = notesEditorViewForFrame(150);
+
+  return overview.breadcrumbs.join(' > ') === 'Notes > Supafan > Tasklist'
+    && overview.editor.beforeLines.some(line => line.text === launchFilmStory.threads.addDiscountCodeSupport.title)
+    && receiptTodo.breadcrumbs.join(' > ') === 'Notes > Supafan > Tasklist > receipt emails'
+    && receiptTodo.taskList.items.some(item => item.id === 'receipt-emails' && item.completed === true)
+    && receiptTodo.editor.beforeLines.some(line => line.text === 'Configure Resend transport');
+}
+
+function codeStoryboardContinuityPass() {
+  const pr = codeShotState.review.pullRequest.createdPr;
+  return codeShotState.review.branch === launchFilmStory.branch
+    && codeShotState.review.baseDirectory === launchFilmStory.projectPath
+    && codeShotState.review.worktrees.some(worktree => worktree.branch === launchFilmStory.branch && worktree.path === launchFilmStory.projectPath && worktree.current)
+    && codeShotState.generatedCommitMessage === 'feat(checkout): wire Stripe flow, receipts, and discounts'
+    && pr?.number === 42
+    && pr.baseBranch === launchFilmStory.baseBranch
+    && pr.headBranch === launchFilmStory.branch
+    && pr.url.includes(launchFilmStory.repo)
+    && codeShotState.review.pullRequest.changedFiles.some(file => file.path === 'packages/api/src/services/discount-service.ts');
+}
+
+function workflowMontageContinuityPass() {
+  const workflow = workflowStateForFrame(360);
+  const montageConversation = montageShotViewForFrame(60);
+  const montageLogs = montageShotViewForFrame(120);
+  const montageDatabase = montageShotViewForFrame(220);
+
+  return workflow.nodes.some(node => node.id === 'switch' && node.label === launchFilmStory.flow.switchLabel)
+    && workflow.nodes.some(node => node.id === 'run-migrations' && node.label === launchFilmStory.flow.actionLabels.migrations)
+    && workflow.nodes.some(node => node.id === 'notify-releases' && node.label === launchFilmStory.flow.actionLabels.notify)
+    && montageConversation.surface === 'conversation'
+    && montageConversation.conversation.userMessage === launchFilmStory.command
+    && montageConversation.conversation.assistantMarkdown.includes('notified the #releases channel')
+    && montageLogs.surface === 'logs'
+    && montageLogs.logs.logs.some(log => JSON.stringify(log).includes(launchFilmStory.command))
+    && montageDatabase.surface === 'database'
+    && JSON.stringify(montageDatabase.database).includes('deploy-checkout');
+}
+
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
 const flowEdgeSource = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowEdge.tsx', import.meta.url), 'utf8');
 const workflowSource = readFileSync(new URL('../src/film/state/workflow.ts', import.meta.url), 'utf8');
@@ -74,6 +159,11 @@ const checks: Check[] = [
     area: 'notes',
     message: 'notes shot transitions from new note to tasklist overview',
     pass: notesEditorViewForFrame(70).breadcrumbs.join('/') !== notesEditorViewForFrame(100).breadcrumbs.join('/'),
+  },
+  {
+    area: 'notes',
+    message: 'notes new note cursor target lands inside button geometry',
+    pass: notesNewNoteCursorTargetPass(),
   },
   {
     area: 'chat',
@@ -109,6 +199,11 @@ const checks: Check[] = [
   },
   {
     area: 'board',
+    message: 'board dashboard and create form match storyboard continuity',
+    pass: boardStoryboardContinuityPass(),
+  },
+  {
+    area: 'board',
     message: 'board shot moves card horizontally',
     pass: boardViewForFrame(282).movingCardStyle.left !== boardViewForFrame(304).movingCardStyle.left,
   },
@@ -121,6 +216,11 @@ const checks: Check[] = [
     area: 'board',
     message: 'board shot rotates moving card',
     pass: boardViewForFrame(282).movingCardStyle.transform !== boardViewForFrame(304).movingCardStyle.transform,
+  },
+  {
+    area: 'code',
+    message: 'code branch, PR, files, and repo match storyboard continuity',
+    pass: codeStoryboardContinuityPass(),
   },
   {
     area: 'code',
@@ -152,6 +252,16 @@ const checks: Check[] = [
       && codeReviewViewForFrame(380).prMode === 'create'
       && codeReviewViewForFrame(381).prMode === 'details'
       && Boolean(codeReviewViewForFrame(381).pullRequest.createdPr),
+  },
+  {
+    area: 'workflow',
+    message: 'workflow and montage command continuity matches storyboard',
+    pass: workflowMontageContinuityPass(),
+  },
+  {
+    area: 'notes',
+    message: 'notes tasklist continuity matches board-created discount thread and receipt todo',
+    pass: notesStoryboardContinuityPass(),
   },
   {
     area: 'workflow',
