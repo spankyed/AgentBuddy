@@ -829,6 +829,8 @@ export const chatCommands = {
 
     const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asUser', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context', 'compacted'] as const;
 
+    let found = false;
+
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};
       for (const key of copyableKeys) {
@@ -842,7 +844,18 @@ export const chatCommands = {
         ...optional,
       });
 
-      if (msg.id === upToMessageId) break;
+      if (msg.id === upToMessageId) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      chatCommands.addMessage({
+        threadId: targetThreadId,
+        text: 'Warning: fork point not found — all messages were copied.',
+        sender: 'system',
+      });
     }
   },
 
