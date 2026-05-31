@@ -1,5 +1,16 @@
 -e # Changelog
 
+## v0.3.5 (2026-05-31)
+
+### Fixes
+- cli): codex cli was not resolve correct path, always tried command instead of user settings.
+- default-setup): replay Codex queued messages by action label
+- ui): improve canvas header scrolling and panel dragging
+- notes): make the notes inspection panel header a window drag region, with interactive controls excluded so they remain clickable.
+- ui): hide canvas header and thread tab scrollbars
+
+-e # Changelog
+
 ## v0.3.4 (2026-05-22)
 
 ### Fixes
