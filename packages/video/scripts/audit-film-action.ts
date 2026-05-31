@@ -2,13 +2,22 @@ import {readFileSync} from 'node:fs';
 import {cursorOpacityForFrame} from '../src/film/overlays/Cursor';
 import {cursorTimeline, percentTarget} from '../src/film/interaction/cursorTargets';
 import {boardShotState, boardViewForFrame} from '../src/film/state/board';
-import {chatShotViewForFrame, chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
-import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
+import {
+  chatShotState,
+  chatShotViewForFrame,
+  chatToolActivity,
+  chatViewForFrame,
+  launchComposerWithAttachmentState,
+  launchPlanArtifact,
+  toolActivityViewForFrame,
+} from '../src/film/state/chat';
+import {codeReviewViewForFrame, codeShotState, codeShotViewForFrame} from '../src/film/state/code';
 import {finalShotState, finalViewForFrame} from '../src/film/state/final';
 import {launchFilmStory} from '../src/film/state/launchStory';
 import {montageShotViewForFrame} from '../src/film/state/montage';
 import {notesHomeNewNoteButtonTarget} from '../src/film/shots/notesGeometry';
-import {notesEditorViewForFrame} from '../src/film/state/notes';
+import {notesEditorViewForFrame, notesHomeState, notesHomeViewForFrame, notesRightRailState, notesTaskListItems} from '../src/film/state/notes';
+import {shots} from '../src/film/state/timeline';
 import {workflowStateForFrame} from '../src/film/state/workflow';
 
 type Check = {
@@ -39,6 +48,44 @@ function chatApprovedSummaryDelayPass() {
   const afterDelay = chatShotViewForFrame(436).conversation.additionalAssistantMessages ?? [];
   return !beforeDelay.some(message => message.markdown.includes('Approved checkout implementation plan'))
     && afterDelay.some(message => message.markdown.includes('Approved checkout implementation plan'));
+}
+
+function chatAttachmentMatchesStoryboardPass() {
+  const fixtureAttachment = launchComposerWithAttachmentState.attachments?.[0];
+  const shotAttachment = chatShotViewForFrame(220).composer.attachments?.[0];
+  const svg = decodeURIComponent(String(shotAttachment?.previewUrl ?? '').replace(/^data:image\/svg\+xml,/, ''));
+
+  return fixtureAttachment?.label === 'checkout mockup'
+    && shotAttachment?.label === 'checkout mockup'
+    && svg.includes('Supafan Checkout')
+    && svg.includes('Pay with Stripe');
+}
+
+function chatStoryboardContentPass() {
+  return chatShotState.breadcrumbs.join(' > ') === `Threads > ${launchFilmStory.threads.checkoutImplementation.title}`
+    && chatShotState.prompt.text === 'Use #notes:tasklist and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.'
+    && chatShotState.response.text === 'I’ll scope the checkout feature from the tasklist: create the Stripe integration, wire receipt emails, add the discount engine, and prepare the creator payout stub.'
+    && chatViewForFrame(270).prompt === chatShotState.prompt.text
+    && chatViewForFrame(346).response === chatShotState.response.text;
+}
+
+function chatToolAndPlanScopePass() {
+  const planMessage = chatShotViewForFrame(390).conversation.additionalAssistantMessages?.[0];
+  const planMarkdown = planMessage?.markdownBlock?.content ?? '';
+  const toolSummaries = chatToolActivity.entries.map(entry => entry.summary);
+
+  return chatToolActivity.entries.length === 4
+    && toolSummaries[0] === 'notes/supafan/tasklist/current.md'
+    && toolSummaries[1] === 'create implementation tickets from checkout scope'
+    && toolSummaries[2] === 'packages/api/src/services/checkout-service.ts'
+    && toolSummaries[3] === 'npm run typecheck'
+    && launchPlanArtifact.title === 'Checkout Implementation Plan'
+    && launchPlanArtifact.content.steps?.map(step => step.title).join('|') === 'Design payment flow|Create tickets|Wire Stripe integration|Review deploy checklist'
+    && planMarkdown.includes('Supafan Checkout -> Implementation Pass')
+    && planMarkdown.includes('Stripe checkout sessions')
+    && planMarkdown.includes('receipt emails')
+    && planMarkdown.includes('discount codes')
+    && planMarkdown.includes('packages/api/src/services/checkout-service.ts');
 }
 
 function persistentCursorTimelinePass() {
@@ -108,6 +155,37 @@ function notesStoryboardContinuityPass() {
     && receiptTodo.editor.beforeLines.some(line => line.text === 'Configure Resend transport');
 }
 
+function notesHomeStoryboardPass() {
+  const home = notesHomeViewForFrame(120);
+
+  return home.greeting === notesHomeState.greeting
+    && home.showSearch === true
+    && home.showRecent === true
+    && home.showFavorites === true
+    && home.recent.map(note => note.title).join('|') === 'current|Tasklist|api'
+    && home.recent.map(note => note.updatedAt).join('|') === 'just now|4m ago|18m ago'
+    && home.favorites.map(note => note.title).join('|') === 'current|Roadmap|Design'
+    && home.favorites.map(note => note.updatedAt).join('|') === 'just now|today|yesterday'
+    && notesHomeViewForFrame(140).newNotePressed === true;
+}
+
+function notesEditorStoryboardPass() {
+  const checkoutNote = notesEditorViewForFrame(70);
+  const tasklistOverview = notesEditorViewForFrame(120);
+  const receiptTodo = notesEditorViewForFrame(150);
+
+  return checkoutNote.breadcrumbs.join(' > ') === 'Notes > Supafan > Checkout Notes'
+    && checkoutNote.editor.title.text === 'Checkout notes'
+    && checkoutNote.editor.beforeLines.map(line => line.text).join('|') === 'Stripe webhook integration|checkout session flow works in staging|add checkout diagram, resize it, and keep tasks nearby'
+    && notesRightRailState.items.map(item => item.title).join('|') === 'Supafan|Payments|Tasklist|Design'
+    && notesRightRailState.favorites.map(item => item.title).join('|') === 'current|api|Roadmap'
+    && notesTaskListItems.map(item => item.title).join('|') === 'Stripe webhooks|current|receipt emails|checkout UI|discount codes|creator payouts|product variants|landing page redesign|pricing tiers|analytics dashboard'
+    && tasklistOverview.editor.beforeLines.map(line => line.text).join('|') === `Stripe webhooks|current|receipt emails|${launchFilmStory.threads.addDiscountCodeSupport.title}`
+    && tasklistOverview.editor.afterLines[0]?.text === 'Checkout work stays beside the note instead of becoming another app.'
+    && receiptTodo.editor.beforeLines.map(line => line.text).join('|') === 'Configure Resend transport|Render order summary template|Keep the linked checkout context visible'
+    && receiptTodo.editor.afterLines[0]?.text === 'Completed from the tasklist panel.';
+}
+
 function codeStoryboardContinuityPass() {
   const pr = codeShotState.review.pullRequest.createdPr;
   return codeShotState.review.branch === launchFilmStory.branch
@@ -119,6 +197,35 @@ function codeStoryboardContinuityPass() {
     && pr.headBranch === launchFilmStory.branch
     && pr.url.includes(launchFilmStory.repo)
     && codeShotState.review.pullRequest.changedFiles.some(file => file.path === 'packages/api/src/services/discount-service.ts');
+}
+
+function codePrMergeAndTerminalPass() {
+  const terminalView = codeShotViewForFrame(240);
+  const mergedView = codeReviewViewForFrame(406);
+  const terminalOutput = terminalView.review.state.terminal.output ?? '';
+
+  return terminalView.review.state.terminal.expanded === true
+    && terminalOutput.includes('npm test -- --filter checkout')
+    && terminalOutput.includes('checkout-service.test.ts (4 tests)')
+    && terminalOutput.includes('All tests passed')
+    && mergedView.pullRequest.createdPr?.number === 42
+    && mergedView.pullRequest.createdPr.state === 'MERGED'
+    && mergedView.pullRequest.createdPr.mergeStateStatus === 'CLEAN'
+    && mergedView.pullRequest.createdPr.reviewDecision === 'APPROVED';
+}
+
+function codeWorktreeAndStashFlowPass() {
+  const beforeSwitch = codeShotViewForFrame(120).review.state;
+  const switching = codeShotViewForFrame(160).review.state;
+  const afterCommit = codeShotViewForFrame(220).review.state;
+
+  return beforeSwitch.branch === launchFilmStory.branch
+    && (beforeSwitch.stashes?.length ?? 0) === 0
+    && switching.branch === launchFilmStory.baseBranch
+    && switching.worktrees.some(worktree => worktree.branch === launchFilmStory.baseBranch && worktree.current)
+    && switching.stashes?.some(stash => stash.message === `WIP on ${launchFilmStory.branch}: incomplete work`) === true
+    && afterCommit.branch === launchFilmStory.branch
+    && afterCommit.commits[0]?.title === codeShotState.generatedCommitMessage;
 }
 
 function workflowMontageContinuityPass() {
@@ -139,12 +246,52 @@ function workflowMontageContinuityPass() {
     && JSON.stringify(montageDatabase.database).includes('deploy-checkout');
 }
 
+function chapterCopyMatchesStoryboardPass() {
+  const expectedChapters = [
+    ['intro-title', 'AgentBuddy is...', undefined],
+    ['chat-title', 'More than just an AI chat', undefined],
+    ['notes-title', 'More than just a note taker', undefined],
+    ['code-title', 'More than just an IDE', undefined],
+    ['workflow-title', 'More than just a workflow engine', undefined],
+    ['montage-title', 'AgentBuddy is a revolution', 'to put the full power of AI into the hands of the people'],
+  ] as const;
+
+  return expectedChapters.every(([id, title, subtitle]) => {
+    const chapter = shots.find(shot => shot.id === id)?.chapter;
+    return chapter?.title === title && chapter.subtitle === subtitle;
+  });
+}
+
+function montageStoryboardSequencePass() {
+  const sequence = [
+    montageShotViewForFrame(0),
+    montageShotViewForFrame(90),
+    montageShotViewForFrame(180),
+    montageShotViewForFrame(300),
+  ];
+
+  return sequence[0].surface === 'conversation'
+    && sequence[0].activePlugin === 'threads'
+    && sequence[1].surface === 'logs'
+    && sequence[1].activePlugin === 'logs'
+    && sequence[2].surface === 'database'
+    && sequence[2].activePlugin === 'database'
+    && sequence[3].surface === 'logs'
+    && sequence[3].activePlugin === 'logs'
+    && !sequence.some(view => view.activePlugin === 'settings');
+}
+
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
 const flowEdgeSource = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowEdge.tsx', import.meta.url), 'utf8');
 const workflowSource = readFileSync(new URL('../src/film/state/workflow.ts', import.meta.url), 'utf8');
 const workflowShotSource = readFileSync(new URL('../src/film/shots/WorkflowShot.tsx', import.meta.url), 'utf8');
 
 const checks: Check[] = [
+  {
+    area: 'final',
+    message: 'visible chapter copy matches storyboard source of truth',
+    pass: chapterCopyMatchesStoryboardPass(),
+  },
   {
     area: 'notes',
     message: 'notes shot types new note title',
@@ -155,6 +302,16 @@ const checks: Check[] = [
     message: 'notes shot types checkout note lines',
     pass: notesEditorViewForFrame(12).editor.beforeLines[0].text !== notesEditorViewForFrame(40).editor.beforeLines[0].text
       && notesEditorViewForFrame(30).editor.beforeLines[1].text !== notesEditorViewForFrame(58).editor.beforeLines[1].text,
+  },
+  {
+    area: 'notes',
+    message: 'notes home shows storyboard recent and favorite notes',
+    pass: notesHomeStoryboardPass(),
+  },
+  {
+    area: 'notes',
+    message: 'notes editor, right rail, and tasklist match storyboard copy',
+    pass: notesEditorStoryboardPass(),
   },
   {
     area: 'notes',
@@ -173,13 +330,28 @@ const checks: Check[] = [
   },
   {
     area: 'chat',
+    message: 'chat prompt and response match Supafan checkout storyboard',
+    pass: chatStoryboardContentPass(),
+  },
+  {
+    area: 'chat',
     message: 'chat reference autocomplete pauses on Tasklist before continuing',
     pass: chatTasklistReferenceSelectionPass(),
   },
   {
     area: 'chat',
+    message: 'chat image attachment is a Supafan checkout mockup',
+    pass: chatAttachmentMatchesStoryboardPass(),
+  },
+  {
+    area: 'chat',
     message: 'chat approved summary appears after a short delay',
     pass: chatApprovedSummaryDelayPass(),
+  },
+  {
+    area: 'chat',
+    message: 'chat tool activity and plan artifact preserve checkout scope',
+    pass: chatToolAndPlanScopePass(),
   },
   {
     area: 'chat',
@@ -225,6 +397,16 @@ const checks: Check[] = [
   },
   {
     area: 'code',
+    message: 'code shot shows checkout tests and merges PR cleanly',
+    pass: codePrMergeAndTerminalPass(),
+  },
+  {
+    area: 'code',
+    message: 'code shot stashes incomplete work and switches worktrees before commit',
+    pass: codeWorktreeAndStashFlowPass(),
+  },
+  {
+    area: 'code',
     message: 'code shot reveals diff changes line by line',
     pass: changed(codeReviewViewForFrame(20).diffLineOpacities, codeReviewViewForFrame(120).diffLineOpacities),
   },
@@ -258,6 +440,11 @@ const checks: Check[] = [
     area: 'workflow',
     message: 'workflow and montage command continuity matches storyboard',
     pass: workflowMontageContinuityPass(),
+  },
+  {
+    area: 'workflow',
+    message: 'montage sequence stays threads to logs to database to logs without settings',
+    pass: montageStoryboardSequencePass(),
   },
   {
     area: 'notes',
@@ -300,6 +487,7 @@ const checks: Check[] = [
     pass: workflowStateForFrame(150).viewport == null
       && workflowStateForFrame(260).viewport == null
       && workflowStateForFrame(156).chrome?.paletteStyle?.opacity === 0
+      && Number(workflowStateForFrame(157).chrome?.paletteStyle?.opacity) > 0
       && Number(workflowStateForFrame(200).chrome?.paletteStyle?.opacity) > 0
       && !String(workflowStateForFrame(200).chrome?.paletteStyle?.width ?? '').includes('px'),
   },

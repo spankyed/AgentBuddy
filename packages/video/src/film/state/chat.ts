@@ -25,7 +25,21 @@ import {launchFilmStory} from './launchStory';
 import {filmProjectDirectories, filmProjects} from './paths';
 import {ease, mix, textReveal, textRevealLinear} from './timeline';
 
-const launchNotePreviewUrl = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%20160%22%3E%3Crect%20width%3D%22160%22%20height%3D%22160%22%20fill%3D%22%231b1b1b%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2224%22%20width%3D%22120%22%20height%3D%22112%22%20rx%3D%2210%22%20fill%3D%22%23262626%22%20stroke%3D%22%23525252%22%2F%3E%3Cpath%20d%3D%22M38%2054h84M38%2074h70M38%2094h92M38%20114h48%22%20stroke%3D%22%23d4d4d4%22%20stroke-width%3D%226%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%22118%22%20r%3D%2212%22%20fill%3D%22%233b82f6%22%2F%3E%3C%2Fsvg%3E';
+const checkoutMockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <rect width="160" height="160" rx="18" fill="#0f172a"/>
+  <rect x="14" y="16" width="132" height="128" rx="12" fill="#f8fafc"/>
+  <rect x="26" y="30" width="66" height="9" rx="4.5" fill="#0f172a"/>
+  <text x="26" y="53" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="8">Supafan Checkout</text>
+  <rect x="26" y="62" width="50" height="48" rx="8" fill="#dbeafe"/>
+  <path d="M35 96h32M38 84h24" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+  <rect x="88" y="62" width="46" height="9" rx="4.5" fill="#e2e8f0"/>
+  <rect x="88" y="79" width="46" height="9" rx="4.5" fill="#e2e8f0"/>
+  <rect x="88" y="96" width="30" height="9" rx="4.5" fill="#e2e8f0"/>
+  <rect x="26" y="121" width="108" height="14" rx="7" fill="#635bff"/>
+  <text x="54" y="131" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="8" font-weight="700">Pay with Stripe</text>
+</svg>`;
+
+export const launchCheckoutMockupPreviewUrl = `data:image/svg+xml,${encodeURIComponent(checkoutMockupSvg)}`;
 const recentThreadTimestamps = {
   now: new Date('2026-05-27T19:52:00').getTime(),
   twoMinutesAgo: new Date('2026-05-27T19:50:00').getTime(),
@@ -116,7 +130,7 @@ export const launchComposerState: ChatComposerState = {
 
 export const launchComposerWithAttachmentState: ChatComposerState = {
   ...launchComposerState,
-  attachments: [{type: 'image', label: 'image 1', previewUrl: launchNotePreviewUrl}],
+  attachments: [{type: 'image', label: 'checkout mockup', previewUrl: launchCheckoutMockupPreviewUrl}],
 };
 
 export const launchComposerModeMenuState: ChatComposerState = {
@@ -136,7 +150,7 @@ export const messageBubbleDemoState = {
   marker: '3 compacted messages',
   references: {
     files: [{name: 'release-brief.md', typeLabel: 'Markdown'}],
-    images: [{name: 'launch-note.png', url: launchNotePreviewUrl}],
+    images: [{name: 'checkout-mockup.svg', url: launchCheckoutMockupPreviewUrl}],
   },
   system: 'Checkout flow implementation',
   user: 'Turn this checkout brief into tickets, notes, and a shippable PR plan.',
@@ -942,8 +956,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       attachments: [
         ...(frame > 188 && frame < 270 ? [{
           type: 'image' as const,
-          label: 'image 1',
-          previewUrl: launchNotePreviewUrl,
+          label: 'checkout mockup',
+          previewUrl: launchCheckoutMockupPreviewUrl,
           style: {
             opacity: imageAttachmentEnter,
             transform: `translateY(${mix(10, 0, imageAttachmentEnter)}px) scale(${mix(0.975, 1, imageAttachmentEnter)})`,

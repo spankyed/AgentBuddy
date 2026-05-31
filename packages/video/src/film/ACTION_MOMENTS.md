@@ -15,6 +15,6 @@ Rules:
 
 - Keep action data in `packages/video/src/film/state/*`.
 - Keep shot components focused on composition and timing.
-- Maintain at least 10 verified frame-driven moments; the current audit proves 32.
+- Maintain at least 10 verified frame-driven moments; the current audit proves 41.
 - Maintain at least 10 verified product-surface moments before the final lockup.
 - Cover all product shot areas in the audit: notes, chat, threads board, code, and flows.

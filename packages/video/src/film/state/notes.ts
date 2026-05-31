@@ -205,15 +205,16 @@ export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
   const greeting = textReveal(notesHomeState.greeting, frame, -4, 40);
   const showSearch = frame >= 44;
   const showRecent = frame >= 62;
+  const showFavorites = frame >= 84;
   const newNotePressed = frame >= 136 && frame < 154;
 
   return {
     ...notesHomeState,
-    favorites: [],
+    favorites: showFavorites ? notesHomeState.favorites : [],
     greeting,
     newNotePressed,
     recent: showRecent ? notesHomeState.recent.map(note => ({...note, active: false, pressed: false})) : [],
-    showFavorites: false,
+    showFavorites,
     showRecent,
     showSearch,
   };
@@ -264,7 +265,7 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
       editor: {
         afterLines: tasklistOverviewCopy.afterLines.map((text, index) => ({
           id: `overview-after-${index}`,
-          text: textReveal(text, frame, 106 + index * 10, 132 + index * 10),
+          text: textReveal(text, frame, 88 + index * 10, 116 + index * 10),
         })),
         beforeLines: tasklistOverviewCopy.beforeLines.map((text, index) => ({
           id: `overview-${index}`,
