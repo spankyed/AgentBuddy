@@ -1,5 +1,65 @@
 -e # Changelog
 
+## v0.3.6 (2026-05-31)
+
+### Features
+- explorer): add "Open in Video Player" context menu option for video files
+- code): add fallback UI for unsupported video formats
+- code): add video file playback support in editor
+- artifacts): add dynamic color field to artifact pills
+- explorer): add "Open in Video Player" context menu for video files
+- terminal): add right-click context menu for panel terminals
+- codex-session): add click-to-copy thread ID and resume session in terminal
+- threads): add copy thread ID to clipboard context menu option
+- chat): auto-restore chat when selecting a plugin via toolbar
+- threads): add agent-aware routing for thread revert operations
+- default-setup): route commit/db-query generation through user's default provider
+- renderer): delegate navigation history to plugins to make back/forward navigate within plugins instead of between them
+- notes): add keyboard navigation for search results
+
+### Fixes
+- claude-code): clear session on worktree toggle mismatch
+- api): handle race condition in updateMessageState during thread deletion
+- threads): guard against missing message in interactive response handler
+- terminal): preserve custom titles when restoring terminals
+- editor): fix find widget close button blocked by tooltip overlay
+- fork): instant navigation, flow gates, and double-click protection
+- threads): sort threads by timestamp when pinned status is equal
+- threads): add error handling to forwardUserMessage and default empty thread topics
+- notes): track viewed note separately so tasks appear in recents
+- threads): add forkPending guard to prevent race between fork navigation and session state
+- codex): auto-hide cancelled approval blocks with asideText
+- fork): instant navigation + prevent double-click
+- codex): cancel queued messages on pause to prevent auto-restart
+- codex): fix queued messages not unqueuing and approval blocks not auto-hiding
+- renderer): prevent status indicator and statusline from overlapping canvas area
+- claude-code): prevent stuck isRunning state in compact and summarize flows
+- claude-code): prevent messaging during compaction and re-entrant compaction
+- codex): restore working chatState after tool approval
+- git): use case-insensitive dedup for branch listing
+- codex): swallow unhandled promise rejections in killTurn
+
+### Refactors
+- prompts): move diff content before rules in commit message template
+-  rename awaiting-permission status to awaiting-input
+- threads): make fork logic agent-agnostic
+- codex): add --skip-git-repo-check and --ephemeral flags to exec calls
+-  inline TRAIL_CLICK handler and fix nav history tracking
+- claude-code): simplify compaction concurrency code
+
+### Other
+- Fix provider settings persistence on restart
+- Fix session expired error when toggling worktree on existing session
+- Fix copyMessagesUpTo silently copying all messages when fork point not found
+- Bump chat input collapse breakpoint from @md to @lg
+- Fix Claude Code forkability for messages without CLI checkpoints
+- Add bypass commands and highlight active bypass state
+- monaco upgrade continued
+- chore(deps): upgrade monaco-editor to v0.55.1 and refresh lockfile
+- Add refresh button to explorer panel header
+
+-e # Changelog
+
 ## v0.3.5 (2026-05-31)
 
 ### Fixes
