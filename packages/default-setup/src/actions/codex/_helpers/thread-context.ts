@@ -139,6 +139,7 @@ export function requestTurnInterrupt(services: Services, threadId: string): bool
       services.chat.updateMessageState(prior.pendingApproval.approvalMessageId as any, {
         responseTimestamp: Date.now(),
         blockResponse: { cancelled: true },
+        asideText: `Cancelled — ${prior.pendingApproval.summary || 'tool request'}`,
       } as any);
     }
     (services.codex as any).interruptTurn(prior.threadId, prior.turnId);
@@ -190,6 +191,7 @@ export function killTurn(services: Services, threadId: string): void {
     services.chat.updateMessageState(prior.pendingApproval.approvalMessageId as any, {
       responseTimestamp: Date.now(),
       blockResponse: { cancelled: true },
+      asideText: `Cancelled — ${prior.pendingApproval?.summary || 'tool request'}`,
     } as any);
   }
 
