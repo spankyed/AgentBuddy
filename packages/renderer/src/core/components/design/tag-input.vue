@@ -110,7 +110,7 @@ const filteredOptions = computed(() =>
         side="bottom"
         align="start"
         :side-offset="4"
-        class="z-10 min-w-[200px] max-w-[400px] bg-neutral-800 border border-neutral-700 overflow-hidden rounded-md shadow-lg"
+        class="z-50 min-w-[200px] max-w-[400px] bg-neutral-800 border border-neutral-700 overflow-hidden rounded-md shadow-lg"
       >
       <ComboboxViewport class="p-2">
         <ComboboxGroup>
