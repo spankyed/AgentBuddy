@@ -11,6 +11,7 @@ import {
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
 import { tagStorage } from './services/tagStorage'
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
 
 // Helper function to convert DocumentItem to DocumentDTO
 function documentItemToDTO(item: DocumentItem): DocumentDTO {
@@ -105,6 +106,8 @@ export interface LibraryContext {
   // Import/Export
   libraryImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
   libraryExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
+
+  navHistory: NavHistory<string | null>
 }
 
 export type LibraryEvents =
@@ -170,6 +173,8 @@ export type LibraryEvents =
   | { type: 'LIBRARY_IMPORT_FAILED'; errors: string[] }
   | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' }
   | OutgoingLibraryEvents
 
 export const librarySystem = setup({
@@ -402,9 +407,13 @@ export const librarySystem = setup({
         lastKnownPath,
       }
     }),
-    updateNavigation: assign({
-      currentFolderId: ({ event }) => (event as any).data.folderId || null,
-      currentPath: ({ event }) => (event as any).data.path || [],
+    updateNavigation: assign(({ event, context }) => {
+      const folderId = (event as any).data.folderId || null;
+      return {
+        currentFolderId: folderId,
+        currentPath: (event as any).data.path || [],
+        navHistory: pushNavHistory(context.navHistory, folderId),
+      };
     }),
     selectItems: assign({
       selectedItems: ({ event }) => event.type === 'SELECT_ITEMS' ? event.itemIds || [] : [],
@@ -885,6 +894,7 @@ export const librarySystem = setup({
     // Import/Export
     libraryImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     libraryExport: { status: 'idle' as const, errors: [], filePath: '', itemCount: 0 },
+    navHistory: createNavHistory<string | null>(null),
   },
   on: {
     PLUGIN_ACTIVATED: {
@@ -908,14 +918,40 @@ export const librarySystem = setup({
     NAVIGATE_TO_FOLDER: {
       actions: ['navigateToFolder', 'clearSelection', assign({
         currentFolderId: ({ event }) => event.folderId,
-        newItemId: null
+        newItemId: null,
       })],
     },
     BREADCRUMB_CLICK: {
       actions: ['navigateToFolder', 'clearSelection', assign({
         currentFolderId: ({ event }) => event.folderId,
-        newItemId: null
+        newItemId: null,
       })],
+    },
+    NAVIGATE_BACK: {
+      guard: ({ context }) => canGoBack(context.navHistory),
+      actions: [
+        assign(({ context }) => {
+          const result = goBack(context.navHistory)!;
+          return { navHistory: result.history, currentFolderId: result.entry };
+        }),
+        ({ context }) => {
+          trpc.bus.send.mutate({ systemId: id, type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
+        },
+        'clearSelection',
+      ],
+    },
+    NAVIGATE_FORWARD: {
+      guard: ({ context }) => canGoForward(context.navHistory),
+      actions: [
+        assign(({ context }) => {
+          const result = goForward(context.navHistory)!;
+          return { navHistory: result.history, currentFolderId: result.entry };
+        }),
+        ({ context }) => {
+          trpc.bus.send.mutate({ systemId: id, type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
+        },
+        'clearSelection',
+      ],
     },
     DOUBLE_CLICK_ITEM: {
       actions: ['handleDoubleClick', 'clearSelection', assign({ newItemId: null })],

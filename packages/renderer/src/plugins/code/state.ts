@@ -6,6 +6,7 @@ import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persi
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
 // Import child state machines
@@ -117,6 +118,7 @@ export type Context = {
   panelTerminalId: string | null
   panelTerminalExpanded: boolean
   pendingTerminalTabIds?: string[]
+  panelNavHistory: NavHistory<PanelType>
 }
 
 export interface QuickOpenResult {
@@ -177,7 +179,9 @@ export type Event =
   | { type: 'CLOSE_PANEL_TERMINAL' }
   | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
   | { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
-  | { type: 'TOGGLE_PANEL_TERMINAL' };
+  | { type: 'TOGGLE_PANEL_TERMINAL' }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -577,7 +581,8 @@ const codeState = setup({
       // Actions and prompts are loaded by their respective main plugin actors
       return {
         ...context,
-        selectedPanel: ev.panel
+        selectedPanel: ev.panel,
+        panelNavHistory: pushNavHistory(context.panelNavHistory, ev.panel),
       };
     }),
 
@@ -1206,6 +1211,7 @@ const codeState = setup({
     searchPrefillText: '',
     panelTerminalId: null,
     panelTerminalExpanded: false,
+    panelNavHistory: createNavHistory('explorer' as PanelType),
   },
   states: {
     canvas: {
@@ -1238,6 +1244,24 @@ const codeState = setup({
         // Panel selection
         SELECT_PANEL: {
           actions: ['selectPanel']
+        },
+        NAVIGATE_BACK: {
+          guard: ({ context }) => canGoBack(context.panelNavHistory),
+          actions: assign(({ context, system }) => {
+            const result = goBack(context.panelNavHistory)!;
+            if (result.entry === 'commit') system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+            else if (result.entry === 'pr') system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+            return { panelNavHistory: result.history, selectedPanel: result.entry };
+          }),
+        },
+        NAVIGATE_FORWARD: {
+          guard: ({ context }) => canGoForward(context.panelNavHistory),
+          actions: assign(({ context, system }) => {
+            const result = goForward(context.panelNavHistory)!;
+            if (result.entry === 'commit') system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+            else if (result.entry === 'pr') system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+            return { panelNavHistory: result.history, selectedPanel: result.entry };
+          }),
         },
         // Tab pinning
         PIN_TAB: {
