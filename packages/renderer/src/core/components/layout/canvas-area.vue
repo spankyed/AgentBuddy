@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative flex flex-col flex-grow border-b bg-neutral-900 border-neutral-800"
+    class="relative z-50 flex flex-col flex-grow border-b bg-neutral-900 border-neutral-800"
     :class="$style.component"
   >
     <!-- HEADER ROW -->
