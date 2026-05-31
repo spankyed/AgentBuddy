@@ -5,6 +5,7 @@ import type {CursorAssetId, CursorThemeId} from '../assets/cursors/cursorRegistr
 import type {CoordinateSpace, Point} from '../interaction/cursorTargets';
 
 const clickPulseFrames = 7;
+const defaultFadeFrames = 8;
 
 type CursorProps = {
   click?: boolean;
@@ -23,6 +24,7 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
   const asset = getCursorAsset({cursor, theme});
   const p = ease(frame, start, end);
   const [x, y] = cursorPoint(from, to, p, coordinateSpace);
+  const opacity = cursorOpacityForFrame(frame, start, end);
   const clickAmount = click ? Math.sin(ease(frame, end - clickPulseFrames, end) * Math.PI) : 0;
   const width = 42 * scale;
   const height = width * (asset.height / asset.width);
@@ -38,6 +40,7 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
         width,
         height,
         pointerEvents: 'none',
+        opacity,
         transform: `translate(${-hotspotX}px, ${-hotspotY}px) scale(${1 - clickAmount * 0.055})`,
         transformOrigin: `${hotspotX}px ${hotspotY}px`,
         zIndex: 2147483647,
@@ -78,6 +81,14 @@ export function Cursor({click = true, coordinateSpace = 'percent', cursor, end, 
   }
 
   return element;
+}
+
+export function cursorOpacityForFrame(frame: number, start: number, end: number) {
+  const fadeFrames = Math.min(defaultFadeFrames, Math.max(1, Math.floor((end - start) / 3)));
+  return Math.min(
+    ease(frame, start, start + fadeFrames),
+    1 - ease(frame, end - fadeFrames, end),
+  );
 }
 
 function cursorPoint(from: Point, to: Point, progress: number, coordinateSpace: CoordinateSpace) {

@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {cursorOpacityForFrame} from '../src/film/overlays/Cursor';
 import {boardViewForFrame} from '../src/film/state/board';
 import {chatShotViewForFrame, chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
@@ -27,6 +28,13 @@ function chatTasklistReferenceSelectionPass() {
     && insertedNode?.type === 'reference'
     && insertedNode.label === 'Tasklist'
     && chatViewForFrame(160).prompt === chatViewForFrame(168).prompt;
+}
+
+function chatApprovedSummaryDelayPass() {
+  const beforeDelay = chatShotViewForFrame(408).conversation.additionalAssistantMessages ?? [];
+  const afterDelay = chatShotViewForFrame(424).conversation.additionalAssistantMessages ?? [];
+  return !beforeDelay.some(message => message.markdown.includes('Approved checkout implementation plan'))
+    && afterDelay.some(message => message.markdown.includes('Approved checkout implementation plan'));
 }
 
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
@@ -59,6 +67,11 @@ const checks: Check[] = [
     area: 'chat',
     message: 'chat reference autocomplete pauses on Tasklist before continuing',
     pass: chatTasklistReferenceSelectionPass(),
+  },
+  {
+    area: 'chat',
+    message: 'chat approved summary appears after a short delay',
+    pass: chatApprovedSummaryDelayPass(),
   },
   {
     area: 'chat',
@@ -144,6 +157,13 @@ const checks: Check[] = [
       && flowCanvasCss.includes('stroke-dashoffset: -10')
       && !flowEdgeSource.includes('strokeDashoffset')
       && !workflowSource.includes('edgeDashOffset'),
+  },
+  {
+    area: 'chat',
+    message: 'cursor fades in and out around path boundaries',
+    pass: cursorOpacityForFrame(18, 18, 38) === 0
+      && cursorOpacityForFrame(28, 18, 38) > 0.95
+      && cursorOpacityForFrame(38, 18, 38) === 0,
   },
   {
     area: 'final',

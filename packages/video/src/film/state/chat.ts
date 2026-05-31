@@ -466,6 +466,8 @@ const recentThreadsMenuStart = 438;
 const recentThreadsMenuEnd = 508;
 const recentThreadSelectStart = 448;
 const recentThreadLoadedStart = 508;
+const approvedSummaryStart = 420;
+const planToolActivityStart = 432;
 const quickPromptClickStart = 516;
 const quickPromptClickEnd = 528;
 const quickPromptMenuStart = 530;
@@ -541,8 +543,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const showInitialResponse = frame >= 306 && frame < 394;
   const showPlan = frame >= 370 && frame < 394;
   const showPlanApproval = frame >= 382 && frame < 394;
-  const showApprovedSummary = frame >= 394 && frame < recentThreadLoadedStart;
-  const showPlanToolActivity = frame >= 394 && frame < recentThreadLoadedStart;
+  const showApprovedSummary = frame >= approvedSummaryStart && frame < recentThreadLoadedStart;
+  const showPlanToolActivity = frame >= planToolActivityStart && frame < recentThreadLoadedStart;
   const quickPromptSent = frame > quickPromptSendEnd;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const referenceStartIndex = 'Use '.length;
@@ -666,18 +668,18 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           autoHide: true,
           markdown: 'Approved checkout implementation plan - work started',
           style: {
-            opacity: ease(frame, 394, 404),
-            transform: `translateY(${(1 - ease(frame, 394, 404)) * 12}px)`,
+            opacity: ease(frame, approvedSummaryStart, approvedSummaryStart + 10),
+            transform: `translateY(${(1 - ease(frame, approvedSummaryStart, approvedSummaryStart + 10)) * 12}px)`,
           },
         }] : []),
         ...(showPlanToolActivity ? [{
           markdown: '',
           style: {
-            opacity: ease(frame, 400, 414),
-            transform: `translateY(${(1 - ease(frame, 400, 414)) * 18}px)`,
+            opacity: ease(frame, planToolActivityStart, planToolActivityStart + 14),
+            transform: `translateY(${(1 - ease(frame, planToolActivityStart, planToolActivityStart + 14)) * 18}px)`,
           },
           toolActivity: {
-            rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, 402 + index * 8, 414 + index * 8)),
+            rowOpacities: chatToolActivity.entries.map((_, index) => ease(frame, planToolActivityStart + 2 + index * 8, planToolActivityStart + 14 + index * 8)),
             state: chatToolActivity,
           },
         }] : []),
