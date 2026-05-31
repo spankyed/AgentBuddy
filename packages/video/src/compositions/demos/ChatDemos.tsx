@@ -185,7 +185,7 @@ export const ChatComposerRevertHistoryDemo = () => (
             messages: [
               {id: 'm1', text: 'Turn the launch notes into a plan and create execution tickets.', createdAt: '9:32 AM', canSummarize: false},
               {id: 'm2', text: 'Use the screenshot and current tasklist to write a launch brief.', createdAt: '9:41 AM', canSummarize: true},
-              {id: 'm3', text: 'Polish the launch film UI and prepare the PR path.', createdAt: '9:58 AM', canSummarize: true, selected: true},
+              {id: 'm3', text: 'Polish the checkout flow and prepare the PR path.', createdAt: '9:58 AM', canSummarize: true, selected: true},
             ],
           },
         }}
@@ -375,7 +375,7 @@ export const ChatComposerReferenceItemTypesDemo = () => (
             selectedCategory: 'threads',
             suggestions: [
               {id: 'thread-launch', label: 'Launch PR implementation', shortCode: 'AB-104', type: 'thread'},
-              {id: 'thread-film', label: 'Polish launch film UI', shortCode: 'AB-123', type: 'thread'},
+              {id: 'thread-checkout', label: 'Polish checkout UI', shortCode: 'AB-123', type: 'thread'},
             ],
           }, 'upper'),
           text: 'Use #threads:launch',
@@ -476,7 +476,7 @@ export const ChatComposerRecentThreadsDemo = () => (
           ...launchComposerState,
           bottomTabs: {
             active: 'recent',
-            activeLabel: 'AgentBuddy launch film',
+            activeLabel: 'Supafan checkout flow',
             pressed: 'recent',
             recentThreadsMenu: {
               currentId: 'launch-plan',
@@ -508,7 +508,7 @@ export const ChatComposerRecentThreadsEmptyDemo = () => (
           ...launchComposerState,
           bottomTabs: {
             active: 'recent',
-            activeLabel: 'AgentBuddy launch film',
+            activeLabel: 'Supafan checkout flow',
             pressed: 'recent',
             recentThreadsMenu: {
               popupPosition: recentThreadsDemoPopupPosition,
@@ -529,7 +529,7 @@ export const ChatComposerRecentThreadsRenameDemo = () => (
           ...launchComposerState,
           bottomTabs: {
             active: 'recent',
-            activeLabel: 'AgentBuddy launch film',
+            activeLabel: 'Supafan checkout flow',
             pressed: 'recent',
             recentThreadsMenu: {
               contextMenu: {
@@ -567,7 +567,7 @@ export const ChatComposerActiveThreadRenameDemo = () => (
           bottomTabs: {
             active: 'active',
             activeEditing: true,
-            activeLabel: 'AgentBuddy launch film',
+            activeLabel: 'Supafan checkout flow',
             pressed: 'active',
           },
         }}
@@ -584,13 +584,13 @@ export const ChatComposerNewThreadProjectMenuDemo = () => (
           ...launchComposerState,
           bottomTabs: {
             active: 'new',
-            activeLabel: 'AgentBuddy launch film',
+            activeLabel: 'Supafan checkout flow',
             newThreadMenu: {
               openSubmenu: 'project',
               popupPosition: newThreadDemoPopupPosition,
               projects: [
-                {name: 'Clientlabs', color: '#38bdf8', directories: [filmProjectDirectories.clientlabs.path]},
-                {name: 'AgentBuddy', color: '#a78bfa', directories: [filmProjectDirectories.agentBuddy.path, `${filmProjectDirectories.agentBuddy.path}/packages/video`]},
+                {name: 'Supafan', color: '#38bdf8', directories: [filmProjectDirectories.supafan.path]},
+                {name: 'Supafan main', color: '#a78bfa', directories: [`${filmProjectDirectories.supafan.path}-main`]},
               ],
               threads: [],
             },
@@ -610,7 +610,7 @@ export const ChatComposerNewThreadChildMenuDemo = () => (
           ...launchComposerState,
           bottomTabs: {
             active: 'new',
-            activeLabel: 'AgentBuddy launch film',
+            activeLabel: 'Supafan checkout flow',
             newThreadMenu: {
               openSubmenu: 'child',
               popupPosition: newThreadDemoPopupPosition,
@@ -618,7 +618,7 @@ export const ChatComposerNewThreadChildMenuDemo = () => (
               threads: [
                 {id: 'launch-plan', shortCode: 'AB-104', timestamp: recentThreadTimestamps.now, topic: 'Launch Operating Plan'},
                 {id: 'release-checks', shortCode: 'AB-118', timestamp: recentThreadTimestamps.twoMinutesAgo, topic: 'Release checklist'},
-                {id: 'film-polish', shortCode: 'AB-123', timestamp: recentThreadTimestamps.eightMinutesAgo, topic: 'Polish launch film UI'},
+                {id: 'checkout-polish', shortCode: 'AB-123', timestamp: recentThreadTimestamps.eightMinutesAgo, topic: 'Polish checkout UI'},
               ],
             },
             pressed: 'new',
@@ -757,7 +757,7 @@ export const FullMarkdownViewerDemo = () => (
           '- [ ] Ship release automation',
           '',
           '```ts',
-          'const surface = "AgentBuddy";',
+          'const surface = "Supafan";',
           '```',
         ].join('\n')}
         variant="full"
