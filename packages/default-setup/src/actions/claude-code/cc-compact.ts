@@ -90,7 +90,7 @@ async function handleCompact(
     // was queued by chat.ts's isRunning guard — replay it now.
     const queued = dequeueMessage(services, threadId);
     setRunning(services, threadId, false);
-    updateChatState(services, threadId as any, 'idle');
+    if (!queued) updateChatState(services, threadId as any, 'idle');
     if (queued) await replayQueuedMessage(services, threadId as any, queued, services.logger);
   }
 }

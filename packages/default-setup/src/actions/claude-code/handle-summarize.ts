@@ -137,12 +137,28 @@ export async function action(
   // Release isRunning so the chat action can re-acquire it synchronously
   // (no race in single-threaded Node.js — setRunning(false) and the
   // chat action's setRunning(true) execute in the same microtask).
-  setRunning(services, threadId, false);
-  await services.action.getAndExecute('Claude Code Chat', {
-    threadId,
-    text: '/compact',
-    messageId: synth.id,
-  });
+  try {
+    setRunning(services, threadId, false);
+    await services.action.getAndExecute('Claude Code Chat', {
+      threadId,
+      text: '/compact',
+      messageId: synth.id,
+    });
+  } catch (err: any) {
+    // Safety net: if the chat action throws before its own try/catch
+    // (e.g. between setRunning(true) and the query), isRunning would be
+    // stuck true forever. Normalise state and surface the failure.
+    const errMsg = err?.message || 'Summarize dispatch failed';
+    log.error('summarize getAndExecute failed', { message: errMsg, stack: err?.stack });
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    updateChatState(services, threadId as EntityId, 'idle');
+    services.chat.sendBlockMessage({
+      threadId: threadId as EntityId,
+      text: `⚠️ Couldn't start summarize turn: ${errMsg}`,
+      blocks: [],
+      forkable: false,
+    });
+  }
 
   log.debug('summarize dispatched /compact turn', { threadId, messageId, cliUuid });
   return { success: true, cliUuid, syntheticMessageId: synth.id };
