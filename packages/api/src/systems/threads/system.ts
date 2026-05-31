@@ -646,6 +646,9 @@ export const threadsSystem = setup({
       const { messageId, threadId, threadTopic } = threadsDef.typeOf('FORK_THREAD', event);
       if (!threadId) return;
 
+      let result: { id: EARS.EntityId } | undefined;
+      const forkContext: Record<string, any> = {};
+
       try {
         const sourceMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
         const sourceIndex = sourceMessages.findIndex((m: any) => m.id === messageId);
@@ -657,7 +660,7 @@ export const threadsSystem = setup({
         const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
         const forkTopic = `Fork ${forkCount + 1} - ${originalTopic}`;
 
-        const result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
+        result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
 
         repository.threadCommands.linkFork(threadId as EARS.EntityId, result.id);
 
@@ -671,9 +674,11 @@ export const threadsSystem = setup({
         // until the async handle-fork actions finish persisting session state.
         const sourceThread = repository.threadQueries.byId(threadId as EARS.EntityId);
         const sourceContext = (sourceThread as any)?.context ?? {};
-        const forkContext: Record<string, any> = {};
-        if (sourceContext.claudeCode) forkContext.claudeCode = { forkPending: true };
-        if (sourceContext.codex) forkContext.codex = { forkPending: true };
+        for (const [key, value] of Object.entries(sourceContext)) {
+          if (value && typeof value === 'object') {
+            forkContext[key] = { forkPending: true };
+          }
+        }
         if (Object.keys(forkContext).length > 0) {
           repository.threadCommands.update(result.id, { context: forkContext });
         }
@@ -689,14 +694,17 @@ export const threadsSystem = setup({
             sourceMessageId: messageId,
             newThreadId: result.id,
             sourceUserMessagesAfterFork,
-            agents: {
-              claudeCode: !!sourceContext.claudeCode,
-              codex: !!sourceContext.codex,
-            },
           },
         });
       } catch (err) {
         console.error('[threads] forkThread failed:', err);
+        // Clear forkPending if it was set, so the thread doesn't permanently reject messages.
+        if (result && Object.keys(forkContext).length > 0) {
+          const clearContext = Object.fromEntries(
+            Object.keys(forkContext).map(key => [key, { forkPending: undefined }])
+          );
+          repository.threadCommands.update(result.id, { context: clearContext });
+        }
       }
     },
     revertThread: ({ system, event }) => {

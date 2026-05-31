@@ -392,21 +392,14 @@ export default {
     on(
       "thread.fork",
       [[
-        branch([
-          {
-            if: "$.event.data.payload.agents.claudeCode == true",
-            steps: [
-              action("CC: Handle Fork", {
-                label: "fork",
-                map: {
-                  sourceThreadId: "$.event.data.payload.sourceThreadId",
-                  sourceMessageId: "$.event.data.payload.sourceMessageId",
-                  newThreadId: "$.event.data.payload.newThreadId",
-                },
-              }),
-            ],
+        action("CC: Handle Fork", {
+          label: "fork",
+          map: {
+            sourceThreadId: "$.event.data.payload.sourceThreadId",
+            sourceMessageId: "$.event.data.payload.sourceMessageId",
+            newThreadId: "$.event.data.payload.newThreadId",
           },
-        ], undefined, "Gate CC Fork"),
+        }),
       ]],
       "Thread forked",
     ),

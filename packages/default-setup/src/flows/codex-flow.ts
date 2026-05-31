@@ -243,22 +243,15 @@ export default {
     on(
       "thread.fork",
       [[
-        branch([
-          {
-            if: "$.event.data.payload.agents.codex == true",
-            steps: [
-              action("CDX: Handle Fork", {
-                label: "fork",
-                map: {
-                  sourceThreadId: "$.event.data.payload.sourceThreadId",
-                  sourceMessageId: "$.event.data.payload.sourceMessageId",
-                  newThreadId: "$.event.data.payload.newThreadId",
-                  sourceUserMessagesAfterFork: "$.event.data.payload.sourceUserMessagesAfterFork",
-                },
-              }),
-            ],
+        action("CDX: Handle Fork", {
+          label: "fork",
+          map: {
+            sourceThreadId: "$.event.data.payload.sourceThreadId",
+            sourceMessageId: "$.event.data.payload.sourceMessageId",
+            newThreadId: "$.event.data.payload.newThreadId",
+            sourceUserMessagesAfterFork: "$.event.data.payload.sourceUserMessagesAfterFork",
           },
-        ], undefined, "Gate CDX Fork"),
+        }),
       ]],
       "Thread forked",
     ),
