@@ -64,19 +64,15 @@ export async function action(
   // from slipping through during the validation window below.
   setRunning(services, threadId, true);
 
-  // Bail #1: no live session to compact.
-  if (!state?.sessionId) {
+  const bail = (text: string, reason: string) => {
     setRunning(services, threadId, false);
     updateChatState(services, threadId as EntityId, 'idle');
-    services.chat.sendBlockMessage({
-      threadId: threadId as EntityId,
-      text: '⚠️ Nothing to summarize — no active Claude session yet.',
-      blocks: [],
-      forkable: false,
-    });
-    log.info('summarize skipped — no active Claude session', { threadId, messageId });
-    return { success: false, reason: 'no active session' };
-  }
+    services.chat.sendBlockMessage({ threadId: threadId as EntityId, text, blocks: [], forkable: false });
+    log.info(`summarize skipped — ${reason}`, { threadId, messageId });
+    return { success: false, reason } as const;
+  };
+
+  if (!state?.sessionId) return bail('⚠️ Nothing to summarize — no active Claude session yet.', 'no active session');
 
   // Find the truncation anchor — the last surviving assistant message's
   // `cliUuid`. The system already soft-deleted the pivot and everything
@@ -92,20 +88,7 @@ export async function action(
   );
   const cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
 
-  // Bail #2: no prior assistant turn to anchor at. `/compact` needs a
-  // non-empty transcript to summarize.
-  if (!cliUuid) {
-    setRunning(services, threadId, false);
-    updateChatState(services, threadId as EntityId, 'idle');
-    services.chat.sendBlockMessage({
-      threadId: threadId as EntityId,
-      text: '⚠️ Nothing to summarize — no prior assistant turn before this point.',
-      blocks: [],
-      forkable: false,
-    });
-    log.info('summarize skipped — no prior assistant cliUuid to anchor at', { threadId, messageId });
-    return { success: false, reason: 'no prior assistant turn' };
-  }
+  if (!cliUuid) return bail('⚠️ Nothing to summarize — no prior assistant turn before this point.', 'no prior assistant turn');
 
   // Arm the one-shot revert flag. The next chat action consumes this and
   // passes `--fork-session --resume-session-at <cliUuid>` to the CLI.

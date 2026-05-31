@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState, persistClaudeState, updateChatState, setRunning, dequeueMessage } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, updateChatState, dequeueMessage } from './_helpers/thread-context';
 import { replayQueuedMessage } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -54,10 +54,9 @@ async function handleCompact(
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
   if (ccState?.isRunning) return { text: 'A turn is already running — wait for it to finish before compacting.' };
 
-  setRunning(services, threadId, true);
+  persistClaudeState(services, threadId, { isRunning: true, commandActive: true });
   updateChatState(services, threadId as any, 'working');
   try {
-    persistClaudeState(services, threadId, { commandActive: true });
     const sessionCwd = ccState?.cwd;
     const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
     const handle = await services.cli.claudeCode.query({
@@ -84,12 +83,11 @@ async function handleCompact(
 
     return { text: summaryText, skipMessage: compactedMessageIds.length > 0 };
   } finally {
-    persistClaudeState(services, threadId, { commandActive: false });
-    // Dequeue before setRunning(false) to close the race window (same
+    // Dequeue before clearing isRunning to close the race window (same
     // pattern as stream-consumer.ts). Any message sent during compaction
     // was queued by chat.ts's isRunning guard — replay it now.
     const queued = dequeueMessage(services, threadId);
-    setRunning(services, threadId, false);
+    persistClaudeState(services, threadId, { isRunning: false, commandActive: false });
     if (!queued) updateChatState(services, threadId as any, 'idle');
     if (queued) await replayQueuedMessage(services, threadId as any, queued, services.logger);
   }
