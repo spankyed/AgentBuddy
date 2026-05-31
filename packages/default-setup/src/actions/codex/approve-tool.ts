@@ -68,6 +68,7 @@ export async function action(params: Record<string, any>, services: Services) {
   // Clear pending state and resume running
   persistCodexState(services, threadId, { pendingApproval: undefined });
   setRunning(services, threadId, true);
+  updateChatState(services, threadId as EntityId, 'working');
 
   return { success: true, decision };
 }
