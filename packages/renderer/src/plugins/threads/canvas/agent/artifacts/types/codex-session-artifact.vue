@@ -45,7 +45,12 @@
 
           <span class="text-neutral-500">Thread</span>
           <div class="flex items-center gap-2">
-            <span class="text-neutral-200 font-mono truncate flex-1">
+            <span
+              class="text-neutral-200 font-mono truncate flex-1"
+              :class="content.threadId ? 'cursor-pointer hover:text-neutral-100' : ''"
+              :title="copied ? 'Copied!' : content.threadId ? 'Click to copy' : ''"
+              @click="copyThreadId"
+            >
               {{ truncatedThreadId || '-' }}
             </span>
             <button
@@ -377,7 +382,7 @@ function openTerminalTab() {
   terminalActor.send({
     type: 'terminal.CREATE',
     target: 'tab',
-    command: 'codex',
+    command: `codex resume ${content.value.threadId}`,
     cwd: content.value.cwd || undefined,
   })
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
