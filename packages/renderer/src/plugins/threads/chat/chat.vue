@@ -34,6 +34,7 @@
                   :key="message.id"
                   :message="message"
                   :is-tail="isTailMessage(message)"
+                  :is-claude-code-thread="!!currentThread?.context?.claudeCode"
                   @open-lightbox="openLightbox"
                   @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
                   @unqueue="handleUnqueue"

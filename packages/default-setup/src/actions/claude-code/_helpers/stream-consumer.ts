@@ -97,6 +97,7 @@ export async function consumeStream(
   let writer = initialWriters.writer;
   let toolActivity = initialWriters.toolActivity;
   let thinking = initialWriters.thinking;
+  let currentMessageHasCliUuid = false;
 
   /** Idempotent — safe to call from every finalization path. */
   const finaliseThinking = () => { if (thinking.isStreaming) thinking.finalise(); };
@@ -121,7 +122,7 @@ export async function consumeStream(
   function splitMessage() {
     writer.finalize(writer.text);
     finaliseThinking();
-    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+    services.chat.updateMessageState(currentMessageId as any, { forkable: currentMessageHasCliUuid } as any);
     const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
     toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
 
@@ -133,6 +134,7 @@ export async function consumeStream(
       writer: createStreamWriter(services, msg.messageId as EntityId, { intervalMs: 80 }),
       toolActivity: createToolActivityWriter(services, msg.messageId as EntityId, { intervalMs: 250, phase, getThinkingBlock: () => newThinking.buildBlock() }),
       thinking: newThinking,
+      currentMessageHasCliUuid: false,
     };
   }
 
@@ -154,7 +156,7 @@ export async function consumeStream(
       const isMessageStart = line.type === 'assistant' || (line.type === 'stream_event' && (line as any).event?.type === 'message_start');
       if (splitOnNextMessageStart && isMessageStart) {
         splitOnNextMessageStart = false;
-        ({ currentMessageId, writer, toolActivity, thinking } = splitMessage());
+        ({ currentMessageId, writer, toolActivity, thinking, currentMessageHasCliUuid } = splitMessage());
       }
 
       // First `system/init` event carries sessionId/model/cwd.
@@ -220,6 +222,7 @@ export async function consumeStream(
           services.chat.updateMessageState(currentMessageId as any, {
             context: { cliUuid: line.uuid },
           } as any);
+          currentMessageHasCliUuid = true;
         }
         const blocks = line.message?.content || [];
         for (const block of blocks) {
@@ -577,7 +580,7 @@ export async function consumeStream(
 
       finaliseThinking();
       toolActivity.finalise('error');
-      services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+      services.chat.updateMessageState(currentMessageId as any, { forkable: currentMessageHasCliUuid } as any);
     } else {
       // Critical state: persist sessionId for resume.
       if (result.sessionId) {
@@ -599,11 +602,11 @@ export async function consumeStream(
       // placeholder with an empty string.
       if (writer.text || result.text) {
         writer.finalize(writer.text || result.text);
-        services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+        services.chat.updateMessageState(currentMessageId as any, { forkable: currentMessageHasCliUuid } as any);
       } else {
         services.chat.updateMessageState(currentMessageId as any, {
           responseTimestamp: Date.now(),
-          forkable: true,
+          forkable: currentMessageHasCliUuid,
         } as any);
       }
     }
@@ -673,7 +676,7 @@ export async function consumeStream(
       toolActivity.finalise('done');
       services.chat.updateMessageState(currentMessageId as any, {
         responseTimestamp: Date.now(),
-        forkable: true,
+        forkable: currentMessageHasCliUuid,
       } as any);
       return;
     }
@@ -688,13 +691,13 @@ export async function consumeStream(
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
         writer.finalize(writer.text);
-        services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+        services.chat.updateMessageState(currentMessageId as any, { forkable: currentMessageHasCliUuid } as any);
       } else {
         // Nothing streamed — don't let the writer overwrite the "Thinking…"
         // placeholder with its empty buffer. Mark the message complete in one shot.
         services.chat.updateMessageState(currentMessageId as any, {
           responseTimestamp: Date.now(),
-          forkable: true,
+          forkable: currentMessageHasCliUuid,
         } as any);
       }
 
@@ -727,7 +730,7 @@ export async function consumeStream(
 
     // Session-not-found mid-stream: clear stale session and mark broken.
     finalizeSessionError(services, threadId, writer, message, writer.text, { isRevert: !!ctx.revertCliUuid });
-    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+    services.chat.updateMessageState(currentMessageId as any, { forkable: currentMessageHasCliUuid } as any);
 
     // Kill the CLI subprocess on error (it may be in a bad state).
     try { handle.kill(); } catch { /* already gone */ }

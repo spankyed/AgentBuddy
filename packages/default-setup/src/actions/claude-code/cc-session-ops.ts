@@ -112,7 +112,7 @@ function importSessionMessages(
       messages.push({
         text,
         sender: 'assistant',
-        forkable: true,
+        forkable: !!entry.uuid,
         ...(entry.uuid && { context: { cliUuid: entry.uuid } }),
       });
     }
