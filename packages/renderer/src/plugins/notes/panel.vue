@@ -123,6 +123,9 @@
             placeholder="Search notes..."
             class="w-full pl-8 pr-7 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-500"
             @keydown.escape="toggleSearch"
+            @keydown.down.prevent="highlightedIndex = Math.min(highlightedIndex + 1, filteredNotes.length - 1)"
+            @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
+            @keydown.enter.prevent="filteredNotes.length > 0 && handleSelectNote(filteredNotes[highlightedIndex].id)"
           />
           <button
             v-if="searchQuery"
@@ -135,15 +138,17 @@
       </div>
 
       <!-- Search Results -->
-      <div v-if="searchActive && searchQuery.trim()" class="flex-1 overflow-y-auto overflow-x-hidden p-2">
+      <div v-if="searchActive && searchQuery.trim()" ref="searchResultsRef" class="flex-1 overflow-y-auto overflow-x-hidden p-2">
         <div v-if="filteredNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
           No notes found
         </div>
         <button
-          v-for="note in filteredNotes"
+          v-for="(note, index) in filteredNotes"
           :key="note.id"
-          class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm text-neutral-300 hover:bg-neutral-800 transition-colors text-left"
+          class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm text-neutral-300 transition-colors text-left"
+          :class="index === highlightedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-800'"
           @click="handleSelectNote(note.id)"
+          @mouseenter="highlightedIndex = index"
         >
           <span v-if="note.icon" class="shrink-0 text-xs">{{ note.icon }}</span>
           <ListChecks v-else-if="note.noteType === 'tasklist'" :size="14" class="text-neutral-500 shrink-0" />
@@ -273,6 +278,8 @@ const showFavorites = ref(true)
 const searchActive = useSelector(actor, (s) => s.context.panelSearchActive)
 const searchQuery = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
+const highlightedIndex = ref(0)
+const searchResultsRef = ref<HTMLElement | null>(null)
 useTrackedMenuOpen(dropdownOpen)
 
 const createMenuItems = computed<MenuItem[]>(() => [
@@ -311,6 +318,19 @@ watch(searchActive, (active) => {
   } else {
     searchQuery.value = ''
   }
+})
+
+watch(searchQuery, () => {
+  highlightedIndex.value = 0
+})
+
+watch(highlightedIndex, () => {
+  nextTick(() => {
+    const container = searchResultsRef.value
+    if (!container) return
+    const items = container.querySelectorAll('button')
+    items[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' })
+  })
 })
 
 function handleToggleFavorite(noteId: string) {
