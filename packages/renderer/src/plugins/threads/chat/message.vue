@@ -89,8 +89,9 @@
           <template v-else>
             <button
               v-if="message.forkable !== false"
-              @click="$emit('fork', message.id)"
-              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              :disabled="forking"
+              @click="forking = true; $emit('fork', message.id)"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300 disabled:opacity-30 disabled:pointer-events-none"
               title="Fork conversation"
             >
               <GitFork :size="16" />
@@ -246,6 +247,7 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
 const emit = defineEmits<ChatMessageEmits>()
 
 const expanded = ref(false)
+const forking = ref(false)
 const revertMenu = useContextMenu()
 
 const isUser = computed(() => props.message.sender === 'user')

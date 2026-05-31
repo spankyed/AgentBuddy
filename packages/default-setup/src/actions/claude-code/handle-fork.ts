@@ -39,7 +39,6 @@ export async function action(
   const log = services.logger;
   const sourceState = getClaudeState(services, sourceThreadId);
   if (!sourceState?.sessionId) {
-    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
     return { success: true, copied: false };
   }
 
@@ -110,6 +109,5 @@ export async function action(
     cliUuid: cliUuid ?? 'none (will fork from end)',
   });
 
-  services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
   return { success: true, copied: true, sessionId: sourceState.sessionId, cliUuid };
 }
