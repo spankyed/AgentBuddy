@@ -62,7 +62,7 @@
   fill: none;
   stroke: rgb(115 115 115 / 86%);
   stroke-width: 1.5;
-  stroke-dasharray: 6 6;
+  stroke-dasharray: 5 5;
   stroke-linecap: butt;
   stroke-linejoin: miter;
   marker-end: url(#flow-arrow);
@@ -83,7 +83,7 @@
 }
 
 .FlowCanvas_animatedEdge {
-  animation: none;
+  animation: FlowCanvas_dashFlow 0.9s linear infinite;
 }
 
 @keyframes FlowCanvas_dashFlow {

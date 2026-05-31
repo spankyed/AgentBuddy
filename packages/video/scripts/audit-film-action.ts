@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {boardViewForFrame} from '../src/film/state/board';
-import {chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
+import {chatShotViewForFrame, chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
 import {finalViewForFrame} from '../src/film/state/final';
 import {notesEditorViewForFrame} from '../src/film/state/notes';
@@ -16,6 +16,17 @@ type ProductArea = 'board' | 'chat' | 'code' | 'notes' | 'workflow';
 
 function changed<T>(before: T, after: T) {
   return JSON.stringify(before) !== JSON.stringify(after);
+}
+
+function chatTasklistReferenceSelectionPass() {
+  const selectingView = chatShotViewForFrame(120).composer.referenceAutocomplete;
+  const insertedNode = chatShotViewForFrame(160).composer.content?.[1];
+  return selectingView?.level === 'items'
+    && selectingView.selectedIndex === 1
+    && selectingView.suggestions[1]?.label === 'Tasklist'
+    && insertedNode?.type === 'reference'
+    && insertedNode.label === 'Tasklist'
+    && chatViewForFrame(160).prompt === chatViewForFrame(168).prompt;
 }
 
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
@@ -46,35 +57,40 @@ const checks: Check[] = [
   },
   {
     area: 'chat',
+    message: 'chat reference autocomplete pauses on Tasklist before continuing',
+    pass: chatTasklistReferenceSelectionPass(),
+  },
+  {
+    area: 'chat',
     message: 'chat shot reveals assistant response',
-    pass: chatViewForFrame(150).response !== chatViewForFrame(260).response,
+    pass: chatViewForFrame(306).response !== chatViewForFrame(346).response,
   },
   {
     area: 'chat',
     message: 'chat tool activity reveals rows sequentially',
-    pass: toolActivityViewForFrame(70).rowOpacities[0] !== toolActivityViewForFrame(150).rowOpacities[0]
-      && toolActivityViewForFrame(70).rowOpacities[3] !== toolActivityViewForFrame(180).rowOpacities[3],
+    pass: toolActivityViewForFrame(234).rowOpacities[0] !== toolActivityViewForFrame(250).rowOpacities[0]
+      && toolActivityViewForFrame(276).rowOpacities[3] !== toolActivityViewForFrame(292).rowOpacities[3],
   },
   {
     area: 'chat',
     message: 'chat tool activity transitions from streaming to done',
-    pass: toolActivityViewForFrame(220).state.state === 'streaming'
-      && toolActivityViewForFrame(240).state.state === 'done',
+    pass: toolActivityViewForFrame(290).state.state === 'streaming'
+      && toolActivityViewForFrame(291).state.state === 'done',
   },
   {
     area: 'board',
     message: 'board shot moves card horizontally',
-    pass: boardViewForFrame(0).movingCardStyle.left !== boardViewForFrame(170).movingCardStyle.left,
+    pass: boardViewForFrame(282).movingCardStyle.left !== boardViewForFrame(304).movingCardStyle.left,
   },
   {
     area: 'board',
     message: 'board shot moves card vertically',
-    pass: boardViewForFrame(0).movingCardStyle.top !== boardViewForFrame(170).movingCardStyle.top,
+    pass: boardViewForFrame(282).movingCardStyle.top !== boardViewForFrame(304).movingCardStyle.top,
   },
   {
     area: 'board',
     message: 'board shot rotates moving card',
-    pass: boardViewForFrame(0).movingCardStyle.transform !== boardViewForFrame(170).movingCardStyle.transform,
+    pass: boardViewForFrame(282).movingCardStyle.transform !== boardViewForFrame(304).movingCardStyle.transform,
   },
   {
     area: 'code',
@@ -84,28 +100,28 @@ const checks: Check[] = [
   {
     area: 'code',
     message: 'code shot generates commit message',
-    pass: codeReviewViewForFrame(96).commitMessage === ''
-      && codeReviewViewForFrame(134).commitMessage === codeShotState.generatedCommitMessage,
+    pass: codeReviewViewForFrame(142).commitMessage === ''
+      && codeReviewViewForFrame(185).commitMessage === codeShotState.generatedCommitMessage,
   },
   {
     area: 'code',
     message: 'code shot switches from commit panel to PR panel',
     pass: codeReviewViewForFrame(96).activePanel === 'commit'
-      && codeReviewViewForFrame(260).activePanel === 'pr',
+      && codeReviewViewForFrame(317).activePanel === 'pr',
   },
   {
     area: 'code',
     message: 'code shot publishes branch before PR creation',
-    pass: codeReviewViewForFrame(220).prPublishProgress === 0
-      && codeReviewViewForFrame(286).prPublishProgress === 1,
+    pass: codeReviewViewForFrame(318).prPublishProgress === 0
+      && codeReviewViewForFrame(350).prPublishProgress === 1,
   },
   {
     area: 'code',
     message: 'code shot progresses through PR files, create, and details modes',
-    pass: codeReviewViewForFrame(260).prMode === 'files'
-      && codeReviewViewForFrame(300).prMode === 'create'
-      && codeReviewViewForFrame(330).prMode === 'details'
-      && Boolean(codeReviewViewForFrame(330).pullRequest.createdPr),
+    pass: codeReviewViewForFrame(350).prMode === 'files'
+      && codeReviewViewForFrame(380).prMode === 'create'
+      && codeReviewViewForFrame(381).prMode === 'details'
+      && Boolean(codeReviewViewForFrame(381).pullRequest.createdPr),
   },
   {
     area: 'workflow',

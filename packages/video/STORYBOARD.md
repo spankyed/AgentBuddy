@@ -69,8 +69,8 @@ Sam is in the "Checkout flow implementation" thread. They paste a screenshot and
 
 **Breadcrumbs**: "Threads > Checkout flow implementation" initially, switches to "Threads > Stripe payment integration" after loading a recent thread.
 
-**User prompt** (typed with caret): `"Use #notes:current and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes."`
-- `#notes:current` triggers the reference autocomplete (category list → notes items → selects "current")
+**User prompt** (typed with caret): `"Use #notes:tasklist and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes."`
+- `#notes:tasklist` triggers the reference autocomplete (category list → notes items → pauses on "current" → arrows down to "Tasklist" → selects "Tasklist")
 - Image attachment: SVG placeholder showing a Supafan checkout page mockup
 
 **Assistant thinking**: `"Examining the tasklist and screenshot to identify the checkout components and determine the right Stripe integration pattern before creating tickets."`

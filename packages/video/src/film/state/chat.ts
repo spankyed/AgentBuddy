@@ -148,7 +148,7 @@ export const chatShotState = {
   breadcrumbs: ['Threads', launchFilmStory.threads.checkoutImplementation.title],
   createdAt: '9:41 AM',
   systemMessage: undefined,
-  prompt: {text: 'Use #notes:current and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.', from: 24, to: 186, caretUntil: 270},
+  prompt: {text: 'Use #notes:tasklist and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.', from: 24, to: 214, caretUntil: 270},
   response: {text: 'I’ll scope the checkout feature from the tasklist: create the Stripe integration, wire receipt emails, add the discount engine, and prepare the creator payout stub.', from: 306, to: 346},
 };
 
@@ -475,6 +475,11 @@ const quickPromptSendStart = 586;
 const quickPromptSendEnd = 598;
 const quickPromptResponseStart = 660;
 const quickPromptResponseEnd = 660;
+const noteReferenceSelectStart = 112;
+const noteReferenceSelectEnd = 144;
+const noteReferenceInsertFrame = 152;
+const promptAfterReferenceStart = 168;
+const promptAfterReferenceEnd = 244;
 
 export function toolActivityViewForFrame(frame: number) {
   return {
@@ -490,6 +495,17 @@ export function completedDevThreadActivityViewForFrame(frame: number) {
   };
 }
 
+function typedPromptForFrame(frame: number) {
+  const prefix = 'Use #notes:';
+  const insertedReferenceText = 'Use #notes:tasklist ';
+  const remainingText = chatShotState.prompt.text.slice(insertedReferenceText.length);
+  if (frame < noteReferenceSelectEnd) {
+    return textRevealLinear(prefix, frame, chatShotState.prompt.from, noteReferenceSelectStart);
+  }
+  if (frame < promptAfterReferenceStart) return insertedReferenceText;
+  return insertedReferenceText + textRevealLinear(remainingText, frame, promptAfterReferenceStart, promptAfterReferenceEnd);
+}
+
 export function chatViewForFrame(frame: number) {
   const quickPromptSent = frame > quickPromptSendEnd;
   const sentUserMessageStyle = frame >= 270
@@ -503,7 +519,7 @@ export function chatViewForFrame(frame: number) {
     };
   };
   return {
-    prompt: textRevealLinear(chatShotState.prompt.text, frame, chatShotState.prompt.from, chatShotState.prompt.to),
+    prompt: typedPromptForFrame(frame),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
     conversationOpacity: ease(frame, 254, 284),
@@ -530,14 +546,15 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const quickPromptSent = frame > quickPromptSendEnd;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const referenceStartIndex = 'Use '.length;
-  const referenceCompleteText = 'Use #notes:current ';
+  const referenceCompleteText = 'Use #notes:tasklist ';
+  const referenceTokenText = 'Use #notes:tasklist';
   const selectedNoteReference = view.prompt.startsWith(referenceCompleteText);
   const typedReferenceText = referenceTextFromPrompt(view.prompt);
   const noteReferencePromptContent: ChatComposerInlineNode[] | undefined = selectedNoteReference
     ? [
         {type: 'text', text: 'Use '},
-        {type: 'reference', refId: 'notes-current', label: 'current', refType: 'note', shortCode: 'notes-current'},
-        {type: 'text', text: view.prompt.slice('#notes:current'.length + 'Use '.length)},
+        {type: 'reference', refId: 'notes-tasklist', label: 'Tasklist', refType: 'tasklist', shortCode: 'notes-tasklist'},
+        {type: 'text', text: view.prompt.slice(referenceTokenText.length)},
       ]
     : undefined;
   const referenceAutocomplete = typedReferenceText && !selectedNoteReference
@@ -547,6 +564,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           categoryQuery: 'notes:',
           level: 'items' as const,
           query: typedReferenceText.slice('notes:'.length),
+          selectedIndex: frame >= noteReferenceSelectStart ? 1 : 0,
           selectedCategory: 'notes' as const,
           suggestions: [
             {id: 'notes-current', label: 'current', shortCode: 'notes-current', type: 'note' as const},
