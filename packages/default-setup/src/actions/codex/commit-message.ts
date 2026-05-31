@@ -80,7 +80,7 @@ export async function action(
     const prompt = `Output ONLY the commit message. No preamble, no markdown, no backticks, no quotes.\n\n${fullPrompt}`;
 
     const result = await services.cli.codex.exec(
-      ['exec', prompt, '--sandbox', 'read-only', '--ask-for-approval', 'never'],
+      ['exec', prompt, '--sandbox', 'read-only', '--ask-for-approval', 'never', '--skip-git-repo-check', '--ephemeral'],
       { timeoutMs: 60_000, cwd: '/tmp' },
     );
 

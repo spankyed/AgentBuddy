@@ -45,33 +45,6 @@ function postprocess(raw: string): string {
   return msg;
 }
 
-const ANSI_ESCAPE_PATTERN = /\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
-
-/**
- * Prefer Claude's actionable usage-limit text over the wrapper's generic
- * non-zero exit summary.
- */
-export function formatCommitMessageError(error: any): string {
-  const raw = typeof error?.stderr === 'string' && error.stderr.trim()
-    ? error.stderr
-    : String(error?.message || 'Unknown error');
-
-  const clean = raw.replace(ANSI_ESCAPE_PATTERN, '').trim();
-  const usageLine = clean
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .find(line => /out of (?:extra )?usage/i.test(line) && /resets?/i.test(line));
-
-  if (usageLine) {
-    return usageLine
-      .replace(/^.*?(?=(?:you['’]re|you are)\s+out of (?:extra )?usage\b)/i, '')
-      .replace(/^(?:error|fatal):\s*/i, '')
-      .trim();
-  }
-
-  return clean || 'Unknown error';
-}
-
 export async function action(
   params: Record<string, any>,
   services: Services,
