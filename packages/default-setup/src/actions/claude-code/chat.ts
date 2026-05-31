@@ -334,7 +334,7 @@ export async function action(
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
     // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
-    sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || undefined);
+    sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || prior?.cwd || undefined);
 
     // Fallback: if resuming but prior.cwd is missing, try project settings —
     // but only if the session file actually exists under that directory.
