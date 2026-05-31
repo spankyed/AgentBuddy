@@ -8,6 +8,14 @@
       <template #actions>
         <button
           v-if="baseDirectory"
+          @click="explorerActor?.send({ type: 'explorer.REFRESH_TREE' })"
+          class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
+          title="Refresh"
+        >
+          <RefreshCw :size="16" />
+        </button>
+        <button
+          v-if="baseDirectory"
           @click="handleCreateNewFolder()"
           class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
           title="Create new folder"
@@ -88,7 +96,7 @@ import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
-import { FolderOpen, FolderPlus, AlertCircle, X } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-next'
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
