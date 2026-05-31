@@ -4,7 +4,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: rgb(23 23 23);
+  background: rgb(23 23 23 / var(--flow-canvas-bg-opacity, 1));
   color: white;
 }
 
@@ -12,8 +12,8 @@
   position: relative;
   flex: 1;
   min-width: 0;
-  background-color: rgb(23 23 23);
-  background-image: radial-gradient(rgb(255 255 255 / 8%) 1px, transparent 1px);
+  background-color: rgb(23 23 23 / var(--flow-canvas-bg-opacity, 1));
+  background-image: radial-gradient(rgb(255 255 255 / calc(var(--flow-canvas-bg-opacity, 1) * 8%)) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 

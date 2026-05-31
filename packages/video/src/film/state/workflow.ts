@@ -67,37 +67,33 @@ export const flowsListMenuState: FlowsListState = {
 
 export function workflowStateForFrame(frame: number): FlowCanvasState {
   const flow = releaseAutomationWorkflow.flow;
-  const paletteReveal = ease(frame, 268, 326);
+  const paletteReveal = ease(frame, 156, 238);
   const canvasControlsReveal = ease(frame, 252, 310);
-  const listenerPosition = ease(frame, 198, 250);
-  const switchReveal = ease(frame, 198, 250);
+  const switchReveal = ease(frame, 102, 148);
   const deleteActionReveal = ease(frame, 306, 336);
   const logActionReveal = ease(frame, 326, 354);
   const listener = {
     ...flow.nodes[0],
-    style: {
-      transform: `translate(${mix(210, 0, listenerPosition)}px, ${mix(18, 0, listenerPosition)}px) scale(${mix(1.08, 1, listenerPosition)})`,
-    },
   };
   const switchNode = {
     ...flow.nodes[1],
     style: {
       opacity: switchReveal,
-      transform: `translateX(${mix(-64, 0, switchReveal)}px) scale(${mix(0.97, 1, switchReveal)})`,
+      transform: `translate(-50%, -50%) translateX(${mix(-64, 0, switchReveal)}px) scale(${mix(0.97, 1, switchReveal)})`,
     },
   };
   const deleteActionNode = {
     ...flow.nodes[2],
     style: {
       opacity: deleteActionReveal,
-      transform: `translateX(${mix(-42, 0, deleteActionReveal)}px) scale(${mix(0.985, 1, deleteActionReveal)})`,
+      transform: `translate(-50%, -50%) translateX(${mix(-42, 0, deleteActionReveal)}px) scale(${mix(0.985, 1, deleteActionReveal)})`,
     },
   };
   const logActionNode = {
     ...flow.nodes[3],
     style: {
       opacity: logActionReveal,
-      transform: `translateX(${mix(-42, 0, logActionReveal)}px) scale(${mix(0.985, 1, logActionReveal)})`,
+      transform: `translate(-50%, -50%) translateX(${mix(-42, 0, logActionReveal)}px) scale(${mix(0.985, 1, logActionReveal)})`,
     },
   };
   const nodes = [
@@ -107,7 +103,7 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
     ...(frame >= 322 ? [logActionNode] : []),
   ];
   const edges = [
-    ...(frame >= 226 ? [flow.edges[0]] : []),
+    ...(frame >= 150 ? [flow.edges[0]] : []),
     ...(frame >= 316 ? [flow.edges[1]] : []),
     ...(frame >= 338 ? [flow.edges[2]] : []),
   ];
@@ -124,13 +120,11 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
       },
       paletteStyle: {
         opacity: paletteReveal,
-        transform: `translateX(${mix(-32, 0, paletteReveal)}px)`,
-        width: `${mix(0, 240, paletteReveal)}px`,
+        transform: `translateX(${mix(-240, 0, paletteReveal)}px)`,
       },
     },
     edges: edges.map(edge => ({...edge, animated: false})),
     nodes,
-    viewport: frame > 252 ? {x: -180, y: 0, zoom: 1} : undefined,
   };
 }
 

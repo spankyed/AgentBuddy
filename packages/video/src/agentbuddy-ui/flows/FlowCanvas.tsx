@@ -4,12 +4,21 @@ import {FlowEdge} from './FlowEdge';
 import {FlowNode} from './FlowNode';
 import {FlowPalette} from './FlowPalette';
 import type {FlowCanvasState} from './flowTypes';
+import type {CSSProperties} from 'react';
 import './FlowCanvas.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('FlowCanvas');
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/flow-canvas.vue and components/FlowEditor.vue.
-export function FlowCanvas({hiddenNodeIds, state}: {hiddenNodeIds?: ReadonlySet<string>; state: FlowCanvasState}) {
+export function FlowCanvas({
+  backgroundOpacity = 1,
+  hiddenNodeIds,
+  state,
+}: {
+  backgroundOpacity?: number;
+  hiddenNodeIds?: ReadonlySet<string>;
+  state: FlowCanvasState;
+}) {
   const viewport = state.viewport ?? {x: 0, y: 0, zoom: 1};
   const canvas = state.canvas ?? {width: 1120, height: 720};
   const connectedExitsByNode = new Map<string, Set<number>>();
@@ -21,7 +30,7 @@ export function FlowCanvas({hiddenNodeIds, state}: {hiddenNodeIds?: ReadonlySet<
   }
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} style={{'--flow-canvas-bg-opacity': backgroundOpacity} as CSSProperties}>
       <FlowPalette items={state.paletteItems} style={state.chrome?.paletteStyle} />
       <section className={styles.editor} data-onboarding-id="flow-editor-canvas">
         <button className={styles.backButton} style={state.chrome?.backButtonStyle} type="button"><Icons.ArrowLeft size={15} />Back</button>

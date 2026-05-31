@@ -4,7 +4,7 @@ import {cursorTimeline, percentTarget} from '../src/film/interaction/cursorTarge
 import {boardShotState, boardViewForFrame} from '../src/film/state/board';
 import {chatShotViewForFrame, chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
-import {finalViewForFrame} from '../src/film/state/final';
+import {finalShotState, finalViewForFrame} from '../src/film/state/final';
 import {launchFilmStory} from '../src/film/state/launchStory';
 import {montageShotViewForFrame} from '../src/film/state/montage';
 import {notesHomeNewNoteButtonTarget} from '../src/film/shots/notesGeometry';
@@ -142,6 +142,7 @@ function workflowMontageContinuityPass() {
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
 const flowEdgeSource = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowEdge.tsx', import.meta.url), 'utf8');
 const workflowSource = readFileSync(new URL('../src/film/state/workflow.ts', import.meta.url), 'utf8');
+const workflowShotSource = readFileSync(new URL('../src/film/shots/WorkflowShot.tsx', import.meta.url), 'utf8');
 
 const checks: Check[] = [
   {
@@ -286,6 +287,23 @@ const checks: Check[] = [
       && !workflowSource.includes('edgeDashOffset'),
   },
   {
+    area: 'workflow',
+    message: 'workflow intro uses real FlowCanvas geometry without duplicate straight-edge overlay',
+    pass: workflowShotSource.includes('<FlowCanvas backgroundOpacity={backdropReveal} state={view.flow} />')
+      && !workflowShotSource.includes('isolatedEdge')
+      && !workflowShotSource.includes('appRevealClip')
+      && !workflowShotSource.includes('clipPath'),
+  },
+  {
+    area: 'workflow',
+    message: 'workflow palette overlays without moving canvas viewport',
+    pass: workflowStateForFrame(150).viewport == null
+      && workflowStateForFrame(260).viewport == null
+      && workflowStateForFrame(156).chrome?.paletteStyle?.opacity === 0
+      && Number(workflowStateForFrame(200).chrome?.paletteStyle?.opacity) > 0
+      && !String(workflowStateForFrame(200).chrome?.paletteStyle?.width ?? '').includes('px'),
+  },
+  {
     area: 'chat',
     message: 'cursor fades in and out around path boundaries',
     pass: cursorOpacityForFrame(18, 18, 38) === 0
@@ -299,13 +317,19 @@ const checks: Check[] = [
   },
   {
     area: 'final',
-    message: 'final shot animates link',
-    pass: finalViewForFrame(0).linkStyle.opacity !== finalViewForFrame(80).linkStyle.opacity,
+    message: 'final lockup uses canonical revolution copy',
+    pass: finalShotState.title === 'AgentBuddy is a revolution'
+      && finalShotState.subtitle === 'to put the full power of AI into the hands of the people',
   },
   {
     area: 'final',
-    message: 'final shot animates date',
-    pass: finalViewForFrame(0).dateStyle.opacity !== finalViewForFrame(100).dateStyle.opacity,
+    message: 'final shot animates title',
+    pass: finalViewForFrame(0).titleStyle.opacity !== finalViewForFrame(80).titleStyle.opacity,
+  },
+  {
+    area: 'final',
+    message: 'final shot animates subtitle',
+    pass: finalViewForFrame(0).subtitleStyle.opacity !== finalViewForFrame(100).subtitleStyle.opacity,
   },
 ];
 
