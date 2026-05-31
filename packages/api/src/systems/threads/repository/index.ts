@@ -656,8 +656,9 @@ export const chatCommands = {
     threadId: EARS.EntityId;
     threadData: ReturnType<typeof threadCommands.create>;
   } => {
+    const topic = text.substring(0, THREAD_TOPIC_MAX_LENGTH).trim() || 'New Thread';
     const threadData = threadCommands.create({
-      topic: text.substring(0, THREAD_TOPIC_MAX_LENGTH),
+      topic,
       instructions: '',
     });
 

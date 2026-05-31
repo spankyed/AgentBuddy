@@ -446,95 +446,104 @@ export const threadsSystem = setup({
       }
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = threadsDef.typeOf('USER_MSG', event);
+      try {
+        const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = threadsDef.typeOf('USER_MSG', event);
 
-      const sanitizedRefs = references ? {
-        ...references,
-        ...(references.files && {
-          files: references.files.map(({ previewUrl, ...rest }: any) => rest),
-        }),
-      } : undefined;
+        const sanitizedRefs = references ? {
+          ...references,
+          ...(references.files && {
+            files: references.files.map(({ previewUrl, ...rest }: any) => rest),
+          }),
+        } : undefined;
 
-      let threadId: EARS.EntityId;
-      let threadData: any = null;
+        let threadId: EARS.EntityId;
+        let threadData: any = null;
 
-      if (!providedThreadId) {
-        const result = repository.chatCommands.createThreadFromMessage(text);
-        threadId = result.threadId;
-        threadData = result.threadData;
+        if (!providedThreadId) {
+          const result = repository.chatCommands.createThreadFromMessage(text);
+          threadId = result.threadId;
+          threadData = result.threadData;
 
-        logger.info('Created new thread for user message', {
+          logger.info('Created new thread for user message', {
+            threadId,
+            shortCode: result.threadData.shortCode,
+          });
+
+          repository.threadCommands.markAsVisited(threadId);
+        } else {
+          threadId = providedThreadId as EARS.EntityId;
+        }
+
+        const messageResult = repository.chatCommands.addMessage({
           threadId,
-          shortCode: result.threadData.shortCode,
+          text,
+          sender: 'user',
+          references: sanitizedRefs,
+          ...(mode ? { context: { agent: mode } } : {}),
         });
 
-        repository.threadCommands.markAsVisited(threadId);
-      } else {
-        threadId = providedThreadId as EARS.EntityId;
-      }
+        if (threadData) {
+          const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-      const messageResult = repository.chatCommands.addMessage({
-        threadId,
-        text,
-        sender: 'user',
-        references: sanitizedRefs,
-        ...(mode ? { context: { agent: mode } } : {}),
-      });
+          system.get(bus).send(emit(threads, {
+            type: 'THREAD_CREATED',
+            id: threadData.id,
+            shortCode: threadData.shortCode,
+            entityType: EARS.Entity.Thread,
+            timestamp: threadData.timestamp,
+            topic: fullThreadData?.topic,
+            instructions: fullThreadData?.instructions,
+            status: fullThreadData?.status
+          } as any));
 
-      if (threadData) {
-        const fullThreadData = repository.threadQueries.byId(threadData.id);
+          system.get(bus).send(emit(threads, {
+            type: 'LOAD_CHAT_THREAD',
+            data: repository.chatQueries.threadData(threadId)!
+          }));
+        } else {
+          const userMessage: MessageEntity = {
+            id: messageResult.id,
+            entityType: EARS.Entity.Message,
+            text: messageResult.text,
+            sender: messageResult.sender as 'user' | 'assistant' | 'system',
+            timestamp: messageResult.timestamp,
+            createdAt: messageResult.timestamp,
+            updatedAt: messageResult.timestamp,
+            ...(sanitizedRefs && { references: sanitizedRefs }),
+          };
 
+          system.get(bus).send(emit(threads, {
+            type: 'MESSAGE_ADDED',
+            threadId: threadId as string,
+            message: userMessage
+          }));
+        }
+
+        services.chat.sendRecentThreadsRefresh();
+
+        const brainActor = getActor(system, brain);
+        brainActor.send({
+          type: 'TRIGGER_BRAIN_EVENT',
+          eventType: 'user.message',
+          payload: {
+            text,
+            mode,
+            phase,
+            threadId,
+            messageId: messageResult.id,
+            ...(sanitizedRefs && { references: sanitizedRefs }),
+            ...(cwdOverride && { cwdOverride }),
+            ...(forceDirectoryPicker && { forceDirectoryPicker }),
+          },
+        });
+      } catch (err) {
+        logger.error('forwardUserMessage failed', { error: err });
         system.get(bus).send(emit(threads, {
-          type: 'THREAD_CREATED',
-          id: threadData.id,
-          shortCode: threadData.shortCode,
-          entityType: EARS.Entity.Thread,
-          timestamp: threadData.timestamp,
-          topic: fullThreadData?.topic,
-          instructions: fullThreadData?.instructions,
-          status: fullThreadData?.status
-        } as any));
-
-        system.get(bus).send(emit(threads, {
-          type: 'LOAD_CHAT_THREAD',
-          data: repository.chatQueries.threadData(threadId)!
+          type: 'THREAD_CHAT_ERROR',
+          threadId: (event as any).threadId ?? '',
+          error: err instanceof Error ? err.message : String(err),
         }));
-      } else {
-        const userMessage: MessageEntity = {
-          id: messageResult.id,
-          entityType: EARS.Entity.Message,
-          text: messageResult.text,
-          sender: messageResult.sender as 'user' | 'assistant' | 'system',
-          timestamp: messageResult.timestamp,
-          createdAt: messageResult.timestamp,
-          updatedAt: messageResult.timestamp,
-          ...(sanitizedRefs && { references: sanitizedRefs }),
-        };
-
-        system.get(bus).send(emit(threads, {
-          type: 'MESSAGE_ADDED',
-          threadId: threadId as string,
-          message: userMessage
-        }));
       }
-
-      services.chat.sendRecentThreadsRefresh();
-
-      const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'user.message',
-        payload: {
-          text,
-          mode,
-          phase,
-          threadId,
-          messageId: messageResult.id,
-          ...(sanitizedRefs && { references: sanitizedRefs }),
-          ...(cwdOverride && { cwdOverride }),
-          ...(forceDirectoryPicker && { forceDirectoryPicker }),
-        },
-      });
     },
     forwardUserCommand: ({ system, event }) => {
       const { command, text, mode, phase, threadId: providedThreadId, references, cwdOverride } = threadsDef.typeOf('USER_COMMAND', event);
