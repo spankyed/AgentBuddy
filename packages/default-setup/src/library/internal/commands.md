@@ -19,6 +19,7 @@
 **cc-doctor**: Diagnose installation
 **cc-mcp**: Manage MCP servers
 **cc-agents**: List configured agents
+**cc-bypass**: Toggle bypass permissions mode
 **cdx-sessions**: Limit (optional, lists recent sessions)
 **cdx-resume**: Thread ID or title (optional, lists sessions if omitted)
 **cdx-status**: Show app-server, auth, and active thread info
@@ -31,4 +32,5 @@
 **cdx-rename**: New name (optional, uses current title if omitted)
 **cdx-skills**: List installed Codex skills
 **cdx-mcp**: List Codex MCP servers
+**cdx-bypass**: Toggle auto-review approval mode
 **instructions**: Thread instructions text
