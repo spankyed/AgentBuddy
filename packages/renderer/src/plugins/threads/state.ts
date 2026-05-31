@@ -11,7 +11,7 @@ import type {
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
-import { Archive, Pin, Trash2 } from 'lucide-vue-next';
+import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -2002,6 +2002,12 @@ const threadsState = setup({
               iconColor: 'text-red-400',
               confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.`,
             }] : []),
+            {
+              label: 'Copy Id',
+              icon: Copy,
+              event: { type: 'APP_COPY_TO_CLIPBOARD' as const, text: ctx.view.id },
+              separator: true,
+            },
           ]
         }),
       },

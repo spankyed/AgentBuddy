@@ -172,6 +172,11 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
     return
   }
 
+  if (event.type === 'APP_COPY_TO_CLIPBOARD') {
+    navigator.clipboard.writeText(event.text)
+    return
+  }
+
   if (event.type === 'APP_TOGGLE_INSPECT') {
     brainActor.send({ type: 'TOGGLE_INSPECT' })
     return
