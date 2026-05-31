@@ -3,7 +3,7 @@
  * Single source of truth for all Monaco-related configuration
  */
 
-import type { editor, languages, IDisposable } from 'monaco-editor'
+import type { editor, IDisposable } from 'monaco-editor'
 
 type Monaco = typeof import('monaco-editor')
 type Language = 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext'
@@ -295,8 +295,8 @@ function setupDslModules(monaco: Monaco, dslType: DslType, language: Language = 
   }
   
   const langDefaults = language === 'typescript' 
-    ? monaco.languages.typescript.typescriptDefaults
-    : monaco.languages.typescript.javascriptDefaults
+    ? monaco.typescript.typescriptDefaults
+    : monaco.typescript.javascriptDefaults
   
   // Add the module as a virtual file
   const moduleUri = `inmemory:///node_modules/@app/defs/${dslType}/index.d.ts`
@@ -316,8 +316,8 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
   }
   
   const langDefaults = language === 'typescript' 
-    ? monaco.languages.typescript.typescriptDefaults
-    : monaco.languages.typescript.javascriptDefaults
+    ? monaco.typescript.typescriptDefaults
+    : monaco.typescript.javascriptDefaults
   
   // Create wrapper that imports from the module and makes things available globally
   const wrapperContent = `
@@ -389,8 +389,8 @@ export function updateDslParamsType(
   }
   const declaration = generateParamsTypeDeclaration(params)
   const langDefaults = language === 'typescript'
-    ? monaco.languages.typescript.typescriptDefaults
-    : monaco.languages.typescript.javascriptDefaults
+    ? monaco.typescript.typescriptDefaults
+    : monaco.typescript.javascriptDefaults
   paramsTypeDisposable = langDefaults.addExtraLib(declaration, 'inmemory:///dsl-params-override.d.ts')
 }
 
@@ -401,8 +401,8 @@ export function clearDslParamsType(monaco: Monaco, language: Language = 'typescr
   }
   const fallback = 'declare const params: Record<string, any>;'
   const langDefaults = language === 'typescript'
-    ? monaco.languages.typescript.typescriptDefaults
-    : monaco.languages.typescript.javascriptDefaults
+    ? monaco.typescript.typescriptDefaults
+    : monaco.typescript.javascriptDefaults
   paramsTypeDisposable = langDefaults.addExtraLib(fallback, 'inmemory:///dsl-params-override.d.ts')
 }
 
@@ -427,39 +427,39 @@ function setupTypeScriptDefaults(
     functionBodyMode = false
   } = options
   
-  const diagnosticsOptions: languages.typescript.DiagnosticsOptions = {
+  const diagnosticsOptions = {
     noSemanticValidation: !enableTypeChecking,
     noSyntaxValidation: false,
     noSuggestionDiagnostics: !enableSuggestions
   }
   
-  const compilerOptions: languages.typescript.CompilerOptions = {
-    target: monaco.languages.typescript.ScriptTarget.Latest,
+  const compilerOptions = {
+    target: monaco.typescript.ScriptTarget.Latest,
     allowNonTsExtensions: true,
-    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+    moduleResolution: monaco.typescript.ModuleResolutionKind.NodeJs,
     module: functionBodyMode 
-      ? monaco.languages.typescript.ModuleKind.ESNext
-      : monaco.languages.typescript.ModuleKind.CommonJS,
+      ? monaco.typescript.ModuleKind.ESNext
+      : monaco.typescript.ModuleKind.CommonJS,
     noEmit: true,
     esModuleInterop: true,
-    jsx: monaco.languages.typescript.JsxEmit.React,
+    jsx: monaco.typescript.JsxEmit.React,
     allowJs: true,
     checkJs: !functionBodyMode && enableTypeChecking,
     strict: enableTypeChecking,
     skipLibCheck: true
   }
   
-  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
-  monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions)
-  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions)
+  monaco.typescript.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+  monaco.typescript.typescriptDefaults.setCompilerOptions(compilerOptions)
+  monaco.typescript.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+  monaco.typescript.javascriptDefaults.setCompilerOptions(compilerOptions)
 }
 
 /**
  * Setup JSON language defaults
  */
 function setupJsonDefaults(monaco: Monaco): void {
-  monaco.languages.json?.jsonDefaults.setDiagnosticsOptions({
+  monaco.json?.jsonDefaults.setDiagnosticsOptions({
     validate: true,
     schemas: [],
     allowComments: false,
@@ -471,7 +471,7 @@ function setupJsonDefaults(monaco: Monaco): void {
  * Setup HTML language defaults
  */
 function setupHtmlDefaults(monaco: Monaco): void {
-  monaco.languages.html?.htmlDefaults.setOptions({
+  monaco.html?.htmlDefaults.setOptions({
     format: {
       tabSize: 2,
       insertSpaces: true,
@@ -496,7 +496,7 @@ function setupHtmlDefaults(monaco: Monaco): void {
  * Setup CSS language defaults
  */
 function setupCssDefaults(monaco: Monaco): void {
-  monaco.languages.css?.cssDefaults.setOptions({
+  monaco.css?.cssDefaults.setOptions({
     validate: true,
     lint: {
       compatibleVendorPrefixes: 'warning',
