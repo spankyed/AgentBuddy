@@ -21,9 +21,11 @@ export async function action(params: Record<string, any>, services: Services) {
   if (!pending) return { success: false, reason: 'no pending approval' };
 
   // Mark approval block as responded
+  const asideText = `✗ Denied — ${pending.summary || 'tool request'}`;
   services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
     responseTimestamp: Date.now(),
     blockResponse: { approved: false, decision: 'decline' },
+    asideText,
   } as any);
 
   // Plan approval denial — no active turn to kill, just clean up

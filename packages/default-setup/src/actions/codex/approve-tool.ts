@@ -33,9 +33,11 @@ export async function action(params: Record<string, any>, services: Services) {
     || 'accept';
 
   // Mark approval block as responded
+  const asideText = `✓ Approved — ${pending.summary || 'tool request'}`;
   services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
     responseTimestamp: Date.now(),
     blockResponse: { approved: true, decision },
+    asideText,
   } as any);
 
   // Plan approval — start a new execute turn instead of responding to app-server

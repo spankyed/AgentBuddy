@@ -360,7 +360,10 @@ export function createStreamConsumer(
         },
       }],
       forkable: false,
-    });
+      autoHide: true,
+      asUser: true,
+      asideContext: summary,
+    } as any);
 
     // Persist pending approval state
     persistCodexState(services, threadId as string, {
@@ -510,7 +513,7 @@ async function replayQueuedMessage(
 ): Promise<void> {
   log.info('[codex consumer] replaying queued message', { threadId });
   if (queued.messageId) {
-    services.chat.updateMessageState(queued.messageId as any, { status: undefined } as any);
+    services.chat.updateMessageState(queued.messageId as any, { status: null } as any);
   }
 
   try {
