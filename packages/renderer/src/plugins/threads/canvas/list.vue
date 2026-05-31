@@ -188,7 +188,11 @@ const filteredThreads = computed(() => {
     )
   }
 
-  result.sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false))
+  result.sort((a, b) => {
+    const pinnedDiff = Number(b.pinned ?? false) - Number(a.pinned ?? false);
+    if (pinnedDiff !== 0) return pinnedDiff;
+    return (b.timestamp || 0) - (a.timestamp || 0);
+  })
 
   return result
 })
