@@ -144,10 +144,8 @@ import {
 } from 'reka-ui'
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
-import { getFileIcon } from '../../utils/file-icons'
+import { getFileIcon, videoExtensions } from '../../utils/file-icons'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
-
-const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v'])
 
 interface FileItem {
   path: string
@@ -181,7 +179,7 @@ const icon = computed(() => {
 })
 
 const isVideo = computed(() =>
-  props.file.type === 'file' && VIDEO_EXTENSIONS.has(props.file.extension?.toLowerCase() || '')
+  props.file.type === 'file' && videoExtensions.includes(props.file.extension?.toLowerCase() || '')
 )
 
 // Focus input when editing starts

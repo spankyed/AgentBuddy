@@ -48,6 +48,7 @@ export interface OpenFile {
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
   isImage?: boolean
+  isVideo?: boolean
   isBinary?: boolean
   isRichText?: boolean
   _richTextBaselineSet?: boolean

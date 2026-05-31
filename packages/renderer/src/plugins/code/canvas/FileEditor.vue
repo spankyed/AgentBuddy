@@ -63,6 +63,17 @@
           />
         </div>
 
+        <!-- Video player -->
+        <div v-show="isVideoFile(activeFile)" class="flex items-center justify-center h-full bg-neutral-950">
+          <video
+            v-if="isVideoFile(activeFile)"
+            :key="activeFile.path"
+            :src="`local-file://file?path=${encodeURIComponent(activeFile.path)}`"
+            controls
+            class="max-w-full max-h-full"
+          />
+        </div>
+
         <!-- Image diff side-by-side view -->
         <div v-show="isImageDiff" class="h-full flex" style="background: #1e1e1e">
           <div v-if="isImageDiff" class="flex-1 min-w-0 flex flex-col border-r border-neutral-700">
@@ -114,10 +125,10 @@
         </div>
 
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isVideoFile(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
           <MonacoEditor
             ref="monacoEditorRef"
-            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isVideoFile(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -197,6 +208,11 @@ const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file 
 // Helper to check if a file is an image
 const isImage = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
   return 'isImage' in file && file.isImage === true
+}
+
+// Helper to check if a file is a video
+const isVideoFile = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
+  return 'isVideo' in file && file.isVideo === true
 }
 
 // Helper to check if a file should use rich text editor
