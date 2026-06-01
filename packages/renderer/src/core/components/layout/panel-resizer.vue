@@ -15,10 +15,11 @@
   >
     <div
       :class="[
-        'rounded-full bg-neutral-500',
+        'rounded-full',
+        subtle ? 'bg-neutral-600' : 'bg-neutral-500',
         isHorizontal
-          ? 'h-8 w-px ml-px shadow-[-1px_0_0_rgba(255,255,255,0.15)]'
-          : 'w-8 h-px shadow-[0_-1px_0_rgba(255,255,255,0.15)]',
+          ? subtle ? 'h-8 w-0.5' : 'h-8 w-px ml-px shadow-[-1px_0_0_rgba(255,255,255,0.15)]'
+          : subtle ? 'w-8 h-0.5' : 'w-8 h-px shadow-[0_-1px_0_rgba(255,255,255,0.15)]',
       ]"
     />
   </div>
@@ -32,12 +33,14 @@ interface Props {
   min?: number
   max?: number
   collapsed?: boolean
+  subtle?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   min: 200,
   max: Infinity,
-  collapsed: false
+  collapsed: false,
+  subtle: false
 })
 
 const emit = defineEmits<{

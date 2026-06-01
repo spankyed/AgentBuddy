@@ -31,6 +31,7 @@
     <PanelResizer
       v-if="panelTerminalExpanded"
       orientation="vertical"
+      subtle
       @resize="onTerminalResize"
       @click="actor.send({ type: 'TOGGLE_PANEL_TERMINAL' })"
     />
