@@ -47,7 +47,7 @@
       <div class="flex gap-2 flex-shrink-0 whitespace-nowrap">
         <FilterPopover
           :statuses="statuses"
-          :tags="availableTags"
+          :tags="allTags"
           :chat-state-configs="chatStateConfigs"
           :selected-statuses="filters.statuses"
           :selected-tags="filters.tags"
@@ -121,6 +121,7 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import FilterPopover from './FilterPopover.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
+import type { ThreadTagOption } from '@app/api'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const currentState = useSelector(actor, s => s.value)
@@ -132,9 +133,25 @@ const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 const showArchived = useSelector(actor, s => s.context.showArchived)
 const availableTags = useSelector(actor, s => s.context.availableTags)
+const threadMap = useSelector(actor, s => s.context.threadMap)
 
 const statuses = computed(() => settings.value?.statuses || [])
 const chatStateConfigs = computed(() => settings.value?.chatStates || [])
+
+const allTags = computed<ThreadTagOption[]>(() => {
+  const settingsTags = availableTags.value || []
+  const settingsTagNames = new Set(settingsTags.map(t => t.name))
+  const adHocNames = new Set<string>()
+  for (const thread of Object.values(threadMap.value)) {
+    if (thread.tags) {
+      for (const tag of thread.tags) {
+        if (!settingsTagNames.has(tag)) adHocNames.add(tag)
+      }
+    }
+  }
+  if (adHocNames.size === 0) return settingsTags
+  return [...settingsTags, ...[...adHocNames].sort().map(name => ({ name }))]
+})
 
 const activeFilterCount = computed(() =>
   filters.value.statuses.length + filters.value.tags.length + filters.value.chatStates.length
