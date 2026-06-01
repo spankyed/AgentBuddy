@@ -135,7 +135,6 @@ export class BrowserTabManager {
 
   #applyBounds(view: WebContentsView): void {
     view.setBounds(this.#bounds);
-    view.setBorderRadius(8);
   }
 
   createTab(url?: string): TabState | null {
