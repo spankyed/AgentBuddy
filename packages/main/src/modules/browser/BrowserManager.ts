@@ -90,6 +90,11 @@ class BrowserManager implements AppModule {
       this.#getTabManager(event)?.hide();
     });
 
+    // DevTools
+    ipcMain.handle('browser:toggle-devtools', (event, tabId: number) => {
+      this.#getTabManager(event)?.toggleDevTools(tabId);
+    });
+
     // Query
     ipcMain.handle('browser:get-tabs', (event) => {
       return this.#getTabManager(event)?.getAllTabs() ?? [];

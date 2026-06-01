@@ -8,6 +8,7 @@
       @create="actor.send({ type: 'TAB.CREATE' })"
     />
     <BrowserNavBar
+      ref="navBar"
       :addressBarValue="addressBarValue"
       :canGoBack="activeTab?.canGoBack ?? false"
       :canGoForward="activeTab?.canGoForward ?? false"
@@ -20,6 +21,7 @@
       @update:addressBarValue="actor.send({ type: 'ADDRESS_BAR.UPDATE', value: $event })"
       @focus="actor.send({ type: 'ADDRESS_BAR.FOCUS' })"
       @blur="actor.send({ type: 'ADDRESS_BAR.BLUR' })"
+      @toggle-devtools="toggleDevTools"
     />
 
     <!-- Content placeholder: WebContentsView is overlaid here by the main process -->
@@ -50,9 +52,42 @@ const activeTabId = useSelector(actor, s => s.context.activeTabId);
 const addressBarValue = useSelector(actor, s => s.context.addressBarValue);
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null);
 
+const navBar = ref<InstanceType<typeof BrowserNavBar> | null>(null);
+function toggleDevTools() {
+  if (activeTabId.value !== null) {
+    window.electronAPI?.browser.toggleDevTools(activeTabId.value);
+  }
+}
+
 const contentArea = ref<HTMLDivElement | null>(null);
 let resizeObserver: ResizeObserver | null = null;
 let mounted = true;
+
+function handleKeydown(e: KeyboardEvent) {
+  const mod = e.metaKey || e.ctrlKey;
+  if (!mod) return;
+
+  switch (e.key) {
+    case 't':
+      e.preventDefault();
+      actor.send({ type: 'TAB.CREATE' });
+      break;
+    case 'w':
+      e.preventDefault();
+      if (activeTabId.value !== null) {
+        actor.send({ type: 'TAB.CLOSE', tabId: activeTabId.value });
+      }
+      break;
+    case 'l':
+      e.preventDefault();
+      navBar.value?.focusAddressBar();
+      break;
+    case 'r':
+      e.preventDefault();
+      actor.send({ type: 'NAV.RELOAD' });
+      break;
+  }
+}
 
 function reportBounds() {
   if (!contentArea.value) return;
@@ -66,6 +101,8 @@ function reportBounds() {
 }
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleKeydown);
+
   // Report bounds first so the overlay appears at the correct position
   reportBounds();
   window.electronAPI?.browser.show();
@@ -95,6 +132,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   mounted = false;
+  window.removeEventListener('keydown', handleKeydown);
   window.electronAPI?.browser.hide();
 
   if (resizeObserver) {

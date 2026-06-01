@@ -234,6 +234,16 @@ export class BrowserTabManager {
     this.#tabs.get(tabId)?.webContents.stop();
   }
 
+  toggleDevTools(tabId: number): void {
+    const wc = this.#tabs.get(tabId)?.webContents;
+    if (!wc) return;
+    if (wc.isDevToolsOpened()) {
+      wc.closeDevTools();
+    } else {
+      wc.openDevTools({ mode: 'detach' });
+    }
+  }
+
   setBounds(bounds: TabBounds): void {
     this.#bounds = bounds;
     if (this.#activeTabId !== null) {

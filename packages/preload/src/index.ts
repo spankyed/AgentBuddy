@@ -155,6 +155,9 @@ const browser = {
     return () => { ipcRenderer.removeListener('browser:active-tab-changed', handler); };
   },
 
+  // DevTools
+  toggleDevTools: (tabId: number) => ipcRenderer.invoke('browser:toggle-devtools', tabId),
+
   // Query
   getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,
   getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,

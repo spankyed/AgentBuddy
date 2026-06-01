@@ -63,6 +63,7 @@ declare global {
         onTabRemoved: (callback: (tabId: number) => void) => () => void;
         onTabUpdated: (callback: (tabId: number, changes: Partial<BrowserTabState>) => void) => () => void;
         onActiveTabChanged: (callback: (tabId: number) => void) => () => void;
+        toggleDevTools: (tabId: number) => Promise<void>;
         getTabs: () => Promise<BrowserTabState[]>;
         getActiveTab: () => Promise<number | null>;
       };
