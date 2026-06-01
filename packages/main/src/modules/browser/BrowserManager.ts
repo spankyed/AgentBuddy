@@ -21,8 +21,12 @@ class BrowserManager implements AppModule {
 
   #registerIpcHandlers(): void {
     // Queries (handle — return data)
-    ipcMain.handle('browser:create-tab', (event, url?: string) => {
-      return this.#getTabManager(event)?.createTab(url) ?? null;
+    ipcMain.handle('browser:create-tab', (event, url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) => {
+      return this.#getTabManager(event)?.createTab(url, options) ?? null;
+    });
+
+    ipcMain.handle('browser:load-tab', (event, tabId: number) => {
+      this.#getTabManager(event)?.loadTab(tabId);
     });
 
     ipcMain.handle('browser:get-tabs', (event) => {

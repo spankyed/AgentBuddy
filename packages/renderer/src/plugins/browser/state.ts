@@ -439,8 +439,13 @@ const browserState = setup({
                     pendingGroupAssignments.set(saved.url, queue);
                   }
                 }
+                // Create tabs lazily — don't load URLs until the user opens the browser plugin
                 for (const saved of event.savedTabs) {
-                  window.electronAPI?.browser.createTab(saved.url);
+                  window.electronAPI?.browser.createTab(saved.url, {
+                    lazy: true,
+                    title: saved.title,
+                    favicon: saved.favicon,
+                  });
                 }
               }
             },

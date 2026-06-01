@@ -5,6 +5,7 @@ const BROWSER_PARTITION = 'persist:browser';
 
 export class BrowserTabManager {
   readonly #tabs = new Map<number, WebContentsView>();
+  readonly #pendingUrls = new Map<number, string>(); // lazy tabs: tabId → URL to load on demand
   #activeTabId: number | null = null;
   #bounds: TabBounds = {x: 0, y: 0, width: 800, height: 600};
   #visible = false;
@@ -165,7 +166,7 @@ export class BrowserTabManager {
     view.setBounds(this.#bounds);
   }
 
-  createTab(url?: string): TabState | null {
+  createTab(url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }): TabState | null {
     if (this.#mainWindow.isDestroyed()) return null;
 
     const view = new WebContentsView({
@@ -188,21 +189,48 @@ export class BrowserTabManager {
     // Hide initially, then select
     view.setVisible(false);
 
-    // Load URL
+    // Load URL (or defer if lazy)
     const targetUrl = url || 'about:blank';
     if (targetUrl !== 'about:blank') {
-      view.webContents.loadURL(targetUrl).catch(err => {
-        console.error(`[Browser] Failed to load URL: ${targetUrl}`, err);
-      });
+      if (options?.lazy) {
+        this.#pendingUrls.set(id, targetUrl);
+      } else {
+        view.webContents.loadURL(targetUrl).catch(err => {
+          console.error(`[Browser] Failed to load URL: ${targetUrl}`, err);
+        });
+      }
     }
 
-    const tabState = this.#getTabState(view);
+    // Build tab state — for lazy tabs, use provided metadata since the page hasn't loaded
+    const tabState: TabState = options?.lazy
+      ? {
+        id,
+        url: targetUrl,
+        title: options.title || 'New Tab',
+        favicon: options.favicon || '',
+        isLoading: false,
+        canGoBack: false,
+        canGoForward: false,
+        isMuted: false,
+      }
+      : this.#getTabState(view);
 
     // Send tab-created BEFORE selectTab so the renderer has the tab in its
     // array when active-tab-changed arrives (otherwise address bar won't sync).
     this.#sendToRenderer('browser:tab-created', tabState);
     this.selectTab(id);
     return tabState;
+  }
+
+  loadTab(tabId: number): void {
+    const url = this.#pendingUrls.get(tabId);
+    if (!url) return;
+    const view = this.#tabs.get(tabId);
+    if (!view) return;
+    this.#pendingUrls.delete(tabId);
+    view.webContents.loadURL(url).catch(err => {
+      console.error(`[Browser] Failed to load URL: ${url}`, err);
+    });
   }
 
   closeTab(tabId: number): void {
@@ -218,6 +246,7 @@ export class BrowserTabManager {
     view.webContents.removeAllListeners();
     view.webContents.close();
     this.#tabs.delete(tabId);
+    this.#pendingUrls.delete(tabId);
 
     this.#sendToRenderer('browser:tab-removed', tabId);
 
@@ -246,6 +275,9 @@ export class BrowserTabManager {
     this.#activeTabId = tabId;
     this.#applyBounds(view);
     view.setVisible(this.#visible);
+
+    // Auto-load lazy tabs when selected
+    this.loadTab(tabId);
 
     this.#sendToRenderer('browser:active-tab-changed', tabId);
   }

@@ -154,6 +154,8 @@ onMounted(async () => {
     }
     if (activeId != null) {
       actor.send({ type: 'IPC.ACTIVE_TAB_CHANGED', tabId: activeId });
+      // Load the active tab on first open (lazy tabs don't load until selected)
+      window.electronAPI?.browser.loadTab(activeId);
     }
   } else {
     actor.send({ type: 'TAB.CREATE' });

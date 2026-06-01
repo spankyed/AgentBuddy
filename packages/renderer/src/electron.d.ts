@@ -48,7 +48,8 @@ declare global {
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
       browser: {
-        createTab: (url?: string) => Promise<BrowserTabState | null>;
+        createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) => Promise<BrowserTabState | null>;
+        loadTab: (tabId: number) => Promise<void>;
         closeTab: (tabId: number) => void;
         selectTab: (tabId: number) => void;
         navigate: (tabId: number, url: string) => void;
