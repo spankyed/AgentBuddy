@@ -30,18 +30,18 @@ defineEmits<{
   select: [];
 }>();
 
-const colorClasses: Record<string, { base: string; hover: string; text: string }> = {
-  blue:    { base: 'bg-blue-500/15',    hover: 'hover:bg-blue-500/25',    text: 'text-blue-400' },
-  purple:  { base: 'bg-purple-500/15',  hover: 'hover:bg-purple-500/25',  text: 'text-purple-400' },
-  emerald: { base: 'bg-emerald-500/15', hover: 'hover:bg-emerald-500/25', text: 'text-emerald-400' },
-  amber:   { base: 'bg-amber-500/15',   hover: 'hover:bg-amber-500/25',   text: 'text-amber-400' },
-  red:     { base: 'bg-red-500/15',     hover: 'hover:bg-red-500/25',     text: 'text-red-400' },
-  cyan:    { base: 'bg-cyan-500/15',    hover: 'hover:bg-cyan-500/25',    text: 'text-cyan-400' },
+const colorClasses: Record<string, { base: string; hover: string; text: string; selected: string }> = {
+  blue:    { base: 'bg-blue-500/15',    hover: 'hover:bg-blue-500/25',    text: 'text-blue-400',    selected: 'bg-blue-600 text-white' },
+  purple:  { base: 'bg-purple-500/15',  hover: 'hover:bg-purple-500/25',  text: 'text-purple-400',  selected: 'bg-purple-600 text-white' },
+  emerald: { base: 'bg-emerald-500/15', hover: 'hover:bg-emerald-500/25', text: 'text-emerald-400', selected: 'bg-emerald-600 text-white' },
+  amber:   { base: 'bg-amber-500/15',   hover: 'hover:bg-amber-500/25',   text: 'text-amber-400',   selected: 'bg-amber-600 text-white' },
+  red:     { base: 'bg-red-500/15',     hover: 'hover:bg-red-500/25',     text: 'text-red-400',     selected: 'bg-red-600 text-white' },
+  cyan:    { base: 'bg-cyan-500/15',    hover: 'hover:bg-cyan-500/25',    text: 'text-cyan-400',    selected: 'bg-cyan-600 text-white' },
 };
 
 const pillClasses = computed(() => {
-  if (props.isSelected) return 'bg-blue-600 text-white';
   const c = props.artifact.color && colorClasses[props.artifact.color];
+  if (props.isSelected) return c ? c.selected : 'bg-blue-600 text-white';
   if (c) return `${c.base} ${c.text} ${c.hover}`;
   return 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
 });
