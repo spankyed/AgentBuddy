@@ -116,15 +116,15 @@ interface TabState {
 const browser = {
   // Tab management
   createTab: (url?: string) => ipcRenderer.invoke('browser:create-tab', url) as Promise<TabState | null>,
-  closeTab: (tabId: number) => ipcRenderer.invoke('browser:close-tab', tabId),
-  selectTab: (tabId: number) => ipcRenderer.invoke('browser:select-tab', tabId),
+  closeTab: (tabId: number) => ipcRenderer.send('browser:close-tab', tabId),
+  selectTab: (tabId: number) => ipcRenderer.send('browser:select-tab', tabId),
 
   // Navigation
-  navigate: (tabId: number, url: string) => ipcRenderer.invoke('browser:navigate', tabId, url),
-  goBack: (tabId: number) => ipcRenderer.invoke('browser:go-back', tabId),
-  goForward: (tabId: number) => ipcRenderer.invoke('browser:go-forward', tabId),
-  reload: (tabId: number) => ipcRenderer.invoke('browser:reload', tabId),
-  stop: (tabId: number) => ipcRenderer.invoke('browser:stop', tabId),
+  navigate: (tabId: number, url: string) => ipcRenderer.send('browser:navigate', tabId, url),
+  goBack: (tabId: number) => ipcRenderer.send('browser:go-back', tabId),
+  goForward: (tabId: number) => ipcRenderer.send('browser:go-forward', tabId),
+  reload: (tabId: number) => ipcRenderer.send('browser:reload', tabId),
+  stop: (tabId: number) => ipcRenderer.send('browser:stop', tabId),
 
   // Bounds and visibility
   setBounds: (bounds: {x: number; y: number; width: number; height: number}) =>
@@ -156,7 +156,7 @@ const browser = {
   },
 
   // DevTools
-  toggleDevTools: (tabId: number) => ipcRenderer.invoke('browser:toggle-devtools', tabId),
+  toggleDevTools: (tabId: number) => ipcRenderer.send('browser:toggle-devtools', tabId),
 
   // Query
   getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,

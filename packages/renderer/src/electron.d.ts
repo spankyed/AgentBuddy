@@ -49,13 +49,13 @@ declare global {
       };
       browser: {
         createTab: (url?: string) => Promise<BrowserTabState | null>;
-        closeTab: (tabId: number) => Promise<void>;
-        selectTab: (tabId: number) => Promise<void>;
-        navigate: (tabId: number, url: string) => Promise<void>;
-        goBack: (tabId: number) => Promise<void>;
-        goForward: (tabId: number) => Promise<void>;
-        reload: (tabId: number) => Promise<void>;
-        stop: (tabId: number) => Promise<void>;
+        closeTab: (tabId: number) => void;
+        selectTab: (tabId: number) => void;
+        navigate: (tabId: number, url: string) => void;
+        goBack: (tabId: number) => void;
+        goForward: (tabId: number) => void;
+        reload: (tabId: number) => void;
+        stop: (tabId: number) => void;
         setBounds: (bounds: {x: number; y: number; width: number; height: number}) => void;
         show: () => void;
         hide: () => void;
@@ -63,7 +63,7 @@ declare global {
         onTabRemoved: (callback: (tabId: number) => void) => () => void;
         onTabUpdated: (callback: (tabId: number, changes: Partial<BrowserTabState>) => void) => () => void;
         onActiveTabChanged: (callback: (tabId: number) => void) => () => void;
-        toggleDevTools: (tabId: number) => Promise<void>;
+        toggleDevTools: (tabId: number) => void;
         getTabs: () => Promise<BrowserTabState[]>;
         getActiveTab: () => Promise<number | null>;
       };

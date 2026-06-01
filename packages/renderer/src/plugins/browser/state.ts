@@ -12,13 +12,6 @@ export interface BrowserTab {
   canGoForward: boolean;
 }
 
-export interface BrowserContext {
-  tabs: BrowserTab[];
-  activeTabId: number | null;
-  addressBarValue: string;
-  isAddressBarFocused: boolean;
-}
-
 type BrowserEvents =
   // UI events
   | { type: 'TAB.CREATE'; url?: string }
@@ -29,6 +22,7 @@ type BrowserEvents =
   | { type: 'NAV.FORWARD' }
   | { type: 'NAV.RELOAD' }
   | { type: 'NAV.STOP' }
+  | { type: 'NAV.TOGGLE_DEVTOOLS' }
   | { type: 'ADDRESS_BAR.UPDATE'; value: string }
   | { type: 'ADDRESS_BAR.FOCUS' }
   | { type: 'ADDRESS_BAR.BLUR' }
@@ -40,9 +34,22 @@ type BrowserEvents =
 
 export type BrowserState = ActorRefFrom<typeof browserState>;
 
+function navAction(method: 'goBack' | 'goForward' | 'reload' | 'stop') {
+  return ({ context }: { context: { activeTabId: number | null } }) => {
+    if (context.activeTabId !== null) {
+      window.electronAPI?.browser[method](context.activeTabId);
+    }
+  };
+}
+
 const browserState = setup({
   types: {
-    context: {} as BrowserContext,
+    context: {} as {
+      tabs: BrowserTab[];
+      activeTabId: number | null;
+      addressBarValue: string;
+      isAddressBarFocused: boolean;
+    },
     events: {} as BrowserEvents,
   },
   actors: {
@@ -51,23 +58,13 @@ const browserState = setup({
       if (!api) return;
 
       const unsubs = [
-        api.onTabCreated((tab) => {
-          sendBack({ type: 'IPC.TAB_CREATED', tab });
-        }),
-        api.onTabRemoved((tabId) => {
-          sendBack({ type: 'IPC.TAB_REMOVED', tabId });
-        }),
-        api.onTabUpdated((tabId, changes) => {
-          sendBack({ type: 'IPC.TAB_UPDATED', tabId, changes });
-        }),
-        api.onActiveTabChanged((tabId) => {
-          sendBack({ type: 'IPC.ACTIVE_TAB_CHANGED', tabId });
-        }),
+        api.onTabCreated((tab) => sendBack({ type: 'IPC.TAB_CREATED', tab })),
+        api.onTabRemoved((tabId) => sendBack({ type: 'IPC.TAB_REMOVED', tabId })),
+        api.onTabUpdated((tabId, changes) => sendBack({ type: 'IPC.TAB_UPDATED', tabId, changes })),
+        api.onActiveTabChanged((tabId) => sendBack({ type: 'IPC.ACTIVE_TAB_CHANGED', tabId })),
       ];
 
-      return () => {
-        unsubs.forEach(unsub => unsub());
-      };
+      return () => unsubs.forEach(unsub => unsub());
     }),
   },
   actions: {
@@ -76,69 +73,15 @@ const browserState = setup({
         window.electronAPI?.browser.navigate(context.activeTabId, context.addressBarValue.trim());
       }
     },
-    goBack: ({ context }) => {
+    goBack: navAction('goBack'),
+    goForward: navAction('goForward'),
+    reload: navAction('reload'),
+    stop: navAction('stop'),
+    toggleDevTools: ({ context }) => {
       if (context.activeTabId !== null) {
-        window.electronAPI?.browser.goBack(context.activeTabId);
+        window.electronAPI?.browser.toggleDevTools(context.activeTabId);
       }
     },
-    goForward: ({ context }) => {
-      if (context.activeTabId !== null) {
-        window.electronAPI?.browser.goForward(context.activeTabId);
-      }
-    },
-    reload: ({ context }) => {
-      if (context.activeTabId !== null) {
-        window.electronAPI?.browser.reload(context.activeTabId);
-      }
-    },
-    stop: ({ context }) => {
-      if (context.activeTabId !== null) {
-        window.electronAPI?.browser.stop(context.activeTabId);
-      }
-    },
-    addTab: assign({
-      tabs: ({ context, event }) => {
-        if (event.type !== 'IPC.TAB_CREATED') return context.tabs;
-        // Avoid duplicates
-        if (context.tabs.some(t => t.id === event.tab.id)) return context.tabs;
-        return [...context.tabs, event.tab];
-      },
-    }),
-    removeTab: assign(({ context, event }) => {
-      if (event.type !== 'IPC.TAB_REMOVED') return {};
-      const tabs = context.tabs.filter(t => t.id !== event.tabId);
-      const activeTabId = context.activeTabId === event.tabId
-        ? (tabs.length > 0 ? tabs[tabs.length - 1].id : null)
-        : context.activeTabId;
-      return { tabs, activeTabId };
-    }),
-    updateTab: assign({
-      tabs: ({ context, event }) => {
-        if (event.type !== 'IPC.TAB_UPDATED') return context.tabs;
-        return context.tabs.map(t =>
-          t.id === event.tabId ? { ...t, ...event.changes } : t,
-        );
-      },
-    }),
-    syncAddressBar: assign(({ context, event }) => {
-      if (event.type !== 'IPC.TAB_UPDATED') return {};
-      if (context.isAddressBarFocused) return {};
-      if (event.tabId !== context.activeTabId) return {};
-      if (event.changes.url !== undefined) {
-        return { addressBarValue: event.changes.url };
-      }
-      return {};
-    }),
-    setActiveTab: assign(({ event }) => {
-      if (event.type !== 'IPC.ACTIVE_TAB_CHANGED') return {};
-      return { activeTabId: event.tabId };
-    }),
-    syncAddressBarOnTabSwitch: assign(({ context, event }) => {
-      if (event.type !== 'IPC.ACTIVE_TAB_CHANGED') return {};
-      if (context.isAddressBarFocused) return {};
-      const tab = context.tabs.find(t => t.id === event.tabId);
-      return { addressBarValue: tab?.url || '' };
-    }),
   },
 }).createMachine({
   id,
@@ -149,9 +92,7 @@ const browserState = setup({
     addressBarValue: '',
     isAddressBarFocused: false,
   },
-  invoke: {
-    src: 'ipcBridge',
-  },
+  invoke: { src: 'ipcBridge' },
   states: {
     active: {
       on: {
@@ -180,6 +121,7 @@ const browserState = setup({
         'NAV.FORWARD': { actions: 'goForward' },
         'NAV.RELOAD': { actions: 'reload' },
         'NAV.STOP': { actions: 'stop' },
+        'NAV.TOGGLE_DEVTOOLS': { actions: 'toggleDevTools' },
         'ADDRESS_BAR.UPDATE': {
           actions: assign({ addressBarValue: ({ event }) => event.value }),
         },
@@ -189,18 +131,45 @@ const browserState = setup({
         'ADDRESS_BAR.BLUR': {
           actions: assign({ isAddressBarFocused: false }),
         },
-        // IPC events
+        // IPC events — inline assigns, no named actions needed
         'IPC.TAB_CREATED': {
-          actions: ['addTab'],
+          actions: assign({
+            tabs: ({ context, event }) => [...context.tabs, event.tab],
+          }),
         },
         'IPC.TAB_REMOVED': {
-          actions: ['removeTab'],
+          actions: assign(({ context, event }) => {
+            const tabs = context.tabs.filter(t => t.id !== event.tabId);
+            return {
+              tabs,
+              activeTabId: context.activeTabId === event.tabId
+                ? (tabs.at(-1)?.id ?? null)
+                : context.activeTabId,
+            };
+          }),
         },
         'IPC.TAB_UPDATED': {
-          actions: ['updateTab', 'syncAddressBar'],
+          actions: assign(({ context, event }) => {
+            const tabs = context.tabs.map(t =>
+              t.id === event.tabId ? { ...t, ...event.changes } : t,
+            );
+            const syncUrl = !context.isAddressBarFocused
+              && event.tabId === context.activeTabId
+              && event.changes.url !== undefined;
+            return {
+              tabs,
+              ...(syncUrl ? { addressBarValue: event.changes.url } : {}),
+            };
+          }),
         },
         'IPC.ACTIVE_TAB_CHANGED': {
-          actions: ['setActiveTab', 'syncAddressBarOnTabSwitch'],
+          actions: assign(({ context, event }) => {
+            const tab = context.tabs.find(t => t.id === event.tabId);
+            return {
+              activeTabId: event.tabId,
+              ...(context.isAddressBarFocused ? {} : { addressBarValue: tab?.url ?? '' }),
+            };
+          }),
         },
       },
     },

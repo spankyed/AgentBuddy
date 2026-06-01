@@ -17,10 +17,6 @@ export class BrowserTabManager {
     this.#configureSession();
   }
 
-  get session(): Session {
-    return this.#browserSession;
-  }
-
   #configureSession(): void {
     const ses = this.#browserSession;
 
@@ -38,8 +34,15 @@ export class BrowserTabManager {
         callback(true);
         return;
       }
-      // Deny by default (camera, mic, geolocation, etc.)
       callback(false);
+    });
+
+    // Download handler — Electron prompts the user for save location by default
+    ses.on('will-download', (_event, item) => {
+      const fileName = item.getFilename();
+      item.once('done', (_e, state) => {
+        console.log(`[Browser] Download ${state === 'completed' ? 'complete' : state}: ${fileName}`);
+      });
     });
   }
 
