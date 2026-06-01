@@ -99,6 +99,28 @@ export class BrowserTabManager {
       }
     });
 
+    // Show friendly error page on navigation failure
+    wc.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame) return;
+      // -3 = aborted (user navigated away or stopped loading)
+      if (errorCode === -3) return;
+
+      const errorHtml = `<html><head><style>
+        body { background: #0a0a0a; color: #a3a3a3; font-family: -apple-system, system-ui, sans-serif;
+               display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .error { text-align: center; max-width: 420px; }
+        h2 { color: #e5e5e5; font-size: 18px; margin-bottom: 8px; }
+        p { font-size: 14px; line-height: 1.6; }
+        code { background: #262626; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+      </style></head><body><div class="error">
+        <h2>This page can\u2019t be reached</h2>
+        <p><code>${validatedURL.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</code></p>
+        <p>${(errorDescription || 'ERR_' + Math.abs(errorCode)).replace(/</g, '&lt;')}</p>
+      </div></body></html>`;
+
+      wc.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`).catch(() => {});
+    });
+
     // Intercept new window/popup requests → create a new tab
     wc.setWindowOpenHandler(({url}) => {
       if (url && url !== 'about:blank') {
