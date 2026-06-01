@@ -298,6 +298,12 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     actions.forEach(action => editorDisposables.push(editor.addAction(action)))
   }
 
+  // Suppress VS Code-only keybindings that crash standalone Monaco
+  // Cmd+Shift+F triggers "findInFiles" which doesn't exist outside VS Code
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
+    editor.trigger('keyboard', 'actions.find', null)
+  })
+
   // Set placeholder if provided
   if (props.placeholder && !props.modelValue) {
     const model = editor.getModel()
