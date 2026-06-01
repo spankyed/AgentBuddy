@@ -1,6 +1,5 @@
 import {BrowserWindow, WebContentsView, session, type Session} from 'electron';
 import type {TabState, TabBounds} from './types.js';
-import {WINDOW_CONFIG} from '../window-manager/constants.js';
 
 const BROWSER_PARTITION = 'persist:browser';
 
@@ -10,8 +9,10 @@ export class BrowserTabManager {
   #bounds: TabBounds = {x: 0, y: 0, width: 800, height: 600};
   #visible = false;
   #browserSession: Session;
+  #mainWindow: BrowserWindow;
 
-  constructor() {
+  constructor(mainWindow: BrowserWindow) {
+    this.#mainWindow = mainWindow;
     this.#browserSession = session.fromPartition(BROWSER_PARTITION);
     this.#configureSession();
   }
@@ -42,16 +43,9 @@ export class BrowserTabManager {
     });
   }
 
-  #getMainWindow(): BrowserWindow | undefined {
-    return BrowserWindow.getAllWindows().find(
-      w => !w.isDestroyed() && w.getTitle() === WINDOW_CONFIG.MAIN_TITLE,
-    );
-  }
-
   #sendToRenderer(channel: string, ...args: any[]): void {
-    const win = this.#getMainWindow();
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(channel, ...args);
+    if (!this.#mainWindow.isDestroyed()) {
+      this.#mainWindow.webContents.send(channel, ...args);
     }
   }
 
@@ -120,8 +114,7 @@ export class BrowserTabManager {
   }
 
   createTab(url?: string): TabState | null {
-    const win = this.#getMainWindow();
-    if (!win) return null;
+    if (this.#mainWindow.isDestroyed()) return null;
 
     const view = new WebContentsView({
       webPreferences: {
@@ -138,7 +131,7 @@ export class BrowserTabManager {
     this.#attachListeners(view);
 
     // Add to the main window's content view
-    win.contentView.addChildView(view);
+    this.#mainWindow.contentView.addChildView(view);
 
     // Hide initially, then select
     view.setVisible(false);
@@ -164,11 +157,9 @@ export class BrowserTabManager {
     const view = this.#tabs.get(tabId);
     if (!view) return;
 
-    const win = this.#getMainWindow();
-
     // Remove from window
-    if (win && !win.isDestroyed()) {
-      win.contentView.removeChildView(view);
+    if (!this.#mainWindow.isDestroyed()) {
+      this.#mainWindow.contentView.removeChildView(view);
     }
 
     // Clean up listeners and destroy
@@ -280,10 +271,9 @@ export class BrowserTabManager {
   }
 
   destroy(): void {
-    const win = this.#getMainWindow();
-    for (const [id, view] of this.#tabs) {
-      if (win && !win.isDestroyed()) {
-        win.contentView.removeChildView(view);
+    for (const [, view] of this.#tabs) {
+      if (!this.#mainWindow.isDestroyed()) {
+        this.#mainWindow.contentView.removeChildView(view);
       }
       view.webContents.removeAllListeners();
       view.webContents.close();

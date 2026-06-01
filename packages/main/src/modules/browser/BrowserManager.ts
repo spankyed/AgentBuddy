@@ -1,6 +1,6 @@
 import type {AppModule} from '../../AppModule.js';
 import type {ModuleContext} from '../../ModuleContext.js';
-import {ipcMain, app} from 'electron';
+import {BrowserWindow, ipcMain, app} from 'electron';
 import {BrowserTabManager} from './BrowserTabManager.js';
 import type {TabBounds} from './types.js';
 
@@ -12,9 +12,11 @@ class BrowserManager implements AppModule {
     this.#registerIpcHandlers();
   }
 
-  #getTabManager(): BrowserTabManager {
+  #getTabManager(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent): BrowserTabManager | null {
     if (!this.#tabManager) {
-      this.#tabManager = new BrowserTabManager();
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return null;
+      this.#tabManager = new BrowserTabManager(win);
       this.#ensureDownloadHandler();
     }
     return this.#tabManager;
@@ -42,59 +44,59 @@ class BrowserManager implements AppModule {
 
   #registerIpcHandlers(): void {
     // Tab management
-    ipcMain.handle('browser:create-tab', (_event, url?: string) => {
-      return this.#getTabManager().createTab(url);
+    ipcMain.handle('browser:create-tab', (event, url?: string) => {
+      return this.#getTabManager(event)?.createTab(url) ?? null;
     });
 
-    ipcMain.handle('browser:close-tab', (_event, tabId: number) => {
-      this.#getTabManager().closeTab(tabId);
+    ipcMain.handle('browser:close-tab', (event, tabId: number) => {
+      this.#getTabManager(event)?.closeTab(tabId);
     });
 
-    ipcMain.handle('browser:select-tab', (_event, tabId: number) => {
-      this.#getTabManager().selectTab(tabId);
+    ipcMain.handle('browser:select-tab', (event, tabId: number) => {
+      this.#getTabManager(event)?.selectTab(tabId);
     });
 
     // Navigation
-    ipcMain.handle('browser:navigate', (_event, tabId: number, url: string) => {
-      this.#getTabManager().navigate(tabId, url);
+    ipcMain.handle('browser:navigate', (event, tabId: number, url: string) => {
+      this.#getTabManager(event)?.navigate(tabId, url);
     });
 
-    ipcMain.handle('browser:go-back', (_event, tabId: number) => {
-      this.#getTabManager().goBack(tabId);
+    ipcMain.handle('browser:go-back', (event, tabId: number) => {
+      this.#getTabManager(event)?.goBack(tabId);
     });
 
-    ipcMain.handle('browser:go-forward', (_event, tabId: number) => {
-      this.#getTabManager().goForward(tabId);
+    ipcMain.handle('browser:go-forward', (event, tabId: number) => {
+      this.#getTabManager(event)?.goForward(tabId);
     });
 
-    ipcMain.handle('browser:reload', (_event, tabId: number) => {
-      this.#getTabManager().reload(tabId);
+    ipcMain.handle('browser:reload', (event, tabId: number) => {
+      this.#getTabManager(event)?.reload(tabId);
     });
 
-    ipcMain.handle('browser:stop', (_event, tabId: number) => {
-      this.#getTabManager().stop(tabId);
+    ipcMain.handle('browser:stop', (event, tabId: number) => {
+      this.#getTabManager(event)?.stop(tabId);
     });
 
     // Bounds and visibility
-    ipcMain.on('browser:set-bounds', (_event, bounds: TabBounds) => {
-      this.#getTabManager().setBounds(bounds);
+    ipcMain.on('browser:set-bounds', (event, bounds: TabBounds) => {
+      this.#getTabManager(event)?.setBounds(bounds);
     });
 
-    ipcMain.on('browser:show', () => {
-      this.#getTabManager().show();
+    ipcMain.on('browser:show', (event) => {
+      this.#getTabManager(event)?.show();
     });
 
-    ipcMain.on('browser:hide', () => {
-      this.#getTabManager().hide();
+    ipcMain.on('browser:hide', (event) => {
+      this.#getTabManager(event)?.hide();
     });
 
     // Query
-    ipcMain.handle('browser:get-tabs', () => {
-      return this.#getTabManager().getAllTabs();
+    ipcMain.handle('browser:get-tabs', (event) => {
+      return this.#getTabManager(event)?.getAllTabs() ?? [];
     });
 
-    ipcMain.handle('browser:get-active-tab', () => {
-      return this.#getTabManager().getActiveTabId();
+    ipcMain.handle('browser:get-active-tab', (event) => {
+      return this.#getTabManager(event)?.getActiveTabId() ?? null;
     });
   }
 }
