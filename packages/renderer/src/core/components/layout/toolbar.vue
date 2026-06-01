@@ -54,7 +54,36 @@
       </span>
     </div>
 
-    <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="pluginMenuItems" @close="showMenu = false" />
+    <Teleport to="body">
+      <div
+        v-if="showMenu"
+        ref="menuElRef"
+        class="fixed z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+        :style="{ left: `${menuPos.x}px`, top: `${menuPos.y}px` }"
+      >
+        <button
+          v-for="item in nonPinnedMenuItems"
+          :key="item.label"
+          class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
+          :class="item.class"
+          @click="item.action()"
+        >
+          <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
+          {{ item.label }}
+        </button>
+        <hr v-if="nonPinnedMenuItems.length && pinnedMenuItems.length" class="my-1 border-neutral-700" />
+        <button
+          v-for="item in pinnedMenuItems"
+          :key="item.label"
+          class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
+          :class="item.class"
+          @click="item.action()"
+        >
+          <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
+          {{ item.label }}
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -63,7 +92,6 @@ import type { Plugin } from '@/core/types';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
-import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
 import { applicationState } from '@/main';
@@ -99,29 +127,42 @@ const togglePluginVisibility = (id: string) => {
   });
 };
 
-const pluginMenuItems = computed<MenuItem[]>(() =>
-  allPlugins.flatMap((plugin) => {
-    if (!plugin.icon) return [];
-    const locked = plugin.id === 'settings';
-    const visible = isVisible(plugin.id);
-    const textClass = locked
-      ? 'text-neutral-600 cursor-not-allowed'
-      : visible
-        ? 'text-neutral-200'
-        : 'text-neutral-500';
-    return [{
-      label: plugin.label,
-      icon: plugin.icon,
-      class: textClass,
-      iconClass: textClass,
-      action: () => togglePluginVisibility(plugin.id),
-      keepOpen: true,
-    }];
-  }),
+function toMenuItem(plugin: Plugin): MenuItem {
+  const locked = plugin.id === 'settings';
+  const visible = isVisible(plugin.id);
+  const textClass = locked
+    ? 'text-neutral-600 cursor-not-allowed'
+    : visible
+      ? 'text-neutral-200'
+      : 'text-neutral-500';
+  return {
+    label: plugin.label,
+    icon: plugin.icon!,
+    class: textClass,
+    iconClass: textClass,
+    action: () => togglePluginVisibility(plugin.id),
+    keepOpen: true,
+  };
+}
+
+const nonPinnedMenuItems = computed<MenuItem[]>(() =>
+  allPlugins.filter(p => p.icon && !p.isPinned).map(toMenuItem),
+);
+const pinnedMenuItems = computed<MenuItem[]>(() =>
+  allPlugins.filter(p => p.icon && p.isPinned).map(toMenuItem),
 );
 
+const menuElRef = ref<HTMLDivElement | null>(null);
+
+function handleMenuClickOutside(e: MouseEvent) {
+  if (showMenu.value && menuElRef.value && !menuElRef.value.contains(e.target as Node)) {
+    showMenu.value = false;
+  }
+}
+
 const onContextMenu = (e: MouseEvent) => {
-  open(e, pluginMenuItems.value.length);
+  const totalItems = nonPinnedMenuItems.value.length + pinnedMenuItems.value.length;
+  open(e, totalItems + 1); // +1 for separator
 };
 
 const isDev = import.meta.env.DEV;
@@ -146,8 +187,12 @@ const controlsAreaStyle = computed(() => ({
 onMounted(() => {
   updateZoomFactor();
   window.addEventListener('resize', updateZoomFactor);
+  document.addEventListener('mousedown', handleMenuClickOutside);
 });
-onUnmounted(() => window.removeEventListener('resize', updateZoomFactor));
+onUnmounted(() => {
+  window.removeEventListener('resize', updateZoomFactor);
+  document.removeEventListener('mousedown', handleMenuClickOutside);
+});
 </script>
 
 <style lang="scss">
