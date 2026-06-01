@@ -11,10 +11,10 @@
       @mousedown.middle.prevent="$emit('close', tab.id)"
     >
       <img
-        v-if="tab.favicon"
+        v-if="tab.favicon && !failedFavicons.has(tab.id)"
         :src="tab.favicon"
         class="w-3.5 h-3.5 flex-shrink-0"
-        @error="($event.target as HTMLImageElement).style.display = 'none'"
+        @error="failedFavicons.add(tab.id)"
       />
       <div v-else class="w-3.5 h-3.5 flex-shrink-0 rounded-sm bg-neutral-700" />
       <span class="truncate flex-1">{{ tab.title || 'New Tab' }}</span>
@@ -37,12 +37,27 @@
 </template>
 
 <script setup lang="ts">
+import { reactive, watch } from 'vue';
 import type { BrowserTab } from '../state.ts';
 
-defineProps<{
+const failedFavicons = reactive(new Set<number>());
+
+const props = defineProps<{
   tabs: BrowserTab[];
   activeTabId: number | null;
 }>();
+
+// Clear failed state when a tab gets a new favicon URL
+const faviconCache = new Map<number, string>();
+watch(() => props.tabs, (tabs) => {
+  for (const tab of tabs) {
+    const prev = faviconCache.get(tab.id);
+    if (tab.favicon && tab.favicon !== prev) {
+      failedFavicons.delete(tab.id);
+    }
+    faviconCache.set(tab.id, tab.favicon);
+  }
+}, { deep: true });
 
 defineEmits<{
   select: [tabId: number];
