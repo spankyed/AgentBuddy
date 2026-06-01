@@ -105,6 +105,10 @@ export async function checkAuth(cwd: string): Promise<{ available: boolean; prAc
     return { available: true, prAccess: true, activeToken }
   } catch (error: any) {
     const msg = error?.message ?? ''
+    // Not in a git repo — gh can't determine remote; skip silently
+    if (msg.includes('not a git repository')) {
+      return { available: true, prAccess: true, activeToken }
+    }
     logger.warn('PR access probe failed', { error: msg, tokenSource: activeToken?.source, tokenKind: activeToken?.kind })
     if (msg.includes('missing required permissions') || msg.includes('Resource not accessible')) {
       return { available: true, prAccess: false, activeToken }
