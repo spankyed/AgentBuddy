@@ -144,6 +144,7 @@ export type Event =
   | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
   | { type: 'pr.OPEN_FILE'; file: GitStatusFile }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
+  | { type: 'pr.GIT_STATUS_REFRESHED'; data: { timestamp: Date } }
   | { type: 'CODE_STARTUP' }
   // GitHub PR events from backend
   | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
