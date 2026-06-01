@@ -14,10 +14,11 @@
     @contextmenu="onContextMenu"
   >
     <div
-      v-if="!collapsed"
       :class="[
-        'rounded-full bg-neutral-600',
-        isHorizontal ? 'h-8 w-0.5' : 'w-8 h-0.5',
+        'rounded-full bg-neutral-500',
+        isHorizontal
+          ? 'h-8 w-px ml-px shadow-[-1px_0_0_rgba(255,255,255,0.15)]'
+          : 'w-8 h-px shadow-[0_-1px_0_rgba(255,255,255,0.15)]',
       ]"
     />
   </div>
