@@ -41,6 +41,7 @@
         @focus="$emit('focus')"
         @blur="$emit('blur')"
         @keydown.escape="($event.target as HTMLInputElement).blur()"
+        @auxclick.prevent="onMiddleClick"
         class="w-full px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-lg outline-none text-neutral-200 placeholder-neutral-500 focus:border-neutral-500 transition-colors"
         placeholder="Enter URL or search..."
       />
@@ -69,17 +70,26 @@ defineProps<{
   isLoading: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   back: [];
   forward: [];
   reload: [];
   stop: [];
   navigate: [url: string];
+  'open-in-new-tab': [url: string];
   'update:addressBarValue': [value: string];
   focus: [];
   blur: [];
   'toggle-devtools': [];
 }>();
+
+function onMiddleClick(e: MouseEvent) {
+  if (e.button !== 1) return;
+  const value = (e.target as HTMLInputElement).value.trim();
+  if (value) {
+    emit('open-in-new-tab', value);
+  }
+}
 
 function focusAddressBar() {
   addressInput.value?.focus();

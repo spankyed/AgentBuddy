@@ -22,6 +22,7 @@
       @focus="actor.send({ type: 'ADDRESS_BAR.FOCUS' })"
       @blur="actor.send({ type: 'ADDRESS_BAR.BLUR' })"
       @toggle-devtools="toggleDevTools"
+      @open-in-new-tab="actor.send({ type: 'TAB.CREATE', url: $event })"
     />
 
     <!-- Content placeholder: WebContentsView is overlaid here by the main process -->
