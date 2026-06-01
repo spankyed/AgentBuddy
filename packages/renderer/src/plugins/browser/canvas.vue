@@ -25,7 +25,7 @@
     <!-- Content placeholder: WebContentsView is overlaid here by the main process -->
     <div
       ref="contentArea"
-      class="flex-1 bg-neutral-950"
+      class="flex-1 bg-neutral-950 overflow-hidden"
     >
       <div v-if="tabs.length === 0" class="flex flex-col items-center justify-center h-full text-neutral-500">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mb-4 text-neutral-600"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -52,6 +52,7 @@ const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value
 
 const contentArea = ref<HTMLDivElement | null>(null);
 let resizeObserver: ResizeObserver | null = null;
+let mounted = true;
 
 function reportBounds() {
   if (!contentArea.value) return;
@@ -65,11 +66,9 @@ function reportBounds() {
 }
 
 onMounted(async () => {
-  // Show browser overlay
-  window.electronAPI?.browser.show();
-
-  // Report initial bounds
+  // Report bounds first so the overlay appears at the correct position
   reportBounds();
+  window.electronAPI?.browser.show();
 
   // Watch for size changes
   resizeObserver = new ResizeObserver(reportBounds);
@@ -80,6 +79,8 @@ onMounted(async () => {
   // Sync existing tabs from main process (e.g. popup-created tabs while on another plugin)
   const existingTabs = await window.electronAPI?.browser.getTabs();
   const activeId = await window.electronAPI?.browser.getActiveTab();
+  if (!mounted) return;
+
   if (existingTabs?.length) {
     for (const tab of existingTabs) {
       actor.send({ type: 'IPC.TAB_CREATED', tab });
@@ -93,7 +94,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // Hide browser overlay when switching away from this plugin
+  mounted = false;
   window.electronAPI?.browser.hide();
 
   if (resizeObserver) {

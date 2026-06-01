@@ -146,10 +146,10 @@ export class BrowserTabManager {
 
     const tabState = this.#getTabState(view);
 
-    // Select the new tab
-    this.selectTab(id);
-
+    // Send tab-created BEFORE selectTab so the renderer has the tab in its
+    // array when active-tab-changed arrives (otherwise address bar won't sync).
     this.#sendToRenderer('browser:tab-created', tabState);
+    this.selectTab(id);
     return tabState;
   }
 
