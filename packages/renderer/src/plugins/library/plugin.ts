@@ -14,6 +14,7 @@ const library: Plugin = {
   canvas: LibraryCanvas,
   panel: LibraryPanel,
   settings,
+  isPinned: true,
 }
 
 export default library

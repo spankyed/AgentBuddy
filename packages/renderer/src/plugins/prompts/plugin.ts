@@ -11,6 +11,7 @@ const promptsPlugin: Plugin = {
   state,
   canvas,
   settings,
+  isPinned: true,
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
