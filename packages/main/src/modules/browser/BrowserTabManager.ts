@@ -55,9 +55,10 @@ export class BrowserTabManager {
 
   #getTabState(view: WebContentsView): TabState {
     const wc = view.webContents;
+    const id = wc.id;
     return {
-      id: wc.id,
-      url: wc.getURL(),
+      id,
+      url: wc.getURL() || this.#pendingUrls.get(id) || '',
       title: wc.getTitle() || 'New Tab',
       favicon: '',
       isLoading: wc.isLoading(),
@@ -276,8 +277,10 @@ export class BrowserTabManager {
     this.#applyBounds(view);
     view.setVisible(this.#visible);
 
-    // Auto-load lazy tabs when selected
-    this.loadTab(tabId);
+    // Auto-load lazy tabs when selected (only if browser overlay is visible)
+    if (this.#visible) {
+      this.loadTab(tabId);
+    }
 
     this.#sendToRenderer('browser:active-tab-changed', tabId);
   }
