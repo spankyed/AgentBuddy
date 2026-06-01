@@ -17,7 +17,7 @@ export interface AutocompleteSuggestion {
   matchType: 'url' | 'title';
 }
 
-export function computeUrlKey(url: string): string {
+function computeUrlKey(url: string): string {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, '').toLowerCase();

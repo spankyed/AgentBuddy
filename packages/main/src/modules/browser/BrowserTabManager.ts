@@ -3,6 +3,23 @@ import type {TabState, TabBounds} from './types.js';
 
 const BROWSER_PARTITION = 'persist:browser';
 
+function errorPageHtml(url: string, description: string): string {
+  const safeUrl = url.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const safeDesc = description.replace(/</g, '&lt;');
+  return `<html><head><style>
+    body { background: #0a0a0a; color: #a3a3a3; font-family: -apple-system, system-ui, sans-serif;
+           display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .error { text-align: center; max-width: 420px; }
+    h2 { color: #e5e5e5; font-size: 18px; margin-bottom: 8px; }
+    p { font-size: 14px; line-height: 1.6; }
+    code { background: #262626; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  </style></head><body><div class="error">
+    <h2>This page can\u2019t be reached</h2>
+    <p><code>${safeUrl}</code></p>
+    <p>${safeDesc}</p>
+  </div></body></html>`;
+}
+
 export class BrowserTabManager {
   readonly #tabs = new Map<number, WebContentsView>();
   readonly #pendingUrls = new Map<number, string>(); // lazy tabs: tabId → URL to load on demand
@@ -111,20 +128,8 @@ export class BrowserTabManager {
       // -3 = aborted (user navigated away or stopped loading)
       if (errorCode === -3) return;
 
-      const errorHtml = `<html><head><style>
-        body { background: #0a0a0a; color: #a3a3a3; font-family: -apple-system, system-ui, sans-serif;
-               display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .error { text-align: center; max-width: 420px; }
-        h2 { color: #e5e5e5; font-size: 18px; margin-bottom: 8px; }
-        p { font-size: 14px; line-height: 1.6; }
-        code { background: #262626; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-      </style></head><body><div class="error">
-        <h2>This page can\u2019t be reached</h2>
-        <p><code>${validatedURL.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</code></p>
-        <p>${(errorDescription || 'ERR_' + Math.abs(errorCode)).replace(/</g, '&lt;')}</p>
-      </div></body></html>`;
-
-      wc.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`).catch(() => {});
+      const html = errorPageHtml(validatedURL, errorDescription || `ERR_${Math.abs(errorCode)}`);
+      wc.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(() => {});
     });
 
     // Browser keyboard shortcuts (Cmd/Ctrl+W/T/R/L)

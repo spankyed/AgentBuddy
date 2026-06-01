@@ -113,8 +113,13 @@ function syncTabsToBackend(tabs: BrowserTab[]) {
 
 const GROUPS_STORAGE_KEY = 'browser-tab-groups';
 
-function persistGroups(groups: TabGroup[]) {
-  saveTabGroups(GROUPS_STORAGE_KEY, groups);
+function persistState(context: BrowserContext) {
+  saveTabGroups(GROUPS_STORAGE_KEY, context.tabGroups);
+  syncTabsToBackend(context.tabs);
+}
+
+function persistGroupsOnly(context: BrowserContext) {
+  saveTabGroups(GROUPS_STORAGE_KEY, context.tabGroups);
 }
 
 function generateGroupId(): string {
@@ -247,7 +252,7 @@ const browserState = setup({
               );
               return { tabs };
             }),
-            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+            ({ context }) => persistState(context),
           ],
         },
         'TAB.REMOVE_FROM_GROUP': {
@@ -259,7 +264,7 @@ const browserState = setup({
               const tabGroups = deleteEmptyGroups(tabs, context.tabGroups);
               return { tabs, tabGroups };
             }),
-            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+            ({ context }) => persistState(context),
           ],
         },
         'GROUP.CREATE': {
@@ -279,7 +284,7 @@ const browserState = setup({
                 : context.tabs;
               return { tabGroups, tabs };
             }),
-            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+            ({ context }) => persistState(context),
           ],
         },
         'GROUP.RENAME': {
@@ -289,7 +294,7 @@ const browserState = setup({
                 g.id === event.groupId ? { ...g, name: event.name } : g,
               ),
             })),
-            ({ context }) => { persistGroups(context.tabGroups); },
+            ({ context }) => persistGroupsOnly(context),
           ],
         },
         'GROUP.CHANGE_COLOR': {
@@ -299,7 +304,7 @@ const browserState = setup({
                 g.id === event.groupId ? { ...g, color: event.color } : g,
               ),
             })),
-            ({ context }) => { persistGroups(context.tabGroups); },
+            ({ context }) => persistGroupsOnly(context),
           ],
         },
         'GROUP.DELETE': {
@@ -320,7 +325,7 @@ const browserState = setup({
                 : context.tabs.map(t => t.groupId === event.groupId ? { ...t, groupId: undefined } : t);
               return { tabGroups, tabs };
             }),
-            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+            ({ context }) => persistState(context),
           ],
         },
         'GROUP.TOGGLE_COLLAPSE': {
@@ -330,7 +335,7 @@ const browserState = setup({
                 g.id === event.groupId ? { ...g, isCollapsed: !g.isCollapsed } : g,
               ),
             })),
-            ({ context }) => { persistGroups(context.tabGroups); },
+            ({ context }) => persistGroupsOnly(context),
           ],
         },
         'NAV.GO': {
@@ -465,9 +470,7 @@ const browserState = setup({
               }
               return { tabs: [...context.tabs, tab] };
             }),
-            ({ context }) => {
-              syncTabsToBackend(context.tabs);
-            },
+            ({ context }) => syncTabsToBackend(context.tabs),
           ],
         },
         'IPC.TAB_REMOVED': {
@@ -483,10 +486,7 @@ const browserState = setup({
                   : context.activeTabId,
               };
             }),
-            ({ context }) => {
-              persistGroups(context.tabGroups);
-              syncTabsToBackend(context.tabs);
-            },
+            ({ context }) => persistState(context),
           ],
         },
         'IPC.TAB_UPDATED': {
