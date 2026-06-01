@@ -6,6 +6,7 @@ import type { TabGroupColor } from './types'
 const props = defineProps<{
   name: string
   isPinned?: boolean
+  autoFocus?: boolean
   ItemComponent: any
   SeparatorComponent: any
   SubComponent: any
@@ -28,10 +29,12 @@ const editingName = ref(props.name)
 const nameInput = ref<HTMLInputElement | null>(null)
 
 onMounted(() => {
-  nextTick(() => {
-    nameInput.value?.focus()
-    nameInput.value?.select()
-  })
+  if (props.autoFocus) {
+    nextTick(() => {
+      nameInput.value?.focus()
+      nameInput.value?.select()
+    })
+  }
 })
 
 watch(() => props.name, (newName) => {

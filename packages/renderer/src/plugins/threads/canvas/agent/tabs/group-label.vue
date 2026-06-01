@@ -43,6 +43,7 @@
               <GroupMenuItems
                 :name="name"
                 :isPinned="isPinned"
+                :autoFocus="shouldAutoFocus"
                 :ItemComponent="DropdownMenuItem"
                 :SeparatorComponent="DropdownMenuSeparator"
                 :SubComponent="DropdownMenuSub"
@@ -140,14 +141,20 @@ const emit = defineEmits<{
 
 const dropdownOpen = ref(false)
 const contextMenuOpen = ref(false)
+const shouldAutoFocus = ref(false)
 
 watch(() => props.autoEdit, (val) => {
   if (val) {
+    shouldAutoFocus.value = true
     nextTick(() => {
       dropdownOpen.value = true
       emit('edit-started')
     })
   }
+})
+
+watch(dropdownOpen, (val) => {
+  if (!val) shouldAutoFocus.value = false
 })
 
 const closeMenus = () => {
