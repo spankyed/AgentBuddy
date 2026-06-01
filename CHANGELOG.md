@@ -1,5 +1,33 @@
 -e # Changelog
 
+## v0.3.7 (2026-06-01)
+
+### Features
+- pull-request): add GIT_STATUS_REFRESHED event type to PR state
+- codex): add Network Access and Web Search toggles to session artifact
+- codex): auto-approve tool requests in auto_review mode and show aside text on approvals
+
+### Fixes
+- canvas-area): lower z-index from 50 to 0 to fix stacking context
+- notes): improve search input UX with auto-select and close button
+- search): trigger search directly on pattern change and optimize result expansion
+- editor): redirect Cmd+Shift+F to local find in standalone Monaco
+- tag-input): increase z-index of dropdown to prevent stacking context issues
+- code): prevent PR panel from resetting to file view on git changes
+
+### Refactors
+- renderer): simplify chat maximize/restore by reusing PanelResizer
+
+### Other
+- style(canvas-area): remove unnecessary z-0 class from container
+- style(panel-resizer): replace resizer with SimGPT-style visible bar
+- style(panel-resizer): make collapsed panel divider visible with solid background
+- style(panel-resizer): restyle resizers - Add visible drag handle indicator dot
+- style(threads): hide button labels on small screens using container queries
+- style(renderer): remove inline background-color from canvas panel
+
+-e # Changelog
+
 ## v0.3.6 (2026-05-31)
 
 ### Features
