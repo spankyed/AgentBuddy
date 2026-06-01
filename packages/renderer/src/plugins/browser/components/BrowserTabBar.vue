@@ -27,6 +27,12 @@
               @click="$emit('select', item.tab.id)"
               @mousedown.middle.prevent="$emit('close', item.tab.id)"
             >
+              <button
+                class="flex-shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-neutral-700 transition-opacity text-neutral-400 hover:text-neutral-200"
+                @click.stop="$emit('close', item.tab.id)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
               <div v-if="item.tab.isLoading" class="w-3.5 h-3.5 flex-shrink-0 rounded-full border-2 border-neutral-600 border-t-neutral-300 animate-spin" />
               <img
                 v-else-if="item.tab.favicon && !failedFavicons.has(item.tab.id)"
@@ -36,12 +42,6 @@
               />
               <div v-else class="w-3.5 h-3.5 flex-shrink-0 rounded-sm bg-neutral-700" />
               <span class="truncate flex-1">{{ item.tab.title || 'New Tab' }}</span>
-              <button
-                class="flex-shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-neutral-700 transition-opacity text-neutral-400 hover:text-neutral-200"
-                @click.stop="$emit('close', item.tab.id)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
             </div>
           </ContextMenuTrigger>
           <ContextMenuPortal>
