@@ -62,6 +62,7 @@ export class BrowserTabManager {
       isLoading: wc.isLoading(),
       canGoBack: wc.canGoBack(),
       canGoForward: wc.canGoForward(),
+      isMuted: wc.isAudioMuted(),
     };
   }
 
@@ -256,6 +257,20 @@ export class BrowserTabManager {
 
   stop(tabId: number): void {
     this.#tabs.get(tabId)?.webContents.stop();
+  }
+
+  duplicateTab(tabId: number): TabState | null {
+    const view = this.#tabs.get(tabId);
+    if (!view) return null;
+    const url = view.webContents.getURL();
+    return this.createTab(url && url !== 'about:blank' ? url : undefined);
+  }
+
+  setTabMuted(tabId: number, muted: boolean): void {
+    const view = this.#tabs.get(tabId);
+    if (!view) return;
+    view.webContents.setAudioMuted(muted);
+    this.#sendToRenderer('browser:tab-updated', tabId, { isMuted: muted });
   }
 
   toggleDevTools(tabId: number): void {

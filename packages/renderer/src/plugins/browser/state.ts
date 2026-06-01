@@ -10,6 +10,7 @@ export interface BrowserTab {
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
+  isMuted: boolean;
 }
 
 type BrowserEvents =
@@ -17,6 +18,9 @@ type BrowserEvents =
   | { type: 'TAB.CREATE'; url?: string }
   | { type: 'TAB.CLOSE'; tabId: number }
   | { type: 'TAB.SELECT'; tabId: number }
+  | { type: 'TAB.DUPLICATE'; tabId: number }
+  | { type: 'TAB.CLOSE_OTHERS'; tabId: number }
+  | { type: 'TAB.TOGGLE_MUTE'; tabId: number }
   | { type: 'NAV.GO'; url: string }
   | { type: 'NAV.BACK' }
   | { type: 'NAV.FORWARD' }
@@ -109,6 +113,28 @@ const browserState = setup({
         'TAB.SELECT': {
           actions: ({ event }) => {
             window.electronAPI?.browser.selectTab(event.tabId);
+          },
+        },
+        'TAB.DUPLICATE': {
+          actions: ({ event }) => {
+            window.electronAPI?.browser.duplicateTab(event.tabId);
+          },
+        },
+        'TAB.CLOSE_OTHERS': {
+          actions: ({ context, event }) => {
+            for (const tab of context.tabs) {
+              if (tab.id !== event.tabId) {
+                window.electronAPI?.browser.closeTab(tab.id);
+              }
+            }
+          },
+        },
+        'TAB.TOGGLE_MUTE': {
+          actions: ({ context, event }) => {
+            const tab = context.tabs.find(t => t.id === event.tabId);
+            if (tab) {
+              window.electronAPI?.browser.setTabMuted(event.tabId, !tab.isMuted);
+            }
           },
         },
         'NAV.GO': {

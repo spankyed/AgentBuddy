@@ -77,6 +77,15 @@ class BrowserManager implements AppModule {
     ipcMain.on('browser:toggle-devtools', (event, tabId: number) => {
       this.#getTabManager(event)?.toggleDevTools(tabId);
     });
+
+    // Tab actions
+    ipcMain.handle('browser:duplicate-tab', (event, tabId: number) => {
+      return this.#getTabManager(event)?.duplicateTab(tabId) ?? null;
+    });
+
+    ipcMain.handle('browser:set-tab-muted', (event, tabId: number, muted: boolean) => {
+      this.#getTabManager(event)?.setTabMuted(tabId, muted);
+    });
   }
 }
 

@@ -6,6 +6,7 @@ export interface TabState {
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
+  isMuted: boolean;
 }
 
 export interface TabBounds {

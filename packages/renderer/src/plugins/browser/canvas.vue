@@ -6,6 +6,9 @@
       @select="actor.send({ type: 'TAB.SELECT', tabId: $event })"
       @close="actor.send({ type: 'TAB.CLOSE', tabId: $event })"
       @create="actor.send({ type: 'TAB.CREATE' })"
+      @duplicate="actor.send({ type: 'TAB.DUPLICATE', tabId: $event })"
+      @close-others="actor.send({ type: 'TAB.CLOSE_OTHERS', tabId: $event })"
+      @toggle-mute="actor.send({ type: 'TAB.TOGGLE_MUTE', tabId: $event })"
     />
     <BrowserNavBar
       ref="navBar"

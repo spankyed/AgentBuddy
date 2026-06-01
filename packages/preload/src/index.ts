@@ -111,6 +111,7 @@ interface TabState {
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
+  isMuted: boolean;
 }
 
 const browser = {
@@ -157,6 +158,10 @@ const browser = {
 
   // DevTools
   toggleDevTools: (tabId: number) => ipcRenderer.send('browser:toggle-devtools', tabId),
+
+  // Tab actions
+  duplicateTab: (tabId: number) => ipcRenderer.invoke('browser:duplicate-tab', tabId) as Promise<TabState | null>,
+  setTabMuted: (tabId: number, muted: boolean) => ipcRenderer.invoke('browser:set-tab-muted', tabId, muted),
 
   // Query
   getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,

@@ -64,6 +64,8 @@ declare global {
         onTabUpdated: (callback: (tabId: number, changes: Partial<BrowserTabState>) => void) => () => void;
         onActiveTabChanged: (callback: (tabId: number) => void) => () => void;
         toggleDevTools: (tabId: number) => void;
+        duplicateTab: (tabId: number) => Promise<BrowserTabState | null>;
+        setTabMuted: (tabId: number, muted: boolean) => Promise<void>;
         getTabs: () => Promise<BrowserTabState[]>;
         getActiveTab: () => Promise<number | null>;
       };
@@ -79,6 +81,7 @@ declare global {
     isLoading: boolean;
     canGoBack: boolean;
     canGoForward: boolean;
+    isMuted: boolean;
   }
 }
 
