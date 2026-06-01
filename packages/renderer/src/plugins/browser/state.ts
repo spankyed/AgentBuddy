@@ -160,7 +160,10 @@ const browserState = setup({
         // IPC events — inline assigns, no named actions needed
         'IPC.TAB_CREATED': {
           actions: assign({
-            tabs: ({ context, event }) => [...context.tabs, event.tab],
+            tabs: ({ context, event }) =>
+              context.tabs.some(t => t.id === event.tab.id)
+                ? context.tabs
+                : [...context.tabs, event.tab],
           }),
         },
         'IPC.TAB_REMOVED': {
