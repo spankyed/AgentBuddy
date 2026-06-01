@@ -71,15 +71,6 @@ const browserState = setup({
     }),
   },
   actions: {
-    createTab: (_, params: { url?: string }) => {
-      window.electronAPI?.browser.createTab(params.url);
-    },
-    closeTab: (_, params: { tabId: number }) => {
-      window.electronAPI?.browser.closeTab(params.tabId);
-    },
-    selectTab: (_, params: { tabId: number }) => {
-      window.electronAPI?.browser.selectTab(params.tabId);
-    },
     navigate: ({ context }) => {
       if (context.activeTabId !== null && context.addressBarValue.trim()) {
         window.electronAPI?.browser.navigate(context.activeTabId, context.addressBarValue.trim());

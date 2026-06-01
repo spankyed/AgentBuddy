@@ -64,7 +64,7 @@ function reportBounds() {
   });
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Show browser overlay
   window.electronAPI?.browser.show();
 
@@ -77,8 +77,17 @@ onMounted(() => {
     resizeObserver.observe(contentArea.value);
   }
 
-  // Create initial tab if none exist
-  if (tabs.value.length === 0) {
+  // Sync existing tabs from main process (e.g. popup-created tabs while on another plugin)
+  const existingTabs = await window.electronAPI?.browser.getTabs();
+  const activeId = await window.electronAPI?.browser.getActiveTab();
+  if (existingTabs?.length) {
+    for (const tab of existingTabs) {
+      actor.send({ type: 'IPC.TAB_CREATED', tab });
+    }
+    if (activeId != null) {
+      actor.send({ type: 'IPC.ACTIVE_TAB_CHANGED', tabId: activeId });
+    }
+  } else {
     actor.send({ type: 'TAB.CREATE' });
   }
 });

@@ -171,7 +171,8 @@ export class BrowserTabManager {
       win.contentView.removeChildView(view);
     }
 
-    // Destroy
+    // Clean up listeners and destroy
+    view.webContents.removeAllListeners();
     view.webContents.close();
     this.#tabs.delete(tabId);
 
@@ -284,6 +285,7 @@ export class BrowserTabManager {
       if (win && !win.isDestroyed()) {
         win.contentView.removeChildView(view);
       }
+      view.webContents.removeAllListeners();
       view.webContents.close();
     }
     this.#tabs.clear();
