@@ -10,8 +10,9 @@
       @click="$emit('select', tab.id)"
       @mousedown.middle.prevent="$emit('close', tab.id)"
     >
+      <div v-if="tab.isLoading" class="w-3.5 h-3.5 flex-shrink-0 rounded-full border-2 border-neutral-600 border-t-neutral-300 animate-spin" />
       <img
-        v-if="tab.favicon && !failedFavicons.has(tab.id)"
+        v-else-if="tab.favicon && !failedFavicons.has(tab.id)"
         :src="tab.favicon"
         class="w-3.5 h-3.5 flex-shrink-0"
         @error="failedFavicons.add(tab.id)"
