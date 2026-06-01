@@ -102,6 +102,81 @@ const apiStatus = {
   },
 };
 
+// Browser API
+interface TabState {
+  id: number;
+  url: string;
+  title: string;
+  favicon: string;
+  isLoading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  isMuted: boolean;
+}
+
+const browser = {
+  // Tab management
+  createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) =>
+    ipcRenderer.invoke('browser:create-tab', url, options) as Promise<TabState | null>,
+  loadTab: (tabId: number) => ipcRenderer.invoke('browser:load-tab', tabId),
+  closeTab: (tabId: number) => ipcRenderer.send('browser:close-tab', tabId),
+  selectTab: (tabId: number) => ipcRenderer.send('browser:select-tab', tabId),
+
+  // Navigation
+  navigate: (tabId: number, url: string) => ipcRenderer.send('browser:navigate', tabId, url),
+  goBack: (tabId: number) => ipcRenderer.send('browser:go-back', tabId),
+  goForward: (tabId: number) => ipcRenderer.send('browser:go-forward', tabId),
+  reload: (tabId: number) => ipcRenderer.send('browser:reload', tabId),
+  stop: (tabId: number) => ipcRenderer.send('browser:stop', tabId),
+
+  // Bounds and visibility
+  setBounds: (bounds: {x: number; y: number; width: number; height: number}) =>
+    ipcRenderer.send('browser:set-bounds', bounds),
+  show: () => ipcRenderer.send('browser:show'),
+  hide: () => ipcRenderer.send('browser:hide'),
+
+  // Events from main process
+  onTabCreated: (callback: (tab: TabState) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tab: TabState) => callback(tab);
+    ipcRenderer.on('browser:tab-created', handler);
+    return () => { ipcRenderer.removeListener('browser:tab-created', handler); };
+  },
+  onTabRemoved: (callback: (tabId: number) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tabId: number) => callback(tabId);
+    ipcRenderer.on('browser:tab-removed', handler);
+    return () => { ipcRenderer.removeListener('browser:tab-removed', handler); };
+  },
+  onTabUpdated: (callback: (tabId: number, changes: Partial<TabState>) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tabId: number, changes: Partial<TabState>) =>
+      callback(tabId, changes);
+    ipcRenderer.on('browser:tab-updated', handler);
+    return () => { ipcRenderer.removeListener('browser:tab-updated', handler); };
+  },
+  onActiveTabChanged: (callback: (tabId: number) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tabId: number) => callback(tabId);
+    ipcRenderer.on('browser:active-tab-changed', handler);
+    return () => { ipcRenderer.removeListener('browser:active-tab-changed', handler); };
+  },
+
+  // DevTools
+  toggleDevTools: (tabId: number) => ipcRenderer.send('browser:toggle-devtools', tabId),
+
+  // Address bar focus (from main process keyboard shortcut)
+  onFocusAddressBar: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('browser:focus-address-bar', handler);
+    return () => { ipcRenderer.removeListener('browser:focus-address-bar', handler); };
+  },
+
+  // Tab actions
+  duplicateTab: (tabId: number) => ipcRenderer.invoke('browser:duplicate-tab', tabId) as Promise<TabState | null>,
+  setTabMuted: (tabId: number, muted: boolean) => ipcRenderer.invoke('browser:set-tab-muted', tabId, muted),
+
+  // Query
+  getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,
+  getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
@@ -112,6 +187,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   zoom,
   apiStatus,
   apiPort,
+  browser,
 });
 
 // Export the tRPC client and connection status

@@ -10,6 +10,7 @@ import Blank from './_blank/plugin.ts';
 import Library from './library/plugin.ts';
 import Code from './code/plugin.ts';
 import Notes from './notes/plugin.ts';
+import Browser from './browser/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import {
   Code as CodeIcon,
@@ -54,6 +55,7 @@ export default [
   Brain,
   Database,
   Logs,
+  Browser,
   Settings,
   // Blank,
   ...mockPlugins,

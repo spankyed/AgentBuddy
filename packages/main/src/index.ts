@@ -12,6 +12,7 @@ import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
 import {createSpeechRecognition} from './modules/speech-recognition/index.js';
 import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
+import {createBrowserModule} from './modules/browser/index.js';
 import {app} from 'electron';
 
 
@@ -33,6 +34,7 @@ export async function initApp(initConfig: AppInitConfig) {
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
     .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer, splashScreen}))
     .init(terminateAppOnLastWindowClose())
+    .init(createBrowserModule())
     .init(createMacOSAppMenu())
     // Disable auto-updater until GitHub releases are configured
     // .init(autoUpdater())
