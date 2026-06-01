@@ -220,6 +220,12 @@ export class BrowserTabManager {
     // array when active-tab-changed arrives (otherwise address bar won't sync).
     this.#sendToRenderer('browser:tab-created', tabState);
     this.selectTab(id);
+
+    // Auto-focus address bar for blank new tabs
+    if (targetUrl === 'about:blank') {
+      this.#sendToRenderer('browser:focus-address-bar');
+    }
+
     return tabState;
   }
 
