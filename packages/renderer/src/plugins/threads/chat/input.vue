@@ -11,6 +11,7 @@
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
         :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight, [$style.inputDropActive]: isDraggingFile, [$style.inputRecording]: isListening }]"
         data-onboarding-id="agent-chat-input"
+        data-targeting-id="agent-chat-input"
         @paste.capture="handlePaste"
         @dragenter="onDragEnter"
         @dragleave="onDragLeave"

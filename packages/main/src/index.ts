@@ -12,6 +12,7 @@ import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
 import {createSpeechRecognition} from './modules/speech-recognition/index.js';
 import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
+import {createDemoCaptureModule} from './modules/demo-capture/index.js';
 import {app} from 'electron';
 
 
@@ -20,16 +21,23 @@ export async function initApp(initConfig: AppInitConfig) {
   app.commandLine.appendSwitch('disable-features', 'MediaSessionService,HardwareMediaKeyHandling');
 
   // Create instances that need to be shared between modules
-  const apiServer = createApiServer();
+  const isDemoCapture = initConfig.demoCapture?.enabled === true;
+  const apiServer = isDemoCapture ? undefined : createApiServer();
   const splashScreen = createSplashScreen();
 
-  const moduleRunner = createModuleRunner()
+  let moduleRunner = createModuleRunner()
     .init(disallowMultipleAppInstance())
     .init(hardwareAccelerationMode({enable: false}))
     .init(createMediaProtocol())  // Must register protocol schemes before app ready
-    .init(splashScreen)  // Show splash screen early
-    .init(apiServer)
+    .init(splashScreen);  // Show splash screen early
+
+  if (apiServer) {
+    moduleRunner = moduleRunner.init(apiServer);
+  }
+
+  moduleRunner = moduleRunner
     .init(createSpeechRecognition())
+    .init(createDemoCaptureModule(initConfig.demoCapture))
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
     .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer, splashScreen}))
     .init(terminateAppOnLastWindowClose())

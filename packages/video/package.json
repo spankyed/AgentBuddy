@@ -1,0 +1,31 @@
+{
+  "name": "@app/video",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "tsx scripts/render.ts",
+    "capture": "tsx scripts/capture-demo-scene.ts",
+    "render:demo": "tsx scripts/render-demo.ts",
+    "demo": "tsx scripts/demo.ts",
+    "render:intro": "tsx scripts/render.ts AgentBuddyIntro out/agentbuddy-intro.mp4",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.465",
+    "@remotion/cli": "4.0.465",
+    "@remotion/renderer": "4.0.465",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "remotion": "4.0.465",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

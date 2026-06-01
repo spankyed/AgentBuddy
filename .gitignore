@@ -13,3 +13,4 @@ untracked
 # Build artifacts
 native/speech/macos/SpeechHelper
 build/prod/logs/
+packages/video/out/

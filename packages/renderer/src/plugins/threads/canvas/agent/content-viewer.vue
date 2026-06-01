@@ -1,5 +1,5 @@
 <template>
-  <div :class="compact ? 'flex flex-col' : 'flex'" class="h-full bg-neutral-900" data-onboarding-id="agent-artifacts">
+  <div :class="compact ? 'flex flex-col' : 'flex'" class="h-full bg-neutral-900" data-onboarding-id="agent-artifacts" data-targeting-id="agent-artifacts">
     <!-- Artifact List: horizontal strip (inline) or vertical sidebar (canvas) -->
     <div :class="compact
       ? 'overflow-x-auto border-b border-neutral-800 shrink-0'

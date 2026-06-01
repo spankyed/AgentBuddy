@@ -18,6 +18,24 @@ function getApiPort(): number {
   return 3001;
 }
 
+function getArgValue(name: string): string | undefined {
+  const inlineArg = process.argv.find(arg => arg.startsWith(`${name}=`));
+  if (inlineArg) return inlineArg.slice(name.length + 1);
+
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function getDemoConfig(): {enabled: true; id: string; scene: string} | undefined {
+  if (getArgValue('--demo-enabled') !== 'true') return undefined;
+
+  const id = getArgValue('--demo-id');
+  const scene = getArgValue('--demo-scene');
+  if (!id || !scene) return undefined;
+
+  return {enabled: true, id, scene};
+}
+
 // Window controls API
 const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
@@ -39,6 +57,7 @@ const fileUtils = {
 
 // Get the API port
 const apiPort = getApiPort();
+const demo = getDemoConfig();
 
 // Shell utilities
 const shell = {
@@ -78,16 +97,20 @@ const zoom = {
 
 // API status events (backend crash/restart notifications from main process)
 const apiStatus = {
-  getStatus: () => ipcRenderer.invoke('api:get-status') as Promise<{
-    running: boolean;
-    port?: number;
-    error?: { message: string; stack?: string };
-    restartAttempts: number;
-  }>,
-  relaunch: () => ipcRenderer.invoke('app:relaunch'),
-  reload: () => ipcRenderer.invoke('app:reload'),
-  openLogFile: () => ipcRenderer.invoke('api:open-log-file'),
+  getStatus: () => demo
+    ? Promise.resolve({running: true, restartAttempts: 0})
+    : ipcRenderer.invoke('api:get-status') as Promise<{
+      running: boolean;
+      port?: number;
+      error?: { message: string; stack?: string };
+      restartAttempts: number;
+    }>,
+  relaunch: () => demo ? Promise.resolve() : ipcRenderer.invoke('app:relaunch'),
+  reload: () => demo ? Promise.resolve() : ipcRenderer.invoke('app:reload'),
+  openLogFile: () => demo ? Promise.resolve() : ipcRenderer.invoke('api:open-log-file'),
   onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
+    if (demo) return () => {};
+
     const channels = ['api:stopped', 'api:error', 'api:restarting', 'api:started', 'api:fatal'];
     const handlers = channels.map(channel => {
       const handler = (_: Electron.IpcRendererEvent, data?: any) => {
@@ -112,6 +135,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   zoom,
   apiStatus,
   apiPort,
+  demo,
+  demoReady: () => ipcRenderer.invoke('demo:ready'),
 });
 
 // Export the tRPC client and connection status

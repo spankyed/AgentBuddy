@@ -22,6 +22,11 @@ declare global {
 window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
 runFrontendMigrations();
+const demoConfig = window.electronAPI?.demo;
+if (demoConfig?.enabled) {
+  localStorage.setItem('agentbuddy-last-active-plugin', 'threads');
+  localStorage.setItem('threads-view-preference', 'dashboard');
+}
 
 // const { inspect } = createBrowserInspector();
 
@@ -57,3 +62,15 @@ app.config.errorHandler = (err, _instance, info) => {
 };
 
 app.mount('#app');
+
+if (demoConfig?.enabled) {
+  import('./demo/apply-demo-scene')
+    .then(({applyDemoScene}) => applyDemoScene(demoConfig as any))
+    .catch((error) => {
+      console.error('Demo scene hydration failed:', error);
+      window.__showErrorPage?.(
+        'Demo scene hydration failed',
+        error instanceof Error ? error.stack || error.message : String(error),
+      );
+    });
+}

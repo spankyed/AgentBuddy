@@ -24,6 +24,7 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
     reportCompressedSize: false,
   },
   plugins: [
+    electronCjsDefaultImport(),
     viteStaticCopy({
       environment: 'ssr', // Required: Vite 7 Environment API defaults to 'client', skipping copies in SSR builds
       targets: [
@@ -42,6 +43,20 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
   ],
 }));
 
+function electronCjsDefaultImport() {
+  return {
+    name: 'electron-cjs-default-import',
+    generateBundle(_options, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue;
+        chunk.code = chunk.code.replace(
+          /^import \{([^}]+)\} from "electron";/m,
+          (_match, imports) => `import electron from "electron";\nconst {${imports}} = electron;`,
+        );
+      }
+    },
+  };
+}
 
 /**
  * Implement Electron app reload when some file was changed

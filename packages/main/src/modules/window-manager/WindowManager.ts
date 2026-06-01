@@ -1,7 +1,6 @@
 import type {AppModule} from '../../AppModule.ts';
 import {ModuleContext} from '../../ModuleContext.js';
 import {BrowserWindow, ipcMain, app, dialog, shell} from 'electron';
-import contextMenu from 'electron-context-menu';
 import type {AppInitConfig} from '../../AppInitConfig.ts';
 import type {ApiServer} from '../api-server/ApiServer.ts';
 import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
@@ -18,6 +17,7 @@ class WindowManager implements AppModule {
   readonly #openDevTools;
   readonly #apiServer?: ApiServer;
   readonly #splashScreen?: SplashScreen;
+  readonly #demoCapture?: AppInitConfig['demoCapture'];
 
   constructor({initConfig, openDevTools = false, apiServer, splashScreen}: {
     initConfig: AppInitConfig, 
@@ -30,6 +30,7 @@ class WindowManager implements AppModule {
     this.#openDevTools = openDevTools;
     this.#apiServer = apiServer;
     this.#splashScreen = splashScreen;
+    this.#demoCapture = initConfig.demoCapture;
   }
 
   async enable({app}: ModuleContext): Promise<void> {
@@ -319,32 +320,53 @@ class WindowManager implements AppModule {
     // Get the API port before creating the window
     const apiPort = this.#apiServer?.getStatus().port || 3001;
     console.log(`[MAIN] Creating window with API port: ${apiPort}`);
+    const isDemoCapture = this.#demoCapture?.enabled === true;
+    const additionalArguments = [`--api-port=${apiPort}`];
+
+    if (isDemoCapture) {
+      additionalArguments.push(
+        '--demo-enabled=true',
+        `--demo-id=${this.#demoCapture!.id}`,
+        `--demo-scene=${this.#demoCapture!.scene}`,
+      );
+    }
     
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
-      width: WINDOW_CONFIG.WIDTH,
-      height: WINDOW_CONFIG.HEIGHT,
-      minWidth: WINDOW_CONFIG.MIN_WIDTH,
-      minHeight: WINDOW_CONFIG.MIN_HEIGHT,
+      width: isDemoCapture ? WINDOW_CONFIG.DEMO_WIDTH : WINDOW_CONFIG.WIDTH,
+      height: isDemoCapture ? WINDOW_CONFIG.DEMO_HEIGHT : WINDOW_CONFIG.HEIGHT,
+      minWidth: isDemoCapture ? WINDOW_CONFIG.DEMO_WIDTH : WINDOW_CONFIG.MIN_WIDTH,
+      minHeight: isDemoCapture ? WINDOW_CONFIG.DEMO_HEIGHT : WINDOW_CONFIG.MIN_HEIGHT,
       center: true,
       title: WINDOW_CONFIG.MAIN_TITLE, // Used for window identification
       icon: iconPath, // Set the window icon
-      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-      ...(process.platform === 'darwin' ? { trafficLightPosition: {x: 10, y: 15} } : {}),
+      titleBarStyle: isDemoCapture ? 'hidden' : (process.platform === 'darwin' ? 'hiddenInset' : 'hidden'),
+      ...(process.platform === 'darwin' && !isDemoCapture ? { trafficLightPosition: {x: 10, y: 15} } : {}),
       frame: false, // All platforms: frameless with custom window controls
       transparent: false,
-      vibrancy: 'under-window', // macOS: window vibrancy effect
+      backgroundColor: '#111111',
+      ...(isDemoCapture ? {} : {vibrancy: 'under-window' as const}), // macOS: window vibrancy effect
+      resizable: !isDemoCapture,
+      maximizable: !isDemoCapture,
+      fullscreenable: !isDemoCapture,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false, // Sandbox disabled because the demo of preload script depend on the Node.ts api
         webviewTag: false, // The webview tag is not recommended. Consider alternatives like an iframe or Electron's BrowserView. @see https://www.electronjs.org/docs/latest/api/webview-tag#warning
         preload: this.#preload.path,
-        additionalArguments: [`--api-port=${apiPort}`],
+        additionalArguments,
       },
     });
 
-    contextMenu({ window: browserWindow });
+    if (isDemoCapture) {
+      browserWindow.webContents.setZoomFactor(1);
+    }
+
+    if (!isDemoCapture) {
+      const {default: contextMenu} = await import('electron-context-menu');
+      contextMenu({ window: browserWindow });
+    }
 
     try {
       if (this.#renderer instanceof URL) {

@@ -1,6 +1,35 @@
 import {initApp} from './main/dist/index.js';
 import {fileURLToPath} from 'node:url';
 
+function readArgValue(name) {
+  const inline = process.argv.find(arg => arg.startsWith(`${name}=`));
+  if (inline) return inline.slice(name.length + 1);
+
+  const index = process.argv.indexOf(name);
+  if (index >= 0) return process.argv[index + 1];
+
+  return undefined;
+}
+
+function readDemoCaptureConfig() {
+  const id = readArgValue('--demo');
+  const scene = readArgValue('--demo-scene');
+  const captureOutput = readArgValue('--capture-output');
+
+  if (!id && !scene && !captureOutput) return undefined;
+
+  if (!id || !scene || !captureOutput) {
+    throw new Error('Demo capture requires --demo, --demo-scene, and --capture-output.');
+  }
+
+  return {
+    enabled: true,
+    id,
+    scene,
+    captureOutput,
+  };
+}
+
 // Handle errors appropriately based on environment
 if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true' || !!process.env.CI) {
   function showAndExit(...args) {
@@ -49,5 +78,7 @@ initApp(
     preload: {
       path: fileURLToPath(new URL('./preload/dist/exposed.mjs', import.meta.url)),
     },
+
+    demoCapture: readDemoCaptureConfig(),
   },
 );

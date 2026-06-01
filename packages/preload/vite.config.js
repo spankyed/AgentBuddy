@@ -24,9 +24,23 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
     emptyOutDir: true,
     reportCompressedSize: false,
   },
-  plugins: [mockExposed(), handleHotReload()],
+  plugins: [mockExposed(), electronCjsDefaultImport(), handleHotReload()],
 }));
 
+function electronCjsDefaultImport() {
+  return {
+    name: 'electron-cjs-default-import',
+    generateBundle(_options, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue;
+        chunk.code = chunk.code.replace(
+          /^import \{([^}]+)\} from "electron";/m,
+          (_match, imports) => `import electron from "electron";\nconst {${imports}} = electron;`,
+        );
+      }
+    },
+  };
+}
 
 /**
  * This plugin creates a browser (renderer) version of `preload` package.
