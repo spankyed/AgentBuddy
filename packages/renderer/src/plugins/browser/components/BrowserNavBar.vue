@@ -36,7 +36,7 @@
         type="text"
         @input="onInput"
         @focus="isFocused = true; emit('focus')"
-        @blur="isFocused = false; emit('blur')"
+        @blur="handleBlur"
         @keydown="onKeydown"
         @auxclick.prevent="onMiddleClick"
         class="w-full px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-lg outline-none text-neutral-200 placeholder-neutral-500 focus:border-neutral-500 transition-colors"
@@ -125,6 +125,15 @@ watch(
     }
   },
 );
+
+function handleBlur() {
+  // Delay blur to allow @mousedown.prevent on the autocomplete dropdown to cancel it.
+  // Without the delay, isFocused goes false → dropdown unmounts → click never fires.
+  setTimeout(() => {
+    isFocused.value = false;
+    emit('blur');
+  }, 150);
+}
 
 function onInput(e: Event) {
   if (suppressInput) return;
