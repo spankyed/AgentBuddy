@@ -17,6 +17,7 @@
       <div class="flex items-center flex-1 min-w-0">
         <BaseDirectoryMenu
           v-if="baseDirectory && showDirectoryMenu"
+          class="ml-auto"
           :base-directory="baseDirectory"
           @open-directory="handleDirectorySelect"
           @open-terminal="terminalActor?.send({ type: 'terminal.CREATE', cwd: baseDirectory })"
