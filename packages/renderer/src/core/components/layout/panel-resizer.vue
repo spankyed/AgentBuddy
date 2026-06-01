@@ -3,13 +3,11 @@
     :class="[
       'flex-shrink-0 z-10 flex items-center justify-center transition-colors',
       isHorizontal
-        ? ['h-full cursor-col-resize', collapsed ? 'w-1' : 'w-1.5']
-        : ['w-full cursor-row-resize', collapsed ? 'h-1' : 'h-1.5'],
-      collapsed
-        ? 'bg-neutral-800 hover:bg-neutral-700'
-        : isDragging
-          ? 'bg-neutral-600'
-          : 'bg-neutral-800 hover:bg-neutral-700',
+        ? 'h-full cursor-col-resize w-1.5'
+        : 'w-full cursor-row-resize h-1.5',
+      isDragging
+        ? 'bg-neutral-600'
+        : 'bg-neutral-800 hover:bg-neutral-700',
       isDragging && 'z-[1000]',
     ]"
     @mousedown="startDrag"
@@ -60,11 +58,6 @@ let clickIntent = true
 const startDrag = (e: MouseEvent) => {
   if (e.button !== 0) return
   e.preventDefault()
-
-  if (props.collapsed) {
-    emit('click')
-    return
-  }
 
   clickIntent = true
   startX = e.clientX
