@@ -1,5 +1,74 @@
 -e # Changelog
 
+## v0.3.7 (2026-06-01)
+
+### Features
+- threads): add archive/unarchive support to thread views
+- browser): auto-focus address bar when opening blank new tab
+- browser): add lazy tab loading to defer URL loads until tab is selected
+- browser): add tab persistence with EARS repository and sync support
+- browser): add address bar autocomplete with inline completion
+- browser): add keyboard shortcuts via before-input-event
+- browser): add tab context menu with duplicate, mute, and close actions
+- browser): show friendly error page on navigation failure
+- browser): add loading spinner to browser tabs
+- browser): add middle-click on address bar to open URL in new tab
+- browser): add DevTools toggle button to nav bar feat(browser): add keyboard shortcuts and address bar focus
+- browser): add embedded in-app browser plugin
+- settings): add drag-and-drop reordering for projects
+- tabs): auto-open rename input when creating a new tab group
+- threads): include ad-hoc thread tags in filter options
+- pull-request): add GIT_STATUS_REFRESHED event type to PR state
+- codex): add Network Access and Web Search toggles to session artifact
+- codex): auto-approve tool requests in auto_review mode and show aside text on approvals
+
+### Fixes
+- code): adjust CodePanelHeader layout for proper flex alignment
+- browser): hide browser view when tab context menu opens
+- gh-cli): suppress noisy "PR access probe failed" log for non-git directories
+- browser): delay blur to prevent autocomplete click from being swallowed
+- browser): improve tab state and lazy loading behavior
+- browser): sync tabs to backend using current context instead of recalculating
+- browser): prevent duplicate tabs on IPC.TAB_CREATED events
+- browser): remove border radius from browser tab views
+- browser): fix WebContentsView overflow with zoom-aware bounds
+- browser): fix favicon fallback when image fails to load
+- browser): fix tab creation race and mounting edge cases
+- browser): fix listener leak, dead code, and missing state sync
+- threads): only auto-focus group name input when triggered by autoEdit
+- artifacts): use artifact's own color for selected state instead of always blue
+- editor): re-dispatch Cmd+Shift+F to window instead of triggering in-editor find
+- canvas-area): lower z-index from 50 to 0 to fix stacking context
+- notes): improve search input UX with auto-select and close button
+- search): trigger search directly on pattern change and optimize result expansion
+- editor): redirect Cmd+Shift+F to local find in standalone Monaco
+- tag-input): increase z-index of dropdown to prevent stacking context issues
+- code): prevent PR panel from resetting to file view on git changes
+
+### Refactors
+- ui): reuse ContextMenuPopup in toolbar and add separator support
+- browser): extract helper functions and reduce inline duplication
+- toolbar): replace ContextMenuPopup with inline teleported menu
+- tab-groups): extract tab group types, colors, and persistence into shared module
+- browser): clean up browser plugin code
+- browser): resolve main window from IPC event sender instead of searching by title
+- renderer): simplify chat maximize/restore by reusing PanelResizer
+
+### Other
+- style(panel-resizer): use subtle old-style resizer for code plugin terminal
+- Revert "chore(release): v0.3.7"
+- Merge pull request #160 from spankyed/as/in-app-browser
+- style(browser): move tab close button before favicon in tab bar
+- style(threads): add @container class to recent threads popup
+- style(canvas-area): remove unnecessary z-0 class from container
+- style(panel-resizer): replace resizer with SimGPT-style visible bar
+- style(panel-resizer): make collapsed panel divider visible with solid background
+- style(panel-resizer): restyle resizers - Add visible drag handle indicator dot
+- style(threads): hide button labels on small screens using container queries
+- style(renderer): remove inline background-color from canvas panel
+
+-e # Changelog
+
 ## v0.3.6 (2026-05-31)
 
 ### Features
