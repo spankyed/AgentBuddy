@@ -298,10 +298,15 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     actions.forEach(action => editorDisposables.push(editor.addAction(action)))
   }
 
-  // Suppress VS Code-only keybindings that crash standalone Monaco
-  // Cmd+Shift+F triggers "findInFiles" which doesn't exist outside VS Code
+  // Suppress VS Code-only "findInFiles" keybinding that crashes standalone Monaco.
+  // Re-dispatch on window so the global hotkey system picks it up
+  // (routes to the code plugin's search panel via focusSearch).
+  const isMac = navigator.platform.toUpperCase().includes('MAC')
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
-    editor.trigger('keyboard', 'actions.find', null)
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'F', code: 'KeyF', shiftKey: true,
+      ctrlKey: !isMac, metaKey: isMac, bubbles: true
+    }))
   })
 
   // Set placeholder if provided
