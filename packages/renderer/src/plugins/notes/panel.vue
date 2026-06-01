@@ -122,15 +122,15 @@
             v-model="searchQuery"
             placeholder="Search notes..."
             class="w-full pl-8 pr-7 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-500"
+            @focus="($event.target as HTMLInputElement).select()"
             @keydown.escape="toggleSearch"
             @keydown.down.prevent="highlightedIndex = Math.min(highlightedIndex + 1, filteredNotes.length - 1)"
             @keydown.up.prevent="highlightedIndex = Math.max(highlightedIndex - 1, 0)"
             @keydown.enter.prevent="filteredNotes.length > 0 && handleSelectNote(filteredNotes[highlightedIndex].id)"
           />
           <button
-            v-if="searchQuery"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
-            @click="searchQuery = ''"
+            @click="toggleSearch"
           >
             <X :size="14" />
           </button>
