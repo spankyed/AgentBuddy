@@ -1,4 +1,5 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
+import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 
 export const id = 'browser' as const;
 
@@ -11,6 +12,21 @@ export interface BrowserTab {
   canGoBack: boolean;
   canGoForward: boolean;
   isMuted: boolean;
+}
+
+export type { AutocompleteSuggestion };
+
+interface BrowserContext {
+  tabs: BrowserTab[];
+  activeTabId: number | null;
+  addressBarValue: string;
+  isAddressBarFocused: boolean;
+  // Autocomplete
+  suggestions: AutocompleteSuggestion[];
+  selectedSuggestionIndex: number; // -1 = user's own input
+  inlineCompletion: string | null;
+  preAutocompleteValue: string;
+  _lastNavWasTyped: boolean;
 }
 
 type BrowserEvents =
@@ -26,10 +42,14 @@ type BrowserEvents =
   | { type: 'NAV.FORWARD' }
   | { type: 'NAV.RELOAD' }
   | { type: 'NAV.STOP' }
-  | { type: 'NAV.TOGGLE_DEVTOOLS' }
   | { type: 'ADDRESS_BAR.UPDATE'; value: string }
   | { type: 'ADDRESS_BAR.FOCUS' }
   | { type: 'ADDRESS_BAR.BLUR' }
+  // Autocomplete events
+  | { type: 'AUTOCOMPLETE.SELECT'; index: number }
+  | { type: 'AUTOCOMPLETE.DISMISS' }
+  | { type: 'AUTOCOMPLETE.ACCEPT_INLINE' }
+  | { type: 'AUTOCOMPLETE.RESULTS'; suggestions: AutocompleteSuggestion[]; inlineCompletion: string | null }
   // IPC bridge events
   | { type: 'IPC.TAB_CREATED'; tab: BrowserTab }
   | { type: 'IPC.TAB_REMOVED'; tabId: number }
@@ -39,21 +59,38 @@ type BrowserEvents =
 export type BrowserState = ActorRefFrom<typeof browserState>;
 
 function navAction(method: 'goBack' | 'goForward' | 'reload' | 'stop') {
-  return ({ context }: { context: { activeTabId: number | null } }) => {
+  return ({ context }: { context: BrowserContext }) => {
     if (context.activeTabId !== null) {
       window.electronAPI?.browser[method](context.activeTabId);
     }
   };
 }
 
+// Debounce autocomplete queries outside the machine to avoid timer in context
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function runAutocompleteQuery(query: string, sendBack: (event: BrowserEvents) => void) {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  if (query.length < 1) {
+    sendBack({ type: 'AUTOCOMPLETE.RESULTS', suggestions: [], inlineCompletion: null });
+    return;
+  }
+  debounceTimer = setTimeout(() => {
+    const suggestions = autocomplete(query);
+    let inlineCompletion: string | null = null;
+    if (suggestions.length > 0 && suggestions[0].matchType === 'url') {
+      const display = displayUrl(suggestions[0].url);
+      if (display.toLowerCase().startsWith(query.toLowerCase())) {
+        inlineCompletion = display.slice(query.length);
+      }
+    }
+    sendBack({ type: 'AUTOCOMPLETE.RESULTS', suggestions, inlineCompletion });
+  }, 100);
+}
+
 const browserState = setup({
   types: {
-    context: {} as {
-      tabs: BrowserTab[];
-      activeTabId: number | null;
-      addressBarValue: string;
-      isAddressBarFocused: boolean;
-    },
+    context: {} as BrowserContext,
     events: {} as BrowserEvents,
   },
   actors: {
@@ -81,11 +118,6 @@ const browserState = setup({
     goForward: navAction('goForward'),
     reload: navAction('reload'),
     stop: navAction('stop'),
-    toggleDevTools: ({ context }) => {
-      if (context.activeTabId !== null) {
-        window.electronAPI?.browser.toggleDevTools(context.activeTabId);
-      }
-    },
   },
 }).createMachine({
   id,
@@ -95,6 +127,11 @@ const browserState = setup({
     activeTabId: null,
     addressBarValue: '',
     isAddressBarFocused: false,
+    suggestions: [],
+    selectedSuggestionIndex: -1,
+    inlineCompletion: null,
+    preAutocompleteValue: '',
+    _lastNavWasTyped: false,
   },
   invoke: { src: 'ipcBridge' },
   states: {
@@ -139,7 +176,19 @@ const browserState = setup({
         },
         'NAV.GO': {
           actions: [
-            assign({ addressBarValue: ({ event }) => event.url }),
+            assign(({ context, event }) => {
+              // If a suggestion is selected, use its URL
+              const url = context.selectedSuggestionIndex >= 0
+                ? context.suggestions[context.selectedSuggestionIndex]?.url ?? event.url
+                : event.url;
+              return {
+                addressBarValue: url,
+                suggestions: [],
+                selectedSuggestionIndex: -1,
+                inlineCompletion: null,
+                _lastNavWasTyped: true,
+              };
+            }),
             'navigate',
           ],
         },
@@ -147,17 +196,74 @@ const browserState = setup({
         'NAV.FORWARD': { actions: 'goForward' },
         'NAV.RELOAD': { actions: 'reload' },
         'NAV.STOP': { actions: 'stop' },
-        'NAV.TOGGLE_DEVTOOLS': { actions: 'toggleDevTools' },
         'ADDRESS_BAR.UPDATE': {
-          actions: assign({ addressBarValue: ({ event }) => event.value }),
+          actions: [
+            assign(({ event }) => ({
+              addressBarValue: event.value,
+              preAutocompleteValue: event.value,
+              selectedSuggestionIndex: -1,
+              inlineCompletion: null,
+            })),
+            ({ event, self }) => {
+              runAutocompleteQuery(event.value.trim(), (e) => self.send(e));
+            },
+          ],
         },
         'ADDRESS_BAR.FOCUS': {
           actions: assign({ isAddressBarFocused: true }),
         },
         'ADDRESS_BAR.BLUR': {
-          actions: assign({ isAddressBarFocused: false }),
+          actions: assign({
+            isAddressBarFocused: false,
+            suggestions: [],
+            selectedSuggestionIndex: -1,
+            inlineCompletion: null,
+          }),
         },
-        // IPC events — inline assigns, no named actions needed
+        // Autocomplete
+        'AUTOCOMPLETE.RESULTS': {
+          actions: assign(({ event }) => ({
+            suggestions: event.suggestions,
+            inlineCompletion: event.inlineCompletion,
+          })),
+        },
+        'AUTOCOMPLETE.SELECT': {
+          actions: assign(({ context, event }) => {
+            if (event.index === -1) {
+              return {
+                selectedSuggestionIndex: -1,
+                addressBarValue: context.preAutocompleteValue,
+                inlineCompletion: null,
+              };
+            }
+            const suggestion = context.suggestions[event.index];
+            if (!suggestion) return {};
+            return {
+              selectedSuggestionIndex: event.index,
+              addressBarValue: suggestion.url,
+              inlineCompletion: null,
+            };
+          }),
+        },
+        'AUTOCOMPLETE.DISMISS': {
+          actions: assign({
+            suggestions: [],
+            selectedSuggestionIndex: -1,
+            inlineCompletion: null,
+          }),
+        },
+        'AUTOCOMPLETE.ACCEPT_INLINE': {
+          actions: assign(({ context }) => {
+            if (!context.inlineCompletion) return {};
+            const full = context.preAutocompleteValue + context.inlineCompletion;
+            return {
+              addressBarValue: full,
+              preAutocompleteValue: full,
+              inlineCompletion: null,
+            };
+          }),
+        },
+        // IPC events
         'IPC.TAB_CREATED': {
           actions: assign({
             tabs: ({ context, event }) =>
@@ -178,18 +284,31 @@ const browserState = setup({
           }),
         },
         'IPC.TAB_UPDATED': {
-          actions: assign(({ context, event }) => {
-            const tabs = context.tabs.map(t =>
-              t.id === event.tabId ? { ...t, ...event.changes } : t,
-            );
-            const syncUrl = !context.isAddressBarFocused
-              && event.tabId === context.activeTabId
-              && event.changes.url !== undefined;
-            return {
-              tabs,
-              ...(syncUrl ? { addressBarValue: event.changes.url } : {}),
-            };
-          }),
+          actions: [
+            assign(({ context, event }) => {
+              const tabs = context.tabs.map(t =>
+                t.id === event.tabId ? { ...t, ...event.changes } : t,
+              );
+              const syncUrl = !context.isAddressBarFocused
+                && event.tabId === context.activeTabId
+                && event.changes.url !== undefined;
+              return {
+                tabs,
+                ...(syncUrl ? { addressBarValue: event.changes.url } : {}),
+                ...(event.changes.url ? { _lastNavWasTyped: false } : {}),
+              };
+            }),
+            ({ context, event }) => {
+              if (event.changes.url && event.changes.url !== 'about:blank' && !event.changes.url.startsWith('data:')) {
+                const tab = context.tabs.find(t => t.id === event.tabId);
+                recordVisit(event.changes.url, tab?.title ?? '', tab?.favicon ?? '', context._lastNavWasTyped);
+              }
+              if ((event.changes.title || event.changes.favicon) && !event.changes.url) {
+                const tab = context.tabs.find(t => t.id === event.tabId);
+                if (tab?.url) updateHistoryMeta(tab.url, event.changes.title, event.changes.favicon);
+              }
+            },
+          ],
         },
         'IPC.ACTIVE_TAB_CHANGED': {
           actions: assign(({ context, event }) => {

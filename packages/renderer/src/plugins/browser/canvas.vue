@@ -16,6 +16,9 @@
       :canGoBack="activeTab?.canGoBack ?? false"
       :canGoForward="activeTab?.canGoForward ?? false"
       :isLoading="activeTab?.isLoading ?? false"
+      :suggestions="suggestions"
+      :selectedSuggestionIndex="selectedSuggestionIndex"
+      :inlineCompletion="inlineCompletion"
       @back="actor.send({ type: 'NAV.BACK' })"
       @forward="actor.send({ type: 'NAV.FORWARD' })"
       @reload="actor.send({ type: 'NAV.RELOAD' })"
@@ -26,6 +29,9 @@
       @blur="actor.send({ type: 'ADDRESS_BAR.BLUR' })"
       @toggle-devtools="toggleDevTools"
       @open-in-new-tab="actor.send({ type: 'TAB.CREATE', url: $event })"
+      @autocomplete:select="actor.send({ type: 'AUTOCOMPLETE.SELECT', index: $event })"
+      @autocomplete:dismiss="actor.send({ type: 'AUTOCOMPLETE.DISMISS' })"
+      @autocomplete:accept-inline="actor.send({ type: 'AUTOCOMPLETE.ACCEPT_INLINE' })"
     />
 
     <!-- Content placeholder: WebContentsView is overlaid here by the main process -->
@@ -54,6 +60,9 @@ const actor: BrowserState = applicationState.system.get(id);
 const tabs = useSelector(actor, s => s.context.tabs);
 const activeTabId = useSelector(actor, s => s.context.activeTabId);
 const addressBarValue = useSelector(actor, s => s.context.addressBarValue);
+const suggestions = useSelector(actor, s => s.context.suggestions);
+const selectedSuggestionIndex = useSelector(actor, s => s.context.selectedSuggestionIndex);
+const inlineCompletion = useSelector(actor, s => s.context.inlineCompletion);
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null);
 
 const navBar = ref<InstanceType<typeof BrowserNavBar> | null>(null);
