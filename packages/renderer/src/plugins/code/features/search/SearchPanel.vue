@@ -72,7 +72,7 @@
           <label class="w-20 text-xs text-neutral-400">Include:</label>
           <input
             v-model="includePattern"
-            @change="updateOptions"
+            @change="performSearch"
             type="text"
             placeholder="e.g., *.ts, *.vue"
             class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
@@ -82,7 +82,7 @@
           <label class="w-20 text-xs text-neutral-400">Exclude:</label>
           <input
             v-model="excludePattern"
-            @change="updateOptions"
+            @change="performSearch"
             type="text"
             placeholder="e.g., node_modules, *.test.js"
             class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
@@ -332,10 +332,6 @@ const updateOptions = () => {
       excludePattern: excludePattern.value
     }
   })
-  // Re-run search with updated patterns if there's an active query
-  if (searchQuery.value) {
-    nextTick(() => performSearch())
-  }
 }
 
 const collapseAll = () => {
@@ -399,11 +395,12 @@ watch(searchOptions, (newOptions) => {
   excludePattern.value = newOptions.excludePattern
 })
 
-// Auto-expand all results
-watch(searchResults, (results) => {
-  results.forEach((result: any) => {
-    expandedResults.value.add(result.path)
-  })
+// Auto-expand newly added results
+watch(searchResults, (results, oldResults) => {
+  const startIdx = oldResults?.length ?? 0
+  for (let i = startIdx; i < results.length; i++) {
+    expandedResults.value.add(results[i].path)
+  }
 })
 </script>
 
