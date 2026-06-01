@@ -102,6 +102,64 @@ const apiStatus = {
   },
 };
 
+// Browser API
+interface TabState {
+  id: number;
+  url: string;
+  title: string;
+  favicon: string;
+  isLoading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+}
+
+const browser = {
+  // Tab management
+  createTab: (url?: string) => ipcRenderer.invoke('browser:create-tab', url) as Promise<TabState | null>,
+  closeTab: (tabId: number) => ipcRenderer.invoke('browser:close-tab', tabId),
+  selectTab: (tabId: number) => ipcRenderer.invoke('browser:select-tab', tabId),
+
+  // Navigation
+  navigate: (tabId: number, url: string) => ipcRenderer.invoke('browser:navigate', tabId, url),
+  goBack: (tabId: number) => ipcRenderer.invoke('browser:go-back', tabId),
+  goForward: (tabId: number) => ipcRenderer.invoke('browser:go-forward', tabId),
+  reload: (tabId: number) => ipcRenderer.invoke('browser:reload', tabId),
+  stop: (tabId: number) => ipcRenderer.invoke('browser:stop', tabId),
+
+  // Bounds and visibility
+  setBounds: (bounds: {x: number; y: number; width: number; height: number}) =>
+    ipcRenderer.send('browser:set-bounds', bounds),
+  show: () => ipcRenderer.send('browser:show'),
+  hide: () => ipcRenderer.send('browser:hide'),
+
+  // Events from main process
+  onTabCreated: (callback: (tab: TabState) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tab: TabState) => callback(tab);
+    ipcRenderer.on('browser:tab-created', handler);
+    return () => { ipcRenderer.removeListener('browser:tab-created', handler); };
+  },
+  onTabRemoved: (callback: (tabId: number) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tabId: number) => callback(tabId);
+    ipcRenderer.on('browser:tab-removed', handler);
+    return () => { ipcRenderer.removeListener('browser:tab-removed', handler); };
+  },
+  onTabUpdated: (callback: (tabId: number, changes: Partial<TabState>) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tabId: number, changes: Partial<TabState>) =>
+      callback(tabId, changes);
+    ipcRenderer.on('browser:tab-updated', handler);
+    return () => { ipcRenderer.removeListener('browser:tab-updated', handler); };
+  },
+  onActiveTabChanged: (callback: (tabId: number) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tabId: number) => callback(tabId);
+    ipcRenderer.on('browser:active-tab-changed', handler);
+    return () => { ipcRenderer.removeListener('browser:active-tab-changed', handler); };
+  },
+
+  // Query
+  getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,
+  getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
@@ -112,6 +170,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   zoom,
   apiStatus,
   apiPort,
+  browser,
 });
 
 // Export the tRPC client and connection status

@@ -47,8 +47,37 @@ declare global {
         relaunch: () => Promise<void>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
+      browser: {
+        createTab: (url?: string) => Promise<BrowserTabState | null>;
+        closeTab: (tabId: number) => Promise<void>;
+        selectTab: (tabId: number) => Promise<void>;
+        navigate: (tabId: number, url: string) => Promise<void>;
+        goBack: (tabId: number) => Promise<void>;
+        goForward: (tabId: number) => Promise<void>;
+        reload: (tabId: number) => Promise<void>;
+        stop: (tabId: number) => Promise<void>;
+        setBounds: (bounds: {x: number; y: number; width: number; height: number}) => void;
+        show: () => void;
+        hide: () => void;
+        onTabCreated: (callback: (tab: BrowserTabState) => void) => () => void;
+        onTabRemoved: (callback: (tabId: number) => void) => () => void;
+        onTabUpdated: (callback: (tabId: number, changes: Partial<BrowserTabState>) => void) => () => void;
+        onActiveTabChanged: (callback: (tabId: number) => void) => () => void;
+        getTabs: () => Promise<BrowserTabState[]>;
+        getActiveTab: () => Promise<number | null>;
+      };
       apiPort: number;
     };
+  }
+
+  interface BrowserTabState {
+    id: number;
+    url: string;
+    title: string;
+    favicon: string;
+    isLoading: boolean;
+    canGoBack: boolean;
+    canGoForward: boolean;
   }
 }
 

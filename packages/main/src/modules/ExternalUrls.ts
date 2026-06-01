@@ -1,6 +1,6 @@
 import {AppModule} from '../AppModule.js';
 import {ModuleContext} from '../ModuleContext.js';
-import {shell} from 'electron';
+import {shell, session} from 'electron';
 import {URL} from 'node:url';
 
 export class ExternalUrls implements AppModule {
@@ -13,6 +13,9 @@ export class ExternalUrls implements AppModule {
 
   enable({app}: ModuleContext): Promise<void> | void {
     app.on('web-contents-created', (_, contents) => {
+      // Browser plugin tabs handle their own window.open → new tab
+      if (contents.session === session.fromPartition('persist:browser')) return;
+
       contents.setWindowOpenHandler(({url}) => {
         const {origin} = new URL(url);
 

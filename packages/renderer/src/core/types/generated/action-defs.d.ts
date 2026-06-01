@@ -4,7 +4,7 @@ import * as ai from 'ai';
 import { ToolSet, LanguageModelUsage, CoreMessage, FinishReason } from 'ai';
 import { z } from 'zod';
 export { z } from 'zod';
-import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
+import { BrowserType, ElementHandle, Page, Browser, BrowserContext as BrowserContext, chromium, firefox, webkit } from 'playwright';
 
 /**
  * Type definitions for the OpenAI ChatGPT OAuth auth service.
@@ -2090,6 +2090,9 @@ type OutgoingSettingsEvents = {
     error: string;
 } | SecretsOutputEvents;
 
+interface BrowserContext {
+}
+
 type IncomingPromptsEvents = {
     type: 'codePrompts.OPEN_PROMPT';
     promptId: string;
@@ -2309,6 +2312,11 @@ type OutgoingPullRequestEvents = {
     message: string;
 } | {
     type: 'pr.STATUS_CHANGED';
+    data: {
+        timestamp: Date;
+    };
+} | {
+    type: 'pr.GIT_STATUS_REFRESHED';
     data: {
         timestamp: Date;
     };
@@ -4398,7 +4406,13 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "EXPORT_NOTES";
     directory: string;
     format: "markdown" | "json";
-}, OutgoingNotesEvents, {}>];
+}, OutgoingNotesEvents, {}>, SystemDefinition<"browser", {
+    type: "EMPTY";
+} | {
+    type: "CLIENT_CONNECTED";
+}, {
+    type: "BROWSER_CONNECTED";
+}, BrowserContext>];
 type AllDefs = (typeof allDefs)[number];
 type IncomingSystemEvents = AllDefs['_incoming'];
 type OutgoingSystemEvents = AllDefs['_outgoing'];
@@ -4586,6 +4600,7 @@ interface FileContent {
     encoding: string;
     size?: number;
     isBinary?: boolean;
+    isVideo?: boolean;
 }
 interface CodeSystemError {
     code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
