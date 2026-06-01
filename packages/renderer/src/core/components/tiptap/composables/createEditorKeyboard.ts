@@ -158,6 +158,11 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
     }
 
     if (cfg.enterSubmit && event.key === 'Enter') {
+      if (event.metaKey || event.ctrlKey) {
+        emit.submit()
+        return true
+      }
+
       if (shouldDeferEnter(view)) return false
 
       if (event.shiftKey) {
