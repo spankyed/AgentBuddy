@@ -4,7 +4,7 @@
     <div
       v-if="isOpen"
       ref="popupRef"
-      class="fixed p-1 border border-neutral-700 bg-neutral-900 rounded-lg shadow-xl max-h-80 overflow-y-auto animate-slide-down z-50"
+      class="@container fixed p-1 border border-neutral-700 bg-neutral-900 rounded-lg shadow-xl max-h-80 overflow-y-auto animate-slide-down z-50"
       :style="popupStyle"
     >
       <div v-if="recentThreads.length === 0" class="py-8 text-center">
@@ -79,7 +79,7 @@
               @click.stop="handleViewThread(thread.id)"
             >
               <FileText :size="12" />
-              <span class="hidden @md:inline">Details</span>
+              <span class="hidden @lg:inline">Details</span>
             </button>
             <button
               type="button"
@@ -88,11 +88,11 @@
               @click.stop="handleViewArtifacts(thread.id)"
             >
               <PanelLeft :size="12" />
-              <span class="hidden @md:inline">Artifacts</span>
+              <span class="hidden @lg:inline">Artifacts</span>
             </button>
             <span v-if="thread.pinned" class="invisible flex items-center gap-1.5 px-1.5 py-1 text-xs">
               <Archive :size="12" />
-              <span class="hidden @md:inline">Archive</span>
+              <span class="hidden @lg:inline">Archive</span>
             </span>
             <ContextMenuRoot v-else>
               <ContextMenuTrigger as-child>
@@ -103,7 +103,7 @@
                   @click.stop="handleArchiveThread(thread.id)"
                 >
                   <Archive :size="12" />
-                  <span class="hidden @md:inline">Archive</span>
+                  <span class="hidden @lg:inline">Archive</span>
                 </button>
               </ContextMenuTrigger>
               <ContextMenuPortal>
@@ -147,7 +147,7 @@
         <History v-if="!isOpen" :size="16" class="mr-2" />
         <ChevronUp v-else :size="16" class="mr-2" />
 
-        Recent<span class="hidden @md:inline">&nbsp;Threads</span>
+        Recent<span class="hidden @lg:inline">&nbsp;Threads</span>
       </button>
 
       <div class="flex-grow min-w-0 px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 cursor-pointer">
@@ -179,7 +179,7 @@
             @click.stop="handleNewThread"
           >
             <Plus :size="16" class="mr-2" />
-            New<span class="hidden @md:inline">&nbsp;thread</span>
+            New<span class="hidden @lg:inline">&nbsp;thread</span>
           </button>
         </ContextMenuTrigger>
 
