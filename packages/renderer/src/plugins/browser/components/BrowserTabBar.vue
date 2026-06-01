@@ -16,7 +16,7 @@
       />
       <!-- Tab (grouped or ungrouped) -->
       <template v-else>
-        <ContextMenuRoot>
+        <ContextMenuRoot @update:open="onMenuOpenChange">
           <ContextMenuTrigger as-child>
             <div
               class="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs max-w-[200px] min-w-[80px] cursor-pointer transition-colors group"
@@ -177,6 +177,14 @@ watch(() => props.tabs, (tabs) => {
     faviconCache.set(tab.id, tab.favicon);
   }
 }, { deep: true });
+
+function onMenuOpenChange(open: boolean) {
+  if (open) {
+    window.electronAPI?.browser.hide();
+  } else {
+    window.electronAPI?.browser.show();
+  }
+}
 
 type SortedItem =
   | { type: 'group'; group: TabGroup }
