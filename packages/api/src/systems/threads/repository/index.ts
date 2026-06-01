@@ -76,6 +76,7 @@ export const threadQueries = {
       instructions: thread?.instructions,
       status: thread?.status,
       pinned: thread?.pinned,
+      archived: thread?.archived,
       shortCode: thread?.shortCode,
       timestamp: thread?.timestamp,
       tags: thread?.tags as string[] | undefined,

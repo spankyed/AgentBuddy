@@ -1989,7 +1989,11 @@ const threadsState = setup({
               icon: Pin,
               event: { type: 'PIN_THREAD' as const, threadId: ctx.view.id },
             }]),
-            ...(!ctx.view.pinned ? [{
+            ...(ctx.view.archived ? [{
+              label: 'Unarchive Thread',
+              icon: Archive,
+              event: { type: 'UNARCHIVE_THREAD' as const, threadId: ctx.view.id },
+            }] : !ctx.view.pinned ? [{
               label: 'Archive Thread',
               icon: Archive,
               event: { type: 'ARCHIVE_THREAD' as const, threadId: ctx.view.id },

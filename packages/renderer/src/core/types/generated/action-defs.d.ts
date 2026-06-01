@@ -980,6 +980,7 @@ interface SavedTab {
     favicon: string;
     displayOrder: number;
     isMuted: boolean;
+    groupId?: string;
 }
 
 type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
@@ -3664,6 +3665,7 @@ type ThreadExtendedData = ThreadLinkedFields & {
     instructions?: string;
     status?: string;
     pinned?: boolean;
+    archived?: boolean;
     shortCode?: string;
     timestamp?: number;
 };
