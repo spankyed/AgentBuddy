@@ -21,6 +21,7 @@ export const browserCommands = {
         favicon: tab.favicon,
         displayOrder: tab.displayOrder,
         isMuted: tab.isMuted,
+        groupId: tab.groupId ?? '',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });

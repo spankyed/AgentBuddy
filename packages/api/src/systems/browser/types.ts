@@ -8,6 +8,7 @@ export interface BrowserTabEntity {
   favicon: string;
   displayOrder: number;
   isMuted: boolean;
+  groupId?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -18,4 +19,5 @@ export interface SavedTab {
   favicon: string;
   displayOrder: number;
   isMuted: boolean;
+  groupId?: string;
 }

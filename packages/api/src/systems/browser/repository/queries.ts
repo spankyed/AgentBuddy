@@ -9,6 +9,7 @@ function toDTO(entity: BrowserTabEntity): SavedTab {
     favicon: entity.favicon,
     displayOrder: entity.displayOrder,
     isMuted: entity.isMuted,
+    groupId: entity.groupId,
   };
 }
 

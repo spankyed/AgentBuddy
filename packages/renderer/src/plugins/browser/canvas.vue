@@ -3,12 +3,20 @@
     <BrowserTabBar
       :tabs="tabs"
       :activeTabId="activeTabId"
+      :tabGroups="tabGroups"
       @select="actor.send({ type: 'TAB.SELECT', tabId: $event })"
       @close="actor.send({ type: 'TAB.CLOSE', tabId: $event })"
       @create="actor.send({ type: 'TAB.CREATE' })"
       @duplicate="actor.send({ type: 'TAB.DUPLICATE', tabId: $event })"
       @close-others="actor.send({ type: 'TAB.CLOSE_OTHERS', tabId: $event })"
       @toggle-mute="actor.send({ type: 'TAB.TOGGLE_MUTE', tabId: $event })"
+      @create-group="actor.send({ type: 'GROUP.CREATE', ...$event })"
+      @rename-group="actor.send({ type: 'GROUP.RENAME', ...$event })"
+      @change-group-color="actor.send({ type: 'GROUP.CHANGE_COLOR', ...$event })"
+      @delete-group="actor.send({ type: 'GROUP.DELETE', ...$event })"
+      @toggle-group-collapse="actor.send({ type: 'GROUP.TOGGLE_COLLAPSE', groupId: $event })"
+      @add-to-group="actor.send({ type: 'TAB.ADD_TO_GROUP', ...$event })"
+      @remove-from-group="actor.send({ type: 'TAB.REMOVE_FROM_GROUP', tabId: $event })"
     />
     <BrowserNavBar
       ref="navBar"
@@ -63,6 +71,7 @@ const addressBarValue = useSelector(actor, s => s.context.addressBarValue);
 const suggestions = useSelector(actor, s => s.context.suggestions);
 const selectedSuggestionIndex = useSelector(actor, s => s.context.selectedSuggestionIndex);
 const inlineCompletion = useSelector(actor, s => s.context.inlineCompletion);
+const tabGroups = useSelector(actor, s => s.context.tabGroups);
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null);
 
 const navBar = ref<InstanceType<typeof BrowserNavBar> | null>(null);

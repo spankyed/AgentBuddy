@@ -1,6 +1,9 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { trpc } from '@/core/trpc';
+import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@/shared/tab-groups';
+
+export type { TabGroup, TabGroupColor };
 
 export const id = 'browser' as const;
 
@@ -13,6 +16,7 @@ export interface BrowserTab {
   canGoBack: boolean;
   canGoForward: boolean;
   isMuted: boolean;
+  groupId?: string;
 }
 
 export type { AutocompleteSuggestion };
@@ -23,6 +27,7 @@ interface SavedTab {
   favicon: string;
   displayOrder: number;
   isMuted: boolean;
+  groupId?: string;
 }
 
 interface BrowserContext {
@@ -30,6 +35,8 @@ interface BrowserContext {
   activeTabId: number | null;
   addressBarValue: string;
   isAddressBarFocused: boolean;
+  // Tab groups
+  tabGroups: TabGroup[];
   // Autocomplete
   suggestions: AutocompleteSuggestion[];
   selectedSuggestionIndex: number; // -1 = user's own input
@@ -46,6 +53,13 @@ type BrowserEvents =
   | { type: 'TAB.DUPLICATE'; tabId: number }
   | { type: 'TAB.CLOSE_OTHERS'; tabId: number }
   | { type: 'TAB.TOGGLE_MUTE'; tabId: number }
+  | { type: 'TAB.ADD_TO_GROUP'; tabId: number; groupId: string }
+  | { type: 'TAB.REMOVE_FROM_GROUP'; tabId: number }
+  | { type: 'GROUP.CREATE'; name?: string; tabIds?: number[] }
+  | { type: 'GROUP.RENAME'; groupId: string; name: string }
+  | { type: 'GROUP.CHANGE_COLOR'; groupId: string; color: TabGroupColor }
+  | { type: 'GROUP.DELETE'; groupId: string; closeTabs?: boolean }
+  | { type: 'GROUP.TOGGLE_COLLAPSE'; groupId: string }
   | { type: 'NAV.GO'; url: string }
   | { type: 'NAV.BACK' }
   | { type: 'NAV.FORWARD' }
@@ -91,9 +105,28 @@ function syncTabsToBackend(tabs: BrowserTab[]) {
         favicon: t.favicon,
         displayOrder: i,
         isMuted: t.isMuted,
+        groupId: t.groupId,
       }));
     trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
   }, 2000);
+}
+
+const GROUPS_STORAGE_KEY = 'browser-tab-groups';
+
+function persistGroups(groups: TabGroup[]) {
+  saveTabGroups(GROUPS_STORAGE_KEY, groups);
+}
+
+function generateGroupId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// Map url→groupId for restoring group assignments when tabs are recreated on startup
+const pendingGroupAssignments = new Map<string, string[]>();
+
+function deleteEmptyGroups(tabs: BrowserTab[], groups: TabGroup[]): TabGroup[] {
+  const usedGroupIds = new Set(tabs.filter(t => t.groupId).map(t => t.groupId!));
+  return groups.filter(g => usedGroupIds.has(g.id));
 }
 
 // Debounce autocomplete queries outside the machine to avoid timer in context
@@ -157,6 +190,7 @@ const browserState = setup({
     activeTabId: null,
     addressBarValue: '',
     isAddressBarFocused: false,
+    tabGroups: [],
     suggestions: [],
     selectedSuggestionIndex: -1,
     inlineCompletion: null,
@@ -203,6 +237,101 @@ const browserState = setup({
               window.electronAPI?.browser.setTabMuted(event.tabId, !tab.isMuted);
             }
           },
+        },
+        // Tab group actions
+        'TAB.ADD_TO_GROUP': {
+          actions: [
+            assign(({ context, event }) => {
+              const tabs = context.tabs.map(t =>
+                t.id === event.tabId ? { ...t, groupId: event.groupId } : t,
+              );
+              return { tabs };
+            }),
+            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+          ],
+        },
+        'TAB.REMOVE_FROM_GROUP': {
+          actions: [
+            assign(({ context, event }) => {
+              const tabs = context.tabs.map(t =>
+                t.id === event.tabId ? { ...t, groupId: undefined } : t,
+              );
+              const tabGroups = deleteEmptyGroups(tabs, context.tabGroups);
+              return { tabs, tabGroups };
+            }),
+            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+          ],
+        },
+        'GROUP.CREATE': {
+          actions: [
+            assign(({ context, event }) => {
+              const color = getNextAvailableColor(context.tabGroups);
+              const newGroup: TabGroup = {
+                id: generateGroupId(),
+                name: event.name || `Group ${context.tabGroups.length + 1}`,
+                color,
+                isCollapsed: false,
+                order: context.tabGroups.length,
+              };
+              const tabGroups = [...context.tabGroups, newGroup];
+              const tabs = event.tabIds
+                ? context.tabs.map(t => event.tabIds!.includes(t.id) ? { ...t, groupId: newGroup.id } : t)
+                : context.tabs;
+              return { tabGroups, tabs };
+            }),
+            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+          ],
+        },
+        'GROUP.RENAME': {
+          actions: [
+            assign(({ context, event }) => ({
+              tabGroups: context.tabGroups.map(g =>
+                g.id === event.groupId ? { ...g, name: event.name } : g,
+              ),
+            })),
+            ({ context }) => { persistGroups(context.tabGroups); },
+          ],
+        },
+        'GROUP.CHANGE_COLOR': {
+          actions: [
+            assign(({ context, event }) => ({
+              tabGroups: context.tabGroups.map(g =>
+                g.id === event.groupId ? { ...g, color: event.color } : g,
+              ),
+            })),
+            ({ context }) => { persistGroups(context.tabGroups); },
+          ],
+        },
+        'GROUP.DELETE': {
+          actions: [
+            ({ context, event }) => {
+              if (event.closeTabs) {
+                for (const tab of context.tabs) {
+                  if (tab.groupId === event.groupId) {
+                    window.electronAPI?.browser.closeTab(tab.id);
+                  }
+                }
+              }
+            },
+            assign(({ context, event }) => {
+              const tabGroups = context.tabGroups.filter(g => g.id !== event.groupId);
+              const tabs = event.closeTabs
+                ? context.tabs // tabs will be removed via IPC.TAB_REMOVED
+                : context.tabs.map(t => t.groupId === event.groupId ? { ...t, groupId: undefined } : t);
+              return { tabGroups, tabs };
+            }),
+            ({ context }) => { persistGroups(context.tabGroups); syncTabsToBackend(context.tabs); },
+          ],
+        },
+        'GROUP.TOGGLE_COLLAPSE': {
+          actions: [
+            assign(({ context, event }) => ({
+              tabGroups: context.tabGroups.map(g =>
+                g.id === event.groupId ? { ...g, isCollapsed: !g.isCollapsed } : g,
+              ),
+            })),
+            ({ context }) => { persistGroups(context.tabGroups); },
+          ],
         },
         'NAV.GO': {
           actions: [
@@ -295,23 +424,41 @@ const browserState = setup({
         },
         // Backend events
         'BROWSER_CONNECTED': {
-          actions: ({ context, event }) => {
-            // Restore saved tabs if no Electron tabs exist yet
-            if (context.tabs.length === 0 && event.savedTabs.length > 0) {
-              for (const saved of event.savedTabs) {
-                window.electronAPI?.browser.createTab(saved.url);
+          actions: [
+            assign(() => ({
+              tabGroups: loadTabGroups(GROUPS_STORAGE_KEY),
+            })),
+            ({ context, event }) => {
+              if (context.tabs.length === 0 && event.savedTabs.length > 0) {
+                // Set up pending group assignments for restored tabs
+                pendingGroupAssignments.clear();
+                for (const saved of event.savedTabs) {
+                  if (saved.groupId) {
+                    const queue = pendingGroupAssignments.get(saved.url) ?? [];
+                    queue.push(saved.groupId);
+                    pendingGroupAssignments.set(saved.url, queue);
+                  }
+                }
+                for (const saved of event.savedTabs) {
+                  window.electronAPI?.browser.createTab(saved.url);
+                }
               }
-            }
-          },
+            },
+          ],
         },
         // IPC events
         'IPC.TAB_CREATED': {
           actions: [
-            assign({
-              tabs: ({ context, event }) =>
-                context.tabs.some(t => t.id === event.tab.id)
-                  ? context.tabs
-                  : [...context.tabs, event.tab],
+            assign(({ context, event }) => {
+              if (context.tabs.some(t => t.id === event.tab.id)) return {};
+              // Apply pending group assignment from restore
+              const tab = { ...event.tab };
+              const queue = pendingGroupAssignments.get(tab.url);
+              if (queue?.length) {
+                tab.groupId = queue.shift();
+                if (queue.length === 0) pendingGroupAssignments.delete(tab.url);
+              }
+              return { tabs: [...context.tabs, tab] };
             }),
             ({ context }) => {
               syncTabsToBackend(context.tabs);
@@ -322,14 +469,17 @@ const browserState = setup({
           actions: [
             assign(({ context, event }) => {
               const tabs = context.tabs.filter(t => t.id !== event.tabId);
+              const tabGroups = deleteEmptyGroups(tabs, context.tabGroups);
               return {
                 tabs,
+                tabGroups,
                 activeTabId: context.activeTabId === event.tabId
                   ? (tabs.at(-1)?.id ?? null)
                   : context.activeTabId,
               };
             }),
             ({ context }) => {
+              persistGroups(context.tabGroups);
               syncTabsToBackend(context.tabs);
             },
           ],

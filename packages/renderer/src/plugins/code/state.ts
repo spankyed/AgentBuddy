@@ -5,7 +5,7 @@ import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
-import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
+import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@/shared/tab-groups';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
@@ -64,27 +64,7 @@ export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: b
   return file.isDiff === true && file.gitFile?.staged === false
 }
 
-export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'
-
-const ALL_COLORS: TabGroupColor[] = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray']
-
-function getNextAvailableColor(tabGroups: TabGroup[], isPinned: boolean): TabGroupColor {
-  const sameRowGroups = tabGroups.filter(g => (g.isPinned || false) === isPinned)
-  const lastColor = sameRowGroups[sameRowGroups.length - 1]?.color
-  const nextIndex = tabGroups.length % ALL_COLORS.length
-  return ALL_COLORS[nextIndex] === lastColor
-    ? ALL_COLORS[(nextIndex + 1) % ALL_COLORS.length]
-    : ALL_COLORS[nextIndex]
-}
-
-export interface TabGroup {
-  id: string
-  name: string
-  color: TabGroupColor
-  isCollapsed: boolean
-  order: number
-  isPinned?: boolean
-}
+export type { TabGroupColor, TabGroup };
 
 export interface TerminalTab extends OpenFile {
   isTerminal: true
@@ -325,7 +305,7 @@ const codeState = setup({
         return
       }
       saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
-      saveTabGroups(context.tabGroups)
+      saveTabGroups('code-plugin-tab-groups', context.tabGroups)
     },
     addTab: assign(({ event, context }) => {
       const ev = event as { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
@@ -444,7 +424,7 @@ const codeState = setup({
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
       const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
-      const persistedGroups = loadTabGroups()
+      const persistedGroups = loadTabGroups('code-plugin-tab-groups')
 
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
