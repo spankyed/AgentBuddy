@@ -125,6 +125,33 @@ export class BrowserTabManager {
       wc.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`).catch(() => {});
     });
 
+    // Browser keyboard shortcuts (Cmd/Ctrl+W/T/R/L)
+    // Must be handled here because the WebContentsView captures keyboard
+    // focus — events never reach the renderer's window listener.
+    wc.on('before-input-event', (event, input) => {
+      if (!input.meta && !input.control) return;
+      if (input.type !== 'keyDown') return;
+
+      switch (input.key) {
+        case 'w':
+          event.preventDefault();
+          this.closeTab(id);
+          break;
+        case 't':
+          event.preventDefault();
+          this.createTab();
+          break;
+        case 'r':
+          event.preventDefault();
+          this.reload(id);
+          break;
+        case 'l':
+          event.preventDefault();
+          this.#sendToRenderer('browser:focus-address-bar');
+          break;
+      }
+    });
+
     // Intercept new window/popup requests → create a new tab
     wc.setWindowOpenHandler(({url}) => {
       if (url && url !== 'about:blank') {

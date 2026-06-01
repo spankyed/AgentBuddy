@@ -105,8 +105,15 @@ function reportBounds() {
   });
 }
 
+let unsubFocusAddressBar: (() => void) | null = null;
+
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown);
+
+  // Listen for Cmd+L from the WebContentsView (main process forwards it)
+  unsubFocusAddressBar = window.electronAPI?.browser.onFocusAddressBar(() => {
+    navBar.value?.focusAddressBar();
+  }) ?? null;
 
   // Report bounds first so the overlay appears at the correct position
   reportBounds();
@@ -138,6 +145,7 @@ onMounted(async () => {
 onUnmounted(() => {
   mounted = false;
   window.removeEventListener('keydown', handleKeydown);
+  unsubFocusAddressBar?.();
   window.electronAPI?.browser.hide();
 
   if (resizeObserver) {

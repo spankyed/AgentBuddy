@@ -159,6 +159,13 @@ const browser = {
   // DevTools
   toggleDevTools: (tabId: number) => ipcRenderer.send('browser:toggle-devtools', tabId),
 
+  // Address bar focus (from main process keyboard shortcut)
+  onFocusAddressBar: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('browser:focus-address-bar', handler);
+    return () => { ipcRenderer.removeListener('browser:focus-address-bar', handler); };
+  },
+
   // Tab actions
   duplicateTab: (tabId: number) => ipcRenderer.invoke('browser:duplicate-tab', tabId) as Promise<TabState | null>,
   setTabMuted: (tabId: number, muted: boolean) => ipcRenderer.invoke('browser:set-tab-muted', tabId, muted),
