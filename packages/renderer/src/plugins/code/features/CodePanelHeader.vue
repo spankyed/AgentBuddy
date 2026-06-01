@@ -14,7 +14,7 @@
           <slot name="title-extra" />
         </div>
       </div>
-      <div class="flex items-center gap-1 shrink-0">
+      <div class="flex items-center flex-1 min-w-0">
         <BaseDirectoryMenu
           v-if="baseDirectory && showDirectoryMenu"
           :base-directory="baseDirectory"
@@ -23,7 +23,7 @@
           @open-project-directory="handleProjectDirectorySelect"
           @refresh="explorerActor?.send({ type: 'explorer.REFRESH_TREE' })"
         />
-        <div class="flex items-center gap-1 min-w-5">
+        <div class="flex items-center gap-1 ml-auto">
           <slot name="actions" />
         </div>
       </div>
