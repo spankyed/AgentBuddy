@@ -93,11 +93,12 @@ function handleKeydown(e: KeyboardEvent) {
 function reportBounds() {
   if (!contentArea.value) return;
   const rect = contentArea.value.getBoundingClientRect();
+  const zoom = window.electronAPI?.zoom.getZoomFactor() ?? 1;
   window.electronAPI?.browser.setBounds({
-    x: Math.round(rect.x),
-    y: Math.round(rect.y),
-    width: Math.round(rect.width),
-    height: Math.round(rect.height),
+    x: Math.round(rect.x * zoom),
+    y: Math.round(rect.y * zoom),
+    width: Math.round(rect.width * zoom),
+    height: Math.round(rect.height * zoom),
   });
 }
 
