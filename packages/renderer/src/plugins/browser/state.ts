@@ -178,8 +178,12 @@ const browserState = setup({
   },
   actions: {
     navigate: ({ context }) => {
-      if (context.activeTabId !== null && context.addressBarValue.trim()) {
-        window.electronAPI?.browser.navigate(context.activeTabId, context.addressBarValue.trim());
+      const url = context.addressBarValue.trim();
+      if (!url) return;
+      if (context.activeTabId !== null) {
+        window.electronAPI?.browser.navigate(context.activeTabId, url);
+      } else {
+        window.electronAPI?.browser.createTab(url);
       }
     },
     goBack: navAction('goBack'),

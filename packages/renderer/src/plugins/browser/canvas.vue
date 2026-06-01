@@ -56,7 +56,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { isAnyMenuOpen } from '@/core/composables/useMenuState';
 import { useSelector } from '@xstate/vue';
 import { applicationState } from '@/main';
 import { id, type BrowserState } from './state.ts';
@@ -73,6 +74,15 @@ const selectedSuggestionIndex = useSelector(actor, s => s.context.selectedSugges
 const inlineCompletion = useSelector(actor, s => s.context.inlineCompletion);
 const tabGroups = useSelector(actor, s => s.context.tabGroups);
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null);
+
+// Hide browser overlay when any app menu is open (toolbar, canvas header, tab context menu, etc.)
+watch(isAnyMenuOpen, (menuOpen) => {
+  if (menuOpen) {
+    window.electronAPI?.browser.hide();
+  } else {
+    window.electronAPI?.browser.show();
+  }
+});
 
 const navBar = ref<InstanceType<typeof BrowserNavBar> | null>(null);
 function toggleDevTools() {
