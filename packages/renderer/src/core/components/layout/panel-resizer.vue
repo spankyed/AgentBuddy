@@ -6,7 +6,7 @@
         ? ['h-full cursor-col-resize', collapsed ? 'w-1' : 'w-1.5']
         : ['w-full cursor-row-resize', collapsed ? 'h-1' : 'h-1.5'],
       collapsed
-        ? 'bg-transparent hover:bg-neutral-700/50'
+        ? 'bg-neutral-800 hover:bg-neutral-700'
         : isDragging
           ? 'bg-neutral-600'
           : 'bg-neutral-800 hover:bg-neutral-700',
