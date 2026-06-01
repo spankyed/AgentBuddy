@@ -313,10 +313,8 @@ const browserState = setup({
                   ? context.tabs
                   : [...context.tabs, event.tab],
             }),
-            ({ context, event }) => {
-              if (!context.tabs.some(t => t.id === event.tab.id)) {
-                syncTabsToBackend([...context.tabs, event.tab]);
-              }
+            ({ context }) => {
+              syncTabsToBackend(context.tabs);
             },
           ],
         },
