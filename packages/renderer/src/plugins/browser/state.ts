@@ -1,5 +1,6 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
+import { trpc } from '@/core/trpc';
 
 export const id = 'browser' as const;
 
@@ -15,6 +16,14 @@ export interface BrowserTab {
 }
 
 export type { AutocompleteSuggestion };
+
+interface SavedTab {
+  url: string;
+  title: string;
+  favicon: string;
+  displayOrder: number;
+  isMuted: boolean;
+}
 
 interface BrowserContext {
   tabs: BrowserTab[];
@@ -50,6 +59,8 @@ type BrowserEvents =
   | { type: 'AUTOCOMPLETE.DISMISS' }
   | { type: 'AUTOCOMPLETE.ACCEPT_INLINE' }
   | { type: 'AUTOCOMPLETE.RESULTS'; suggestions: AutocompleteSuggestion[]; inlineCompletion: string | null }
+  // Backend events
+  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[] }
   // IPC bridge events
   | { type: 'IPC.TAB_CREATED'; tab: BrowserTab }
   | { type: 'IPC.TAB_REMOVED'; tabId: number }
@@ -64,6 +75,25 @@ function navAction(method: 'goBack' | 'goForward' | 'reload' | 'stop') {
       window.electronAPI?.browser[method](context.activeTabId);
     }
   };
+}
+
+// Debounce tab sync to backend (2s after last change)
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function syncTabsToBackend(tabs: BrowserTab[]) {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    const persistable = tabs
+      .filter(t => t.url && t.url !== 'about:blank' && !t.url.startsWith('data:'))
+      .map((t, i) => ({
+        url: t.url,
+        title: t.title,
+        favicon: t.favicon,
+        displayOrder: i,
+        isMuted: t.isMuted,
+      }));
+    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
+  }, 2000);
 }
 
 // Debounce autocomplete queries outside the machine to avoid timer in context
@@ -263,25 +293,48 @@ const browserState = setup({
             };
           }),
         },
+        // Backend events
+        'BROWSER_CONNECTED': {
+          actions: ({ context, event }) => {
+            // Restore saved tabs if no Electron tabs exist yet
+            if (context.tabs.length === 0 && event.savedTabs.length > 0) {
+              for (const saved of event.savedTabs) {
+                window.electronAPI?.browser.createTab(saved.url);
+              }
+            }
+          },
+        },
         // IPC events
         'IPC.TAB_CREATED': {
-          actions: assign({
-            tabs: ({ context, event }) =>
-              context.tabs.some(t => t.id === event.tab.id)
-                ? context.tabs
-                : [...context.tabs, event.tab],
-          }),
+          actions: [
+            assign({
+              tabs: ({ context, event }) =>
+                context.tabs.some(t => t.id === event.tab.id)
+                  ? context.tabs
+                  : [...context.tabs, event.tab],
+            }),
+            ({ context, event }) => {
+              if (!context.tabs.some(t => t.id === event.tab.id)) {
+                syncTabsToBackend([...context.tabs, event.tab]);
+              }
+            },
+          ],
         },
         'IPC.TAB_REMOVED': {
-          actions: assign(({ context, event }) => {
-            const tabs = context.tabs.filter(t => t.id !== event.tabId);
-            return {
-              tabs,
-              activeTabId: context.activeTabId === event.tabId
-                ? (tabs.at(-1)?.id ?? null)
-                : context.activeTabId,
-            };
-          }),
+          actions: [
+            assign(({ context, event }) => {
+              const tabs = context.tabs.filter(t => t.id !== event.tabId);
+              return {
+                tabs,
+                activeTabId: context.activeTabId === event.tabId
+                  ? (tabs.at(-1)?.id ?? null)
+                  : context.activeTabId,
+              };
+            }),
+            ({ context }) => {
+              syncTabsToBackend(context.tabs);
+            },
+          ],
         },
         'IPC.TAB_UPDATED': {
           actions: [
@@ -306,6 +359,10 @@ const browserState = setup({
               if ((event.changes.title || event.changes.favicon) && !event.changes.url) {
                 const tab = context.tabs.find(t => t.id === event.tabId);
                 if (tab?.url) updateHistoryMeta(tab.url, event.changes.title, event.changes.favicon);
+              }
+              // Sync to backend on URL or title changes
+              if (event.changes.url || event.changes.title) {
+                syncTabsToBackend(context.tabs);
               }
             },
           ],
