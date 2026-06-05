@@ -1,25 +1,35 @@
 <template>
   <div
     :class="[
-      'flex-shrink-0 z-10 flex items-center justify-center transition-colors',
-      isHorizontal
-        ? 'h-full cursor-col-resize w-1.5'
-        : 'w-full cursor-row-resize h-1.5',
-      isDragging
-        ? 'bg-neutral-600'
-        : 'bg-neutral-800 hover:bg-neutral-700',
+      'flex-shrink-0 z-10 transition-colors',
+      subtle
+        ? ['panel-resizer--subtle relative', isHorizontal ? 'w-0 h-full cursor-col-resize' : 'h-[3px] w-full cursor-row-resize']
+        : ['flex items-center justify-center', isHorizontal ? 'h-full cursor-col-resize w-1.5' : 'w-full cursor-row-resize h-1.5',
+           isDragging ? 'bg-neutral-600' : 'bg-neutral-800 hover:bg-neutral-700'],
       isDragging && 'z-[1000]',
+      isDragging && subtle && 'is-dragging',
     ]"
     @mousedown="startDrag"
     @contextmenu="onContextMenu"
   >
+    <!-- Subtle: invisible handle, shows on hover/drag -->
     <div
+      v-if="subtle"
       :class="[
-        'rounded-full',
-        subtle ? 'bg-neutral-600' : 'bg-neutral-500',
+        'panel-resizer__handle absolute z-[11] bg-transparent transition-colors',
         isHorizontal
-          ? subtle ? 'h-8 w-0.5' : 'h-8 w-px ml-px shadow-[-1px_0_0_rgba(255,255,255,0.15)]'
-          : subtle ? 'w-8 h-0.5' : 'w-8 h-px shadow-[0_-1px_0_rgba(255,255,255,0.15)]',
+          ? 'top-0 left-0 bottom-0 -right-2'
+          : 'left-0 -top-1 bottom-0 right-0',
+      ]"
+    />
+    <!-- Regular: visible pill indicator -->
+    <div
+      v-else
+      :class="[
+        'rounded-full bg-neutral-500',
+        isHorizontal
+          ? 'h-8 w-px ml-px shadow-[-1px_0_0_rgba(255,255,255,0.15)]'
+          : 'w-8 h-px shadow-[0_-1px_0_rgba(255,255,255,0.15)]',
       ]"
     />
   </div>
@@ -116,3 +126,10 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopDrag)
 })
 </script>
+
+<style scoped>
+.panel-resizer--subtle:hover .panel-resizer__handle,
+.panel-resizer--subtle.is-dragging .panel-resizer__handle {
+  background-color: rgb(82 82 82); /* neutral-600 */
+}
+</style>

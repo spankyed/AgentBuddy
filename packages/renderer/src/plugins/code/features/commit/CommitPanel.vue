@@ -436,6 +436,7 @@
     <PanelResizer
       v-if="codeSettings?.showStashes && stashList.length > 0 && isStashesExpanded"
       orientation="vertical"
+      subtle
       @resize="onStashResize"
     />
 
