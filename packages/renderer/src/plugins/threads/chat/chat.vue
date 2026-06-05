@@ -337,6 +337,9 @@ function handleViewDashboard() {
 
 function handleViewArtifacts(threadId: string) {
   const snapshot = applicationState.getSnapshot();
+  if (snapshot.context.activePlugin.id !== 'threads') {
+    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
+  }
   if (!snapshot.context.defaultToggles.canvas) {
     applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
   }
@@ -347,6 +350,9 @@ function handleViewArtifacts(threadId: string) {
 
 function handleViewDetails(threadId: string) {
   const snapshot = applicationState.getSnapshot();
+  if (snapshot.context.activePlugin.id !== 'threads') {
+    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
+  }
   if (!snapshot.context.defaultToggles.canvas) {
     applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
   }
