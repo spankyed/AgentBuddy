@@ -3668,6 +3668,7 @@ type ThreadExtendedData = ThreadLinkedFields & {
     archived?: boolean;
     shortCode?: string;
     timestamp?: number;
+    lastMessageTimestamp?: number;
 };
 type ThreadConnectedData = {
     threads: ThreadExtended[];

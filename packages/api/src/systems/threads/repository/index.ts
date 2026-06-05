@@ -79,6 +79,7 @@ export const threadQueries = {
       archived: thread?.archived,
       shortCode: thread?.shortCode,
       timestamp: thread?.timestamp,
+      lastMessageTimestamp: thread?.lastMessageTimestamp,
       tags: thread?.tags as string[] | undefined,
     };
   },

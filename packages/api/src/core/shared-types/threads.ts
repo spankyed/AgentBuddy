@@ -303,6 +303,7 @@ export type ThreadViewData = Simplify<
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     archived?: ThreadEntity['archived'];
+    lastMessageTimestamp?: ThreadEntity['lastMessageTimestamp'];
     messages?: ThreadExtendedData['messages'];
   }
 >;
@@ -320,6 +321,7 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   archived?: boolean;
   shortCode?: string;
   timestamp?: number;
+  lastMessageTimestamp?: number;
 }
 
 export type ThreadTypeShortCode = `T-${number}`;
