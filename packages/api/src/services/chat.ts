@@ -196,13 +196,9 @@ export function sendQuestionBlock(options: {
   }>;
   forkable?: boolean;
 } & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, questions, forkable, autoHide, asUser, asideContext } = options;
+  const { threadId, text, questions, forkable, autoHide, asUser, asideContext } = options;
 
   const blocks: BlockConfig[] = [
-    {
-      type: 'prompt',
-      props: { content: prompt }
-    },
     {
       type: 'question',
       props: { questions }
