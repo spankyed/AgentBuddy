@@ -161,6 +161,7 @@ export type Event =
   | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
   | { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
   | { type: 'TOGGLE_PANEL_TERMINAL' }
+  | { type: 'TERMINAL_TAB_INFO_CHANGED'; terminalId: string; changes: Record<string, any> }
   | { type: 'NAVIGATE_BACK' }
   | { type: 'NAVIGATE_FORWARD' };
 
@@ -784,6 +785,23 @@ const codeState = setup({
       return { panelTerminalExpanded: !context.panelTerminalExpanded }
     }),
 
+    updateTerminalTabInfo: assign(({ event, context }) => {
+      const ev = event as { type: 'TERMINAL_TAB_INFO_CHANGED'; terminalId: string; changes: Record<string, any> }
+      const terminalPath = `terminal:${ev.terminalId}`
+      let changed = false
+      const updatedOpenFiles = context.openFiles.map((file: any) => {
+        if (file.path === terminalPath && file.isTerminal) {
+          changed = true
+          return {
+            ...file,
+            terminalInfo: { ...file.terminalInfo, ...ev.changes }
+          }
+        }
+        return file
+      })
+      return changed ? { openFiles: updatedOpenFiles } : {}
+    }),
+
     openTerminalInTab: enqueueActions(({ enqueue, context, event, system }) => {
       const ev = event as { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
       const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
@@ -1312,6 +1330,10 @@ const codeState = setup({
         },
         TOGGLE_PANEL_TERMINAL: {
           actions: ['togglePanelTerminal', 'saveTabsAction']
+        },
+        // Surgical update from terminal child — avoids stale openFiles snapshots
+        TERMINAL_TAB_INFO_CHANGED: {
+          actions: ['updateTerminalTabInfo', 'saveTabsAction']
         },
         NAVIGATE_PREV_PANEL: {
           actions: 'navigatePrevPanel'
