@@ -11,20 +11,13 @@ if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 't
   process.on('uncaughtException', showAndExit);
   process.on('unhandledRejection', showAndExit);
 } else {
-  // In production, handle EPIPE errors gracefully
-  process.on('uncaughtException', (error) => {
-    // EPIPE errors are common when child processes exit
-    if (error.code === 'EPIPE') {
-      console.warn('EPIPE error caught (child process pipe closed):', error.message);
-
-      return; // Silently ignore EPIPE errors
-    }
-    // For other errors, log but don't crash the app
-    console.error('Uncaught exception:', error);
-  });
-  
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled promise rejection:', reason);
+  // In production, use electron-log to capture crashes to ~/Library/Logs/AgentBuddy/
+  const log = await import('electron-log/main');
+  log.default.errorHandler.startCatching({
+    onError({ error }) {
+      // EPIPE errors are common when child processes exit — suppress them
+      if (error?.code === 'EPIPE') return false;
+    },
   });
 }
 

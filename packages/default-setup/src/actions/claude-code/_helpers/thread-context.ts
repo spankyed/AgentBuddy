@@ -84,6 +84,8 @@ export interface ClaudeCodeThreadState {
   permissionMode?: PermissionMode;
   /** Whether to run in a git worktree for isolated file mutations. */
   useWorktree?: boolean;
+  /** Whether the current sessionId was created with --worktree. */
+  sessionWorktree?: boolean;
   /** Human-readable error when the session is broken (e.g. JSONL deleted). */
   sessionError?: string;
   /** Threshold percentages that have already fired an alert (avoids re-alerting). */
@@ -135,6 +137,13 @@ export interface ClaudeCodeThreadState {
    * after the query starts.
    */
   forkFrom?: { sessionId: string; cliUuid?: string };
+  /**
+   * Set by the backend forkThread action before navigation. While true,
+   * the chat action queues incoming messages until handle-fork finishes
+   * persisting session state (sessionId, forkFrom, cwd). Cleared by
+   * CC: Handle Fork after state is ready.
+   */
+  forkPending?: boolean;
   /**
    * One-shot flag set by CC: Handle Revert. When present, the next chat
    * action passes `--resume-session-at <cliUuid> --fork-session` to the CLI
@@ -248,7 +257,7 @@ export function ensureSessionMarker(services: Services, threadId: EntityId): Ent
   const { artifactId } = services.artifact.findOrCreateByType(
     threadId,
     'claude-session',
-    { title: 'Claude Code session', content: {} },
+    { title: 'Claude Code session', content: {}, color: 'purple' },
   );
   return artifactId;
 }
@@ -298,6 +307,7 @@ export function markSessionBroken(
   persistClaudeState(services, threadId as string, {
     sessionError: errorMessage,
     sessionId: undefined,
+    sessionWorktree: undefined,
   });
   updateChatState(services, threadId, 'error');
 }

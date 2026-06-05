@@ -112,7 +112,7 @@ function importSessionMessages(
       messages.push({
         text,
         sender: 'assistant',
-        forkable: true,
+        forkable: !!entry.uuid,
         ...(entry.uuid && { context: { cliUuid: entry.uuid } }),
       });
     }
@@ -213,6 +213,7 @@ async function handleResume(
   persistClaudeState(services, targetThreadId, {
     sessionId,
     cwd: (session as any).cwd || '',
+    sessionWorktree: false,
   });
   ensureSessionMarker(services, targetThreadId as any);
   updateChatState(services, targetThreadId as any, 'idle');
@@ -324,6 +325,7 @@ async function handleImport(
       const now = Date.now();
       const ccState = {
         sessionId: session.id,
+        sessionWorktree: false,
         cwd: (session as any).cwd || undefined,
         chatState: 'idle',
         model: '',

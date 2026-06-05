@@ -196,13 +196,9 @@ export function sendQuestionBlock(options: {
   }>;
   forkable?: boolean;
 } & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, questions, forkable, autoHide, asUser, asideContext } = options;
+  const { threadId, text, questions, forkable, autoHide, asUser, asideContext } = options;
 
   const blocks: BlockConfig[] = [
-    {
-      type: 'prompt',
-      props: { content: prompt }
-    },
     {
       type: 'question',
       props: { questions }
@@ -434,10 +430,16 @@ export function updateMessageState(
   messageId: EARS.EntityId,
   updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>
 ): void {
-  const result = repository.chatCommands.updateMessageState({
-    messageId,
-    updates
-  });
+  let result;
+  try {
+    result = repository.chatCommands.updateMessageState({
+      messageId,
+      updates
+    });
+  } catch (err) {
+    console.error(`[chat] updateMessageState failed for ${messageId}:`, (err as Error)?.message);
+    return;
+  }
 
   // Emit UPDATE_MESSAGE_STATE event to frontend with all updated fields
   sendToPlugin('threads', {

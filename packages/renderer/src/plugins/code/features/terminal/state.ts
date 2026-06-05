@@ -2,7 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { terminalPool } from '../../utils/terminal-pool';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
+import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
 import { removeTabs, nextActiveFromHistory } from '../../utils/tab-management';
 
 export interface TerminalInfo {
@@ -200,26 +200,14 @@ export const terminalState = setup({
         )
       })
 
-      // Propagate to parent's openFiles so tab label updates
+      // Tell parent to surgically update the matching terminal tab.
+      // Avoids sending a full openFiles snapshot which can race with pending ADD_TAB events.
       enqueue(() => {
-        const parentContext = getParentContext(self)
-        const openFiles = parentContext?.openFiles || []
-        const terminalPath = `terminal:${ev.data.terminalId}`
-
-        const updatedOpenFiles = openFiles.map((file: any) => {
-          if (file.path === terminalPath && file.isTerminal) {
-            return {
-              ...file,
-              terminalInfo: {
-                ...file.terminalInfo,
-                customTitle: ev.data.customTitle
-              }
-            }
-          }
-          return file
+        sendEventToParent(self, {
+          type: 'TERMINAL_TAB_INFO_CHANGED',
+          terminalId: ev.data.terminalId,
+          changes: { customTitle: ev.data.customTitle }
         })
-
-        updateParentState(self, { openFiles: updatedOpenFiles })
       })
     }),
 
@@ -241,31 +229,13 @@ export const terminalState = setup({
         })
       }))
 
-      // Update parent state to refresh tab label
+      // Tell parent to surgically update the matching terminal tab.
+      // Avoids sending a full openFiles snapshot which can race with pending ADD_TAB events.
       enqueue(() => {
-        const parentContext = getParentContext(self)
-        const terminalPath = `terminal:${ev.data.terminalId}`
-
-        // Find and update the terminal tab in openFiles
-        const updatedOpenFiles = (parentContext?.openFiles || []).map((file: any) => {
-          if (file.path === terminalPath && file.isTerminal) {
-            const terminal = context.terminals.find(t => t.id === ev.data.terminalId)
-            if (terminal) {
-              return {
-                ...file,
-                terminalInfo: {
-                  ...file.terminalInfo,
-                  cwd: ev.data.cwd,
-                  title: ev.data.title || file.terminalInfo.title
-                }
-              }
-            }
-          }
-          return file
-        })
-
-        updateParentState(self, {
-          openFiles: updatedOpenFiles
+        sendEventToParent(self, {
+          type: 'TERMINAL_TAB_INFO_CHANGED',
+          terminalId: ev.data.terminalId,
+          changes: { cwd: ev.data.cwd, title: ev.data.title }
         })
       })
     }),

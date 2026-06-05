@@ -3,7 +3,7 @@ import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
 import { addRecentFile } from '../../utils/recent-files';
-import { imageExtensions } from '../../utils/file-icons';
+import { imageExtensions, videoExtensions } from '../../utils/file-icons';
 
 // File types
 export interface FileInfo {
@@ -146,6 +146,7 @@ export const explorerState = setup({
 
       // Build tab data — parent decides preview state via ADD_TAB
       const isImageFile = !existingFile && imageExtensions.includes(ext)
+      const isVideoFile = !existingFile && videoExtensions.includes(ext)
       const tab = {
         path: ev.data.path,
         content: ev.data.content,
@@ -159,6 +160,7 @@ export const explorerState = setup({
           pendingSaveConflict: false,
         } : {}),
         ...(isImageFile && { isImage: true }),
+        ...(isVideoFile && { isVideo: true }),
         ...(ev.data.isBinary && { isBinary: true }),
       }
       addTabToParent(self, tab, false, {

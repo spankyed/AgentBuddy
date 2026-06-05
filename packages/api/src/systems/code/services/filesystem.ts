@@ -6,6 +6,8 @@ import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
+const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v'])
+
 const IMAGE_MIME_TYPES: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -111,11 +113,22 @@ export class FileSystemRepository {
         throw this.createError('IO_ERROR', 'Cannot read directory as file', filePath)
       }
       
+      const ext = path.extname(validPath).slice(1).toLowerCase()
+
+      if (VIDEO_EXTENSIONS.has(ext)) {
+        return {
+          path: validPath,
+          content: '',
+          encoding: 'utf-8',
+          size: stats.size,
+          isVideo: true,
+        }
+      }
+
       if (stats.size > MAX_FILE_SIZE) {
         throw this.createError('FILE_TOO_LARGE', `File size exceeds ${MAX_FILE_SIZE} bytes`, filePath)
       }
-      
-      const ext = path.extname(validPath).slice(1).toLowerCase()
+
       const mimeType = IMAGE_MIME_TYPES[ext]
 
       if (mimeType) {

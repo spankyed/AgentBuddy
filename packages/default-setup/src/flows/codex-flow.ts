@@ -174,6 +174,8 @@ export default {
             threadId: "$.event.data.payload.threadId",
             approvalMode: "$.event.data.payload.approvalMode",
             sandbox: "$.event.data.payload.sandbox",
+            networkAccess: "$.event.data.payload.networkAccess",
+            webSearch: "$.event.data.payload.webSearch",
           },
         }),
       ]],
@@ -182,53 +184,61 @@ export default {
     on(
       "thread.revert",
       [[
-        action("CDX: Pause Turn", {
-          label: "pause-before-revert",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-          },
-        }),
+        // Only handle reverts that affected Codex messages.
         branch([
           {
-            if: "$.event.data.payload.kind == 'revert'",
+            if: "$.event.data.payload.agents.codex == true",
             steps: [
-              action("CDX: Handle Revert", {
-                label: "revert",
+              action("CDX: Pause Turn", {
+                label: "pause-before-revert",
                 map: {
                   threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
-                  deletedUserMessageCount: "$.event.data.payload.deletedUserMessageCount",
                 },
               }),
-            ],
-          },
-          {
-            if: "$.event.data.payload.kind == 'summarize'",
-            steps: [
-              action("CDX: Handle Summarize", {
-                label: "summarize",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
-                  deletedUserMessageCount: "$.event.data.payload.deletedUserMessageCount",
+              branch([
+                {
+                  if: "$.event.data.payload.kind == 'revert'",
+                  steps: [
+                    action("CDX: Handle Revert", {
+                      label: "revert",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                        deletedUserMessageCount: "$.event.data.payload.codexDeletedUserMessageCount",
+                      },
+                    }),
+                  ],
                 },
-              }),
-            ],
-          },
-          {
-            if: "$.event.data.payload.kind == 'rewind'",
-            steps: [
-              action("CDX: Handle Rewind Unsupported", {
-                label: "rewind-unsupported",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
-                  deletedUserMessageCount: "$.event.data.payload.deletedUserMessageCount",
+                {
+                  if: "$.event.data.payload.kind == 'summarize'",
+                  steps: [
+                    action("CDX: Handle Summarize", {
+                      label: "summarize",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                        deletedUserMessageCount: "$.event.data.payload.codexDeletedUserMessageCount",
+                      },
+                    }),
+                  ],
                 },
-              }),
+                {
+                  if: "$.event.data.payload.kind == 'rewind'",
+                  steps: [
+                    action("CDX: Handle Rewind Unsupported", {
+                      label: "rewind-unsupported",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                        deletedUserMessageCount: "$.event.data.payload.codexDeletedUserMessageCount",
+                      },
+                    }),
+                  ],
+                },
+              ], undefined, "Route Revert Kind"),
             ],
           },
-        ], undefined, "Route Revert Kind"),
+        ], undefined, "Gate CDX Revert"),
       ]],
       "Thread reverted",
     ),
@@ -246,6 +256,58 @@ export default {
         }),
       ]],
       "Thread forked",
+    ),
+    // ─── DB query generation ──────────────────────────────────────────
+    on(
+      "db.query",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.provider == 'Codex'",
+            steps: [
+              branch([
+                {
+                  if: "$.event.data.payload.mode == 'transaction'",
+                  steps: [
+                    action("CDX: DB Transaction", {
+                      label: "db-transaction",
+                      map: { prompt: "$.event.data.payload.prompt" },
+                    }),
+                  ],
+                },
+              ], [
+                action("CDX: DB Query", {
+                  label: "db-query",
+                  map: { prompt: "$.event.data.payload.prompt" },
+                }),
+              ], "DB Mode Router"),
+            ],
+          },
+        ], undefined, "CDX Provider Gate"),
+      ]],
+      "DB query generation",
+    ),
+    // ─── Commit message generation ────────────────────────────────────
+    on(
+      "commit.generate",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.provider == 'Codex'",
+            steps: [
+              action("CDX: Commit Message", {
+                label: "commit-message",
+                map: {
+                  diff: "$.event.data.payload.diff",
+                  branch: "$.event.data.payload.branch",
+                  repoName: "$.event.data.payload.repoName",
+                },
+              }),
+            ],
+          },
+        ], undefined, "CDX Commit Gate"),
+      ]],
+      "Commit message generation",
     ),
     // ─── CDX commands ─────────────────────────────────────────────────
     on(

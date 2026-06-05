@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 
 export interface Project {
   name: string
@@ -139,23 +140,10 @@ export function useProjectActions() {
 
   // Navigate to projects settings
   const navigateToProjects = () => {
-    // Switch to settings plugin
-    applicationState.send({
-      type: 'SELECT_PLUGIN',
-      pluginId: 'settings'
-    })
-
-    // Navigate to General tab
-    settingsActor?.send({
-      type: 'TAB.SELECT',
-      tab: 'general'
-    })
-
-    // Navigate to Projects section
-    settingsActor?.send({
-      type: 'GENERAL_NAV.SELECT',
-      item: 'projects'
-    })
+    navigateToPlugin('settings', [
+      { type: 'TAB.SELECT', tab: 'general' },
+      { type: 'GENERAL_NAV.SELECT', item: 'projects' }
+    ])
   }
 
   return {

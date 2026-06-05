@@ -298,6 +298,17 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     actions.forEach(action => editorDisposables.push(editor.addAction(action)))
   }
 
+  // Suppress VS Code-only "findInFiles" keybinding that crashes standalone Monaco.
+  // Re-dispatch on window so the global hotkey system picks it up
+  // (routes to the code plugin's search panel via focusSearch).
+  const isMac = navigator.platform.toUpperCase().includes('MAC')
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'F', code: 'KeyF', shiftKey: true,
+      ctrlKey: !isMac, metaKey: isMac, bubbles: true
+    }))
+  })
+
   // Set placeholder if provided
   if (props.placeholder && !props.modelValue) {
     const model = editor.getModel()
@@ -560,5 +571,16 @@ defineExpose({
 /* Ensure suggest details widget is visible */
 .unified-monaco-editor :deep(.monaco-editor .suggest-details) {
   z-index: 1001 !important;
+}
+</style>
+
+<style>
+/* Monaco renders button tooltips in a .context-view wrapper (position:fixed,
+   z-index:2575) outside the editor DOM tree. The tooltip overlaps the button
+   it describes (monaco-editor#5177), blocking clicks. pointer-events:none on
+   the entire wrapper lets clicks pass through to the button underneath.
+   :has() scopes this to tooltip hovers only — context menus etc. are unaffected. */
+.context-view:has(.monaco-hover[role="tooltip"]) {
+  pointer-events: none !important;
 }
 </style>

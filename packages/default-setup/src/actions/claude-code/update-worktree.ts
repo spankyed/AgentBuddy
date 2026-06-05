@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta, Services } from '../../types';
-import { persistClaudeState } from './_helpers/thread-context';
+import { persistClaudeState, getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Update Worktree',
@@ -22,7 +22,17 @@ export async function action(
   const { threadId, useWorktree } = params as { threadId: string; useWorktree: boolean };
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  persistClaudeState(services, threadId, { useWorktree });
+  const prior = getClaudeState(services, threadId);
+  const wasWorktree = prior?.useWorktree ?? false;
+  const isChanging = wasWorktree !== useWorktree;
+
+  // If worktree mode is actually changing and a session exists, clear the
+  // sessionId — the CLI can't resume a session across CWD changes because
+  // --worktree shifts the project bucket the session JSONL is looked up from.
+  persistClaudeState(services, threadId, {
+    useWorktree,
+    ...(isChanging && prior?.sessionId && { sessionId: undefined }),
+  });
 
   return { success: true };
 }

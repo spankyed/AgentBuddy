@@ -5,7 +5,8 @@ import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
-import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
+import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@/shared/tab-groups';
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
 // Import child state machines
@@ -47,6 +48,7 @@ export interface OpenFile {
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
   isImage?: boolean
+  isVideo?: boolean
   isBinary?: boolean
   isRichText?: boolean
   _richTextBaselineSet?: boolean
@@ -62,27 +64,7 @@ export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: b
   return file.isDiff === true && file.gitFile?.staged === false
 }
 
-export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'
-
-const ALL_COLORS: TabGroupColor[] = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray']
-
-function getNextAvailableColor(tabGroups: TabGroup[], isPinned: boolean): TabGroupColor {
-  const sameRowGroups = tabGroups.filter(g => (g.isPinned || false) === isPinned)
-  const lastColor = sameRowGroups[sameRowGroups.length - 1]?.color
-  const nextIndex = tabGroups.length % ALL_COLORS.length
-  return ALL_COLORS[nextIndex] === lastColor
-    ? ALL_COLORS[(nextIndex + 1) % ALL_COLORS.length]
-    : ALL_COLORS[nextIndex]
-}
-
-export interface TabGroup {
-  id: string
-  name: string
-  color: TabGroupColor
-  isCollapsed: boolean
-  order: number
-  isPinned?: boolean
-}
+export type { TabGroupColor, TabGroup };
 
 export interface TerminalTab extends OpenFile {
   isTerminal: true
@@ -117,6 +99,7 @@ export type Context = {
   panelTerminalId: string | null
   panelTerminalExpanded: boolean
   pendingTerminalTabIds?: string[]
+  panelNavHistory: NavHistory<PanelType>
 }
 
 export interface QuickOpenResult {
@@ -177,7 +160,10 @@ export type Event =
   | { type: 'CLOSE_PANEL_TERMINAL' }
   | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
   | { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
-  | { type: 'TOGGLE_PANEL_TERMINAL' };
+  | { type: 'TOGGLE_PANEL_TERMINAL' }
+  | { type: 'TERMINAL_TAB_INFO_CHANGED'; terminalId: string; changes: Record<string, any> }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -320,7 +306,7 @@ const codeState = setup({
         return
       }
       saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
-      saveTabGroups(context.tabGroups)
+      saveTabGroups('code-plugin-tab-groups', context.tabGroups)
     },
     addTab: assign(({ event, context }) => {
       const ev = event as { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
@@ -439,7 +425,7 @@ const codeState = setup({
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
       const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
-      const persistedGroups = loadTabGroups()
+      const persistedGroups = loadTabGroups('code-plugin-tab-groups')
 
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
@@ -577,7 +563,8 @@ const codeState = setup({
       // Actions and prompts are loaded by their respective main plugin actors
       return {
         ...context,
-        selectedPanel: ev.panel
+        selectedPanel: ev.panel,
+        panelNavHistory: pushNavHistory(context.panelNavHistory, ev.panel),
       };
     }),
 
@@ -796,6 +783,23 @@ const codeState = setup({
 
     togglePanelTerminal: assign(({ context }) => {
       return { panelTerminalExpanded: !context.panelTerminalExpanded }
+    }),
+
+    updateTerminalTabInfo: assign(({ event, context }) => {
+      const ev = event as { type: 'TERMINAL_TAB_INFO_CHANGED'; terminalId: string; changes: Record<string, any> }
+      const terminalPath = `terminal:${ev.terminalId}`
+      let changed = false
+      const updatedOpenFiles = context.openFiles.map((file: any) => {
+        if (file.path === terminalPath && file.isTerminal) {
+          changed = true
+          return {
+            ...file,
+            terminalInfo: { ...file.terminalInfo, ...ev.changes }
+          }
+        }
+        return file
+      })
+      return changed ? { openFiles: updatedOpenFiles } : {}
     }),
 
     openTerminalInTab: enqueueActions(({ enqueue, context, event, system }) => {
@@ -1206,6 +1210,7 @@ const codeState = setup({
     searchPrefillText: '',
     panelTerminalId: null,
     panelTerminalExpanded: false,
+    panelNavHistory: createNavHistory('explorer' as PanelType),
   },
   states: {
     canvas: {
@@ -1238,6 +1243,24 @@ const codeState = setup({
         // Panel selection
         SELECT_PANEL: {
           actions: ['selectPanel']
+        },
+        NAVIGATE_BACK: {
+          guard: ({ context }) => canGoBack(context.panelNavHistory),
+          actions: assign(({ context, system }) => {
+            const result = goBack(context.panelNavHistory)!;
+            if (result.entry === 'commit') system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+            else if (result.entry === 'pr') system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+            return { panelNavHistory: result.history, selectedPanel: result.entry };
+          }),
+        },
+        NAVIGATE_FORWARD: {
+          guard: ({ context }) => canGoForward(context.panelNavHistory),
+          actions: assign(({ context, system }) => {
+            const result = goForward(context.panelNavHistory)!;
+            if (result.entry === 'commit') system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+            else if (result.entry === 'pr') system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+            return { panelNavHistory: result.history, selectedPanel: result.entry };
+          }),
         },
         // Tab pinning
         PIN_TAB: {
@@ -1307,6 +1330,10 @@ const codeState = setup({
         },
         TOGGLE_PANEL_TERMINAL: {
           actions: ['togglePanelTerminal', 'saveTabsAction']
+        },
+        // Surgical update from terminal child — avoids stale openFiles snapshots
+        TERMINAL_TAB_INFO_CHANGED: {
+          actions: ['updateTerminalTabInfo', 'saveTabsAction']
         },
         NAVIGATE_PREV_PANEL: {
           actions: 'navigatePrevPanel'

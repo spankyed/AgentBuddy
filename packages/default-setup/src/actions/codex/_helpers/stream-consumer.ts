@@ -344,6 +344,43 @@ export function createStreamConsumer(
     // Append reason if present
     if (reason) approvalText += `\n\n**Reason:** ${reason}`;
 
+    // Auto-approve if auto_review mode is active (except plan approvals)
+    const currentState = getCodexState(services, threadId as string);
+    if (currentState?.approvalMode === 'auto_review' && method !== 'plan/approval') {
+      try {
+        (services.codex as any).respondToApproval(requestId, 'acceptForSession');
+      } catch { /* app-server may be gone */ }
+
+      const asideText = `✓ Approved — ${summary || 'tool request'}`;
+      services.chat.sendBlockMessage({
+        threadId,
+        text: approvalText,
+        blocks: [{
+          type: 'approval',
+          props: {
+            content: reason,
+            options: [
+              { label: 'Allow', variant: 'primary', flags: { decision: 'accept' } },
+              { label: 'Allow for session', variant: 'neutral', flags: { decision: 'acceptForSession' } },
+              { label: 'Deny', variant: 'danger', flags: { decision: 'decline' } },
+            ],
+          },
+        }],
+        forkable: false,
+        autoHide: true,
+        asUser: true,
+        asideText,
+        asideContext: summary,
+        state: {
+          responseTimestamp: Date.now(),
+          blockResponse: { approved: true, decision: 'acceptForSession' },
+          asideText,
+        },
+      } as any);
+
+      return;
+    }
+
     // Send approval block to chat
     const approvalMsg = services.chat.sendBlockMessage({
       threadId,
@@ -360,7 +397,10 @@ export function createStreamConsumer(
         },
       }],
       forkable: false,
-    });
+      autoHide: true,
+      asUser: true,
+      asideContext: summary,
+    } as any);
 
     // Persist pending approval state
     persistCodexState(services, threadId as string, {
@@ -502,7 +542,7 @@ export function createStreamConsumer(
   return { handlers: { onNotification, onApproval, onCrash }, finalize };
 }
 
-async function replayQueuedMessage(
+export async function replayQueuedMessage(
   services: Services,
   threadId: EntityId,
   queued: { text: string; mode?: string; phase?: string; messageId?: string; references?: any },
@@ -510,7 +550,7 @@ async function replayQueuedMessage(
 ): Promise<void> {
   log.info('[codex consumer] replaying queued message', { threadId });
   if (queued.messageId) {
-    services.chat.updateMessageState(queued.messageId as any, { status: undefined } as any);
+    services.chat.updateMessageState(queued.messageId as any, { status: null } as any);
   }
 
   try {

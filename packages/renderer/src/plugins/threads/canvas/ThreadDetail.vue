@@ -158,6 +158,19 @@
             />
           </CollapsibleSection>
         </div>
+
+        <!-- Metadata Section (view only) -->
+        <div v-if="isViewMode" class="border-t border-neutral-800">
+          <CollapsibleSection :default-open="false" button-class="py-3">
+            <template #label>Metadata</template>
+            <div class="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-neutral-500">
+              <span>ID <span class="font-mono text-neutral-400">{{ threadId }}</span></span>
+              <span>Short Code <span class="text-neutral-400">{{ shortCode || '—' }}</span></span>
+              <span>Created <span class="text-neutral-400">{{ formatDate(timestamp) }}</span></span>
+              <span>Last Activity <span class="text-neutral-400">{{ formatDate(lastMessageTimestamp || timestamp) }}</span></span>
+            </div>
+          </CollapsibleSection>
+        </div>
       </div>
     </div>
   </div>
@@ -207,6 +220,9 @@ const settings = useSelector(actor, (state) => state.context.settings);
 const threadId = useSelector(actor, (state) => state.context.view.id);
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const status = useSelector(actor, (state) => state.context.view.status || 'Backlog');
+const shortCode = useSelector(actor, (state) => state.context.view.shortCode);
+const timestamp = useSelector(actor, (state) => state.context.view.timestamp);
+const lastMessageTimestamp = useSelector(actor, (state) => state.context.view.lastMessageTimestamp);
 
 const statusValue = computed(() =>
   isViewMode.value ? status.value : (settings.value?.statuses?.[0]?.label || 'Backlog')
@@ -237,6 +253,11 @@ const onLinkedThreadsToggle = (isOpen: boolean) => {
       linkedThreadsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }
+};
+
+const formatDate = (ts?: number) => {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString();
 };
 
 const getTagStyles = (tagName: string) => {

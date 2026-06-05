@@ -11,6 +11,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
 import { createLogger } from '@/core/shared/debug/logger'
+import { resolveForService } from '@/core/shared/resolve-cli'
 import type {
   ServerStatus,
   ApprovalDecision,
@@ -62,9 +63,11 @@ export class CodexAppServer {
     this._status = 'starting'
     this._error = undefined
 
-    logger.info('Starting codex app-server')
+    const cliPath = await resolveForService('codex')
 
-    this.process = spawn('codex', ['app-server', '--listen', 'stdio://'], {
+    logger.info('Starting codex app-server', { cliPath })
+
+    this.process = spawn(cliPath, ['app-server', '--listen', 'stdio://'], {
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 

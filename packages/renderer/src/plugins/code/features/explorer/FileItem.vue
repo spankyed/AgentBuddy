@@ -74,6 +74,15 @@
         </ContextMenuItem>
 
         <ContextMenuItem
+          v-if="isVideo"
+          @select="openInVideoPlayer"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Play class="w-4 h-4" />
+          Open in Video Player
+        </ContextMenuItem>
+
+        <ContextMenuItem
           v-if="file.type === 'directory'"
           @select="$emit('open-terminal', file.path)"
           :class="MENU_ITEM_CLASS"
@@ -119,6 +128,7 @@ import {
   Copy,
   Terminal,
   FolderOpen,
+  Play,
 } from 'lucide-vue-next'
 import {
   ContextMenuTrigger,
@@ -134,7 +144,7 @@ import {
 } from 'reka-ui'
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
-import { getFileIcon } from '../../utils/file-icons'
+import { getFileIcon, videoExtensions } from '../../utils/file-icons'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 
 interface FileItem {
@@ -167,6 +177,10 @@ const icon = computed(() => {
   if (props.file.type === 'directory') return Folder
   return getFileIcon(props.file.extension)
 })
+
+const isVideo = computed(() =>
+  props.file.type === 'file' && videoExtensions.includes(props.file.extension?.toLowerCase() || '')
+)
 
 // Focus input when editing starts
 watch(isEditing, async (editing) => {
@@ -252,5 +266,9 @@ const copyAbsolutePath = async () => {
 
 const openInFinder = () => {
   window.electronAPI?.shell.showItemInFolder(props.file.path)
+}
+
+const openInVideoPlayer = () => {
+  window.electronAPI?.shell.openPath(props.file.path)
 }
 </script>

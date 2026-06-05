@@ -90,6 +90,7 @@
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 import plugins from '@/plugins'
@@ -130,7 +131,7 @@ const selectPlugin = (pluginId: string) => {
 }
 
 const goToPlugin = (pluginId: string) => {
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId })
+  navigateToPlugin(pluginId)
 }
 
 // Check if a plugin is visible

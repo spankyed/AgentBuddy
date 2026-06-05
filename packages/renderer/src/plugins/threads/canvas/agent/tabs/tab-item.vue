@@ -51,7 +51,7 @@
           v-if="isRenaming"
           ref="renameInput"
           v-model="renamingName"
-          class="truncate text-sm bg-neutral-800 border border-blue-500 rounded px-1 py-0 outline-none w-full min-w-0"
+          class="truncate text-sm bg-neutral-800 border border-blue-500 rounded px-1 py-0 outline-none w-full min-w-[120px]"
           @keydown.enter="confirmRename"
           @keydown.escape="cancelRename"
           @blur="confirmRename"

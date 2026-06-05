@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Palette, FolderOpen, Trash2, Pin } from 'lucide-vue-next'
 import type { TabGroupColor } from './types'
 
 const props = defineProps<{
   name: string
   isPinned?: boolean
+  autoFocus?: boolean
   ItemComponent: any
   SeparatorComponent: any
   SubComponent: any
@@ -25,6 +26,16 @@ const emit = defineEmits<{
 }>()
 
 const editingName = ref(props.name)
+const nameInput = ref<HTMLInputElement | null>(null)
+
+onMounted(() => {
+  if (props.autoFocus) {
+    nextTick(() => {
+      nameInput.value?.focus()
+      nameInput.value?.select()
+    })
+  }
+})
 
 watch(() => props.name, (newName) => {
   editingName.value = newName
@@ -55,6 +66,7 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
   <!-- Rename input at top -->
   <div class="px-3 py-2">
     <input
+      ref="nameInput"
       v-model="editingName"
       @blur="handleRename"
       @keydown="handleKeydown"

@@ -28,6 +28,7 @@
           :is-pinned="true"
           :is-drag-over="dragOverGroupId === group.id"
           :tab-count="groupTabs.length"
+          :auto-edit="group.id === newlyCreatedGroupId"
           @toggle="actor.send({ type: 'TOGGLE_TAB_GROUP_COLLAPSE', groupId: group.id })"
           @rename="(name: string) => actor.send({ type: 'RENAME_TAB_GROUP', groupId: group.id, name })"
           @change-color="(color: string) => actor.send({ type: 'CHANGE_TAB_GROUP_COLOR', groupId: group.id, color: color as TabGroupColor })"
@@ -35,6 +36,7 @@
           @close-all="actor.send({ type: 'CLOSE_ALL_IN_GROUP', groupId: group.id })"
           @pin-group="actor.send({ type: 'PIN_TAB_GROUP', groupId: group.id })"
           @unpin-group="actor.send({ type: 'UNPIN_TAB_GROUP', groupId: group.id })"
+          @edit-started="newlyCreatedGroupId = null"
           @group-drag-over="(e: DragEvent) => handleGroupDragOver(e, group.id)"
           @group-drag-leave="(e: DragEvent) => handleGroupDragLeave(e, group.id)"
           @group-drop="(e: DragEvent) => handleGroupDrop(e, group.id)"
@@ -116,6 +118,7 @@
           :is-pinned="false"
           :is-drag-over="dragOverGroupId === groupId"
           :tab-count="groupTabs.length"
+          :auto-edit="groupId === newlyCreatedGroupId"
           @toggle="actor.send({ type: 'TOGGLE_TAB_GROUP_COLLAPSE', groupId })"
           @rename="(name: string) => actor.send({ type: 'RENAME_TAB_GROUP', groupId, name })"
           @change-color="(color: string) => actor.send({ type: 'CHANGE_TAB_GROUP_COLOR', groupId, color: color as TabGroupColor })"
@@ -123,6 +126,7 @@
           @close-all="actor.send({ type: 'CLOSE_ALL_IN_GROUP', groupId })"
           @pin-group="actor.send({ type: 'PIN_TAB_GROUP', groupId })"
           @unpin-group="actor.send({ type: 'UNPIN_TAB_GROUP', groupId })"
+          @edit-started="newlyCreatedGroupId = null"
           @group-drag-over="(e: DragEvent) => handleGroupDragOver(e, groupId)"
           @group-drag-leave="(e: DragEvent) => handleGroupDragLeave(e, groupId)"
           @group-drop="(e: DragEvent) => handleGroupDrop(e, groupId)"
@@ -205,6 +209,17 @@ function selectTab(tabId: string) {
 
 const pinnedContainer = ref<HTMLElement | null>(null);
 const mainContainer = ref<HTMLElement | null>(null);
+const newlyCreatedGroupId = ref<string | null>(null);
+
+// Detect newly created groups by watching for new IDs
+watch(() => props.tabGroups, (newGroups, oldGroups) => {
+  if (!oldGroups) return;
+  const oldIds = new Set(oldGroups.map(g => g.id));
+  const added = newGroups.find(g => !oldIds.has(g.id));
+  if (added) {
+    newlyCreatedGroupId.value = added.id;
+  }
+});
 
 watch(() => props.activeTabId, () => {
   nextTick(() => {

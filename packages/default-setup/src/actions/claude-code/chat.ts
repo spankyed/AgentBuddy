@@ -109,7 +109,7 @@ export async function action(
 
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
-  const resumeSessionId = prior?.sessionId || undefined;
+  let resumeSessionId = prior?.sessionId || undefined;
   let forkFrom = prior?.forkFrom;
   let revertTo = prior?.revertTo;
 
@@ -149,6 +149,18 @@ export async function action(
     fork: !!forkFrom,
     revert: revertTo?.cliUuid ?? null,
   });
+
+  // ─── Fork-pending guard ────────────────────────────────────────────
+  // The backend forkThread action sets forkPending before navigation.
+  // Queue the message until CC: Handle Fork finishes persisting state.
+  if (prior?.forkPending) {
+    log.debug('fork in progress — queuing message', { threadId });
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+    if (userMessageId) {
+      services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+    }
+    return { success: true, queued: true };
+  }
 
   // ─── Concurrency guard ──────────────────────────────────────────────
   log.info('[concurrency-guard] state snapshot', {
@@ -266,6 +278,18 @@ export async function action(
   const useWorktree = prior?.useWorktree ?? false;
   log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
 
+  // Worktree mismatch: the CLI can't resume a session across CWD changes
+  // because --worktree shifts the project bucket the JSONL is looked up from.
+  // Treat undefined sessionWorktree as non-worktree (pre-tracking sessions).
+  if (resumeSessionId && (prior?.sessionWorktree ?? false) !== useWorktree) {
+    log.info('[worktree] session/toggle mismatch — clearing session', {
+      threadId, resumeSessionId,
+      sessionWorktree: prior?.sessionWorktree, useWorktree,
+    });
+    persistClaudeState(services, threadId, { sessionId: undefined, sessionWorktree: undefined });
+    resumeSessionId = undefined;
+  }
+
   // Phase-aware system-prompt nudging (plan/edit/review).
   const tipLabel = phaseTipPromptLabel(phase);
   const phaseTip = tipLabel ? services.prompt.usePrompt(tipLabel, {}) : undefined;
@@ -322,7 +346,7 @@ export async function action(
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
     // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
-    sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || undefined);
+    sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || prior?.cwd || undefined);
 
     // Fallback: if resuming but prior.cwd is missing, try project settings —
     // but only if the session file actually exists under that directory.
@@ -421,6 +445,7 @@ export async function action(
       isFork: !!(forkFrom || revertTo),
       revertCliUuid: revertTo?.cliUuid,
       forkCliUuid: forkFrom?.cliUuid,
+      useWorktree,
     }, {
       writer, toolActivity, thinking, messageId: currentMessageId as EntityId,
     }).catch((err) => {

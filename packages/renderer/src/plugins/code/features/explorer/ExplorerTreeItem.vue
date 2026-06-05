@@ -96,6 +96,15 @@
         </ContextMenuItem>
 
         <ContextMenuItem
+          v-if="isVideo"
+          @select="openInVideoPlayer"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Play class="w-4 h-4" />
+          Open in Video Player
+        </ContextMenuItem>
+
+        <ContextMenuItem
           v-if="file.type !== 'directory' && file.extension === 'md'"
           @select="openFile(file.path, getMdEditorDefault() ? 'plainText' : 'richText')"
           :class="MENU_ITEM_CLASS"
@@ -232,6 +241,7 @@ import {
   FolderOpen,
   FolderPlus,
   Settings,
+  Play,
 } from 'lucide-vue-next'
 import {
   ContextMenuTrigger,
@@ -247,7 +257,7 @@ import {
 } from 'reka-ui'
 import { useProjectActions } from './composables/useProjectActions'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from './constants'
-import { getFileIcon } from '../../utils/file-icons'
+import { getFileIcon, videoExtensions } from '../../utils/file-icons'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import type { FileInfo } from './state'
 
@@ -323,6 +333,14 @@ const icon = computed(() => {
   if (props.file.type === 'directory') return Folder
   return getFileIcon(props.file.extension)
 })
+
+const isVideo = computed(() =>
+  props.file.type === 'file' && videoExtensions.includes(props.file.extension?.toLowerCase() || '')
+)
+
+function openInVideoPlayer() {
+  window.electronAPI?.shell.openPath(props.file.path)
+}
 
 // Focus input when editing starts
 watch(isEditing, async (editing) => {

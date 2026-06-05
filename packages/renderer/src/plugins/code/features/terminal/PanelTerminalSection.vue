@@ -53,7 +53,32 @@
     <div v-if="isExpanded" class="flex overflow-hidden" :style="{ height: `${height}px` }">
       <!-- Terminal view (left) -->
       <div class="flex-1 min-w-0">
-        <div v-if="activeTerminalInfo" ref="container" class="w-full h-full bg-[#1e1e1e]"></div>
+        <TrackedContextMenuRoot v-if="activeTerminalInfo">
+          <ContextMenuTrigger as-child>
+            <div ref="container" class="w-full h-full bg-[#1e1e1e]"></div>
+          </ContextMenuTrigger>
+          <ContextMenuPortal>
+            <ContextMenuContent :class="MENU_CONTENT_CLASS" :side-offset="5">
+              <ContextMenuItem v-if="hasSelection" @select="copySelection" :class="MENU_ITEM_CLASS">
+                <Copy class="w-4 h-4" />
+                Copy
+              </ContextMenuItem>
+              <ContextMenuItem @select="pasteClipboard" :class="MENU_ITEM_CLASS">
+                <ClipboardPaste class="w-4 h-4" />
+                Paste
+              </ContextMenuItem>
+              <ContextMenuItem @select="selectAll" :class="MENU_ITEM_CLASS">
+                <TextSelect class="w-4 h-4" />
+                Select All
+              </ContextMenuItem>
+              <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+              <ContextMenuItem @select="clearTerminal" :class="MENU_ITEM_CLASS">
+                <Eraser class="w-4 h-4" />
+                Clear
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenuPortal>
+        </TrackedContextMenuRoot>
         <div v-else class="flex items-center justify-center h-full text-xs text-neutral-500">
           No terminal selected
         </div>
@@ -158,19 +183,22 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square } from 'lucide-vue-next'
+import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuPortal,
+  ContextMenuSeparator,
   DropdownMenuRoot,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
+import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { TerminalInfo } from './state'
@@ -227,6 +255,7 @@ const MIN_LIST_WIDTH = 80
 const MAX_LIST_WIDTH = 300
 
 // Terminal rendering
+const hasSelection = ref(false)
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
@@ -263,6 +292,10 @@ const attachTerminal = (terminalId: string) => {
     terminalActor?.send({ type: 'terminal.RESIZE', terminalId, cols, rows })
   }))
 
+  viewDisposables.push(term.onSelectionChange(() => {
+    hasSelection.value = !!term?.getSelection()
+  }))
+
   resizeObserver = new ResizeObserver(() => {
     requestAnimationFrame(() => {
       fitAddon?.fit()
@@ -285,6 +318,7 @@ const detachTerminal = () => {
     terminalPool.detach(attachedTerminalId)
     attachedTerminalId = null
   }
+  hasSelection.value = false
   term = null
   fitAddon = null
 }
@@ -297,6 +331,29 @@ const sendResize = (terminalId: string) => {
     cols: term.cols,
     rows: term.rows
   })
+}
+
+// Context menu actions
+const copySelection = () => {
+  if (!term) return
+  const selection = term.getSelection()
+  if (selection) navigator.clipboard.writeText(selection)
+}
+
+const pasteClipboard = async () => {
+  if (!term || !panelTerminalId.value) return
+  const text = await navigator.clipboard.readText()
+  if (text) {
+    terminalActor?.send({ type: 'terminal.INPUT', terminalId: panelTerminalId.value, data: text })
+  }
+}
+
+const selectAll = () => {
+  term?.selectAll()
+}
+
+const clearTerminal = () => {
+  term?.clear()
 }
 
 // Actions

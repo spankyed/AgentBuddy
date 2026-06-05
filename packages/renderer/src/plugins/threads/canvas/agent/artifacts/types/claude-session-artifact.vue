@@ -182,7 +182,9 @@
               :class="[
                 'flex-1 px-2 py-1 text-xs font-medium transition-colors border-r border-neutral-700 last:border-r-0',
                 permissionMode === opt.value
-                  ? 'bg-neutral-700 text-neutral-100'
+                  ? (opt.value === 'bypassPermissions'
+                    ? 'bg-yellow-600 text-yellow-50'
+                    : 'bg-neutral-700 text-neutral-100')
                   : 'bg-neutral-900/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
               ]"
             >
@@ -226,6 +228,7 @@ import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { id as threadsId } from '@/plugins/threads/state'
 import { trpc } from '@/core/trpc'
 
@@ -371,16 +374,15 @@ async function copySessionId() {
 
 function openTerminalTab() {
   const terminalActor = applicationState.system.get('code')?.system.get('terminal') as any
-  if (terminalActor) {
-    terminalActor.send({
-      type: 'terminal.CREATE',
-      target: 'tab',
-      command: `claude --resume ${content.value.sessionId}`,
-      cwd: content.value.cwd || undefined,
-    })
-    // Switch to code plugin so the user can see the terminal tab
-    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
-  }
+  if (!terminalActor) return
+
+  terminalActor.send({
+    type: 'terminal.CREATE',
+    target: 'tab',
+    command: `claude --resume ${content.value.sessionId}`,
+    cwd: content.value.cwd || undefined,
+  })
+  navigateToPlugin('code')
 }
 
 // ─── Permission mode segmented control ─────────────────────────────────

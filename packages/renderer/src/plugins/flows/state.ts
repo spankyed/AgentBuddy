@@ -5,9 +5,9 @@ import { Edit, Trash2 } from 'lucide-vue-next'
 import { safeEvents } from '@/core/types/safe-events'
 import {
   targetIs,
-  TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
 import type {
   FlowEntity,
   OutgoingFlowsEvents,
@@ -139,6 +139,7 @@ export interface FlowsContext {
     filePath: string;
     flowCount: number;
   };
+  navHistory: NavHistory<string | null>;
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -177,6 +178,8 @@ type UIEvent =
   | { type: 'FLOW.DELETE'; flowId: EARS.EntityId }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' }
   | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any }
   // DSL Import events
   | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
@@ -296,6 +299,7 @@ const flowsState = setup({
           edges: ev.data.edges,
           positions: needsLayout ? {} : existingPositions,
         },
+        navHistory: pushNavHistory(context.navHistory, ev.flowId as string),
       };
     }),
 
@@ -1236,6 +1240,7 @@ const flowsState = setup({
       filePath: '',
       flowCount: 0,
     },
+    navHistory: createNavHistory<string | null>(null),
   },
   on: {
     FLOWS_CONNECTED: {
@@ -1327,10 +1332,69 @@ const flowsState = setup({
     DSL_EXPORT_FAILED: {
       actions: 'handleDSLExportFailed'
     },
-    ...TRAIL_CLICK([
-      ['.list', 'list'],
-      ['.view', 'view'],
-    ]),
+    NAVIGATE_BACK: [
+      {
+        guard: ({ context }) => {
+          if (!canGoBack(context.navHistory)) return false;
+          return context.navHistory.stack[context.navHistory.index - 1] === null;
+        },
+        target: '.list',
+        actions: assign(({ context }) => {
+          const result = goBack(context.navHistory)!;
+          return { navHistory: result.history, selectedFlowId: undefined };
+        }),
+      },
+      {
+        guard: ({ context }) => {
+          if (!canGoBack(context.navHistory)) return false;
+          const target = context.navHistory.stack[context.navHistory.index - 1];
+          return target !== null && context.flows.some(f => f.id === target);
+        },
+        target: '.view',
+        actions: assign(({ context }) => {
+          const result = goBack(context.navHistory)!;
+          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          return { navHistory: result.history };
+        }),
+      },
+    ],
+    NAVIGATE_FORWARD: [
+      {
+        guard: ({ context }) => {
+          if (!canGoForward(context.navHistory)) return false;
+          return context.navHistory.stack[context.navHistory.index + 1] === null;
+        },
+        target: '.list',
+        actions: assign(({ context }) => {
+          const result = goForward(context.navHistory)!;
+          return { navHistory: result.history, selectedFlowId: undefined };
+        }),
+      },
+      {
+        guard: ({ context }) => {
+          if (!canGoForward(context.navHistory)) return false;
+          const target = context.navHistory.stack[context.navHistory.index + 1];
+          return target !== null && context.flows.some(f => f.id === target);
+        },
+        target: '.view',
+        actions: assign(({ context }) => {
+          const result = goForward(context.navHistory)!;
+          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          return { navHistory: result.history };
+        }),
+      },
+    ],
+    TRAIL_CLICK: [
+      {
+        guard: { type: 'targetIs', params: { view: 'list' } },
+        target: '.list',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, null) })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'view' } },
+        target: '.view',
+      },
+    ],
   },
   states: {
     list: {
@@ -1439,6 +1503,9 @@ const flowsState = setup({
         'FLOW.DIALOG_CLOSED': { actions: 'closeDialogs' },
         'GO.BACK': {
           target: 'list',
+          actions: assign(({ context }) => ({
+            navHistory: pushNavHistory(context.navHistory, null),
+          })),
         },
       },
     },

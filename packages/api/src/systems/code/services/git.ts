@@ -1154,8 +1154,13 @@ export class GitRepository {
       })
       .filter((branch): branch is string => branch !== null)
       
-    // Remove duplicates (local and remote branches with same name)
-    return [...new Set(branches)]
+    // Case-insensitive dedup — prefer remote names (correct case from server) over local names
+    // Since git branch -a lists local first then remote, a remote duplicate overwrites a wrong-case local entry
+    const seen = new Map<string, string>()
+    for (const branch of branches) {
+      seen.set(branch.toLowerCase(), branch)
+    }
+    return [...seen.values()]
   }
 
   async checkoutBranch(branchName: string): Promise<void> {

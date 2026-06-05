@@ -63,6 +63,32 @@
           />
         </div>
 
+        <!-- Video player (native formats) -->
+        <div v-show="isVideoFile(activeFile) && isNativeVideo" class="flex items-center justify-center h-full bg-neutral-950">
+          <video
+            v-if="isVideoFile(activeFile) && isNativeVideo"
+            :key="activeFile.path"
+            :src="`local-file://file?path=${encodeURIComponent(activeFile.path)}`"
+            controls
+            class="max-w-full max-h-full"
+          />
+        </div>
+
+        <!-- Unsupported video format fallback -->
+        <div v-show="isVideoFile(activeFile) && !isNativeVideo" class="h-full flex items-center justify-center" style="background: #1e1e1e">
+          <div v-if="isVideoFile(activeFile) && !isNativeVideo" class="text-center">
+            <VideoIcon class="w-12 h-12 mx-auto mb-3 text-neutral-600" />
+            <p class="text-neutral-400 text-sm">This video format is not supported for in-app playback</p>
+            <p class="text-neutral-600 text-xs mt-1">{{ activeFile.path.split('/').pop() }}</p>
+            <button
+              @click="openVideoExternal"
+              class="mt-4 px-4 py-1.5 text-sm rounded bg-neutral-700 hover:bg-neutral-600 text-neutral-200 transition-colors"
+            >
+              Open in Video Player
+            </button>
+          </div>
+        </div>
+
         <!-- Image diff side-by-side view -->
         <div v-show="isImageDiff" class="h-full flex" style="background: #1e1e1e">
           <div v-if="isImageDiff" class="flex-1 min-w-0 flex flex-col border-r border-neutral-700">
@@ -114,10 +140,10 @@
         </div>
 
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isVideoFile(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
           <MonacoEditor
             ref="monacoEditorRef"
-            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isVideoFile(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -139,13 +165,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { FileCode, FileWarning } from 'lucide-vue-next'
+import { FileCode, FileWarning, Video as VideoIcon } from 'lucide-vue-next'
 import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import DeletedFileView from './DeletedFileView.vue'
 import Tabs from './Tabs.vue'
 import { isEditableDiff, type OpenFile, type TerminalTab, type TabGroup } from '@/plugins/code/state'
+import { nativeVideoExtensions } from '@/plugins/code/utils/file-icons'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
 import type { GitDiff } from '@/plugins/code/features/commit/state'
@@ -198,6 +225,18 @@ const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file 
 const isImage = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
   return 'isImage' in file && file.isImage === true
 }
+
+// Helper to check if a file is a video
+const isVideoFile = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
+  return 'isVideo' in file && file.isVideo === true
+}
+
+// Check if the active video file uses a Chromium-native format
+const isNativeVideo = computed(() => {
+  if (!activeFile.value || !isVideoFile(activeFile.value)) return false
+  const ext = activeFile.value.path.split('.').pop()?.toLowerCase() || ''
+  return nativeVideoExtensions.includes(ext)
+})
 
 // Helper to check if a file should use rich text editor
 const isRichText = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
@@ -283,6 +322,12 @@ const closeFile = (path: string) => {
 const handleContentChange = (value: string) => {
   if (props.activeFilePath) {
     emit('contentChange', props.activeFilePath, value)
+  }
+}
+
+const openVideoExternal = () => {
+  if (activeFile.value) {
+    window.electronAPI?.shell.openPath(activeFile.value.path)
   }
 }
 

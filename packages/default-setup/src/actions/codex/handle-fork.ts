@@ -1,7 +1,8 @@
 /** CDX: Handle Fork — create an app-server fork for a newly forked app thread. */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { ensureSessionMarker, getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
+import { ensureSessionMarker, getCodexState, persistCodexState, dequeueMessage, updateChatState } from './_helpers/thread-context';
+import { replayQueuedMessage } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
   label: 'CDX: Handle Fork',
@@ -22,11 +23,21 @@ export async function action(params: Record<string, any>, services: Services) {
     newThreadId: string;
     sourceUserMessagesAfterFork?: number;
   };
-  if (!sourceThreadId || !newThreadId) return { success: false, reason: 'missing sourceThreadId or newThreadId' };
+  if (!sourceThreadId || !newThreadId) {
+    if (newThreadId) {
+      persistCodexState(services, newThreadId, { forkPending: undefined });
+      const queued = dequeueMessage(services, newThreadId);
+      if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, services.logger);
+    }
+    return { success: false, reason: 'missing sourceThreadId or newThreadId' };
+  }
 
+  const log = services.logger;
   const sourceState = getCodexState(services, sourceThreadId);
   if (!sourceState?.threadId) {
-    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
+    persistCodexState(services, newThreadId, { forkPending: undefined });
+    const queued = dequeueMessage(services, newThreadId);
+    if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, log);
     return { success: true, copied: false, reason: 'no codex thread' };
   }
 
@@ -58,24 +69,29 @@ export async function action(params: Record<string, any>, services: Services) {
       totalTokens: sourceState.totalTokens,
       chatState: 'idle',
       isRunning: false,
+      forkPending: undefined,
       pendingApproval: undefined,
       queuedMessage: undefined,
       turnId: undefined,
       activeMessageId: undefined,
     });
     updateChatState(services, newThreadId as EntityId, 'idle');
-    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
+
+    const queued = dequeueMessage(services, newThreadId);
+    if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, log);
 
     return { success: true, copied: true, codexThreadId: forkedCodexThreadId, rollbackTurns };
   } catch (error: any) {
-    services.logger.warn('[codex] fork failed', { sourceThreadId, newThreadId, error: error?.message });
+    log.warn('[codex] fork failed', { sourceThreadId, newThreadId, error: error?.message });
+    persistCodexState(services, newThreadId, { forkPending: undefined });
     services.chat.sendBlockMessage({
       threadId: newThreadId as EntityId,
       text: `⚠️ Codex fork setup failed — ${error?.message || 'unknown error'}. The visible thread was forked, but the next Codex message may start fresh.`,
       blocks: [],
       forkable: false,
     });
-    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
+    const queued = dequeueMessage(services, newThreadId);
+    if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, log);
     return { success: false, error: error?.message };
   }
 }

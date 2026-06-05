@@ -107,6 +107,7 @@ import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
 import DataRenderer from '@/plugins/logs/data-renderer.vue';
 import { applicationState } from '@/main';
+import { navigateToPlugin } from '@/core/utils/navigate';
 
 interface Props {
   node?: TNodeEntity;
@@ -119,28 +120,16 @@ const emit = defineEmits<{
 
 const openBlueprint = () => {
   if (props.node?.blueprint) {
-    // First select the flow
-    const flowsActor = applicationState.system.get('flows');
-    flowsActor.send({ 
-      type: 'FLOW.SELECT', 
-      flowId: props.node.blueprint.flowId 
-    });
-    
-    // Then select and open the node editor
+    navigateToPlugin('flows', { type: 'FLOW.SELECT', flowId: props.node.blueprint.flowId });
+
+    // Node editor needs time to render after flow selection
     setTimeout(() => {
-      flowsActor.send({ 
-        type: 'NODE.DOUBLE_CLICK', 
-        nodeId: props.node!.blueprint!.nodeId 
+      applicationState.system.get('flows')?.send({
+        type: 'NODE.DOUBLE_CLICK',
+        nodeId: props.node!.blueprint!.nodeId
       });
     }, 100);
-    
-    // Switch to flows plugin
-    applicationState.send({ 
-      type: 'SELECT_PLUGIN', 
-      pluginId: 'flows' 
-    });
-    
-    // Close the details panel
+
     emit('close');
   }
 };

@@ -3,6 +3,7 @@
   <PanelResizer
     v-if="commitLog.length > 0 && isCommitsExpanded"
     orientation="vertical"
+    subtle
     @resize="onCommitsResize"
   />
 

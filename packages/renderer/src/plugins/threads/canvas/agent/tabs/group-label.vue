@@ -43,6 +43,7 @@
               <GroupMenuItems
                 :name="name"
                 :isPinned="isPinned"
+                :autoFocus="shouldAutoFocus"
                 :ItemComponent="DropdownMenuItem"
                 :SeparatorComponent="DropdownMenuSeparator"
                 :SubComponent="DropdownMenuSub"
@@ -88,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { MoreHorizontal, Pin } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -113,7 +114,7 @@ import {
 import type { TabGroupColor } from './types'
 import GroupMenuItems from './group-menu-items.vue'
 
-defineProps<{
+const props = defineProps<{
   name: string
   color: TabGroupColor
   isCollapsed: boolean
@@ -121,9 +122,10 @@ defineProps<{
   groupId: string
   isPinned?: boolean
   isDragOver?: boolean
+  autoEdit?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   toggle: []
   rename: [name: string]
   'change-color': [color: TabGroupColor]
@@ -134,10 +136,26 @@ defineEmits<{
   'group-drag-over': [event: DragEvent]
   'group-drag-leave': [event: DragEvent]
   'group-drop': [event: DragEvent]
+  'edit-started': []
 }>()
 
 const dropdownOpen = ref(false)
 const contextMenuOpen = ref(false)
+const shouldAutoFocus = ref(false)
+
+watch(() => props.autoEdit, (val) => {
+  if (val) {
+    shouldAutoFocus.value = true
+    nextTick(() => {
+      dropdownOpen.value = true
+      emit('edit-started')
+    })
+  }
+})
+
+watch(dropdownOpen, (val) => {
+  if (!val) shouldAutoFocus.value = false
+})
 
 const closeMenus = () => {
   dropdownOpen.value = false

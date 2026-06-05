@@ -5,6 +5,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
+import { formatProviderError } from '../_helpers/format-provider-error';
 
 export const meta: ActionMeta = {
   label: 'CC: DB Query',
@@ -68,7 +69,7 @@ export async function action(
 
     return { success: true };
   } catch (error: any) {
-    const message = error?.message || 'Unknown error';
+    const message = formatProviderError(error, 'Claude Code');
     services.emitter.sendToPlugin('database', {
       type: 'QUERY_ERROR',
       error: message,

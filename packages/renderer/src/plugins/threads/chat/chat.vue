@@ -34,6 +34,7 @@
                   :key="message.id"
                   :message="message"
                   :is-tail="isTailMessage(message)"
+                  :is-claude-code-thread="!!currentThread?.context?.claudeCode"
                   @open-lightbox="openLightbox"
                   @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
                   @unqueue="handleUnqueue"
@@ -154,6 +155,7 @@ import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
@@ -257,7 +259,7 @@ function forceScrollToBottom() {
 function handleStatuslineClick() {
   const cwd = statusLineCwd.value
   if (!cwd) return
-  applicationState.system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
+  navigateToPlugin('code')
   applicationState.system.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
@@ -322,35 +324,19 @@ function handleToggleInlineDashboard() {
 }
 
 function handleViewDashboard() {
-  const snapshot = applicationState.getSnapshot();
-  // Switch active plugin to threads so the toolbar reflects it
-  if (snapshot.context.activePlugin.id !== 'threads') {
-    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
-  }
+  navigateToPlugin('threads', { type: 'VIEW_DASHBOARD' });
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
-  if (snapshot.context.panelSizes.canvasHeight < 20) {
+  if (applicationState.getSnapshot().context.panelSizes.canvasHeight < 20) {
     applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
-  actor.send({ type: 'VIEW_DASHBOARD' });
 }
 
 function handleViewArtifacts(threadId: string) {
-  const snapshot = applicationState.getSnapshot();
-  if (!snapshot.context.defaultToggles.canvas) {
-    applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
-  }
-
-  // Opens the thread (sets currentThread) and internally transitions to dashboard
-  actor.send({ type: 'OPEN_THREAD_CHAT', threadId });
+  navigateToPlugin('threads', { type: 'OPEN_THREAD_CHAT', threadId });
 }
 
 function handleViewDetails(threadId: string) {
-  const snapshot = applicationState.getSnapshot();
-  if (!snapshot.context.defaultToggles.canvas) {
-    applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
-  }
-
-  actor.send({ type: 'VIEW_THREAD', threadId });
+  navigateToPlugin('threads', { type: 'VIEW_THREAD', threadId });
 }
 
 let pendingRestoreFiles = false

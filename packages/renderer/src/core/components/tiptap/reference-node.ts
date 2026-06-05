@@ -90,11 +90,9 @@ export const ReferenceNode = Node.create({
 
         const refType = node.attrs.refType as ReferenceRefType
         const refId = node.attrs.refId as string
-        const { system } = applicationState
         const cfg = REF_TYPES[refType]
 
-        system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: cfg.plugin })
-        cfg.navigate(system, refId)
+        cfg.navigate(applicationState.system, refId)
       })
 
       return {

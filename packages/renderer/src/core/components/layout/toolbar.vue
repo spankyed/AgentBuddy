@@ -54,7 +54,7 @@
       </span>
     </div>
 
-    <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="pluginMenuItems" @close="showMenu = false" />
+    <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="pluginMenuItems" :separator-after="separatorIndex" @close="showMenu = false" />
   </div>
 </template>
 
@@ -99,9 +99,12 @@ const togglePluginVisibility = (id: string) => {
   });
 };
 
+const nonPinnedPlugins = allPlugins.filter(p => p.icon && !p.isPinned);
+const pinnedPlugins = allPlugins.filter(p => p.icon && p.isPinned);
+const sortedPlugins = [...nonPinnedPlugins, ...pinnedPlugins];
+
 const pluginMenuItems = computed<MenuItem[]>(() =>
-  allPlugins.flatMap((plugin) => {
-    if (!plugin.icon) return [];
+  sortedPlugins.map((plugin) => {
     const locked = plugin.id === 'settings';
     const visible = isVisible(plugin.id);
     const textClass = locked
@@ -109,19 +112,23 @@ const pluginMenuItems = computed<MenuItem[]>(() =>
       : visible
         ? 'text-neutral-200'
         : 'text-neutral-500';
-    return [{
+    return {
       label: plugin.label,
-      icon: plugin.icon,
+      icon: plugin.icon!,
       class: textClass,
       iconClass: textClass,
       action: () => togglePluginVisibility(plugin.id),
       keepOpen: true,
-    }];
+    };
   }),
 );
 
+const separatorIndex = nonPinnedPlugins.length > 0 && pinnedPlugins.length > 0
+  ? nonPinnedPlugins.length - 1
+  : -1;
+
 const onContextMenu = (e: MouseEvent) => {
-  open(e, pluginMenuItems.value.length);
+  open(e, pluginMenuItems.value.length + (separatorIndex >= 0 ? 1 : 0));
 };
 
 const isDev = import.meta.env.DEV;

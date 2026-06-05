@@ -17,6 +17,15 @@ class MediaProtocol implements AppModule {
           stream: true,
         },
       },
+      {
+        scheme: 'local-file',
+        privileges: {
+          secure: true,
+          supportFetchAPI: true,
+          bypassCSP: true,
+          stream: true,
+        },
+      },
     ]);
 
     app.whenReady().then(() => {
@@ -32,6 +41,18 @@ class MediaProtocol implements AppModule {
         const filePath = resolveMediaFilePath(entityId, filename);
 
         if (!existsSync(filePath)) {
+          return new Response('Not found', { status: 404 });
+        }
+
+        return net.fetch(pathToFileURL(filePath).toString());
+      });
+
+      // Serve local files to the renderer (used for video playback in editor tabs)
+      protocol.handle('local-file', (request) => {
+        const url = new URL(request.url);
+        const filePath = url.searchParams.get('path');
+
+        if (!filePath || !existsSync(filePath)) {
           return new Response('Not found', { status: 404 });
         }
 

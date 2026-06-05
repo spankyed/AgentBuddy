@@ -76,8 +76,10 @@ export const threadQueries = {
       instructions: thread?.instructions,
       status: thread?.status,
       pinned: thread?.pinned,
+      archived: thread?.archived,
       shortCode: thread?.shortCode,
       timestamp: thread?.timestamp,
+      lastMessageTimestamp: thread?.lastMessageTimestamp,
       tags: thread?.tags as string[] | undefined,
     };
   },
@@ -435,7 +437,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
 
 function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
   const artifacts = qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
-    .pick(['id', 'title', 'content', 'artifactType', 'createdAt'] as const);
+    .pick(['id', 'title', 'content', 'artifactType', 'createdAt', 'color'] as const);
 
   if (!artifacts || artifacts.length === 0) return [];
 
@@ -445,6 +447,7 @@ function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
       type: (artifact.artifactType || 'text') as ArtifactType,
       title: String(artifact.title || ''),
       content: artifact.content,
+      ...(artifact.color ? { color: artifact.color as string } : {}),
       metadata: { createdAt: (artifact.createdAt as number) || 0 }
     }))
     .sort((a, b) => b.metadata.createdAt - a.metadata.createdAt);
@@ -656,8 +659,9 @@ export const chatCommands = {
     threadId: EARS.EntityId;
     threadData: ReturnType<typeof threadCommands.create>;
   } => {
+    const topic = text.substring(0, THREAD_TOPIC_MAX_LENGTH).trim() || 'New Thread';
     const threadData = threadCommands.create({
-      topic: text.substring(0, THREAD_TOPIC_MAX_LENGTH),
+      topic,
       instructions: '',
     });
 
@@ -828,6 +832,8 @@ export const chatCommands = {
 
     const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asUser', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context', 'compacted'] as const;
 
+    let found = false;
+
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};
       for (const key of copyableKeys) {
@@ -841,7 +847,18 @@ export const chatCommands = {
         ...optional,
       });
 
-      if (msg.id === upToMessageId) break;
+      if (msg.id === upToMessageId) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      chatCommands.addMessage({
+        threadId: targetThreadId,
+        text: 'Warning: fork point not found — all messages were copied.',
+        sender: 'system',
+      });
     }
   },
 
@@ -883,16 +900,18 @@ export const chatCommands = {
     title: string;
     content: any;
     threadId?: EARS.EntityId;
+    color?: string;
   }): { artifactId: EARS.EntityId } => {
-    const { artifactType, title, content, threadId } = params;
+    const { artifactType, title, content, threadId, color } = params;
 
-    const artifactId = tx(EARS.Entity.Artifact)
+    const txn = tx(EARS.Entity.Artifact)
       .put('entityType', EARS.Entity.Artifact)
       .put('title', title)
       .put('artifactType', artifactType)
       .put('content', content)
-      .put('createdAt', Date.now())
-      .id();
+      .put('createdAt', Date.now());
+    if (color) txn.put('color', color);
+    const artifactId = txn.id();
 
     if (threadId) {
       tx(threadId).link(EARS.RelKind.HAS, artifactId);

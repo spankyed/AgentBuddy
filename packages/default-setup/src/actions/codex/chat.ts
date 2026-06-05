@@ -44,6 +44,13 @@ export async function action(params: Record<string, any>, services: Services, _z
   const approvalMode = prior?.approvalMode ?? 'user';
   const sandbox = prior?.sandbox ?? 'workspace-write';
 
+  // ─── Fork-pending guard ────────────────────────────────────────────
+  if (prior?.forkPending) {
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+    if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+    return { success: true, queued: true };
+  }
+
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
     enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
@@ -85,6 +92,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   // ─── Placeholder message + writers ──────────────────────────────────
   const currentMessageId = services.chat.sendBlockMessage({ threadId, text: 'Thinking…', blocks: [], forkable: false }).messageId;
+  services.chat.updateMessageState(currentMessageId as any, { context: { agent: 'Codex' } } as any);
   const thinking = createThinkingWriter(services, currentMessageId, { intervalMs: 250 });
   const writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
   const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250, getThinkingBlock: () => thinking.buildBlock() });

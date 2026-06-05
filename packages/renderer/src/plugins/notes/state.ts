@@ -12,6 +12,7 @@ import type {
 import { trpc } from '@/core/trpc'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@/core/context-menu'
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
 
 export const id = 'notes'
 export type NotesState = ActorRefFrom<typeof notesState>
@@ -35,6 +36,8 @@ export interface NotesContext {
   trashedNotes: NoteDTO[]
   noteScrollPositions: Record<string, number>
   panelSearchActive: boolean
+  navHistory: NavHistory<string | null>
+  viewedNoteId: string | null
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -85,6 +88,8 @@ type UIEvent =
   | { type: 'NOTE.EMPTY_TRASH' }
   | { type: 'NOTE.SAVE_SCROLL'; noteId: string; scrollTop: number }
   | { type: 'NOTE.TOGGLE_PANEL_SEARCH' }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' }
 
 type SettingsEvent =
   | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
@@ -138,6 +143,7 @@ const notesState = setup({
     selectNote: assign(({ event, context }) => {
       const noteId = (event as { noteId: string }).noteId
       const note = context.notes.find(n => n.id === noteId) || null
+      const isHistoryNav = '_historyNav' in event
 
       // If selecting a note inside a tasklist, open the tasklist with this note selected
       if (note && note.noteType !== 'tasklist') {
@@ -150,11 +156,13 @@ const notesState = setup({
           return {
             currentNoteId: taskList.id,
             currentNote: taskList,
+            viewedNoteId: noteId,
             selectedNoteIds: [],
             selectedTaskId: noteId,
             selectedTask: note,
             expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
             taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...intermediateIds, taskList.id])],
+            ...(!isHistoryNav && { navHistory: pushNavHistory(context.navHistory, taskList.id) }),
           }
         }
       }
@@ -163,10 +171,12 @@ const notesState = setup({
       return {
         currentNoteId: noteId,
         currentNote: note,
+        viewedNoteId: noteId,
         selectedNoteIds: [],
         selectedTaskId: null,
         selectedTask: null,
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, noteId])],
+        ...(!isHistoryNav && { navHistory: pushNavHistory(context.navHistory, noteId) }),
       }
     }),
 
@@ -177,19 +187,22 @@ const notesState = setup({
       return {
         currentNoteId: noteId,
         currentNote: note,
+        viewedNoteId: noteId,
         selectedNoteIds: [],
         selectedTaskId: null,
         selectedTask: null,
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, noteId])],
+        navHistory: pushNavHistory(context.navHistory, noteId),
       }
     }),
 
     sendViewNote: ({ context }) => {
-      if (context.currentNoteId) {
+      const noteId = context.viewedNoteId ?? context.currentNoteId
+      if (noteId) {
         trpc.bus.send.mutate({
           systemId: id,
           type: 'VIEW_NOTE',
-          id: context.currentNoteId,
+          id: noteId,
         })
       }
     },
@@ -360,6 +373,7 @@ const notesState = setup({
         selectedTaskId: null,
         selectedTask: null,
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+        navHistory: pushNavHistory(context.navHistory, ev.note.id),
       }
     }),
 
@@ -622,10 +636,11 @@ const notesState = setup({
       })
     },
 
-    clearCurrentNote: assign({
+    clearCurrentNote: assign(({ context }) => ({
       currentNoteId: null,
       currentNote: null,
-    }),
+      navHistory: pushNavHistory(context.navHistory, null),
+    })),
 
     /* ── Notes Import actions ────────────────────────────── */
     setImportingNotes: assign(({ context }) => ({
@@ -804,6 +819,8 @@ const notesState = setup({
     trashedNotes: [],
     noteScrollPositions: {},
     panelSearchActive: false,
+    navHistory: createNavHistory<string | null>(null),
+    viewedNoteId: null,
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -863,6 +880,70 @@ const notesState = setup({
     'NOTE.SAVE_SCROLL': { actions: 'saveScroll' },
     'NOTE.TOGGLE_PANEL_SEARCH': { actions: 'togglePanelSearch' },
     TRASHED_NOTES: { actions: 'setTrashedNotes' },
+    NAVIGATE_BACK: [
+      {
+        guard: ({ context }) => {
+          if (!canGoBack(context.navHistory)) return false;
+          return context.navHistory.stack[context.navHistory.index - 1] === null;
+        },
+        target: '.welcome',
+        actions: assign(({ context }) => {
+          const result = goBack(context.navHistory)!;
+          return { navHistory: result.history, currentNoteId: null, currentNote: null };
+        }),
+      },
+      {
+        guard: ({ context }) => {
+          if (!canGoBack(context.navHistory)) return false;
+          const target = context.navHistory.stack[context.navHistory.index - 1];
+          return target !== null && context.notes.some(n => n.id === target);
+        },
+        target: '.editor',
+        actions: assign(({ context }) => {
+          const result = goBack(context.navHistory)!;
+          const note = context.notes.find(n => n.id === result.entry) || null;
+          return {
+            navHistory: result.history,
+            currentNoteId: result.entry,
+            currentNote: note,
+            selectedTaskId: null,
+            selectedTask: null,
+          };
+        }),
+      },
+    ],
+    NAVIGATE_FORWARD: [
+      {
+        guard: ({ context }) => {
+          if (!canGoForward(context.navHistory)) return false;
+          return context.navHistory.stack[context.navHistory.index + 1] === null;
+        },
+        target: '.welcome',
+        actions: assign(({ context }) => {
+          const result = goForward(context.navHistory)!;
+          return { navHistory: result.history, currentNoteId: null, currentNote: null };
+        }),
+      },
+      {
+        guard: ({ context }) => {
+          if (!canGoForward(context.navHistory)) return false;
+          const target = context.navHistory.stack[context.navHistory.index + 1];
+          return target !== null && context.notes.some(n => n.id === target);
+        },
+        target: '.editor',
+        actions: assign(({ context }) => {
+          const result = goForward(context.navHistory)!;
+          const note = context.notes.find(n => n.id === result.entry) || null;
+          return {
+            navHistory: result.history,
+            currentNoteId: result.entry,
+            currentNote: note,
+            selectedTaskId: null,
+            selectedTask: null,
+          };
+        }),
+      },
+    ],
     TRAIL_CLICK: [
       {
         guard: { type: 'targetIs', params: { view: 'welcome' } },
@@ -885,8 +966,10 @@ const notesState = setup({
                 return {
                   currentNoteId: taskList.id,
                   currentNote: taskList,
+                  viewedNoteId: noteId,
                   selectedTaskId: noteId,
                   selectedTask: note,
+                  navHistory: pushNavHistory(context.navHistory, taskList.id),
                 }
               }
             }
@@ -895,8 +978,10 @@ const notesState = setup({
             return {
               currentNoteId: noteId,
               currentNote: note,
+              viewedNoteId: noteId,
               selectedTaskId: null,
               selectedTask: null,
+              navHistory: pushNavHistory(context.navHistory, noteId),
             }
           }),
           'sendViewNote',
@@ -936,6 +1021,7 @@ const notesState = setup({
                   notes: [...context.notes, ev.note],
                   currentNoteId: taskList.id,
                   currentNote: taskList,
+                  viewedNoteId: ev.note.id,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
                   taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, taskList.id])],
@@ -1076,6 +1162,7 @@ const notesState = setup({
                   notes: updatedNotes,
                   currentNoteId: taskList.id,
                   currentNote: taskList,
+                  viewedNoteId: ev.note.id,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
                   taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, ...intermediateIds, taskList.id])],

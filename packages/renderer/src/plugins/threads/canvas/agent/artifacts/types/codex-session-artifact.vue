@@ -45,7 +45,12 @@
 
           <span class="text-neutral-500">Thread</span>
           <div class="flex items-center gap-2">
-            <span class="text-neutral-200 font-mono truncate flex-1">
+            <span
+              class="text-neutral-200 font-mono truncate flex-1"
+              :class="content.threadId ? 'cursor-pointer hover:text-neutral-100' : ''"
+              :title="copied ? 'Copied!' : content.threadId ? 'Click to copy' : ''"
+              @click="copyThreadId"
+            >
               {{ truncatedThreadId || '-' }}
             </span>
             <button
@@ -98,6 +103,14 @@
 
           <span class="text-neutral-500">Sandbox</span>
           <span class="text-neutral-200">{{ sandboxDescription }}</span>
+
+          <template v-if="sandbox === 'workspace-write'">
+            <span class="text-neutral-500">Network</span>
+            <span class="text-neutral-200">{{ networkAccess ? 'Enabled' : 'Disabled' }}</span>
+          </template>
+
+          <span class="text-neutral-500">Web Search</span>
+          <span class="text-neutral-200">{{ webSearch === 'live' ? 'Live' : webSearch === 'disabled' ? 'Disabled' : 'Cached' }}</span>
         </div>
 
         <details v-if="content.totalTokens" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500 ml-1">
@@ -159,7 +172,9 @@
               :class="[
                 'flex-1 px-2 py-1 text-xs font-medium transition-colors border-r border-neutral-700 last:border-r-0',
                 approvalMode === opt.value
-                  ? 'bg-neutral-700 text-neutral-100'
+                  ? (opt.value === 'auto_review'
+                    ? 'bg-yellow-600 text-yellow-50'
+                    : 'bg-neutral-700 text-neutral-100')
                   : 'bg-neutral-900/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
               ]"
             >
@@ -191,6 +206,59 @@
             </button>
           </div>
         </div>
+
+        <div v-if="sandbox === 'workspace-write'" class="pt-2 mt-2 border-t border-neutral-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] uppercase tracking-wide text-neutral-500">Network</span>
+            <span class="text-[10px] text-neutral-600">{{ networkAccess ? 'Enabled' : 'Disabled' }}</span>
+          </div>
+          <div class="flex rounded-md border border-neutral-700 overflow-hidden">
+            <button
+              type="button"
+              @click="toggleNetworkAccess"
+              title="Disable network access"
+              :class="[
+                'flex-1 px-2 py-1 text-xs font-medium transition-colors border-r border-neutral-700',
+                !networkAccess
+                  ? 'bg-neutral-700 text-neutral-100'
+                  : 'bg-neutral-900/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+              ]"
+            >Off</button>
+            <button
+              type="button"
+              @click="toggleNetworkAccess"
+              title="Enable network access in sandbox"
+              :class="[
+                'flex-1 px-2 py-1 text-xs font-medium transition-colors',
+                networkAccess
+                  ? 'bg-neutral-700 text-neutral-100'
+                  : 'bg-neutral-900/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+              ]"
+            >On</button>
+          </div>
+        </div>
+
+        <div class="pt-2 mt-2 border-t border-neutral-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] uppercase tracking-wide text-neutral-500">Web Search</span>
+            <span class="text-[10px] text-neutral-600">{{ webSearch === 'live' ? 'Live' : webSearch === 'disabled' ? 'Disabled' : 'Cached' }}</span>
+          </div>
+          <div class="flex rounded-md border border-neutral-700 overflow-hidden">
+            <button
+              v-for="opt in webSearchOptions"
+              :key="opt.value"
+              type="button"
+              @click="selectWebSearch(opt.value)"
+              :title="opt.tooltip"
+              :class="[
+                'flex-1 px-2 py-1 text-xs font-medium transition-colors border-r border-neutral-700 last:border-r-0',
+                webSearch === opt.value
+                  ? 'bg-neutral-700 text-neutral-100'
+                  : 'bg-neutral-900/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+              ]"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -202,6 +270,7 @@ import { useSelector } from '@xstate/vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { id as threadsId } from '@/plugins/threads/state'
 import { trpc } from '@/core/trpc'
 
@@ -216,6 +285,8 @@ interface CodexThreadState {
   model?: string
   approvalMode?: ApprovalMode
   sandbox?: SandboxMode
+  networkAccess?: boolean
+  webSearch?: 'live' | 'cached' | 'disabled'
   startedAt?: number
   turns?: number
   totalTokens?: { input?: number; output?: number; reasoning?: number }
@@ -326,6 +397,15 @@ const approvalDescription = computed(() => {
 const sandbox = computed<SandboxMode>(() => content.value.sandbox ?? 'workspace-write')
 const sandboxDescription = computed(() => sandboxOptions.find(o => o.value === sandbox.value)?.description ?? '')
 
+const networkAccess = computed(() => content.value.networkAccess ?? false)
+const webSearch = computed<'live' | 'cached' | 'disabled'>(() => content.value.webSearch ?? 'cached')
+
+const webSearchOptions: Array<{ value: 'live' | 'cached' | 'disabled'; label: string; tooltip: string }> = [
+  { value: 'live', label: 'Live', tooltip: 'Allow live web fetching' },
+  { value: 'cached', label: 'Cached', tooltip: 'Use cached search results (default)' },
+  { value: 'disabled', label: 'Off', tooltip: 'Disable web search entirely' },
+]
+
 function truncateId(id?: string): string {
   if (!id) return ''
   if (id.length <= 18) return id
@@ -375,13 +455,13 @@ function openTerminalTab() {
   terminalActor.send({
     type: 'terminal.CREATE',
     target: 'tab',
-    command: 'codex',
+    command: `codex resume ${content.value.threadId}`,
     cwd: content.value.cwd || undefined,
   })
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
+  navigateToPlugin('code')
 }
 
-function updateSessionSettings(payload: { approvalMode?: ApprovalMode; sandbox?: SandboxMode }) {
+function updateSessionSettings(payload: { approvalMode?: ApprovalMode; sandbox?: SandboxMode; networkAccess?: boolean; webSearch?: 'live' | 'cached' | 'disabled' }) {
   const threadId = currentThread.value?.id
   if (!threadId) return
   trpc.bus.send.mutate({
@@ -400,5 +480,14 @@ function selectApprovalMode(value: ApprovalMode) {
 function selectSandbox(value: SandboxMode) {
   if (value === sandbox.value) return
   updateSessionSettings({ sandbox: value })
+}
+
+function toggleNetworkAccess() {
+  updateSessionSettings({ networkAccess: !networkAccess.value })
+}
+
+function selectWebSearch(value: 'live' | 'cached' | 'disabled') {
+  if (value === webSearch.value) return
+  updateSessionSettings({ webSearch: value })
 }
 </script>

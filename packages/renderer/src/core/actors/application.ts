@@ -362,15 +362,8 @@ export const createApplicationState = () => setup({
       hotkeysDisabled: (_, value: boolean) => value
     }),
 
-    navigate: ({ context, self }, direction: -1 | 1) => {
-      const newIndex = context.historyIndex + direction;
-      if (newIndex < 0 || newIndex >= context.pluginHistory.length) return;
-
-      self.send({
-        type: 'SELECT_PLUGIN',
-        pluginId: context.pluginHistory[newIndex],
-        historyIndex: newIndex
-      });
+    forwardNavToPlugin: ({ context, system, event }) => {
+      system.get(context.activePlugin.id)?.send({ type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' });
     },
 
     switchPluginByDirection: ({ context, event, self }) => {
@@ -427,6 +420,15 @@ export const createApplicationState = () => setup({
       const { pluginId, targetId, historyIndex } = typeOf('SELECT_PLUGIN', event) as any;
       const resolvedId = pluginId || targetId;
       const newPlugin = context.plugins.find(p => p.id === resolvedId) || context.activePlugin;
+
+      // Un-expand chat when navigating to a plugin
+      if (context.panelSizes.chatMaximized) {
+        enqueue.assign(({ context }) => {
+          const newSizes = { ...context.panelSizes, chatMaximized: false };
+          localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+          return { panelSizes: newSizes };
+        });
+      }
 
       // Send plugin activation events
       if (context.activePlugin.id !== newPlugin.id) {
@@ -765,12 +767,10 @@ export const createApplicationState = () => setup({
       actions: 'switchPluginByDirection'
     },
     NAVIGATE_BACK: {
-      guard: ({ context }) => context.historyIndex > 0,
-      actions: { type: 'navigate', params: -1 }
+      actions: 'forwardNavToPlugin'
     },
     NAVIGATE_FORWARD: {
-      guard: ({ context }) => context.historyIndex < context.pluginHistory.length - 1,
-      actions: { type: 'navigate', params: 1 }
+      actions: 'forwardNavToPlugin'
     },
     FORWARD_HOTKEY: {
       actions: 'forwardHotkeyToPlugin'

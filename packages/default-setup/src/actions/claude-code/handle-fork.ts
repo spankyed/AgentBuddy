@@ -9,7 +9,8 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, dequeueMessage } from './_helpers/thread-context';
+import { replayQueuedMessage } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Fork',
@@ -33,13 +34,20 @@ export async function action(
   };
 
   if (!sourceThreadId || !newThreadId) {
+    if (newThreadId) {
+      persistClaudeState(services, newThreadId, { forkPending: undefined });
+      const queued = dequeueMessage(services, newThreadId);
+      if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, services.logger);
+    }
     return { success: false, reason: 'missing sourceThreadId or newThreadId' };
   }
 
   const log = services.logger;
   const sourceState = getClaudeState(services, sourceThreadId);
   if (!sourceState?.sessionId) {
-    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
+    persistClaudeState(services, newThreadId, { forkPending: undefined });
+    const queued = dequeueMessage(services, newThreadId);
+    if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, log);
     return { success: true, copied: false };
   }
 
@@ -98,9 +106,11 @@ export async function action(
 
   persistClaudeState(services, newThreadId, {
     sessionId: sourceState.sessionId,
+    sessionWorktree: sourceState.sessionWorktree,
     lastTurnAt: sourceState.lastTurnAt,
     cwd: sourceState.cwd,
     forkFrom: { sessionId: sourceState.sessionId, cliUuid },
+    forkPending: undefined,
   });
 
   log.debug('copied session state to forked thread', {
@@ -110,6 +120,8 @@ export async function action(
     cliUuid: cliUuid ?? 'none (will fork from end)',
   });
 
-  services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
+  const queued = dequeueMessage(services, newThreadId);
+  if (queued) await replayQueuedMessage(services, newThreadId as EntityId, queued, log);
+
   return { success: true, copied: true, sessionId: sourceState.sessionId, cliUuid };
 }

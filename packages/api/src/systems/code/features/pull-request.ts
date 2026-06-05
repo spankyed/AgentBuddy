@@ -46,6 +46,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
   | { type: 'pr.ERROR'; message: string }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
+  | { type: 'pr.GIT_STATUS_REFRESHED'; data: { timestamp: Date } }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
   | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
@@ -494,7 +495,7 @@ export const pullRequestSystem = setup({
     },
 
     handleGitStatusChanged: () => {
-      emitToFrontend({ type: 'pr.STATUS_CHANGED', data: { timestamp: new Date() } })
+      emitToFrontend({ type: 'pr.GIT_STATUS_REFRESHED', data: { timestamp: new Date() } })
     },
 
     updateBaseDirectory: assign({

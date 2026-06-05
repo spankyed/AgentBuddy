@@ -31,6 +31,21 @@ export const addTabToParent = (self: any, tab: any, replacePreview?: boolean, ex
   }
 }
 
+/**
+ * Send an arbitrary event to the parent actor.
+ * Preferred over updateParentState when the parent should handle the event
+ * with its own current context (avoids stale-snapshot races).
+ */
+export const sendEventToParent = (self: any, event: { type: string; [key: string]: any }) => {
+  try {
+    if (self._parent) {
+      self._parent.send(event)
+    }
+  } catch (error) {
+    console.error('Failed to send event to parent:', error)
+  }
+}
+
 export const getParentContext = (self: any) => {
   try {
     return self._parent?.getSnapshot()?.context

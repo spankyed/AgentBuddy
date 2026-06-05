@@ -29,15 +29,13 @@
             <Router v-else :views="activePlugin.canvas" :target="targetView" />
             </CanvasArea>
 
-            <!-- Vertical Resizer (hidden while chat is maximized) -->
+            <!-- Vertical Resizer -->
             <PanelResizer
-                v-if="!chatMaximized"
                 orientation="vertical"
-                :collapsed="panelSizes.canvasHeight >= 93"
-                style="background-color: rgb(28 28 28)"
+                :collapsed="chatMaximized || panelSizes.canvasHeight >= 93"
                 @resize="handleCanvasResize"
                 @click="handleCanvasClick"
-                @right-click="handleChatMaximize"
+                @right-click="chatMaximized ? handleChatRestore() : handleChatMaximize()"
             />
 
             <!-- Chat Area — fills remaining space below the canvas header when maximized -->
@@ -48,21 +46,6 @@
                     ? { flex: '1 1 0%', minHeight: 0 }
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
-                <!-- Floating restore handle: hover-revealed bar at the top of the
-                     maximized chat. Matches the original vertical PanelResizer's 7px
-                     hover zone, but extended *downward* into the chat (the original
-                     straddles the border with 4px above + 3px at border; here "above"
-                     would be outside the chat/window, so we put the full 7px inside). -->
-                <div
-                    v-if="chatMaximized"
-                    class="group absolute top-0 left-0 right-0 h-2 z-20 cursor-row-resize"
-                    title="Click to restore chat size"
-                    @mousedown.prevent="startMaxDrag"
-                    @contextmenu.prevent="() => handleChatRestore()"
-                >
-                    <div class="absolute top-0 left-0 right-0 h-[7px] bg-transparent group-hover:bg-blue-500/50 transition-colors" />
-                </div>
-
                 <component :is="defaultPlugin.chat" />
             </ChatArea>
         </div>
@@ -100,6 +83,7 @@ import ChatArea from '@/core/components/layout/chat-area.vue'
 import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import Router from '@/core/components/layout/router.vue'
 import BrainInspectPanel from '@/plugins/brain/panel.vue'
 import type { ContextMenuItem } from '@/core/context-menu'
@@ -172,18 +156,21 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
     return
   }
 
+  if (event.type === 'APP_COPY_TO_CLIPBOARD') {
+    navigator.clipboard.writeText(event.text)
+    return
+  }
+
   if (event.type === 'APP_TOGGLE_INSPECT') {
     brainActor.send({ type: 'TOGGLE_INSPECT' })
     return
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
-    send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
-    const settingsActor = applicationState.system.get('settings')
-    if (settingsActor) {
-      settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' })
-      settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: event.pluginId })
-    }
+    navigateToPlugin('settings', [
+      { type: 'TAB.SELECT', tab: 'plugins' },
+      { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
+    ])
     return
   }
 
@@ -192,44 +179,18 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
 }
 
 const MIN_CHAT_HEIGHT = 180 // px — enough for chat input to remain visible
-const MAX_DRAG_THRESHOLD = 3
 
 const getMainAreaHeight = () => window.innerHeight - 50 // Approximate, accounting for toolbar
 
-// --- Maximized-chat restore handle (click = restore, drag = restore at max chat height) ---
-let maxDragStartY = 0
-let dragged = false
-
-const cleanupMaxDrag = () => {
-  document.removeEventListener('mousemove', handleMaxDrag)
-  document.removeEventListener('mouseup', stopMaxDrag)
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
-}
-
-const startMaxDrag = (e: MouseEvent) => {
-  if (e.button !== 0) return
-  dragged = false
-  maxDragStartY = e.clientY
-  document.addEventListener('mousemove', handleMaxDrag)
-  document.addEventListener('mouseup', stopMaxDrag)
-  document.body.style.cursor = 'row-resize'
-  document.body.style.userSelect = 'none'
-}
-
-const handleMaxDrag = (e: MouseEvent) => {
-  if (Math.abs(e.clientY - maxDragStartY) < MAX_DRAG_THRESHOLD) return
-  dragged = true
-  cleanupMaxDrag()
-  handleChatRestore(true)
-}
-
-const stopMaxDrag = () => {
-  cleanupMaxDrag()
-  if (!dragged) handleChatRestore()
-}
+// Guard so drag-to-restore only fires once per maximized drag
+let maxRestored = false
 
 const handleCanvasResize = (delta: number) => {
+  if (chatMaximized.value) {
+    if (!maxRestored) { maxRestored = true; handleChatRestore(true) }
+    return
+  }
+  maxRestored = false
   const mainAreaHeight = getMainAreaHeight()
   const currentHeightPx = (panelSizes.value.canvasHeight / 100) * mainAreaHeight
   const newHeightPx = currentHeightPx + delta
@@ -244,6 +205,7 @@ const handleInspectionResize = (delta: number) => {
 }
 
 const handleCanvasClick = () => {
+  if (chatMaximized.value) { handleChatRestore(); return }
   const isCollapsed = panelSizes.value.canvasHeight >= 93
   send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 95 })
 }

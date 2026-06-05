@@ -1,6 +1,6 @@
 /**
  * CC: Stream Paused — flips the session artifact status to
- * `awaiting-permission` when the CLI emits a `control_request` that
+ * `awaiting-input` when the CLI emits a `control_request` that
  * requires user interaction (tool approval, AskUserQuestion, ExitPlanMode).
  *
  * Triggered by the `cc.stream.paused` brain event emitted from the stream
@@ -13,7 +13,7 @@ import { updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Stream Paused',
-  description: 'Updates session artifact status to awaiting-permission when the CLI pauses for user input.',
+  description: 'Updates session artifact status to awaiting-input when the CLI pauses for user input.',
   category: 'claude-code',
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },

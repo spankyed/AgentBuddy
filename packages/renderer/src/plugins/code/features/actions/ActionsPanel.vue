@@ -237,6 +237,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as actionsPluginId } from '@/plugins/actions/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -466,14 +467,7 @@ const selectAction = (action: ActionEntity) => {
 }
 
 const goToAction = (action: ActionEntity) => {
-  // Switch to actions plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' })
-
-  // Select the action in the actions plugin
-  const actionsPluginActor = applicationState.system.get('actions')
-  if (actionsPluginActor) {
-    actionsPluginActor.send({ type: 'ACTION.SELECT', actionId: action.id })
-  }
+  navigateToPlugin('actions', { type: 'ACTION.SELECT', actionId: action.id })
 }
 
 const createActionInline = () => {

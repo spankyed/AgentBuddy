@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex items-center justify-between h-header px-4 border-b border-neutral-800 panel-header" :class="{ 'panel-drag': !isAnyMenuOpen }">
+    <div class="flex items-center justify-between h-header pl-4 pr-2 border-b border-neutral-800 panel-header" :class="{ 'panel-drag': !isAnyMenuOpen }">
       <div class="flex items-center gap-2 min-w-0">
         <component :is="icon" :size="16" class="text-neutral-400 shrink-0" />
         <div class="flex items-center gap-1.5 text-sm min-w-0">
@@ -23,7 +23,7 @@
           @open-project-directory="handleProjectDirectorySelect"
           @refresh="explorerActor?.send({ type: 'explorer.REFRESH_TREE' })"
         />
-        <div class="flex items-center gap-1 min-w-5">
+        <div class="header-actions flex items-center gap-1 ml-auto">
           <slot name="actions" />
         </div>
       </div>
@@ -163,5 +163,8 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'actions' 
 }
 .panel-drag > * {
   -webkit-app-region: no-drag;
+}
+.header-actions :deep(button) {
+  padding: 0.375rem; /* p-1.5 */
 }
 </style>

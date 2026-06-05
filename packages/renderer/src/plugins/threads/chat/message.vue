@@ -88,9 +88,10 @@
 
           <template v-else>
             <button
-              v-if="message.forkable !== false"
-              @click="$emit('fork', message.id)"
-              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              v-if="canFork"
+              :disabled="forking"
+              @click="forking = true; $emit('fork', message.id)"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300 disabled:opacity-30 disabled:pointer-events-none"
               title="Fork conversation"
             >
               <GitFork :size="16" />
@@ -226,6 +227,7 @@ interface ChatMessageProps {
   message: MessageEntity
   isTyping?: boolean
   isTail?: boolean
+  isClaudeCodeThread?: boolean
 }
 
 interface ChatMessageEmits {
@@ -241,11 +243,13 @@ interface ChatMessageEmits {
 const props = withDefaults(defineProps<ChatMessageProps>(), {
   isTyping: false,
   isTail: false,
+  isClaudeCodeThread: false,
 })
 
 const emit = defineEmits<ChatMessageEmits>()
 
 const expanded = ref(false)
+const forking = ref(false)
 const revertMenu = useContextMenu()
 
 const isUser = computed(() => props.message.sender === 'user')
@@ -262,6 +266,11 @@ const isCollapsedAsideAsUser = computed(() =>
 )
 const markerExpanded = ref(false)
 const isCommand = computed(() => props.message.isCommand ?? false)
+const canFork = computed(() => {
+  if (props.message.forkable === false) return false
+  if (!props.isClaudeCodeThread || props.message.sender !== 'assistant') return true
+  return typeof (props.message.context as any)?.cliUuid === 'string'
+})
 
 // Long user message truncation
 const bubbleRef = ref<HTMLElement | null>(null)

@@ -302,6 +302,8 @@ export type ThreadViewData = Simplify<
     shortCode: ThreadEntity['shortCode'];
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
+    archived?: ThreadEntity['archived'];
+    lastMessageTimestamp?: ThreadEntity['lastMessageTimestamp'];
     messages?: ThreadExtendedData['messages'];
   }
 >;
@@ -316,8 +318,10 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   instructions?: string;
   status?: string;
   pinned?: boolean;
+  archived?: boolean;
   shortCode?: string;
   timestamp?: number;
+  lastMessageTimestamp?: number;
 }
 
 export type ThreadTypeShortCode = `T-${number}`;
@@ -475,6 +479,8 @@ export interface ArtifactItem {
   type: ArtifactType;
   title: string;
   content: any;
+  /** Optional Tailwind color token (e.g. 'blue', 'purple') for the pill background. */
+  color?: string;
   metadata?: {
     createdAt: number;
     updatedAt?: number;

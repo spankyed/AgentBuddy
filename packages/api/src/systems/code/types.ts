@@ -21,6 +21,7 @@ export interface FileContent {
   encoding: string
   size?: number
   isBinary?: boolean
+  isVideo?: boolean
 }
 
 export interface FileOperation {

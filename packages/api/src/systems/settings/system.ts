@@ -15,6 +15,7 @@ import { testCli, isCliName, clearCliPathCache } from '@/core/shared/resolve-cli
 import { resetLmdbFiles } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@/setup/migrations';
+import { mergeSecretReferences } from './secrets/merge-secret-settings';
 
 /**
  * Convert the JSON-safe include shape from the frontend
@@ -259,24 +260,8 @@ export const settingsSystem = setup({
       // Sync secrets to secrets settings when we get loaded data
       if (event.type === 'SECRETS.EVENT.LOADED') {
         const secretsData = (event as any).data || [];
-        const newSecrets: any = {
-          google: null,
-          anthropic: null,
-          openai: null,
-          groq: null,
-          mistral: null,
-          cohere: null,
-          custom: {}
-        };
-        
-        // Map secrets to secrets references
-        for (const secret of secretsData) {
-          if (secret.provider === 'custom' && secret.customName) {
-            newSecrets.custom[secret.customName] = secret.id;
-          } else if (secret.provider !== 'custom') {
-            newSecrets[secret.provider] = secret.id;
-          }
-        }
+        const currentSecrets = settingsQueries.getGeneralSettings().secrets;
+        const newSecrets = mergeSecretReferences(currentSecrets, secretsData);
         
         // Update settings
         settingsCommands.updateSettings('general', 'secrets', [], newSecrets);

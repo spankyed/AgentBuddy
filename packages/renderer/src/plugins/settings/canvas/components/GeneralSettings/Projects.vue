@@ -4,15 +4,29 @@
       Manage your projects. Each project can contain multiple directories.
     </p>
 
-    <div class="space-y-3">
-      <!-- Project Cards -->
+    <ArrangeableList
+      :identifier="'settings-projects'"
+      :group="reorderGroup"
+      :targets="[reorderGroup]"
+      :list="projects"
+      :options="arrangeableOptions"
+      class="settings-projects-list space-y-3"
+      @drop-item="reorderProject"
+    >
+      <template #default="{ item: project }">
       <div
-        v-for="(project, pIndex) in projects"
-        :key="`project-${pIndex}`"
         class="border border-neutral-700/50 rounded-lg bg-neutral-900"
       >
         <!-- Project Header -->
         <div class="flex items-center gap-2 px-3 py-2 border-b border-neutral-700/30">
+          <span
+            data-handle
+            class="flex-shrink-0 cursor-grab text-neutral-600 hover:text-neutral-400 pointer-events-auto"
+            title="Drag to reorder"
+            @click.stop
+          >
+            <GripVertical :size="14" class="pointer-events-none" />
+          </span>
           <ColorPicker
             v-model="project.color"
             trigger-class="w-5 h-5 flex-shrink-0"
@@ -31,7 +45,7 @@
 
           <!-- Add Directory Button -->
           <button
-            @click="addDirectoryToProject(pIndex)"
+            @click="addDirectoryToProject(projects.indexOf(project))"
             class="px-2 py-1 text-xs text-neutral-200 bg-neutral-700/50 hover:text-white hover:bg-neutral-700 rounded transition-all flex items-center gap-1"
             title="Add directory"
           >
@@ -41,7 +55,7 @@
 
           <!-- Remove Project Button -->
           <button
-            @click="confirmRemoveProject(pIndex)"
+            @click="confirmRemoveProject(projects.indexOf(project))"
             class="p-1 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
             title="Remove project"
           >
@@ -53,7 +67,7 @@
         <div class="p-2 flex flex-wrap gap-2">
           <div
             v-for="(directory, dIndex) in (project.directories || [])"
-            :key="`dir-${pIndex}-${dIndex}`"
+            :key="`dir-${projects.indexOf(project)}-${dIndex}`"
             :class="[
               'inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs',
               dIndex === 0
@@ -73,7 +87,7 @@
 
             <!-- Remove Directory Button -->
             <button
-              @click="confirmRemoveDirectory(pIndex, dIndex)"
+              @click="confirmRemoveDirectory(projects.indexOf(project), dIndex)"
               class="p-0.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
               :title="dIndex === 0 && project.directories.length === 1 ? 'Cannot remove the only directory' : 'Remove directory'"
               :disabled="dIndex === 0 && project.directories.length === 1"
@@ -84,23 +98,25 @@
           </div>
         </div>
       </div>
+      </template>
+    </ArrangeableList>
 
-      <!-- Add Project Button -->
-      <button
-        @click="addProject"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
-      >
-        <Plus class="w-3.5 h-3.5" />
-        Add Project
-      </button>
-    </div>
+    <!-- Add Project Button -->
+    <button
+      @click="addProject"
+      class="flex items-center gap-2 px-4 py-2 mt-3 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
+    >
+      <Plus class="w-3.5 h-3.5" />
+      Add Project
+    </button>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Plus, X } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import { Plus, X, GripVertical } from 'lucide-vue-next'
+import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import ColorPicker, { DEFAULT_COLORS } from '@/core/components/design/ColorPicker.vue'
 
 interface Project {
@@ -138,6 +154,31 @@ const migrateData = (settings: any): Project[] => {
 }
 
 const projects = ref<Project[]>(migrateData(props.settings))
+
+// Reorder
+const reorderGroup = Symbol('settings-projects')
+const arrangeableOptions = {
+  handle: true,
+  liftDelay: 100,
+  hoverClass: 'shadow-lg shadow-black/40 scale-[1.02] cursor-grabbing',
+  pickedItemClass: 'opacity-30',
+}
+let droppingItem = false
+
+watch(() => props.settings, (val) => {
+  if (droppingItem) {
+    droppingItem = false
+    return
+  }
+  projects.value = migrateData(val)
+}, { deep: true })
+
+function reorderProject(moving: MovingItem<Project>) {
+  if (!moving.destination?.listItems) return
+  droppingItem = true
+  projects.value = [...moving.destination.listItems]
+  save()
+}
 
 // Debounce helper
 let saveTimeout: number | undefined
@@ -252,3 +293,20 @@ const save = () => {
 }
 
 </script>
+
+<style scoped>
+.settings-projects-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+:deep(.cursor-grabbing) {
+  position: fixed !important;
+  border-radius: 0.375rem;
+}
+
+:deep(.arrangeable-list__transition-all) {
+  transition-duration: 0s;
+}
+</style>

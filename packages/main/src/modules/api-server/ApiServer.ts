@@ -14,7 +14,7 @@ import {
   getExecutionArgs 
 } from './config.js';
 import { ProcessManager, broadcastEvent } from './process-manager.js';
-import { logInfo, logError, logWarn, getLogger } from './logger.js';
+import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.js';
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;
@@ -48,6 +48,7 @@ export class ApiServer implements AppModule {
 
     // Log production startup info
     if (app.isPackaged) {
+      logStartupBanner();
       logInfo('AgentBuddy API Server Module Enabled');
       logInfo('Log file location:', getLogger().getLogPath());
     }

@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta, EntityId, Services, Z } from '../../types';
-import { getCodexState, persistCodexState } from './_helpers/thread-context';
+import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CDX: Run Command',
@@ -29,6 +29,7 @@ const handlers: Record<string, Handler> = {
   rename: handleRename,
   skills: handleSkills,
   mcp: handleMcp,
+  bypass: handleBypass,
 };
 
 export async function action(
@@ -289,4 +290,48 @@ async function handleMcp(
     return `${server.name}: ${toolCount} tools, auth ${auth}`;
   });
   return { text: lines.join('\n'), data: response };
+}
+
+async function handleBypass(
+  _args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  if (!threadId) return { text: 'No active thread — run a Codex turn first.' };
+
+  const prior = getCodexState(services, threadId);
+  if (!prior) return { text: 'No Codex state on this thread.' };
+
+  const current = prior.approvalMode ?? 'user';
+  const enabling = current !== 'auto_review';
+  const mode = enabling ? 'auto_review' : 'user';
+  const patch: Record<string, any> = { approvalMode: mode };
+
+  // Auto-approve pending tool requests when enabling auto_review
+  if (enabling) {
+    const pending = prior.pendingApproval;
+    if (pending && pending.method !== 'plan/approval') {
+      try {
+        await (services.codex as any).respondToApproval(pending.requestId, 'acceptForSession');
+      } catch { /* app-server may be gone */ }
+
+      const asideText = `✓ Approved — ${pending.summary || 'tool request'}`;
+      services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
+        responseTimestamp: Date.now(),
+        blockResponse: { approved: true, decision: 'acceptForSession' },
+        asideText,
+      } as any);
+
+      patch.pendingApproval = undefined;
+      patch.isRunning = true;
+    }
+  }
+
+  persistCodexState(services, threadId, patch as any);
+
+  if (patch.isRunning) {
+    updateChatState(services, threadId as EntityId, 'working');
+  }
+
+  return { text: enabling ? 'Auto-review enabled' : 'Auto-review disabled' };
 }

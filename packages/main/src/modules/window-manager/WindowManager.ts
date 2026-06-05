@@ -221,6 +221,12 @@ class WindowManager implements AppModule {
       shell.showItemInFolder(filePath);
     });
 
+    // Handle opening files with the OS default application
+    ipcMain.handle('shell:openPath', async (_event, filePath: string) => {
+      const result = await shell.openPath(filePath);
+      if (result) throw new Error(result);
+    });
+
     // Handle opening an image in the default image app
     ipcMain.handle('shell:openImageExternal', async (_event, url: string) => {
       const mimeToExt: Record<string, string> = {

@@ -1,7 +1,8 @@
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
-import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
+import { targetIs, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
 import type { ActorRefFrom } from 'xstate';
 import type {
   ThreadEntity, OutgoingThreadsEvents,
@@ -10,10 +11,10 @@ import type {
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
-import { Archive, Pin, Trash2 } from 'lucide-vue-next';
+import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
-import { application } from '@/core/actors/application';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import type { ThreadTabGroup, TabGroupColor } from '@/plugins/threads/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/plugins/threads/canvas/agent/tabs/types';
@@ -238,6 +239,8 @@ type UIEvent =
   | { type: 'CLOSE_ALL_IN_GROUP'; groupId: string }
   | { type: 'PIN_TAB_GROUP'; groupId: string }
   | { type: 'UNPIN_TAB_GROUP'; groupId: string }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' }
 
 type ThreadEvents =
   | UIEvent
@@ -300,6 +303,7 @@ interface ThreadsContext {
   quickPromptCursor: { x: number; y: number } | null;
   pendingThreadCwd?: string;
   pendingForceDirectoryPicker?: boolean;
+  navHistory: NavHistory<string>;
 }
 
 // ---- Helpers ----
@@ -813,13 +817,11 @@ const threadsState = setup({
         phaseByModeName: { ...context.phaseByModeName, [context.mode]: newPhase }
       };
     }),
-    navigateToSecrets: ({ system }) => {
-      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
-      const settingsActor = system.get('settings');
-      if (settingsActor) {
-        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
-        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
-      }
+    navigateToSecrets: () => {
+      navigateToPlugin('settings', [
+        { type: 'TAB.SELECT', tab: 'general' },
+        { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
+      ]);
     },
     updateApiKeyStatus: assign(({ event }) => ({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
@@ -1561,19 +1563,23 @@ const threadsState = setup({
     hasRequiredApiKeys: true,
     commands: [],
     quickPromptCursor: null,
+    navHistory: createNavHistory(getInitialView()),
   }),
   on: {
     // Thread management events
     SHOW_CREATE_FORM: {
       target: '.create',
-      actions: assign(() => ({ create: { ...defaultThread } }))
+      actions: assign(({ context }) => ({
+        create: { ...defaultThread },
+        navHistory: pushNavHistory(context.navHistory, 'create'),
+      }))
     },
     UPDATE_THREAD_STATUS: {
       actions: 'updateThreadStatus',
     },
-    VIEW_LIST: { target: '.list' },
-    VIEW_KANBAN: { target: '.kanban' },
-    VIEW_DASHBOARD: { target: '.dashboard' },
+    VIEW_LIST: { target: '.list', actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'list') })) },
+    VIEW_KANBAN: { target: '.kanban', actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'kanban') })) },
+    VIEW_DASHBOARD: { target: '.dashboard', actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'dashboard') })) },
     OPEN_THREAD_CHAT: {
       actions: 'openThreadChat'
     },
@@ -1674,17 +1680,126 @@ const threadsState = setup({
     SELECT_THREAD_ITEMS: { actions: 'selectThreadItems' },
     SET_THREAD_PARENT: { actions: 'sendSetThreadParent' },
 
+    NAVIGATE_BACK: [
+      {
+        guard: ({ context }) => canGoBack(context.navHistory) && context.navHistory.stack[context.navHistory.index - 1].startsWith('view:'),
+        target: '.view',
+        actions: [
+          assign(({ context }) => {
+            const result = goBack(context.navHistory)!;
+            const threadId = result.entry.replace('view:', '');
+            const selectedThread = context.threadMap[threadId];
+            return {
+              navHistory: result.history,
+              view: selectedThread
+                ? { ...context.view, ...selectedThread, id: threadId }
+                : { ...context.view, id: threadId },
+            } as any;
+          }),
+          ({ context }) => {
+            trpc.bus.send.mutate({ systemId: id, type: 'VIEW_THREAD', threadId: context.view.id });
+          },
+        ],
+      },
+      {
+        guard: ({ context }) => canGoBack(context.navHistory) && context.navHistory.stack[context.navHistory.index - 1] === 'list',
+        target: '.list',
+        actions: assign(({ context }) => ({ navHistory: goBack(context.navHistory)!.history })),
+      },
+      {
+        guard: ({ context }) => canGoBack(context.navHistory) && context.navHistory.stack[context.navHistory.index - 1] === 'kanban',
+        target: '.kanban',
+        actions: assign(({ context }) => ({ navHistory: goBack(context.navHistory)!.history })),
+      },
+      {
+        guard: ({ context }) => canGoBack(context.navHistory) && context.navHistory.stack[context.navHistory.index - 1] === 'dashboard',
+        target: '.dashboard',
+        actions: assign(({ context }) => ({ navHistory: goBack(context.navHistory)!.history })),
+      },
+      {
+        guard: ({ context }) => canGoBack(context.navHistory) && context.navHistory.stack[context.navHistory.index - 1] === 'create',
+        target: '.create',
+        actions: assign(({ context }) => ({ navHistory: goBack(context.navHistory)!.history })),
+      },
+    ],
+    NAVIGATE_FORWARD: [
+      {
+        guard: ({ context }) => canGoForward(context.navHistory) && context.navHistory.stack[context.navHistory.index + 1].startsWith('view:'),
+        target: '.view',
+        actions: [
+          assign(({ context }) => {
+            const result = goForward(context.navHistory)!;
+            const threadId = result.entry.replace('view:', '');
+            const selectedThread = context.threadMap[threadId];
+            return {
+              navHistory: result.history,
+              view: selectedThread
+                ? { ...context.view, ...selectedThread, id: threadId }
+                : { ...context.view, id: threadId },
+            } as any;
+          }),
+          ({ context }) => {
+            trpc.bus.send.mutate({ systemId: id, type: 'VIEW_THREAD', threadId: context.view.id });
+          },
+        ],
+      },
+      {
+        guard: ({ context }) => canGoForward(context.navHistory) && context.navHistory.stack[context.navHistory.index + 1] === 'list',
+        target: '.list',
+        actions: assign(({ context }) => ({ navHistory: goForward(context.navHistory)!.history })),
+      },
+      {
+        guard: ({ context }) => canGoForward(context.navHistory) && context.navHistory.stack[context.navHistory.index + 1] === 'kanban',
+        target: '.kanban',
+        actions: assign(({ context }) => ({ navHistory: goForward(context.navHistory)!.history })),
+      },
+      {
+        guard: ({ context }) => canGoForward(context.navHistory) && context.navHistory.stack[context.navHistory.index + 1] === 'dashboard',
+        target: '.dashboard',
+        actions: assign(({ context }) => ({ navHistory: goForward(context.navHistory)!.history })),
+      },
+      {
+        guard: ({ context }) => canGoForward(context.navHistory) && context.navHistory.stack[context.navHistory.index + 1] === 'create',
+        target: '.create',
+        actions: assign(({ context }) => ({ navHistory: goForward(context.navHistory)!.history })),
+      },
+    ],
     // Breadcrumb trail clicks
-    ...TRAIL_CLICK([
-      ['.list', 'list'],
-      ['.kanban', 'kanban'],
-      ['.create', 'create'],
-      ['.view', 'view'],
-      ['.dashboard', 'dashboard'],
-    ]),
+    TRAIL_CLICK: [
+      {
+        guard: { type: 'targetIs', params: { view: 'list' } },
+        target: '.list',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'list') })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'kanban' } },
+        target: '.kanban',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'kanban') })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'create' } },
+        target: '.create',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'create') })),
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'view' } },
+        target: '.view',
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'dashboard' } },
+        target: '.dashboard',
+        actions: assign(({ context }) => ({ navHistory: pushNavHistory(context.navHistory, 'dashboard') })),
+      },
+    ],
     SELECT_THREAD: {
       target: '.view',
-      actions: ['setSelectedThread', 'sendViewThread'],
+      actions: [
+        'setSelectedThread',
+        'sendViewThread',
+        assign(({ context, event }) => ({
+          navHistory: pushNavHistory(context.navHistory, `view:${typeOf('SELECT_THREAD', event).id}`),
+        })),
+      ],
     },
 
     // ---- Chat/agent events (always active regardless of view state) ----
@@ -1872,7 +1987,11 @@ const threadsState = setup({
               icon: Pin,
               event: { type: 'PIN_THREAD' as const, threadId: ctx.view.id },
             }]),
-            ...(!ctx.view.pinned ? [{
+            ...(ctx.view.archived ? [{
+              label: 'Unarchive Thread',
+              icon: Archive,
+              event: { type: 'UNARCHIVE_THREAD' as const, threadId: ctx.view.id },
+            }] : !ctx.view.pinned ? [{
               label: 'Archive Thread',
               icon: Archive,
               event: { type: 'ARCHIVE_THREAD' as const, threadId: ctx.view.id },
@@ -1885,6 +2004,12 @@ const threadsState = setup({
               iconColor: 'text-red-400',
               confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.`,
             }] : []),
+            {
+              label: 'Copy Id',
+              icon: Copy,
+              event: { type: 'APP_COPY_TO_CLIPBOARD' as const, text: ctx.view.id },
+              separator: true,
+            },
           ]
         }),
       },

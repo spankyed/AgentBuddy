@@ -461,6 +461,7 @@ import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import DirectorySelect from '@/core/components/design/DirectorySelect.vue'
 import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { trpc } from '@/core/trpc'
 import type { CodeSettings, TerminalScript } from '@app/api'
 
@@ -688,11 +689,9 @@ const deleteScript = (index: number) => {
 }
 
 const goToProjects = () => {
-  // Navigate to settings plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
-
-  // Switch to general tab and navigate to projects
-  settingsActor?.send({ type: 'TAB.SELECT', tab: 'general' })
-  settingsActor?.send({ type: 'GENERAL_NAV.SELECT', item: 'projects' })
+  navigateToPlugin('settings', [
+    { type: 'TAB.SELECT', tab: 'general' },
+    { type: 'GENERAL_NAV.SELECT', item: 'projects' }
+  ])
 }
 </script>

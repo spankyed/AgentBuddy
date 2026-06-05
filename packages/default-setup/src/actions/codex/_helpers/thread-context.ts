@@ -37,6 +37,8 @@ export interface CodexThreadState {
   model?: string;
   approvalMode?: 'user' | 'auto_review';
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
+  networkAccess?: boolean;
+  webSearch?: 'live' | 'cached' | 'disabled';
   startedAt?: number;
   turns?: number;
   totalTokens?: { input: number; output: number; reasoning?: number };
@@ -45,6 +47,8 @@ export interface CodexThreadState {
   recentTools?: Array<{ name: string; summary: string; at: number }>;
   sessionError?: string;
   isRunning?: boolean;
+  /** Set by backend forkThread; cleared by CDX: Handle Fork after state is ready. */
+  forkPending?: boolean;
   queuedMessage?: QueuedMessage;
   pendingApproval?: PendingApproval;
   pendingDirectorySelect?: {
@@ -98,7 +102,7 @@ export function updateCodexState(
 }
 
 export function ensureSessionMarker(services: Services, threadId: EntityId): EntityId {
-  return services.artifact.findOrCreateByType(threadId, 'codex-session', { title: 'Codex session', content: {} }).artifactId;
+  return services.artifact.findOrCreateByType(threadId, 'codex-session', { title: 'Codex session', content: {}, color: 'blue' }).artifactId;
 }
 
 export function updateChatState(services: Services, threadId: EntityId, chatState: ChatState): void {
@@ -139,9 +143,17 @@ export function requestTurnInterrupt(services: Services, threadId: string): bool
       services.chat.updateMessageState(prior.pendingApproval.approvalMessageId as any, {
         responseTimestamp: Date.now(),
         blockResponse: { cancelled: true },
+        asideText: `Cancelled — ${prior.pendingApproval.summary || 'tool request'}`,
       } as any);
     }
     (services.codex as any).interruptTurn(prior.threadId, prior.turnId);
+
+    // Cancel queued message so finalize() doesn't replay it after the interrupt
+    const queued = dequeueMessage(services, threadId);
+    if (queued?.messageId) {
+      services.chat.updateMessageState(queued.messageId as any, { status: 'cancelled' } as any);
+    }
+
     persistCodexState(services, threadId, {
       isRunning: false,
       pendingApproval: undefined,
@@ -163,7 +175,7 @@ export function killTurn(services: Services, threadId: string): void {
 
   // Interrupt the turn via app-server
   if (prior?.threadId && prior?.turnId) {
-    try { (services.codex as any).interruptTurn(prior.threadId, prior.turnId); } catch { /* best effort */ }
+    try { (services.codex as any).interruptTurn(prior.threadId, prior.turnId)?.catch?.(() => {}); } catch { /* best effort */ }
   }
 
   // Unregister consumer so stale notifications don't route
@@ -174,7 +186,7 @@ export function killTurn(services: Services, threadId: string): void {
   // Clear handle
   const handle = (services.codex as any).getHandle(threadId);
   if (handle) {
-    try { handle.abort(); } catch { /* already gone */ }
+    try { handle.abort()?.catch?.(() => {}); } catch { /* already gone */ }
     (services.codex as any).clearHandle(threadId);
   }
 
@@ -183,6 +195,7 @@ export function killTurn(services: Services, threadId: string): void {
     services.chat.updateMessageState(prior.pendingApproval.approvalMessageId as any, {
       responseTimestamp: Date.now(),
       blockResponse: { cancelled: true },
+      asideText: `Cancelled — ${prior.pendingApproval?.summary || 'tool request'}`,
     } as any);
   }
 

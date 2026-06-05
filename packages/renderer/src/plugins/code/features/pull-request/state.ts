@@ -3,7 +3,7 @@ import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import { application } from '@/core/actors/application';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { getCommentDatabaseId } from './comment-id';
 
 export type { GhPullRequest, GhPRComment }
@@ -144,6 +144,7 @@ export type Event =
   | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
   | { type: 'pr.OPEN_FILE'; file: GitStatusFile }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
+  | { type: 'pr.GIT_STATUS_REFRESHED'; data: { timestamp: Date } }
   | { type: 'CODE_STARTUP' }
   // GitHub PR events from backend
   | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
@@ -342,10 +343,8 @@ export const pullRequestState = setup({
       },
     }),
 
-    navigateToHelp: ({ system }) => {
-      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
-      const settingsActor = system.get('settings')
-      if (settingsActor) settingsActor.send({ type: 'TAB.SELECT', tab: 'help' })
+    navigateToHelp: () => {
+      navigateToPlugin('settings', [{ type: 'TAB.SELECT', tab: 'help' }]);
     },
 
     handleOpenPRsReceived: assign({
@@ -886,8 +885,10 @@ export const pullRequestState = setup({
         'pr.BASE_BRANCH_RECEIVED': { actions: 'handleBaseBranchReceived' },
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
-        // Reset check state to show "Checking..." during git changes and directory switches
+        // Full reset for directory switches — clears view, selection, and PR state
         'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, pendingManualPRNumber: null, prCheckCompleted: false, isGhChecking: true, viewMode: 'files' as const, prError: null }), 'refreshPrStatus'] },
+        // Lightweight refresh for git changes — re-checks PR status without resetting viewMode or manual selection
+        'pr.GIT_STATUS_REFRESHED': { actions: [assign({ diffStale: true, prCheckCompleted: false, isGhChecking: true, prError: null }), 'refreshPrStatus'] },
         'CODE_STARTUP': {
           actions: [
             assign({

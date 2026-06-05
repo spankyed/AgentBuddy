@@ -446,94 +446,104 @@ export const threadsSystem = setup({
       }
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = threadsDef.typeOf('USER_MSG', event);
+      try {
+        const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = threadsDef.typeOf('USER_MSG', event);
 
-      const sanitizedRefs = references ? {
-        ...references,
-        ...(references.files && {
-          files: references.files.map(({ previewUrl, ...rest }: any) => rest),
-        }),
-      } : undefined;
+        const sanitizedRefs = references ? {
+          ...references,
+          ...(references.files && {
+            files: references.files.map(({ previewUrl, ...rest }: any) => rest),
+          }),
+        } : undefined;
 
-      let threadId: EARS.EntityId;
-      let threadData: any = null;
+        let threadId: EARS.EntityId;
+        let threadData: any = null;
 
-      if (!providedThreadId) {
-        const result = repository.chatCommands.createThreadFromMessage(text);
-        threadId = result.threadId;
-        threadData = result.threadData;
+        if (!providedThreadId) {
+          const result = repository.chatCommands.createThreadFromMessage(text);
+          threadId = result.threadId;
+          threadData = result.threadData;
 
-        logger.info('Created new thread for user message', {
+          logger.info('Created new thread for user message', {
+            threadId,
+            shortCode: result.threadData.shortCode,
+          });
+
+          repository.threadCommands.markAsVisited(threadId);
+        } else {
+          threadId = providedThreadId as EARS.EntityId;
+        }
+
+        const messageResult = repository.chatCommands.addMessage({
           threadId,
-          shortCode: result.threadData.shortCode,
+          text,
+          sender: 'user',
+          references: sanitizedRefs,
+          ...(mode ? { context: { agent: mode } } : {}),
         });
 
-        repository.threadCommands.markAsVisited(threadId);
-      } else {
-        threadId = providedThreadId as EARS.EntityId;
-      }
+        if (threadData) {
+          const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-      const messageResult = repository.chatCommands.addMessage({
-        threadId,
-        text,
-        sender: 'user',
-        references: sanitizedRefs,
-      });
+          system.get(bus).send(emit(threads, {
+            type: 'THREAD_CREATED',
+            id: threadData.id,
+            shortCode: threadData.shortCode,
+            entityType: EARS.Entity.Thread,
+            timestamp: threadData.timestamp,
+            topic: fullThreadData?.topic,
+            instructions: fullThreadData?.instructions,
+            status: fullThreadData?.status
+          } as any));
 
-      if (threadData) {
-        const fullThreadData = repository.threadQueries.byId(threadData.id);
+          system.get(bus).send(emit(threads, {
+            type: 'LOAD_CHAT_THREAD',
+            data: repository.chatQueries.threadData(threadId)!
+          }));
+        } else {
+          const userMessage: MessageEntity = {
+            id: messageResult.id,
+            entityType: EARS.Entity.Message,
+            text: messageResult.text,
+            sender: messageResult.sender as 'user' | 'assistant' | 'system',
+            timestamp: messageResult.timestamp,
+            createdAt: messageResult.timestamp,
+            updatedAt: messageResult.timestamp,
+            ...(sanitizedRefs && { references: sanitizedRefs }),
+          };
 
+          system.get(bus).send(emit(threads, {
+            type: 'MESSAGE_ADDED',
+            threadId: threadId as string,
+            message: userMessage
+          }));
+        }
+
+        services.chat.sendRecentThreadsRefresh();
+
+        const brainActor = getActor(system, brain);
+        brainActor.send({
+          type: 'TRIGGER_BRAIN_EVENT',
+          eventType: 'user.message',
+          payload: {
+            text,
+            mode,
+            phase,
+            threadId,
+            messageId: messageResult.id,
+            ...(sanitizedRefs && { references: sanitizedRefs }),
+            ...(cwdOverride && { cwdOverride }),
+            ...(forceDirectoryPicker && { forceDirectoryPicker }),
+          },
+        });
+      } catch (err) {
+        logger.error('forwardUserMessage failed', { error: err });
         system.get(bus).send(emit(threads, {
-          type: 'THREAD_CREATED',
-          id: threadData.id,
-          shortCode: threadData.shortCode,
-          entityType: EARS.Entity.Thread,
-          timestamp: threadData.timestamp,
-          topic: fullThreadData?.topic,
-          instructions: fullThreadData?.instructions,
-          status: fullThreadData?.status
-        } as any));
-
-        system.get(bus).send(emit(threads, {
-          type: 'LOAD_CHAT_THREAD',
-          data: repository.chatQueries.threadData(threadId)!
+          type: 'THREAD_CHAT_ERROR',
+          threadId: (event as any).threadId ?? '',
+          error: err instanceof Error ? err.message : String(err),
         }));
-      } else {
-        const userMessage: MessageEntity = {
-          id: messageResult.id,
-          entityType: EARS.Entity.Message,
-          text: messageResult.text,
-          sender: messageResult.sender as 'user' | 'assistant' | 'system',
-          timestamp: messageResult.timestamp,
-          createdAt: messageResult.timestamp,
-          updatedAt: messageResult.timestamp,
-          ...(sanitizedRefs && { references: sanitizedRefs }),
-        };
-
-        system.get(bus).send(emit(threads, {
-          type: 'MESSAGE_ADDED',
-          threadId: threadId as string,
-          message: userMessage
-        }));
       }
-
-      services.chat.sendRecentThreadsRefresh();
-
-      const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'user.message',
-        payload: {
-          text,
-          mode,
-          phase,
-          threadId,
-          messageId: messageResult.id,
-          ...(sanitizedRefs && { references: sanitizedRefs }),
-          ...(cwdOverride && { cwdOverride }),
-          ...(forceDirectoryPicker && { forceDirectoryPicker }),
-        },
-      });
     },
     forwardUserCommand: ({ system, event }) => {
       const { command, text, mode, phase, threadId: providedThreadId, references, cwdOverride } = threadsDef.typeOf('USER_COMMAND', event);
@@ -572,6 +582,7 @@ export const threadsSystem = setup({
         references: sanitizedRefs,
         isCommand: true,
         command,
+        ...(mode ? { context: { agent: mode } } : {}),
       });
 
       if (threadData) {
@@ -635,6 +646,9 @@ export const threadsSystem = setup({
       const { messageId, threadId, threadTopic } = threadsDef.typeOf('FORK_THREAD', event);
       if (!threadId) return;
 
+      let result: { id: EARS.EntityId } | undefined;
+      const forkContext: Record<string, any> = {};
+
       try {
         const sourceMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
         const sourceIndex = sourceMessages.findIndex((m: any) => m.id === messageId);
@@ -646,7 +660,7 @@ export const threadsSystem = setup({
         const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
         const forkTopic = `Fork ${forkCount + 1} - ${originalTopic}`;
 
-        const result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
+        result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
 
         repository.threadCommands.linkFork(threadId as EARS.EntityId, result.id);
 
@@ -655,6 +669,21 @@ export const threadsSystem = setup({
           targetThreadId: result.id,
           upToMessageId: messageId,
         });
+
+        // Set forkPending on the NEW thread so chat actions queue messages
+        // until the async handle-fork actions finish persisting session state.
+        const sourceThread = repository.threadQueries.byId(threadId as EARS.EntityId);
+        const sourceContext = (sourceThread as any)?.context ?? {};
+        for (const [key, value] of Object.entries(sourceContext)) {
+          if (value && typeof value === 'object') {
+            forkContext[key] = { forkPending: true };
+          }
+        }
+        if (Object.keys(forkContext).length > 0) {
+          repository.threadCommands.update(result.id, { context: forkContext });
+        }
+
+        services.chat.openThreadChatAndRefreshRecent(result.id);
 
         const brainActor = getActor(system, brain);
         brainActor.send({
@@ -669,6 +698,13 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         console.error('[threads] forkThread failed:', err);
+        // Clear forkPending if it was set, so the thread doesn't permanently reject messages.
+        if (result && Object.keys(forkContext).length > 0) {
+          const clearContext = Object.fromEntries(
+            Object.keys(forkContext).map(key => [key, { forkPending: undefined }])
+          );
+          repository.threadCommands.update(result.id, { context: clearContext });
+        }
       }
     },
     revertThread: ({ system, event }) => {
@@ -684,9 +720,22 @@ export const threadsSystem = setup({
         messageId: messageId as EARS.EntityId,
       });
       const deletedIds = new Set(deletion.deletedIds);
-      const deletedUserMessageCount = beforeMessages.filter((m: any) =>
-        deletedIds.has(m.id) && m.sender === 'user'
-      ).length;
+      const deletedMessages = beforeMessages.filter((m: any) => deletedIds.has(m.id));
+      const deletedUserMessageCount = deletedMessages.filter((m: any) => m.sender === 'user').length;
+
+      // Determine which agent flows had messages deleted so each flow can
+      // skip its revert handler when it isn't affected.
+      const agents = {
+        claudeCode: deletedMessages.some((m: any) =>
+          m.context?.cliUuid || m.context?.agent === 'Claude Code'
+        ),
+        codex: deletedMessages.some((m: any) =>
+          m.context?.agent === 'Codex'
+        ),
+      };
+      const codexDeletedUserMessageCount = agents.codex
+        ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
+        : 0;
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
@@ -702,6 +751,8 @@ export const threadsSystem = setup({
           kind: restoreFiles ? 'rewind' : 'revert',
           deletedMessageIds: deletion.deletedIds,
           deletedUserMessageCount,
+          agents,
+          codexDeletedUserMessageCount,
           ...(restoreFiles && userCliUuid ? { userCliUuid } : {}),
         },
       });
@@ -721,9 +772,20 @@ export const threadsSystem = setup({
         messageId: messageId as EARS.EntityId,
       });
       const deletedIds = new Set(deletion.deletedIds);
-      const deletedUserMessageCount = beforeMessages.filter((m: any) =>
-        deletedIds.has(m.id) && m.sender === 'user'
-      ).length;
+      const deletedMessages = beforeMessages.filter((m: any) => deletedIds.has(m.id));
+      const deletedUserMessageCount = deletedMessages.filter((m: any) => m.sender === 'user').length;
+
+      const agents = {
+        claudeCode: deletedMessages.some((m: any) =>
+          m.context?.cliUuid || m.context?.agent === 'Claude Code'
+        ),
+        codex: deletedMessages.some((m: any) =>
+          m.context?.agent === 'Codex'
+        ),
+      };
+      const codexDeletedUserMessageCount = agents.codex
+        ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
+        : 0;
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
@@ -731,7 +793,7 @@ export const threadsSystem = setup({
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
-        payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount },
+        payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount, agents, codexDeletedUserMessageCount },
       });
     },
     pauseTurn: ({ system, event }) => {
@@ -750,6 +812,8 @@ export const threadsSystem = setup({
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = threadsDef.typeOf('INTERACTIVE_MSG_RESPONSE', event);
+
+      if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
 
       const result = repository.chatCommands.updateMessageBlockResponse({
         messageId: messageId as EARS.EntityId,

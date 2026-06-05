@@ -1,31 +1,56 @@
 <template>
   <div
     :class="[
-      'panel-resizer',
-      `panel-resizer--${orientation}`,
-      { 'panel-resizer--dragging': isDragging, 'panel-resizer--collapsed': collapsed }
+      'flex-shrink-0 z-10 transition-colors',
+      subtle
+        ? ['panel-resizer--subtle relative', isHorizontal ? 'w-0 h-full cursor-col-resize' : 'h-[3px] w-full cursor-row-resize']
+        : ['flex items-center justify-center', isHorizontal ? 'h-full cursor-col-resize w-1.5' : 'w-full cursor-row-resize h-1.5',
+           isDragging ? 'bg-neutral-600' : 'bg-neutral-800 hover:bg-neutral-700'],
+      isDragging && 'z-[1000]',
+      isDragging && subtle && 'is-dragging',
     ]"
     @mousedown="startDrag"
     @contextmenu="onContextMenu"
   >
-    <div class="panel-resizer__handle" />
+    <!-- Subtle: invisible handle, shows on hover/drag -->
+    <div
+      v-if="subtle"
+      :class="[
+        'panel-resizer__handle absolute z-[11] bg-transparent transition-colors',
+        isHorizontal
+          ? 'top-0 left-0 bottom-0 -right-2'
+          : 'left-0 -top-1 bottom-0 right-0',
+      ]"
+    />
+    <!-- Regular: visible pill indicator -->
+    <div
+      v-else
+      :class="[
+        'rounded-full bg-neutral-500',
+        isHorizontal
+          ? 'h-8 w-px ml-px shadow-[-1px_0_0_rgba(255,255,255,0.15)]'
+          : 'w-8 h-px shadow-[0_-1px_0_rgba(255,255,255,0.15)]',
+      ]"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 
 interface Props {
   orientation: 'horizontal' | 'vertical'
   min?: number
   max?: number
   collapsed?: boolean
+  subtle?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   min: 200,
   max: Infinity,
-  collapsed: false
+  collapsed: false,
+  subtle: false
 })
 
 const emit = defineEmits<{
@@ -33,6 +58,8 @@ const emit = defineEmits<{
   (e: 'click'): void
   (e: 'right-click'): void
 }>()
+
+const isHorizontal = computed(() => props.orientation === 'horizontal')
 
 const DRAG_THRESHOLD = 3
 
@@ -46,19 +73,14 @@ const startDrag = (e: MouseEvent) => {
   if (e.button !== 0) return
   e.preventDefault()
 
-  if (props.collapsed) {
-    emit('click')
-    return
-  }
-
   clickIntent = true
   startX = e.clientX
   startY = e.clientY
-  startPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
+  startPosition = isHorizontal.value ? e.clientX : e.clientY
 
   document.addEventListener('mousemove', handleDrag)
   document.addEventListener('mouseup', stopDrag)
-  document.body.style.cursor = props.orientation === 'horizontal' ? 'col-resize' : 'row-resize'
+  document.body.style.cursor = isHorizontal.value ? 'col-resize' : 'row-resize'
   document.body.style.userSelect = 'none'
 }
 
@@ -73,7 +95,7 @@ const handleDrag = (e: MouseEvent) => {
     isDragging.value = true
   }
 
-  const currentPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
+  const currentPosition = isHorizontal.value ? e.clientX : e.clientY
   const delta = currentPosition - startPosition
 
   emit('resize', delta)
@@ -94,8 +116,6 @@ const stopDrag = () => {
   isDragging.value = false
 }
 
-// Suppress the browser context menu on the resizer and emit a simple
-// `right-click` event. Callers can map it to whatever action fits.
 const onContextMenu = (e: MouseEvent) => {
   e.preventDefault()
   emit('right-click')
@@ -108,73 +128,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.panel-resizer {
-  position: relative;
-  flex-shrink: 0;
-  transition: background-color 0.2s;
-  z-index: 10;
-}
-
-.panel-resizer--horizontal {
-  width: 0;
-  height: 100%;
-  cursor: col-resize;
-}
-
-.panel-resizer--vertical {
-  width: 100%;
-  height: 3px;
-  cursor: row-resize;
-}
-
-.panel-resizer__handle {
-  position: absolute;
-  background-color: transparent;
-  transition: background-color 0.2s;
-}
-
-.panel-resizer--horizontal .panel-resizer__handle {
-  top: 0;
-  left: 0;
-  right: -8px;
-  bottom: 0;
-}
-
-.panel-resizer--horizontal.panel-resizer--collapsed .panel-resizer__handle {
-  left: -8px;
-  right: 0;
-  pointer-events: none;
-}
-
-.panel-resizer--horizontal.panel-resizer--collapsed::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -3px;
-  right: 0;
-  z-index: 12;
-  cursor: col-resize;
-}
-
-.panel-resizer--vertical .panel-resizer__handle {
-  left: 0;
-  top: -4px;
-  bottom: 0px;
-  right: 0;
-}
-
-.panel-resizer:hover .panel-resizer__handle,
-.panel-resizer--dragging .panel-resizer__handle {
-  background-color: rgba(59, 130, 246, 0.5); /* Blue highlight */
-}
-
-.panel-resizer--dragging {
-  z-index: 1000;
-}
-
-/* Ensure handle is also elevated */
-.panel-resizer__handle {
-  z-index: 11;
+.panel-resizer--subtle:hover .panel-resizer__handle,
+.panel-resizer--subtle.is-dragging .panel-resizer__handle {
+  background-color: rgb(82 82 82); /* neutral-600 */
 }
 </style>

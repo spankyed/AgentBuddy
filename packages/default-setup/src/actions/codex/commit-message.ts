@@ -1,0 +1,111 @@
+/**
+ * CDX: Commit Message — generates a commit message from a git diff using Codex CLI.
+ *
+ * Triggered by the `commit.generate` brain event when the user's default
+ * mode is set to Codex. Mirrors CC: Commit Message but uses `codex exec`.
+ */
+
+import type { ActionMeta, Services, Z } from '../../types';
+import { formatProviderError } from '../_helpers/format-provider-error';
+
+export const meta: ActionMeta = {
+  label: 'CDX: Commit Message',
+  description: 'Generate a git commit message from a diff using Codex CLI',
+  category: 'codex',
+  input: {
+    diff: { type: 'string', description: 'Git diff to generate a commit message from', required: true },
+    branch: { type: 'string', description: 'Current branch name', required: false },
+    repoName: { type: 'string', description: 'Repository name', required: false },
+  },
+};
+
+/**
+ * Clean up model output into a usable commit message.
+ */
+function postprocess(raw: string): string {
+  let msg = raw.trim();
+
+  // Strip markdown code fences
+  msg = msg.replace(/^```(?:\w+)?\n?/, '').replace(/\n?```$/, '').trim();
+
+  // Strip preamble like "Here is a commit message:" or "Sure, here's..."
+  msg = msg.replace(/^(?:here(?:'s| is) (?:a |the )?(?:commit )?message[:\s]*)/i, '').trim();
+  msg = msg.replace(/^(?:sure[,!.]?\s*)/i, '').trim();
+
+  // Strip surrounding quotes
+  if ((msg.startsWith('"') && msg.endsWith('"')) || (msg.startsWith("'") && msg.endsWith("'"))) {
+    msg = msg.slice(1, -1).trim();
+  }
+
+  // Strip Co-Authored-By trailers
+  msg = msg.replace(/\n*Co-Authored-By:.*$/gim, '').trim();
+
+  return msg;
+}
+
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+  _z: Z,
+  _flowId: string,
+) {
+  const { diff, branch, repoName } = params;
+
+  if (!diff?.trim()) {
+    services.emitter.sendToPlugin('code', {
+      type: 'commit.ERROR_RECEIVED',
+      data: { message: 'No diff provided' },
+    });
+    return { success: false, error: 'Empty diff' };
+  }
+
+  services.emitter.sendToPlugin('code', { type: 'commit.GENERATING_MESSAGE' });
+
+  try {
+    const fullPrompt = services.prompt.usePrompt('Commit Message', {
+      diff,
+      branch: branch || '',
+      repoName: repoName || '',
+    });
+
+    if (!fullPrompt) {
+      services.emitter.sendToPlugin('code', {
+        type: 'commit.ERROR_RECEIVED',
+        data: { message: 'Commit Message prompt template not found. Import the setup pack.' },
+      });
+      return { success: false, error: 'Prompt not found' };
+    }
+
+    // Codex CLI has no --system-prompt flag, so embed instructions in the prompt
+    const prompt = `Output ONLY the commit message. No preamble, no markdown, no backticks, no quotes.\n\n${fullPrompt}`;
+
+    const result = await services.cli.codex.exec(
+      ['exec', prompt, '--sandbox', 'read-only', '--ask-for-approval', 'never', '--skip-git-repo-check', '--ephemeral'],
+      { timeoutMs: 60_000, cwd: '/tmp' },
+    );
+
+    const message = postprocess(result.stdout);
+
+    if (!message) {
+      services.emitter.sendToPlugin('code', {
+        type: 'commit.ERROR_RECEIVED',
+        data: { message: 'Codex returned an empty response.' },
+      });
+      return { success: false, error: 'Empty response' };
+    }
+
+    services.emitter.sendToPlugin('code', {
+      type: 'commit.MESSAGE_GENERATED',
+      data: { message },
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    const errorMessage = formatProviderError(error, 'Codex');
+    services.emitter.sendToPlugin('code', {
+      type: 'commit.ERROR_RECEIVED',
+      data: { message: errorMessage },
+    });
+    return { success: false, error: errorMessage };
+  }
+}

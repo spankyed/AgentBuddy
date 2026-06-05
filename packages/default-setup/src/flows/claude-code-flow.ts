@@ -149,14 +149,14 @@ export default {
       "cc.stream.paused",
       [[
         action("CC: Stream Paused", {
-          label: "awaiting-permission",
+          label: "awaiting-input",
           map: {
             threadId: "$.event.data.payload.threadId",
             toolName: "$.event.data.payload.toolName",
           },
         }),
       ]],
-      "Permission requested",
+      "Awaiting user input",
     ),
     on(
       "cc.stream.completed",
@@ -242,54 +242,62 @@ export default {
     on(
       "thread.revert",
       [[
-        // Stop the active turn first so the stream consumer exits cleanly
-        // before any revert/rewind/summarize handler mutates session state.
-        // Sequential within this track — pause completes before the branch.
-        action("CC: Pause Turn", {
-          label: "pause-before-revert",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-          },
-        }),
+        // Only handle reverts that affected Claude Code messages.
         branch([
           {
-            if: "$.event.data.payload.kind == 'revert'",
+            if: "$.event.data.payload.agents.claudeCode == true",
             steps: [
-              action("CC: Handle Revert", {
-                label: "revert",
+              // Stop the active turn first so the stream consumer exits cleanly
+              // before any revert/rewind/summarize handler mutates session state.
+              // Sequential within this track — pause completes before the branch.
+              action("CC: Pause Turn", {
+                label: "pause-before-revert",
                 map: {
                   threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
                 },
               }),
-            ],
-          },
-          {
-            if: "$.event.data.payload.kind == 'rewind'",
-            steps: [
-              action("CC: Handle Rewind", {
-                label: "rewind",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
-                  userCliUuid: "$.event.data.payload.userCliUuid",
+              branch([
+                {
+                  if: "$.event.data.payload.kind == 'revert'",
+                  steps: [
+                    action("CC: Handle Revert", {
+                      label: "revert",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                      },
+                    }),
+                  ],
                 },
-              }),
-            ],
-          },
-          {
-            if: "$.event.data.payload.kind == 'summarize'",
-            steps: [
-              action("CC: Handle Summarize", {
-                label: "summarize",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  messageId: "$.event.data.payload.messageId",
+                {
+                  if: "$.event.data.payload.kind == 'rewind'",
+                  steps: [
+                    action("CC: Handle Rewind", {
+                      label: "rewind",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                        userCliUuid: "$.event.data.payload.userCliUuid",
+                      },
+                    }),
+                  ],
                 },
-              }),
+                {
+                  if: "$.event.data.payload.kind == 'summarize'",
+                  steps: [
+                    action("CC: Handle Summarize", {
+                      label: "summarize",
+                      map: {
+                        threadId: "$.event.data.payload.threadId",
+                        messageId: "$.event.data.payload.messageId",
+                      },
+                    }),
+                  ],
+                },
+              ], undefined, "Route Revert Kind"),
             ],
           },
-        ], undefined, "Route Revert Kind"),
+        ], undefined, "Gate CC Revert"),
       ]],
       "Thread reverted",
     ),
@@ -329,26 +337,33 @@ export default {
     ),
     // ─── DB query generation ──────────────────────────────────────────
     // The database system forwards GENERATE_AI_QUERY as a db.query brain
-    // event. Routes to the appropriate action based on mode.
+    // event. Gated on provider, then routes by mode.
     on(
       "db.query",
       [[
         branch([
           {
-            if: "$.event.data.payload.mode == 'transaction'",
+            if: "$.event.data.payload.provider == 'Claude Code'",
             steps: [
-              action("CC: DB Transaction", {
-                label: "db-transaction",
-                map: { prompt: "$.event.data.payload.prompt" },
-              }),
+              branch([
+                {
+                  if: "$.event.data.payload.mode == 'transaction'",
+                  steps: [
+                    action("CC: DB Transaction", {
+                      label: "db-transaction",
+                      map: { prompt: "$.event.data.payload.prompt" },
+                    }),
+                  ],
+                },
+              ], [
+                action("CC: DB Query", {
+                  label: "db-query",
+                  map: { prompt: "$.event.data.payload.prompt" },
+                }),
+              ], "DB Mode Router"),
             ],
           },
-        ], [
-          action("CC: DB Query", {
-            label: "db-query",
-            map: { prompt: "$.event.data.payload.prompt" },
-          }),
-        ], "DB Mode Router"),
+        ], undefined, "CC Provider Gate"),
       ]],
       "DB query generation",
     ),
@@ -356,14 +371,21 @@ export default {
     on(
       "commit.generate",
       [[
-        action("CC: Commit Message", {
-          label: "commit-message",
-          map: {
-            diff: "$.event.data.payload.diff",
-            branch: "$.event.data.payload.branch",
-            repoName: "$.event.data.payload.repoName",
+        branch([
+          {
+            if: "$.event.data.payload.provider == 'Claude Code'",
+            steps: [
+              action("CC: Commit Message", {
+                label: "commit-message",
+                map: {
+                  diff: "$.event.data.payload.diff",
+                  branch: "$.event.data.payload.branch",
+                  repoName: "$.event.data.payload.repoName",
+                },
+              }),
+            ],
           },
-        }),
+        ], undefined, "CC Commit Gate"),
       ]],
       "Commit message generation",
     ),

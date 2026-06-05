@@ -155,7 +155,7 @@ async function importCcSessions(services: Services, toImport: any[]) {
           messages.push({ text, sender: 'user', forkable: false, ...(uuid && { context: { cliUuid: uuid } }) });
         } else if ((entry as any).type === 'assistant') {
           const text = extractCcText(msg?.content) || '(tool use only)';
-          messages.push({ text, sender: 'assistant', forkable: true, ...(uuid && { context: { cliUuid: uuid } }) });
+          messages.push({ text, sender: 'assistant', forkable: !!uuid, ...(uuid && { context: { cliUuid: uuid } }) });
         }
       }
 

@@ -1,5 +1,166 @@
 -e # Changelog
 
+## v0.3.8 (2026-06-04)
+
+### Features
+- plugins): pin actions, flows, library, and prompts plugins by default
+- tiptap): add Cmd/Ctrl+Enter shortcut to always submit
+
+### Fixes
+- code): revert directory menu to right-aligned position in CodePanelHeader
+- browser): hide overlay for all menus and navigate with no active tab
+
+### Refactors
+- toolbar): simplify plugin menu by pre-sorting and removing computed wrappers
+
+### Other
+- Revert "chore(release): v0.3.8"
+- style(code): reduce spacing in header actions and add padding to explorer buttons
+- style(code): align directory menu to the right in CodePanelHeader
+- style(browser): make tab close button always visible and adjust color
+
+-e # Changelog
+
+## v0.3.7 (2026-06-01)
+
+### Features
+- threads): add archive/unarchive support to thread views
+- browser): auto-focus address bar when opening blank new tab
+- browser): add lazy tab loading to defer URL loads until tab is selected
+- browser): add tab persistence with EARS repository and sync support
+- browser): add address bar autocomplete with inline completion
+- browser): add keyboard shortcuts via before-input-event
+- browser): add tab context menu with duplicate, mute, and close actions
+- browser): show friendly error page on navigation failure
+- browser): add loading spinner to browser tabs
+- browser): add middle-click on address bar to open URL in new tab
+- browser): add DevTools toggle button to nav bar feat(browser): add keyboard shortcuts and address bar focus
+- browser): add embedded in-app browser plugin
+- settings): add drag-and-drop reordering for projects
+- tabs): auto-open rename input when creating a new tab group
+- threads): include ad-hoc thread tags in filter options
+- pull-request): add GIT_STATUS_REFRESHED event type to PR state
+- codex): add Network Access and Web Search toggles to session artifact
+- codex): auto-approve tool requests in auto_review mode and show aside text on approvals
+
+### Fixes
+- code): adjust CodePanelHeader layout for proper flex alignment
+- browser): hide browser view when tab context menu opens
+- gh-cli): suppress noisy "PR access probe failed" log for non-git directories
+- browser): delay blur to prevent autocomplete click from being swallowed
+- browser): improve tab state and lazy loading behavior
+- browser): sync tabs to backend using current context instead of recalculating
+- browser): prevent duplicate tabs on IPC.TAB_CREATED events
+- browser): remove border radius from browser tab views
+- browser): fix WebContentsView overflow with zoom-aware bounds
+- browser): fix favicon fallback when image fails to load
+- browser): fix tab creation race and mounting edge cases
+- browser): fix listener leak, dead code, and missing state sync
+- threads): only auto-focus group name input when triggered by autoEdit
+- artifacts): use artifact's own color for selected state instead of always blue
+- editor): re-dispatch Cmd+Shift+F to window instead of triggering in-editor find
+- canvas-area): lower z-index from 50 to 0 to fix stacking context
+- notes): improve search input UX with auto-select and close button
+- search): trigger search directly on pattern change and optimize result expansion
+- editor): redirect Cmd+Shift+F to local find in standalone Monaco
+- tag-input): increase z-index of dropdown to prevent stacking context issues
+- code): prevent PR panel from resetting to file view on git changes
+
+### Refactors
+- ui): reuse ContextMenuPopup in toolbar and add separator support
+- browser): extract helper functions and reduce inline duplication
+- toolbar): replace ContextMenuPopup with inline teleported menu
+- tab-groups): extract tab group types, colors, and persistence into shared module
+- browser): clean up browser plugin code
+- browser): resolve main window from IPC event sender instead of searching by title
+- renderer): simplify chat maximize/restore by reusing PanelResizer
+
+### Other
+- style(panel-resizer): use subtle old-style resizer for code plugin terminal
+- Revert "chore(release): v0.3.7"
+- Merge pull request #160 from spankyed/as/in-app-browser
+- style(browser): move tab close button before favicon in tab bar
+- style(threads): add @container class to recent threads popup
+- style(canvas-area): remove unnecessary z-0 class from container
+- style(panel-resizer): replace resizer with SimGPT-style visible bar
+- style(panel-resizer): make collapsed panel divider visible with solid background
+- style(panel-resizer): restyle resizers - Add visible drag handle indicator dot
+- style(threads): hide button labels on small screens using container queries
+- style(renderer): remove inline background-color from canvas panel
+
+-e # Changelog
+
+## v0.3.6 (2026-05-31)
+
+### Features
+- explorer): add "Open in Video Player" context menu option for video files
+- code): add fallback UI for unsupported video formats
+- code): add video file playback support in editor
+- artifacts): add dynamic color field to artifact pills
+- explorer): add "Open in Video Player" context menu for video files
+- terminal): add right-click context menu for panel terminals
+- codex-session): add click-to-copy thread ID and resume session in terminal
+- threads): add copy thread ID to clipboard context menu option
+- chat): auto-restore chat when selecting a plugin via toolbar
+- threads): add agent-aware routing for thread revert operations
+- default-setup): route commit/db-query generation through user's default provider
+- renderer): delegate navigation history to plugins to make back/forward navigate within plugins instead of between them
+- notes): add keyboard navigation for search results
+
+### Fixes
+- claude-code): clear session on worktree toggle mismatch
+- api): handle race condition in updateMessageState during thread deletion
+- threads): guard against missing message in interactive response handler
+- terminal): preserve custom titles when restoring terminals
+- editor): fix find widget close button blocked by tooltip overlay
+- fork): instant navigation, flow gates, and double-click protection
+- threads): sort threads by timestamp when pinned status is equal
+- threads): add error handling to forwardUserMessage and default empty thread topics
+- notes): track viewed note separately so tasks appear in recents
+- threads): add forkPending guard to prevent race between fork navigation and session state
+- codex): auto-hide cancelled approval blocks with asideText
+- fork): instant navigation + prevent double-click
+- codex): cancel queued messages on pause to prevent auto-restart
+- codex): fix queued messages not unqueuing and approval blocks not auto-hiding
+- renderer): prevent status indicator and statusline from overlapping canvas area
+- claude-code): prevent stuck isRunning state in compact and summarize flows
+- claude-code): prevent messaging during compaction and re-entrant compaction
+- codex): restore working chatState after tool approval
+- git): use case-insensitive dedup for branch listing
+- codex): swallow unhandled promise rejections in killTurn
+
+### Refactors
+- prompts): move diff content before rules in commit message template
+-  rename awaiting-permission status to awaiting-input
+- threads): make fork logic agent-agnostic
+- codex): add --skip-git-repo-check and --ephemeral flags to exec calls
+-  inline TRAIL_CLICK handler and fix nav history tracking
+- claude-code): simplify compaction concurrency code
+
+### Other
+- Fix provider settings persistence on restart
+- Fix session expired error when toggling worktree on existing session
+- Fix copyMessagesUpTo silently copying all messages when fork point not found
+- Bump chat input collapse breakpoint from @md to @lg
+- Fix Claude Code forkability for messages without CLI checkpoints
+- Add bypass commands and highlight active bypass state
+- monaco upgrade continued
+- chore(deps): upgrade monaco-editor to v0.55.1 and refresh lockfile
+- Add refresh button to explorer panel header
+
+-e # Changelog
+
+## v0.3.5 (2026-05-31)
+
+### Fixes
+- cli): codex cli was not resolve correct path, always tried command instead of user settings.
+- default-setup): replay Codex queued messages by action label
+- ui): improve canvas header scrolling and panel dragging
+- notes): make the notes inspection panel header a window drag region, with interactive controls excluded so they remain clickable.
+- ui): hide canvas header and thread tab scrollbars
+
+-e # Changelog
+
 ## v0.3.4 (2026-05-22)
 
 ### Fixes

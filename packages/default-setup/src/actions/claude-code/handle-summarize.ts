@@ -28,7 +28,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, getClaudeState, killTurn, updateChatState } from './_helpers/thread-context';
+import { persistClaudeState, getClaudeState, killTurn, updateChatState, setRunning } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Summarize',
@@ -60,19 +60,19 @@ export async function action(
   // clean up plan drafts, approval blocks, queued messages, and all
   // mid-turn flags if the pause step was skipped or incomplete.
   killTurn(services, threadId);
+  // Re-acquire isRunning immediately after killTurn to prevent messages
+  // from slipping through during the validation window below.
+  setRunning(services, threadId, true);
 
-  // Bail #1: no live session to compact.
-  if (!state?.sessionId) {
+  const bail = (text: string, reason: string) => {
+    setRunning(services, threadId, false);
     updateChatState(services, threadId as EntityId, 'idle');
-    services.chat.sendBlockMessage({
-      threadId: threadId as EntityId,
-      text: '⚠️ Nothing to summarize — no active Claude session yet.',
-      blocks: [],
-      forkable: false,
-    });
-    log.info('summarize skipped — no active Claude session', { threadId, messageId });
-    return { success: false, reason: 'no active session' };
-  }
+    services.chat.sendBlockMessage({ threadId: threadId as EntityId, text, blocks: [], forkable: false });
+    log.info(`summarize skipped — ${reason}`, { threadId, messageId });
+    return { success: false, reason } as const;
+  };
+
+  if (!state?.sessionId) return bail('⚠️ Nothing to summarize — no active Claude session yet.', 'no active session');
 
   // Find the truncation anchor — the last surviving assistant message's
   // `cliUuid`. The system already soft-deleted the pivot and everything
@@ -88,19 +88,7 @@ export async function action(
   );
   const cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
 
-  // Bail #2: no prior assistant turn to anchor at. `/compact` needs a
-  // non-empty transcript to summarize.
-  if (!cliUuid) {
-    updateChatState(services, threadId as EntityId, 'idle');
-    services.chat.sendBlockMessage({
-      threadId: threadId as EntityId,
-      text: '⚠️ Nothing to summarize — no prior assistant turn before this point.',
-      blocks: [],
-      forkable: false,
-    });
-    log.info('summarize skipped — no prior assistant cliUuid to anchor at', { threadId, messageId });
-    return { success: false, reason: 'no prior assistant turn' };
-  }
+  if (!cliUuid) return bail('⚠️ Nothing to summarize — no prior assistant turn before this point.', 'no prior assistant turn');
 
   // Arm the one-shot revert flag. The next chat action consumes this and
   // passes `--fork-session --resume-session-at <cliUuid>` to the CLI.
@@ -129,12 +117,31 @@ export async function action(
 
   // Hand off to the existing chat action. It reads `revertTo`, applies
   // fork+truncate, and runs `/compact` against the truncated session.
-  // Fire-and-forget: the chat action streams its own response.
-  await services.action.getAndExecute('Claude Code Chat', {
-    threadId,
-    text: '/compact',
-    messageId: synth.id,
-  });
+  // Release isRunning so the chat action can re-acquire it synchronously
+  // (no race in single-threaded Node.js — setRunning(false) and the
+  // chat action's setRunning(true) execute in the same microtask).
+  try {
+    setRunning(services, threadId, false);
+    await services.action.getAndExecute('Claude Code Chat', {
+      threadId,
+      text: '/compact',
+      messageId: synth.id,
+    });
+  } catch (err: any) {
+    // Safety net: if the chat action throws before its own try/catch
+    // (e.g. between setRunning(true) and the query), isRunning would be
+    // stuck true forever. Normalise state and surface the failure.
+    const errMsg = err?.message || 'Summarize dispatch failed';
+    log.error('summarize getAndExecute failed', { message: errMsg, stack: err?.stack });
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    updateChatState(services, threadId as EntityId, 'idle');
+    services.chat.sendBlockMessage({
+      threadId: threadId as EntityId,
+      text: `⚠️ Couldn't start summarize turn: ${errMsg}`,
+      blocks: [],
+      forkable: false,
+    });
+  }
 
   log.debug('summarize dispatched /compact turn', { threadId, messageId, cliUuid });
   return { success: true, cliUuid, syntheticMessageId: synth.id };

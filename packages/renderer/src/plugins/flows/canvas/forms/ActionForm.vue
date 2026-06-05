@@ -185,6 +185,7 @@
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -323,16 +324,12 @@ const handleActionChange = (action: ActionEntity | null) => {
 }
 
 const createAction = () => {
-  const actionsActor = applicationState.system.get('actions');
-  actionsActor.send({ type: 'ACTION.CREATE' });
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' });
+  navigateToPlugin('actions', { type: 'ACTION.CREATE' });
 }
 
 const viewAction = () => {
   if (selectedAction.value) {
-    const actionsActor = applicationState.system.get('actions');
-    actionsActor.send({ type: 'ACTION.SELECT', actionId: selectedAction.value.id });
-    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' });
+    navigateToPlugin('actions', { type: 'ACTION.SELECT', actionId: selectedAction.value.id });
   }
 }
 </script>

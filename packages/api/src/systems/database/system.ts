@@ -131,10 +131,13 @@ export const databaseSystem = setup({
         return;
       }
 
+      const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as any;
+      const provider = threadsSettings?.chat?.defaultMode || 'Claude Code';
+
       getActor(system, brain).send({
         type: 'HANDLE_BRAIN_EVENT',
         eventType: 'db.query',
-        payload: { prompt: prompt.trim(), mode: mode ?? 'query' },
+        payload: { prompt: prompt.trim(), mode: mode ?? 'query', provider },
       });
     },
     getTraceFlows: ({ system }) => {

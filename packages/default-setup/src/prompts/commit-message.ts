@@ -21,6 +21,11 @@ export function template(params: Record<string, any>) {
 
   return `Generate a git commit message for the following changes.
 
+${metadata ? metadata + '\n' : ''}
+Diff:
+
+${diff}
+
 Rules:
 - Use conventional commits format: type(scope): description
 - Types: feat, fix, refactor, docs, chore, style, test, perf, ci, build
@@ -29,10 +34,5 @@ Rules:
 - Use imperative mood ("add" not "added", "fix" not "fixed")
 - If the diff includes multiple logical changes, summarize the primary change on the subject line and add bullet points on subsequent lines
 - Use the branch name as a hint for the change's purpose, but base the message on the actual diff
-- Output ONLY the commit message — no preamble, no markdown, no backticks, no quotes, no explanation
-
-${metadata ? metadata + '\n' : ''}
-Diff:
-
-${diff}`;
+- Output ONLY the commit message — no preamble, no markdown, no backticks, no quotes, no explanation`;
 }

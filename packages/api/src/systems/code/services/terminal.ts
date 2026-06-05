@@ -384,6 +384,7 @@ class TerminalService {
         const terminalInfo: TerminalInfo = {
           id: persistedTerminal.id,
           title: persistedTerminal.title,
+          customTitle: persistedTerminal.customTitle,
           pid: ptyProcess.pid,
           shell: persistedTerminal.shell,
           cwd: persistedTerminal.cwd,
