@@ -202,6 +202,7 @@ import ContextUsageBlock from './blocks/ContextUsageBlock.vue'
 import SessionListBlock from './blocks/SessionListBlock.vue'
 import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { id as threadsId } from '@/plugins/threads/state'
 
 interface Props {
@@ -294,13 +295,8 @@ const handleNavigate = (link: Link) => {
     // Open external URL in default browser
     window.open(data.url, '_blank')
   } else {
-    // target is a plugin name - send event to that plugin's actor
-    const plugin = applicationState.system.get(target)
-    if (plugin) {
-      plugin.send(data)
-    } else {
-      console.warn(`Plugin "${target}" not found`)
-    }
+    // target is a plugin name - activate it and send the event
+    navigateToPlugin(target, data)
   }
 }
 </script>
