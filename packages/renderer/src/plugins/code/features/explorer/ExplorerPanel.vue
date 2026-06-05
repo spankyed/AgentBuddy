@@ -9,7 +9,7 @@
         <button
           v-if="baseDirectory"
           @click="handleCreateNewFolder()"
-          class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
+          class="p-1.5 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
           title="Create new folder"
         >
           <FolderPlus :size="16" />
@@ -17,7 +17,7 @@
         <button
           v-if="baseDirectory"
           @click="explorerActor?.send({ type: 'explorer.REFRESH_TREE' })"
-          class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
+          class="p-1.5 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
           title="Refresh"
         >
           <RefreshCw :size="16" />
