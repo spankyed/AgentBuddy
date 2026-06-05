@@ -3,7 +3,7 @@ import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import { application } from '@/core/actors/application';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { getCommentDatabaseId } from './comment-id';
 
 export type { GhPullRequest, GhPRComment }
@@ -343,10 +343,8 @@ export const pullRequestState = setup({
       },
     }),
 
-    navigateToHelp: ({ system }) => {
-      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
-      const settingsActor = system.get('settings')
-      if (settingsActor) settingsActor.send({ type: 'TAB.SELECT', tab: 'help' })
+    navigateToHelp: () => {
+      navigateToPlugin('settings', [{ type: 'TAB.SELECT', tab: 'help' }]);
     },
 
     handleOpenPRsReceived: assign({

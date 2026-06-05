@@ -121,6 +121,7 @@ import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
 import { id as actionsId, type ActionsState } from '@/plugins/actions/state';
 
@@ -176,27 +177,13 @@ function handleKeydown(event: KeyboardEvent) {
 function openInEditor() {
   if (!props.action) return;
 
-  // First, switch to the code plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
+  navigateToPlugin('code', { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } });
 
-  // Give the code plugin time to activate, then send the action to open
+  // Child actor needs time to initialize after plugin activation
   setTimeout(() => {
-    const codeActor = applicationState.system.get('code');
-    if (codeActor) {
-      // First ensure the actions panel is selected
-      codeActor.send({
-        type: 'UPDATE_STATE',
-        updates: { selectedPanel: 'actions' }
-      });
-
-      // Then send the open action event to the actions child actor
-      const actionsActor = codeActor.system.get('codeActions');
-      if (actionsActor) {
-        actionsActor.send({
-          type: 'codeActions.OPEN_ACTION',
-          actionId: props.action!.id
-        });
-      }
+    const actionsActor = applicationState.system.get('code')?.system.get('codeActions');
+    if (actionsActor) {
+      actionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: props.action!.id });
     }
   }, 10);
 }

@@ -83,6 +83,7 @@ import ChatArea from '@/core/components/layout/chat-area.vue'
 import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import Router from '@/core/components/layout/router.vue'
 import BrainInspectPanel from '@/plugins/brain/panel.vue'
 import type { ContextMenuItem } from '@/core/context-menu'
@@ -166,12 +167,10 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
-    send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
-    const settingsActor = applicationState.system.get('settings')
-    if (settingsActor) {
-      settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' })
-      settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: event.pluginId })
-    }
+    navigateToPlugin('settings', [
+      { type: 'TAB.SELECT', tab: 'plugins' },
+      { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
+    ])
     return
   }
 

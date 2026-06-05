@@ -14,7 +14,7 @@ import { trpc } from '@/core/trpc';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
-import { application } from '@/core/actors/application';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import type { ThreadTabGroup, TabGroupColor } from '@/plugins/threads/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/plugins/threads/canvas/agent/tabs/types';
@@ -817,13 +817,11 @@ const threadsState = setup({
         phaseByModeName: { ...context.phaseByModeName, [context.mode]: newPhase }
       };
     }),
-    navigateToSecrets: ({ system }) => {
-      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
-      const settingsActor = system.get('settings');
-      if (settingsActor) {
-        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
-        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
-      }
+    navigateToSecrets: () => {
+      navigateToPlugin('settings', [
+        { type: 'TAB.SELECT', tab: 'general' },
+        { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
+      ]);
     },
     updateApiKeyStatus: assign(({ event }) => ({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys

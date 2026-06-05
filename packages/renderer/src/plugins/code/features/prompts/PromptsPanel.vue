@@ -237,6 +237,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -473,14 +474,7 @@ const selectPrompt = (prompt: PromptEntity) => {
 }
 
 const goToPrompt = (prompt: PromptEntity) => {
-  // Switch to prompts plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'prompts' })
-
-  // Select the prompt in the prompts plugin
-  const promptsPluginActor = applicationState.system.get('prompts')
-  if (promptsPluginActor) {
-    promptsPluginActor.send({ type: 'PROMPT.SELECT', promptId: prompt.id })
-  }
+  navigateToPlugin('prompts', { type: 'PROMPT.SELECT', promptId: prompt.id })
 }
 
 const createPromptInline = () => {

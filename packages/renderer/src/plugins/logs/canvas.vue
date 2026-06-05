@@ -364,6 +364,7 @@ import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from './data-renderer.vue';
 import { applicationState } from '@/main';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();
@@ -500,17 +501,10 @@ const copyLogs = async () => {
 };
 
 const goToExcludedSourcesSettings = () => {
-  // Navigate to settings plugin
-  const settingsActor = applicationState.system.get('settings');
-
-  // First select the Plugins tab
-  settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' });
-
-  // Then select the logs plugin within that tab
-  settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'logs' });
-
-  // Switch to settings plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
+  navigateToPlugin('settings', [
+    { type: 'TAB.SELECT', tab: 'plugins' },
+    { type: 'PLUGIN.SELECT', pluginId: 'logs' }
+  ]);
 };
 
 // Wrapper for the imported highlight function

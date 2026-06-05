@@ -67,6 +67,7 @@ import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { truncatePath } from '@/core/utils/path-truncation'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { useSelector } from '@xstate/vue'
 
 interface Project {
@@ -91,12 +92,10 @@ const getTruncatedPath = (path: string) => {
 }
 
 const goToProjects = () => {
-  // Navigate to settings plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
-
-  // Switch to general tab and navigate to projects
-  settingsActor?.send({ type: 'TAB.SELECT', tab: 'general' })
-  settingsActor?.send({ type: 'GENERAL_NAV.SELECT', item: 'projects' })
+  navigateToPlugin('settings', [
+    { type: 'TAB.SELECT', tab: 'general' },
+    { type: 'GENERAL_NAV.SELECT', item: 'projects' }
+  ])
 }
 </script>
 

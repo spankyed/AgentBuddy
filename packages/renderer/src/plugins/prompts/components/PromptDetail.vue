@@ -115,6 +115,7 @@ import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
 import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
 import { applicationState } from '@/main';
+import { navigateToPlugin } from '@/core/utils/navigate';
 import { id as promptsId, type PromptsState } from '@/plugins/prompts/state';
 
 const props = defineProps<{
@@ -187,27 +188,13 @@ function formatDate(timestamp?: number) {
 function openInEditor() {
   if (!props.prompt) return;
 
-  // First, switch to the code plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
+  navigateToPlugin('code', { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } });
 
-  // Give the code plugin time to activate, then send the prompt to open
+  // Child actor needs time to initialize after plugin activation
   setTimeout(() => {
-    const codeActor = applicationState.system.get('code');
-    if (codeActor) {
-      // First ensure the prompts panel is selected
-      codeActor.send({
-        type: 'UPDATE_STATE',
-        updates: { selectedPanel: 'prompts' }
-      });
-
-      // Then send the open prompt event to the prompts child actor
-      const promptsActor = codeActor.system.get('codePrompts');
-      if (promptsActor) {
-        promptsActor.send({
-          type: 'codePrompts.OPEN_PROMPT',
-          promptId: props.prompt!.id
-        });
-      }
+    const promptsActor = applicationState.system.get('code')?.system.get('codePrompts');
+    if (promptsActor) {
+      promptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt!.id });
     }
   }, 10);
 }

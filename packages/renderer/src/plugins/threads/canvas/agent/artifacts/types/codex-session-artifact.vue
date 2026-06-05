@@ -270,6 +270,7 @@ import { useSelector } from '@xstate/vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 import { id as threadsId } from '@/plugins/threads/state'
 import { trpc } from '@/core/trpc'
 
@@ -457,7 +458,7 @@ function openTerminalTab() {
     command: `codex resume ${content.value.threadId}`,
     cwd: content.value.cwd || undefined,
   })
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
+  navigateToPlugin('code')
 }
 
 function updateSessionSettings(payload: { approvalMode?: ApprovalMode; sandbox?: SandboxMode; networkAccess?: boolean; webSearch?: 'live' | 'cached' | 'disabled' }) {

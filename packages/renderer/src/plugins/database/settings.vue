@@ -69,6 +69,7 @@ import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@app/api'
 import { applicationState } from '@/main'
+import { navigateToPlugin } from '@/core/utils/navigate'
 
 interface Props {
   settings?: DatabaseSettings
@@ -100,9 +101,7 @@ const saveHotkeys = () => {
 
 // Open backup & restore page
 const openBackupRestore = () => {
-  const databaseActor = applicationState.system.get('database')
-  databaseActor.send({ type: 'VIEW_BACKUP' })
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'database' })
+  navigateToPlugin('database', { type: 'VIEW_BACKUP' })
 }
 
 // Reset database function

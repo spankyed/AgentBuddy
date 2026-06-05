@@ -1,5 +1,6 @@
 import { History, Library, Folder, NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
 import type { Component } from 'vue'
+import { navigateToPlugin } from '@/core/utils/navigate'
 
 type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
 
@@ -23,8 +24,8 @@ export const REF_TYPES = {
       ['path', { d: 'M3 3v5h5' }],
       ['path', { d: 'M12 7v5l4 2' }],
     ],
-    navigate: (system: any, refId: string) => {
-      system.get('threads').send({ type: 'SELECT_THREAD', id: refId })
+    navigate: (_system: any, refId: string) => {
+      navigateToPlugin('threads', { type: 'SELECT_THREAD', id: refId })
     },
   },
   document: {
@@ -38,8 +39,8 @@ export const REF_TYPES = {
       ['path', { d: 'M8 8v12' }],
       ['path', { d: 'M4 4v16' }],
     ],
-    navigate: (system: any, refId: string) => {
-      system.get('library').send({ type: 'EDIT_DOCUMENT', documentId: refId })
+    navigate: (_system: any, refId: string) => {
+      navigateToPlugin('library', { type: 'EDIT_DOCUMENT', documentId: refId })
     },
   },
   folder: {
@@ -50,8 +51,8 @@ export const REF_TYPES = {
     svgElements: [
       ['path', { d: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' }],
     ],
-    navigate: (system: any, refId: string) => {
-      system.get('library').send({ type: 'NAVIGATE_TO_FOLDER', folderId: refId })
+    navigate: (_system: any, refId: string) => {
+      navigateToPlugin('library', { type: 'NAVIGATE_TO_FOLDER', folderId: refId })
     },
   },
   note: {
@@ -69,8 +70,8 @@ export const REF_TYPES = {
       ['path', { d: 'M9.5 12H16' }],
       ['path', { d: 'M9.5 16H14' }],
     ],
-    navigate: (system: any, refId: string) => {
-      system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
+    navigate: (_system: any, refId: string) => {
+      navigateToPlugin('notes', { type: 'NOTE.OPEN', noteId: refId })
     },
   },
   task: {
@@ -82,8 +83,8 @@ export const REF_TYPES = {
       ['circle', { cx: '12', cy: '12', r: '10' }],
       ['path', { d: 'm9 12 2 2 4-4' }],
     ],
-    navigate: (system: any, refId: string) => {
-      system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
+    navigate: (_system: any, refId: string) => {
+      navigateToPlugin('notes', { type: 'NOTE.OPEN', noteId: refId })
     },
   },
   tasklist: {
@@ -98,8 +99,8 @@ export const REF_TYPES = {
       ['path', { d: 'M13 12h8' }],
       ['path', { d: 'M13 18h8' }],
     ],
-    navigate: (system: any, refId: string) => {
-      system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
+    navigate: (_system: any, refId: string) => {
+      navigateToPlugin('notes', { type: 'NOTE.OPEN', noteId: refId })
     },
   },
 } as const satisfies Record<string, RefTypeConfig>
