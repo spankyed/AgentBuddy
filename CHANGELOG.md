@@ -1,5 +1,23 @@
 -e # Changelog
 
+## v0.3.8 (2026-06-04)
+
+### Features
+- plugins): pin actions, flows, library, and prompts plugins by default
+- tiptap): add Cmd/Ctrl+Enter shortcut to always submit
+
+### Fixes
+- browser): hide overlay for all menus and navigate with no active tab
+
+### Refactors
+- toolbar): simplify plugin menu by pre-sorting and removing computed wrappers
+
+### Other
+- style(code): align directory menu to the right in CodePanelHeader
+- style(browser): make tab close button always visible and adjust color
+
+-e # Changelog
+
 ## v0.3.7 (2026-06-01)
 
 ### Features
