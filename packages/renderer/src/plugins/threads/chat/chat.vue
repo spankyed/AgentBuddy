@@ -259,7 +259,7 @@ function forceScrollToBottom() {
 function handleStatuslineClick() {
   const cwd = statusLineCwd.value
   if (!cwd) return
-  applicationState.system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
+  navigateToPlugin('code')
   applicationState.system.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
