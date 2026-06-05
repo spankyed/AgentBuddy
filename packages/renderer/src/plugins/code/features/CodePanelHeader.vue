@@ -14,10 +14,9 @@
           <slot name="title-extra" />
         </div>
       </div>
-      <div class="flex items-center flex-1 min-w-0">
+      <div class="flex items-center gap-1 shrink-0">
         <BaseDirectoryMenu
           v-if="baseDirectory && showDirectoryMenu"
-          class="ml-auto"
           :base-directory="baseDirectory"
           @open-directory="handleDirectorySelect"
           @open-terminal="terminalActor?.send({ type: 'terminal.CREATE', cwd: baseDirectory })"
@@ -35,7 +34,7 @@
       <div class="flex-1 min-w-0">
         <slot name="toolbar" />
       </div>
-      <div class="flex items-center gap-1 px-2 py-1.5 flex-shrink-0">
+      <div class="flex items-center gap-1.5 px-2 py-1.5 flex-shrink-0">
         <button
           v-for="panel in codePanels"
           :key="panel.id"
