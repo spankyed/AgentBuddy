@@ -57,18 +57,19 @@ export async function action(_params: Record<string, any>, services: Services) {
       updates.chatState = 'idle';
     }
 
-    services.repository.threadCommands.update(thread.id, updates);
-
-    // Also fix stale claude-session artifact chatState on this thread
-    const artifact = services.repository.threadQueries.findArtifactByType(thread.id, 'claude-session' as any);
-    if (artifact) {
-      const content = artifact.content as any;
-      if (content?.chatState === 'working') {
-        services.repository.threadCommands.updateArtifact(artifact.id, { content: { ...content, chatState: 'idle' } });
-        artifactsFixed++;
+    if (needsContextRepair) {
+      // Also fix stale claude-session artifact chatState on this thread
+      const artifact = services.repository.threadQueries.findArtifactByType(thread.id, 'claude-session' as any);
+      if (artifact) {
+        const content = artifact.content as any;
+        if (content?.chatState === 'working') {
+          services.repository.threadCommands.updateArtifact(artifact.id, { content: { ...content, chatState: 'idle' } });
+          artifactsFixed++;
+        }
       }
     }
 
+    services.repository.threadCommands.update(thread.id, updates);
     threadsFixed++;
   }
 
