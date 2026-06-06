@@ -135,13 +135,19 @@ export default {
             hadErrors: "$.event.data.payload.hadErrors",
           },
         }),
-        action("CDX: Goal Continue", {
-          label: "goal-continue",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-            hadErrors: "$.event.data.payload.hadErrors",
+        branch([
+          {
+            if: "$.lastStep.result.shouldContinueGoal == true",
+            steps: [
+              action("CDX: Goal Continue", {
+                label: "goal-continue",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                },
+              }),
+            ],
           },
-        }),
+        ], undefined, "Goal Gate"),
       ]],
       "Turn completed",
     ),

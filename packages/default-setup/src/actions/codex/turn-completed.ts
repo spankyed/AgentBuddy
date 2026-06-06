@@ -91,5 +91,11 @@ export async function action(params: Record<string, any>, services: Services) {
     }
   }
 
-  return { success: true, hadErrors: !!hadErrors, artifactId };
+  const shouldContinueGoal = !!(
+    cdxState?.goal?.status === 'active' &&
+    !cdxState?.isRunning &&
+    !hadErrors
+  );
+
+  return { success: true, hadErrors: !!hadErrors, artifactId, shouldContinueGoal };
 }
