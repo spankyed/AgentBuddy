@@ -35,6 +35,7 @@ export async function action(_params: Record<string, any>, services: Services) {
     const needsContextRepair = cc && (
       cc.isRunning === true ||
       cc.autoAcceptEdits !== undefined ||
+      cc.queuedMessage !== undefined ||
       (!isPaused && cc.pendingControlRequest !== undefined)
     );
     const staleChatState = thread.chatState === 'working';
@@ -48,6 +49,7 @@ export async function action(_params: Record<string, any>, services: Services) {
         ...cc,
         isRunning: false,
         autoAcceptEdits: undefined,
+        queuedMessage: undefined,
         ...(!isPaused && { pendingControlRequest: undefined }),
       };
       updates.context = { ...(thread.context || {}), claudeCode: nextCc };
