@@ -155,7 +155,7 @@
           v-if="currentThread?.topic"
           class="group inline-flex items-center justify-center gap-2 max-w-full"
         >
-          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle thread sidebar" @mousedown.prevent @click.stop="handleToggleInlineDashboard($event)" />
+          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle thread sidebar" @mousedown.prevent @click.stop="handleToggleSidebar" @contextmenu.prevent.stop="handleToggleInlineDashboard" />
           <input
             v-if="editingTitleBar"
             ref="titleBarInputRef"
@@ -537,14 +537,16 @@ const handleToggleInlineTabs = () => {
   emit('toggle-inline-tabs')
 }
 
-const handleToggleInlineDashboard = (event: MouseEvent) => {
+const handleToggleSidebar = () => {
   if (editingTitleBar.value) confirmTitleBarRename()
   if (!props.currentThread?.id) return
-  if (event.metaKey || event.ctrlKey) {
-    emit('toggle-inline-dashboard')
-  } else {
-    emit('toggle-thread-sidebar')
-  }
+  emit('toggle-thread-sidebar')
+}
+
+const handleToggleInlineDashboard = () => {
+  if (editingTitleBar.value) confirmTitleBarRename()
+  if (!props.currentThread?.id) return
+  emit('toggle-inline-dashboard')
 }
 
 const handleSelectThread = (id: string | undefined) => {
