@@ -154,7 +154,7 @@ export function requestTurnInterrupt(services: Services, threadId: string): bool
         asideText: `Cancelled — ${prior.pendingApproval.summary || 'tool request'}`,
       } as any);
     }
-    (services.codex as any).interruptTurn(prior.threadId, prior.turnId);
+    (services.codex as any).interruptTurn(prior.threadId, prior.turnId)?.catch?.(() => {});
 
     // Cancel queued message so finalize() doesn't replay it after the interrupt
     const queued = dequeueMessage(services, threadId);
