@@ -368,6 +368,7 @@ const refreshStatus = () => {
 
 const handleOpenFile = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
+  applicationState.send({ type: 'RESTORE_CHAT' })
   prActor?.send({
     type: 'pr.OPEN_FILE',
     file: { path: file.path, status: file.status, staged: false }
@@ -376,6 +377,7 @@ const handleOpenFile = (file: TreeNode) => {
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
+  applicationState.send({ type: 'RESTORE_CHAT' })
   const gitFile: GitStatusFile = { path: file.path, status: file.status, staged: false }
   prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
