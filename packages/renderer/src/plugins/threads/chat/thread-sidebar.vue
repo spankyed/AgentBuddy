@@ -61,7 +61,7 @@
                 <ContextMenuRoot v-for="thread in pg.threads" :key="thread.id">
                   <ContextMenuTrigger as-child>
                     <div
-                      class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer transition-colors group"
+                      class="flex items-center gap-2.5 pl-7 pr-3 py-1.5 cursor-pointer transition-colors group"
                       :class="thread.id === currentThread?.id ? 'bg-blue-500/15 text-white' : 'hover:bg-neutral-800 text-neutral-300 hover:text-white'"
                       @click="emit('select-thread', thread.id!)"
                     >
@@ -121,7 +121,7 @@
               <ContextMenuRoot v-for="thread in ug.threads" :key="thread.id">
                 <ContextMenuTrigger as-child>
                   <div
-                    class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer transition-colors group"
+                    class="flex items-center gap-2.5 pl-7 pr-3 py-1.5 cursor-pointer transition-colors group"
                     :class="thread.id === currentThread?.id ? 'bg-blue-500/15 text-white' : 'hover:bg-neutral-800 text-neutral-300 hover:text-white'"
                     @click="emit('select-thread', thread.id!)"
                   >
