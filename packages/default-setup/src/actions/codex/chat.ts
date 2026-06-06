@@ -103,10 +103,6 @@ export async function action(params: Record<string, any>, services: Services, _z
   ensureSessionMarker(services, threadId);
   persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(effectiveModel && { model: effectiveModel }) });
 
-  // Reset goal continuation counter on user-initiated turns
-  if (prior?.goal?.continuationTurns) {
-    persistCodexState(services, threadId, { goal: { ...prior.goal, continuationTurns: 0 } });
-  }
   persistCodexState(services, threadId, { activeMessageId: currentMessageId as string });
   updateChatState(services, threadId, 'working');
 

@@ -409,7 +409,7 @@ async function handleGoal(
       if (goal.status === 'active') return { text: 'Goal is already active.' };
       const resumable: string[] = ['paused', 'blocked', 'usage_limited'];
       if (!resumable.includes(goal.status)) return { text: `Cannot resume a ${goal.status} goal.` };
-      const updated = { ...goal, status: 'active' as const };
+      const updated = { ...goal, status: 'active' as const, continuationTurns: 0 };
       persistCodexState(services, threadId, { goal: updated });
       return { text: `Goal resumed: ${goal.objective}`, data: updated };
     }

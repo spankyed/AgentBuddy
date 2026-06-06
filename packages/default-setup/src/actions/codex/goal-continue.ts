@@ -9,18 +9,19 @@ export const meta: ActionMeta = {
   category: 'codex',
   input: {
     threadId: { type: 'string', required: true },
+    hadErrors: { type: 'boolean', required: false },
   },
 };
 
 const MAX_CONTINUATION_TURNS = 50;
 
 export async function action(params: Record<string, any>, services: Services) {
-  const { threadId } = params;
+  const { threadId, hadErrors } = params;
   const state = getCodexState(services, threadId);
   const goal = state?.goal;
 
-  // Skip if: no active goal, already running (queued message took priority), or paused/terminal
-  if (!goal || goal.status !== 'active' || state?.isRunning) {
+  // Skip if: no active goal, already running (queued message took priority), errored, or paused/terminal
+  if (!goal || goal.status !== 'active' || state?.isRunning || hadErrors) {
     return { continued: false };
   }
 

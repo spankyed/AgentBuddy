@@ -139,6 +139,7 @@ export default {
           label: "goal-continue",
           map: {
             threadId: "$.event.data.payload.threadId",
+            hadErrors: "$.event.data.payload.hadErrors",
           },
         }),
       ]],
