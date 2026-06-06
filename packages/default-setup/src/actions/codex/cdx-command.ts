@@ -390,7 +390,7 @@ async function handleGoal(
         return { text: `Objective too long (${objective.length} chars, max ${MAX_GOAL_CHARS}). Use a reference file for longer instructions.` };
       }
       const terminal = goal.status === 'budget_limited' || goal.status === 'complete';
-      const updated = { ...goal, objective, ...(terminal && { status: 'active' as const }) };
+      const updated = { ...goal, objective, objectiveEdited: true, ...(terminal && { status: 'active' as const }) };
       persistCodexState(services, threadId, { goal: updated });
       const suffix = terminal ? ' (reactivated)' : '';
       return { text: `Goal updated${suffix}: ${objective}`, data: updated };

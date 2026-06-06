@@ -135,6 +135,12 @@ export default {
             hadErrors: "$.event.data.payload.hadErrors",
           },
         }),
+        action("CDX: Goal Continue", {
+          label: "goal-continue",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+          },
+        }),
       ]],
       "Turn completed",
     ),
