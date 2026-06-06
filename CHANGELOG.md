@@ -1,5 +1,57 @@
 -e # Changelog
 
+## v0.3.9 (2026-06-06)
+
+### Features
+- browser): add bookmark support with bar, dropdown, and persistence
+- browser): dismiss inline completion on delete and preserve while typing forward
+- browser): add bookmark syncing and bookmark bar UI
+- notes): add right-click context menu to create task list
+- notes): add showCollapseIcon setting with indent guidelines
+-  add option to open links in built-in browser instead of system browser
+- WebApp): enhance responsive design with small viewport handling and overlay panel
+- Merge pull request #161 from spankyed/as/cdx-goal
+- codex): add goal-aware turns with prompt injection, auto-continuation, and token accounting
+- codex): add goal prompt injection for thread continuation turns
+- codex): add /cdx-goal command with set/show/edit/pause/resume/clear
+- codex): add goal tracking to codex thread state and commands
+- chat): add resizable thread sidebar panel with keyboard shortcut
+- threads): add cursor-based pagination for chat messages
+- threads): add context menu to set default mode and phase
+- threads): add metadata section with timestamps to thread detail view
+- panel-resizer): add subtle mode with invisible handle that appears on hover
+
+### Fixes
+- code): restore chat state when selecting or opening files in commit and PR panels
+- claude-code): guard artifact repair with needsContextRepair and reorder update
+- renderer): increase small viewport breakpoint from 768px to 1024px
+- api): reconcile stale Codex run-state on backend startup
+- codex): handle potential promise rejection in requestTurnInterrupt
+- main): enable hardware acceleration mode
+- browser): sync address bar value when active tab is closed
+- threads): ensure threads plugin is active before showing artifacts or details
+- terminal): replace stale openFiles snapshots with surgical parent events
+
+### Refactors
+- threads): split sidebar toggle into separate click and context menu handlers
+- setup): remove boot-time reconcile steps and inline backfill into migration
+- renderer): remove small viewport overlay behavior from inspection panel
+- codex): move goal-continuation gating from action into flow branch
+- threads): rename batch size constants for consistency
+-  extract plugin navigation into shared navigateToPlugin utility
+- navigate): extend navigateToPlugin to support multiple and optional events
+- renderer): extract cross-plugin canvas navigation into shared utility
+- chat): remove unused prompt block from sendQuestionBlock
+
+### Other
+- Revert "chore(release): v0.3.9"
+- Merge pull request #161 from spankyed/as/cdx-goal
+- perf(kanban): add virtual scrolling with per-column render limiting
+- perf(threads): add virtual scrolling to thread sidebar lists
+- chore(deps): add electron-log dependency and update lockfile
+
+-e # Changelog
+
 ## v0.3.8 (2026-06-04)
 
 ### Features
