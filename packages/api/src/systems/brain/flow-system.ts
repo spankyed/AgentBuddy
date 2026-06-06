@@ -225,8 +225,10 @@ export function createFlowNodeSystem(
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
 
-          // Register cron jobs for schedule nodes
+          // Register cron jobs for schedule nodes (skip nodes with no downstream steps)
           for (const sn of scheduleNodes) {
+            const hasSteps = repository.brainQueries.eventAllSteps(sn.id!).length > 0;
+            if (!hasSteps) continue;
             registerSchedule(`${flowTNodeId}:${sn.id}`, sn.cronExpression, () => {
               sendToBrainSystem({ eventType: `schedule.${sn.id}`, targetFlowId: flowTNodeId });
             });
@@ -263,7 +265,7 @@ export function createFlowNodeSystem(
             const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
 
             if (allSteps.length === 0) {
-              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No steps found to execute in response`);
+              brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
               continue; // Skip this event node but process others
             }
 
