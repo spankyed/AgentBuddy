@@ -27,6 +27,7 @@ These PNGs are extracted from current rendered videos for fast surface-by-surfac
 | Database plugin | `packages/video/out/component-demos/database-query-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/database-plugin.png` |
 | Database graph | `packages/video/out/component-demos/database-graph-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/database-graph.png` |
 | Logs plugin | `packages/video/out/component-demos/logs-list-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/logs-plugin.png` |
+| Browser plugin | `packages/video/out/component-demos/browser-surface-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/browser-surface.png` |
 | Library plugin | `packages/video/out/component-demos/library-surface-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/library-plugin.png` |
 | Settings plugin | `packages/video/out/component-demos/settings-application-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/settings-plugin.png` |
 | Brain plugin | `packages/video/out/component-demos/brain-surface-demo.mp4` | `0.4` | `packages/video/out/review-snapshots/brain-plugin.png` |

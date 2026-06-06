@@ -16,6 +16,7 @@ This manifest records the real-app screenshot evidence used for visual fidelity 
 | Database plugin | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/database-plugin-query-results.png`, `packages/video/reference/actual-app/database-plugin-backup-trace.png` | Missing durable actual-app screenshots for query/results, schema, backup, and trace states. |
 | Database graph | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/database-plugin-graph.png` | Missing durable actual-app screenshot for database graph explorer state. |
 | Logs plugin | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/logs-plugin-list-filtered.png` | Missing durable actual-app screenshot for logs list/filter/context states. |
+| Browser plugin | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/browser-plugin-tabs-navbar.png` | Missing durable actual-app screenshot for Browser tab strip, nav bar, autocomplete, and content slot. |
 | Library plugin | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/library-plugin-browser-editor.png` | Missing durable actual-app screenshot for library browser/editor states. |
 | Settings plugin | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/settings-plugin-general-plugins-help.png` | Missing durable actual-app screenshot for settings general/plugins/help states. |
 | Brain plugin | `NEEDS_SCREENSHOT` | `packages/video/reference/actual-app/brain-plugin-graph-details.png` | Missing durable actual-app screenshot for brain graph/details/event states. |

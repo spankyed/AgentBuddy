@@ -18,6 +18,8 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `BrainStoppedDemo` | `packages/video/out/component-demos/brain-stopped-demo.mp4` |
 | `BrainEmptyEventsDemo` | `packages/video/out/component-demos/brain-empty-events-demo.mp4` |
 | `BrainNestedFlowDemo` | `packages/video/out/component-demos/brain-nested-flow-demo.mp4` |
+| `BrowserSurfaceDemo` | `packages/video/out/component-demos/browser-surface-demo.mp4` |
+| `BrowserAutocompleteDemo` | `packages/video/out/component-demos/browser-autocomplete-demo.mp4` |
 | `PromptsListDemo` | `packages/video/out/component-demos/prompts-list-demo.mp4` |
 | `PromptsEmptyDemo` | `packages/video/out/component-demos/prompts-empty-demo.mp4` |
 | `PromptsFilteredDemo` | `packages/video/out/component-demos/prompts-filtered-demo.mp4` |
@@ -80,6 +82,7 @@ Each reusable surface demo must have a current render artifact. These renders ar
 | `SettingsLibraryPluginDemo` | `packages/video/out/component-demos/settings-library-plugin-demo.mp4` |
 | `SettingsLogsPluginDemo` | `packages/video/out/component-demos/settings-logs-plugin-demo.mp4` |
 | `SettingsBrainPluginDemo` | `packages/video/out/component-demos/settings-brain-plugin-demo.mp4` |
+| `SettingsBrowserPluginDemo` | `packages/video/out/component-demos/settings-browser-plugin-demo.mp4` |
 | `SettingsNotesPluginDemo` | `packages/video/out/component-demos/settings-notes-plugin-demo.mp4` |
 | `SettingsActionsPluginDemo` | `packages/video/out/component-demos/settings-actions-plugin-demo.mp4` |
 | `SettingsPromptsPluginDemo` | `packages/video/out/component-demos/settings-prompts-plugin-demo.mp4` |

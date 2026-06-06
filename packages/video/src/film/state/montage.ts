@@ -1,7 +1,9 @@
 import type {PluginId} from '../../agentbuddy-ui/chrome/Toolbar';
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
+import type {BrowserSurfaceState} from '../../agentbuddy-ui/browser';
 import type {DatabaseSurfaceState} from '../../agentbuddy-ui/database/databaseTypes';
 import type {LogsSurfaceState} from '../../agentbuddy-ui/logs/logTypes';
+import {browserSurfaceStateForFrame} from './browser';
 import {launchComposerState} from './chat';
 import {databaseMessagesBeforeDateState, databaseMessageLookupState} from './database';
 import {logsLaunchReleaseStateForFrame} from './logs';
@@ -37,6 +39,13 @@ export type MontageShotView =
       composer: false;
       logs: LogsSurfaceState;
       surface: 'logs';
+    }
+  | {
+      activePlugin: PluginId;
+      breadcrumbs: string[];
+      browser: BrowserSurfaceState;
+      composer: false;
+      surface: 'browser';
     }
   | {
       activePlugin: PluginId;
@@ -100,11 +109,11 @@ export function montageShotViewForFrame(frame: number): MontageShotView {
   }
 
   return {
-    activePlugin: 'logs',
-    breadcrumbs: ['Logs'],
+    activePlugin: 'browser',
+    breadcrumbs: ['Browser'],
+    browser: browserSurfaceStateForFrame(frame),
     composer: false,
-    logs: logsLaunchReleaseStateForFrame(frame + 48),
-    surface: 'logs',
+    surface: 'browser',
   };
 }
 

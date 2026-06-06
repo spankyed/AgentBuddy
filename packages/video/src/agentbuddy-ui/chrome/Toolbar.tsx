@@ -13,6 +13,7 @@ export type PluginId =
   | 'flows'
   | 'actions'
   | 'prompts'
+  | 'browser'
   | 'brain'
   | 'database'
   | 'logs'
@@ -31,6 +32,7 @@ const toolbarPlugins = [
   {id: 'flows', label: 'Flows', icon: Icons.Flows, isPinned: false},
   {id: 'actions', label: 'Actions', icon: Icons.Play, isPinned: false},
   {id: 'prompts', label: 'Prompts', icon: Icons.Sparkle, isPinned: false},
+  {id: 'browser', label: 'Browser', icon: Icons.Globe, isPinned: false},
   {id: 'brain', label: 'Brain', icon: Icons.Brain, isPinned: true},
   {id: 'database', label: 'Database', icon: Icons.Database, isPinned: true},
   {id: 'logs', label: 'Logs', icon: Icons.Bug, isPinned: true},

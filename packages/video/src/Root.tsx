@@ -14,6 +14,8 @@ import {
   BrainEmptyEventsDemo,
   BrainNestedFlowDemo,
   BoardSurfaceDemo,
+  BrowserAutocompleteDemo,
+  BrowserSurfaceDemo,
   BrainPausedDemo,
   BrainStoppedDemo,
   BrainSurfaceDemo,
@@ -115,6 +117,7 @@ import {
   PromptsLoadingMoreDemo,
   PromptsSurfaceDemo,
   SettingsBrainPluginDemo,
+  SettingsBrowserPluginDemo,
   SettingsActionsPluginDemo,
   SettingsApplicationDemo,
   SettingsCodePluginDemo,
@@ -176,6 +179,8 @@ export const RemotionRoot = () => {
       <Composition id="BrainStoppedDemo" component={BrainStoppedDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainEmptyEventsDemo" component={BrainEmptyEventsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrainNestedFlowDemo" component={BrainNestedFlowDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="BrowserSurfaceDemo" component={BrowserSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="BrowserAutocompleteDemo" component={BrowserAutocompleteDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsListDemo" component={PromptsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsEmptyDemo" component={PromptsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsFilteredDemo" component={PromptsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
@@ -238,6 +243,7 @@ export const RemotionRoot = () => {
       <Composition id="SettingsLibraryPluginDemo" component={SettingsLibraryPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsLogsPluginDemo" component={SettingsLogsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsBrainPluginDemo" component={SettingsBrainPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsBrowserPluginDemo" component={SettingsBrowserPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsNotesPluginDemo" component={SettingsNotesPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsActionsPluginDemo" component={SettingsActionsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsPromptsPluginDemo" component={SettingsPromptsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

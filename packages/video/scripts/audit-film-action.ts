@@ -26,7 +26,7 @@ type Check = {
   pass: boolean;
 };
 
-type ProductArea = 'board' | 'chat' | 'code' | 'notes' | 'workflow';
+type ProductArea = 'board' | 'browser' | 'chat' | 'code' | 'notes' | 'workflow';
 
 function changed<T>(before: T, after: T) {
   return JSON.stringify(before) !== JSON.stringify(after);
@@ -276,9 +276,25 @@ function montageStoryboardSequencePass() {
     && sequence[1].activePlugin === 'logs'
     && sequence[2].surface === 'database'
     && sequence[2].activePlugin === 'database'
-    && sequence[3].surface === 'logs'
-    && sequence[3].activePlugin === 'logs'
+    && sequence[3].surface === 'browser'
+    && sequence[3].activePlugin === 'browser'
     && !sequence.some(view => view.activePlugin === 'settings');
+}
+
+function browserMontageActionPass() {
+  const typing = montageShotViewForFrame(276);
+  const loading = montageShotViewForFrame(294);
+  const loaded = montageShotViewForFrame(312);
+
+  return typing.surface === 'browser'
+    && loading.surface === 'browser'
+    && loaded.surface === 'browser'
+    && typing.browser.addressFocused === true
+    && typing.browser.suggestions?.[0]?.title === 'Supafan Checkout'
+    && loading.browser.tabs.find(tab => tab.id === 3)?.isLoading === true
+    && loaded.browser.addressFocused === false
+    && loaded.browser.addressBarValue === 'https://supafan.app/checkout'
+    && loaded.browser.tabs.find(tab => tab.id === 3)?.title === 'Supafan Checkout';
 }
 
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
@@ -443,8 +459,13 @@ const checks: Check[] = [
   },
   {
     area: 'workflow',
-    message: 'montage sequence stays threads to logs to database to logs without settings',
+    message: 'montage sequence stays threads to logs to database to browser without settings',
     pass: montageStoryboardSequencePass(),
+  },
+  {
+    area: 'browser',
+    message: 'browser montage types URL, shows autocomplete, loads checkout tab',
+    pass: browserMontageActionPass(),
   },
   {
     area: 'notes',
@@ -524,7 +545,7 @@ const checks: Check[] = [
 const failed = checks.filter(check => !check.pass);
 const minimumMoments = 10;
 const minimumProductMoments = 10;
-const requiredProductAreas = new Set<ProductArea>(['board', 'chat', 'code', 'notes', 'workflow']);
+const requiredProductAreas = new Set<ProductArea>(['board', 'browser', 'chat', 'code', 'notes', 'workflow']);
 const productChecks = checks.filter(check => check.area !== 'final');
 const coveredProductAreas = new Set(productChecks.map(check => check.area));
 const missingProductAreas = [...requiredProductAreas].filter(area => !coveredProductAreas.has(area));

@@ -1,4 +1,5 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
+import {BrowserSurface} from '../../agentbuddy-ui/browser';
 import {DatabaseSurface} from '../../agentbuddy-ui/database/DatabaseSurface';
 import {LogsSurface} from '../../agentbuddy-ui/logs/LogsSurface';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
@@ -37,6 +38,10 @@ function MontageSurface({view}: {view: ReturnType<typeof montageShotViewForFrame
 
   if (view.surface === 'logs') {
     return <LogsSurface state={view.logs} />;
+  }
+
+  if (view.surface === 'browser') {
+    return <BrowserSurface state={view.browser} />;
   }
 
   return <DatabaseSurface state={view.database} />;

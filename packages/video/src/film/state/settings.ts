@@ -35,6 +35,7 @@ const baseSettings: Omit<SettingsSurfaceState, 'activeTab' | 'generalNavItem'> =
     {id: 'flows', label: 'Flows', visible: true},
     {id: 'actions', label: 'Actions', visible: false},
     {id: 'prompts', label: 'Prompts', visible: false},
+    {id: 'browser', label: 'Browser', visible: true},
     {id: 'brain', label: 'Brain', visible: true},
     {id: 'database', label: 'Database', visible: true},
     {id: 'logs', label: 'Logs', visible: true},
@@ -416,6 +417,11 @@ export const settingsActionsPluginState: SettingsSurfaceState = {
 export const settingsPromptsPluginState: SettingsSurfaceState = {
   ...settingsPluginsState,
   selectedPluginId: 'prompts',
+};
+
+export const settingsBrowserPluginState: SettingsSurfaceState = {
+  ...settingsPluginsState,
+  selectedPluginId: 'browser',
 };
 
 export const settingsThreadsPluginState: SettingsSurfaceState = {

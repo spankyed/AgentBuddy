@@ -22,6 +22,7 @@ const iconByPlugin = {
   flows: Icons.Flows,
   actions: Icons.Play,
   prompts: Icons.Sparkle,
+  browser: Icons.Globe,
   brain: Icons.Brain,
   database: Icons.Database,
   logs: Icons.Bug,

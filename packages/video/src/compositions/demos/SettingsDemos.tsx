@@ -7,6 +7,7 @@ import {
   settingsActionsPluginState,
   settingsApplicationState,
   settingsBrainPluginState,
+  settingsBrowserPluginState,
   settingsCodePluginState,
   settingsDatabasePluginState,
   settingsFlowsPluginState,
@@ -61,6 +62,7 @@ export const SettingsFlowsPluginDemo = () => <SettingsDemoWindow state={settings
 export const SettingsLibraryPluginDemo = () => <SettingsDemoWindow state={settingsLibraryPluginState} />;
 export const SettingsLogsPluginDemo = () => <SettingsDemoWindow state={settingsLogsPluginState} />;
 export const SettingsBrainPluginDemo = () => <SettingsDemoWindow state={settingsBrainPluginState} />;
+export const SettingsBrowserPluginDemo = () => <SettingsDemoWindow state={settingsBrowserPluginState} />;
 export const SettingsNotesPluginDemo = () => <SettingsDemoWindow state={settingsNotesPluginState} />;
 export const SettingsActionsPluginDemo = () => <SettingsDemoWindow state={settingsActionsPluginState} />;
 export const SettingsPromptsPluginDemo = () => <SettingsDemoWindow state={settingsPromptsPluginState} />;
