@@ -34,6 +34,7 @@
             class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
             title="New Document"
             @click="handleCreateNote()"
+            @contextmenu.prevent="handleCreateTaskList()"
           >
             <Plus :size="16" />
           </button>
