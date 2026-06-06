@@ -21,6 +21,13 @@ export interface BrowserTab {
 
 export type { AutocompleteSuggestion };
 
+export interface Bookmark {
+  url: string;
+  title: string;
+  favicon: string;
+  displayOrder: number;
+}
+
 interface SavedTab {
   url: string;
   title: string;
@@ -43,6 +50,8 @@ interface BrowserContext {
   inlineCompletion: string | null;
   preAutocompleteValue: string;
   _lastNavWasTyped: boolean;
+  // Bookmarks
+  bookmarks: Bookmark[];
 }
 
 type BrowserEvents =
@@ -73,8 +82,12 @@ type BrowserEvents =
   | { type: 'AUTOCOMPLETE.DISMISS' }
   | { type: 'AUTOCOMPLETE.ACCEPT_INLINE' }
   | { type: 'AUTOCOMPLETE.RESULTS'; suggestions: AutocompleteSuggestion[]; inlineCompletion: string | null }
+  // Bookmark events
+  | { type: 'BOOKMARK.TOGGLE' }
+  | { type: 'BOOKMARK.REMOVE'; url: string }
+  | { type: 'BOOKMARK.NAVIGATE'; url: string }
   // Backend events
-  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[] }
+  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[]; savedBookmarks: Bookmark[] }
   // IPC bridge events
   | { type: 'IPC.TAB_CREATED'; tab: BrowserTab }
   | { type: 'IPC.TAB_REMOVED'; tabId: number }
@@ -108,6 +121,22 @@ function syncTabsToBackend(tabs: BrowserTab[]) {
         groupId: t.groupId,
       }));
     trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
+  }, 2000);
+}
+
+// Debounce bookmark sync to backend (2s after last change)
+let bookmarkSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function syncBookmarksToBackend(bookmarks: Bookmark[]) {
+  if (bookmarkSyncTimer) clearTimeout(bookmarkSyncTimer);
+  bookmarkSyncTimer = setTimeout(() => {
+    const persistable = bookmarks.map((bm, i) => ({
+      url: bm.url,
+      title: bm.title,
+      favicon: bm.favicon,
+      displayOrder: i,
+    }));
+    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_BOOKMARKS', bookmarks: persistable });
   }, 2000);
 }
 
@@ -205,6 +234,7 @@ const browserState = setup({
     inlineCompletion: null,
     preAutocompleteValue: '',
     _lastNavWasTyped: false,
+    bookmarks: [],
   },
   invoke: { src: 'ipcBridge' },
   states: {
@@ -431,11 +461,43 @@ const browserState = setup({
             };
           }),
         },
+        // Bookmark events
+        'BOOKMARK.TOGGLE': {
+          actions: [
+            assign(({ context }) => {
+              const tab = context.tabs.find(t => t.id === context.activeTabId);
+              if (!tab?.url || tab.url === 'about:blank' || tab.url.startsWith('data:')) return {};
+              const exists = context.bookmarks.some(b => b.url === tab.url);
+              const bookmarks = exists
+                ? context.bookmarks.filter(b => b.url !== tab.url)
+                : [...context.bookmarks, { url: tab.url, title: tab.title, favicon: tab.favicon, displayOrder: context.bookmarks.length }];
+              return { bookmarks };
+            }),
+            ({ context }) => syncBookmarksToBackend(context.bookmarks),
+          ],
+        },
+        'BOOKMARK.REMOVE': {
+          actions: [
+            assign(({ context, event }) => ({
+              bookmarks: context.bookmarks.filter(b => b.url !== event.url),
+            })),
+            ({ context }) => syncBookmarksToBackend(context.bookmarks),
+          ],
+        },
+        'BOOKMARK.NAVIGATE': {
+          actions: [
+            assign(({ event }) => ({
+              addressBarValue: event.url,
+            })),
+            'navigate',
+          ],
+        },
         // Backend events
         'BROWSER_CONNECTED': {
           actions: [
-            assign(() => ({
+            assign(({ event }) => ({
               tabGroups: loadTabGroups(GROUPS_STORAGE_KEY),
+              bookmarks: event.savedBookmarks ?? [],
             })),
             ({ context, event }) => {
               if (context.tabs.length === 0 && event.savedTabs.length > 0) {

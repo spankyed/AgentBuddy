@@ -21,3 +21,21 @@ export interface SavedTab {
   isMuted: boolean;
   groupId?: string;
 }
+
+export interface BrowserBookmarkEntity {
+  id: EARS.EntityId;
+  entityType: EARS.Entity.BrowserBookmark;
+  url: string;
+  title: string;
+  favicon: string;
+  displayOrder: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SavedBookmark {
+  url: string;
+  title: string;
+  favicon: string;
+  displayOrder: number;
+}

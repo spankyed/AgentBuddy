@@ -28,6 +28,7 @@ export namespace EARS {
     Secret = 'Secret',
     Note = 'Note',
     BrowserTab = 'BrowserTab',
+    BrowserBookmark = 'BrowserBookmark',
   }
   export type EntityId = `${Entity}-${string}`;
 

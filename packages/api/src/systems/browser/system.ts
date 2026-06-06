@@ -5,17 +5,18 @@ import { rootEvents } from '@/core/router/bus-emitter';
 import type { IncomingSystemEvents } from '@/core/router/events';
 import { browserQueries } from './repository/queries';
 import { browserCommands } from './repository/commands';
-import type { SavedTab } from './types';
+import type { SavedTab, SavedBookmark } from './types';
 import './repository/index'; // register repository
 
 type IncomingBrowserEvents =
-  | { type: 'SYNC_TABS'; tabs: SavedTab[] };
+  | { type: 'SYNC_TABS'; tabs: SavedTab[] }
+  | { type: 'SYNC_BOOKMARKS'; bookmarks: SavedBookmark[] };
 
 type BrowserInternalEvents =
   | { type: 'CLIENT_CONNECTED' };
 
 export type OutgoingBrowserEvents =
-  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[] };
+  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[]; savedBookmarks: SavedBookmark[] };
 
 export interface BrowserContext {}
 
@@ -54,15 +55,21 @@ export const browserSystem = setup({
     setupEventListeners: spawnChild('setupEventListeners'),
     sendBrowserConnected: () => {
       const savedTabs = browserQueries.allTabs();
+      const savedBookmarks = browserQueries.allBookmarks();
       const wrapped = emit(browser, {
         type: 'BROWSER_CONNECTED',
         savedTabs,
+        savedBookmarks,
       });
       rootEvents.emitOutgoing(wrapped.event);
     },
     syncTabs: ({ event }) => {
       const ev = browserDef.typeOf('SYNC_TABS', event);
       browserCommands.syncTabs(ev.tabs);
+    },
+    syncBookmarks: ({ event }) => {
+      const ev = browserDef.typeOf('SYNC_BOOKMARKS', event);
+      browserCommands.syncBookmarks(ev.bookmarks);
     },
   },
 }).createMachine({
@@ -76,6 +83,9 @@ export const browserSystem = setup({
     },
     SYNC_TABS: {
       actions: ['syncTabs'],
+    },
+    SYNC_BOOKMARKS: {
+      actions: ['syncBookmarks'],
     },
   },
   states: {
