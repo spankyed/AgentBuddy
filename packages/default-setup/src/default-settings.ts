@@ -33,7 +33,8 @@ const settings: SettingsData = {
           key: 'b',
           modifiers: ['cmd']
         }
-      }
+      },
+      openLinksInApp: true
     },
     projects: []
   },

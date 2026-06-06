@@ -137,6 +137,7 @@ import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
+import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
 
 const props = defineProps<{
   pr: GhPullRequest | null
@@ -168,13 +169,13 @@ watch(() => props.pr, () => {
 
 function openOnGitHub() {
   if (props.pr?.url) {
-    window.electronAPI?.shell?.openExternal(props.pr.url)
+    openInAppBrowser(props.pr.url)
   }
 }
 
 function openCommitOnGitHub(oid: string) {
   if (props.pr?.url) {
-    window.electronAPI?.shell?.openExternal(`${props.pr.url}/commits/${oid}`)
+    openInAppBrowser(`${props.pr.url}/commits/${oid}`)
   }
 }
 

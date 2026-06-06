@@ -249,6 +249,7 @@ import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink } from 'lucide
 import { useDebounce } from '@/core/composables/useDebounce'
 import { API_KEY_URLS } from '@/core/constants'
 import CliProviders from './CliProviders.vue'
+import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
 
 interface Props {
   settings?: {
@@ -456,12 +457,6 @@ const cancelNewCustom = () => {
 }
 
 const openProviderUrl = (url: string) => {
-  if (window.electronAPI?.shell) {
-    // Use Electron's shell API to open external links
-    window.electronAPI.shell.openExternal(url)
-  } else {
-    // Fallback for web environment
-    window.open(url, '_blank')
-  }
+  openInAppBrowser(url)
 }
 </script>

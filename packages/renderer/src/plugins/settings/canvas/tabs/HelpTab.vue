@@ -60,13 +60,14 @@ import { applicationState } from '@/main'
 import type { FAQItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { DISCORD_URL, MEMORIAL_URL } from '@/core/constants'
+import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
 
 function openDiscordLink() {
-  window.electronAPI?.shell?.openExternal(DISCORD_URL)
+  openInAppBrowser(DISCORD_URL)
 }
 
 function openMemorialLink() {
-  window.electronAPI?.shell?.openExternal(MEMORIAL_URL)
+  openInAppBrowser(MEMORIAL_URL)
 }
 
 const settingsActor = applicationState.system.get('settings')

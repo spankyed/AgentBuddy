@@ -94,6 +94,7 @@ export interface ApplicationHotkeys {
 
 export interface AppSettings {
   hotkeys: ApplicationHotkeys;
+  openLinksInApp: boolean;
 }
 
 // Project definition

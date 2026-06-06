@@ -5,6 +5,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { terminalEventBus } from './terminal-events'
+import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
 import type { TerminalInfo } from '../features/terminal/state'
 import '@xterm/xterm/css/xterm.css'
 
@@ -102,7 +103,7 @@ class TerminalPool {
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon((_event, url) => {
-      window.electronAPI?.shell?.openExternal(url)
+      openInAppBrowser(url)
     }))
     const unicode11 = new Unicode11Addon()
     term.loadAddon(unicode11)

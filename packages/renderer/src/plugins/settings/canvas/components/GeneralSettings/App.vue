@@ -16,6 +16,24 @@
       />
     </div>
 
+    <!-- Browser Section -->
+    <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6 mb-6">
+      <div class="flex items-center gap-2 mb-4">
+        <Globe class="w-4 h-4 text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Browser</h3>
+      </div>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          :checked="props.settings?.openLinksInApp ?? true"
+          @change="emit('update-setting', { path: ['openLinksInApp'], value: ($event.target as HTMLInputElement).checked })"
+          class="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+        />
+        <span class="text-sm text-neutral-300">Open links in the built-in browser</span>
+      </label>
+      <p class="text-xs text-neutral-500 mt-2 ml-7">When disabled, links open in your default system browser.</p>
+    </div>
+
     <!-- Data Management -->
     <div class="space-y-6">
       <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
@@ -132,7 +150,7 @@
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { PackageOpen, RotateCcw } from 'lucide-vue-next'
+import { Globe, PackageOpen, RotateCcw } from 'lucide-vue-next'
 import type { SetupPackType } from '@app/api'
 import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
 import Hotkeys from './Hotkeys.vue'
