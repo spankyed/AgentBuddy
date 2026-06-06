@@ -23,6 +23,7 @@ function errorPageHtml(url: string, description: string): string {
 export class BrowserTabManager {
   readonly #tabs = new Map<number, WebContentsView>();
   readonly #pendingUrls = new Map<number, string>(); // lazy tabs: tabId → URL to load on demand
+  readonly #favicons = new Map<number, string>(); // tabId → last known favicon URL
   #activeTabId: number | null = null;
   #bounds: TabBounds = {x: 0, y: 0, width: 800, height: 600};
   #visible = false;
@@ -77,7 +78,7 @@ export class BrowserTabManager {
       id,
       url: wc.getURL() || this.#pendingUrls.get(id) || '',
       title: wc.getTitle() || 'New Tab',
-      favicon: '',
+      favicon: this.#favicons.get(id) || '',
       isLoading: wc.isLoading(),
       canGoBack: wc.canGoBack(),
       canGoForward: wc.canGoForward(),
@@ -118,6 +119,7 @@ export class BrowserTabManager {
 
     wc.on('page-favicon-updated', (_e, favicons) => {
       if (favicons.length > 0) {
+        this.#favicons.set(id, favicons[0]);
         sendUpdate({favicon: favicons[0]});
       }
     });
@@ -208,6 +210,9 @@ export class BrowserTabManager {
     }
 
     // Build tab state — for lazy tabs, use provided metadata since the page hasn't loaded
+    if (options?.favicon) {
+      this.#favicons.set(id, options.favicon);
+    }
     const tabState: TabState = options?.lazy
       ? {
         id,
@@ -259,6 +264,7 @@ export class BrowserTabManager {
     view.webContents.close();
     this.#tabs.delete(tabId);
     this.#pendingUrls.delete(tabId);
+    this.#favicons.delete(tabId);
 
     this.#sendToRenderer('browser:tab-removed', tabId);
 
