@@ -97,7 +97,7 @@ export default /** @type import('electron-builder').Configuration */
   },
   
   // Native modules configuration
-  npmRebuild: process.platform !== 'win32', // Windows: selective rebuild in build.sh (lmdb source fails on MSVC)
+  npmRebuild: false, // Selective rebuild in build.sh (lmdb uses NAPI prebuilds, only node-pty needs rebuild)
   nodeGypRebuild: false, // Use npmRebuild instead
   
   // Files configuration
