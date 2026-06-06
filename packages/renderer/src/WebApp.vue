@@ -9,8 +9,8 @@
     />
 
     <!-- Main Area -->
-    <div class="flex flex-grow overflow-hidden" :style="{ paddingRight: canShowPanel && panelSizes.inspectionWidth === 0 ? '2px' : '0' }">
-        <div class="flex flex-col flex-grow overflow-hidden" :style="{ minWidth: '350px', width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
+    <div class="relative flex flex-grow overflow-hidden" :style="{ paddingRight: !isSmallViewport && canShowPanel && panelSizes.inspectionWidth === 0 ? '2px' : '0' }">
+        <div class="flex flex-col flex-grow overflow-hidden" :style="{ minWidth: '350px', width: !isSmallViewport && canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
             <!-- Canvas Area — always rendered; collapses to just its header when chat is maximized -->
             <CanvasArea
             data-onboarding-id="canvas-area"
@@ -52,18 +52,26 @@
 
         <!-- Horizontal Resizer -->
         <PanelResizer
-            v-if="canShowPanel"
+            v-if="canShowPanel && !isSmallViewport"
             orientation="horizontal"
             :collapsed="!isPanelOpen"
             @resize="handleInspectionResize"
             @click="handleInspectionClick"
         />
 
+        <!-- Overlay backdrop for small viewports -->
+        <div
+            v-if="isOverlayPanel"
+            class="absolute inset-0 bg-black/40 z-10"
+            @click="send({ type: 'TOGGLE_INSPECTION_PANEL' })"
+        />
+
         <!-- Context Panel -->
         <InspectionPanel
             v-if="canShowPanel && panelSizes.inspectionWidth > 0"
             data-onboarding-id="inspection-panel"
-:style="{ width: `${panelSizes.inspectionWidth}px` }"
+            :class="{ 'absolute right-0 top-0 bottom-0 z-20': isSmallViewport }"
+            :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
             <component v-if="activePlugin.panel" :is="activePlugin.panel" />
             <BrainInspectPanel v-else-if="inspectMode" />
@@ -74,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { Settings as SettingsIcon, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
@@ -111,6 +119,15 @@ const currentPluginId = computed(() =>
 
 const canShowPanel = computed(() => inspectMode.value || !!activePlugin.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
+
+const isSmallViewport = ref(false)
+const mediaQuery = window.matchMedia('(max-width: 768px)')
+const updateViewport = () => { isSmallViewport.value = mediaQuery.matches }
+updateViewport()
+mediaQuery.addEventListener('change', updateViewport)
+onUnmounted(() => mediaQuery.removeEventListener('change', updateViewport))
+
+const isOverlayPanel = computed(() => isSmallViewport.value && canShowPanel.value && isPanelOpen.value)
 
 const allMenuItems = computed<ContextMenuItem[]>(() => {
   const pluginItems = contextMenuItems.value
