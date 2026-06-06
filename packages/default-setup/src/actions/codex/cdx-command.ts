@@ -30,6 +30,7 @@ const handlers: Record<string, Handler> = {
   skills: handleSkills,
   mcp: handleMcp,
   bypass: handleBypass,
+  goal: handleGoal,
 };
 
 export async function action(
@@ -128,6 +129,9 @@ async function handleStatus(
     `Model: ${state?.model || '(default)'}`,
     `State: ${state?.isRunning ? 'running' : state?.pendingApproval ? 'paused' : state?.chatState || 'idle'}`,
   ];
+  if (state?.goal) {
+    lines.push(`Goal: ${state.goal.objective} (${state.goal.status})`);
+  }
 
   return { text: lines.join('\n'), data: { state, account } };
 }
@@ -220,6 +224,9 @@ async function handleContext(
   ];
   if (tokens) {
     lines.push(`Tokens: input ${tokens.input ?? 0}, output ${tokens.output ?? 0}, reasoning ${tokens.reasoning ?? 0}`);
+  }
+  if (state.goal) {
+    lines.push(`Goal: ${state.goal.objective} (${state.goal.status})`);
   }
   if (state.queuedMessage) lines.push('Queue: 1 message queued');
   if (state.recentTools?.length) {
@@ -334,4 +341,63 @@ async function handleBypass(
   }
 
   return { text: enabling ? 'Auto-review enabled' : 'Auto-review disabled' };
+}
+
+async function handleGoal(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  if (!threadId) return { text: 'No active thread.' };
+
+  const [subcommand, ...rest] = args;
+  const state = getCodexState(services, threadId);
+
+  // No subcommand or "show" => display current goal
+  if (!subcommand || subcommand === 'show') {
+    const goal = state?.goal;
+    if (!goal) return { text: 'No goal set.' };
+    const lines = [
+      `Objective: ${goal.objective}`,
+      `Status: ${goal.status}`,
+    ];
+    if (goal.tokenBudget != null) {
+      const remaining = Math.max(0, goal.tokenBudget - (goal.tokensUsed ?? 0));
+      lines.push(`Token budget: ${goal.tokensUsed ?? 0} / ${goal.tokenBudget} (${remaining} remaining)`);
+    }
+    return { text: lines.join('\n'), data: goal };
+  }
+
+  switch (subcommand) {
+    case 'set': {
+      const objective = rest.join(' ').trim();
+      if (!objective) return { text: 'Usage: /cdx-goal set <objective>' };
+      const goal = { objective, status: 'active' as const };
+      persistCodexState(services, threadId, { goal });
+      return { text: `Goal set: ${objective}`, data: goal };
+    }
+    case 'pause': {
+      const goal = state?.goal;
+      if (!goal) return { text: 'No goal to pause.' };
+      if (goal.status !== 'active') return { text: `Goal is already ${goal.status}.` };
+      const updated = { ...goal, status: 'paused' as const };
+      persistCodexState(services, threadId, { goal: updated });
+      return { text: `Goal paused: ${goal.objective}`, data: updated };
+    }
+    case 'resume': {
+      const goal = state?.goal;
+      if (!goal) return { text: 'No goal to resume.' };
+      if (goal.status !== 'paused') return { text: `Goal is ${goal.status}, not paused.` };
+      const updated = { ...goal, status: 'active' as const };
+      persistCodexState(services, threadId, { goal: updated });
+      return { text: `Goal resumed: ${goal.objective}`, data: updated };
+    }
+    case 'clear': {
+      if (!state?.goal) return { text: 'No goal to clear.' };
+      persistCodexState(services, threadId, { goal: undefined });
+      return { text: 'Goal cleared.' };
+    }
+    default:
+      return { text: `Unknown subcommand: ${subcommand}\nUsage: /cdx-goal set <text> | show | pause | resume | clear` };
+  }
 }

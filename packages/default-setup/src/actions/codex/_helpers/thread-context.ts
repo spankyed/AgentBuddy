@@ -63,6 +63,12 @@ export interface CodexThreadState {
   additionalDirs?: string[];
   cwdOverride?: string;
   forceDirectoryPicker?: boolean;
+  goal?: {
+    objective: string;
+    status: 'active' | 'paused' | 'complete';
+    tokenBudget?: number;
+    tokensUsed?: number;
+  };
 }
 
 const CODEX_TAG = 'codex';
