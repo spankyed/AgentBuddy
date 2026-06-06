@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -144,7 +144,38 @@ watch([threads, settings, filters], () => {
     return
   }
   initializeItems()
+  resetColumnCounts()
 })
+
+/* -------------------------------------------------------------------------- */
+/*  Per-column render limiting                                                 */
+/* -------------------------------------------------------------------------- */
+
+const COLUMN_BATCH = 20
+const columnDisplayCounts = reactive(new Map<symbol, number>())
+
+function resetColumnCounts() {
+  for (const list of lists.value) {
+    columnDisplayCounts.set(list.id, COLUMN_BATCH)
+  }
+}
+resetColumnCounts()
+
+function visibleColumnItems(listId: symbol) {
+  const count = columnDisplayCounts.get(listId) ?? COLUMN_BATCH
+  return items.value.filter(i => i.listId === listId).slice(0, count)
+}
+
+function onColumnScroll(e: Event, listId: symbol) {
+  const el = e.target as HTMLElement
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
+    const current = columnDisplayCounts.get(listId) ?? COLUMN_BATCH
+    const total = items.value.filter(i => i.listId === listId).length
+    if (current < total) {
+      columnDisplayCounts.set(listId, current + COLUMN_BATCH)
+    }
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Drag‑&‑drop config                                                        */
@@ -237,8 +268,9 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
           :identifier="list.id"
           :group="dropGroup"
           :targets="[dropGroup]"
-          :list="items.filter(({ listId }) => listId === list.id)"
+          :list="visibleColumnItems(list.id)"
           class="kanban-list flex-1 flex flex-col p-3 space-y-2 overflow-y-auto min-h-[6rem]"
+          @scroll="onColumnScroll($event, list.id)"
           :options="arrangeableOptions"
           @drop-item="dropItem"
         >
