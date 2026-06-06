@@ -26,7 +26,7 @@ export async function initApp(initConfig: AppInitConfig) {
 
   const moduleRunner = createModuleRunner()
     .init(disallowMultipleAppInstance())
-    .init(hardwareAccelerationMode({enable: false}))
+    .init(hardwareAccelerationMode({enable: true}))
     .init(createMediaProtocol())  // Must register protocol schemes before app ready
     .init(splashScreen)  // Show splash screen early
     .init(apiServer)
