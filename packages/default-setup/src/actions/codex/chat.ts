@@ -15,6 +15,9 @@ import {
 } from './_helpers/thread-context';
 import { createStreamConsumer } from './_helpers/stream-consumer';
 import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap';
+import {
+  renderContinuationPrompt, renderBudgetLimitPrompt, renderObjectiveUpdatedPrompt,
+} from './_helpers/goal-prompts';
 
 export const meta: ActionMeta = {
   label: 'Codex Chat',
@@ -99,6 +102,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   ensureSessionMarker(services, threadId);
   persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(effectiveModel && { model: effectiveModel }) });
+
   persistCodexState(services, threadId, { activeMessageId: currentMessageId as string });
   updateChatState(services, threadId, 'working');
 
@@ -160,7 +164,7 @@ export async function action(params: Record<string, any>, services: Services, _z
       ? { mode: 'plan' as const, settings: { model: effectiveModel, developer_instructions: null } }
       : undefined;
 
-    const turnText = !codexThreadId
+    let turnText = !codexThreadId
       ? buildSessionBootstrapPrompt(services, {
         threadId,
         currentMessageId: userMessageId,
@@ -168,6 +172,17 @@ export async function action(params: Record<string, any>, services: Services, _z
         providerName: 'Codex',
       })
       : text;
+
+    // ─── Goal prompt injection ───────────────────────────────────────
+    const goalState = prior?.goal;
+    if (goalState && goalState.status === 'active') {
+      const goalPrompt = goalState.objectiveEdited
+        ? renderObjectiveUpdatedPrompt(goalState)
+        : renderContinuationPrompt(goalState);
+      turnText = turnText + '\n\n' + goalPrompt;
+    } else if (goalState?.status === 'budget_limited') {
+      turnText = turnText + '\n\n' + renderBudgetLimitPrompt(goalState);
+    }
 
     // Start turn
     const turnResult = await codex.startTurn({
