@@ -9,7 +9,6 @@ import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
-import { reconcileStaleRunState } from '@/setup/reconcile-run-state';
 import { APP_VERSION } from '@/version';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -37,10 +36,6 @@ export async function setupBackend(): Promise<void> {
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   runBootSeed();
-
-  // Clear stale per-thread run-state left behind by the previous process.
-  // Must run synchronously before actors start so no events race the writes.
-  reconcileStaleRunState();
 
   // Start backend actor
   backendActor = createActor(backendSystem, {

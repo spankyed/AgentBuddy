@@ -56,9 +56,14 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
-    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
-    if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
-    return { success: true, queued: true };
+    const handleExists = !!(services.codex as any).getHandle(threadId);
+    if (handleExists) {
+      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+      if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+      return { success: true, queued: true };
+    }
+    // No handle → stale isRunning from a previous process, clear and proceed
+    setRunning(services, threadId, false);
   }
 
   // Kill paused turn if pending approval
