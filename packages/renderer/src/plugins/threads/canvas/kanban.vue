@@ -151,28 +151,28 @@ watch([threads, settings, filters], () => {
 /*  Per-column render limiting                                                 */
 /* -------------------------------------------------------------------------- */
 
-const COLUMN_BATCH = 20
+const BATCH_SIZE = 20
 const columnDisplayCounts = reactive(new Map<symbol, number>())
 
 function resetColumnCounts() {
   for (const list of lists.value) {
-    columnDisplayCounts.set(list.id, COLUMN_BATCH)
+    columnDisplayCounts.set(list.id, BATCH_SIZE)
   }
 }
 resetColumnCounts()
 
 function visibleColumnItems(listId: symbol) {
-  const count = columnDisplayCounts.get(listId) ?? COLUMN_BATCH
+  const count = columnDisplayCounts.get(listId) ?? BATCH_SIZE
   return items.value.filter(i => i.listId === listId).slice(0, count)
 }
 
 function onColumnScroll(e: Event, listId: symbol) {
   const el = e.target as HTMLElement
   if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
-    const current = columnDisplayCounts.get(listId) ?? COLUMN_BATCH
+    const current = columnDisplayCounts.get(listId) ?? BATCH_SIZE
     const total = items.value.filter(i => i.listId === listId).length
     if (current < total) {
-      columnDisplayCounts.set(listId, current + COLUMN_BATCH)
+      columnDisplayCounts.set(listId, current + BATCH_SIZE)
     }
   }
 }

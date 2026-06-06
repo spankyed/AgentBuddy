@@ -233,17 +233,17 @@ function getBusy(threadId: string | undefined): boolean {
 }
 
 // Render limiting
-const SIDEBAR_BATCH = 30
-const displayCount = ref(SIDEBAR_BATCH)
-const archiveDisplayCount = ref(SIDEBAR_BATCH)
+const BATCH_SIZE = 30
+const displayCount = ref(BATCH_SIZE)
+const archiveDisplayCount = ref(BATCH_SIZE)
 
 function onSidebarScroll(e: Event) {
   const el = e.target as HTMLElement
   if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
     if (showArchive.value) {
-      archiveDisplayCount.value = Math.min(archiveDisplayCount.value + SIDEBAR_BATCH, archivedThreads.value.length)
+      archiveDisplayCount.value = Math.min(archiveDisplayCount.value + BATCH_SIZE, archivedThreads.value.length)
     } else {
-      displayCount.value += SIDEBAR_BATCH
+      displayCount.value += BATCH_SIZE
     }
   }
 }
@@ -383,8 +383,8 @@ const archivedThreads = useSelector(actor, (state) => state.context.sidebarArchi
 
 function toggleArchive() {
   showArchive.value = !showArchive.value
-  displayCount.value = SIDEBAR_BATCH
-  archiveDisplayCount.value = SIDEBAR_BATCH
+  displayCount.value = BATCH_SIZE
+  archiveDisplayCount.value = BATCH_SIZE
   if (showArchive.value) {
     trpc.bus.send.mutate({ systemId: id, type: 'GET_ARCHIVED_THREADS' })
   }
