@@ -15,7 +15,7 @@ export function storeHandle(key: string, handle: CodexTurnHandle): void {
     return
   }
   if (existing) {
-    try { existing.abort() } catch { /* already gone */ }
+    try { existing.abort()?.catch?.(() => {}) } catch { /* already gone */ }
     logger.warn('overwriting active handle — aborted previous', { key })
   }
   cleanupUnsubs.get(key)?.()
@@ -25,7 +25,7 @@ export function storeHandle(key: string, handle: CodexTurnHandle): void {
     if (threadId !== key) return
     const h = activeHandles.get(key)
     if (h) {
-      try { h.abort() } catch { /* already gone */ }
+      try { h.abort()?.catch?.(() => {}) } catch { /* already gone */ }
       activeHandles.delete(key)
     }
   })
