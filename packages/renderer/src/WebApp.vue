@@ -121,7 +121,7 @@ const canShowPanel = computed(() => inspectMode.value || !!activePlugin.value.pa
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
 
 const isSmallViewport = ref(false)
-const mediaQuery = window.matchMedia('(max-width: 768px)')
+const mediaQuery = window.matchMedia('(max-width: 1024px)')
 const updateViewport = () => { isSmallViewport.value = mediaQuery.matches }
 updateViewport()
 mediaQuery.addEventListener('change', updateViewport)
