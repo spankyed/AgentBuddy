@@ -165,6 +165,8 @@ function deleteEmptyGroups(tabs: BrowserTab[], groups: TabGroup[]): TabGroup[] {
 
 // Debounce autocomplete queries outside the machine to avoid timer in context
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Suppress inline completion when deleting (only show when typing forward)
+let suppressInlineCompletion = false;
 
 function runAutocompleteQuery(query: string, sendBack: (event: BrowserEvents) => void) {
   if (debounceTimer) clearTimeout(debounceTimer);
@@ -175,7 +177,7 @@ function runAutocompleteQuery(query: string, sendBack: (event: BrowserEvents) =>
   debounceTimer = setTimeout(() => {
     const suggestions = autocomplete(query);
     let inlineCompletion: string | null = null;
-    if (suggestions.length > 0 && suggestions[0].matchType === 'url') {
+    if (!suppressInlineCompletion && suggestions.length > 0 && suggestions[0].matchType === 'url') {
       const display = displayUrl(suggestions[0].url);
       if (display.toLowerCase().startsWith(query.toLowerCase())) {
         inlineCompletion = display.slice(query.length);
@@ -396,12 +398,25 @@ const browserState = setup({
         'NAV.STOP': { actions: 'stop' },
         'ADDRESS_BAR.UPDATE': {
           actions: [
-            assign(({ event }) => ({
-              addressBarValue: event.value,
-              preAutocompleteValue: event.value,
-              selectedSuggestionIndex: -1,
-              inlineCompletion: null,
-            })),
+            assign(({ context, event }) => {
+              const isTypingForward = event.value.length > context.addressBarValue.length;
+              suppressInlineCompletion = !isTypingForward;
+
+              // Preserve inline completion if the user is typing forward into it
+              let inlineCompletion: string | null = null;
+              if (isTypingForward && context.inlineCompletion) {
+                const currentFull = context.addressBarValue + context.inlineCompletion;
+                if (currentFull.toLowerCase().startsWith(event.value.toLowerCase())) {
+                  inlineCompletion = currentFull.slice(event.value.length);
+                }
+              }
+              return {
+                addressBarValue: event.value,
+                preAutocompleteValue: event.value,
+                selectedSuggestionIndex: -1,
+                inlineCompletion,
+              };
+            }),
             ({ event, self }) => {
               runAutocompleteQuery(event.value.trim(), (e) => self.send(e));
             },

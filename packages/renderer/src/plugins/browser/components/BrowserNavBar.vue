@@ -241,6 +241,14 @@ function onKeydown(e: KeyboardEvent) {
         emit('autocomplete:accept-inline');
       }
       break;
+
+    case 'Backspace':
+    case 'Delete':
+      if (props.inlineCompletion) {
+        e.preventDefault();
+        emit('autocomplete:dismiss');
+      }
+      break;
   }
 }
 
