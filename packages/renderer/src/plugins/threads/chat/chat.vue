@@ -57,6 +57,7 @@
               :prefill-references="prefillReferences"
               :is-busy="isBusy"
               :modes="modes"
+              :default-mode="settings?.defaultMode"
               :hotkeys="hotkeys"
               :quick-prompts="quickPrompts"
               :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
@@ -68,9 +69,11 @@
               @send-command="handleSendCommand"
               @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
               @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
+              @set-default-mode="(mode: string) => updateThreadsSetting(['chat', 'defaultMode'], mode)"
+              @set-default-phase="(phase: string) => updateThreadsSetting(['chat', 'defaultPhase'], phase)"
               @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
               @open-lightbox="openLightbox"
-              @update-quick-prompts="updateQuickPrompts"
+              @update-quick-prompts="(prompts: QuickPrompt[]) => updateThreadsSetting(['chat', 'quickPrompts'], prompts)"
               @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
               @revert="(messageId: string) => handleRevert(messageId, false, true)"
               @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
@@ -291,14 +294,14 @@ function onScroll() {
   isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
 }
 
-function updateQuickPrompts(prompts: QuickPrompt[]) {
+function updateThreadsSetting(path: string[], value: unknown) {
   trpc.bus.send.mutate({
     systemId: 'settings',
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
     label: 'threads',
-    path: ['chat', 'quickPrompts'],
-    value: prompts,
+    path,
+    value,
   })
 }
 

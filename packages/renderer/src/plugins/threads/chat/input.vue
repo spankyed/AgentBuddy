@@ -145,10 +145,13 @@
                 :modes="modes"
                 :current-mode="currentMode"
                 :current-phase="currentPhase"
+                :default-mode="defaultMode"
                 :forced-mode="currentThread?.forcedMode"
                 :disabled="disabled"
                 @mode-change="handleModeChange"
                 @phase-change="handlePhaseChange"
+                @set-default-mode="emit('set-default-mode', $event)"
+                @set-default-phase="emit('set-default-phase', $event)"
               />
             </div>
           </div>
@@ -228,6 +231,7 @@ const props = defineProps<{
   currentMode: string
   currentPhase?: string
   modes: AgentMode[]
+  defaultMode?: string
   hotkeys?: HotkeysMap
   quickPrompts?: QuickPrompt[]
   quickPromptNumberKeyInserts?: boolean
@@ -257,6 +261,8 @@ const emit = defineEmits<{
   (e: 'pause'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
+  (e: 'set-default-mode', mode: string): void
+  (e: 'set-default-phase', phase: string): void
   (e: 'open-lightbox', imageSrc: string): void
   (e: 'update-quick-prompts', prompts: QuickPrompt[]): void
   (e: 'close-quick-prompts'): void

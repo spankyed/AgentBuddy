@@ -13,6 +13,7 @@
             :disabled="disabled"
             class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300 min-w-0"
             :class="modeButtonClasses"
+            @contextmenu.prevent="onModeContextMenu"
           >
             <span class="font-medium truncate">{{ currentModeName }}</span>
             <ChevronDown
@@ -115,6 +116,15 @@
     >
       {{ forcedModeName }}
     </div>
+
+    <!-- Default mode context menu -->
+    <ContextMenuPopup
+      :show="showContextMenu"
+      :pos="contextMenuPos"
+      :items="contextMenuItems"
+      label="Set default mode"
+      @close="showContextMenu = false"
+    />
   </div>
 </template>
 
@@ -129,6 +139,8 @@ import {
   DropdownMenuPortal,
 } from 'reka-ui'
 import type { AgentMode } from '@app/api'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
 
 const props = defineProps<{
   modes: AgentMode[]
@@ -137,11 +149,15 @@ const props = defineProps<{
   /** Forced mode name for special threads. */
   forcedMode?: string
   disabled?: boolean
+  /** The current default mode setting, used to show a check in the context menu. */
+  defaultMode?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
+  (e: 'set-default-mode', mode: string): void
+  (e: 'set-default-phase', phase: string): void
 }>()
 
 const isModeOpen = ref(false)
@@ -212,5 +228,33 @@ const handleModeSelect = (modeName: string) => {
 const handlePhaseSelect = (phaseName: string) => {
   emit('phase-change', phaseName)
   isPhaseOpen.value = false
+}
+
+// Context menu for setting default mode
+const { showMenu: showContextMenu, menuPos: contextMenuPos, open: openContextMenu } = useContextMenu()
+
+const contextMenuItems = computed<MenuItem[]>(() =>
+  visibleModes.value
+    .filter(m => !m.disabled)
+    .map(mode => {
+      const isDefault = mode.name === props.defaultMode
+      return {
+        label: mode.name,
+        icon: Check,
+        class: 'text-neutral-200',
+        iconClass: isDefault ? 'text-blue-400' : 'text-transparent',
+        action: () => {
+          emit('set-default-mode', mode.name)
+          if (mode.phases?.length) {
+            emit('set-default-phase', mode.phases[0].name)
+          }
+        },
+      }
+    })
+)
+
+const onModeContextMenu = (e: MouseEvent) => {
+  if (props.disabled || props.forcedMode) return
+  openContextMenu(e, contextMenuItems.value.length, 36)
 }
 </script>
