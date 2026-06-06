@@ -2,6 +2,19 @@
   <div class="flex flex-col h-full">
     <!-- Main content: optional inline dashboard + chat -->
     <div class="flex flex-grow overflow-hidden min-h-0" ref="chatContainerRef">
+      <!-- Thread Sidebar (left) -->
+      <ThreadSidebar
+        v-if="showThreadSidebar"
+        :style="{ width: sidebarWidthPx + 'px' }"
+        @select-thread="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
+        @close="showThreadSidebar = false"
+      />
+      <PanelResizer
+        v-if="showThreadSidebar"
+        orientation="horizontal"
+        @resize="handleDashboardResize"
+        @click="showThreadSidebar = false"
+      />
       <!-- Inline Dashboard (left) -->
       <div v-if="showInlineDashboard" class="min-w-0 overflow-hidden shrink-0 border-r border-neutral-800" :style="{ width: dashboardWidth + '%' }">
         <AgentCanvas :inline="true" />
@@ -102,6 +115,7 @@
             @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
             @view-dashboard="handleViewDashboard"
             @toggle-inline-dashboard="handleToggleInlineDashboard"
+            @toggle-thread-sidebar="handleToggleThreadSidebar"
             @toggle-inline-tabs="handleToggleInlineTabs"
             @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
             @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
@@ -132,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 
 const quotes = [
   '"If a chatbot speaks in a forest and no one reads the output, does it still hallucinate?"',
@@ -164,6 +178,7 @@ import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
 import AgentCanvas from '@/plugins/threads/canvas/agent/canvas.vue'
+import ThreadSidebar from './thread-sidebar.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
@@ -233,16 +248,30 @@ const statusLine = computed(() => {
 })
 
 const showInlineDashboard = ref(false)
+const showThreadSidebar = ref(false)
 const showInlineTabs = ref(false)
 const chatContainerRef = ref<HTMLElement | null>(null)
 const dashboardWidth = ref(45)
+const sidebarWidthPx = ref(260)
 
 const MIN_PANEL_WIDTH = 400
+const SIDEBAR_MIN_PX = 160
+const SIDEBAR_MAX_PX = 320
 
 function handleDashboardResize(delta: number) {
   const container = chatContainerRef.value
   if (!container) return
   const containerWidth = container.clientWidth
+
+  if (showThreadSidebar.value) {
+    const newPx = sidebarWidthPx.value + delta
+    if (newPx < SIDEBAR_MIN_PX) return
+    const chatPx = containerWidth - newPx
+    if (newPx > SIDEBAR_MAX_PX || chatPx < MIN_PANEL_WIDTH) return
+    sidebarWidthPx.value = newPx
+    return
+  }
+
   const deltaPercent = (delta / containerWidth) * 100
   const newPercent = dashboardWidth.value + deltaPercent
   const newPx = (newPercent / 100) * containerWidth
@@ -254,7 +283,10 @@ function handleDashboardResize(delta: number) {
 const canvasHeight = useSelector(applicationState, (state) => state.context.panelSizes.canvasHeight)
 
 watch(canvasHeight, (height) => {
-  if (height >= 93) showInlineDashboard.value = false
+  if (height >= 93) {
+    showInlineDashboard.value = false
+    showThreadSidebar.value = false
+  }
 })
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
@@ -350,8 +382,31 @@ function handleToggleInlineTabs() {
 }
 
 function handleToggleInlineDashboard() {
-  if (!showInlineDashboard.value) expandChatIfCollapsed()
+  if (!showInlineDashboard.value) {
+    expandChatIfCollapsed()
+    showThreadSidebar.value = false
+  }
   showInlineDashboard.value = !showInlineDashboard.value
+}
+
+// Cmd+E / Ctrl+E toggles thread sidebar
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'e' && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    e.preventDefault()
+    handleToggleThreadSidebar()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+function handleToggleThreadSidebar() {
+  if (showThreadSidebar.value) {
+    showThreadSidebar.value = false
+    return
+  }
+  showInlineDashboard.value = false
+  expandChatIfCollapsed()
+  showThreadSidebar.value = true
 }
 
 function handleViewDashboard() {

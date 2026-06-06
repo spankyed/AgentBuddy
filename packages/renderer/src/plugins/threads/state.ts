@@ -306,6 +306,7 @@ interface ThreadsContext {
   pendingForceDirectoryPicker?: boolean;
   navHistory: NavHistory<string>;
   messagePagination: { hasMore: boolean; nextCursor: string | null; isLoading: boolean };
+  sidebarArchivedThreads: ThreadListItem[];
 }
 
 // ---- Helpers ----
@@ -630,7 +631,11 @@ const threadsState = setup({
       };
     }),
     setArchivedThreads: assign(({ context, event }) => {
-      return visibleThreadStore(context, typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[]);
+      const threads = typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[];
+      return {
+        sidebarArchivedThreads: threads,
+        ...(context.showArchived ? visibleThreadStore(context, threads) : {}),
+      };
     }),
     unarchiveThread: ({ event }) => {
       const { threadId } = typeOf('UNARCHIVE_THREAD', event);
@@ -1596,6 +1601,7 @@ const threadsState = setup({
     quickPromptCursor: null,
     navHistory: createNavHistory(getInitialView()),
     messagePagination: { hasMore: false, nextCursor: null, isLoading: false },
+    sidebarArchivedThreads: [],
   }),
   on: {
     // Thread management events
@@ -1653,7 +1659,6 @@ const threadsState = setup({
       target: '.list',
     },
     ARCHIVED_THREADS_DATA: {
-      guard: ({ context }) => context.showArchived,
       actions: 'setArchivedThreads',
     },
     ARCHIVE_THREAD: {

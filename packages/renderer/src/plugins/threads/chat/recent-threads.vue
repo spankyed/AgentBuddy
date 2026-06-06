@@ -29,11 +29,11 @@
           <span class="shrink-0 relative inline-block w-1.5 h-1.5">
             <span
               class="block w-full h-full rounded-full transition-colors"
-              :class="isThreadBusy(thread.id) ? 'mosaic-dot' : ''"
-              :style="!isThreadBusy(thread.id) ? { backgroundColor: getThreadDotColor(thread.id) || '#525252' } : undefined"
+              :class="isThreadBusyLocal(thread.id) ? 'mosaic-dot' : ''"
+              :style="!isThreadBusyLocal(thread.id) ? { backgroundColor: getThreadDotColorLocal(thread.id) || '#525252' } : undefined"
             />
             <span
-              v-if="isThreadBusy(thread.id)"
+              v-if="isThreadBusyLocal(thread.id)"
               class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
             />
           </span>
@@ -155,7 +155,7 @@
           v-if="currentThread?.topic"
           class="group inline-flex items-center justify-center gap-2 max-w-full"
         >
-          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle inline dashboard" @mousedown.prevent @click.stop="handleToggleInlineDashboard" />
+          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle thread sidebar" @mousedown.prevent @click.stop="handleToggleInlineDashboard($event)" />
           <input
             v-if="editingTitleBar"
             ref="titleBarInputRef"
@@ -283,6 +283,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as threadsId, type ThreadsState } from '@/plugins/threads/state'
 import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue'
+import { getThreadDotColor, isThreadBusy } from './thread-status'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;
@@ -325,20 +326,12 @@ const chatStates = useSelector(threadsActor, (state) => state.context.chatStates
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides)
 const settings = useSelector(threadsActor, (state) => state.context.settings)
 
-function getThreadStateConfig(threadId: string) {
-  const override = chatStateOverrides.value[threadId]
-  const activeStateId = (override && override.expiresAt > Date.now())
-    ? override.id
-    : (chatStates.value[threadId] || 'idle')
-  return settings.value?.chatStates?.find(c => c.id === activeStateId)
+function getThreadDotColorLocal(threadId: string): string | undefined {
+  return getThreadDotColor(threadId, chatStates.value, chatStateOverrides.value, settings.value)
 }
 
-function getThreadDotColor(threadId: string): string | undefined {
-  return getThreadStateConfig(threadId)?.color
-}
-
-function isThreadBusy(threadId: string): boolean {
-  return getThreadStateConfig(threadId)?.busy ?? false
+function isThreadBusyLocal(threadId: string): boolean {
+  return isThreadBusy(threadId, chatStates.value, chatStateOverrides.value, settings.value)
 }
 
 const recentThreads = computed(() => props.recentThreads)
@@ -419,6 +412,7 @@ const emit = defineEmits<{
   (e: 'open-thread-chat', threadId: string): void
   (e: 'view-dashboard'): void
   (e: 'toggle-inline-dashboard'): void
+  (e: 'toggle-thread-sidebar'): void
   (e: 'toggle-inline-tabs'): void
   (e: 'view-artifacts', threadId: string): void
   (e: 'new-thread'): void
@@ -543,10 +537,14 @@ const handleToggleInlineTabs = () => {
   emit('toggle-inline-tabs')
 }
 
-const handleToggleInlineDashboard = () => {
+const handleToggleInlineDashboard = (event: MouseEvent) => {
   if (editingTitleBar.value) confirmTitleBarRename()
   if (!props.currentThread?.id) return
-  emit('toggle-inline-dashboard')
+  if (event.metaKey || event.ctrlKey) {
+    emit('toggle-inline-dashboard')
+  } else {
+    emit('toggle-thread-sidebar')
+  }
 }
 
 const handleSelectThread = (id: string | undefined) => {
