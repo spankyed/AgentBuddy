@@ -45,6 +45,7 @@ type IncomingThreadsEvents =
   | { type: 'FORWARD_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'GET_ARCHIVED_THREADS' }
   | { type: 'REFRESH_THREADS' }
+  | { type: 'LOAD_MORE_MESSAGES'; threadId: string; cursor: string }
 
 export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
@@ -83,6 +84,7 @@ export type OutgoingThreadsEvents =
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
+  | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 
 export interface ThreadsContext {}
 
@@ -431,6 +433,15 @@ export const threadsSystem = setup({
           error: err instanceof Error ? err.message : String(err),
         }));
       }
+    },
+    loadMoreMessages: ({ system, event }) => {
+      const { threadId, cursor } = threadsDef.typeOf('LOAD_MORE_MESSAGES', event);
+      const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
+      system.get(bus).send(emit(threads, {
+        type: 'OLDER_MESSAGES_LOADED',
+        threadId,
+        ...result,
+      }));
     },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = threadsDef.typeOf('OPEN_THREAD_TAB', event);
@@ -878,6 +889,9 @@ export const threadsSystem = setup({
       // Chat/agent global events
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',
+      },
+      LOAD_MORE_MESSAGES: {
+        actions: 'loadMoreMessages',
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',

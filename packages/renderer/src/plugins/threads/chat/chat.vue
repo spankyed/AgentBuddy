@@ -24,6 +24,17 @@
                 <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
               </div>
               <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
+                <!-- Load older messages -->
+                <div v-if="messagePagination.hasMore" class="flex justify-center py-3">
+                  <button
+                    v-if="!messagePagination.isLoading"
+                    @click="requestLoadMore"
+                    class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    Load older messages
+                  </button>
+                  <span v-else class="text-xs text-neutral-600">Loading...</span>
+                </div>
                 <!-- Instructions banner -->
                 <div v-if="currentThread?.instructions" class="mb-3 rounded-lg border border-neutral-700/50 bg-neutral-800/50 px-4 py-3">
                   <div class="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5 font-medium">Instructions</div>
@@ -167,6 +178,18 @@ import { trpc } from '@/core/trpc'
 const actor: ThreadsState = applicationState.system.get(id);
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
+const messagePagination = useSelector(actor, (state) => state.context.messagePagination);
+
+// Scroll preservation for prepending older messages
+const savedScrollHeight = ref(0);
+const isPrependPending = ref(false);
+
+function requestLoadMore() {
+  const el = messagesContainer.value;
+  if (el) savedScrollHeight.value = el.scrollHeight;
+  isPrependPending.value = true;
+  actor.send({ type: 'LOAD_MORE_MESSAGES' });
+}
 
 /** True when no processed user messages follow this one — gates queued/cancelled actions. */
 function isTailMessage(msg: MessageEntity): boolean {
@@ -292,6 +315,11 @@ function onScroll() {
   if (!el) return
   const threshold = 100
   isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+
+  // Trigger load-more when scrolled near the top
+  if (el.scrollTop < 100 && messagePagination.value.hasMore && !isPrependPending.value) {
+    requestLoadMore()
+  }
 }
 
 function updateThreadsSetting(path: string[], value: unknown) {
@@ -468,6 +496,15 @@ const prevThreadId = ref(currentThread.value?.id)
 
 watch(allMessages, async (newMsgs, oldMsgs) => {
   await nextTick()
+
+  // Handle scroll preservation for prepended older messages
+  if (isPrependPending.value) {
+    isPrependPending.value = false
+    const el = messagesContainer.value
+    if (el) el.scrollTop += (el.scrollHeight - savedScrollHeight.value)
+    return
+  }
+
   const threadChanged = currentThread.value?.id !== prevThreadId.value
   if (threadChanged) {
     prevThreadId.value = currentThread.value?.id

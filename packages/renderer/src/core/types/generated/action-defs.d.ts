@@ -367,29 +367,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "completed" | "pending" | "in_progress";
+            status: "pending" | "in_progress" | "completed";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -402,18 +402,18 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
     action: "create" | "get" | "update";
-    status?: "complete" | "active" | "paused" | undefined;
+    status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
     action: "create" | "get" | "update";
-    status?: "complete" | "active" | "paused" | undefined;
+    status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
         action: "create" | "get" | "update";
-        status?: "complete" | "active" | "paused" | undefined;
+        status?: "active" | "paused" | "complete" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
@@ -3689,6 +3689,8 @@ type AgentThreadData = {
     pinned?: boolean;
     chatState?: string;
     context?: ThreadContext;
+    hasMore?: boolean;
+    nextCursor?: string | null;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -3853,6 +3855,12 @@ type OutgoingThreadsEvents = {
     type: 'THREAD_CHAT_ERROR';
     threadId: string;
     error: string;
+} | {
+    type: 'OLDER_MESSAGES_LOADED';
+    threadId: string;
+    messages: Partial<MessageEntity>[];
+    hasMore: boolean;
+    nextCursor: string | null;
 };
 interface ThreadsContext {
 }
@@ -4084,6 +4092,10 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "GET_ARCHIVED_THREADS";
 } | {
     type: "REFRESH_THREADS";
+} | {
+    type: "LOAD_MORE_MESSAGES";
+    threadId: string;
+    cursor: string;
 }) | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>, SystemDefinition<"flows", ({
     type: "FLOW_SELECT";
     flowId: string;

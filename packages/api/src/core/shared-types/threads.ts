@@ -348,6 +348,8 @@ export type AgentThreadData = {
   pinned?: boolean;
   chatState?: string;
   context?: ThreadContext;
+  hasMore?: boolean;
+  nextCursor?: string | null;
 }
 
 export type RecentThreadRefreshData = {
