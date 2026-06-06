@@ -1,8 +1,8 @@
-import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
+import { setup, sendParent, enqueueActions, raise } from 'xstate';
 import type { ListenerNode, NodeEntity, ScheduleNode } from '@/core/shared-types/flows';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
-import { EARS, ExecutionContext, TNodeEntity } from '@/types';
+import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/core/shared/actor-helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
@@ -82,6 +82,13 @@ type TNodeFlowMachineContext = {
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
+  // Whether all finite entry children have completed (keep_alive/flow excluded).
+  // Until true, non-entry events are deferred into pendingEvents.
+  entryReady: boolean;
+  // Count of finite (non-keep_alive, non-flow) entry children still running.
+  pendingEntryChildren: number;
+  // EventTNodeIds that belong to flow.entry (for tracking which completions are entry children).
+  entryEventTNodeIds: Record<string, true>;
 };
 
 type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
@@ -241,16 +248,22 @@ export function createFlowNodeSystem(
           unregisterByPrefix(flowTNodeId);
           brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
         },
-        handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
+        handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const typedEv = event as { type: string; [key: string]: any };
           const eventType = typedEv.type;
 
-          // Brain is paused — defer the raw event for replay on resume
-          if (isBrainPaused()) {
+          // Defer when entry actions haven't completed yet, or when brain is paused
+          const deferReason = !context.entryReady && eventType !== 'flow.entry'
+            ? 'entry not ready'
+            : isBrainPaused()
+              ? 'brain paused'
+              : null;
+
+          if (deferReason) {
             enqueue.assign({
               pendingEvents: ({ context }) => [...context.pendingEvents, { ...typedEv }],
             });
-            brainInspect(`Flow ${flowTNodeId} deferring event "${eventType}" (brain paused)`);
+            brainInspect(`Flow ${flowTNodeId} deferring event "${eventType}" (${deferReason})`);
             return;
           }
 
@@ -266,6 +279,9 @@ export function createFlowNodeSystem(
 
             if (allSteps.length === 0) {
               brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
+              if (eventType === 'flow.entry') {
+                enqueue.assign({ entryReady: true });
+              }
               continue; // Skip this event node but process others
             }
 
@@ -300,10 +316,6 @@ export function createFlowNodeSystem(
               steps: [],
               lastStep: undefined,
             };
-
-            // brainInspect(`${flowTNodeId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
-            //   { eventData, eventNodeId: eventNode.id }
-            // );
 
             // Spawn ALL connected downstream steps in parallel
             let spawnedCount = 0;
@@ -347,6 +359,19 @@ export function createFlowNodeSystem(
                 [eventTNode.id]: spawnedCount,
               }),
             });
+
+            // Track entry children so we know when entry actions are done
+            if (eventType === 'flow.entry') {
+              const finiteCount = allSteps.filter((s: NodeEntity) => s.nodeType !== 'keep_alive' && s.nodeType !== 'flow').length;
+              enqueue.assign({
+                entryEventTNodeIds: ({ context }) => ({ ...context.entryEventTNodeIds, [eventTNode.id]: true as const }),
+              });
+              if (finiteCount === 0) {
+                enqueue.assign({ entryReady: true });
+              } else {
+                enqueue.assign({ pendingEntryChildren: ({ context }) => context.pendingEntryChildren + finiteCount });
+              }
+            }
           }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
@@ -423,6 +448,21 @@ export function createFlowNodeSystem(
               ? typedEv.result
               : context.finalResult,
           });
+
+          // Entry-ready gate: decrement finite entry children, replay deferred events when done
+          if (!context.entryReady && typedEv.eventTNodeId && context.entryEventTNodeIds[typedEv.eventTNodeId]) {
+            const newPending = context.pendingEntryChildren - 1;
+            if (newPending <= 0) {
+              enqueue.assign({ entryReady: true, pendingEntryChildren: 0 });
+              for (const pe of context.pendingEvents) {
+                enqueue.raise(pe as any);
+              }
+              enqueue.assign({ pendingEvents: [] });
+              brainInspect(`Flow ${flowTNodeId} entry ready — replaying ${context.pendingEvents.length} deferred events`);
+            } else {
+              enqueue.assign({ pendingEntryChildren: newPending });
+            }
+          }
 
           // Mark listener TNode completed once its track drains. This reuses the
           // same TNODE_UPDATED pipeline that step/flow completions flow through.
@@ -576,6 +616,9 @@ export function createFlowNodeSystem(
         isRootFlow: isRootFlow,
         pendingNextSteps: [],
         pendingEvents: [],
+        entryReady: !allTriggerNodes.some(n => n.eventType === 'flow.entry'),
+        pendingEntryChildren: 0,
+        entryEventTNodeIds: {},
       }),
       on: {
         ...eventHandlers,
