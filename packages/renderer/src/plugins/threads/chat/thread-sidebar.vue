@@ -42,10 +42,16 @@
         <template v-else>
           <!-- Pinned section -->
           <template v-if="pinnedThreads.length > 0">
-            <div class="px-3 pt-3 pb-1">
+            <div
+              class="flex items-center gap-1.5 px-3 pt-3 pb-1 cursor-pointer"
+              @click="toggleSection('pinned')"
+            >
+              <ChevronRight v-if="collapsedSections.has('pinned')" :size="10" class="text-neutral-500" />
+              <ChevronDown v-else :size="10" class="text-neutral-500" />
               <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Pinned</span>
             </div>
 
+            <template v-if="!collapsedSections.has('pinned')">
             <!-- Pinned groups -->
             <template v-for="pg in pinnedGroups" :key="pg.group.id">
               <div
@@ -104,6 +110,7 @@
                 @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
               />
             </ContextMenuRoot>
+            </template>
           </template>
 
           <!-- Unpinned groups -->
@@ -144,9 +151,15 @@
 
           <!-- Time-based sections -->
           <template v-for="tg in timeGroups" :key="tg.label">
-            <div class="px-3 pt-3 pb-1">
+            <div
+              class="flex items-center gap-1.5 px-3 pt-3 pb-1 cursor-pointer"
+              @click="toggleSection(tg.label)"
+            >
+              <ChevronRight v-if="collapsedSections.has(tg.label)" :size="10" class="text-neutral-500" />
+              <ChevronDown v-else :size="10" class="text-neutral-500" />
               <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{{ tg.label }}</span>
             </div>
+            <template v-if="!collapsedSections.has(tg.label)">
             <ContextMenuRoot v-for="thread in tg.threads" :key="thread.id">
               <ContextMenuTrigger as-child>
                 <div
@@ -168,6 +181,7 @@
                 @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
               />
             </ContextMenuRoot>
+            </template>
           </template>
         </template>
       </template>
@@ -215,10 +229,16 @@ const settings = useSelector(actor, (state) => state.context.settings)
 
 // Collapsible groups (local UI state)
 const collapsedGroups = reactive(new Set<string>())
+const collapsedSections = reactive(new Set<string>())
 
 function toggleGroup(groupId: string) {
   if (collapsedGroups.has(groupId)) collapsedGroups.delete(groupId)
   else collapsedGroups.add(groupId)
+}
+
+function toggleSection(sectionId: string) {
+  if (collapsedSections.has(sectionId)) collapsedSections.delete(sectionId)
+  else collapsedSections.add(sectionId)
 }
 
 // Thread status helpers
