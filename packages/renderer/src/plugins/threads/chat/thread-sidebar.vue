@@ -9,13 +9,13 @@
     </div>
 
     <!-- Scrollable list -->
-    <div class="flex-1 overflow-y-auto py-1">
+    <div class="flex-1 overflow-y-auto py-1" @scroll="onSidebarScroll">
       <!-- Archive view -->
       <template v-if="showArchive">
         <div v-if="archivedThreads.length === 0" class="py-8 text-center">
           <p class="text-sm text-neutral-500">No archived threads</p>
         </div>
-        <ContextMenuRoot v-for="thread in archivedThreads" :key="thread.id">
+        <ContextMenuRoot v-for="thread in archivedThreads.slice(0, archiveDisplayCount)" :key="thread.id">
           <ContextMenuTrigger as-child>
             <div
               class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer transition-colors group hover:bg-neutral-800 text-neutral-300 hover:text-white"
@@ -232,6 +232,22 @@ function getBusy(threadId: string | undefined): boolean {
   return isThreadBusy(threadId, chatStates.value, chatStateOverrides.value, settings.value)
 }
 
+// Render limiting
+const SIDEBAR_BATCH = 30
+const displayCount = ref(SIDEBAR_BATCH)
+const archiveDisplayCount = ref(SIDEBAR_BATCH)
+
+function onSidebarScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
+    if (showArchive.value) {
+      archiveDisplayCount.value = Math.min(archiveDisplayCount.value + SIDEBAR_BATCH, archivedThreads.value.length)
+    } else {
+      displayCount.value += SIDEBAR_BATCH
+    }
+  }
+}
+
 // Group color mapping
 const groupColorMap: Record<string, string> = {
   blue: '#3B82F6', purple: '#8B5CF6', pink: '#EC4899', red: '#EF4444',
@@ -304,7 +320,9 @@ const timeGroups = computed(() => {
     unpinnedGroups.value.flatMap(ug => ug.threads.map(t => t.id))
   )
 
-  const ungrouped = unpinnedThreads.value.filter(t => !unpinnedGroupedIds.has(t.id))
+  const ungrouped = unpinnedThreads.value
+    .filter(t => !unpinnedGroupedIds.has(t.id))
+    .slice(0, displayCount.value)
 
   const today: ThreadListItem[] = []
   const yesterday: ThreadListItem[] = []
@@ -365,6 +383,8 @@ const archivedThreads = useSelector(actor, (state) => state.context.sidebarArchi
 
 function toggleArchive() {
   showArchive.value = !showArchive.value
+  displayCount.value = SIDEBAR_BATCH
+  archiveDisplayCount.value = SIDEBAR_BATCH
   if (showArchive.value) {
     trpc.bus.send.mutate({ systemId: id, type: 'GET_ARCHIVED_THREADS' })
   }
