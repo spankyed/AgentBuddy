@@ -44,72 +44,53 @@
           <template v-if="pinnedThreads.length > 0">
             <div
               class="flex items-center gap-1.5 px-3 pt-2.5 pb-0.5 cursor-pointer select-none"
-              @click="toggleSection('pinned')"
+              @click="toggleCollapsed('pinned')"
             >
-              <ChevronRight v-if="collapsedSections.has('pinned')" :size="10" class="text-neutral-600 transition-transform" />
+              <ChevronRight v-if="collapsed.has('pinned')" :size="10" class="text-neutral-600 transition-transform" />
               <ChevronDown v-else :size="10" class="text-neutral-600 transition-transform" />
               <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Pinned</span>
             </div>
 
-            <div v-if="!collapsedSections.has('pinned')" class="ml-[15px] border-l border-neutral-700/30">
+            <div v-if="!collapsed.has('pinned')" class="ml-[15px] border-l border-neutral-700/30">
               <!-- Pinned groups -->
               <template v-for="pg in pinnedGroups" :key="pg.group.id">
                 <div
                   class="flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 cursor-pointer hover:bg-neutral-800/50 transition-colors"
-                  @click="toggleGroup(pg.group.id)"
+                  @click="toggleCollapsed(pg.group.id)"
                 >
-                  <ChevronRight v-if="collapsedGroups.has(pg.group.id)" :size="11" class="text-neutral-600 shrink-0 transition-transform" />
+                  <ChevronRight v-if="collapsed.has(pg.group.id)" :size="11" class="text-neutral-600 shrink-0 transition-transform" />
                   <ChevronDown v-else :size="11" class="text-neutral-600 shrink-0 transition-transform" />
                   <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: groupColor(pg.group.color) }" />
                   <span class="text-xs font-medium text-neutral-400 truncate">{{ pg.group.name }}</span>
                 </div>
-                <div v-if="!collapsedGroups.has(pg.group.id)" class="ml-[13px] border-l border-neutral-700/25">
-                  <ContextMenuRoot v-for="thread in pg.threads" :key="thread.id">
-                    <ContextMenuTrigger as-child>
-                      <div
-                        class="flex items-center gap-2 pl-3 pr-3 py-1.5 cursor-pointer transition-colors group"
-                        :class="thread.id === currentThread?.id ? 'bg-blue-500/15 text-white' : 'hover:bg-neutral-800 text-neutral-300 hover:text-white'"
-                        @click="emit('select-thread', thread.id!)"
-                      >
-                        <span class="shrink-0 relative inline-block w-1.5 h-1.5">
-                          <span class="block w-full h-full rounded-full transition-colors" :class="getBusy(thread.id) ? 'mosaic-dot' : ''" :style="!getBusy(thread.id) ? { backgroundColor: getDotColor(thread.id) || '#525252' } : undefined" />
-                          <span v-if="getBusy(thread.id)" class="absolute inset-0 rounded-full scale-[2] mosaic-glow" />
-                        </span>
-                        <span class="flex-1 min-w-0 truncate text-sm">{{ thread.topic || 'Untitled' }}</span>
-                        <Pin v-if="thread.pinned" :size="10" class="shrink-0 text-blue-400/60" />
-                      </div>
-                    </ContextMenuTrigger>
-                    <ThreadContextMenu
-                      :is-pinned="!!thread.pinned" :is-archived="false" :copy-text="thread.shortCode || thread.id"
-                      @rename="handleRename(thread.id!, thread.topic)" @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
-                      @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
-                    />
-                  </ContextMenuRoot>
+                <div v-if="!collapsed.has(pg.group.id)" class="ml-[13px] border-l border-neutral-700/25">
+                  <SidebarThreadItem
+                    v-for="thread in pg.threads" :key="thread.id"
+                    :thread="thread" :is-active="thread.id === currentThread?.id" :is-pinned="!!thread.pinned"
+                    :dot-color="getDotColor(thread.id)" :is-busy="getBusy(thread.id)"
+                    :group-id="pg.group.id" :tab-groups="tabGroups"
+                    @select="emit('select-thread', thread.id!)" @rename="handleRename(thread.id!, thread.topic)"
+                    @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
+                    @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
+                    @add-to-group="(gId: string) => handleAddToGroup(thread.id!, gId)"
+                    @remove-from-group="handleRemoveFromGroup(thread.id!)"
+                    @create-group="handleCreateGroup(thread.id!)"
+                  />
                 </div>
               </template>
 
               <!-- Ungrouped pinned threads -->
-              <ContextMenuRoot v-for="thread in ungroupedPinnedThreads" :key="thread.id">
-                <ContextMenuTrigger as-child>
-                  <div
-                    class="flex items-center gap-2 pl-3 pr-3 py-1.5 cursor-pointer transition-colors group"
-                    :class="thread.id === currentThread?.id ? 'bg-blue-500/15 text-white' : 'hover:bg-neutral-800 text-neutral-300 hover:text-white'"
-                    @click="emit('select-thread', thread.id!)"
-                  >
-                    <span class="shrink-0 relative inline-block w-1.5 h-1.5">
-                      <span class="block w-full h-full rounded-full transition-colors" :class="getBusy(thread.id) ? 'mosaic-dot' : ''" :style="!getBusy(thread.id) ? { backgroundColor: getDotColor(thread.id) || '#525252' } : undefined" />
-                      <span v-if="getBusy(thread.id)" class="absolute inset-0 rounded-full scale-[2] mosaic-glow" />
-                    </span>
-                    <span class="flex-1 min-w-0 truncate text-sm">{{ thread.topic || 'Untitled' }}</span>
-                    <Pin v-if="thread.pinned" :size="10" class="shrink-0 text-blue-400/60" />
-                  </div>
-                </ContextMenuTrigger>
-                <ThreadContextMenu
-                  :is-pinned="!!thread.pinned" :is-archived="false" :copy-text="thread.shortCode || thread.id"
-                  @rename="handleRename(thread.id!, thread.topic)" @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
-                  @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
-                />
-              </ContextMenuRoot>
+              <SidebarThreadItem
+                v-for="thread in ungroupedPinnedThreads" :key="thread.id"
+                :thread="thread" :is-active="thread.id === currentThread?.id" :is-pinned="!!thread.pinned"
+                :dot-color="getDotColor(thread.id)" :is-busy="getBusy(thread.id)"
+                :group-id="undefined" :tab-groups="tabGroups"
+                @select="emit('select-thread', thread.id!)" @rename="handleRename(thread.id!, thread.topic)"
+                @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
+                @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
+                @add-to-group="(gId: string) => handleAddToGroup(thread.id!, gId)"
+                @create-group="handleCreateGroup(thread.id!)"
+              />
             </div>
           </template>
 
@@ -117,35 +98,26 @@
           <template v-for="ug in unpinnedGroups" :key="ug.group.id">
             <div
               class="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer hover:bg-neutral-800/50 transition-colors"
-              @click="toggleGroup(ug.group.id)"
+              @click="toggleCollapsed(ug.group.id)"
             >
-              <ChevronRight v-if="collapsedGroups.has(ug.group.id)" :size="11" class="text-neutral-600 shrink-0 transition-transform" />
+              <ChevronRight v-if="collapsed.has(ug.group.id)" :size="11" class="text-neutral-600 shrink-0 transition-transform" />
               <ChevronDown v-else :size="11" class="text-neutral-600 shrink-0 transition-transform" />
               <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: groupColor(ug.group.color) }" />
               <span class="text-xs font-medium text-neutral-400 truncate">{{ ug.group.name }}</span>
             </div>
-            <div v-if="!collapsedGroups.has(ug.group.id)" class="ml-[15px] border-l border-neutral-700/30">
-              <ContextMenuRoot v-for="thread in ug.threads" :key="thread.id">
-                <ContextMenuTrigger as-child>
-                  <div
-                    class="flex items-center gap-2 pl-3 pr-3 py-1.5 cursor-pointer transition-colors group"
-                    :class="thread.id === currentThread?.id ? 'bg-blue-500/15 text-white' : 'hover:bg-neutral-800 text-neutral-300 hover:text-white'"
-                    @click="emit('select-thread', thread.id!)"
-                  >
-                    <span class="shrink-0 relative inline-block w-1.5 h-1.5">
-                      <span class="block w-full h-full rounded-full transition-colors" :class="getBusy(thread.id) ? 'mosaic-dot' : ''" :style="!getBusy(thread.id) ? { backgroundColor: getDotColor(thread.id) || '#525252' } : undefined" />
-                      <span v-if="getBusy(thread.id)" class="absolute inset-0 rounded-full scale-[2] mosaic-glow" />
-                    </span>
-                    <span class="flex-1 min-w-0 truncate text-sm">{{ thread.topic || 'Untitled' }}</span>
-                    <Pin v-if="thread.pinned" :size="10" class="shrink-0 text-blue-400/60" />
-                  </div>
-                </ContextMenuTrigger>
-                <ThreadContextMenu
-                  :is-pinned="!!thread.pinned" :is-archived="false" :copy-text="thread.shortCode || thread.id"
-                  @rename="handleRename(thread.id!, thread.topic)" @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
-                  @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
-                />
-              </ContextMenuRoot>
+            <div v-if="!collapsed.has(ug.group.id)" class="ml-[15px] border-l border-neutral-700/30">
+              <SidebarThreadItem
+                v-for="thread in ug.threads" :key="thread.id"
+                :thread="thread" :is-active="thread.id === currentThread?.id" :is-pinned="!!thread.pinned"
+                :dot-color="getDotColor(thread.id)" :is-busy="getBusy(thread.id)"
+                :group-id="ug.group.id" :tab-groups="tabGroups"
+                @select="emit('select-thread', thread.id!)" @rename="handleRename(thread.id!, thread.topic)"
+                @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
+                @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
+                @add-to-group="(gId: string) => handleAddToGroup(thread.id!, gId)"
+                @remove-from-group="handleRemoveFromGroup(thread.id!)"
+                @create-group="handleCreateGroup(thread.id!)"
+              />
             </div>
           </template>
 
@@ -153,34 +125,25 @@
           <template v-for="tg in timeGroups" :key="tg.label">
             <div
               class="flex items-center gap-1.5 px-3 pt-2.5 pb-0.5 cursor-pointer select-none"
-              @click="toggleSection(tg.label)"
+              @click="toggleCollapsed(tg.label)"
             >
-              <ChevronRight v-if="collapsedSections.has(tg.label)" :size="10" class="text-neutral-600 transition-transform" />
+              <ChevronRight v-if="collapsed.has(tg.label)" :size="10" class="text-neutral-600 transition-transform" />
               <ChevronDown v-else :size="10" class="text-neutral-600 transition-transform" />
               <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{{ tg.label }}</span>
             </div>
-            <div v-if="!collapsedSections.has(tg.label)" class="ml-[15px] border-l border-neutral-700/30">
-              <ContextMenuRoot v-for="thread in tg.threads" :key="thread.id">
-                <ContextMenuTrigger as-child>
-                  <div
-                    class="flex items-center gap-2 pl-3 pr-3 py-1.5 cursor-pointer transition-colors group"
-                    :class="thread.id === currentThread?.id ? 'bg-blue-500/15 text-white' : 'hover:bg-neutral-800 text-neutral-300 hover:text-white'"
-                    @click="emit('select-thread', thread.id!)"
-                  >
-                    <span class="shrink-0 relative inline-block w-1.5 h-1.5">
-                      <span class="block w-full h-full rounded-full transition-colors" :class="getBusy(thread.id) ? 'mosaic-dot' : ''" :style="!getBusy(thread.id) ? { backgroundColor: getDotColor(thread.id) || '#525252' } : undefined" />
-                      <span v-if="getBusy(thread.id)" class="absolute inset-0 rounded-full scale-[2] mosaic-glow" />
-                    </span>
-                    <span class="flex-1 min-w-0 truncate text-sm">{{ thread.topic || 'Untitled' }}</span>
-                    <Pin v-if="thread.pinned" :size="10" class="shrink-0 text-blue-400/60" />
-                  </div>
-                </ContextMenuTrigger>
-                <ThreadContextMenu
-                  :is-pinned="!!thread.pinned" :is-archived="false" :copy-text="thread.shortCode || thread.id"
-                  @rename="handleRename(thread.id!, thread.topic)" @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
-                  @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
-                />
-              </ContextMenuRoot>
+            <div v-if="!collapsed.has(tg.label)" class="ml-[15px] border-l border-neutral-700/30">
+              <SidebarThreadItem
+                v-for="thread in tg.threads" :key="thread.id"
+                :thread="thread" :is-active="thread.id === currentThread?.id" :is-pinned="!!thread.pinned"
+                :dot-color="getDotColor(thread.id)" :is-busy="getBusy(thread.id)"
+                :group-id="tabGroupMap.get(thread.id!)" :tab-groups="tabGroups"
+                @select="emit('select-thread', thread.id!)" @rename="handleRename(thread.id!, thread.topic)"
+                @pin="handlePin(thread.id!)" @unpin="handleUnpin(thread.id!)"
+                @archive="handleArchive(thread.id!)" @delete="handleDelete(thread)"
+                @add-to-group="(gId: string) => handleAddToGroup(thread.id!, gId)"
+                @remove-from-group="handleRemoveFromGroup(thread.id!)"
+                @create-group="handleCreateGroup(thread.id!)"
+              />
             </div>
           </template>
         </template>
@@ -203,13 +166,14 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { X, ChevronDown, ChevronRight, ChevronLeft, Pin, Archive } from 'lucide-vue-next'
+import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState, type ThreadListItem } from '@/plugins/threads/state'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
 import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue'
+import SidebarThreadItem from './sidebar-thread-item.vue'
 import { trpc } from '@/core/trpc'
 
 const emit = defineEmits<{
@@ -227,18 +191,12 @@ const chatStates = useSelector(actor, (state) => state.context.chatStates)
 const chatStateOverrides = useSelector(actor, (state) => state.context.chatStateOverrides)
 const settings = useSelector(actor, (state) => state.context.settings)
 
-// Collapsible groups (local UI state)
-const collapsedGroups = reactive(new Set<string>())
-const collapsedSections = reactive(new Set<string>())
+// Collapsible groups & sections (local UI state — non-overlapping key spaces)
+const collapsed = reactive(new Set<string>())
 
-function toggleGroup(groupId: string) {
-  if (collapsedGroups.has(groupId)) collapsedGroups.delete(groupId)
-  else collapsedGroups.add(groupId)
-}
-
-function toggleSection(sectionId: string) {
-  if (collapsedSections.has(sectionId)) collapsedSections.delete(sectionId)
-  else collapsedSections.add(sectionId)
+function toggleCollapsed(key: string) {
+  if (collapsed.has(key)) collapsed.delete(key)
+  else collapsed.add(key)
 }
 
 // Thread status helpers
@@ -395,6 +353,18 @@ function handleDelete(thread: ThreadListItem) {
 
 function handleUnarchive(threadId: string) {
   actor.send({ type: 'UNARCHIVE_THREAD', threadId })
+}
+
+function handleAddToGroup(tabId: string, groupId: string) {
+  actor.send({ type: 'ADD_TAB_TO_GROUP', tabId, groupId })
+}
+
+function handleRemoveFromGroup(tabId: string) {
+  actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId })
+}
+
+function handleCreateGroup(tabId: string) {
+  actor.send({ type: 'CREATE_TAB_GROUP', tabIds: [tabId] })
 }
 
 // Archive view
