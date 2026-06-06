@@ -198,7 +198,8 @@ const settings: SettingsData = {
       inspectEnabled: false,
     },
     notes: {
-      tasklistPanelPosition: 'left'
+      tasklistPanelPosition: 'left',
+      showCollapseIcon: true,
     },
     logs: {
       maxLogs: 1000,

@@ -84,6 +84,7 @@
 
         :drop-indicator-note-id="dropIndicator?.noteId ?? null"
         :drop-indicator-position="dropIndicator?.position ?? null"
+        :show-collapse-icon="showCollapseIcon"
         @select="(id: string) => $emit('select-task', id)"
         @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
         @delete="(id: string) => $emit('delete-task', id)"
@@ -118,6 +119,7 @@
 
           :drop-indicator-note-id="dropIndicator?.noteId ?? null"
           :drop-indicator-position="dropIndicator?.position ?? null"
+          :show-collapse-icon="showCollapseIcon"
           @select="(id: string) => $emit('select-task', id)"
           @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
           @delete="(id: string) => $emit('delete-task', id)"
@@ -171,6 +173,7 @@ const props = defineProps<{
   currentNoteIcon: string | null
   showCompleted: boolean
   panelPosition?: 'left' | 'right'
+  showCollapseIcon?: boolean
 }>()
 
 const emit = defineEmits<{

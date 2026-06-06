@@ -188,6 +188,7 @@
             :get-item-class="getItemClass"
             :drop-indicator-note-id="dropIndicator?.noteId ?? null"
             :drop-indicator-position="dropIndicator?.position ?? null"
+            :show-collapse-icon="showCollapseIcon"
             @select="handleSelectNote"
             @toggle-expand="handleToggleExpand"
             @create="handleCreateNote"
@@ -229,6 +230,7 @@
           :get-item-class="getItemClass"
           :drop-indicator-note-id="dropIndicator?.noteId ?? null"
           :drop-indicator-position="dropIndicator?.position ?? null"
+          :show-collapse-icon="showCollapseIcon"
           @select="handleSelectNote"
           @toggle-expand="handleToggleExpand"
           @create="handleCreateNote"
@@ -291,6 +293,7 @@ const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
 const selectedNoteIds = useSelector(actor, (s) => s.context.selectedNoteIds)
+const showCollapseIcon = useSelector(actor, (s) => s.context.settings.showCollapseIcon)
 const showTrash = useSelector(actor, (s) => s.context.showTrash)
 const trashedNotes = useSelector(actor, (s) => s.context.trashedNotes)
 

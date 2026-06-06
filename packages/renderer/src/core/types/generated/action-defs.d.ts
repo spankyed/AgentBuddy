@@ -1068,6 +1068,7 @@ interface ApplicationHotkeys {
 }
 interface AppSettings {
     hotkeys: ApplicationHotkeys;
+    openLinksInApp: boolean;
 }
 interface Project {
     name: string;
@@ -1109,6 +1110,7 @@ interface ThreadsSettings {
 }
 interface NotesSettings {
     tasklistPanelPosition: 'left' | 'right';
+    showCollapseIcon: boolean;
 }
 interface LogsSettings {
     maxLogs: number;

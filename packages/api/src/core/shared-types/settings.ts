@@ -181,6 +181,7 @@ export interface BrainSettings {
 // Notes plugin settings
 export interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'
+  showCollapseIcon: boolean
 }
 
 // Logs plugin settings

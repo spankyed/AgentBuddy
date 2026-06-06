@@ -205,6 +205,7 @@
         :current-note-icon="currentNote.icon"
         :show-completed="!(currentNote?.hideCompletedChildren ?? false)"
         :panel-position="notesSettings.tasklistPanelPosition"
+        :show-collapse-icon="notesSettings.showCollapseIcon"
         @toggle-hide-completed="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN', nodeId })"
         @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
         @deselect-task="actor.send({ type: 'TASK.DESELECT' })"

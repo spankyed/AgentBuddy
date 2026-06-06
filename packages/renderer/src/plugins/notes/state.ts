@@ -29,7 +29,7 @@ export interface NotesContext {
   selectedNoteIds: string[]
   selectedTaskId: string | null
   selectedTask: NoteDTO | null
-  settings: { tasklistPanelPosition: 'left' | 'right' }
+  settings: { tasklistPanelPosition: 'left' | 'right'; showCollapseIcon: boolean }
   notesImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
   notesExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
   showTrash: boolean
@@ -92,7 +92,7 @@ type UIEvent =
   | { type: 'NAVIGATE_FORWARD' }
 
 type SettingsEvent =
-  | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
+  | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right'; showCollapseIcon: boolean } }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent | SettingsEvent
 const typeOf = safeEvents<NotesEvents>()
@@ -812,7 +812,7 @@ const notesState = setup({
     selectedNoteIds: [],
     selectedTaskId: null,
     selectedTask: null,
-    settings: { tasklistPanelPosition: 'left' as const },
+    settings: { tasklistPanelPosition: 'left' as const, showCollapseIcon: false },
     notesImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     notesExport: { status: 'idle' as const, errors: [], filePath: '', itemCount: 0 },
     showTrash: false,
