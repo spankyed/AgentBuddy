@@ -488,6 +488,9 @@ const browserState = setup({
                 activeTabId: context.activeTabId === event.tabId
                   ? (tabs.at(-1)?.id ?? null)
                   : context.activeTabId,
+                ...(context.activeTabId === event.tabId
+                  ? { addressBarValue: tabs.at(-1)?.url ?? '' }
+                  : {}),
               };
             }),
             ({ context }) => persistState(context),
