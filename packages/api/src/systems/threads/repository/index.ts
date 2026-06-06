@@ -35,6 +35,9 @@ export const threadQueries = {
   all: () =>
     findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived),
 
+  allUnfiltered: () =>
+    findAll<ThreadEntity>(EARS.Entity.Thread),
+
   allByRecency: () => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     return threads.sort((a, b) => {

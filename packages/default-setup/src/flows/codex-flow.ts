@@ -11,7 +11,7 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
 export default {
   "Codex": [
     entry(
-      [action("CDX: Start Server", { label: "start-server" })],
+      [action("CDX: Reconcile State", { label: "reconcile" }), action("CDX: Start Server", { label: "start-server" })],
       [keepAlive()],
     ),
     on(

@@ -17,6 +17,7 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
 export default {
   "Claude Code": [
     entry(
+      [action("CC: Reconcile State", { label: "reconcile" })],
       [keepAlive()],
     ),
     on(
