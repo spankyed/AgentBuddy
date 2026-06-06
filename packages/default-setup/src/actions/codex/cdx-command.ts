@@ -343,6 +343,8 @@ async function handleBypass(
   return { text: enabling ? 'Auto-review enabled' : 'Auto-review disabled' };
 }
 
+const MAX_GOAL_CHARS = 4_000;
+
 async function handleGoal(
   args: string[],
   services: Services,
@@ -372,9 +374,26 @@ async function handleGoal(
     case 'set': {
       const objective = rest.join(' ').trim();
       if (!objective) return { text: 'Usage: /cdx-goal set <objective>' };
+      if (objective.length > MAX_GOAL_CHARS) {
+        return { text: `Objective too long (${objective.length} chars, max ${MAX_GOAL_CHARS}). Use a reference file for longer instructions.` };
+      }
       const goal = { objective, status: 'active' as const };
       persistCodexState(services, threadId, { goal });
       return { text: `Goal set: ${objective}`, data: goal };
+    }
+    case 'edit': {
+      const goal = state?.goal;
+      if (!goal) return { text: 'No goal to edit.' };
+      const objective = rest.join(' ').trim();
+      if (!objective) return { text: 'Usage: /cdx-goal edit <new objective>' };
+      if (objective.length > MAX_GOAL_CHARS) {
+        return { text: `Objective too long (${objective.length} chars, max ${MAX_GOAL_CHARS}). Use a reference file for longer instructions.` };
+      }
+      const terminal = goal.status === 'budget_limited' || goal.status === 'complete';
+      const updated = { ...goal, objective, ...(terminal && { status: 'active' as const }) };
+      persistCodexState(services, threadId, { goal: updated });
+      const suffix = terminal ? ' (reactivated)' : '';
+      return { text: `Goal updated${suffix}: ${objective}`, data: updated };
     }
     case 'pause': {
       const goal = state?.goal;
@@ -387,7 +406,9 @@ async function handleGoal(
     case 'resume': {
       const goal = state?.goal;
       if (!goal) return { text: 'No goal to resume.' };
-      if (goal.status !== 'paused') return { text: `Goal is ${goal.status}, not paused.` };
+      if (goal.status === 'active') return { text: 'Goal is already active.' };
+      const resumable: string[] = ['paused', 'blocked', 'usage_limited'];
+      if (!resumable.includes(goal.status)) return { text: `Cannot resume a ${goal.status} goal.` };
       const updated = { ...goal, status: 'active' as const };
       persistCodexState(services, threadId, { goal: updated });
       return { text: `Goal resumed: ${goal.objective}`, data: updated };
@@ -398,6 +419,6 @@ async function handleGoal(
       return { text: 'Goal cleared.' };
     }
     default:
-      return { text: `Unknown subcommand: ${subcommand}\nUsage: /cdx-goal set <text> | show | pause | resume | clear` };
+      return { text: `Unknown subcommand: ${subcommand}\nUsage: /cdx-goal set|show|edit|pause|resume|clear <objective>` };
   }
 }

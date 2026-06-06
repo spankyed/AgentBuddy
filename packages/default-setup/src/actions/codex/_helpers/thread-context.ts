@@ -65,7 +65,7 @@ export interface CodexThreadState {
   forceDirectoryPicker?: boolean;
   goal?: {
     objective: string;
-    status: 'active' | 'paused' | 'complete';
+    status: 'active' | 'paused' | 'blocked' | 'usage_limited' | 'budget_limited' | 'complete';
     tokenBudget?: number;
     tokensUsed?: number;
   };

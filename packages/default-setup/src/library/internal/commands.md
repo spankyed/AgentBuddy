@@ -33,5 +33,5 @@
 **cdx-skills**: List installed Codex skills
 **cdx-mcp**: List Codex MCP servers
 **cdx-bypass**: Toggle auto-review approval mode
-**cdx-goal**: set|show|pause|resume|clear <objective>
+**cdx-goal**: set|show|edit|pause|resume|clear <objective>
 **instructions**: Thread instructions text
