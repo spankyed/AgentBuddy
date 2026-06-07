@@ -557,6 +557,7 @@ export const threadsSystem = setup({
       }
     },
     forwardUserCommand: ({ system, event }) => {
+      try {
       const { command, text, mode, phase, threadId: providedThreadId, references, cwdOverride } = threadsDef.typeOf('USER_COMMAND', event);
 
       const sanitizedRefs = references ? {
@@ -652,6 +653,9 @@ export const threadsSystem = setup({
           ...(cwdOverride && { cwdOverride }),
         },
       });
+      } catch (err) {
+        logger.error('forwardUserCommand failed', { error: err });
+      }
     },
     forkThread: ({ system, event }) => {
       const { messageId, threadId, threadTopic } = threadsDef.typeOf('FORK_THREAD', event);
@@ -719,6 +723,7 @@ export const threadsSystem = setup({
       }
     },
     revertThread: ({ system, event }) => {
+      try {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsDef.typeOf('REVERT_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
@@ -767,8 +772,12 @@ export const threadsSystem = setup({
           ...(restoreFiles && userCliUuid ? { userCliUuid } : {}),
         },
       });
+      } catch (err) {
+        logger.error('revertThread failed', { error: err });
+      }
     },
     summarizeThread: ({ system, event }) => {
+      try {
       const { messageId, threadId } = threadsDef.typeOf('SUMMARIZE_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
@@ -806,6 +815,9 @@ export const threadsSystem = setup({
         eventType: 'thread.revert',
         payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount, agents, codexDeletedUserMessageCount },
       });
+      } catch (err) {
+        logger.error('summarizeThread failed', { error: err });
+      }
     },
     pauseTurn: ({ system, event }) => {
       const { threadId } = threadsDef.typeOf('PAUSE_TURN', event);
@@ -822,6 +834,7 @@ export const threadsSystem = setup({
       brainActor.send({ type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
+      try {
       const { messageId, threadId, response } = threadsDef.typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
       if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
@@ -853,6 +866,9 @@ export const threadsSystem = setup({
         ...(result.blocks && { blocks: result.blocks }),
         ...(asideText && { asideText })
       }));
+      } catch (err) {
+        logger.error('forwardInteractiveMessageResponse failed', { error: err });
+      }
     },
     deleteMessage: ({ event }) => {
       const { messageId } = threadsDef.typeOf('DELETE_MESSAGE', event);
