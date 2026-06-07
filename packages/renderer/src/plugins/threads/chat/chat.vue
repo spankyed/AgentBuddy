@@ -382,9 +382,12 @@ function handleToggleInlineTabs() {
 }
 
 function handleToggleInlineDashboard() {
+  if (showThreadSidebar.value) {
+    showThreadSidebar.value = false
+    return
+  }
   if (!showInlineDashboard.value) {
     expandChatIfCollapsed()
-    showThreadSidebar.value = false
   }
   showInlineDashboard.value = !showInlineDashboard.value
 }
@@ -400,11 +403,14 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 function handleToggleThreadSidebar() {
+  if (showInlineDashboard.value) {
+    showInlineDashboard.value = false
+    return
+  }
   if (showThreadSidebar.value) {
     showThreadSidebar.value = false
     return
   }
-  showInlineDashboard.value = false
   expandChatIfCollapsed()
   showThreadSidebar.value = true
 }
