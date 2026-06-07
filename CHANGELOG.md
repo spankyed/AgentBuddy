@@ -1,5 +1,12 @@
 -e # Changelog
 
+## v0.3.10 (2026-06-06)
+
+### Fixes
+- query): handle null values in qx mapping function
+
+-e # Changelog
+
 ## v0.3.9 (2026-06-06)
 
 ### Features
