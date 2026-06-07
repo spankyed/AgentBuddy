@@ -187,10 +187,16 @@ export const qx = (
       tgtType?: MaybeArr<EARS.Entity>,
     ) => {
       const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
-      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
-        ...(manyKinds ? { relation } : {}),
-        ...qx(id).pickOne(fields)!,
-      }));
+      return self.links(relKinds, tgtType)
+        .map(({ relation, id }) => {
+          const picked = qx(id).pickOne(fields);
+          if (!picked) return null;
+          return {
+            ...(manyKinds ? { relation } : {}),
+            ...picked,
+          };
+        })
+        .filter(Boolean);
     },
 
     /*─ list shaping helpers ─*/
