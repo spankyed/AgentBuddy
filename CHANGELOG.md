@@ -1,5 +1,19 @@
 -e # Changelog
 
+## v0.3.11 (2026-06-07)
+
+### Features
+-  add diagnostics bundle generation and enhance logging for production
+-  implement renderer logging and error handling in the application
+-  enhance clean script to remove production logs and update release documentation for debugging
+-  implement findArtifactByThreadAndType function and update threadQueries for compatibility
+
+### Other
+- Revert "chore(release): v0.3.11"
+- chore: remove stale log file reference from release documentation
+
+-e # Changelog
+
 ## v0.3.10 (2026-06-07)
 
 ### Features
