@@ -51,6 +51,7 @@ export class ApiServer implements AppModule {
       logStartupBanner();
       logInfo('AgentBuddy API Server Module Enabled');
       logInfo('Log file location:', getLogger().getLogPath());
+      logInfo('Renderer log file location:', getLogger().getRendererLogPath());
     }
 
     // Let renderer query current API status on startup (avoids IPC race condition)

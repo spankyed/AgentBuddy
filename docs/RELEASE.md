@@ -92,6 +92,21 @@ This log includes:
 - API server spawn/readiness messages
 - API child stderr, including structured fatal errors
 - backend runtime errors forwarded through stderr
+- renderer fatal summaries with pointers to the renderer log
+
+**Renderer crash/error log:**
+
+```bash
+tail -f ~/Library/Logs/abuddy/renderer.log
+```
+
+This log includes:
+
+- renderer console messages
+- `window.onerror` and `unhandledrejection`
+- Vue error-handler failures
+- application actor errors
+- Electron `webContents` renderer lifecycle events such as `render-process-gone`, `unresponsive`, `preload-error`, and main-frame load failures
 
 For a terminal-captured production run, use:
 

@@ -102,6 +102,17 @@ const apiStatus = {
   },
 };
 
+const rendererLog = {
+  write: (entry: {
+    level?: 'debug' | 'info' | 'warn' | 'error';
+    source?: string;
+    message?: string;
+    stack?: string;
+    meta?: unknown;
+    fatal?: boolean;
+  }) => ipcRenderer.invoke('renderer-log:write', entry),
+};
+
 // Browser API
 interface TabState {
   id: number;
@@ -186,6 +197,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   speechRecognition,
   zoom,
   apiStatus,
+  rendererLog,
   apiPort,
   browser,
 });

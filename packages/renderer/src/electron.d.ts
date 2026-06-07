@@ -47,6 +47,16 @@ declare global {
         relaunch: () => Promise<void>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
+      rendererLog: {
+        write: (entry: {
+          level?: 'debug' | 'info' | 'warn' | 'error';
+          source?: string;
+          message?: string;
+          stack?: string;
+          meta?: unknown;
+          fatal?: boolean;
+        }) => Promise<void>;
+      };
       browser: {
         createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) => Promise<BrowserTabState | null>;
         loadTab: (tabId: number) => Promise<void>;

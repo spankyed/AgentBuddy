@@ -11,6 +11,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import os from 'node:os';
 import {getMediaBasePath} from '../media-protocol/paths.js';
+import {logRenderer, logRendererFatal} from '../api-server/logger.js';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -43,6 +44,7 @@ class WindowManager implements AppModule {
     
     // Set up window control handlers
     this.setupWindowControls();
+    this.setupRendererLogHandlers();
     
     // Update splash screen status while waiting for API server
     if (this.#splashScreen) {
@@ -309,6 +311,104 @@ class WindowManager implements AppModule {
     });
   }
 
+  private setupRendererLogHandlers(): void {
+    ipcMain.handle('renderer-log:write', (_event, entry: {
+      level?: 'debug' | 'info' | 'warn' | 'error';
+      source?: string;
+      message?: string;
+      stack?: string;
+      meta?: unknown;
+      fatal?: boolean;
+    }) => {
+      const level = entry.level ?? 'info';
+      const payload = {
+        source: entry.source ?? 'renderer',
+        message: entry.message ?? '',
+        stack: entry.stack,
+        meta: entry.meta,
+      };
+
+      if (entry.fatal || level === 'error') {
+        logRendererFatal(payload.message || 'renderer error', payload);
+      } else {
+        logRenderer(level, payload);
+      }
+    });
+  }
+
+  private attachRendererDiagnostics(browserWindow: BrowserWindow): void {
+    const wc = browserWindow.webContents;
+    const windowId = browserWindow.id;
+
+    wc.on('console-message', (_event, level, message, line, sourceId) => {
+      const mappedLevel = level >= 3 ? 'error' : level === 2 ? 'warn' : level === 1 ? 'info' : 'debug';
+      logRenderer(mappedLevel, {
+        source: 'webContents.console',
+        windowId,
+        message,
+        line,
+        sourceId,
+      });
+    });
+
+    wc.on('render-process-gone', (_event, details) => {
+      logRendererFatal('render process gone', {
+        source: 'webContents.render-process-gone',
+        windowId,
+        details,
+      });
+    });
+
+    (wc as any).on('child-process-gone', (_event: Electron.Event, details: unknown) => {
+      logRendererFatal('renderer child process gone', {
+        source: 'webContents.child-process-gone',
+        windowId,
+        details,
+      });
+    });
+
+    wc.on('unresponsive', () => {
+      logRendererFatal('renderer window unresponsive', {
+        source: 'webContents.unresponsive',
+        windowId,
+      });
+    });
+
+    wc.on('responsive', () => {
+      logRenderer('info', {
+        source: 'webContents.responsive',
+        windowId,
+        message: 'renderer window responsive',
+      });
+    });
+
+    wc.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      const payload = {
+        source: 'webContents.did-fail-load',
+        windowId,
+        errorCode,
+        errorDescription,
+        validatedURL,
+        isMainFrame,
+      };
+      if (isMainFrame) {
+        logRendererFatal('renderer failed to load main frame', payload);
+      } else {
+        logRenderer('warn', payload);
+      }
+    });
+
+    wc.on('preload-error', (_event, preloadPath, error) => {
+      logRendererFatal('renderer preload error', {
+        source: 'webContents.preload-error',
+        windowId,
+        preloadPath,
+        message: error.message,
+        stack: error.stack,
+      });
+    });
+  }
+
   async createWindow(): Promise<BrowserWindow> {
     // Determine icon path based on platform (use dev icon in development)
     const iconSuffix = app.isPackaged ? '' : '-dev';
@@ -345,6 +445,7 @@ class WindowManager implements AppModule {
     });
 
     contextMenu({ window: browserWindow });
+    this.attachRendererDiagnostics(browserWindow);
 
     try {
       if (this.#renderer instanceof URL) {
