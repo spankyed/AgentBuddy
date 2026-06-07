@@ -26,6 +26,21 @@ import { repository } from '@/repository';
  * Threads Repository
  */
 
+function findArtifactByThreadAndType(
+  threadId: EARS.EntityId,
+  artifactType: ArtifactType,
+): ArtifactEntity | undefined {
+  const candidates = qx(threadId)
+    .linksPick(
+      EARS.RelKind.HAS,
+      ['artifactType'] as const,
+      EARS.Entity.Artifact,
+    )
+    .filter(({ artifactType: t }) => t === artifactType);
+  const first = candidates[0];
+  if (!first?.id) return undefined;
+  return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
+}
 
 // Queries
 export const threadQueries = {
@@ -175,6 +190,12 @@ export const threadQueries = {
       chatStates,
     };
   },
+
+  /**
+   * Compatibility alias for persisted action code compiled before artifact
+   * helpers moved under chatCommands.
+   */
+  findArtifactByType: findArtifactByThreadAndType,
 } as const;
 
 // Commands
@@ -1004,18 +1025,7 @@ export const chatCommands = {
   findArtifactByType: (
     threadId: EARS.EntityId,
     artifactType: ArtifactType,
-  ): ArtifactEntity | undefined => {
-    const candidates = qx(threadId)
-      .linksPick(
-        EARS.RelKind.HAS,
-        ['artifactType'] as const,
-        EARS.Entity.Artifact,
-      )
-      .filter(({ artifactType: t }) => t === artifactType);
-    const first = candidates[0];
-    if (!first?.id) return undefined;
-    return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
-  },
+  ): ArtifactEntity | undefined => findArtifactByThreadAndType(threadId, artifactType),
 } as const;
 
 registerRepository('threadQueries', threadQueries);
