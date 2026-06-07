@@ -1,5 +1,17 @@
 -e # Changelog
 
+## v0.3.10 (2026-06-06)
+
+### Fixes
+- threads): add error handling to user command and thread operations
+- query): handle null values in qx mapping function
+
+### Other
+- Revert "chore(release): v0.3.10"
+- Revert "chore(release): v0.3.10"
+
+-e # Changelog
+
 ## v0.3.9 (2026-06-06)
 
 ### Features
