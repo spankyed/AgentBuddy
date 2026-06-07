@@ -43,9 +43,18 @@ fi
 PROD_LOGS="$HOME/Library/Logs/abuddy"
 if [ -d "$PROD_LOGS" ]; then
   rm -rf "$PROD_LOGS"
-  echo -e "${GREEN}✓${NC} Deleted ~/Library/Logs/abuddy/ (main/API logs)"
+  echo -e "${GREEN}✓${NC} Deleted ~/Library/Logs/abuddy/ (main/API, renderer, app-event logs)"
 else
   echo "  production logs not found (already clean)"
+fi
+
+# Diagnostics bundles
+DIAGNOSTICS_DIR="$SCRIPT_DIR/../../diagnostics"
+if [ -d "$DIAGNOSTICS_DIR" ]; then
+  rm -rf "$DIAGNOSTICS_DIR"
+  echo -e "${GREEN}✓${NC} Deleted diagnostics/ (production diagnostics bundles)"
+else
+  echo "  diagnostics not found (already clean)"
 fi
 
 # Preferences

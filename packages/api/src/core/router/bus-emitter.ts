@@ -1,6 +1,24 @@
 import { EventEmitter } from 'events';
+import * as fs from 'fs';
+import * as path from 'path';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import { LogEvent } from '../shared/debug/logger';
+
+function appendAppEventLog(event: LogEvent) {
+  const logDir = process.env.AGENTBUDDY_LOG_DIR;
+  if (!logDir) return;
+
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+    fs.appendFileSync(path.join(logDir, 'app-events.log'), JSON.stringify({
+      timestamp: new Date().toISOString(),
+      startupId: process.env.AGENTBUDDY_STARTUP_ID,
+      ...event,
+    }) + '\n');
+  } catch {
+    // Logging must never break runtime event delivery.
+  }
+}
 
 class RootEventEmitter extends EventEmitter {
   emit<K>(eventName: string | symbol, ...args: any[]): boolean {
@@ -9,6 +27,7 @@ class RootEventEmitter extends EventEmitter {
 
   // Log-specific events
   emitLog(event: LogEvent) {
+    appendAppEventLog(event);
     this.emit('log', event);
   }
 

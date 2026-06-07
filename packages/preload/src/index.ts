@@ -18,6 +18,11 @@ function getApiPort(): number {
   return 3001;
 }
 
+function getStartupId(): string | undefined {
+  const startupArg = process.argv.find(arg => arg.startsWith('--startup-id='));
+  return startupArg?.split('=')[1];
+}
+
 // Window controls API
 const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
@@ -39,6 +44,7 @@ const fileUtils = {
 
 // Get the API port
 const apiPort = getApiPort();
+const startupId = getStartupId();
 
 // Shell utilities
 const shell = {
@@ -83,6 +89,10 @@ const apiStatus = {
     port?: number;
     error?: { message: string; stack?: string };
     restartAttempts: number;
+    startupId: string;
+    logPath: string;
+    rendererLogPath: string;
+    appEventsLogPath: string;
   }>,
   relaunch: () => ipcRenderer.invoke('app:relaunch'),
   reload: () => ipcRenderer.invoke('app:reload'),
@@ -199,6 +209,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   apiStatus,
   rendererLog,
   apiPort,
+  startupId,
   browser,
 });
 

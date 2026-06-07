@@ -41,25 +41,22 @@ export class ProcessManager {
         const message = data.toString();
         const isDev = !app.isPackaged;
         
-        // Log critical startup messages even in production
-        const isCriticalMessage = message.includes('WebSocket Server listening') || 
-                                  message.includes('ERROR') || 
-                                  message.includes('Failed') ||
-                                  message.includes('Server started');
-        
-        // Log and broadcast in development mode or for critical messages
-        if (isDev || isCriticalMessage) {
+        // Log all API stdout in production so backend lifecycle context is not lost.
+        if (app.isPackaged && message.trim()) {
+          logInfo(`[API Server stdout]: ${message.trim()}`);
+        }
+
+        // Log and broadcast stdout in development mode.
+        if (isDev) {
           // Log to main process console
           console.log(`[API Server]: ${message.trim()}`);
           
           // Broadcast stdout to renderer in dev mode
-          if (isDev) {
-            broadcastEvent(API_EVENTS.LOG, { 
-              type: 'stdout', 
-              message,
-              timestamp: new Date().toISOString()
-            });
-          }
+          broadcastEvent(API_EVENTS.LOG, { 
+            type: 'stdout', 
+            message,
+            timestamp: new Date().toISOString()
+          });
         }
         
         // Check for server ready message (only trigger once)

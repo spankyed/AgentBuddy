@@ -43,6 +43,10 @@ declare global {
           port?: number;
           error?: { message: string; stack?: string };
           restartAttempts: number;
+          startupId: string;
+          logPath: string;
+          rendererLogPath: string;
+          appEventsLogPath: string;
         }>;
         relaunch: () => Promise<void>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
@@ -82,6 +86,7 @@ declare global {
         getActiveTab: () => Promise<number | null>;
       };
       apiPort: number;
+      startupId?: string;
     };
   }
 

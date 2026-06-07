@@ -93,6 +93,7 @@ This log includes:
 - API child stderr, including structured fatal errors
 - backend runtime errors forwarded through stderr
 - renderer fatal summaries with pointers to the renderer log
+- startup IDs and production log file locations
 
 **Renderer crash/error log:**
 
@@ -108,6 +109,21 @@ This log includes:
 - application actor errors
 - Electron `webContents` renderer lifecycle events such as `render-process-gone`, `unresponsive`, `preload-error`, and main-frame load failures
 
+Machine-readable sidecars are also written for timeline tooling:
+
+```bash
+~/Library/Logs/abuddy/main.jsonl
+~/Library/Logs/abuddy/renderer.jsonl
+```
+
+**App events log:**
+
+```bash
+tail -f ~/Library/Logs/abuddy/app-events.log
+```
+
+This is a JSONL sidecar for backend/in-app log events emitted through the app event bus. It survives renderer crashes and is useful when the in-app Logs plugin is unavailable.
+
 For a terminal-captured production run, use:
 
 ```bash
@@ -115,6 +131,14 @@ npm run prod-app
 ```
 
 That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/abuddy/main.log`.
+
+To collect a production diagnostics bundle:
+
+```bash
+npm run diagnostics:prod
+```
+
+The command creates `diagnostics/agentbuddy-prod-<timestamp>/` with production logs, recent crash reports, process state, installed app metadata, bundle hashes, and git status.
 
 If the UI disappears or Force Quit does not show the app, check for orphaned API child processes:
 
@@ -127,6 +151,8 @@ An orphaned API child looks like `AgentBuddy .../packages/api/dist/server.js` wi
 ```bash
 kill -9 <pid>
 ```
+
+The app also performs this orphan cleanup automatically before spawning a new packaged API child.
 
 ## Versioning & Changelog
 

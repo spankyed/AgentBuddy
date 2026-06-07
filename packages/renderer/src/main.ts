@@ -47,7 +47,10 @@ function reportRendererError(source: string, error: unknown, meta?: unknown) {
     source,
     message: serialized.message,
     stack: serialized.stack,
-    meta: meta ?? serialized.meta,
+    meta: {
+      startupId: window.electronAPI?.startupId,
+      detail: meta ?? serialized.meta,
+    },
     fatal: true,
   }).catch(() => {});
 }

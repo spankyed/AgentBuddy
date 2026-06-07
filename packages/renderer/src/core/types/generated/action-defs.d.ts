@@ -323,17 +323,17 @@ declare function grepTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
     include: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     pattern: string;
-    include?: string | undefined;
     path?: string | undefined;
+    include?: string | undefined;
 }, {
     pattern: string;
-    include?: string | undefined;
     path?: string | undefined;
+    include?: string | undefined;
 }>, string> & {
     execute: (args: {
         pattern: string;
-        include?: string | undefined;
         path?: string | undefined;
+        include?: string | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
 };
 declare function listDirTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
@@ -367,29 +367,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "completed" | "pending" | "in_progress";
+            status: "pending" | "in_progress" | "completed";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -401,18 +401,18 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     token_budget: z.ZodOptional<z.ZodNumber>;
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
-    action: "update" | "create" | "get";
+    action: "create" | "get" | "update";
     status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
-    action: "update" | "create" | "get";
+    action: "create" | "get" | "update";
     status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
-        action: "update" | "create" | "get";
+        action: "create" | "get" | "update";
         status?: "active" | "paused" | "complete" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;
@@ -427,27 +427,27 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
             label: z.ZodString;
             description: z.ZodString;
         }, "strip", z.ZodTypeAny, {
-            description: string;
             label: string;
+            description: string;
         }, {
-            description: string;
             label: string;
+            description: string;
         }>, "many">>;
     }, "strip", z.ZodTypeAny, {
         id: string;
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }, {
         id: string;
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
@@ -456,8 +456,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }[];
 }, {
@@ -466,8 +466,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }[];
 }>, string> & {
@@ -477,8 +477,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
             header: string;
             question: string;
             options?: {
-                description: string;
                 label: string;
+                description: string;
             }[] | undefined;
         }[];
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;

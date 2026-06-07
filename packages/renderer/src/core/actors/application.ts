@@ -685,10 +685,30 @@ export const createApplicationState = () => setup({
             30000: {
               target: '#application.error',
               actions: () => {
-                window.__showErrorPage?.(
-                  'Unable to connect',
-                  'The backend did not respond within 30 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
-                );
+                window.electronAPI?.apiStatus?.getStatus()
+                  .then((status) => {
+                    const details = [
+                      'The backend did not respond within 30 seconds.',
+                      '',
+                      `Startup ID: ${status.startupId || window.electronAPI?.startupId || 'unknown'}`,
+                      `API running: ${status.running ? 'yes' : 'no'}`,
+                      `API port: ${status.port ?? 'unknown'}`,
+                      `Restart attempts: ${status.restartAttempts}`,
+                      status.error ? `Last backend error: ${typeof status.error === 'string' ? status.error : status.error.message}` : undefined,
+                      '',
+                      `Main log: ${status.logPath}`,
+                      `Renderer log: ${status.rendererLogPath}`,
+                      `App events log: ${status.appEventsLogPath}`,
+                    ].filter(Boolean).join('\n');
+
+                    window.__showErrorPage?.('Unable to connect', details);
+                  })
+                  .catch(() => {
+                    window.__showErrorPage?.(
+                      'Unable to connect',
+                      'The backend did not respond within 30 seconds and API status could not be read.'
+                    );
+                  });
               }
             }
           },

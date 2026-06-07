@@ -22,7 +22,7 @@ export async function setupBackend(): Promise<void> {
   const logsActor = createActor(logsSystem).start();
   logsActor.subscribe(logErrors('Logs'));
 
-  console.log(`[app] AgentBuddy v${APP_VERSION}`);
+  console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
   // Hydrate from LMDB using sharded approach (primary partition only by default)
   // Pass shardedPersistence to seed metadata caches
