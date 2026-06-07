@@ -1,12 +1,5 @@
 -e # Changelog
 
-## v0.3.11 (2026-06-07)
-
-### Features
--  implement findArtifactByThreadAndType function and update threadQueries for compatibility
-
--e # Changelog
-
 ## v0.3.10 (2026-06-07)
 
 ### Features
