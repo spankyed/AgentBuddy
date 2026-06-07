@@ -794,186 +794,9 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
-type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
-type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
-interface ActiveTokenInfo {
-    source: TokenSource;
-    kind: TokenKind;
-    prefix: string;
-}
-
-declare class GitRepository {
-    private workingDirectory;
-    private cache;
-    private readonly CACHE_TTL;
-    private readonly PARENT_BRANCH_SEARCH_DEPTH;
-    /** Serializes all git process invocations to prevent index.lock races. */
-    private commandQueue;
-    private _writeInProgress;
-    private _writeCompleteCallbacks;
-    private _lastFetchTimestamp;
-    private _autoFetchEnabled;
-    private _fetchThrottleMs;
-    constructor(workingDirectory: string);
-    getWorkingDir(): string;
-    setFetchConfig(enabled: boolean, intervalSeconds: number): void;
-    get isWriteInProgress(): boolean;
-    /** Register a one-shot callback that fires when all pending writes finish. */
-    onWriteComplete(callback: () => void): void;
-    /** Run fn serially on the command queue (used by executeGitCommand). */
-    private enqueueCommand;
-    /** Wrap a write operation to track write-in-progress for watcher suppression. */
-    private withWriteFlag;
-    private validateWorkingDirectory;
-    private ensureGitRepository;
-    private getCached;
-    private setCached;
-    clearCache(): void;
-    private isDirectory;
-    private getUntrackedFilesInDirectory;
-    invalidateCache(paths?: string[]): void;
-    private executeGitCommand;
-    getCurrentBranch(): Promise<string>;
-    getStatus(): Promise<GitStatusFile[]>;
-    private mapGitStatus;
-    private isBinaryFile;
-    getDiff(filePath?: string, staged?: boolean): Promise<string>;
-    /**
-     * Efficient multi-path diff: issues a single `git diff -- path1 path2 …`
-     * for tracked files and builds synthetic diffs for untracked ones, avoiding
-     * one git subprocess per file.
-     */
-    getDiffMulti(paths: string[]): Promise<string>;
-    /** Build a synthetic diff for an untracked file (new file / directory / binary). */
-    private buildSyntheticDiff;
-    /** Build a synthetic diff for a file outside the repository. */
-    private buildSyntheticDiffAbsolute;
-    getFileContent(filePath: string, version?: 'HEAD' | 'working' | 'index'): Promise<string>;
-    /**
-     * Read a file as a base64 data URL if it's an image, otherwise return text content.
-     * For git refs (HEAD/index), reads binary output from `git show`.
-     */
-    getFileContentAsDataUrl(filePath: string, version?: 'HEAD' | 'working' | 'index'): Promise<string>;
-    /**
-     * Read a file from a branch as a base64 data URL if it's an image.
-     */
-    getFileContentFromBranchAsDataUrl(filePath: string, branch: string): Promise<string>;
-    /** Check if a file path is an image based on extension. */
-    isImageFile(filePath: string): boolean;
-    /** Execute a git command and return raw binary buffer output. */
-    private executeGitCommandBinary;
-    stageFiles(filePaths: string[]): Promise<void>;
-    unstageFiles(filePaths: string[]): Promise<void>;
-    revertFile(filePath: string): Promise<void>;
-    revertFiles(filePaths: string[]): Promise<void>;
-    fileExistsInHead(filePath: string): Promise<boolean>;
-    resolveConflict(filePath: string, strategy: 'ours' | 'theirs'): Promise<void>;
-    commit(message: string): Promise<void>;
-    isGitRepository(): Promise<boolean>;
-    hasUncommittedChanges(): Promise<boolean>;
-    getStagedFiles(): Promise<GitStatusFile[]>;
-    getUpstreamBranch(): Promise<string | null>;
-    getBaseBranch(options?: {
-        preferUpstream?: boolean;
-    }): Promise<string>;
-    getPRBaseBranch(): Promise<string>;
-    /**
-     * Find the closest parent branch by comparing merge-base distances.
-     * When branching feature-B from feature-A, feature-A will have a much
-     * smaller commit distance than main/master.
-     */
-    private findClosestParentBranch;
-    private getCommitDistance;
-    private getNearbyMergedBranches;
-    getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]>;
-    getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string>;
-    getFileContentFromBranch(filePath: string, branch: string): Promise<string>;
-    fetchRemoteBranch(branch: string): Promise<void>;
-    deleteRemoteBranch(branch: string): Promise<void>;
-    getAllBranches(): Promise<string[]>;
-    checkoutBranch(branchName: string): Promise<void>;
-    isCurrentBranchPublished(): Promise<boolean>;
-    private _forceFetchNext;
-    /**
-     * Force a fetch on the next getCommitsAheadBehind() call,
-     * regardless of the auto-fetch toggle or throttle timer.
-     */
-    forceFetchOnce(): void;
-    private fetchIfStale;
-    getCommitsAheadBehind(): Promise<{
-        ahead: number;
-        behind: number;
-    }>;
-    pushBranch(): Promise<void>;
-    pullBranch(): Promise<void>;
-    stashPush(message?: string, stagedOnly?: boolean): Promise<string>;
-    stashList(): Promise<StashEntry[]>;
-    stashApply(index: number): Promise<void>;
-    stashPop(index: number): Promise<void>;
-    private isStashConflict;
-    stashDrop(index: number): Promise<void>;
-    stashClear(): Promise<void>;
-    worktreeList(): Promise<WorktreeEntry[]>;
-    worktreeAdd(wtPath: string, branch?: string, createBranch?: boolean): Promise<string>;
-    worktreeRemove(wtPath: string, force?: boolean): Promise<void>;
-    getCommitsBetweenBranches(baseBranch: string, targetBranch?: string): Promise<{
-        subject: string;
-        body: string;
-    }[]>;
-    gitLog(count?: number): Promise<CommitLogEntry[]>;
-    revertCommit(hash: string): Promise<void>;
-    resetToCommit(hash: string): Promise<void>;
-}
-
-interface FileChangeInfo {
-    path: string;
-    modifiedAt: Date;
-    changeType: 'add' | 'change' | 'unlink';
-}
-declare class GitWatcherService {
-    private workingDirectory;
-    private gitWatcher?;
-    private workingDirWatcher?;
-    private onGitChangeCallback?;
-    private onFileChangeCallback?;
-    private gitStatusDebounceTimeout?;
-    private fileChangeTimeouts;
-    private isWatching;
-    private openFiles;
-    private gitRepository?;
-    constructor(workingDirectory: string);
-    setGitRepository(repo: GitRepository): void;
-    setChangeCallback(callback: () => void): void;
-    setFileChangeCallback(callback: (change: FileChangeInfo) => void): void;
-    registerOpenFile(filePath: string): void;
-    unregisterOpenFile(filePath: string): void;
-    isFileOpen(filePath: string): boolean;
-    getOpenFiles(): string[];
-    startWatching(): Promise<void>;
-    private handleFileChange;
-    stopWatching(): Promise<void>;
-    isActive(): boolean;
-}
-
-/**
- * Database Seed — loads compiled default-setup artifacts into LMDB
- *
- * Skips seeding if the compiled data hash is unchanged since last seed,
- * unless `force` is passed. The CLI script always forces.
- */
-interface SeedCounts {
-    created: number;
-    updated: number;
-    skipped: number;
-}
-interface SeedResult {
-    actions: SeedCounts;
-    prompts: SeedCounts;
-    flows: SeedCounts;
-    library: SeedCounts;
-    notes: SeedCounts;
-    settings: SeedCounts;
-}
+type SystemEvents = {
+    type: 'CLIENT_CONNECTED';
+};
 
 interface SavedTab {
     url: string;
@@ -990,13 +813,7 @@ interface SavedBookmark {
     displayOrder: number;
 }
 
-type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
-interface SecretData {
-    id: EARS.EntityId;
-    provider: SecretProvider;
-    customName?: string;
-    createdAt: number;
-    updatedAt?: number;
+interface BrowserContext {
 }
 
 interface AgentPhase {
@@ -1162,353 +979,6 @@ interface AgentSettings {
     defaultPhase?: string;
 }
 
-interface NoteDTO {
-    id: string;
-    title: string;
-    content: string;
-    icon: string | null;
-    noteType: 'document' | 'tasklist' | 'task';
-    completed: boolean;
-    hideCompletedChildren: boolean;
-    parentId: string | null;
-    displayOrder: number;
-    savedDisplayOrder: number | null;
-    childCount: number;
-    createdAt: number;
-    updatedAt: number;
-    lastSeen: number;
-    favorite: boolean;
-    deletedAt?: number;
-}
-type OutgoingNotesSearchEvent = {
-    type: 'NOTES_SEARCH_RESULTS';
-    results: NoteDTO[];
-};
-interface NotesConnectedData {
-    notes: NoteDTO[];
-    settings?: NotesSettings;
-}
-
-type OutgoingNotesEvents = {
-    type: 'NOTES_CONNECTED';
-    data: NotesConnectedData;
-} | {
-    type: 'NOTE_CREATED';
-    note: NoteDTO;
-} | {
-    type: 'NOTE_UPDATED';
-    note: NoteDTO;
-} | {
-    type: 'NOTE_DELETED';
-    noteId: string;
-} | {
-    type: 'NOTE_RESTORED';
-    note: NoteDTO;
-} | {
-    type: 'TRASHED_NOTES';
-    notes: NoteDTO[];
-} | OutgoingNotesSearchEvent | {
-    type: 'NOTES_IMPORTED';
-    count: number;
-    errors?: string[];
-} | {
-    type: 'NOTES_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'NOTES_EXPORTED';
-    filePath: string;
-    itemCount: number;
-} | {
-    type: 'NOTES_EXPORT_FAILED';
-    errors: string[];
-};
-
-type DocumentShortCode = `DOC-${number}`;
-interface FieldContent {
-    type: 'field';
-    fields: Array<{
-        key: string;
-        value: string;
-    }>;
-}
-interface ListContent {
-    type: 'list';
-    items: string[];
-}
-interface MarkdownContent {
-    type: 'markdown';
-    text: string;
-}
-interface TextContent {
-    type: 'text';
-    text: string;
-}
-interface CodeContent {
-    type: 'code';
-    text: string;
-    language: string;
-}
-type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
-interface DocumentDTO {
-    id: EARS.EntityId;
-    name: string;
-    content: ContentSection[];
-    shortCode: DocumentShortCode;
-    tags: string[];
-    collectionId?: EARS.EntityId;
-    collectionPath?: string[];
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-interface CollectionDTO {
-    id: EARS.EntityId;
-    name: string;
-    description?: string;
-    parentId?: EARS.EntityId;
-    path: string[];
-    documentCount: number;
-    childCollections: CollectionDTO[];
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-    symlinkPath?: string;
-}
-interface FolderItem {
-    type: 'folder';
-    id: EARS.EntityId;
-    name: string;
-    parentId: EARS.EntityId | null;
-    childCount: number;
-    size: string;
-    kind: 'Folder';
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-    isSymlink?: boolean;
-    symlinkPath?: string;
-    isSymlinked?: boolean;
-    isBroken?: boolean;
-}
-interface DocumentItem {
-    type: 'document';
-    id: EARS.EntityId;
-    name: string;
-    shortCode: DocumentShortCode;
-    parentId: EARS.EntityId | null;
-    content: ContentSection[];
-    tags: string[];
-    size: string;
-    kind: 'Document';
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-    isSymlinked?: boolean;
-    filePath?: string;
-}
-type LibraryItem = FolderItem | DocumentItem;
-interface FolderContents {
-    items: LibraryItem[];
-    currentPath: string[];
-    currentFolderId: EARS.EntityId | null;
-    breadcrumbs: BreadcrumbItem[];
-    searchIndices?: any[];
-    isBroken?: boolean;
-    lastKnownPath?: string;
-}
-interface BreadcrumbItem {
-    id: EARS.EntityId | null;
-    name: string;
-    path: string[];
-}
-interface LibrarySystemContext {
-    documents: DocumentDTO[];
-    collections: CollectionDTO[];
-    selectedDocumentId?: EARS.EntityId;
-    selectedCollectionId?: EARS.EntityId;
-    currentItems: LibraryItem[];
-    currentFolderId: EARS.EntityId | null;
-    currentPath: string[];
-}
-
-type OutgoingLibraryEvents = {
-    type: 'LIBRARY_CONNECTED';
-    data: {
-        documents: DocumentDTO[];
-        collections: CollectionDTO[];
-        settings: any;
-    };
-} | {
-    type: 'DOCUMENTS_LOADED';
-    data: {
-        documents: DocumentDTO[];
-    };
-} | {
-    type: 'DOCUMENT_CREATED';
-    data: {
-        document: DocumentDTO;
-    };
-} | {
-    type: 'DOCUMENT_UPDATED';
-    data: {
-        document: DocumentDTO;
-    };
-} | {
-    type: 'DOCUMENT_DELETED';
-    data: {
-        documentId: string;
-    };
-} | {
-    type: 'DOCUMENT_LOADED';
-    data: {
-        document: DocumentDTO;
-    };
-} | {
-    type: 'COLLECTIONS_LOADED';
-    data: {
-        collections: CollectionDTO[];
-    };
-} | {
-    type: 'COLLECTION_CREATED';
-    data: {
-        collection: CollectionDTO;
-    };
-} | {
-    type: 'COLLECTION_UPDATED';
-    data: {
-        collection: CollectionDTO;
-    };
-} | {
-    type: 'COLLECTION_DELETED';
-    data: {
-        collectionId: string;
-    };
-} | {
-    type: 'LIBRARY_ERROR';
-    data: {
-        error: string;
-    };
-} | {
-    type: 'SYMLINK_UPDATED';
-    data: {
-        collection: CollectionDTO;
-    };
-} | {
-    type: 'FOLDER_CONTENTS_LOADED';
-    data: FolderContents;
-} | {
-    type: 'NAVIGATION_CHANGED';
-    data: {
-        folderId: string | null;
-        path: string[];
-    };
-} | {
-    type: 'ITEM_RENAMED';
-    data: {
-        item: LibraryItem;
-    };
-} | {
-    type: 'ITEMS_DELETED';
-    data: {
-        ids: string[];
-    };
-} | {
-    type: 'ITEMS_MOVED';
-    data: {
-        ids: string[];
-        targetFolderId: string | null;
-    };
-} | {
-    type: 'LIBRARY_IMPORTED';
-    count: number;
-    errors?: string[];
-} | {
-    type: 'LIBRARY_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'LIBRARY_EXPORTED';
-    filePath: string;
-    itemCount: number;
-} | {
-    type: 'LIBRARY_EXPORT_FAILED';
-    errors: string[];
-};
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
-    sourceHash?: string;
-    createdAt: number;
-    updatedAt: number;
-}
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
-
-type OutgoingActionEvents = {
-    type: 'ACTIONS_LISTED';
-    data: ActionsStartupData;
-} | {
-    type: 'ACTION_SELECTED';
-    actionId: EARS.EntityId;
-    data: ActionEntity;
-} | {
-    type: 'ACTION_CREATED';
-    action: ActionEntity;
-    actionId: EARS.EntityId;
-} | {
-    type: 'ACTION_UPDATED';
-    action: ActionEntity;
-    actionId: EARS.EntityId;
-} | {
-    type: 'ACTION_DELETED';
-    actionId: EARS.EntityId;
-} | {
-    type: 'ACTIONS_PAGE_LOADED';
-    data: {
-        actions: ActionEntity[];
-        page: number;
-        totalPages: number;
-    };
-} | {
-    type: 'ACTIONS_ALL_LOADED';
-    data: {
-        actions: ActionEntity[];
-    };
-} | {
-    type: 'ACTIONS_IMPORTED';
-    count: number;
-    errors?: string[];
-} | {
-    type: 'ACTIONS_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'ACTIONS_EXPORTED';
-    filePath: string;
-    actionCount: number;
-} | {
-    type: 'ACTIONS_EXPORT_FAILED';
-    errors: string[];
-};
-
 /**
  * Prompt template types and definitions
  */
@@ -1552,583 +1022,6 @@ interface PromptsConnectedData {
     categories?: Category[];
 }
 
-type OutgoingPromptEvents = {
-    type: 'PROMPTS_CONNECTED';
-    data: PromptsConnectedData;
-} | {
-    type: 'PROMPT_SELECTED';
-    promptId: EARS.EntityId;
-    data: PromptEntity;
-} | {
-    type: 'PROMPT_CREATED';
-    prompt: PromptEntity;
-    promptId: EARS.EntityId;
-} | {
-    type: 'PROMPT_UPDATED';
-    prompt: PromptEntity;
-    promptId: EARS.EntityId;
-} | {
-    type: 'PROMPT_DELETED';
-    promptId: EARS.EntityId;
-} | {
-    type: 'PROMPTS_PAGE_LOADED';
-    data: {
-        prompts: PromptEntity[];
-        page: number;
-        totalPages: number;
-    };
-} | {
-    type: 'PROMPTS_ALL_LOADED';
-    data: {
-        prompts: PromptEntity[];
-    };
-} | {
-    type: 'PROMPTS_IMPORTED';
-    count: number;
-    errors?: string[];
-} | {
-    type: 'PROMPTS_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'PROMPTS_EXPORTED';
-    filePath: string;
-    promptCount: number;
-} | {
-    type: 'PROMPTS_EXPORT_FAILED';
-    errors: string[];
-};
-
-declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
-type LogLevel = z.infer<typeof LogLevel>;
-declare const LogEntry: z.ZodObject<{
-    id: z.ZodString;
-    timestamp: z.ZodNumber;
-    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
-    message: z.ZodString;
-    source: z.ZodOptional<z.ZodString>;
-    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-    stack: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    id: string;
-    message: string;
-    timestamp: number;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}, {
-    id: string;
-    message: string;
-    timestamp: number;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}>;
-type LogEntry = z.infer<typeof LogEntry>;
-
-type OutgoingLogsEvents = {
-    type: 'LOGS_CONNECTED';
-    logs: LogEntry[];
-    settings?: LogsSettings;
-} | {
-    type: 'LOGS_UPDATE';
-    logs: LogEntry[];
-} | {
-    type: 'LOG_ADDED';
-    log: LogEntry;
-} | {
-    type: 'LOGS_CLEARED';
-} | {
-    type: 'LOGS_SETTINGS_UPDATED';
-    settings: LogsSettings;
-};
-interface LogsContext {
-    logs: LogEntry[];
-}
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
-
-/** ── Shared aliases ─────────────────────────────────────────────────────── */
-type TimestampMs = number;
-type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
-type TNodeKind = 'flow' | 'event' | 'step';
-/** ── Core entities ──────────────────────────────────────────────────────── */
-interface TNodeEntity extends BaseEntity {
-    entityType: EARS.Entity.TNode;
-    tNodeType: TNodeKind;
-    label: string;
-    status: EntityStatus;
-    startedAt: TimestampMs;
-    completedAt?: TimestampMs;
-    eventType?: string;
-    triggerType?: 'listener' | 'schedule';
-    cronExpression?: string;
-    stepNodeType?: string;
-    final?: boolean;
-    nodeAttributes?: Record<string, unknown>;
-    resolvedParams?: Record<string, unknown>;
-    blueprint?: {
-        nodeId: EARS.EntityId;
-        flowId: EARS.EntityId;
-    };
-}
-interface TrackEntity extends TNodeEntity {
-    children: TrackEntity[];
-}
-interface EventListenerEntity {
-    id: EARS.EntityId;
-    nodeId: EARS.EntityId;
-    eventType: string;
-    label: string;
-    triggerType: 'listener' | 'schedule';
-    scope?: 'global' | 'local' | 'entry';
-    cronExpression?: string;
-}
-interface FlowTNodeData {
-    flowTNodeId: EARS.EntityId;
-    tNodeTree: TrackEntity[];
-    possibleEvents: EventListenerEntity[];
-    flowHierarchy: Array<{
-        flowTNodeId: EARS.EntityId;
-        label: string;
-    }>;
-}
-interface TNodeUpdate {
-    tNodeId: EARS.EntityId;
-    status: TNodeEntity['status'];
-    eventTNodeId?: EARS.EntityId;
-}
-interface BrainRuntimeError {
-    errorId: string;
-    message: string;
-    stack?: string;
-    source: string;
-    phase: string;
-    flowTNodeId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    tNodeId?: EARS.EntityId;
-    nodeId?: EARS.EntityId;
-    nodeLabel?: string;
-    nodeType?: string;
-    actionId?: EARS.EntityId;
-    actionLabel?: string;
-    eventType?: string;
-    timestamp: TimestampMs;
-}
-
-type OutgoingDatabaseEvents = {
-    type: 'DATABASE_REFRESH';
-    data: DatabaseStartupData;
-} | {
-    type: 'QUERY_RESULT';
-    result: any;
-    executionTime: number;
-} | {
-    type: 'QUERY_ERROR';
-    error: string;
-} | {
-    type: 'TRANSACTION_RESULT';
-    result: any;
-    executionTime: number;
-} | {
-    type: 'TRANSACTION_ERROR';
-    error: string;
-} | {
-    type: 'AI_QUERY_LOADING';
-} | {
-    type: 'AI_QUERY_GENERATED';
-    query: string;
-} | {
-    type: 'TRACE_FLOWS_RESULT';
-    flows: TNodeEntity[];
-} | {
-    type: 'FLOW_EVENTS_RESULT';
-    flowId: string;
-    events: TNodeEntity[];
-    hasMore: boolean;
-} | {
-    type: 'NODE_DETAILS_RESULT';
-    nodeId: string;
-    details: TNodeEntity | null;
-} | {
-    type: 'EXPORT_DATABASE_SUCCESS';
-    path: string;
-} | {
-    type: 'EXPORT_DATABASE_ERROR';
-    error: string;
-} | {
-    type: 'IMPORT_DATABASE_SUCCESS';
-    message?: string;
-} | {
-    type: 'IMPORT_DATABASE_ERROR';
-    error: string;
-} | {
-    type: 'BACKUP_INFO_RESULT';
-    info: {
-        timestamp: number;
-        databases: string[];
-        size: number;
-        hasMedia?: boolean;
-    } | null;
-} | {
-    type: 'RESET_DATABASE_SUCCESS';
-    message: string;
-} | {
-    type: 'RESET_DATABASE_ERROR';
-    error: string;
-};
-
-declare enum BinaryOperator {
-    EQUALS = "equals",
-    NOT_EQUALS = "not_equals",
-    GREATER_THAN = "greater_than",
-    LESS_THAN = "less_than",
-    GREATER_THAN_OR_EQUALS = "greater_than_or_equals",
-    LESS_THAN_OR_EQUALS = "less_than_or_equals",
-    CONTAINS = "contains",
-    STARTS_WITH = "starts_with",
-    ENDS_WITH = "ends_with",
-    MATCHES = "matches",
-    IS_EMPTY = "is_empty",
-    IS_NULL = "is_null"
-}
-
-interface FlowEntity extends BaseEntity {
-    entityType: EARS.Entity.Flow;
-    shortCode: string;
-    label: string;
-    description?: string;
-    flowType: 'workflow' | 'integration';
-    createdAt: number;
-    /** SHA256 hash of the DSL source at last seed. Absent on user-created flows. */
-    sourceHash?: string;
-}
-interface NodeBase extends BaseEntity {
-    entityType: EARS.Entity.Node;
-    /** discriminator */
-    nodeType: NodeKind;
-    label: string;
-    description?: string;
-    color?: string;
-    /** When true, completing this node will trigger parent flow completion */
-    final?: boolean;
-}
-interface QueryNode extends NodeBase {
-    nodeType: 'query';
-    prompt: string;
-    resultKey?: string;
-}
-interface CreateNode extends NodeBase {
-    nodeType: 'create';
-    entityTypeTarget: EARS.Entity;
-    entityId?: string;
-    inferLabel?: boolean;
-}
-interface UpdateNode extends NodeBase {
-    nodeType: 'update';
-    entityId: string;
-    onMissing?: 'fail' | 'ignore' | 'create';
-}
-type Predicate = {
-    key: string;
-    operator: BinaryOperator;
-    value?: any;
-} | ((context: any) => boolean);
-type Condition = {
-    predicate?: Predicate;
-    label?: string;
-    mode?: 'expression' | 'code';
-    code?: string;
-};
-interface SwitchNode extends NodeBase {
-    nodeType: 'switch';
-    conditions: Array<Condition>;
-    elseLabel?: string;
-}
-interface FireNode extends NodeBase {
-    nodeType: 'fire';
-    eventType: string;
-    payload?: unknown;
-    scope?: 'local' | 'global';
-}
-interface ListenerNode extends NodeBase {
-    nodeType: 'listener';
-    scope: 'global' | 'local' | 'entry';
-    eventType: string;
-    debounceMs?: number;
-}
-interface TransformNode extends NodeBase {
-    nodeType: 'transform';
-    script: string;
-    outputType?: 'json' | 'text' | 'custom';
-}
-interface FlowNode extends NodeBase {
-    nodeType: 'flow';
-    flowRef: string;
-    propagateCtx?: boolean;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: any;
-    }>;
-}
-interface KeepAliveNode extends NodeBase {
-    nodeType: 'keep_alive';
-}
-interface KillNode extends NodeBase {
-    nodeType: 'kill';
-}
-interface ScheduleNode extends NodeBase {
-    nodeType: 'schedule';
-    cronExpression: string;
-}
-interface LLMNode extends NodeBase {
-    nodeType: 'llm';
-    prompt?: string;
-    promptTemplateId?: string;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: any;
-    }>;
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    systemPrompt?: string;
-}
-interface ActionNode extends NodeBase {
-    nodeType: 'action';
-    mode?: 'template' | 'code';
-    actionId?: string;
-    actionFn?: string;
-    params?: Record<string, any>;
-    fieldMappings?: Array<{
-        target: string;
-        source: string;
-        default?: any;
-    }>;
-}
-type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode | ScheduleNode;
-/** Literal union of all nodeType strings (keeps Base clean) */
-type NodeKind = NodeEntity['nodeType'];
-type EdgeEntity = {
-    id: EARS.EntityId;
-    kind: EARS.RelKind;
-    source: EARS.EntityId;
-    target: EARS.EntityId;
-    sourceHandle?: string;
-    targetHandle?: string;
-    info?: {
-        [key: string]: any;
-    };
-};
-interface FlowsConnectedData {
-    selectedFlowId: EARS.EntityId;
-    graph: {
-        nodes: NodeEntity[];
-        edges: EdgeEntity[];
-    };
-    flows: Partial<FlowEntity>[];
-    rootFlow?: Partial<FlowEntity>;
-    models: ModelCatalogEntry[];
-    prompts: PromptEntity[];
-    actions: ActionEntity[];
-    settings?: any;
-}
-interface ModelCatalogEntry {
-    id: string;
-    name: string;
-    provider: string;
-    description?: string;
-    contextWindow: number;
-    maxOutput?: number;
-    costPer1kInput?: number;
-    costPer1kOutput?: number;
-    capabilities?: string[];
-}
-
-type OutgoingFlowsEvents = {
-    type: 'FLOWS_CONNECTED';
-    data: FlowsConnectedData;
-} | {
-    type: 'FLOW_SELECTED';
-    flowId: EARS.EntityId;
-    data: {
-        nodes: any[];
-        edges: any[];
-    };
-} | {
-    type: 'FLOW_CREATED';
-    flow: FlowEntity;
-    flowId: EARS.EntityId;
-    data: {
-        nodes: any[];
-        edges: any[];
-    };
-} | {
-    type: 'FLOW_DELETED';
-    flowId: EARS.EntityId;
-} | {
-    type: 'NODE_CREATED';
-    tempId: string;
-    nodeId: EARS.EntityId;
-    node: any;
-} | {
-    type: 'NODE_UPDATED';
-    nodeId: EARS.EntityId;
-    node: any;
-} | {
-    type: 'NODE_DELETED';
-    nodeId: string;
-} | {
-    type: 'EDGE_CREATED';
-    sourceId: EARS.EntityId;
-    targetId: EARS.EntityId;
-    relId: EARS.EntityId;
-    sourceHandle?: string;
-    targetHandle?: string;
-} | {
-    type: 'EDGE_CREATE_FAILED';
-    sourceId: string;
-    targetId: string;
-    error: string;
-} | {
-    type: 'EDGE_DELETED';
-    edgeId: string;
-} | {
-    type: 'EDGE_UPDATED';
-    oldEdgeId: EARS.EntityId;
-    newEdgeId: EARS.EntityId;
-    newSource: EARS.EntityId;
-    newTarget: EARS.EntityId;
-} | {
-    type: 'ACTION_CREATED';
-    action: ActionEntity;
-    actionId: EARS.EntityId;
-} | {
-    type: 'ACTION_UPDATED';
-    action: ActionEntity;
-    actionId: EARS.EntityId;
-} | {
-    type: 'ACTION_DELETED';
-    actionId: EARS.EntityId;
-} | {
-    type: 'DSL_IMPORTED';
-    flowIds: EARS.EntityId[];
-    errors?: string[];
-} | {
-    type: 'DSL_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'DSL_EXPORTED';
-    filePath: string;
-    flowCount: number;
-} | {
-    type: 'DSL_EXPORT_FAILED';
-    errors: string[];
-};
-
-type SecretsOutputEvents = {
-    type: 'SECRETS.EVENT.LOADED';
-    data: SecretData[];
-} | {
-    type: 'SECRETS.EVENT.CREATED';
-    id: EARS.EntityId;
-    provider: SecretProvider;
-    customName?: string;
-} | {
-    type: 'SECRETS.EVENT.UPDATED';
-    id: EARS.EntityId;
-} | {
-    type: 'SECRETS.EVENT.DELETED';
-    id: EARS.EntityId;
-} | {
-    type: 'SECRETS.EVENT.VALUE';
-    id: EARS.EntityId;
-    value: string;
-} | {
-    type: 'SECRETS.EVENT.ERROR';
-    message: string;
-};
-
-/**
- * Setup Pack Preview — reads compiled artifacts from a directory and
- * reports the top-level items available for selective import.
- */
-type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
-type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
-interface SetupPackPreviewItem {
-    key: string;
-    description?: string;
-    kind?: SetupPackItemKind;
-    childCount?: number;
-}
-interface SetupPackPreview {
-    directory: string;
-    actions: SetupPackPreviewItem[];
-    prompts: SetupPackPreviewItem[];
-    flows: SetupPackPreviewItem[];
-    library: SetupPackPreviewItem[];
-    notes: SetupPackPreviewItem[];
-    settings: SetupPackPreviewItem[];
-    missing: SetupPackType[];
-}
-
-type OutgoingSettingsEvents = {
-    type: 'SETTINGS_LOADED';
-    data: SettingsData;
-    faqs: FAQItem[];
-} | {
-    type: 'SETTINGS_UPDATED';
-    data: SettingsData;
-} | {
-    type: 'SETTINGS_RESET';
-    data: SettingsData;
-} | {
-    type: 'APPLICATION_HOTKEYS';
-    hotkeys: SettingsData['general']['application']['hotkeys'];
-} | {
-    type: 'CLI_TEST_RESULT';
-    provider: string;
-    success: boolean;
-    error?: string;
-    resolvedPath?: string;
-} | {
-    type: 'SETUP_PACK_IMPORTED';
-    result: SeedResult;
-} | {
-    type: 'SETUP_PACK_IMPORT_FAILED';
-    error: string;
-} | {
-    type: 'SETUP_PACK_PREVIEW';
-    preview: SetupPackPreview;
-} | {
-    type: 'SETUP_PACK_PREVIEW_FAILED';
-    error: string;
-} | {
-    type: 'APP_RESET_COMPLETE';
-} | {
-    type: 'APP_RESET_FAILED';
-    error: string;
-} | SecretsOutputEvents;
-
-interface BrowserContext {
-}
-
 type IncomingPromptsEvents = {
     type: 'codePrompts.OPEN_PROMPT';
     promptId: string;
@@ -2137,6 +1030,35 @@ type IncomingPromptsEvents = {
     promptId: string;
     templateFn: string;
 };
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
+    sourceHash?: string;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
 
 type IncomingActionsEvents = {
     type: 'codeActions.OPEN_ACTION';
@@ -2238,6 +1160,137 @@ type OutgoingTerminalEvents = {
     type: 'terminal.TERMINAL_TAB_OPENED';
     data: TerminalInfo;
 };
+
+declare class GitRepository {
+    private workingDirectory;
+    private cache;
+    private readonly CACHE_TTL;
+    private readonly PARENT_BRANCH_SEARCH_DEPTH;
+    /** Serializes all git process invocations to prevent index.lock races. */
+    private commandQueue;
+    private _writeInProgress;
+    private _writeCompleteCallbacks;
+    private _lastFetchTimestamp;
+    private _autoFetchEnabled;
+    private _fetchThrottleMs;
+    constructor(workingDirectory: string);
+    getWorkingDir(): string;
+    setFetchConfig(enabled: boolean, intervalSeconds: number): void;
+    get isWriteInProgress(): boolean;
+    /** Register a one-shot callback that fires when all pending writes finish. */
+    onWriteComplete(callback: () => void): void;
+    /** Run fn serially on the command queue (used by executeGitCommand). */
+    private enqueueCommand;
+    /** Wrap a write operation to track write-in-progress for watcher suppression. */
+    private withWriteFlag;
+    private validateWorkingDirectory;
+    private ensureGitRepository;
+    private getCached;
+    private setCached;
+    clearCache(): void;
+    private isDirectory;
+    private getUntrackedFilesInDirectory;
+    invalidateCache(paths?: string[]): void;
+    private executeGitCommand;
+    getCurrentBranch(): Promise<string>;
+    getStatus(): Promise<GitStatusFile[]>;
+    private mapGitStatus;
+    private isBinaryFile;
+    getDiff(filePath?: string, staged?: boolean): Promise<string>;
+    /**
+     * Efficient multi-path diff: issues a single `git diff -- path1 path2 …`
+     * for tracked files and builds synthetic diffs for untracked ones, avoiding
+     * one git subprocess per file.
+     */
+    getDiffMulti(paths: string[]): Promise<string>;
+    /** Build a synthetic diff for an untracked file (new file / directory / binary). */
+    private buildSyntheticDiff;
+    /** Build a synthetic diff for a file outside the repository. */
+    private buildSyntheticDiffAbsolute;
+    getFileContent(filePath: string, version?: 'HEAD' | 'working' | 'index'): Promise<string>;
+    /**
+     * Read a file as a base64 data URL if it's an image, otherwise return text content.
+     * For git refs (HEAD/index), reads binary output from `git show`.
+     */
+    getFileContentAsDataUrl(filePath: string, version?: 'HEAD' | 'working' | 'index'): Promise<string>;
+    /**
+     * Read a file from a branch as a base64 data URL if it's an image.
+     */
+    getFileContentFromBranchAsDataUrl(filePath: string, branch: string): Promise<string>;
+    /** Check if a file path is an image based on extension. */
+    isImageFile(filePath: string): boolean;
+    /** Execute a git command and return raw binary buffer output. */
+    private executeGitCommandBinary;
+    stageFiles(filePaths: string[]): Promise<void>;
+    unstageFiles(filePaths: string[]): Promise<void>;
+    revertFile(filePath: string): Promise<void>;
+    revertFiles(filePaths: string[]): Promise<void>;
+    fileExistsInHead(filePath: string): Promise<boolean>;
+    resolveConflict(filePath: string, strategy: 'ours' | 'theirs'): Promise<void>;
+    commit(message: string): Promise<void>;
+    isGitRepository(): Promise<boolean>;
+    hasUncommittedChanges(): Promise<boolean>;
+    getStagedFiles(): Promise<GitStatusFile[]>;
+    getUpstreamBranch(): Promise<string | null>;
+    getBaseBranch(options?: {
+        preferUpstream?: boolean;
+    }): Promise<string>;
+    getPRBaseBranch(): Promise<string>;
+    /**
+     * Find the closest parent branch by comparing merge-base distances.
+     * When branching feature-B from feature-A, feature-A will have a much
+     * smaller commit distance than main/master.
+     */
+    private findClosestParentBranch;
+    private getCommitDistance;
+    private getNearbyMergedBranches;
+    getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]>;
+    getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string>;
+    getFileContentFromBranch(filePath: string, branch: string): Promise<string>;
+    fetchRemoteBranch(branch: string): Promise<void>;
+    deleteRemoteBranch(branch: string): Promise<void>;
+    getAllBranches(): Promise<string[]>;
+    checkoutBranch(branchName: string): Promise<void>;
+    isCurrentBranchPublished(): Promise<boolean>;
+    private _forceFetchNext;
+    /**
+     * Force a fetch on the next getCommitsAheadBehind() call,
+     * regardless of the auto-fetch toggle or throttle timer.
+     */
+    forceFetchOnce(): void;
+    private fetchIfStale;
+    getCommitsAheadBehind(): Promise<{
+        ahead: number;
+        behind: number;
+    }>;
+    pushBranch(): Promise<void>;
+    pullBranch(): Promise<void>;
+    stashPush(message?: string, stagedOnly?: boolean): Promise<string>;
+    stashList(): Promise<StashEntry[]>;
+    stashApply(index: number): Promise<void>;
+    stashPop(index: number): Promise<void>;
+    private isStashConflict;
+    stashDrop(index: number): Promise<void>;
+    stashClear(): Promise<void>;
+    worktreeList(): Promise<WorktreeEntry[]>;
+    worktreeAdd(wtPath: string, branch?: string, createBranch?: boolean): Promise<string>;
+    worktreeRemove(wtPath: string, force?: boolean): Promise<void>;
+    getCommitsBetweenBranches(baseBranch: string, targetBranch?: string): Promise<{
+        subject: string;
+        body: string;
+    }[]>;
+    gitLog(count?: number): Promise<CommitLogEntry[]>;
+    revertCommit(hash: string): Promise<void>;
+    resetToCommit(hash: string): Promise<void>;
+}
+
+type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
+type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
+interface ActiveTokenInfo {
+    source: TokenSource;
+    kind: TokenKind;
+    prefix: string;
+}
 
 type IncomingPullRequestEvents = {
     type: 'pr.GET_BASE_BRANCH';
@@ -2477,6 +1530,36 @@ type OutgoingPullRequestEvents = {
         commentId: number;
     };
 };
+
+interface FileChangeInfo {
+    path: string;
+    modifiedAt: Date;
+    changeType: 'add' | 'change' | 'unlink';
+}
+declare class GitWatcherService {
+    private workingDirectory;
+    private gitWatcher?;
+    private workingDirWatcher?;
+    private onGitChangeCallback?;
+    private onFileChangeCallback?;
+    private gitStatusDebounceTimeout?;
+    private fileChangeTimeouts;
+    private isWatching;
+    private openFiles;
+    private gitRepository?;
+    constructor(workingDirectory: string);
+    setGitRepository(repo: GitRepository): void;
+    setChangeCallback(callback: () => void): void;
+    setFileChangeCallback(callback: (change: FileChangeInfo) => void): void;
+    registerOpenFile(filePath: string): void;
+    unregisterOpenFile(filePath: string): void;
+    isFileOpen(filePath: string): boolean;
+    getOpenFiles(): string[];
+    startWatching(): Promise<void>;
+    private handleFileChange;
+    stopWatching(): Promise<void>;
+    isActive(): boolean;
+}
 
 type IncomingCommitEvents = {
     type: 'commit.GET_GIT_STATUS';
@@ -3565,7 +2648,7 @@ interface MessageReferences {
  * EVENT-level and FIELD-level types use the union because every
  * non-legacy emit matches one of its arms.
  */
-type BlockResponse = 
+type BlockResponse =
 /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
 {
     approved: boolean;
@@ -3891,9 +2974,1067 @@ type OutgoingThreadsEvents = {
 interface ThreadsContext {
 }
 
-type SystemEvents = {
-    type: 'CLIENT_CONNECTED';
+/** ── Shared aliases ─────────────────────────────────────────────────────── */
+type TimestampMs = number;
+type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
+type TNodeKind = 'flow' | 'event' | 'step';
+/** ── Core entities ──────────────────────────────────────────────────────── */
+interface TNodeEntity extends BaseEntity {
+    entityType: EARS.Entity.TNode;
+    tNodeType: TNodeKind;
+    label: string;
+    status: EntityStatus;
+    startedAt: TimestampMs;
+    completedAt?: TimestampMs;
+    eventType?: string;
+    triggerType?: 'listener' | 'schedule';
+    cronExpression?: string;
+    stepNodeType?: string;
+    final?: boolean;
+    nodeAttributes?: Record<string, unknown>;
+    resolvedParams?: Record<string, unknown>;
+    blueprint?: {
+        nodeId: EARS.EntityId;
+        flowId: EARS.EntityId;
+    };
+}
+interface TrackEntity extends TNodeEntity {
+    children: TrackEntity[];
+}
+interface EventListenerEntity {
+    id: EARS.EntityId;
+    nodeId: EARS.EntityId;
+    eventType: string;
+    label: string;
+    triggerType: 'listener' | 'schedule';
+    scope?: 'global' | 'local' | 'entry';
+    cronExpression?: string;
+}
+interface FlowTNodeData {
+    flowTNodeId: EARS.EntityId;
+    tNodeTree: TrackEntity[];
+    possibleEvents: EventListenerEntity[];
+    flowHierarchy: Array<{
+        flowTNodeId: EARS.EntityId;
+        label: string;
+    }>;
+}
+interface TNodeUpdate {
+    tNodeId: EARS.EntityId;
+    status: TNodeEntity['status'];
+    eventTNodeId?: EARS.EntityId;
+}
+interface BrainRuntimeError {
+    errorId: string;
+    message: string;
+    stack?: string;
+    source: string;
+    phase: string;
+    flowTNodeId?: EARS.EntityId;
+    eventTNodeId?: EARS.EntityId;
+    tNodeId?: EARS.EntityId;
+    nodeId?: EARS.EntityId;
+    nodeLabel?: string;
+    nodeType?: string;
+    actionId?: EARS.EntityId;
+    actionLabel?: string;
+    eventType?: string;
+    timestamp: TimestampMs;
+}
+
+declare enum BinaryOperator {
+    EQUALS = "equals",
+    NOT_EQUALS = "not_equals",
+    GREATER_THAN = "greater_than",
+    LESS_THAN = "less_than",
+    GREATER_THAN_OR_EQUALS = "greater_than_or_equals",
+    LESS_THAN_OR_EQUALS = "less_than_or_equals",
+    CONTAINS = "contains",
+    STARTS_WITH = "starts_with",
+    ENDS_WITH = "ends_with",
+    MATCHES = "matches",
+    IS_EMPTY = "is_empty",
+    IS_NULL = "is_null"
+}
+
+interface FlowEntity extends BaseEntity {
+    entityType: EARS.Entity.Flow;
+    shortCode: string;
+    label: string;
+    description?: string;
+    flowType: 'workflow' | 'integration';
+    createdAt: number;
+    /** SHA256 hash of the DSL source at last seed. Absent on user-created flows. */
+    sourceHash?: string;
+}
+interface NodeBase extends BaseEntity {
+    entityType: EARS.Entity.Node;
+    /** discriminator */
+    nodeType: NodeKind;
+    label: string;
+    description?: string;
+    color?: string;
+    /** When true, completing this node will trigger parent flow completion */
+    final?: boolean;
+}
+interface QueryNode extends NodeBase {
+    nodeType: 'query';
+    prompt: string;
+    resultKey?: string;
+}
+interface CreateNode extends NodeBase {
+    nodeType: 'create';
+    entityTypeTarget: EARS.Entity;
+    entityId?: string;
+    inferLabel?: boolean;
+}
+interface UpdateNode extends NodeBase {
+    nodeType: 'update';
+    entityId: string;
+    onMissing?: 'fail' | 'ignore' | 'create';
+}
+type Predicate = {
+    key: string;
+    operator: BinaryOperator;
+    value?: any;
+} | ((context: any) => boolean);
+type Condition = {
+    predicate?: Predicate;
+    label?: string;
+    mode?: 'expression' | 'code';
+    code?: string;
 };
+interface SwitchNode extends NodeBase {
+    nodeType: 'switch';
+    conditions: Array<Condition>;
+    elseLabel?: string;
+}
+interface FireNode extends NodeBase {
+    nodeType: 'fire';
+    eventType: string;
+    payload?: unknown;
+    scope?: 'local' | 'global';
+}
+interface ListenerNode extends NodeBase {
+    nodeType: 'listener';
+    scope: 'global' | 'local' | 'entry';
+    eventType: string;
+    debounceMs?: number;
+}
+interface TransformNode extends NodeBase {
+    nodeType: 'transform';
+    script: string;
+    outputType?: 'json' | 'text' | 'custom';
+}
+interface FlowNode extends NodeBase {
+    nodeType: 'flow';
+    flowRef: string;
+    propagateCtx?: boolean;
+    fieldMappings?: Array<{
+        target: string;
+        source: string;
+        default?: any;
+    }>;
+}
+interface KeepAliveNode extends NodeBase {
+    nodeType: 'keep_alive';
+}
+interface KillNode extends NodeBase {
+    nodeType: 'kill';
+}
+interface ScheduleNode extends NodeBase {
+    nodeType: 'schedule';
+    cronExpression: string;
+}
+interface LLMNode extends NodeBase {
+    nodeType: 'llm';
+    prompt?: string;
+    promptTemplateId?: string;
+    fieldMappings?: Array<{
+        target: string;
+        source: string;
+        default?: any;
+    }>;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+}
+interface ActionNode extends NodeBase {
+    nodeType: 'action';
+    mode?: 'template' | 'code';
+    actionId?: string;
+    actionFn?: string;
+    params?: Record<string, any>;
+    fieldMappings?: Array<{
+        target: string;
+        source: string;
+        default?: any;
+    }>;
+}
+type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode | ScheduleNode;
+/** Literal union of all nodeType strings (keeps Base clean) */
+type NodeKind = NodeEntity['nodeType'];
+type EdgeEntity = {
+    id: EARS.EntityId;
+    kind: EARS.RelKind;
+    source: EARS.EntityId;
+    target: EARS.EntityId;
+    sourceHandle?: string;
+    targetHandle?: string;
+    info?: {
+        [key: string]: any;
+    };
+};
+interface FlowsConnectedData {
+    selectedFlowId: EARS.EntityId;
+    graph: {
+        nodes: NodeEntity[];
+        edges: EdgeEntity[];
+    };
+    flows: Partial<FlowEntity>[];
+    rootFlow?: Partial<FlowEntity>;
+    models: ModelCatalogEntry[];
+    prompts: PromptEntity[];
+    actions: ActionEntity[];
+    settings?: any;
+}
+interface ModelCatalogEntry {
+    id: string;
+    name: string;
+    provider: string;
+    description?: string;
+    contextWindow: number;
+    maxOutput?: number;
+    costPer1kInput?: number;
+    costPer1kOutput?: number;
+    capabilities?: string[];
+}
+
+type BrainInternalEvents = {
+    type: 'TNODE_SPAWNED';
+    tNode: TNodeEntity;
+    parentId?: EARS.EntityId;
+    eventTNodeId?: EARS.EntityId;
+    flowTNodeId: EARS.EntityId;
+} | {
+    type: 'TNODE_UPDATED';
+    data: TNodeUpdate;
+} | {
+    type: 'BRAIN_SETTINGS_UPDATED';
+    settings: any;
+    changes?: any;
+} | {
+    type: 'HANDLE_BRAIN_EVENT';
+    eventType: string;
+    payload?: any;
+    targetFlowId?: string;
+} | {
+    type: 'CHILD_COMPLETED';
+    stepId?: EARS.EntityId;
+    tNodeId?: EARS.EntityId;
+    stepLabel?: string;
+    result?: any;
+    final?: boolean;
+    eventTNodeId?: EARS.EntityId;
+    isFlow?: boolean;
+};
+type OutgoingBrainEvents = {
+    type: 'RECEIVE_PLUGIN_DATA';
+    data: FlowTNodeData;
+} | {
+    type: 'TNODE_OPENED';
+    tNodeId: EARS.EntityId;
+    data: FlowTNodeData;
+} | {
+    type: 'TNODE_SPAWNED';
+    tNode: TNodeEntity;
+    parentId?: EARS.EntityId;
+    eventTNodeId?: EARS.EntityId;
+    flowTNodeId: EARS.EntityId;
+} | {
+    type: 'TNODE_UPDATED';
+    data: TNodeUpdate;
+} | {
+    type: 'EVENT_PULSE';
+    eventType: string;
+} | {
+    type: 'TNODE_DETAILS';
+    tNodeId: EARS.EntityId;
+    details: TNodeEntity | null;
+} | {
+    type: 'BRAIN_RUNTIME_ERROR';
+    error: BrainRuntimeError;
+} | {
+    type: 'INSPECT_TOGGLED';
+    enabled: boolean;
+} | {
+    type: 'BRAIN_KILLED';
+} | {
+    type: 'BRAIN_STARTED';
+} | {
+    type: 'BRAIN_PAUSED';
+} | {
+    type: 'BRAIN_RESUMED';
+};
+interface BrainContext {
+    brainActor?: any;
+    eventQueue: Array<{
+        eventType: string;
+        payload?: any;
+        targetFlowId?: string;
+    }>;
+}
+
+type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
+interface SecretData {
+    id: EARS.EntityId;
+    provider: SecretProvider;
+    customName?: string;
+    createdAt: number;
+    updatedAt?: number;
+}
+
+type ExtractEvent<TEvent extends {
+    type: string;
+}, TType extends TEvent['type']> = Extract<TEvent, {
+    type: TType;
+}>;
+/**
+ * Usage:
+ * ```ts
+ * const typeOf = safeEvents<MyUnion>();
+ * const msg = typeOf(['A', 'B'], evt);   // evt is now narrowed
+ * ```
+ */
+declare function safeEvents<TEvent extends {
+    type: string;
+}>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;
+
+/** Add `systemId` literal to every member of an incoming event union. */
+type WithSystemId<Id extends string, E extends {
+    type: string;
+}> = E extends any ? Simplify<E & {
+    systemId: Id;
+}> : never;
+/** Add `pluginId` literal to every member of an outgoing event union. */
+type WithPlugin<Id extends string, E extends {
+    type: string;
+}> = E extends any ? Simplify<E & {
+    pluginId: Id;
+}> : never;
+/** The definition object returned by `defineSystem()`. */
+interface SystemDefinition<Id extends string, TEvents extends {
+    type: string;
+}, TOutgoing extends {
+    type: string;
+}, TContext = {}> {
+    id: Id;
+    types: {
+        context: TContext;
+        events: TEvents | SystemEvents;
+    };
+    typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
+    /** Phantom — incoming events with `systemId` attached (wire format). */
+    _incoming: WithSystemId<Id, TEvents>;
+    /** Phantom — outgoing events with `pluginId` attached. */
+    _outgoing: WithPlugin<Id, TOutgoing>;
+}
+
+interface NoteDTO {
+    id: string;
+    title: string;
+    content: string;
+    icon: string | null;
+    noteType: 'document' | 'tasklist' | 'task';
+    completed: boolean;
+    hideCompletedChildren: boolean;
+    parentId: string | null;
+    displayOrder: number;
+    savedDisplayOrder: number | null;
+    childCount: number;
+    createdAt: number;
+    updatedAt: number;
+    lastSeen: number;
+    favorite: boolean;
+    deletedAt?: number;
+}
+type OutgoingNotesSearchEvent = {
+    type: 'NOTES_SEARCH_RESULTS';
+    results: NoteDTO[];
+};
+interface NotesConnectedData {
+    notes: NoteDTO[];
+    settings?: NotesSettings;
+}
+
+type OutgoingNotesEvents = {
+    type: 'NOTES_CONNECTED';
+    data: NotesConnectedData;
+} | {
+    type: 'NOTE_CREATED';
+    note: NoteDTO;
+} | {
+    type: 'NOTE_UPDATED';
+    note: NoteDTO;
+} | {
+    type: 'NOTE_DELETED';
+    noteId: string;
+} | {
+    type: 'NOTE_RESTORED';
+    note: NoteDTO;
+} | {
+    type: 'TRASHED_NOTES';
+    notes: NoteDTO[];
+} | OutgoingNotesSearchEvent | {
+    type: 'NOTES_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'NOTES_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'NOTES_EXPORTED';
+    filePath: string;
+    itemCount: number;
+} | {
+    type: 'NOTES_EXPORT_FAILED';
+    errors: string[];
+};
+
+type DocumentShortCode = `DOC-${number}`;
+interface FieldContent {
+    type: 'field';
+    fields: Array<{
+        key: string;
+        value: string;
+    }>;
+}
+interface ListContent {
+    type: 'list';
+    items: string[];
+}
+interface MarkdownContent {
+    type: 'markdown';
+    text: string;
+}
+interface TextContent {
+    type: 'text';
+    text: string;
+}
+interface CodeContent {
+    type: 'code';
+    text: string;
+    language: string;
+}
+type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
+interface DocumentDTO {
+    id: EARS.EntityId;
+    name: string;
+    content: ContentSection[];
+    shortCode: DocumentShortCode;
+    tags: string[];
+    collectionId?: EARS.EntityId;
+    collectionPath?: string[];
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+interface CollectionDTO {
+    id: EARS.EntityId;
+    name: string;
+    description?: string;
+    parentId?: EARS.EntityId;
+    path: string[];
+    documentCount: number;
+    childCollections: CollectionDTO[];
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+    symlinkPath?: string;
+}
+interface FolderItem {
+    type: 'folder';
+    id: EARS.EntityId;
+    name: string;
+    parentId: EARS.EntityId | null;
+    childCount: number;
+    size: string;
+    kind: 'Folder';
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+    isSymlink?: boolean;
+    symlinkPath?: string;
+    isSymlinked?: boolean;
+    isBroken?: boolean;
+}
+interface DocumentItem {
+    type: 'document';
+    id: EARS.EntityId;
+    name: string;
+    shortCode: DocumentShortCode;
+    parentId: EARS.EntityId | null;
+    content: ContentSection[];
+    tags: string[];
+    size: string;
+    kind: 'Document';
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+    isSymlinked?: boolean;
+    filePath?: string;
+}
+type LibraryItem = FolderItem | DocumentItem;
+interface FolderContents {
+    items: LibraryItem[];
+    currentPath: string[];
+    currentFolderId: EARS.EntityId | null;
+    breadcrumbs: BreadcrumbItem[];
+    searchIndices?: any[];
+    isBroken?: boolean;
+    lastKnownPath?: string;
+}
+interface BreadcrumbItem {
+    id: EARS.EntityId | null;
+    name: string;
+    path: string[];
+}
+interface LibrarySystemContext {
+    documents: DocumentDTO[];
+    collections: CollectionDTO[];
+    selectedDocumentId?: EARS.EntityId;
+    selectedCollectionId?: EARS.EntityId;
+    currentItems: LibraryItem[];
+    currentFolderId: EARS.EntityId | null;
+    currentPath: string[];
+}
+
+type OutgoingLibraryEvents = {
+    type: 'LIBRARY_CONNECTED';
+    data: {
+        documents: DocumentDTO[];
+        collections: CollectionDTO[];
+        settings: any;
+    };
+} | {
+    type: 'DOCUMENTS_LOADED';
+    data: {
+        documents: DocumentDTO[];
+    };
+} | {
+    type: 'DOCUMENT_CREATED';
+    data: {
+        document: DocumentDTO;
+    };
+} | {
+    type: 'DOCUMENT_UPDATED';
+    data: {
+        document: DocumentDTO;
+    };
+} | {
+    type: 'DOCUMENT_DELETED';
+    data: {
+        documentId: string;
+    };
+} | {
+    type: 'DOCUMENT_LOADED';
+    data: {
+        document: DocumentDTO;
+    };
+} | {
+    type: 'COLLECTIONS_LOADED';
+    data: {
+        collections: CollectionDTO[];
+    };
+} | {
+    type: 'COLLECTION_CREATED';
+    data: {
+        collection: CollectionDTO;
+    };
+} | {
+    type: 'COLLECTION_UPDATED';
+    data: {
+        collection: CollectionDTO;
+    };
+} | {
+    type: 'COLLECTION_DELETED';
+    data: {
+        collectionId: string;
+    };
+} | {
+    type: 'LIBRARY_ERROR';
+    data: {
+        error: string;
+    };
+} | {
+    type: 'SYMLINK_UPDATED';
+    data: {
+        collection: CollectionDTO;
+    };
+} | {
+    type: 'FOLDER_CONTENTS_LOADED';
+    data: FolderContents;
+} | {
+    type: 'NAVIGATION_CHANGED';
+    data: {
+        folderId: string | null;
+        path: string[];
+    };
+} | {
+    type: 'ITEM_RENAMED';
+    data: {
+        item: LibraryItem;
+    };
+} | {
+    type: 'ITEMS_DELETED';
+    data: {
+        ids: string[];
+    };
+} | {
+    type: 'ITEMS_MOVED';
+    data: {
+        ids: string[];
+        targetFolderId: string | null;
+    };
+} | {
+    type: 'LIBRARY_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'LIBRARY_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'LIBRARY_EXPORTED';
+    filePath: string;
+    itemCount: number;
+} | {
+    type: 'LIBRARY_EXPORT_FAILED';
+    errors: string[];
+};
+
+type OutgoingActionEvents = {
+    type: 'ACTIONS_LISTED';
+    data: ActionsStartupData;
+} | {
+    type: 'ACTION_SELECTED';
+    actionId: EARS.EntityId;
+    data: ActionEntity;
+} | {
+    type: 'ACTION_CREATED';
+    action: ActionEntity;
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION_UPDATED';
+    action: ActionEntity;
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION_DELETED';
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTIONS_PAGE_LOADED';
+    data: {
+        actions: ActionEntity[];
+        page: number;
+        totalPages: number;
+    };
+} | {
+    type: 'ACTIONS_ALL_LOADED';
+    data: {
+        actions: ActionEntity[];
+    };
+} | {
+    type: 'ACTIONS_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'ACTIONS_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'ACTIONS_EXPORTED';
+    filePath: string;
+    actionCount: number;
+} | {
+    type: 'ACTIONS_EXPORT_FAILED';
+    errors: string[];
+};
+
+type OutgoingPromptEvents = {
+    type: 'PROMPTS_CONNECTED';
+    data: PromptsConnectedData;
+} | {
+    type: 'PROMPT_SELECTED';
+    promptId: EARS.EntityId;
+    data: PromptEntity;
+} | {
+    type: 'PROMPT_CREATED';
+    prompt: PromptEntity;
+    promptId: EARS.EntityId;
+} | {
+    type: 'PROMPT_UPDATED';
+    prompt: PromptEntity;
+    promptId: EARS.EntityId;
+} | {
+    type: 'PROMPT_DELETED';
+    promptId: EARS.EntityId;
+} | {
+    type: 'PROMPTS_PAGE_LOADED';
+    data: {
+        prompts: PromptEntity[];
+        page: number;
+        totalPages: number;
+    };
+} | {
+    type: 'PROMPTS_ALL_LOADED';
+    data: {
+        prompts: PromptEntity[];
+    };
+} | {
+    type: 'PROMPTS_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'PROMPTS_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'PROMPTS_EXPORTED';
+    filePath: string;
+    promptCount: number;
+} | {
+    type: 'PROMPTS_EXPORT_FAILED';
+    errors: string[];
+};
+
+declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
+type LogLevel = z.infer<typeof LogLevel>;
+declare const LogEntry: z.ZodObject<{
+    id: z.ZodString;
+    timestamp: z.ZodNumber;
+    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
+    message: z.ZodString;
+    source: z.ZodOptional<z.ZodString>;
+    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    stack: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    message: string;
+    timestamp: number;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}, {
+    id: string;
+    message: string;
+    timestamp: number;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}>;
+type LogEntry = z.infer<typeof LogEntry>;
+
+type OutgoingLogsEvents = {
+    type: 'LOGS_CONNECTED';
+    logs: LogEntry[];
+    settings?: LogsSettings;
+} | {
+    type: 'LOGS_UPDATE';
+    logs: LogEntry[];
+} | {
+    type: 'LOG_ADDED';
+    log: LogEntry;
+} | {
+    type: 'LOGS_CLEARED';
+} | {
+    type: 'LOGS_SETTINGS_UPDATED';
+    settings: LogsSettings;
+};
+interface LogsContext {
+    logs: LogEntry[];
+}
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
+
+type OutgoingDatabaseEvents = {
+    type: 'DATABASE_REFRESH';
+    data: DatabaseStartupData;
+} | {
+    type: 'QUERY_RESULT';
+    result: any;
+    executionTime: number;
+} | {
+    type: 'QUERY_ERROR';
+    error: string;
+} | {
+    type: 'TRANSACTION_RESULT';
+    result: any;
+    executionTime: number;
+} | {
+    type: 'TRANSACTION_ERROR';
+    error: string;
+} | {
+    type: 'AI_QUERY_LOADING';
+} | {
+    type: 'AI_QUERY_GENERATED';
+    query: string;
+} | {
+    type: 'TRACE_FLOWS_RESULT';
+    flows: TNodeEntity[];
+} | {
+    type: 'FLOW_EVENTS_RESULT';
+    flowId: string;
+    events: TNodeEntity[];
+    hasMore: boolean;
+} | {
+    type: 'NODE_DETAILS_RESULT';
+    nodeId: string;
+    details: TNodeEntity | null;
+} | {
+    type: 'EXPORT_DATABASE_SUCCESS';
+    path: string;
+} | {
+    type: 'EXPORT_DATABASE_ERROR';
+    error: string;
+} | {
+    type: 'IMPORT_DATABASE_SUCCESS';
+    message?: string;
+} | {
+    type: 'IMPORT_DATABASE_ERROR';
+    error: string;
+} | {
+    type: 'BACKUP_INFO_RESULT';
+    info: {
+        timestamp: number;
+        databases: string[];
+        size: number;
+        hasMedia?: boolean;
+    } | null;
+} | {
+    type: 'RESET_DATABASE_SUCCESS';
+    message: string;
+} | {
+    type: 'RESET_DATABASE_ERROR';
+    error: string;
+};
+
+type OutgoingFlowsEvents = {
+    type: 'FLOWS_CONNECTED';
+    data: FlowsConnectedData;
+} | {
+    type: 'FLOW_SELECTED';
+    flowId: EARS.EntityId;
+    data: {
+        nodes: any[];
+        edges: any[];
+    };
+} | {
+    type: 'FLOW_CREATED';
+    flow: FlowEntity;
+    flowId: EARS.EntityId;
+    data: {
+        nodes: any[];
+        edges: any[];
+    };
+} | {
+    type: 'FLOW_DELETED';
+    flowId: EARS.EntityId;
+} | {
+    type: 'NODE_CREATED';
+    tempId: string;
+    nodeId: EARS.EntityId;
+    node: any;
+} | {
+    type: 'NODE_UPDATED';
+    nodeId: EARS.EntityId;
+    node: any;
+} | {
+    type: 'NODE_DELETED';
+    nodeId: string;
+} | {
+    type: 'EDGE_CREATED';
+    sourceId: EARS.EntityId;
+    targetId: EARS.EntityId;
+    relId: EARS.EntityId;
+    sourceHandle?: string;
+    targetHandle?: string;
+} | {
+    type: 'EDGE_CREATE_FAILED';
+    sourceId: string;
+    targetId: string;
+    error: string;
+} | {
+    type: 'EDGE_DELETED';
+    edgeId: string;
+} | {
+    type: 'EDGE_UPDATED';
+    oldEdgeId: EARS.EntityId;
+    newEdgeId: EARS.EntityId;
+    newSource: EARS.EntityId;
+    newTarget: EARS.EntityId;
+} | {
+    type: 'ACTION_CREATED';
+    action: ActionEntity;
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION_UPDATED';
+    action: ActionEntity;
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION_DELETED';
+    actionId: EARS.EntityId;
+} | {
+    type: 'DSL_IMPORTED';
+    flowIds: EARS.EntityId[];
+    errors?: string[];
+} | {
+    type: 'DSL_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'DSL_EXPORTED';
+    filePath: string;
+    flowCount: number;
+} | {
+    type: 'DSL_EXPORT_FAILED';
+    errors: string[];
+};
+
+type SecretsOutputEvents = {
+    type: 'SECRETS.EVENT.LOADED';
+    data: SecretData[];
+} | {
+    type: 'SECRETS.EVENT.CREATED';
+    id: EARS.EntityId;
+    provider: SecretProvider;
+    customName?: string;
+} | {
+    type: 'SECRETS.EVENT.UPDATED';
+    id: EARS.EntityId;
+} | {
+    type: 'SECRETS.EVENT.DELETED';
+    id: EARS.EntityId;
+} | {
+    type: 'SECRETS.EVENT.VALUE';
+    id: EARS.EntityId;
+    value: string;
+} | {
+    type: 'SECRETS.EVENT.ERROR';
+    message: string;
+};
+
+/**
+ * Database Seed — loads compiled default-setup artifacts into LMDB
+ *
+ * Skips seeding if the compiled data hash is unchanged since last seed,
+ * unless `force` is passed. The CLI script always forces.
+ */
+interface SeedCounts {
+    created: number;
+    updated: number;
+    skipped: number;
+}
+interface SeedResult {
+    actions: SeedCounts;
+    prompts: SeedCounts;
+    flows: SeedCounts;
+    library: SeedCounts;
+    notes: SeedCounts;
+    settings: SeedCounts;
+}
+
+/**
+ * Setup Pack Preview — reads compiled artifacts from a directory and
+ * reports the top-level items available for selective import.
+ */
+type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
+type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
+interface SetupPackPreviewItem {
+    key: string;
+    description?: string;
+    kind?: SetupPackItemKind;
+    childCount?: number;
+}
+interface SetupPackPreview {
+    directory: string;
+    actions: SetupPackPreviewItem[];
+    prompts: SetupPackPreviewItem[];
+    flows: SetupPackPreviewItem[];
+    library: SetupPackPreviewItem[];
+    notes: SetupPackPreviewItem[];
+    settings: SetupPackPreviewItem[];
+    missing: SetupPackType[];
+}
+
+type OutgoingSettingsEvents = {
+    type: 'SETTINGS_LOADED';
+    data: SettingsData;
+    faqs: FAQItem[];
+} | {
+    type: 'SETTINGS_UPDATED';
+    data: SettingsData;
+} | {
+    type: 'SETTINGS_RESET';
+    data: SettingsData;
+} | {
+    type: 'APPLICATION_HOTKEYS';
+    hotkeys: SettingsData['general']['application']['hotkeys'];
+} | {
+    type: 'CLI_TEST_RESULT';
+    provider: string;
+    success: boolean;
+    error?: string;
+    resolvedPath?: string;
+} | {
+    type: 'SETUP_PACK_IMPORTED';
+    result: SeedResult;
+} | {
+    type: 'SETUP_PACK_IMPORT_FAILED';
+    error: string;
+} | {
+    type: 'SETUP_PACK_PREVIEW';
+    preview: SetupPackPreview;
+} | {
+    type: 'SETUP_PACK_PREVIEW_FAILED';
+    error: string;
+} | {
+    type: 'APP_RESET_COMPLETE';
+} | {
+    type: 'APP_RESET_FAILED';
+    error: string;
+} | SecretsOutputEvents;
+
+type SystemErrorSeverity = 'error' | 'fatal';
+type SystemErrorEvent = {
+    type: 'SYSTEM_ERROR';
+    pluginId: 'application';
+    errorId: string;
+    message: string;
+    title?: string;
+    source?: string;
+    operation?: string;
+    entityId?: string;
+    severity: SystemErrorSeverity;
+    stack?: string;
+    timestamp: number;
+};
+type ApplicationOutgoingEvents = {
+    type: 'CLIENT_CONNECTED';
+    hasOnboarded: boolean;
+    pluginId: 'application';
+} | SystemErrorEvent;
 
 declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "GET_SETTINGS";
@@ -4471,128 +4612,7 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
 }, BrowserContext>];
 type AllDefs = (typeof allDefs)[number];
 type IncomingSystemEvents = AllDefs['_incoming'];
-type OutgoingSystemEvents = AllDefs['_outgoing'];
-
-type ExtractEvent<TEvent extends {
-    type: string;
-}, TType extends TEvent['type']> = Extract<TEvent, {
-    type: TType;
-}>;
-/**
- * Usage:
- * ```ts
- * const typeOf = safeEvents<MyUnion>();
- * const msg = typeOf(['A', 'B'], evt);   // evt is now narrowed
- * ```
- */
-declare function safeEvents<TEvent extends {
-    type: string;
-}>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;
-
-/** Add `systemId` literal to every member of an incoming event union. */
-type WithSystemId<Id extends string, E extends {
-    type: string;
-}> = E extends any ? Simplify<E & {
-    systemId: Id;
-}> : never;
-/** Add `pluginId` literal to every member of an outgoing event union. */
-type WithPlugin<Id extends string, E extends {
-    type: string;
-}> = E extends any ? Simplify<E & {
-    pluginId: Id;
-}> : never;
-/** The definition object returned by `defineSystem()`. */
-interface SystemDefinition<Id extends string, TEvents extends {
-    type: string;
-}, TOutgoing extends {
-    type: string;
-}, TContext = {}> {
-    id: Id;
-    types: {
-        context: TContext;
-        events: TEvents | SystemEvents;
-    };
-    typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
-    /** Phantom — incoming events with `systemId` attached (wire format). */
-    _incoming: WithSystemId<Id, TEvents>;
-    /** Phantom — outgoing events with `pluginId` attached. */
-    _outgoing: WithPlugin<Id, TOutgoing>;
-}
-
-type BrainInternalEvents = {
-    type: 'TNODE_SPAWNED';
-    tNode: TNodeEntity;
-    parentId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    flowTNodeId: EARS.EntityId;
-} | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
-} | {
-    type: 'BRAIN_SETTINGS_UPDATED';
-    settings: any;
-    changes?: any;
-} | {
-    type: 'HANDLE_BRAIN_EVENT';
-    eventType: string;
-    payload?: any;
-    targetFlowId?: string;
-} | {
-    type: 'CHILD_COMPLETED';
-    stepId?: EARS.EntityId;
-    tNodeId?: EARS.EntityId;
-    stepLabel?: string;
-    result?: any;
-    final?: boolean;
-    eventTNodeId?: EARS.EntityId;
-    isFlow?: boolean;
-};
-type OutgoingBrainEvents = {
-    type: 'RECEIVE_PLUGIN_DATA';
-    data: FlowTNodeData;
-} | {
-    type: 'TNODE_OPENED';
-    tNodeId: EARS.EntityId;
-    data: FlowTNodeData;
-} | {
-    type: 'TNODE_SPAWNED';
-    tNode: TNodeEntity;
-    parentId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    flowTNodeId: EARS.EntityId;
-} | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
-} | {
-    type: 'EVENT_PULSE';
-    eventType: string;
-} | {
-    type: 'TNODE_DETAILS';
-    tNodeId: EARS.EntityId;
-    details: TNodeEntity | null;
-} | {
-    type: 'BRAIN_RUNTIME_ERROR';
-    error: BrainRuntimeError;
-} | {
-    type: 'INSPECT_TOGGLED';
-    enabled: boolean;
-} | {
-    type: 'BRAIN_KILLED';
-} | {
-    type: 'BRAIN_STARTED';
-} | {
-    type: 'BRAIN_PAUSED';
-} | {
-    type: 'BRAIN_RESUMED';
-};
-interface BrainContext {
-    brainActor?: any;
-    eventQueue: Array<{
-        eventType: string;
-        payload?: any;
-        targetFlowId?: string;
-    }>;
-}
+type OutgoingSystemEvents = AllDefs['_outgoing'] | ApplicationOutgoingEvents;
 
 interface SafeLinkOptions {
     /** Additional info to store with the relation */

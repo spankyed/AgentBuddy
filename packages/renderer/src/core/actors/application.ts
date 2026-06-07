@@ -7,6 +7,7 @@ import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import type { ContextMenuItem } from '@/core/context-menu';
+import { globalToast } from '@/core/toast';
 
 interface BreadcrumbItem {
   label: string;
@@ -75,6 +76,7 @@ export type ApplicationEvent =
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
+  | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
   | { type: 'NOOP' }
 
@@ -825,6 +827,20 @@ export const createApplicationState = () => setup({
       actions: ({ event }) => {
         window.__showErrorPage?.('Something went wrong', (event as any).error);
       }
+    },
+    SYSTEM_ERROR: {
+      actions: ({ event }) => {
+        const ev = typeOf('SYSTEM_ERROR', event);
+        if (ev.severity === 'fatal') {
+          window.__showErrorPage?.(
+            ev.title ?? 'Something went wrong',
+            ev.stack ? `${ev.message}\n\n${ev.stack}` : ev.message,
+          );
+          return;
+        }
+
+        globalToast.error(ev.title ?? 'Something went wrong', ev.message);
+      },
     },
     NOOP: {
       // No-op event, do nothing

@@ -15,6 +15,7 @@ import services from '@/services';
 import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { FieldContent } from '@/core/shared-types/library';
+import { reportSystemError } from '@/core/shared/system-errors';
 
 const logger = createLogger('threads');
 
@@ -91,6 +92,32 @@ export interface ThreadsContext {}
 export const threadsDef = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsDef.id;
 
+function reportThreadOperationError(
+  operation: 'create' | 'update' | 'delete' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'status' | 'parent',
+  error: unknown,
+  threadId?: string,
+) {
+  const operationLabels: Record<typeof operation, string> = {
+    create: 'create',
+    update: 'update',
+    delete: 'delete',
+    archive: 'archive',
+    unarchive: 'unarchive',
+    pin: 'pin',
+    unpin: 'unpin',
+    status: 'update status for',
+    parent: 'move',
+  };
+
+  reportSystemError({
+    error,
+    title: `Could not ${operationLabels[operation]} thread`,
+    source: 'threads',
+    operation,
+    entityId: threadId,
+  });
+}
+
 export const threadsSystem = setup({
   types: threadsDef.types,
   actions: {
@@ -156,7 +183,17 @@ export const threadsSystem = setup({
     updateThreadField: ({ system, event }) => {
       const { key, value, threadId } = threadsDef.typeOf('UPDATE_THREAD_FIELD', event);
       const updates = { [key]: value };
-      repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      try {
+        repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      } catch (error) {
+        const operation =
+          key === 'archived' ? (value ? 'archive' : 'unarchive') :
+          key === 'pinned' ? (value ? 'pin' : 'unpin') :
+          'update';
+        logger.warn('Failed to update thread field', { threadId, key, error });
+        reportThreadOperationError(operation, error, threadId);
+        return;
+      }
 
       if (key === 'status') {
         system.get(bus).send(emit(threads, {
@@ -199,7 +236,13 @@ export const threadsSystem = setup({
     updateThreadStatus: ({ system, event }) => {
       const { threadId, status } = threadsDef.typeOf('UPDATE_THREAD_STATUS', event);
       const updates = { status, updatedAt: Date.now() };
-      repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      try {
+        repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      } catch (error) {
+        logger.warn('Failed to update thread status', { threadId, status, error });
+        reportThreadOperationError('status', error, threadId);
+        return;
+      }
 
       system.get(bus).send(emit(threads, {
         type: 'THREAD_UPDATED',
@@ -283,10 +326,16 @@ export const threadsSystem = setup({
     setThreadParent: ({ system, event }) => {
       const { childIds, parentId } = threadsDef.typeOf('SET_THREAD_PARENT', event);
 
-      repository.threadCommands.setParent(
-        parentId as EARS.EntityId,
-        childIds.map(id => id as EARS.EntityId),
-      );
+      try {
+        repository.threadCommands.setParent(
+          parentId as EARS.EntityId,
+          childIds.map(id => id as EARS.EntityId),
+        );
+      } catch (error) {
+        logger.warn('Failed to set thread parent', { childIds, parentId, error });
+        reportThreadOperationError('parent', error, parentId);
+        return;
+      }
 
       // Refresh all thread data on the frontend
       system.get(bus).send(emit(threads, {
@@ -307,6 +356,7 @@ export const threadsSystem = setup({
         repository.threadCommands.delete(threadId as EARS.EntityId);
       } catch (error) {
         logger.warn('Failed to delete thread (may already be deleted)', { threadId, error });
+        reportThreadOperationError('delete', error, threadId);
         return;
       }
 

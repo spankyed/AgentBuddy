@@ -1,5 +1,6 @@
 <template>
 <div class="flex flex-col h-screen">
+    <ToastNotification ref="toast" />
     <div class="flex flex-grow overflow-hidden">
     <!-- Left Toolbar -->
     <Toolbar
@@ -74,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { Settings as SettingsIcon, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
@@ -87,8 +88,14 @@ import { navigateToPlugin } from '@/core/utils/navigate'
 import Router from '@/core/components/layout/router.vue'
 import BrainInspectPanel from '@/plugins/brain/panel.vue'
 import type { ContextMenuItem } from '@/core/context-menu'
+import ToastNotification from '@/core/components/design/ToastNotification.vue'
+import { registerGlobalToast } from '@/core/toast'
 
 const send = applicationState.send
+const toast = ref<InstanceType<typeof ToastNotification> | null>(null)
+
+onMounted(() => registerGlobalToast(toast.value))
+onUnmounted(() => registerGlobalToast(null))
 
 const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
 const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
