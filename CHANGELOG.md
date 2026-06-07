@@ -1,5 +1,23 @@
 -e # Changelog
 
+## v0.3.12 (2026-06-07)
+
+### Features
+- onboarding): open thread chat on onboarding completion
+- api): add system error reporting with structured error events
+- terminal): add restart and kill options to panel terminal context menu
+
+### Fixes
+- onboarding): finish onboarding immediately when user picks a thread
+- brain): prevent duplicate flow actors and parallel chat invocations
+- threads): close opposing panel before toggling dashboard or sidebar
+- code): prune orphaned tab groups that no longer have open tabs
+
+### Other
+- Refine onboarding into focused letter and chat flow
+
+-e # Changelog
+
 ## v0.3.11 (2026-06-07)
 
 ### Features
