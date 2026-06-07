@@ -2,32 +2,32 @@
   <div class="flex flex-col h-full">
     <!-- Main content: optional inline dashboard + chat -->
     <div class="flex flex-grow overflow-hidden min-h-0" ref="chatContainerRef">
-      <!-- Thread Sidebar (left) -->
+      <!-- Thread Sidebar (left, hidden during onboarding) -->
       <ThreadSidebar
-        v-if="showThreadSidebar"
+        v-if="showThreadSidebar && !isOnboarding"
         :style="{ width: sidebarWidthPx + 'px' }"
         @select-thread="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
         @close="showThreadSidebar = false"
       />
       <PanelResizer
-        v-if="showThreadSidebar"
+        v-if="showThreadSidebar && !isOnboarding"
         orientation="horizontal"
         @resize="handleDashboardResize"
         @click="showThreadSidebar = false"
       />
-      <!-- Inline Dashboard (left) -->
-      <div v-if="showInlineDashboard" class="min-w-0 overflow-hidden shrink-0 border-r border-neutral-800" :style="{ width: dashboardWidth + '%' }">
+      <!-- Inline Dashboard (left, hidden during onboarding) -->
+      <div v-if="showInlineDashboard && !isOnboarding" class="min-w-0 overflow-hidden shrink-0 border-r border-neutral-800" :style="{ width: dashboardWidth + '%' }">
         <AgentCanvas :inline="true" />
       </div>
       <PanelResizer
-        v-if="showInlineDashboard"
+        v-if="showInlineDashboard && !isOnboarding"
         orientation="horizontal"
         @resize="handleDashboardResize"
       />
       <!-- Chat column (right, or full width when dashboard hidden) -->
       <div class="flex flex-col flex-1 min-w-0 overflow-hidden" :class="{ 'pt-2': !showInlineTabs }" style="background-color: rgb(28 28 28)">
         <!-- Inline Tab Bar -->
-        <InlineTabBar :visible="showInlineTabs" @close="showInlineTabs = false" />
+        <InlineTabBar :visible="showInlineTabs && !isOnboarding" @close="showInlineTabs = false" />
         <!-- Shrinkable content area -->
         <div class="flex flex-col flex-grow overflow-hidden min-h-0">
           <!-- Agent Chat Content -->
@@ -106,8 +106,8 @@
             />
           </div>
         </div>
-        <!-- Thread bar — stays within chat column -->
-        <div class="flex-shrink-0 w-full">
+        <!-- Thread bar — stays within chat column (hidden during onboarding) -->
+        <div v-if="!isOnboarding" class="flex-shrink-0 w-full">
           <RecentThreads
             :current-thread="currentThread"
             :recent-threads="recentThreads"
@@ -191,6 +191,7 @@ import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, Q
 import { trpc } from '@/core/trpc'
 
 const actor: ThreadsState = applicationState.system.get(id);
+const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
 const messagePagination = useSelector(actor, (state) => state.context.messagePagination);

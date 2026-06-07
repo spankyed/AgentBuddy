@@ -73,6 +73,7 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
   | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
+  | { type: 'ONBOARDING_COMPLETE' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
@@ -662,17 +663,30 @@ export const createApplicationState = () => setup({
     spawnChild('backendListener'),
   ],
   states: {
-    'welcome': {
-      tags: ['welcome'],
+    'onboarding': {
+      tags: ['onboarding'],
       entry: assign({
         panelSizes: ({ context }) => ({ ...context.panelSizes, chatMaximized: true }),
       }),
       on: {
-        CLOSE_DEV_LETTER: {
-          actions: 'closeDevLetter',
-          target: 'running.connected',
+        ONBOARDING_COMPLETE: {
+          actions: 'restoreChat',
+          target: '#application.running.connected',
         },
-      }
+      },
+      initial: 'letter',
+      states: {
+        'letter': {
+          tags: ['welcome'],
+          on: {
+            CLOSE_DEV_LETTER: {
+              actions: 'closeDevLetter',
+              target: 'wizard',
+            },
+          },
+        },
+        'wizard': {},
+      },
     },
     'running': {
       tags: ['running'],
@@ -717,7 +731,7 @@ export const createApplicationState = () => setup({
           on: {
             CLIENT_CONNECTED: [
               {
-                target: '#application.welcome',
+                target: '#application.onboarding.letter',
                 guard: ({ event }) => (event as any).hasOnboarded === false,
               },
               { target: 'connected' },

@@ -138,5 +138,5 @@ export function finishOnboarding(
     mode: defaultMode,
   });
 
-  (services.emitter as any).sendToPlugin('application', { type: 'RESTORE_CHAT' });
+  (services.emitter as any).sendToPlugin('application', { type: 'ONBOARDING_COMPLETE' });
 }

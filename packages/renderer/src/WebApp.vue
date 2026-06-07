@@ -2,8 +2,9 @@
 <div class="flex flex-col h-screen">
     <ToastNotification ref="toast" />
     <div class="flex flex-grow overflow-hidden">
-    <!-- Left Toolbar -->
+    <!-- Left Toolbar (hidden during onboarding) -->
     <Toolbar
+        v-if="!isOnboarding"
         :plugins="plugins"
         :active-plugin="activePlugin"
         @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', pluginId: id })"
@@ -13,25 +14,27 @@
     <div class="flex flex-grow overflow-hidden" :style="{ paddingRight: canShowPanel && panelSizes.inspectionWidth === 0 ? '2px' : '0' }">
         <div class="flex flex-col flex-grow overflow-hidden" :style="{ minWidth: '350px', width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
             <!-- Canvas Area — always rendered; collapses to just its header when chat is maximized -->
+            <!-- Canvas Area — empty draggable header during onboarding, normal otherwise -->
             <CanvasArea
             data-onboarding-id="canvas-area"
-            :header-only="chatMaximized"
+            :header-only="isOnboarding || chatMaximized"
             @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
             @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
             @menu-action="handleMenuAction"
-            :style="chatMaximized
+            :style="isOnboarding || chatMaximized
                 ? { flex: '0 0 auto', height: 'auto' }
                 : { height: `${panelSizes.canvasHeight}%` }"
-            :breadcrumbs="breadcrumbs"
-            :menu-items="allMenuItems"
+            :breadcrumbs="isOnboarding ? [] : breadcrumbs"
+            :menu-items="isOnboarding ? [] : allMenuItems"
             :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
             :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
             <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
             <Router v-else :views="activePlugin.canvas" :target="targetView" />
             </CanvasArea>
 
-            <!-- Vertical Resizer -->
+            <!-- Vertical Resizer (hidden during onboarding) -->
             <PanelResizer
+                v-if="!isOnboarding"
                 orientation="vertical"
                 :collapsed="chatMaximized || panelSizes.canvasHeight >= 93"
                 @resize="handleCanvasResize"
@@ -43,7 +46,7 @@
             <ChatArea
                 data-onboarding-id="chat-area"
                 class="relative"
-                :style="chatMaximized
+                :style="isOnboarding || chatMaximized
                     ? { flex: '1 1 0%', minHeight: 0 }
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
@@ -51,18 +54,18 @@
             </ChatArea>
         </div>
 
-        <!-- Horizontal Resizer -->
+        <!-- Horizontal Resizer (hidden during onboarding) -->
         <PanelResizer
-            v-if="canShowPanel"
+            v-if="canShowPanel && !isOnboarding"
             orientation="horizontal"
             :collapsed="!isPanelOpen"
             @resize="handleInspectionResize"
             @click="handleInspectionClick"
         />
 
-        <!-- Context Panel -->
+        <!-- Context Panel (hidden during onboarding) -->
         <InspectionPanel
-            v-if="canShowPanel && panelSizes.inspectionWidth > 0"
+            v-if="canShowPanel && panelSizes.inspectionWidth > 0 && !isOnboarding"
             data-onboarding-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
@@ -106,6 +109,7 @@ const contextMenuItems = useSelector(applicationState, (state) => state.context.
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
 const chatMaximized = useSelector(applicationState, (state) => state.context.panelSizes.chatMaximized ?? false)
+const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
 const brainActor = applicationState.system.get('brain')
 const inspectMode = useSelector(brainActor, (state: any) =>
