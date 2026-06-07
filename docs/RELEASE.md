@@ -93,12 +93,6 @@ This log includes:
 - API child stderr, including structured fatal errors
 - backend runtime errors forwarded through stderr
 
-The older file below is not the active production target anymore and may be stale:
-
-```bash
-~/Library/Application\ Support/abuddy/agentbuddy.log
-```
-
 For a terminal-captured production run, use:
 
 ```bash
