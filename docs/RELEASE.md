@@ -76,6 +76,49 @@ The release script (`build/release/release.sh`) runs these steps:
 - Target: macOS Apple Silicon (arm64) only
 - Requires Node >= 23.0.0 and Xcode Command Line Tools
 
+## Production Debugging
+
+The packaged app writes its main-process and API-child logs through `electron-log`.
+
+**Current production log:**
+
+```bash
+tail -f ~/Library/Logs/abuddy/main.log
+```
+
+This log includes:
+
+- Electron main-process startup banners
+- API server spawn/readiness messages
+- API child stderr, including structured fatal errors
+- backend runtime errors forwarded through stderr
+
+The older file below is not the active production target anymore and may be stale:
+
+```bash
+~/Library/Application\ Support/abuddy/agentbuddy.log
+```
+
+For a terminal-captured production run, use:
+
+```bash
+npm run prod-app
+```
+
+That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/abuddy/main.log`.
+
+If the UI disappears or Force Quit does not show the app, check for orphaned API child processes:
+
+```bash
+ps -axo pid,ppid,stat,lstart,command | rg 'AgentBuddy|packages/api/dist/server.js'
+```
+
+An orphaned API child looks like `AgentBuddy .../packages/api/dist/server.js` with parent PID `1`. Kill it before relaunching:
+
+```bash
+kill -9 <pid>
+```
+
 ## Versioning & Changelog
 
 Uses [semver](https://semver.org/). The version lives in root `package.json` and is used by electron-builder for artifact naming.

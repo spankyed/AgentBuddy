@@ -34,9 +34,18 @@ fi
 USER_DATA="$HOME/Library/Application Support/abuddy"
 if [ -d "$USER_DATA" ]; then
   rm -rf "$USER_DATA"
-  echo -e "${GREEN}✓${NC} Deleted ~/Library/Application Support/abuddy/ (databases, logs, caches)"
+  echo -e "${GREEN}✓${NC} Deleted ~/Library/Application Support/abuddy/ (databases, caches, Chromium state)"
 else
   echo "  userData not found (already clean)"
+fi
+
+# Production logs (electron-log)
+PROD_LOGS="$HOME/Library/Logs/abuddy"
+if [ -d "$PROD_LOGS" ]; then
+  rm -rf "$PROD_LOGS"
+  echo -e "${GREEN}✓${NC} Deleted ~/Library/Logs/abuddy/ (main/API logs)"
+else
+  echo "  production logs not found (already clean)"
 fi
 
 # Preferences
