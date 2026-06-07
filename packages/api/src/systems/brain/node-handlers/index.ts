@@ -7,6 +7,7 @@ import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
 import { createLogger } from '@/core/shared/debug/logger';
+import { reportBrainRuntimeError } from '../runtime-errors';
 
 const logger = createLogger('node-executor');
 
@@ -35,15 +36,35 @@ export function executeNode(
       
     case 'llm':
       llmNodeHandler(tNode, node, executionContext, actor).catch((err) => {
-        logger.error(`llm handler crashed: ${err instanceof Error ? err.message : String(err)}`);
-        try { actor.send({ type: 'ERROR', error: err instanceof Error ? err.message : String(err) }); } catch { /* actor gone */ }
+        const runtimeError = reportBrainRuntimeError({
+          error: err,
+          source: 'brain-llm',
+          phase: 'llm.handler',
+          flowTNodeId: executionContext.flowTNodeId,
+          tNodeId: tNode.id,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.nodeType,
+          eventType: executionContext.event?.type,
+        });
+        try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
       });
       break;
 
     case 'action':
       actionNodeHandler(tNode, node, executionContext, actor).catch((err) => {
-        logger.error(`action handler crashed: ${err instanceof Error ? err.message : String(err)}`);
-        try { actor.send({ type: 'ERROR', error: err instanceof Error ? err.message : String(err) }); } catch { /* actor gone */ }
+        const runtimeError = reportBrainRuntimeError({
+          error: err,
+          source: 'brain-action',
+          phase: 'action.handler',
+          flowTNodeId: executionContext.flowTNodeId,
+          tNodeId: tNode.id,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.nodeType,
+          eventType: executionContext.event?.type,
+        });
+        try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
       });
       break;
 

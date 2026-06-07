@@ -7,7 +7,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import type {
   OutgoingBrainEvents,
 } from '@app/api'
-import type { TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@app/api';
+import type { BrainRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@app/api';
 import { trpc } from '@/core/trpc';
 
 export const id = 'brain';
@@ -34,6 +34,8 @@ export interface BrainContext {
   animationsEnabled: boolean;
   brainIsDead: boolean;
   brainIsPaused: boolean;
+  latestRuntimeError?: BrainRuntimeError;
+  runtimeErrors: BrainRuntimeError[];
   // Settings
   settings?: any; // BrainSettings
 }
@@ -46,6 +48,7 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
+  | { type: 'BRAIN_RUNTIME_ERROR'; error: BrainRuntimeError }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -61,6 +64,7 @@ type UIEvent =
   | { type: 'KILL_BRAIN' }
   | { type: 'PAUSE_BRAIN' }
   | { type: 'RESUME_BRAIN' }
+  | { type: 'DISMISS_RUNTIME_ERROR' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -378,6 +382,17 @@ const brainState = setup({
     setBrainResumed: assign({
       brainIsPaused: false,
     }),
+    addRuntimeError: assign(({ context, event }) => {
+      if (event.type !== 'BRAIN_RUNTIME_ERROR') return {};
+      const runtimeErrors = [event.error, ...context.runtimeErrors].slice(0, 25);
+      return {
+        latestRuntimeError: event.error,
+        runtimeErrors,
+      };
+    }),
+    dismissRuntimeError: assign({
+      latestRuntimeError: undefined,
+    }),
     pauseBrain: () => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -432,6 +447,8 @@ const brainState = setup({
     selectedStepNode: undefined,
     brainIsDead: false, // Start as running to prevent flash of dead UI
     brainIsPaused: false,
+    latestRuntimeError: undefined,
+    runtimeErrors: [],
   },
   initial: 'loading',
   states: {
@@ -440,6 +457,12 @@ const brainState = setup({
         RECEIVE_PLUGIN_DATA: {
           target: 'ready',
           actions: 'setBrainData'
+        },
+        BRAIN_RUNTIME_ERROR: {
+          actions: 'addRuntimeError'
+        },
+        DISMISS_RUNTIME_ERROR: {
+          actions: 'dismissRuntimeError'
         }
       }
     },
@@ -567,6 +590,19 @@ const brainState = setup({
         },
         BRAIN_RESUMED: {
           actions: 'setBrainResumed'
+        },
+        BRAIN_RUNTIME_ERROR: {
+          actions: ['addRuntimeError', ({ event }) => {
+            if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return;
+            trpc.bus.send.mutate({
+              systemId: id,
+              type: 'GET_TNODE_DETAILS',
+              tNodeId: event.error.tNodeId
+            });
+          }]
+        },
+        DISMISS_RUNTIME_ERROR: {
+          actions: 'dismissRuntimeError'
         },
         TRAIL_CLICK: {
           actions: 'handleBreadcrumbClick'

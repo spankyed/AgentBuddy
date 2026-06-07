@@ -48,6 +48,42 @@
       </div>
     </Transition>
 
+    <!-- Runtime Error Banner -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="-translate-y-full opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-full opacity-0"
+    >
+      <div
+        v-if="latestRuntimeError"
+        :class="[
+          'absolute left-0 right-0 z-20 flex items-center justify-between gap-3 border-b border-red-700/50 bg-red-950/90 px-4 py-2 text-xs text-red-100',
+          brainIsPaused ? 'top-8' : 'top-0'
+        ]"
+      >
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold">Brain runtime error</span>
+            <span v-if="latestRuntimeError.nodeLabel || latestRuntimeError.actionLabel" class="truncate text-red-200/80">
+              {{ latestRuntimeError.nodeLabel || latestRuntimeError.actionLabel }}
+            </span>
+          </div>
+          <div class="truncate text-red-100/80">
+            {{ latestRuntimeError.message }}
+          </div>
+        </div>
+        <button
+          class="shrink-0 rounded px-2 py-1 text-red-100/80 transition-colors hover:bg-red-900/70 hover:text-white"
+          @click.stop="handleDismissRuntimeError"
+        >
+          Dismiss
+        </button>
+      </div>
+    </Transition>
+
     <!-- Center: TNode Graph (Always visible) -->
     <div class="relative flex-1 overflow-hidden bg-neutral-900" @click="handleCanvasClick">
       <TNodeGraph
@@ -109,6 +145,7 @@ const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEven
 const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'TNode-Root');
 const brainIsPaused = useSelector(actor, (state) => state.context.brainIsPaused);
 const brainIsDead = useSelector(actor, (state) => state.context.brainIsDead);
+const latestRuntimeError = useSelector(actor, (state) => state.context.latestRuntimeError);
 
 // UI state selectors
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
@@ -149,6 +186,10 @@ const handleCloseDetails = () => {
 
 const handleResume = () => {
   actor.send({ type: 'RESUME_BRAIN' });
+};
+
+const handleDismissRuntimeError = () => {
+  actor.send({ type: 'DISMISS_RUNTIME_ERROR' });
 };
 
 const handleCanvasClick = (event: MouseEvent) => {

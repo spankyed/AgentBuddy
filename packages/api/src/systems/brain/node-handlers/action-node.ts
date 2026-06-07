@@ -1,8 +1,9 @@
 import type { NodeEntity } from '@/core/shared-types/flows';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { brainInspect, brainLogger } from '../utils/brain-inspect';
+import { brainInspect } from '../utils/brain-inspect';
 import { repository } from '@/repository';
 import { z } from 'zod';
+import { reportBrainRuntimeError } from '../runtime-errors';
 
 // Lazy services getter to avoid circular dependency
 function getServices() {
@@ -30,20 +31,15 @@ async function executeActionFunction(
   params: Record<string, any>,
   flowTNodeId: string,
 ): Promise<any> {
-  try {
-    // Create a function that has access to services, params, flowId (instance ID), and zod
-    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-    const func = new AsyncFunction('params', 'services', 'z', 'flowId', actionFn);
+  // Create a function that has access to services, params, flowId (instance ID), and zod
+  const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+  const func = new AsyncFunction('params', 'services', 'z', 'flowId', actionFn);
 
-    // Execute the function with params, services, zod, and flowId (which is actually the instance ID)
-    const services = getServices();
-    const result = await func(params, services, z, flowTNodeId);
+  // Execute the function with params, services, zod, and flowId (which is actually the instance ID)
+  const services = getServices();
+  const result = await func(params, services, z, flowTNodeId);
 
-    return result;
-  } catch (error) {
-    brainLogger.error('Action function execution failed:', error as any);
-    throw error;
-  }
+  return result;
 }
 
 /**
@@ -58,6 +54,9 @@ export async function actionNodeHandler(
   const actionNode = node as ActionNode;
   const nodeData = tNode.nodeAttributes || {};
   
+  let actionId: string | undefined;
+  let actionLabel: string | undefined;
+
   try {
     brainInspect(`Executing action node: ${node.label}`, {
       tNode,
@@ -86,7 +85,7 @@ export async function actionNodeHandler(
     }
 
     // Template mode: Get the linked action via INSTANCE_OF relationship
-    const actionId = repository.flowsQueries.getNodeActionId(node.id);
+    actionId = repository.flowsQueries.getNodeActionId(node.id);
     
     if (!actionId) {
       throw new Error('No action linked to this node');
@@ -96,6 +95,7 @@ export async function actionNodeHandler(
     if (!action) {
       throw new Error(`Action not found: ${actionId}`);
     }
+    actionLabel = action.label;
     
     brainInspect(`Found action: ${action.label}`, {
       input: Object.keys(action.input || {}),
@@ -128,15 +128,24 @@ export async function actionNodeHandler(
     });
     
   } catch (error) {
-    brainLogger.error(`Action node execution failed:`, {
+    const runtimeError = reportBrainRuntimeError({
+      error,
+      source: 'brain-action',
+      phase: 'action.execute',
+      flowTNodeId: executionContext.flowTNodeId,
+      tNodeId: tNode.id,
+      nodeId: node.id,
       nodeLabel: node.label,
-      error
+      nodeType: node.nodeType,
+      actionId: actionId as any,
+      actionLabel,
+      eventType: executionContext.event?.type,
     });
     
     // Send error event
     actor.send({ 
       type: 'ERROR', 
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: runtimeError
     });
   }
 }

@@ -2,6 +2,7 @@ import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/core/sh
 import { BinaryOperator as Op } from '@/core/shared/binary-operator';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
+import { reportBrainRuntimeError } from '../runtime-errors';
 import { extractValueByPath } from '../repository/node-attribute-mappers';
 
 /**
@@ -220,10 +221,20 @@ export function switchNodeHandler(
     });
 
     if (conditions.length === 0) {
-      brainLogger.error('Switch node has no conditions:', { nodeLabel: node.label });
+      const runtimeError = reportBrainRuntimeError({
+        error: new Error('Switch node has no conditions to evaluate'),
+        source: 'brain-switch',
+        phase: 'switch.validate',
+        flowTNodeId: executionContext.flowTNodeId,
+        tNodeId: tNode.id,
+        nodeId: node.id,
+        nodeLabel: node.label,
+        nodeType: node.nodeType,
+        eventType: executionContext.event?.type,
+      });
       actor.send({
         type: 'ERROR',
-        error: 'Switch node has no conditions to evaluate',
+        error: runtimeError,
       });
       return;
     }
@@ -266,11 +277,21 @@ export function switchNodeHandler(
       },
     });
   } catch (error) {
-    brainLogger.error('Switch node evaluation failed:', { error, nodeLabel: node.label });
+    const runtimeError = reportBrainRuntimeError({
+      error,
+      source: 'brain-switch',
+      phase: 'switch.evaluate',
+      flowTNodeId: executionContext.flowTNodeId,
+      tNodeId: tNode.id,
+      nodeId: node.id,
+      nodeLabel: node.label,
+      nodeType: node.nodeType,
+      eventType: executionContext.event?.type,
+    });
 
     actor.send({
       type: 'ERROR',
-      error: error instanceof Error ? error.message : 'Switch evaluation failed',
+      error: runtimeError,
     });
   }
 }

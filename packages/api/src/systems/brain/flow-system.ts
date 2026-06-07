@@ -10,6 +10,7 @@ import { isBrainPaused } from './utils/brain-pause';
 import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
 import { sendToBrainSystem } from '@/services/event-emitter';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
+import { reportBrainRuntimeError } from './runtime-errors';
 
 /**
  * Flow Actor Registry
@@ -97,6 +98,7 @@ type ChildCompletedEvent =
     tNodeId?: EARS.EntityId;
     stepLabel?: string;
     result?: any;
+    failed?: boolean;
     final?: boolean;
     eventTNodeId?: EARS.EntityId;
     isFlow?: boolean; // Simple flag to indicate if completing child was a flow
@@ -328,7 +330,17 @@ export function createFlowNodeSystem(
 
                 spawnedCount++;
               } catch (err) {
-                brainLogger.error(`Failed to create child node for step ${step.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+                reportBrainRuntimeError({
+                  error: err,
+                  source: 'brain-flow',
+                  phase: 'child.spawn',
+                  flowTNodeId,
+                  eventTNodeId: eventTNode.id,
+                  nodeId: step.id,
+                  nodeLabel: step.label,
+                  nodeType: step.nodeType,
+                  eventType,
+                });
               }
             }
 
@@ -353,6 +365,7 @@ export function createFlowNodeSystem(
           if (typedEv.final) {
             brainInspect(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
           }
+          const childFailed = typedEv.failed === true || typedEv.result?.error !== undefined;
 
           if (!typedEv.eventTNodeId) {
             brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But missing event TNode ID`, { completion: event });
@@ -365,7 +378,7 @@ export function createFlowNodeSystem(
           // - otherwise → straight-line next step
           const sourceHandle = typedEv.result?.sourceHandle;
           const noMatch = (typedEv.result as { noMatch?: boolean } | undefined)?.noMatch === true;
-          const nextNode = typedEv.stepId && !noMatch
+          const nextNode = typedEv.stepId && !noMatch && !childFailed
             ? sourceHandle
               ? repository.brainQueries.nextNodeForBranch(typedEv.stepId, sourceHandle)
               : repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
@@ -404,7 +417,7 @@ export function createFlowNodeSystem(
             [typedEv.eventTNodeId]: newTrackCount,
           };
           const allTracksDrained = Object.values(nextTrackCounts).every(c => c === 0);
-          const shouldComplete = shouldCompleteFlow({
+          const shouldComplete = !childFailed && shouldCompleteFlow({
             final: !!typedEv.final,
             allTracksDrained,
             hasPersistentTriggers: context.hasPersistentTriggers,
@@ -476,7 +489,18 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              brainLogger.error(`Failed to create next child node ${nextNode.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+              reportBrainRuntimeError({
+                error: err,
+                source: 'brain-flow',
+                phase: 'child.spawn-next',
+                flowTNodeId,
+                eventTNodeId: typedEv.eventTNodeId,
+                tNodeId: typedEv.tNodeId,
+                nodeId: nextNode.id,
+                nodeLabel: nextNode.label,
+                nodeType: nextNode.nodeType,
+                eventType: trackExecutionContext.event?.type,
+              });
             }
           }
         }),
@@ -540,7 +564,18 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              brainLogger.error(`Failed to resume child node ${pending.nextNode.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+              reportBrainRuntimeError({
+                error: err,
+                source: 'brain-flow',
+                phase: 'child.resume',
+                flowTNodeId,
+                eventTNodeId: pending.eventTNodeId,
+                tNodeId: pending.parentTNodeId,
+                nodeId: pending.nextNode.id,
+                nodeLabel: pending.nextNode.label,
+                nodeType: pending.nextNode.nodeType,
+                eventType: pending.executionContext.event?.type,
+              });
             }
           }
 
