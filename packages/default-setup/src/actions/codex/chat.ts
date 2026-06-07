@@ -72,6 +72,15 @@ export async function action(params: Record<string, any>, services: Services, _z
   }
 
   setRunning(services, threadId, true);
+
+  // Race guard: if a parallel invocation (from a duplicate flow actor)
+  // already stored a handle for this thread, bail out.
+  const existingHandle = (services.codex as any).getHandle(threadId);
+  if (existingHandle) {
+    log.warn('[concurrency-guard] parallel invocation detected — bailing', { threadId });
+    return { success: false, error: 'parallel invocation' };
+  }
+
   if (userMessageId) services.chat.updateMessageState(userMessageId as any, { forkable: false } as any);
 
   // ─── CWD check ──────────────────────────────────────────────────────

@@ -105,6 +105,11 @@ export const brainSystem = setup({
       console.error('Brain system error:', (event as any).error);
     },
     startBrain: enqueueActions(({ context, enqueue, system }) => {
+      // Defensive: clear stale flow actor references before starting new brain.
+      // restartBrain/killBrain already do this, but startBrain must also guard
+      // against leaks from lifecycle paths that bypass those actions.
+      clearFlowActorRegistry();
+
       // Stop existing brain if any using enqueue.stopChild
       if (context.brainActor) {
         enqueue.stopChild(context.brainActor);

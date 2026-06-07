@@ -201,6 +201,15 @@ export async function action(
   // Mark this thread as having an active turn.
   setRunning(services, threadId, true);
 
+  // Race guard: if a parallel invocation (from a duplicate flow actor)
+  // already stored a CLI handle for this thread, bail out to prevent
+  // creating orphaned "Thinking…" placeholder messages.
+  const existingHandle = (services.cli as any).claudeCode.getHandle(threadId);
+  if (existingHandle) {
+    log.warn('[concurrency-guard] parallel invocation detected — bailing', { threadId });
+    return { success: false, error: 'parallel invocation' };
+  }
+
   // Disable fork on user messages in Claude Code threads. Forking from a
   // user message creates a mismatch: the app shows the message but the CLI
   // session truncates to the preceding assistant message, so the LLM has

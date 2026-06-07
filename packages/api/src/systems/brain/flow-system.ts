@@ -226,6 +226,7 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
+          brainInspect(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
 
           // Register cron jobs for schedule nodes (skip nodes with no downstream steps)
           for (const sn of scheduleNodes) {
