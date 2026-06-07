@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, finishOnboarding } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle Pick Thread Step',
@@ -22,9 +22,10 @@ export async function action(
 
   if (response && response !== 'skip') {
     services.chat.openThreadChatAndRefreshRecent(response as EntityId);
+    finishOnboarding(services, state, threadId, { skipCompletionMessage: true });
+  } else {
+    showChooseModeOrFinish(services, state, threadId);
   }
-
-  showChooseModeOrFinish(services, state, threadId);
   persistOnboardingState(services, threadId, state);
   return { success: true, step: state.step };
 }
