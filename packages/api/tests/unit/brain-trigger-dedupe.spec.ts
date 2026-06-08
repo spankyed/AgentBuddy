@@ -19,17 +19,17 @@ describe('brain trigger dedupe', () => {
     expect(deduped.nodes.map(node => node.id)).toEqual(['Node-a', 'Node-c']);
     expect(deduped.warnings).toEqual([
       expect.objectContaining({
-        mode: 'skipped',
+        kind: 'duplicate-track-key',
         eventType: 'user.message',
         label: 'Claude Code',
         trackKey: 'Claude Code:track:1',
         retainedNodeId: 'Node-a',
-        skippedNodeIds: ['Node-b'],
+        duplicateNodeIds: ['Node-b'],
       }),
     ]);
   });
 
-  it('preserves legacy same-label listeners without trackKey and reports suspicion', () => {
+  it('preserves nodes without trackKey without warning', () => {
     const nodes: FlowTriggerNode[] = [
       { id: 'Node-a' as EARS.EntityId, triggerType: 'listener', eventType: 'user.message', label: 'Claude Code' },
       { id: 'Node-b' as EARS.EntityId, triggerType: 'listener', eventType: 'user.message', label: 'Claude Code' },
@@ -42,13 +42,6 @@ describe('brain trigger dedupe', () => {
     });
 
     expect(deduped.nodes.map(node => node.id)).toEqual(['Node-a', 'Node-b']);
-    expect(deduped.warnings).toEqual([
-      expect.objectContaining({
-        mode: 'suspicious',
-        label: 'Claude Code',
-        retainedNodeId: 'Node-a',
-        skippedNodeIds: ['Node-b'],
-      }),
-    ]);
+    expect(deduped.warnings).toEqual([]);
   });
 });

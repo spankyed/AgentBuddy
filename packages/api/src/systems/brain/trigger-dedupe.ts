@@ -9,7 +9,7 @@ export type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> &
 };
 
 export interface TriggerDedupeWarning {
-  mode: 'skipped' | 'suspicious';
+  kind: 'duplicate-track-key';
   flowId: EARS.EntityId;
   flowTNodeId: EARS.EntityId;
   eventType: string;
@@ -17,20 +17,19 @@ export interface TriggerDedupeWarning {
   triggerType: 'listener' | 'schedule';
   trackKey?: string;
   retainedNodeId?: EARS.EntityId;
-  skippedNodeIds: EARS.EntityId[];
-}
-
-function legacySuspicionKey(node: FlowTriggerNode): string {
-  return [
-    node.triggerType,
-    node.eventType ?? '',
-    node.label ?? '',
-  ].join('\u0000');
+  duplicateNodeIds: EARS.EntityId[];
 }
 
 export function dedupeMatchingTriggerNodes(
   nodes: FlowTriggerNode[],
   details: { flowId: EARS.EntityId; flowTNodeId: EARS.EntityId; eventType: string },
+): { nodes: FlowTriggerNode[]; warnings: TriggerDedupeWarning[] } {
+  return dedupeTriggerNodes(nodes, details);
+}
+
+export function dedupeTriggerNodes(
+  nodes: FlowTriggerNode[],
+  details: { flowId: EARS.EntityId; flowTNodeId: EARS.EntityId; eventType?: string },
 ): { nodes: FlowTriggerNode[]; warnings: TriggerDedupeWarning[] } {
   const byTrackKey = new Map<string, FlowTriggerNode>();
   const skippedByTrackKey = new Map<string, FlowTriggerNode[]>();
@@ -57,39 +56,17 @@ export function dedupeMatchingTriggerNodes(
   const warnings: TriggerDedupeWarning[] = Array.from(skippedByTrackKey.entries()).map(([trackKey, skipped]) => {
     const retained = byTrackKey.get(trackKey)!;
     return {
-      mode: 'skipped',
+      kind: 'duplicate-track-key',
       flowId: details.flowId,
       flowTNodeId: details.flowTNodeId,
-      eventType: details.eventType,
+      eventType: details.eventType ?? retained.eventType,
       label: retained.label,
       triggerType: retained.triggerType,
       trackKey,
       retainedNodeId: retained.id,
-      skippedNodeIds: skipped.map(node => node.id).filter(Boolean) as EARS.EntityId[],
+      duplicateNodeIds: skipped.map(node => node.id).filter(Boolean) as EARS.EntityId[],
     };
   });
-
-  const legacyByKey = new Map<string, FlowTriggerNode[]>();
-  for (const node of retainedNodes) {
-    if (node.trackKey) continue;
-    const key = legacySuspicionKey(node);
-    legacyByKey.set(key, [...(legacyByKey.get(key) ?? []), node]);
-  }
-
-  for (const legacyNodes of legacyByKey.values()) {
-    if (legacyNodes.length < 2) continue;
-    const [retained, ...duplicates] = legacyNodes;
-    warnings.push({
-      mode: 'suspicious',
-      flowId: details.flowId,
-      flowTNodeId: details.flowTNodeId,
-      eventType: details.eventType,
-      label: retained.label,
-      triggerType: retained.triggerType,
-      retainedNodeId: retained.id,
-      skippedNodeIds: duplicates.map(node => node.id).filter(Boolean) as EARS.EntityId[],
-    });
-  }
 
   return {
     nodes: retainedNodes,

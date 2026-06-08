@@ -191,23 +191,17 @@ function buildLabelMap<T extends { label: string; id: string }>(entities: T[]): 
   return new Map(entities.map(e => [e.label, e.id]));
 }
 
-function canReplaceSeedFlow(flow: FlowEntity): boolean {
+function isSeedOwnedFlow(flow: FlowEntity): boolean {
   return !!flow.sourceHash;
 }
 
 function replaceSeedFlow(flow: FlowEntity): boolean {
   try {
-    flowsCommands.deleteFlow(flow.id);
+    flowsCommands.deleteFlow(flow.id, { allowRoot: true });
     return true;
   } catch (error) {
-    try {
-      flowsCommands.revokeRootFlowRole(flow.id);
-      flowsCommands.deleteFlow(flow.id);
-      return true;
-    } catch (rootError) {
-      console.warn(`[seed] Failed to replace seed flow "${flow.label}":`, (rootError as Error).message);
-      return false;
-    }
+    console.warn(`[seed] Failed to replace seed flow "${flow.label}":`, (error as Error).message);
+    return false;
   }
 }
 
@@ -337,7 +331,7 @@ function seedFlows(
   const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
   const promptMap = buildLabelMap(promptQueries.all());
 
-  const filteredDSL: FlowDSL = {};
+  const validFlowDSL: FlowDSL = {};
   const replacedLabels = new Set<string>();
   for (const [key, entry] of Object.entries(flowsDSL)) {
     if (!shouldSeedAll(include) && !(include as ReadonlySet<string>).has(key)) {
@@ -367,7 +361,7 @@ function seedFlows(
       }
 
       // User-created flow with same label — never overwrite
-      if (!canReplaceSeedFlow(existing)) {
+      if (!isSeedOwnedFlow(existing)) {
         log(`  flow skipped (user-owned): ${key}`);
         result.flows.skipped++;
         continue;
@@ -388,35 +382,17 @@ function seedFlows(
         continue;
       }
     }
-    filteredDSL[key] = entry;
+    validFlowDSL[key] = entry;
   }
 
-  const flowNames = Object.keys(filteredDSL);
+  const flowNames = Object.keys(validFlowDSL);
   if (flowNames.length === 0) {
     log('  no flows to import');
     return;
   }
 
-  const validFlowDSL: FlowDSL = {};
-  for (const [flowName, entry] of Object.entries(filteredDSL)) {
-    const validation = validate({ [flowName]: entry }, {
-      actions: Array.from(actionMap.keys()),
-      prompts: Array.from(promptMap.keys()),
-    });
-    if (!validation.valid) {
-      const msgs = validation.errors.map(e => `${e.path}: ${e.message}`);
-      console.warn(`[seed] Skipping flow "${flowName}":`, msgs.join('; '));
-      result.flows.skipped++;
-      continue;
-    }
-    validFlowDSL[flowName] = entry;
-  }
-
-  const validNames = Object.keys(validFlowDSL);
-  if (validNames.length === 0) return;
-
   flowsCommands.importFromDSL(compile(validFlowDSL, { actions: actionMap, prompts: promptMap }));
-  for (const name of validNames) {
+  for (const name of flowNames) {
     if (replacedLabels.has(name)) {
       result.flows.updated++;
       log(`  flow updated: ${name}`);
