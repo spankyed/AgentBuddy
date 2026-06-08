@@ -799,6 +799,7 @@ type SystemEvents = {
 };
 
 interface SavedTab {
+    id: EARS.EntityId;
     url: string;
     title: string;
     favicon: string;
@@ -2648,7 +2649,7 @@ interface MessageReferences {
  * EVENT-level and FIELD-level types use the union because every
  * non-legacy emit matches one of its arms.
  */
-type BlockResponse =
+type BlockResponse = 
 /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
 {
     approved: boolean;
@@ -3119,6 +3120,8 @@ interface ListenerNode extends NodeBase {
     nodeType: 'listener';
     scope: 'global' | 'local' | 'entry';
     eventType: string;
+    /** Stable identity for the compiled/source track that produced this trigger. */
+    trackKey?: string;
     debounceMs?: number;
 }
 interface TransformNode extends NodeBase {
@@ -3145,6 +3148,8 @@ interface KillNode extends NodeBase {
 interface ScheduleNode extends NodeBase {
     nodeType: 'schedule';
     cronExpression: string;
+    /** Stable identity for the compiled/source track that produced this trigger. */
+    trackKey?: string;
 }
 interface LLMNode extends NodeBase {
     nodeType: 'llm';

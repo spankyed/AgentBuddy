@@ -1,5 +1,5 @@
 import { EARS } from '@/core/types';
-import type { SavedTab } from '../types';
+import type { BrowserTabId, SavedTab } from '../types';
 
 export interface NormalizeTabsResult {
   tabs: SavedTab[];
@@ -12,7 +12,7 @@ function isRestorableUrl(url: string | undefined): url is string {
   return url !== 'about:blank' && !url.startsWith('data:');
 }
 
-function isBrowserTabId(id: string | undefined): id is EARS.EntityId {
+function isBrowserTabId(id: string | undefined): id is BrowserTabId {
   return Boolean(id?.startsWith(`${EARS.Entity.BrowserTab}-`));
 }
 
@@ -30,7 +30,7 @@ export function normalizeSavedTabs(tabs: Array<SavedTab | Omit<SavedTab, 'id'>>)
 
     const id = isBrowserTabId((tab as SavedTab).id)
       ? (tab as SavedTab).id
-      : `${EARS.Entity.BrowserTab}-${crypto.randomUUID()}` as EARS.EntityId;
+      : `${EARS.Entity.BrowserTab}-${crypto.randomUUID()}` as BrowserTabId;
 
     if (seenIds.has(id)) {
       duplicateIdCount += 1;

@@ -7,9 +7,11 @@ export type { TabGroup, TabGroupColor };
 
 export const id = 'browser' as const;
 
+type BrowserTabPersistedId = `BrowserTab-${string}`;
+
 export interface BrowserTab {
   id: number;
-  persistedId?: string;
+  persistedId?: BrowserTabPersistedId;
   url: string;
   title: string;
   favicon: string;
@@ -30,7 +32,7 @@ export interface Bookmark {
 }
 
 interface SavedTab {
-  id: string;
+  id: BrowserTabPersistedId;
   url: string;
   title: string;
   favicon: string;
@@ -96,7 +98,7 @@ type BrowserEvents =
   // Backend events
   | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[]; savedBookmarks: Bookmark[] }
   // IPC bridge events
-  | { type: 'IPC.TAB_CREATED'; tab: BrowserTab }
+  | { type: 'IPC.TAB_CREATED'; tab: BrowserTabState }
   | { type: 'IPC.TAB_REMOVED'; tabId: number }
   | { type: 'IPC.TAB_UPDATED'; tabId: number; changes: Partial<BrowserTab> }
   | { type: 'IPC.ACTIVE_TAB_CHANGED'; tabId: number };
@@ -146,12 +148,16 @@ function isRestorableUrl(url: string | undefined): url is string {
   return url !== 'about:blank' && !url.startsWith('data:');
 }
 
-function createPersistedTabId(): string {
+function isBrowserTabPersistedId(id: string | undefined): id is BrowserTabPersistedId {
+  return Boolean(id?.startsWith('BrowserTab-'));
+}
+
+function createPersistedTabId(): BrowserTabPersistedId {
   return `BrowserTab-${crypto.randomUUID()}`;
 }
 
-function ensurePersistedTabId(tab: Pick<BrowserTab, 'persistedId'>): string {
-  return tab.persistedId || createPersistedTabId();
+function ensurePersistedTabId(tab: { persistedId?: string }): BrowserTabPersistedId {
+  return isBrowserTabPersistedId(tab.persistedId) ? tab.persistedId : createPersistedTabId();
 }
 
 function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
@@ -618,7 +624,7 @@ const browserState = setup({
             assign(({ context, event }) => {
               if (context.tabs.some(t => t.id === event.tab.id)) return {};
               // Apply pending group assignment from restore
-              const tab = { ...event.tab, persistedId: ensurePersistedTabId(event.tab) };
+              const tab: BrowserTab = { ...event.tab, persistedId: ensurePersistedTabId(event.tab) };
               const queue = pendingGroupAssignments.get(tab.url);
               if (queue?.length) {
                 tab.groupId = queue.shift();

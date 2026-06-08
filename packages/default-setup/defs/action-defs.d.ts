@@ -321,17 +321,17 @@ declare function grepTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
     include: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     pattern: string;
-    include?: string | undefined;
     path?: string | undefined;
+    include?: string | undefined;
 }, {
     pattern: string;
-    include?: string | undefined;
     path?: string | undefined;
+    include?: string | undefined;
 }>, string> & {
     execute: (args: {
         pattern: string;
-        include?: string | undefined;
         path?: string | undefined;
+        include?: string | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
 };
 declare function listDirTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
@@ -365,29 +365,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "completed" | "pending" | "in_progress";
+            status: "pending" | "in_progress" | "completed";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -425,27 +425,27 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
             label: z.ZodString;
             description: z.ZodString;
         }, "strip", z.ZodTypeAny, {
-            description: string;
             label: string;
+            description: string;
         }, {
-            description: string;
             label: string;
+            description: string;
         }>, "many">>;
     }, "strip", z.ZodTypeAny, {
         id: string;
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }, {
         id: string;
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
@@ -454,8 +454,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }[];
 }, {
@@ -464,8 +464,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
         header: string;
         question: string;
         options?: {
-            description: string;
             label: string;
+            description: string;
         }[] | undefined;
     }[];
 }>, string> & {
@@ -475,8 +475,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
             header: string;
             question: string;
             options?: {
-                description: string;
                 label: string;
+                description: string;
             }[] | undefined;
         }[];
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
@@ -797,6 +797,7 @@ type SystemEvents = {
 };
 
 interface SavedTab {
+    id: EARS.EntityId;
     url: string;
     title: string;
     favicon: string;
@@ -2646,7 +2647,7 @@ interface MessageReferences {
  * EVENT-level and FIELD-level types use the union because every
  * non-legacy emit matches one of its arms.
  */
-type BlockResponse =
+type BlockResponse = 
 /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
 {
     approved: boolean;
@@ -3117,6 +3118,8 @@ interface ListenerNode extends NodeBase {
     nodeType: 'listener';
     scope: 'global' | 'local' | 'entry';
     eventType: string;
+    /** Stable identity for the compiled/source track that produced this trigger. */
+    trackKey?: string;
     debounceMs?: number;
 }
 interface TransformNode extends NodeBase {
@@ -3143,6 +3146,8 @@ interface KillNode extends NodeBase {
 interface ScheduleNode extends NodeBase {
     nodeType: 'schedule';
     cronExpression: string;
+    /** Stable identity for the compiled/source track that produced this trigger. */
+    trackKey?: string;
 }
 interface LLMNode extends NodeBase {
     nodeType: 'llm';

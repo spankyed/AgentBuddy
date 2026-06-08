@@ -1,7 +1,7 @@
 import { tx } from '@/core/ears/helpers/transaction';
 import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
-import type { SavedTab, SavedBookmark } from '../types';
+import type { BrowserTabId, SavedTab, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';
 import { createLogger } from '@/core/shared/debug/logger';
 
@@ -19,7 +19,7 @@ export const browserCommands = {
       });
     }
 
-    const existingIds = qx(EARS.Entity.BrowserTab).ids();
+    const existingIds = qx(EARS.Entity.BrowserTab).ids() as BrowserTabId[];
     const incomingIds = new Set(normalized.tabs.map(tab => tab.id));
     for (const id of existingIds) {
       if (!incomingIds.has(id)) {
