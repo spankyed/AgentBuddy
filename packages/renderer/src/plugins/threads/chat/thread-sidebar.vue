@@ -193,6 +193,7 @@ const settings = useSelector(actor, (state) => state.context.settings)
 
 // Collapsible groups & sections (local UI state — non-overlapping key spaces)
 const collapsed = reactive(new Set<string>())
+const hasInitializedCollapse = ref(false)
 
 function toggleCollapsed(key: string) {
   if (collapsed.has(key)) collapsed.delete(key)
@@ -321,6 +322,16 @@ const timeGroups = computed(() => {
     { label: 'Previous 7 Days', threads: week },
     { label: 'Older', threads: older },
   ].filter(g => g.threads.length > 0)
+})
+
+// Collapse all sections by default on first data load
+watchEffect(() => {
+  if (hasInitializedCollapse.value || allThreads.value.length === 0) return
+  hasInitializedCollapse.value = true
+  if (pinnedThreads.value.length > 0) collapsed.add('pinned')
+  for (const pg of pinnedGroups.value) collapsed.add(pg.group.id)
+  for (const ug of unpinnedGroups.value) collapsed.add(ug.group.id)
+  for (const tg of timeGroups.value) collapsed.add(tg.label)
 })
 
 // Actions
