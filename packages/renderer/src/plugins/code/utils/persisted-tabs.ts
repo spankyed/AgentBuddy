@@ -24,6 +24,19 @@ export interface PersistedTabState {
   panelTerminalExpanded: boolean
 }
 
+function getTerminalTabIds(tabs: Array<Pick<PersistedTab, 'type' | 'terminalId'>>): Set<string> {
+  return new Set(
+    tabs
+      .filter(tab => tab.type === 'terminal' && typeof tab.terminalId === 'string')
+      .map(tab => tab.terminalId!)
+  )
+}
+
+function sanitizePanelTerminalId(tabs: PersistedTab[], panelTerminalId: string | null): string | null {
+  if (!panelTerminalId) return null
+  return getTerminalTabIds(tabs).has(panelTerminalId) ? null : panelTerminalId
+}
+
 export function saveOpenTabs(
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
   activeFilePath: string | null,
@@ -82,7 +95,13 @@ export function saveOpenTabs(
         }
       })
 
-    const payload: PersistedTabState = { tabs, activeFilePath, panelTerminalId, panelTerminalExpanded }
+    const sanitizedPanelTerminalId = sanitizePanelTerminalId(tabs, panelTerminalId)
+    const payload: PersistedTabState = {
+      tabs,
+      activeFilePath,
+      panelTerminalId: sanitizedPanelTerminalId,
+      panelTerminalExpanded: sanitizedPanelTerminalId ? panelTerminalExpanded : false,
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
   } catch (error) {
     console.error('Failed to save open tabs:', error)
@@ -133,11 +152,17 @@ export function loadPersistedTabs(): PersistedTabState {
       return { tabs: [], activeFilePath: null, panelTerminalId: null, panelTerminalExpanded: false }
     }
 
+    const tabs = normalizeTabs(parsed.tabs)
+    const panelTerminalId = sanitizePanelTerminalId(
+      tabs,
+      typeof parsed.panelTerminalId === 'string' ? parsed.panelTerminalId : null
+    )
+
     return {
-      tabs: normalizeTabs(parsed.tabs),
+      tabs,
       activeFilePath: typeof parsed.activeFilePath === 'string' ? parsed.activeFilePath : null,
-      panelTerminalId: typeof parsed.panelTerminalId === 'string' ? parsed.panelTerminalId : null,
-      panelTerminalExpanded: parsed.panelTerminalExpanded === true
+      panelTerminalId,
+      panelTerminalExpanded: panelTerminalId ? parsed.panelTerminalExpanded === true : false
     }
   } catch (error) {
     console.error('Failed to load persisted tabs:', error)
@@ -163,11 +188,14 @@ export function prunePersistedTabsToOpenPaths(
   const activeFilePath = state.activeFilePath && openPaths.has(state.activeFilePath)
     ? state.activeFilePath
     : tabs[0]?.path ?? null
+  const panelTerminalId = sanitizePanelTerminalId(tabs, state.panelTerminalId)
 
   return {
     ...state,
     tabs,
     activeFilePath,
+    panelTerminalId,
+    panelTerminalExpanded: panelTerminalId ? state.panelTerminalExpanded : false,
   }
 }
 

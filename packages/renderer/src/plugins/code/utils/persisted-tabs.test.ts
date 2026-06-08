@@ -68,6 +68,77 @@ describe('code persisted tabs', () => {
     })
   })
 
+  it('does not persist a panel terminal id for a terminal already open as an editor tab', () => {
+    saveOpenTabs([
+      {
+        path: 'terminal:Terminal-a',
+        content: '',
+        originalContent: '',
+        modified: false,
+        isTerminal: true,
+        isPinned: true,
+        terminalInfo: {
+          id: 'Terminal-a',
+          title: 'Terminal',
+          pid: 123,
+          cwd: '/tmp',
+          active: true,
+          cols: 80,
+          rows: 24,
+        },
+      } as any,
+    ], 'terminal:Terminal-a', 'Terminal-a', true)
+
+    expect(JSON.parse(localStorage.getItem('code-plugin-open-tabs')!)).toEqual({
+      tabs: [
+        {
+          path: 'terminal:Terminal-a',
+          type: 'terminal',
+          terminalId: 'Terminal-a',
+          order: 0,
+          isPinned: true,
+        },
+      ],
+      activeFilePath: 'terminal:Terminal-a',
+      panelTerminalId: null,
+      panelTerminalExpanded: false,
+    })
+  })
+
+  it('clears duplicate panel terminal placement when loading persisted terminal tabs', () => {
+    localStorage.setItem('code-plugin-open-tabs', JSON.stringify({
+      tabs: [
+        {
+          path: 'terminal:Terminal-a',
+          type: 'terminal',
+          terminalId: 'Terminal-a',
+          order: 0,
+          isPinned: true,
+        },
+      ],
+      activeFilePath: 'terminal:Terminal-a',
+      panelTerminalId: 'Terminal-a',
+      panelTerminalExpanded: true,
+    }))
+
+    const loaded = loadPersistedTabs()
+
+    expect(loaded).toEqual({
+      tabs: [
+        {
+          path: 'terminal:Terminal-a',
+          type: 'terminal',
+          terminalId: 'Terminal-a',
+          order: 0,
+          isPinned: true,
+        },
+      ],
+      activeFilePath: 'terminal:Terminal-a',
+      panelTerminalId: null,
+      panelTerminalExpanded: false,
+    })
+  })
+
   it('prunes stale terminal output cache entries', () => {
     localStorage.setItem('agentbuddy_terminal_output_Terminal-live', 'live')
     localStorage.setItem('agentbuddy_terminal_output_Terminal-stale', 'stale')
