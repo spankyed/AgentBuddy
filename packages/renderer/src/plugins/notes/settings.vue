@@ -1,5 +1,27 @@
 <template>
   <div class="max-w-3xl">
+    <CollapsibleSection label="Notes" :default-open="true" class="mb-8">
+      <div class="space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <label for="show-collapse-icon" class="text-sm font-medium text-neutral-300">
+              Show collapse icon
+            </label>
+            <p class="text-xs text-neutral-500 mt-0.5">
+              Show a collapse chevron in place of a note's icon for notes with children
+            </p>
+          </div>
+          <input
+            id="show-collapse-icon"
+            v-model="showCollapseIcon"
+            type="checkbox"
+            @change="saveShowCollapseIconSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+      </div>
+    </CollapsibleSection>
+
     <CollapsibleSection label="Task List" :default-open="true" class="mb-8">
       <div class="space-y-4">
         <div class="flex items-center gap-3">
@@ -179,6 +201,7 @@ import { id } from './state'
 
 interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'
+  showCollapseIcon: boolean
 }
 
 interface Props {
@@ -202,12 +225,21 @@ const positionOptions = [
 ]
 
 const panelPosition = ref<'left' | 'right'>(props.settings?.tasklistPanelPosition || 'left')
+const showCollapseIcon = ref(props.settings?.showCollapseIcon ?? false)
 
 watch(() => props.settings, (newSettings) => {
   if (newSettings) {
     panelPosition.value = newSettings.tasklistPanelPosition
+    showCollapseIcon.value = newSettings.showCollapseIcon ?? false
   }
 }, { deep: true })
+
+const saveShowCollapseIconSetting = () => {
+  emit('update-setting', {
+    path: ['showCollapseIcon'],
+    value: showCollapseIcon.value
+  })
+}
 
 const updatePosition = (value: 'left' | 'right') => {
   panelPosition.value = value

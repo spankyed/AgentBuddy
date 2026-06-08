@@ -63,6 +63,14 @@ export interface CodexThreadState {
   additionalDirs?: string[];
   cwdOverride?: string;
   forceDirectoryPicker?: boolean;
+  goal?: {
+    objective: string;
+    status: 'active' | 'paused' | 'blocked' | 'usage_limited' | 'budget_limited' | 'complete';
+    tokenBudget?: number;
+    tokensUsed?: number;
+    objectiveEdited?: boolean;
+    continuationTurns?: number;
+  };
 }
 
 const CODEX_TAG = 'codex';
@@ -146,7 +154,7 @@ export function requestTurnInterrupt(services: Services, threadId: string): bool
         asideText: `Cancelled — ${prior.pendingApproval.summary || 'tool request'}`,
       } as any);
     }
-    (services.codex as any).interruptTurn(prior.threadId, prior.turnId);
+    (services.codex as any).interruptTurn(prior.threadId, prior.turnId)?.catch?.(() => {});
 
     // Cancel queued message so finalize() doesn't replay it after the interrupt
     const queued = dequeueMessage(services, threadId);

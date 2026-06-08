@@ -1,7 +1,7 @@
 {
   "name": "abuddy",
   "description": "Vibe working platform",
-  "version": "0.3.8",
+  "version": "0.3.12",
   "private": true,
   "type": "module",
   "author": {
@@ -23,6 +23,7 @@
     "build-prod": "sh build/build.sh",
     "prod-app": "sh build/prod/run.sh",
     "clean-prod": "sh build/prod/clean.sh",
+    "diagnostics:prod": "node build/prod/diagnostics.mjs",
     "verify-signing": "sh build/prod/verify-signing.sh",
     "release": "sh build/release/release.sh",
     "unrelease": "bash build/release/unrelease.sh",

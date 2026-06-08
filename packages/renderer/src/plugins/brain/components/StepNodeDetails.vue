@@ -40,6 +40,20 @@
       <div class="flex flex-1 flex-col overflow-y-auto">
         <!-- Main content area with flex-1 to take available space -->
         <div class="flex-1 p-4">
+          <!-- Runtime Error -->
+          <section v-if="runtimeError" class="mb-4">
+            <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-red-300">
+              Runtime Error
+            </h4>
+            <div class="rounded border border-red-800/60 bg-red-950/30 p-3">
+              <div class="text-sm text-red-100">{{ runtimeError.message }}</div>
+              <div v-if="runtimeError.source || runtimeError.phase" class="mt-2 flex gap-2 text-[11px] text-red-200/70">
+                <span v-if="runtimeError.source">{{ runtimeError.source }}</span>
+                <span v-if="runtimeError.phase">{{ runtimeError.phase }}</span>
+              </div>
+            </div>
+          </section>
+
           <!-- Input Parameters -->
           <section v-if="hasInputParams" class="mb-4">
             <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
@@ -166,6 +180,11 @@ const inputParams = computed(() => {
 
 const outputResult = computed(() => {
   return props.node?.nodeAttributes?.result;
+});
+
+const runtimeError = computed(() => {
+  const result = outputResult.value as any;
+  return result?.error && typeof result.error === 'object' ? result.error : undefined;
 });
 
 const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);

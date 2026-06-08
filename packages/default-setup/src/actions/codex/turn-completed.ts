@@ -1,7 +1,7 @@
 /** CDX: Turn Completed — finalizes session stats and creates diff artifact. */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getCodexState, updateCodexState, updateChatState } from './_helpers/thread-context';
+import { getCodexState, persistCodexState, updateCodexState, updateChatState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from '../claude-code/_helpers/parse-diff';
 
 export const meta: ActionMeta = {
@@ -30,6 +30,10 @@ export async function action(params: Record<string, any>, services: Services) {
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
+  // Snapshot previous state for goal token delta calculation
+  const prevState = getCodexState(services, threadId);
+  const prevTotalSum = (prevState?.totalTokens?.input ?? 0) + (prevState?.totalTokens?.output ?? 0);
+
   updateCodexState(services, threadId as EntityId, (prev) => ({
     turns: (prev.turns ?? 0) + 1,
     totalTokens: usage ?? prev.totalTokens,
@@ -43,6 +47,25 @@ export async function action(params: Record<string, any>, services: Services) {
       : prev.recentTools,
     lastTurnAt: Date.now(),
   }));
+
+  // ─── Goal token accounting ────────────────────────────────────────
+  const goal = prevState?.goal;
+  if (goal && goal.status === 'active' && usage) {
+    const currTotalSum = (usage.input ?? 0) + (usage.output ?? 0);
+    const turnDelta = Math.max(0, currTotalSum - prevTotalSum);
+    const newUsed = (goal.tokensUsed ?? 0) + turnDelta;
+
+    const goalPatch: Record<string, any> = { tokensUsed: newUsed };
+
+    if (goal.tokenBudget && newUsed >= goal.tokenBudget) {
+      goalPatch.status = 'budget_limited';
+    }
+    if (goal.objectiveEdited) {
+      goalPatch.objectiveEdited = false;
+    }
+
+    persistCodexState(services, threadId as string, { goal: { ...goal, ...goalPatch } });
+  }
 
   const cdxState = getCodexState(services, threadId);
   if (!cdxState?.isRunning && cdxState?.chatState !== 'error') {
@@ -68,5 +91,11 @@ export async function action(params: Record<string, any>, services: Services) {
     }
   }
 
-  return { success: true, hadErrors: !!hadErrors, artifactId };
+  const shouldContinueGoal = !!(
+    cdxState?.goal?.status === 'active' &&
+    !cdxState?.isRunning &&
+    !hadErrors
+  );
+
+  return { success: true, hadErrors: !!hadErrors, artifactId, shouldContinueGoal };
 }

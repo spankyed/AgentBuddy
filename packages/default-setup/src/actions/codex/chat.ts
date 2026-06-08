@@ -15,6 +15,9 @@ import {
 } from './_helpers/thread-context';
 import { createStreamConsumer } from './_helpers/stream-consumer';
 import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap';
+import {
+  renderContinuationPrompt, renderBudgetLimitPrompt, renderObjectiveUpdatedPrompt,
+} from './_helpers/goal-prompts';
 
 export const meta: ActionMeta = {
   label: 'Codex Chat',
@@ -53,9 +56,14 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
-    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
-    if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
-    return { success: true, queued: true };
+    const handleExists = !!(services.codex as any).getHandle(threadId);
+    if (handleExists) {
+      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+      if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+      return { success: true, queued: true };
+    }
+    // No handle → stale isRunning from a previous process, clear and proceed
+    setRunning(services, threadId, false);
   }
 
   // Kill paused turn if pending approval
@@ -64,6 +72,15 @@ export async function action(params: Record<string, any>, services: Services, _z
   }
 
   setRunning(services, threadId, true);
+
+  // Race guard: if a parallel invocation (from a duplicate flow actor)
+  // already stored a handle for this thread, bail out.
+  const existingHandle = (services.codex as any).getHandle(threadId);
+  if (existingHandle) {
+    log.warn('[concurrency-guard] parallel invocation detected — bailing', { threadId });
+    return { success: false, error: 'parallel invocation' };
+  }
+
   if (userMessageId) services.chat.updateMessageState(userMessageId as any, { forkable: false } as any);
 
   // ─── CWD check ──────────────────────────────────────────────────────
@@ -99,6 +116,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   ensureSessionMarker(services, threadId);
   persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(effectiveModel && { model: effectiveModel }) });
+
   persistCodexState(services, threadId, { activeMessageId: currentMessageId as string });
   updateChatState(services, threadId, 'working');
 
@@ -160,7 +178,7 @@ export async function action(params: Record<string, any>, services: Services, _z
       ? { mode: 'plan' as const, settings: { model: effectiveModel, developer_instructions: null } }
       : undefined;
 
-    const turnText = !codexThreadId
+    let turnText = !codexThreadId
       ? buildSessionBootstrapPrompt(services, {
         threadId,
         currentMessageId: userMessageId,
@@ -168,6 +186,17 @@ export async function action(params: Record<string, any>, services: Services, _z
         providerName: 'Codex',
       })
       : text;
+
+    // ─── Goal prompt injection ───────────────────────────────────────
+    const goalState = prior?.goal;
+    if (goalState && goalState.status === 'active') {
+      const goalPrompt = goalState.objectiveEdited
+        ? renderObjectiveUpdatedPrompt(goalState)
+        : renderContinuationPrompt(goalState);
+      turnText = turnText + '\n\n' + goalPrompt;
+    } else if (goalState?.status === 'budget_limited') {
+      turnText = turnText + '\n\n' + renderBudgetLimitPrompt(goalState);
+    }
 
     // Start turn
     const turnResult = await codex.startTurn({

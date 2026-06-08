@@ -1,3 +1,5 @@
+import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
+
 type ClickEmit = {
   noteLinkClick: (noteId: string) => void
   imageClick: (src: string) => void
@@ -37,7 +39,7 @@ export function createEditorClickHandler(emit: ClickEmit) {
       return true
     }
     const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-    window.electronAPI?.shell?.openExternal(url)
+    openInAppBrowser(url)
     return true
   }
 }
@@ -49,7 +51,7 @@ export function createViewerClickHandler(emit: { imageClick: (src: string) => vo
     const href = anchor?.getAttribute('href')
     if (href) {
       const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-      window.electronAPI?.shell?.openExternal(url)
+      openInAppBrowser(url)
       return true
     }
     const img = (event.target as HTMLElement).closest('img')

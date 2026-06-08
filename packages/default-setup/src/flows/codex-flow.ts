@@ -11,7 +11,7 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
 export default {
   "Codex": [
     entry(
-      [action("CDX: Start Server", { label: "start-server" })],
+      [action("CDX: Reconcile State", { label: "reconcile" }), action("CDX: Start Server", { label: "start-server" })],
       [keepAlive()],
     ),
     on(
@@ -135,6 +135,19 @@ export default {
             hadErrors: "$.event.data.payload.hadErrors",
           },
         }),
+        branch([
+          {
+            if: "$.lastStep.result.shouldContinueGoal == true",
+            steps: [
+              action("CDX: Goal Continue", {
+                label: "goal-continue",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                },
+              }),
+            ],
+          },
+        ], undefined, "Goal Gate"),
       ]],
       "Turn completed",
     ),

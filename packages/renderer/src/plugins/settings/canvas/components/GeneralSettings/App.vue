@@ -16,6 +16,61 @@
       />
     </div>
 
+    <!-- Browser Section -->
+    <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6 mb-6">
+      <div class="flex items-center gap-2 mb-4">
+        <Globe class="w-4 h-4 text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Browser</h3>
+      </div>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          :checked="props.settings?.openLinksInApp ?? true"
+          @change="emit('update-setting', { path: ['openLinksInApp'], value: ($event.target as HTMLInputElement).checked })"
+          class="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+        />
+        <span class="text-sm text-neutral-300">Open links in the built-in browser</span>
+      </label>
+      <p class="text-xs text-neutral-500 mt-2 ml-7">When disabled, links open in your default system browser.</p>
+
+      <div class="mt-6 pt-5 border-t border-neutral-800">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-neutral-300">Browser cache</p>
+            <p class="text-xs text-neutral-500 mt-1">Clears frontend localStorage for cached browser and UI state.</p>
+          </div>
+          <button
+            v-if="!confirmingClearBrowserCache"
+            @click="confirmingClearBrowserCache = true"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition-colors"
+          >
+            <Trash2 class="w-3.5 h-3.5" />
+            Clear Cache...
+          </button>
+          <div v-else class="flex items-center gap-2">
+            <button
+              @click="onClearBrowserCache"
+              class="px-3 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              @click="confirmingClearBrowserCache = false"
+              class="px-3 py-2 rounded-lg text-sm font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+        <p v-if="browserCacheStatus" :class="[
+          'text-xs mt-3',
+          browserCacheStatus.kind === 'success' ? 'text-green-500' : 'text-red-400'
+        ]">
+          {{ browserCacheStatus.message }}
+        </p>
+      </div>
+    </div>
+
     <!-- Data Management -->
     <div class="space-y-6">
       <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
@@ -132,7 +187,7 @@
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { PackageOpen, RotateCcw } from 'lucide-vue-next'
+import { Globe, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import type { SetupPackType } from '@app/api'
 import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
 import Hotkeys from './Hotkeys.vue'
@@ -169,6 +224,23 @@ const importMode = computed(() => setupPackImport.value?.importMode ?? 'replace-
 const restartBrainFlag = computed(() => setupPackImport.value?.restartBrain ?? false)
 const importResult = computed(() => setupPackImport.value?.result)
 const importError = computed(() => setupPackImport.value?.error)
+
+const confirmingClearBrowserCache = ref(false)
+const browserCacheStatus = ref<{ kind: 'success' | 'error'; message: string } | null>(null)
+
+function onClearBrowserCache() {
+  try {
+    localStorage.clear()
+    browserCacheStatus.value = { kind: 'success', message: 'Browser cache cleared. Restart the app to reload cached UI state.' }
+  } catch (error) {
+    browserCacheStatus.value = {
+      kind: 'error',
+      message: `Failed to clear browser cache: ${error instanceof Error ? error.message : String(error)}`
+    }
+  } finally {
+    confirmingClearBrowserCache.value = false
+  }
+}
 
 async function selectDirectory() {
   const result = await (window as any).electronAPI?.fileUtils?.selectPath?.({ type: 'directory' })

@@ -1,8 +1,8 @@
-import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
+import { setup, sendParent, enqueueActions, raise } from 'xstate';
 import type { ListenerNode, NodeEntity, ScheduleNode } from '@/core/shared-types/flows';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
-import { EARS, ExecutionContext, TNodeEntity } from '@/types';
+import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/core/shared/actor-helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
@@ -10,6 +10,8 @@ import { isBrainPaused } from './utils/brain-pause';
 import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
 import { sendToBrainSystem } from '@/services/event-emitter';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
+import { reportBrainRuntimeError } from './runtime-errors';
+import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
 
 /**
  * Flow Actor Registry
@@ -48,6 +50,15 @@ export function clearFlowActorRegistry(): void {
   flowActorRegistry.clear();
 }
 
+function logTriggerDedupeWarnings(warnings: TriggerDedupeWarning[]): void {
+  for (const warning of warnings) {
+    brainLogger.warn(
+      'Duplicate brain trigger trackKey skipped',
+      warning,
+    );
+  }
+}
+
 type TNodeFlowMachineContext = {
   flowId: EARS.EntityId;
   flowLabel: string;
@@ -84,12 +95,6 @@ type TNodeFlowMachineContext = {
   pendingEvents: Array<Record<string, any>>;
 };
 
-type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
-  triggerType: 'listener' | 'schedule';
-  scope?: ListenerNode['scope'];
-  cronExpression?: string;
-};
-
 type ChildCompletedEvent =
   | {
     type: 'CHILD_COMPLETED';
@@ -97,6 +102,7 @@ type ChildCompletedEvent =
     tNodeId?: EARS.EntityId;
     stepLabel?: string;
     result?: any;
+    failed?: boolean;
     final?: boolean;
     eventTNodeId?: EARS.EntityId;
     isFlow?: boolean; // Simple flag to indicate if completing child was a flow
@@ -179,12 +185,13 @@ export function createFlowNodeSystem(
 
   // Query schedule nodes and merge them into eventNodes as trigger handlers
   const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
-  const allTriggerNodes: FlowTriggerNode[] = [
+  const rawTriggerNodes: FlowTriggerNode[] = [
     ...eventNodes.map((n: ListenerNode): FlowTriggerNode => ({
       id: n.id,
       label: n.label,
       eventType: n.eventType,
       scope: n.scope,
+      trackKey: n.trackKey,
       triggerType: 'listener' as const,
     })),
     ...scheduleNodes.map((n: ScheduleNode): FlowTriggerNode => ({
@@ -192,9 +199,16 @@ export function createFlowNodeSystem(
       label: n.label,
       eventType: `schedule.${n.id}`,
       triggerType: 'schedule',
+      trackKey: n.trackKey,
       cronExpression: n.cronExpression,
     })),
   ];
+  const dedupedTriggers = dedupeTriggerNodes(
+    rawTriggerNodes,
+    { flowId: actualFlowId, flowTNodeId },
+  );
+  logTriggerDedupeWarnings(dedupedTriggers.warnings);
+  const allTriggerNodes = dedupedTriggers.nodes;
 
   const eventHandlers: Record<string, any> = {};
   allTriggerNodes.forEach((node) => {
@@ -224,9 +238,13 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
+          brainInspect(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
 
-          // Register cron jobs for schedule nodes
-          for (const sn of scheduleNodes) {
+          // Register cron jobs for schedule nodes (skip nodes with no downstream steps)
+          for (const sn of allTriggerNodes.filter((node) => node.triggerType === 'schedule')) {
+            if (!sn.cronExpression) continue;
+            const hasSteps = repository.brainQueries.eventAllSteps(sn.id!).length > 0;
+            if (!hasSteps) continue;
             registerSchedule(`${flowTNodeId}:${sn.id}`, sn.cronExpression, () => {
               sendToBrainSystem({ eventType: `schedule.${sn.id}`, targetFlowId: flowTNodeId });
             });
@@ -239,7 +257,7 @@ export function createFlowNodeSystem(
           unregisterByPrefix(flowTNodeId);
           brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
         },
-        handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
+        handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const typedEv = event as { type: string; [key: string]: any };
           const eventType = typedEv.type;
 
@@ -252,10 +270,7 @@ export function createFlowNodeSystem(
             return;
           }
 
-          // Get ALL event nodes matching this event type (not just the first)
-          const matchingEventNodes = context.eventNodes.filter(
-            (n) => n.eventType === eventType,
-          );
+          const matchingEventNodes = context.eventNodes.filter((n) => n.eventType === eventType);
 
           if (matchingEventNodes.length === 0) return;
 
@@ -263,7 +278,7 @@ export function createFlowNodeSystem(
             const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
 
             if (allSteps.length === 0) {
-              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No steps found to execute in response`);
+              brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
               continue; // Skip this event node but process others
             }
 
@@ -299,10 +314,6 @@ export function createFlowNodeSystem(
               lastStep: undefined,
             };
 
-            // brainInspect(`${flowTNodeId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
-            //   { eventData, eventNodeId: eventNode.id }
-            // );
-
             // Spawn ALL connected downstream steps in parallel
             let spawnedCount = 0;
             for (const step of allSteps) {
@@ -330,7 +341,17 @@ export function createFlowNodeSystem(
 
                 spawnedCount++;
               } catch (err) {
-                brainLogger.error(`Failed to create child node for step ${step.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+                reportBrainRuntimeError({
+                  error: err,
+                  source: 'brain-flow',
+                  phase: 'child.spawn',
+                  flowTNodeId,
+                  eventTNodeId: eventTNode.id,
+                  nodeId: step.id,
+                  nodeLabel: step.label,
+                  nodeType: step.nodeType,
+                  eventType,
+                });
               }
             }
 
@@ -345,6 +366,7 @@ export function createFlowNodeSystem(
                 [eventTNode.id]: spawnedCount,
               }),
             });
+
           }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
@@ -354,6 +376,7 @@ export function createFlowNodeSystem(
           if (typedEv.final) {
             brainInspect(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
           }
+          const childFailed = typedEv.failed === true || typedEv.result?.error !== undefined;
 
           if (!typedEv.eventTNodeId) {
             brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But missing event TNode ID`, { completion: event });
@@ -366,7 +389,7 @@ export function createFlowNodeSystem(
           // - otherwise → straight-line next step
           const sourceHandle = typedEv.result?.sourceHandle;
           const noMatch = (typedEv.result as { noMatch?: boolean } | undefined)?.noMatch === true;
-          const nextNode = typedEv.stepId && !noMatch
+          const nextNode = typedEv.stepId && !noMatch && !childFailed
             ? sourceHandle
               ? repository.brainQueries.nextNodeForBranch(typedEv.stepId, sourceHandle)
               : repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
@@ -405,7 +428,7 @@ export function createFlowNodeSystem(
             [typedEv.eventTNodeId]: newTrackCount,
           };
           const allTracksDrained = Object.values(nextTrackCounts).every(c => c === 0);
-          const shouldComplete = shouldCompleteFlow({
+          const shouldComplete = !childFailed && shouldCompleteFlow({
             final: !!typedEv.final,
             allTracksDrained,
             hasPersistentTriggers: context.hasPersistentTriggers,
@@ -477,7 +500,18 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              brainLogger.error(`Failed to create next child node ${nextNode.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+              reportBrainRuntimeError({
+                error: err,
+                source: 'brain-flow',
+                phase: 'child.spawn-next',
+                flowTNodeId,
+                eventTNodeId: typedEv.eventTNodeId,
+                tNodeId: typedEv.tNodeId,
+                nodeId: nextNode.id,
+                nodeLabel: nextNode.label,
+                nodeType: nextNode.nodeType,
+                eventType: trackExecutionContext.event?.type,
+              });
             }
           }
         }),
@@ -541,7 +575,18 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              brainLogger.error(`Failed to resume child node ${pending.nextNode.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+              reportBrainRuntimeError({
+                error: err,
+                source: 'brain-flow',
+                phase: 'child.resume',
+                flowTNodeId,
+                eventTNodeId: pending.eventTNodeId,
+                tNodeId: pending.parentTNodeId,
+                nodeId: pending.nextNode.id,
+                nodeLabel: pending.nextNode.label,
+                nodeType: pending.nextNode.nodeType,
+                eventType: pending.executionContext.event?.type,
+              });
             }
           }
 

@@ -6,6 +6,8 @@
       class="fixed z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
       :style="{ left: `${pos.x}px`, top: `${pos.y}px` }"
     >
+      <div v-if="label" class="px-3 py-1.5 text-xs font-medium text-neutral-500 select-none">{{ label }}</div>
+      <hr v-if="label" class="my-1 border-neutral-700" />
       <template v-for="(item, i) in items" :key="item.label">
         <button
           class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
@@ -31,6 +33,7 @@ const props = withDefaults(defineProps<{
   pos: { x: number; y: number }
   items: MenuItem[]
   separatorAfter?: number
+  label?: string
 }>(), {
   separatorAfter: -1,
 })

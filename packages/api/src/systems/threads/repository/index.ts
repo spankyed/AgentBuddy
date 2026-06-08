@@ -8,7 +8,7 @@ import {
   RepositoryErrorCode
 } from '@/core/shared/repository';
 import { wouldCreateCycle } from '@/core/ears/helpers/graph';
-import { qx } from '@/core/ears/helpers/query';
+import { qx, b64Encode, b64Decode } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
@@ -26,6 +26,22 @@ import { repository } from '@/repository';
  * Threads Repository
  */
 
+function findArtifactByThreadAndType(
+  threadId: EARS.EntityId,
+  artifactType: ArtifactType,
+): ArtifactEntity | undefined {
+  const candidates = qx(threadId)
+    .linksPick(
+      EARS.RelKind.HAS,
+      ['artifactType'] as const,
+      EARS.Entity.Artifact,
+    )
+    .filter(({ artifactType: t }) => t === artifactType);
+  const first = candidates[0];
+  if (!first?.id) return undefined;
+  return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
+}
+
 // Queries
 export const threadQueries = {
   byId: (id: EARS.EntityId) => 
@@ -33,6 +49,9 @@ export const threadQueries = {
   
   all: () =>
     findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived),
+
+  allUnfiltered: () =>
+    findAll<ThreadEntity>(EARS.Entity.Thread),
 
   allByRecency: () => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
@@ -171,6 +190,12 @@ export const threadQueries = {
       chatStates,
     };
   },
+
+  /**
+   * Compatibility alias for persisted action code compiled before artifact
+   * helpers moved under chatCommands.
+   */
+  findArtifactByType: findArtifactByThreadAndType,
 } as const;
 
 // Commands
@@ -453,6 +478,60 @@ function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
     .sort((a, b) => b.metadata.createdAt - a.metadata.createdAt);
 }
 
+const MESSAGE_PAGE_SIZE = 50;
+
+const messagePickFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asUser", "asideText", "asideContext", "status", "compacted"] as const;
+
+function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
+  const thread = qx(threadId)
+    .orderBy('timestamp', 'desc')
+    .limit(4)
+    .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState", "context"] as const);
+  return thread[0] as AgentThreadData | null;
+}
+
+function getAllThreadMessages(threadId: EARS.EntityId): Partial<MessageEntity>[] {
+  return (qx(threadId)
+    .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
+    .filter((m: any) => !m.deleted)
+    .sort((a: any, b: any) => {
+      if (a.status === 'queued' && b.status !== 'queued') return 1;
+      if (b.status === 'queued' && a.status !== 'queued') return -1;
+      return 0;
+    }) as Partial<MessageEntity>[];
+}
+
+function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
+  messages: Partial<MessageEntity>[];
+  hasMore: boolean;
+  nextCursor: string | null;
+} {
+  const allMessages = (qx(threadId)
+    .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
+    .filter((m: any) => !m.deleted);
+
+  const queued = allMessages.filter((m: any) => m.status === 'queued');
+  const regular = allMessages.filter((m: any) => m.status !== 'queued');
+
+  // Reverse to get newest-first for paging, then slice
+  const reversed = [...regular].reverse();
+  const offset = cursor ? b64Decode(cursor) : 0;
+  const end = offset + MESSAGE_PAGE_SIZE;
+  const page = reversed.slice(offset, end);
+  const hasMore = end < reversed.length;
+  const nextCursor = hasMore ? b64Encode(end) : null;
+
+  // Reverse page back to chronological order for display
+  const chronoPage = [...page].reverse();
+
+  // Only include queued messages on the first page (offset 0)
+  const messages = offset === 0
+    ? [...chronoPage, ...queued] as Partial<MessageEntity>[]
+    : chronoPage as Partial<MessageEntity>[];
+
+  return { messages, hasMore, nextCursor };
+}
+
 export const chatQueries = {
   hasRequiredApiKeys: (): boolean => {
     const secrets = repository.settingsQueries.getGeneralSettings().secrets;
@@ -468,31 +547,31 @@ export const chatQueries = {
   },
 
   threadData: (threadId: EARS.EntityId): AgentThreadData | null => {
-    const thread = qx(threadId)
-      .orderBy('timestamp', 'desc')
-      .limit(4)
-      .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState", "context"] as const);
-
-    if (!thread[0]) return null;
+    const thread = getThreadFields(threadId);
+    if (!thread) return null;
 
     return {
-      ...thread[0] as AgentThreadData,
-      messages: (qx(threadId)
-        .linksPick(
-          EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asUser", "asideText", "asideContext", "status", "compacted"] as const,
-          EARS.Entity.Message,
-        ) ?? [])
-        .filter((m: any) => !m.deleted)
-        .sort((a: any, b: any) => {
-          // Safety net: queued messages always appear last
-          if (a.status === 'queued' && b.status !== 'queued') return 1;
-          if (b.status === 'queued' && a.status !== 'queued') return -1;
-          return 0;
-        }) as Partial<MessageEntity>[],
+      ...thread,
+      messages: getAllThreadMessages(threadId),
       artifacts: getThreadArtifacts(threadId) as any as ArtifactEntity[],
     };
   },
+
+  threadDataPaginated: (threadId: EARS.EntityId, cursor?: string | null): AgentThreadData | null => {
+    const thread = getThreadFields(threadId);
+    if (!thread) return null;
+
+    const { messages, hasMore, nextCursor } = paginatedMessages(threadId, cursor);
+    return {
+      ...thread,
+      messages,
+      hasMore,
+      nextCursor,
+      artifacts: getThreadArtifacts(threadId) as any as ArtifactEntity[],
+    };
+  },
+
+  paginatedMessages,
 
   refreshThreadsData: (): RecentThreadRefreshData => {
     return { recentThreads: getRecentThreads() };
@@ -946,18 +1025,7 @@ export const chatCommands = {
   findArtifactByType: (
     threadId: EARS.EntityId,
     artifactType: ArtifactType,
-  ): ArtifactEntity | undefined => {
-    const candidates = qx(threadId)
-      .linksPick(
-        EARS.RelKind.HAS,
-        ['artifactType'] as const,
-        EARS.Entity.Artifact,
-      )
-      .filter(({ artifactType: t }) => t === artifactType);
-    const first = candidates[0];
-    if (!first?.id) return undefined;
-    return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
-  },
+  ): ArtifactEntity | undefined => findArtifactByThreadAndType(threadId, artifactType),
 } as const;
 
 registerRepository('threadQueries', threadQueries);

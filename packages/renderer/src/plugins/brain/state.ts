@@ -7,18 +7,17 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import type {
   OutgoingBrainEvents,
 } from '@app/api'
-import type { TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@app/api';
+import type { BrainRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@app/api';
 import { trpc } from '@/core/trpc';
+import {
+  applyTNodeSpawn,
+  denormalizeTNodeTree,
+  normalizeTNodeTree,
+  type NormalizedTNodeTree,
+} from './trace-tree';
 
 export const id = 'brain';
 export type BrainState = ActorRefFrom<typeof brainState>
-
-// Normalized structure for efficient updates
-interface NormalizedTNodeTree {
-  byId: Record<string, TNodeEntity>;
-  rootIds: string[];
-  childrenById: Record<string, string[]>;
-}
 
 export interface BrainContext {
   flowTNodeId?: string;
@@ -34,6 +33,8 @@ export interface BrainContext {
   animationsEnabled: boolean;
   brainIsDead: boolean;
   brainIsPaused: boolean;
+  latestRuntimeError?: BrainRuntimeError;
+  runtimeErrors: BrainRuntimeError[];
   // Settings
   settings?: any; // BrainSettings
 }
@@ -46,6 +47,7 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
+  | { type: 'BRAIN_RUNTIME_ERROR'; error: BrainRuntimeError }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -61,6 +63,7 @@ type UIEvent =
   | { type: 'KILL_BRAIN' }
   | { type: 'PAUSE_BRAIN' }
   | { type: 'RESUME_BRAIN' }
+  | { type: 'DISMISS_RUNTIME_ERROR' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -69,48 +72,19 @@ type PluginEvent =
 export type BrainEvents = UIEvent | SystemEvent | PluginEvent | TrailClickEvent
 const typeOf = safeEvents<BrainEvents>()
 
-// Helper functions for tree normalization
-function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
-  const normalized: NormalizedTNodeTree = {
-    byId: {},
-    rootIds: [],
-    childrenById: {}
+function normalizeFlowTNodeData(data: FlowTNodeData): {
+  normalizedTree?: NormalizedTNodeTree;
+  tNodeTree?: TrackEntity[];
+} {
+  if (!data.tNodeTree) {
+    return { normalizedTree: undefined, tNodeTree: undefined };
+  }
+
+  const normalizedTree = normalizeTNodeTree(data.tNodeTree);
+  return {
+    normalizedTree,
+    tNodeTree: denormalizeTNodeTree(normalizedTree),
   };
-
-  function processNode(node: TrackEntity, isRoot = false) {
-    // Store the node without children
-    const { children, ...nodeWithoutChildren } = node;
-    normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
-
-    if (isRoot) {
-      normalized.rootIds.push(node.id);
-    }
-
-    // Process children
-    if (children && children.length > 0) {
-      normalized.childrenById[node.id] = children.map(child => child.id);
-      children.forEach(child => processNode(child, false));
-    } else {
-      normalized.childrenById[node.id] = [];
-    }
-  }
-
-  tree.forEach(node => processNode(node, true));
-  return normalized;
-}
-
-function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
-  function buildNode(id: string): TrackEntity {
-    const node = normalized.byId[id];
-    const childIds = normalized.childrenById[id] || [];
-
-    return {
-      ...node,
-      children: childIds.map(childId => buildNode(childId))
-    } as TrackEntity;
-  }
-
-  return normalized.rootIds.map(id => buildNode(id));
 }
 
 const brainState = setup({
@@ -123,10 +97,10 @@ const brainState = setup({
     setBrainData: assign(({ context, event }) => {
       if (context.brainIsDead) return {};
       const typedEv = typeOf('RECEIVE_PLUGIN_DATA', event);
-      const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
+      const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
-        tNodeTree: typedEv.data.tNodeTree,
+        tNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
         flowHierarchy: typedEv.data.flowHierarchy || [],
@@ -134,10 +108,10 @@ const brainState = setup({
     }),
     setTNodeData: assign(({ event }) => {
       const typedEv = typeOf('TNODE_OPENED', event);
-      const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
+      const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
-        tNodeTree: typedEv.data.tNodeTree,
+        tNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
         flowHierarchy: typedEv.data.flowHierarchy || [],
@@ -154,45 +128,7 @@ const brainState = setup({
         return {};
       }
 
-      // Event TNodes have parentId = flowTNodeId (the flow container), but the flow
-      // container is NOT in the display tree. Event TNodes are root-level items in the
-      // display tree (matching how eventTracks() returns them from the repository).
-      const isDirectFlowChild = parentId === context.flowTNodeId;
-
-      if (!context.normalizedTree) {
-        // Initialize if not present
-        return {
-          normalizedTree: {
-            byId: { [tNode.id]: tNode },
-            rootIds: (!parentId || isDirectFlowChild) ? [tNode.id] : [],
-            childrenById: { [tNode.id]: [] }
-          }
-        };
-      }
-
-      // Clone the normalized tree for immutability
-      const newTree = {
-        byId: { ...context.normalizedTree.byId },
-        rootIds: [...context.normalizedTree.rootIds],
-        childrenById: { ...context.normalizedTree.childrenById }
-      };
-
-      // Add the new node
-      newTree.byId[tNode.id] = tNode;
-      newTree.childrenById[tNode.id] = [];
-
-      if (parentId && !isDirectFlowChild) {
-        // Child of a node that's IN the display tree (e.g., step under event)
-        if (!newTree.childrenById[parentId]) {
-          newTree.childrenById[parentId] = [];
-        } else {
-          newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
-        }
-        newTree.childrenById[parentId].push(tNode.id);
-      } else {
-        // Root node: either no parent, or parent is the flow container
-        newTree.rootIds.push(tNode.id);
-      }
+      const newTree = applyTNodeSpawn(context.normalizedTree, tNode, parentId, context.flowTNodeId);
 
       // Update denormalized tree as well
       const denormalizedTree = denormalizeTNodeTree(newTree);
@@ -378,6 +314,17 @@ const brainState = setup({
     setBrainResumed: assign({
       brainIsPaused: false,
     }),
+    addRuntimeError: assign(({ context, event }) => {
+      if (event.type !== 'BRAIN_RUNTIME_ERROR') return {};
+      const runtimeErrors = [event.error, ...context.runtimeErrors].slice(0, 25);
+      return {
+        latestRuntimeError: event.error,
+        runtimeErrors,
+      };
+    }),
+    dismissRuntimeError: assign({
+      latestRuntimeError: undefined,
+    }),
     pauseBrain: () => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -432,6 +379,8 @@ const brainState = setup({
     selectedStepNode: undefined,
     brainIsDead: false, // Start as running to prevent flash of dead UI
     brainIsPaused: false,
+    latestRuntimeError: undefined,
+    runtimeErrors: [],
   },
   initial: 'loading',
   states: {
@@ -440,6 +389,12 @@ const brainState = setup({
         RECEIVE_PLUGIN_DATA: {
           target: 'ready',
           actions: 'setBrainData'
+        },
+        BRAIN_RUNTIME_ERROR: {
+          actions: 'addRuntimeError'
+        },
+        DISMISS_RUNTIME_ERROR: {
+          actions: 'dismissRuntimeError'
         }
       }
     },
@@ -567,6 +522,19 @@ const brainState = setup({
         },
         BRAIN_RESUMED: {
           actions: 'setBrainResumed'
+        },
+        BRAIN_RUNTIME_ERROR: {
+          actions: ['addRuntimeError', ({ event }) => {
+            if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return;
+            trpc.bus.send.mutate({
+              systemId: id,
+              type: 'GET_TNODE_DETAILS',
+              tNodeId: event.error.tNodeId
+            });
+          }]
+        },
+        DISMISS_RUNTIME_ERROR: {
+          actions: 'dismissRuntimeError'
         },
         TRAIL_CLICK: {
           actions: 'handleBreadcrumbClick'

@@ -76,6 +76,84 @@ The release script (`build/release/release.sh`) runs these steps:
 - Target: macOS Apple Silicon (arm64) only
 - Requires Node >= 23.0.0 and Xcode Command Line Tools
 
+## Production Debugging
+
+The packaged app writes its main-process and API-child logs through `electron-log`.
+
+**Current production log:**
+
+```bash
+tail -f ~/Library/Logs/abuddy/main.log
+```
+
+This log includes:
+
+- Electron main-process startup banners
+- API server spawn/readiness messages
+- API child stderr, including structured fatal errors
+- backend runtime errors forwarded through stderr
+- renderer fatal summaries with pointers to the renderer log
+- startup IDs and production log file locations
+
+**Renderer crash/error log:**
+
+```bash
+tail -f ~/Library/Logs/abuddy/renderer.log
+```
+
+This log includes:
+
+- renderer console messages
+- `window.onerror` and `unhandledrejection`
+- Vue error-handler failures
+- application actor errors
+- Electron `webContents` renderer lifecycle events such as `render-process-gone`, `unresponsive`, `preload-error`, and main-frame load failures
+
+Machine-readable sidecars are also written for timeline tooling:
+
+```bash
+~/Library/Logs/abuddy/main.jsonl
+~/Library/Logs/abuddy/renderer.jsonl
+```
+
+**App events log:**
+
+```bash
+tail -f ~/Library/Logs/abuddy/app-events.log
+```
+
+This is a JSONL sidecar for backend/in-app log events emitted through the app event bus. It survives renderer crashes and is useful when the in-app Logs plugin is unavailable.
+
+For a terminal-captured production run, use:
+
+```bash
+npm run prod-app
+```
+
+That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/abuddy/main.log`.
+
+To collect a production diagnostics bundle:
+
+```bash
+npm run diagnostics:prod
+```
+
+The command creates `diagnostics/agentbuddy-prod-<timestamp>/` with production logs, recent crash reports, process state, installed app metadata, bundle hashes, and git status.
+
+If the UI disappears or Force Quit does not show the app, check for orphaned API child processes:
+
+```bash
+ps -axo pid,ppid,stat,lstart,command | rg 'AgentBuddy|packages/api/dist/server.js'
+```
+
+An orphaned API child looks like `AgentBuddy .../packages/api/dist/server.js` with parent PID `1`. Kill it before relaunching:
+
+```bash
+kill -9 <pid>
+```
+
+The app also performs this orphan cleanup automatically before spawning a new packaged API child.
+
 ## Versioning & Changelog
 
 Uses [semver](https://semver.org/). The version lives in root `package.json` and is used by electron-builder for artifact naming.

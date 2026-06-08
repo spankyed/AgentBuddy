@@ -6,6 +6,7 @@ import type { OutgoingSystemEvents } from '@/core/router/events';
 import { bus } from '@/core/system-ids';
 import type { backendSystem } from '@/systems';
 import { createLogger } from '@/core/shared/debug/logger';
+import { reportSystemError } from '@/core/shared/system-errors';
 
 const logger = createLogger('actor-helpers');
 
@@ -108,6 +109,12 @@ export function logErrors(actor: string) {
   return {
     error: (error: unknown) => {
       logger.error(`${actor} State Error:`, { error });
+      reportSystemError({
+        error,
+        title: 'Something went wrong',
+        source: actor,
+        severity: 'fatal',
+      });
       // Write structured JSON for the main process to parse (JSON lines pattern)
       const err = error instanceof Error ? error : new Error(String(error));
       process.stderr.write(JSON.stringify({

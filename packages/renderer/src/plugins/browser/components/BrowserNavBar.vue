@@ -52,6 +52,34 @@
       />
     </form>
 
+    <!-- Bookmark star -->
+    <button
+      class="p-1.5 rounded-md transition-colors"
+      :class="props.isBookmarked ? 'text-yellow-400' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'"
+      :title="props.isBookmarked ? 'Remove bookmark' : 'Bookmark this page'"
+      @click="emit('toggle-bookmark')"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" :fill="props.isBookmarked ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
+
+    <!-- Bookmarks dropdown trigger -->
+    <div class="relative">
+      <button
+        class="p-1.5 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+        title="All bookmarks"
+        @click="showBookmarkDropdown = !showBookmarkDropdown"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <BrowserBookmarkDropdown
+        v-if="showBookmarkDropdown"
+        :bookmarks="props.bookmarks"
+        @navigate="showBookmarkDropdown = false; emit('bookmark-navigate', $event)"
+        @remove="emit('bookmark-remove', $event)"
+        @close="showBookmarkDropdown = false"
+      />
+    </div>
+
     <!-- DevTools -->
     <button
       class="p-1.5 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
@@ -65,11 +93,13 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
-import type { AutocompleteSuggestion } from '../state.ts';
+import type { AutocompleteSuggestion, Bookmark } from '../state.ts';
 import BrowserAutocomplete from './BrowserAutocomplete.vue';
+import BrowserBookmarkDropdown from './BrowserBookmarkDropdown.vue';
 
 const addressInput = ref<HTMLInputElement | null>(null);
 const isFocused = ref(false);
+const showBookmarkDropdown = ref(false);
 // Track whether we're programmatically setting the input value to avoid emitting
 let suppressInput = false;
 
@@ -81,6 +111,8 @@ const props = defineProps<{
   suggestions: AutocompleteSuggestion[];
   selectedSuggestionIndex: number;
   inlineCompletion: string | null;
+  isBookmarked: boolean;
+  bookmarks: Bookmark[];
 }>();
 
 const emit = defineEmits<{
@@ -97,6 +129,9 @@ const emit = defineEmits<{
   'autocomplete:select': [index: number];
   'autocomplete:dismiss': [];
   'autocomplete:accept-inline': [];
+  'toggle-bookmark': [];
+  'bookmark-navigate': [url: string];
+  'bookmark-remove': [url: string];
 }>();
 
 // Sync input value from props + inline completion
@@ -204,6 +239,14 @@ function onKeydown(e: KeyboardEvent) {
       if (props.inlineCompletion) {
         e.preventDefault();
         emit('autocomplete:accept-inline');
+      }
+      break;
+
+    case 'Backspace':
+    case 'Delete':
+      if (props.inlineCompletion) {
+        e.preventDefault();
+        emit('autocomplete:dismiss');
       }
       break;
   }

@@ -18,6 +18,48 @@
 
       <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
 
+      <!-- Group management -->
+      <template v-if="tabGroups">
+        <template v-if="groupId">
+          <ContextMenuItem :class="itemClass" @select="$emit('remove-from-group')">
+            <FolderMinus :size="14" class="text-neutral-400" />
+            Remove from Group
+          </ContextMenuItem>
+        </template>
+        <template v-else>
+          <ContextMenuSub v-if="tabGroups.length > 0">
+            <ContextMenuSubTrigger :class="itemClass">
+              <FolderPlus :size="14" class="text-neutral-400" />
+              Add to Group
+              <ChevronRight :size="12" class="ml-auto text-neutral-500" />
+            </ContextMenuSubTrigger>
+            <ContextMenuPortal>
+              <ContextMenuSubContent class="min-w-[140px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                <ContextMenuItem
+                  v-for="group in tabGroups"
+                  :key="group.id"
+                  :class="itemClass"
+                  @select="$emit('add-to-group', group.id)"
+                >
+                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: `var(--color-${group.color})` }" />
+                  {{ group.name }}
+                </ContextMenuItem>
+                <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+                <ContextMenuItem :class="itemClass" @select="$emit('create-group')">
+                  <FolderPlus :size="14" class="text-blue-400" />
+                  New Group
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuPortal>
+          </ContextMenuSub>
+          <ContextMenuItem v-else :class="itemClass" @select="$emit('create-group')">
+            <FolderPlus :size="14" class="text-blue-400" />
+            New Group
+          </ContextMenuItem>
+        </template>
+        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+      </template>
+
       <ContextMenuItem v-if="isPinned" :class="itemClass" @select="$emit('unpin')">
         <Pin :size="14" class="text-neutral-400" />
         Unpin
@@ -48,16 +90,20 @@
 </template>
 
 <script setup lang="ts">
-import { Archive, ArchiveRestore, Copy, Pencil, Pin, Trash2 } from 'lucide-vue-next';
+import { Archive, ArchiveRestore, ChevronRight, Copy, FolderMinus, FolderPlus, Pencil, Pin, Trash2 } from 'lucide-vue-next';
 import {
   ContextMenuPortal, ContextMenuContent,
   ContextMenuItem, ContextMenuSeparator,
+  ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
 } from 'reka-ui';
+import type { ThreadTabGroup } from '@/plugins/threads/canvas/agent/tabs/types';
 
 const props = defineProps<{
   isPinned: boolean;
   isArchived: boolean;
   copyText: string;
+  groupId?: string;
+  tabGroups?: ThreadTabGroup[];
 }>();
 
 defineEmits<{
@@ -67,6 +113,9 @@ defineEmits<{
   archive: [];
   unarchive: [];
   delete: [];
+  'add-to-group': [groupId: string];
+  'remove-from-group': [];
+  'create-group': [];
 }>();
 
 const itemClass = 'flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none';

@@ -719,6 +719,7 @@ function compileTrack(
   const isScheduleTrack = !!track.schedule;
   const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
+  const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
   // Create trigger node (listener or schedule) from track
   const listenerEntity = isScheduleTrack
@@ -729,6 +730,7 @@ function compileTrack(
         nodeType: 'schedule',
         label: listenerLabel,
         description: track.description,
+        trackKey,
         cronExpression: track.schedule,
       }
     : {
@@ -738,6 +740,7 @@ function compileTrack(
         nodeType: 'listener',
         label: listenerLabel,
         description: track.description,
+        trackKey,
         scope: isFirstTrack ? 'entry' : 'global',
         eventType: track.event!,
       };

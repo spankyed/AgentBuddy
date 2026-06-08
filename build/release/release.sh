@@ -123,7 +123,7 @@ else
       echo -e "${RED}✗ default-settings.ts has changed since $LAST_TAG but no migration found at:${NC}"
       echo "    $MIGRATION_FILE"
       echo ""
-      echo -e "  Create a migration for v$NEW_VERSION or re-run with ${YELLOW}--skip-migration-check${NC}"
+      echo -e "  Create a migration for v$NEW_VERSION or re-run with ${YELLOW}npm run release:no-migrate${NC}"
       # Revert version bump
       npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
       exit 1

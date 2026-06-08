@@ -3,7 +3,7 @@ import { EARS } from '@/core/types';
 import { RepositoryError, RepositoryErrorCode } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { removeRelation } from '@/core/ears/attribute-storage';
+import { getAttr, removeRelation } from '@/core/ears/attribute-storage';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from '@/core/ears/helpers/entity-utils';
 import { createLogger } from '@/core/shared/debug/logger';
@@ -34,6 +34,15 @@ function validatePersistableNode(node: NodeEntity): void {
       RepositoryErrorCode.VALIDATION_ERROR
     );
   }
+}
+
+function edgeInfoMatches(
+  info: unknown,
+  options?: { sourceHandle?: string; targetHandle?: string }
+): boolean {
+  const edgeInfo = info as { sourceHandle?: string; targetHandle?: string } | undefined;
+  return (edgeInfo?.sourceHandle || undefined) === (options?.sourceHandle || undefined)
+    && (edgeInfo?.targetHandle || undefined) === (options?.targetHandle || undefined);
 }
 
 /**
@@ -387,11 +396,22 @@ export const flowsCommands = {
       );
     }
 
+    const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
+    const exactDuplicate = existingEdges.some(rel => {
+      if (rel.targetEntity !== targetId) return false;
+      return edgeInfoMatches(rel.info, options);
+    });
+    if (exactDuplicate) {
+      throw new RepositoryError(
+        'Edge already exists',
+        RepositoryErrorCode.VALIDATION_ERROR
+      );
+    }
+
     // Validate: source handle must not already have an outgoing edge (except trigger nodes)
     const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
     const isTrigger = sourceAttrs?.nodeType && nodeMetadata[sourceAttrs.nodeType as NodeKind]?.category === 'trigger';
     if (!isTrigger) {
-      const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
       const handleOccupied = existingEdges.some(rel => {
         const relHandle = (rel.info as any)?.sourceHandle;
         if (options?.sourceHandle) return relHandle === options.sourceHandle;
@@ -420,11 +440,16 @@ export const flowsCommands = {
       targetEntity: targetId,
     });
 
-    if (relIds.length === 0) {
+    const relId = relIds.find(id => {
+      const rel = getAttr(id, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
+      return rel && edgeInfoMatches(rel.info, options);
+    });
+
+    if (!relId) {
       throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
     }
 
-    return { relId: relIds[0] };
+    return { relId };
   },
   
   updateFlowLabel: (flowId: EARS.EntityId, label: string): void => {
@@ -606,11 +631,14 @@ export const flowsCommands = {
     tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
   },
 
-  deleteFlow: (flowId: EARS.EntityId): void => {
+  deleteFlow: (flowId: EARS.EntityId, options?: { allowRoot?: boolean }): void => {
     // Check if this is the root flow
     const isRootFlow = qx(flowId).withRole(FLOW_ROLES.ROOT_FLOW).first();
-    if (isRootFlow) {
+    if (isRootFlow && !options?.allowRoot) {
       throw new RepositoryError('Cannot delete the root flow', RepositoryErrorCode.OPERATION_FAILED);
+    }
+    if (isRootFlow) {
+      tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
     }
 
     // Get all nodes in the flow

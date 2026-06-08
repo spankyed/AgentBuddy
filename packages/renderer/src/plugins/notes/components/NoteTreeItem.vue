@@ -34,37 +34,42 @@
             class="flex items-center justify-center w-5 h-5 shrink-0"
             @click.stop="children.length > 0 ? $emit('toggle-expand', note.id) : toggle()"
           >
-            <!-- Chevron shown on hover when item has children -->
+            <!-- Chevron: always visible when showCollapseIcon + has children, otherwise on hover -->
             <ChevronRight
               v-if="children.length > 0"
               :size="16"
-              class="transition-transform hidden group-hover:block text-neutral-500"
-              :class="isExpanded ? 'rotate-90' : ''"
+              class="transition-transform text-neutral-500"
+              :class="[
+                isExpanded ? 'rotate-90' : '',
+                showCollapseIcon ? 'block' : 'hidden group-hover:block',
+              ]"
             />
-            <!-- Note icon shown by default, hidden on hover when item has children -->
-            <span
-              v-if="note.icon"
-              class="text-sm leading-none"
-              :class="children.length > 0 ? 'group-hover:hidden' : ''"
-            >{{ note.icon }}</span>
-            <ListChecks
-              v-else-if="note.noteType === 'tasklist'"
-              :size="16"
-              class="text-neutral-500"
-              :class="children.length > 0 ? 'group-hover:hidden' : ''"
-            />
-            <CircleCheck
-              v-else-if="note.noteType === 'task'"
-              :size="16"
-              class="text-neutral-500"
-              :class="children.length > 0 ? 'group-hover:hidden' : ''"
-            />
-            <FileText
-              v-else
-              :size="16"
-              class="text-neutral-500"
-              :class="children.length > 0 ? 'group-hover:hidden' : ''"
-            />
+            <!-- Note icon: hidden entirely when showCollapseIcon + has children -->
+            <template v-if="!(showCollapseIcon && children.length > 0)">
+              <span
+                v-if="note.icon"
+                class="text-sm leading-none"
+                :class="children.length > 0 ? 'group-hover:hidden' : ''"
+              >{{ note.icon }}</span>
+              <ListChecks
+                v-else-if="note.noteType === 'tasklist'"
+                :size="16"
+                class="text-neutral-500"
+                :class="children.length > 0 ? 'group-hover:hidden' : ''"
+              />
+              <CircleCheck
+                v-else-if="note.noteType === 'task'"
+                :size="16"
+                class="text-neutral-500"
+                :class="children.length > 0 ? 'group-hover:hidden' : ''"
+              />
+              <FileText
+                v-else
+                :size="16"
+                class="text-neutral-500"
+                :class="children.length > 0 ? 'group-hover:hidden' : ''"
+              />
+            </template>
           </button>
         </template>
       </EmojiPicker>
@@ -180,7 +185,17 @@
       :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
     />
     <!-- Children (recursive) -->
-    <template v-if="isExpanded && children.length > 0">
+    <div
+      v-if="isExpanded && children.length > 0"
+      class="relative"
+      :style="showCollapseIcon ? { paddingLeft: `${GUIDE_INDENT_PX}px` } : undefined"
+    >
+      <!-- Indent guideline spanning all children -->
+      <div
+        v-if="showCollapseIcon"
+        class="absolute top-0 bottom-0 w-px bg-neutral-700/40 pointer-events-none"
+        :style="{ left: `${depth * INDENT_PX + BASE_PADDING_PX + 14}px` }"
+      />
       <NoteTreeItem
         v-for="child in children"
         :key="child.id"
@@ -194,6 +209,7 @@
         :muted="false"
         :drop-indicator-note-id="dropIndicatorNoteId"
         :drop-indicator-position="dropIndicatorPosition"
+        :show-collapse-icon="showCollapseIcon"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
         @create="$emit('create', $event)"
@@ -213,7 +229,7 @@
         @create-tasklist="$emit('create-tasklist', $event)"
         @toggle-favorite="$emit('toggle-favorite', $event)"
       />
-    </template>
+    </div>
   </div>
 </template>
 
@@ -235,6 +251,7 @@ import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8
+const GUIDE_INDENT_PX = 12
 
 const props = withDefaults(defineProps<{
   note: NoteDTO
@@ -247,11 +264,13 @@ const props = withDefaults(defineProps<{
   muted?: boolean
   dropIndicatorNoteId?: string | null
   dropIndicatorPosition?: 'before' | 'after' | null
+  showCollapseIcon?: boolean
 }>(), {
   taskMode: false,
   muted: false,
   dropIndicatorNoteId: null,
   dropIndicatorPosition: null,
+  showCollapseIcon: false,
 })
 
 const emit = defineEmits<{

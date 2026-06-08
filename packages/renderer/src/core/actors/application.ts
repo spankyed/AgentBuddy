@@ -7,6 +7,7 @@ import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import type { ContextMenuItem } from '@/core/context-menu';
+import { globalToast } from '@/core/toast';
 
 interface BreadcrumbItem {
   label: string;
@@ -72,9 +73,11 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
   | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
+  | { type: 'ONBOARDING_COMPLETE' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
+  | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
   | { type: 'NOOP' }
 
@@ -660,17 +663,30 @@ export const createApplicationState = () => setup({
     spawnChild('backendListener'),
   ],
   states: {
-    'welcome': {
-      tags: ['welcome'],
+    'onboarding': {
+      tags: ['onboarding'],
       entry: assign({
         panelSizes: ({ context }) => ({ ...context.panelSizes, chatMaximized: true }),
       }),
       on: {
-        CLOSE_DEV_LETTER: {
-          actions: 'closeDevLetter',
-          target: 'running.connected',
+        ONBOARDING_COMPLETE: {
+          actions: 'restoreChat',
+          target: '#application.running.connected',
         },
-      }
+      },
+      initial: 'letter',
+      states: {
+        'letter': {
+          tags: ['welcome'],
+          on: {
+            CLOSE_DEV_LETTER: {
+              actions: 'closeDevLetter',
+              target: 'wizard',
+            },
+          },
+        },
+        'wizard': {},
+      },
     },
     'running': {
       tags: ['running'],
@@ -685,17 +701,37 @@ export const createApplicationState = () => setup({
             30000: {
               target: '#application.error',
               actions: () => {
-                window.__showErrorPage?.(
-                  'Unable to connect',
-                  'The backend did not respond within 30 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
-                );
+                window.electronAPI?.apiStatus?.getStatus()
+                  .then((status) => {
+                    const details = [
+                      'The backend did not respond within 30 seconds.',
+                      '',
+                      `Startup ID: ${status.startupId || window.electronAPI?.startupId || 'unknown'}`,
+                      `API running: ${status.running ? 'yes' : 'no'}`,
+                      `API port: ${status.port ?? 'unknown'}`,
+                      `Restart attempts: ${status.restartAttempts}`,
+                      status.error ? `Last backend error: ${typeof status.error === 'string' ? status.error : status.error.message}` : undefined,
+                      '',
+                      `Main log: ${status.logPath}`,
+                      `Renderer log: ${status.rendererLogPath}`,
+                      `App events log: ${status.appEventsLogPath}`,
+                    ].filter(Boolean).join('\n');
+
+                    window.__showErrorPage?.('Unable to connect', details);
+                  })
+                  .catch(() => {
+                    window.__showErrorPage?.(
+                      'Unable to connect',
+                      'The backend did not respond within 30 seconds and API status could not be read.'
+                    );
+                  });
               }
             }
           },
           on: {
             CLIENT_CONNECTED: [
               {
-                target: '#application.welcome',
+                target: '#application.onboarding.letter',
                 guard: ({ event }) => (event as any).hasOnboarded === false,
               },
               { target: 'connected' },
@@ -805,6 +841,20 @@ export const createApplicationState = () => setup({
       actions: ({ event }) => {
         window.__showErrorPage?.('Something went wrong', (event as any).error);
       }
+    },
+    SYSTEM_ERROR: {
+      actions: ({ event }) => {
+        const ev = typeOf('SYSTEM_ERROR', event);
+        if (ev.severity === 'fatal') {
+          window.__showErrorPage?.(
+            ev.title ?? 'Something went wrong',
+            ev.stack ? `${ev.message}\n\n${ev.stack}` : ev.message,
+          );
+          return;
+        }
+
+        globalToast.error(ev.title ?? 'Something went wrong', ev.message);
+      },
     },
     NOOP: {
       // No-op event, do nothing

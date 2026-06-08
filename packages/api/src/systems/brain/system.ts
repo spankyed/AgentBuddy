@@ -4,7 +4,7 @@ import { bus } from '@/core/system-ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
 import { emit, getActor } from '@/core/shared/actor-helpers';
 import { EARS } from '@/core/types';
-import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
+import type { BrainRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/shared/debug/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
@@ -44,6 +44,7 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
   | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
+  | { type: 'BRAIN_RUNTIME_ERROR'; error: BrainRuntimeError }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_KILLED' }
   | { type: 'BRAIN_STARTED' }
@@ -104,6 +105,11 @@ export const brainSystem = setup({
       console.error('Brain system error:', (event as any).error);
     },
     startBrain: enqueueActions(({ context, enqueue, system }) => {
+      // Defensive: clear stale flow actor references before starting new brain.
+      // restartBrain/killBrain already do this, but startBrain must also guard
+      // against leaks from lifecycle paths that bypass those actions.
+      clearFlowActorRegistry();
+
       // Stop existing brain if any using enqueue.stopChild
       if (context.brainActor) {
         enqueue.stopChild(context.brainActor);

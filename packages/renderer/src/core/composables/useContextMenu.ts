@@ -16,9 +16,9 @@ export function useContextMenu() {
   const menuRef = ref<HTMLDivElement | null>(null)
   const menuPos = ref({ x: 0, y: 0 })
 
-  function open(e: MouseEvent, itemCount: number) {
+  function open(e: MouseEvent, itemCount: number, extraHeight = 0) {
     const menuWidth = 160
-    const menuHeight = itemCount * 36
+    const menuHeight = itemCount * 36 + extraHeight
     const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8)
     const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8)
     menuPos.value = { x, y }

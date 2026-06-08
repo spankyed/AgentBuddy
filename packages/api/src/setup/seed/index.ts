@@ -191,6 +191,20 @@ function buildLabelMap<T extends { label: string; id: string }>(entities: T[]): 
   return new Map(entities.map(e => [e.label, e.id]));
 }
 
+function isSeedOwnedFlow(flow: FlowEntity): boolean {
+  return !!flow.sourceHash;
+}
+
+function replaceSeedFlow(flow: FlowEntity): boolean {
+  try {
+    flowsCommands.deleteFlow(flow.id, { allowRoot: true });
+    return true;
+  } catch (error) {
+    console.warn(`[seed] Failed to replace seed flow "${flow.label}":`, (error as Error).message);
+    return false;
+  }
+}
+
 /** Match relative media references like ![alt](media/filename.ext) */
 const RELATIVE_MEDIA_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
 
@@ -310,19 +324,31 @@ function seedFlows(
   }
 
   // Build label → existing flow map so we can rebuild (delete + reimport) any
-  // flow whose source has changed. Previously this function skipped existing
-  // flows entirely, which meant DSL edits never propagated without db:reset.
-  // The root flow is still skipped because `deleteFlow` refuses to drop it;
-  // root flow edits continue to need a manual reset.
+  // DSL-owned flow whose source has changed. User-owned flows without
+  // sourceHash are protected, including user-owned root flows.
   const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
   const existingByLabel = new Map(existingFlows.map(f => [f.label, f]));
+  const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
+  const promptMap = buildLabelMap(promptQueries.all());
 
-  const filteredDSL: FlowDSL = {};
+  const validFlowDSL: FlowDSL = {};
   const replacedLabels = new Set<string>();
   for (const [key, entry] of Object.entries(flowsDSL)) {
     if (!shouldSeedAll(include) && !(include as ReadonlySet<string>).has(key)) {
       continue;
     }
+
+    const validation = validate({ [key]: entry }, {
+      actions: Array.from(actionMap.keys()),
+      prompts: Array.from(promptMap.keys()),
+    });
+    if (!validation.valid) {
+      const msgs = validation.errors.map(e => `${e.path}: ${e.message}`);
+      console.warn(`[seed] Skipping flow "${key}":`, msgs.join('; '));
+      result.flows.skipped++;
+      continue;
+    }
+
     const existing = existingByLabel.get(key);
     const compiledHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
 
@@ -335,7 +361,7 @@ function seedFlows(
       }
 
       // User-created flow with same label — never overwrite
-      if (!existing.sourceHash) {
+      if (!isSeedOwnedFlow(existing)) {
         log(`  flow skipped (user-owned): ${key}`);
         result.flows.skipped++;
         continue;
@@ -347,51 +373,26 @@ function seedFlows(
         continue;
       }
 
-      try {
-        flowsCommands.deleteFlow(existing.id);
+      if (replaceSeedFlow(existing)) {
         replacedLabels.add(key);
         log(`  flow replaced${existing.sourceHash ? ' (hash mismatch)' : ' (no prior hash)'}: ${key}`);
-      } catch (err) {
-        // deleteFlow throws for the root flow — leave it alone and keep the
-        // old skip behaviour so boot doesn't fail on root-flow DSL edits.
-        console.warn(`[seed] Keeping existing flow "${key}" (cannot replace):`, (err as Error).message);
+      } else {
         log(`  flow skipped: ${key}`);
         result.flows.skipped++;
         continue;
       }
     }
-    filteredDSL[key] = entry;
+    validFlowDSL[key] = entry;
   }
 
-  const flowNames = Object.keys(filteredDSL);
+  const flowNames = Object.keys(validFlowDSL);
   if (flowNames.length === 0) {
     log('  no flows to import');
     return;
   }
 
-  const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
-  const promptMap = buildLabelMap(promptQueries.all());
-
-  const validFlowDSL: FlowDSL = {};
-  for (const [flowName, entry] of Object.entries(filteredDSL)) {
-    const validation = validate({ [flowName]: entry }, {
-      actions: Array.from(actionMap.keys()),
-      prompts: Array.from(promptMap.keys()),
-    });
-    if (!validation.valid) {
-      const msgs = validation.errors.map(e => `${e.path}: ${e.message}`);
-      console.warn(`[seed] Skipping flow "${flowName}":`, msgs.join('; '));
-      result.flows.skipped++;
-      continue;
-    }
-    validFlowDSL[flowName] = entry;
-  }
-
-  const validNames = Object.keys(validFlowDSL);
-  if (validNames.length === 0) return;
-
   flowsCommands.importFromDSL(compile(validFlowDSL, { actions: actionMap, prompts: promptMap }));
-  for (const name of validNames) {
+  for (const name of flowNames) {
     if (replacedLabels.has(name)) {
       result.flows.updated++;
       log(`  flow updated: ${name}`);

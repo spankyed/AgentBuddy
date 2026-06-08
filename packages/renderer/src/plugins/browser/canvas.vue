@@ -27,6 +27,11 @@
       :suggestions="suggestions"
       :selectedSuggestionIndex="selectedSuggestionIndex"
       :inlineCompletion="inlineCompletion"
+      :isBookmarked="isBookmarked"
+      :bookmarks="bookmarks"
+      @toggle-bookmark="actor.send({ type: 'BOOKMARK.TOGGLE' })"
+      @bookmark-navigate="actor.send({ type: 'BOOKMARK.NAVIGATE', url: $event })"
+      @bookmark-remove="actor.send({ type: 'BOOKMARK.REMOVE', url: $event })"
       @back="actor.send({ type: 'NAV.BACK' })"
       @forward="actor.send({ type: 'NAV.FORWARD' })"
       @reload="actor.send({ type: 'NAV.RELOAD' })"
@@ -40,6 +45,13 @@
       @autocomplete:select="actor.send({ type: 'AUTOCOMPLETE.SELECT', index: $event })"
       @autocomplete:dismiss="actor.send({ type: 'AUTOCOMPLETE.DISMISS' })"
       @autocomplete:accept-inline="actor.send({ type: 'AUTOCOMPLETE.ACCEPT_INLINE' })"
+    />
+
+    <BrowserBookmarkBar
+      v-if="bookmarks.length > 0"
+      :bookmarks="bookmarks"
+      @navigate="actor.send({ type: 'BOOKMARK.NAVIGATE', url: $event })"
+      @remove="actor.send({ type: 'BOOKMARK.REMOVE', url: $event })"
     />
 
     <!-- Content placeholder: WebContentsView is overlaid here by the main process -->
@@ -63,6 +75,7 @@ import { applicationState } from '@/main';
 import { id, type BrowserState } from './state.ts';
 import BrowserTabBar from './components/BrowserTabBar.vue';
 import BrowserNavBar from './components/BrowserNavBar.vue';
+import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';
 
 const actor: BrowserState = applicationState.system.get(id);
 
@@ -73,7 +86,13 @@ const suggestions = useSelector(actor, s => s.context.suggestions);
 const selectedSuggestionIndex = useSelector(actor, s => s.context.selectedSuggestionIndex);
 const inlineCompletion = useSelector(actor, s => s.context.inlineCompletion);
 const tabGroups = useSelector(actor, s => s.context.tabGroups);
+const bookmarks = useSelector(actor, s => s.context.bookmarks);
 const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) ?? null);
+const isBookmarked = computed(() => {
+  const tab = activeTab.value;
+  if (!tab?.url) return false;
+  return bookmarks.value.some(b => b.url === tab.url);
+});
 
 // Hide browser overlay when any app menu is open (toolbar, canvas header, tab context menu, etc.)
 watch(isAnyMenuOpen, (menuOpen) => {
@@ -117,6 +136,10 @@ function handleKeydown(e: KeyboardEvent) {
     case 'r':
       e.preventDefault();
       actor.send({ type: 'NAV.RELOAD' });
+      break;
+    case 'd':
+      e.preventDefault();
+      actor.send({ type: 'BOOKMARK.TOGGLE' });
       break;
   }
 }

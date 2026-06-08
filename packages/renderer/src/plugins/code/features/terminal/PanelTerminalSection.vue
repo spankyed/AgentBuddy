@@ -76,6 +76,15 @@
                 <Eraser class="w-4 h-4" />
                 Clear
               </ContextMenuItem>
+              <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+              <ContextMenuItem @select="restartPanelTerminal" :class="MENU_ITEM_CLASS">
+                <RotateCcw class="w-4 h-4" />
+                Restart Terminal
+              </ContextMenuItem>
+              <ContextMenuItem @select="killPanelTerminal" :class="MENU_ITEM_DANGER_CLASS">
+                <Trash2 class="w-4 h-4" />
+                Kill Terminal
+              </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenuPortal>
         </TrackedContextMenuRoot>
@@ -183,7 +192,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser } from 'lucide-vue-next'
+import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -198,7 +207,7 @@ import {
   DropdownMenuPortal,
 } from 'reka-ui'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
-import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { TerminalInfo } from './state'
@@ -354,6 +363,19 @@ const selectAll = () => {
 
 const clearTerminal = () => {
   term?.clear()
+}
+
+const killPanelTerminal = () => {
+  if (!panelTerminalId.value) return
+  terminalActor.send({ type: 'terminal.CLOSE', terminalId: panelTerminalId.value })
+}
+
+const restartPanelTerminal = () => {
+  const info = activeTerminalInfo.value
+  if (!info || !panelTerminalId.value) return
+  const { cwd, shell } = info
+  terminalActor.send({ type: 'terminal.CLOSE', terminalId: panelTerminalId.value })
+  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
 }
 
 // Actions

@@ -1,5 +1,6 @@
 export interface TabState {
   id: number;
+  persistedId?: string;
   url: string;
   title: string;
   favicon: string;

@@ -94,6 +94,7 @@ export interface ApplicationHotkeys {
 
 export interface AppSettings {
   hotkeys: ApplicationHotkeys;
+  openLinksInApp: boolean;
 }
 
 // Project definition
@@ -180,6 +181,7 @@ export interface BrainSettings {
 // Notes plugin settings
 export interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'
+  showCollapseIcon: boolean
 }
 
 // Logs plugin settings

@@ -28,8 +28,8 @@ const hasPrefix = (t: EARS.Entity) => {
   }
   return fn;
 };
-const b64Encode = (n: number) => Buffer.from(String(n)).toString('base64');
-const b64Decode = (s: string) => {
+export const b64Encode = (n: number) => Buffer.from(String(n)).toString('base64');
+export const b64Decode = (s: string) => {
   try {
     const decoded = Buffer.from(s, 'base64').toString();
     const num = parseInt(decoded, 10);
@@ -187,10 +187,16 @@ export const qx = (
       tgtType?: MaybeArr<EARS.Entity>,
     ) => {
       const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
-      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
-        ...(manyKinds ? { relation } : {}),
-        ...qx(id).pickOne(fields)!,
-      }));
+      return self.links(relKinds, tgtType)
+        .map(({ relation, id }) => {
+          const picked = qx(id).pickOne(fields);
+          if (!picked) return null;
+          return {
+            ...(manyKinds ? { relation } : {}),
+            ...picked,
+          };
+        })
+        .filter(Boolean);
     },
 
     /*─ list shaping helpers ─*/

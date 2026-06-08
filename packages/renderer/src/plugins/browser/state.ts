@@ -7,8 +7,11 @@ export type { TabGroup, TabGroupColor };
 
 export const id = 'browser' as const;
 
+type BrowserTabPersistedId = `BrowserTab-${string}`;
+
 export interface BrowserTab {
   id: number;
+  persistedId?: BrowserTabPersistedId;
   url: string;
   title: string;
   favicon: string;
@@ -21,13 +24,26 @@ export interface BrowserTab {
 
 export type { AutocompleteSuggestion };
 
+export interface Bookmark {
+  url: string;
+  title: string;
+  favicon: string;
+  displayOrder: number;
+}
+
 interface SavedTab {
+  id: BrowserTabPersistedId;
   url: string;
   title: string;
   favicon: string;
   displayOrder: number;
   isMuted: boolean;
   groupId?: string;
+}
+
+interface NormalizeTabsResult {
+  tabs: SavedTab[];
+  invalidCount: number;
 }
 
 interface BrowserContext {
@@ -43,6 +59,8 @@ interface BrowserContext {
   inlineCompletion: string | null;
   preAutocompleteValue: string;
   _lastNavWasTyped: boolean;
+  // Bookmarks
+  bookmarks: Bookmark[];
 }
 
 type BrowserEvents =
@@ -73,10 +91,14 @@ type BrowserEvents =
   | { type: 'AUTOCOMPLETE.DISMISS' }
   | { type: 'AUTOCOMPLETE.ACCEPT_INLINE' }
   | { type: 'AUTOCOMPLETE.RESULTS'; suggestions: AutocompleteSuggestion[]; inlineCompletion: string | null }
+  // Bookmark events
+  | { type: 'BOOKMARK.TOGGLE' }
+  | { type: 'BOOKMARK.REMOVE'; url: string }
+  | { type: 'BOOKMARK.NAVIGATE'; url: string }
   // Backend events
-  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[] }
+  | { type: 'BROWSER_CONNECTED'; savedTabs: SavedTab[]; savedBookmarks: Bookmark[] }
   // IPC bridge events
-  | { type: 'IPC.TAB_CREATED'; tab: BrowserTab }
+  | { type: 'IPC.TAB_CREATED'; tab: BrowserTabState }
   | { type: 'IPC.TAB_REMOVED'; tabId: number }
   | { type: 'IPC.TAB_UPDATED'; tabId: number; changes: Partial<BrowserTab> }
   | { type: 'IPC.ACTIVE_TAB_CHANGED'; tabId: number };
@@ -93,13 +115,15 @@ function navAction(method: 'goBack' | 'goForward' | 'reload' | 'stop') {
 
 // Debounce tab sync to backend (2s after last change)
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let restoreTabsRemaining = 0;
 
-function syncTabsToBackend(tabs: BrowserTab[]) {
+function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }) {
   if (syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => {
+  const send = () => {
     const persistable = tabs
       .filter(t => t.url && t.url !== 'about:blank' && !t.url.startsWith('data:'))
       .map((t, i) => ({
+        id: ensurePersistedTabId(t),
         url: t.url,
         title: t.title,
         favicon: t.favicon,
@@ -108,6 +132,71 @@ function syncTabsToBackend(tabs: BrowserTab[]) {
         groupId: t.groupId,
       }));
     trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
+  };
+
+  if (options?.immediate) {
+    syncTimer = null;
+    send();
+    return;
+  }
+
+  syncTimer = setTimeout(send, 2000);
+}
+
+function isRestorableUrl(url: string | undefined): url is string {
+  if (!url) return false;
+  return url !== 'about:blank' && !url.startsWith('data:');
+}
+
+function isBrowserTabPersistedId(id: string | undefined): id is BrowserTabPersistedId {
+  return Boolean(id?.startsWith('BrowserTab-'));
+}
+
+function createPersistedTabId(): BrowserTabPersistedId {
+  return `BrowserTab-${crypto.randomUUID()}`;
+}
+
+function ensurePersistedTabId(tab: { persistedId?: string }): BrowserTabPersistedId {
+  return isBrowserTabPersistedId(tab.persistedId) ? tab.persistedId : createPersistedTabId();
+}
+
+function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
+  const normalized: SavedTab[] = [];
+  let invalidCount = 0;
+
+  for (const tab of tabs) {
+    if (!isRestorableUrl(tab.url)) {
+      invalidCount += 1;
+      continue;
+    }
+
+    normalized.push({
+      id: tab.id || createPersistedTabId(),
+      url: tab.url,
+      title: tab.title || 'New Tab',
+      favicon: tab.favicon || '',
+      displayOrder: normalized.length,
+      isMuted: Boolean(tab.isMuted),
+      ...(tab.groupId ? { groupId: tab.groupId } : {}),
+    });
+  }
+
+  return { tabs: normalized, invalidCount };
+}
+
+// Debounce bookmark sync to backend (2s after last change)
+let bookmarkSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function syncBookmarksToBackend(bookmarks: Bookmark[]) {
+  if (bookmarkSyncTimer) clearTimeout(bookmarkSyncTimer);
+  bookmarkSyncTimer = setTimeout(() => {
+    const persistable = bookmarks.map((bm, i) => ({
+      url: bm.url,
+      title: bm.title,
+      favicon: bm.favicon,
+      displayOrder: i,
+    }));
+    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_BOOKMARKS', bookmarks: persistable });
   }, 2000);
 }
 
@@ -136,6 +225,8 @@ function deleteEmptyGroups(tabs: BrowserTab[], groups: TabGroup[]): TabGroup[] {
 
 // Debounce autocomplete queries outside the machine to avoid timer in context
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Suppress inline completion when deleting (only show when typing forward)
+let suppressInlineCompletion = false;
 
 function runAutocompleteQuery(query: string, sendBack: (event: BrowserEvents) => void) {
   if (debounceTimer) clearTimeout(debounceTimer);
@@ -146,7 +237,7 @@ function runAutocompleteQuery(query: string, sendBack: (event: BrowserEvents) =>
   debounceTimer = setTimeout(() => {
     const suggestions = autocomplete(query);
     let inlineCompletion: string | null = null;
-    if (suggestions.length > 0 && suggestions[0].matchType === 'url') {
+    if (!suppressInlineCompletion && suggestions.length > 0 && suggestions[0].matchType === 'url') {
       const display = displayUrl(suggestions[0].url);
       if (display.toLowerCase().startsWith(query.toLowerCase())) {
         inlineCompletion = display.slice(query.length);
@@ -205,6 +296,7 @@ const browserState = setup({
     inlineCompletion: null,
     preAutocompleteValue: '',
     _lastNavWasTyped: false,
+    bookmarks: [],
   },
   invoke: { src: 'ipcBridge' },
   states: {
@@ -366,12 +458,25 @@ const browserState = setup({
         'NAV.STOP': { actions: 'stop' },
         'ADDRESS_BAR.UPDATE': {
           actions: [
-            assign(({ event }) => ({
-              addressBarValue: event.value,
-              preAutocompleteValue: event.value,
-              selectedSuggestionIndex: -1,
-              inlineCompletion: null,
-            })),
+            assign(({ context, event }) => {
+              const isTypingForward = event.value.length > context.addressBarValue.length;
+              suppressInlineCompletion = !isTypingForward;
+
+              // Preserve inline completion if the user is typing forward into it
+              let inlineCompletion: string | null = null;
+              if (isTypingForward && context.inlineCompletion) {
+                const currentFull = context.addressBarValue + context.inlineCompletion;
+                if (currentFull.toLowerCase().startsWith(event.value.toLowerCase())) {
+                  inlineCompletion = currentFull.slice(event.value.length);
+                }
+              }
+              return {
+                addressBarValue: event.value,
+                preAutocompleteValue: event.value,
+                selectedSuggestionIndex: -1,
+                inlineCompletion,
+              };
+            }),
             ({ event, self }) => {
               runAutocompleteQuery(event.value.trim(), (e) => self.send(e));
             },
@@ -431,31 +536,84 @@ const browserState = setup({
             };
           }),
         },
+        // Bookmark events
+        'BOOKMARK.TOGGLE': {
+          actions: [
+            assign(({ context }) => {
+              const tab = context.tabs.find(t => t.id === context.activeTabId);
+              if (!tab?.url || tab.url === 'about:blank' || tab.url.startsWith('data:')) return {};
+              const exists = context.bookmarks.some(b => b.url === tab.url);
+              const bookmarks = exists
+                ? context.bookmarks.filter(b => b.url !== tab.url)
+                : [...context.bookmarks, { url: tab.url, title: tab.title, favicon: tab.favicon, displayOrder: context.bookmarks.length }];
+              return { bookmarks };
+            }),
+            ({ context }) => syncBookmarksToBackend(context.bookmarks),
+          ],
+        },
+        'BOOKMARK.REMOVE': {
+          actions: [
+            assign(({ context, event }) => ({
+              bookmarks: context.bookmarks.filter(b => b.url !== event.url),
+            })),
+            ({ context }) => syncBookmarksToBackend(context.bookmarks),
+          ],
+        },
+        'BOOKMARK.NAVIGATE': {
+          actions: [
+            assign(({ event }) => ({
+              addressBarValue: event.url,
+            })),
+            'navigate',
+          ],
+        },
         // Backend events
         'BROWSER_CONNECTED': {
           actions: [
-            assign(() => ({
+            assign(({ event }) => ({
               tabGroups: loadTabGroups(GROUPS_STORAGE_KEY),
+              bookmarks: event.savedBookmarks ?? [],
             })),
             ({ context, event }) => {
-              if (context.tabs.length === 0 && event.savedTabs.length > 0) {
+              const normalized = normalizeSavedTabs(event.savedTabs ?? []);
+              if (normalized.invalidCount > 0) {
+                console.warn('[Browser] Dropping invalid saved tabs before restore', {
+                  rawCount: event.savedTabs?.length ?? 0,
+                  repairedCount: normalized.tabs.length,
+                  invalidCount: normalized.invalidCount,
+                });
+              }
+
+              if (context.tabs.length === 0 && normalized.tabs.length > 0) {
                 // Set up pending group assignments for restored tabs
                 pendingGroupAssignments.clear();
-                for (const saved of event.savedTabs) {
+                for (const saved of normalized.tabs) {
                   if (saved.groupId) {
                     const queue = pendingGroupAssignments.get(saved.url) ?? [];
                     queue.push(saved.groupId);
                     pendingGroupAssignments.set(saved.url, queue);
                   }
                 }
+
+                restoreTabsRemaining = normalized.tabs.length;
                 // Create tabs lazily — don't load URLs until the user opens the browser plugin
-                for (const saved of event.savedTabs) {
+                Promise.all(normalized.tabs.map(saved =>
                   window.electronAPI?.browser.createTab(saved.url, {
                     lazy: true,
                     title: saved.title,
                     favicon: saved.favicon,
-                  });
-                }
+                    activate: false,
+                    persistedId: saved.id,
+                  }),
+                )).then((tabs) => {
+                  const firstRestored = tabs.find(tab => tab !== null);
+                  if (firstRestored) {
+                    window.electronAPI?.browser.selectTab(firstRestored.id);
+                  }
+                }).catch((error) => {
+                  console.error('[Browser] Failed to restore saved tabs', error);
+                  restoreTabsRemaining = 0;
+                });
               }
             },
           ],
@@ -466,7 +624,7 @@ const browserState = setup({
             assign(({ context, event }) => {
               if (context.tabs.some(t => t.id === event.tab.id)) return {};
               // Apply pending group assignment from restore
-              const tab = { ...event.tab };
+              const tab: BrowserTab = { ...event.tab, persistedId: ensurePersistedTabId(event.tab) };
               const queue = pendingGroupAssignments.get(tab.url);
               if (queue?.length) {
                 tab.groupId = queue.shift();
@@ -474,7 +632,16 @@ const browserState = setup({
               }
               return { tabs: [...context.tabs, tab] };
             }),
-            ({ context }) => syncTabsToBackend(context.tabs),
+            ({ context }) => {
+              if (restoreTabsRemaining > 0) {
+                restoreTabsRemaining -= 1;
+                if (restoreTabsRemaining === 0) {
+                  syncTabsToBackend(context.tabs);
+                }
+                return;
+              }
+              syncTabsToBackend(context.tabs);
+            },
           ],
         },
         'IPC.TAB_REMOVED': {
@@ -487,10 +654,16 @@ const browserState = setup({
                 tabGroups,
                 activeTabId: context.activeTabId === event.tabId
                   ? (tabs.at(-1)?.id ?? null)
-                  : context.activeTabId,
+                : context.activeTabId,
+                ...(context.activeTabId === event.tabId
+                  ? { addressBarValue: tabs.at(-1)?.url ?? '' }
+                  : {}),
               };
             }),
-            ({ context }) => persistState(context),
+            ({ context }) => {
+              persistGroupsOnly(context);
+              syncTabsToBackend(context.tabs, { immediate: true });
+            },
           ],
         },
         'IPC.TAB_UPDATED': {
@@ -519,6 +692,7 @@ const browserState = setup({
               }
               // Sync to backend on URL or title changes
               if (event.changes.url || event.changes.title) {
+                if (restoreTabsRemaining > 0) return;
                 syncTabsToBackend(context.tabs);
               }
             },

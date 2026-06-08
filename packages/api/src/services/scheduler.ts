@@ -14,7 +14,13 @@ export function registerSchedule(key: string, cronExpression: string, callback: 
   unregisterSchedule(key);
 
   try {
-    const job = new Cron(cronExpression, callback);
+    const job = new Cron(cronExpression, () => {
+      try {
+        callback();
+      } catch (err) {
+        logger.error(`Schedule ${key} tick failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    });
     activeJobs.set(key, job);
     logger.info(`Registered schedule: ${key} (${cronExpression})`);
   } catch (err) {

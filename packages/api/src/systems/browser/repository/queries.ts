@@ -1,9 +1,15 @@
 import { findAll } from '@/core/shared/repository/query-helpers';
 import { EARS } from '@/core/types';
-import type { BrowserTabEntity, SavedTab } from '../types';
+import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types';
+import { normalizeSavedTabs } from './normalize-tabs';
+import { browserCommands } from './commands';
+import { createLogger } from '@/core/shared/debug/logger';
 
-function toDTO(entity: BrowserTabEntity): SavedTab {
+const logger = createLogger('browser');
+
+function tabToDTO(entity: BrowserTabEntity): SavedTab {
   return {
+    id: entity.id,
     url: entity.url,
     title: entity.title,
     favicon: entity.favicon,
@@ -13,11 +19,39 @@ function toDTO(entity: BrowserTabEntity): SavedTab {
   };
 }
 
+function bookmarkToDTO(entity: BrowserBookmarkEntity): SavedBookmark {
+  return {
+    url: entity.url,
+    title: entity.title,
+    favicon: entity.favicon,
+    displayOrder: entity.displayOrder,
+  };
+}
+
 export const browserQueries = {
   allTabs: (): SavedTab[] => {
     const entities = findAll<BrowserTabEntity>(EARS.Entity.BrowserTab);
+    const rawTabs = entities
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map(tabToDTO);
+    const normalized = normalizeSavedTabs(rawTabs);
+
+    if (normalized.invalidCount > 0 || normalized.duplicateIdCount > 0) {
+      logger.warn('Repairing persisted browser tabs', {
+        rawCount: rawTabs.length,
+        repairedCount: normalized.tabs.length,
+        invalidCount: normalized.invalidCount,
+        duplicateIdCount: normalized.duplicateIdCount,
+      });
+      browserCommands.syncTabs(normalized.tabs);
+    }
+
+    return normalized.tabs;
+  },
+  allBookmarks: (): SavedBookmark[] => {
+    const entities = findAll<BrowserBookmarkEntity>(EARS.Entity.BrowserBookmark);
     return entities
       .sort((a, b) => a.displayOrder - b.displayOrder)
-      .map(toDTO);
+      .map(bookmarkToDTO);
   },
 } as const;

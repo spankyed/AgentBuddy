@@ -220,6 +220,7 @@ type UIEvent =
   | { type: 'PAUSE_TURN'; threadId: string }
   | { type: 'UNQUEUE_MESSAGE'; threadId: string; messageId: string }
   | { type: 'DISMISS_MESSAGE'; messageId: string }
+  | { type: 'LOAD_MORE_MESSAGES' }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
   | { type: 'RENAME_THREAD'; threadId: string; topic: string }
@@ -304,6 +305,8 @@ interface ThreadsContext {
   pendingThreadCwd?: string;
   pendingForceDirectoryPicker?: boolean;
   navHistory: NavHistory<string>;
+  messagePagination: { hasMore: boolean; nextCursor: string | null; isLoading: boolean };
+  sidebarArchivedThreads: ThreadListItem[];
 }
 
 // ---- Helpers ----
@@ -628,7 +631,11 @@ const threadsState = setup({
       };
     }),
     setArchivedThreads: assign(({ context, event }) => {
-      return visibleThreadStore(context, typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[]);
+      const threads = typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[];
+      return {
+        sidebarArchivedThreads: threads,
+        ...(context.showArchived ? visibleThreadStore(context, threads) : {}),
+      };
     }),
     unarchiveThread: ({ event }) => {
       const { threadId } = typeOf('UNARCHIVE_THREAD', event);
@@ -951,6 +958,11 @@ const threadsState = setup({
       const chatState: ChatState = (thread.chatState as ChatState) ?? 'idle';
       const base = {
         currentThread: thread,
+        messagePagination: {
+          hasMore: thread.hasMore ?? false,
+          nextCursor: thread.nextCursor ?? null,
+          isLoading: false,
+        },
         ...(thread.id ? {
           threadMap: {
             ...context.threadMap,
@@ -1485,6 +1497,30 @@ const threadsState = setup({
         }
       };
     }),
+    requestOlderMessages: ({ context }) => {
+      const { hasMore, nextCursor, isLoading } = context.messagePagination;
+      if (!context.currentThread?.id || !hasMore || !nextCursor || isLoading) return;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'LOAD_MORE_MESSAGES',
+        threadId: context.currentThread.id,
+        cursor: nextCursor,
+      });
+    },
+    setLoadingMore: assign(({ context }) => ({
+      messagePagination: { ...context.messagePagination, isLoading: true },
+    })),
+    prependOlderMessages: assign(({ context, event }) => {
+      const { threadId, messages, hasMore, nextCursor } = typeOf('OLDER_MESSAGES_LOADED', event);
+      if (context.currentThread?.id !== threadId) return {};
+      return {
+        currentThread: {
+          ...context.currentThread,
+          messages: [...messages, ...(context.currentThread.messages ?? [])],
+        },
+        messagePagination: { hasMore, nextCursor, isLoading: false },
+      };
+    }),
     forkThread: ({ event }) => {
       const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
@@ -1564,6 +1600,8 @@ const threadsState = setup({
     commands: [],
     quickPromptCursor: null,
     navHistory: createNavHistory(getInitialView()),
+    messagePagination: { hasMore: false, nextCursor: null, isLoading: false },
+    sidebarArchivedThreads: [],
   }),
   on: {
     // Thread management events
@@ -1621,7 +1659,6 @@ const threadsState = setup({
       target: '.list',
     },
     ARCHIVED_THREADS_DATA: {
-      guard: ({ context }) => context.showArchived,
       actions: 'setArchivedThreads',
     },
     ARCHIVE_THREAD: {
@@ -1832,6 +1869,8 @@ const threadsState = setup({
     },
     UPDATE_MESSAGE_STATE: { actions: 'updateMessageState' },
     MESSAGE_ADDED: { actions: 'addMessageToThread' },
+    LOAD_MORE_MESSAGES: { actions: ['setLoadingMore', 'requestOlderMessages'] },
+    OLDER_MESSAGES_LOADED: { actions: 'prependOlderMessages' },
     SEND_MESSAGE: { actions: 'sendMessage' },
     SEND_COMMAND: { actions: 'sendCommand' },
     SET_CHAT_STATE: { actions: 'setChatState' },

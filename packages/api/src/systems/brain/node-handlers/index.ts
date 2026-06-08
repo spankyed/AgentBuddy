@@ -7,6 +7,7 @@ import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
 import { createLogger } from '@/core/shared/debug/logger';
+import { reportBrainRuntimeError } from '../runtime-errors';
 
 const logger = createLogger('node-executor');
 
@@ -34,11 +35,37 @@ export function executeNode(
       break;
       
     case 'llm':
-      llmNodeHandler(tNode, node, executionContext, actor);
+      llmNodeHandler(tNode, node, executionContext, actor).catch((err) => {
+        const runtimeError = reportBrainRuntimeError({
+          error: err,
+          source: 'brain-llm',
+          phase: 'llm.handler',
+          flowTNodeId: executionContext.flowTNodeId,
+          tNodeId: tNode.id,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.nodeType,
+          eventType: executionContext.event?.type,
+        });
+        try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
+      });
       break;
-      
+
     case 'action':
-      actionNodeHandler(tNode, node, executionContext, actor);
+      actionNodeHandler(tNode, node, executionContext, actor).catch((err) => {
+        const runtimeError = reportBrainRuntimeError({
+          error: err,
+          source: 'brain-action',
+          phase: 'action.handler',
+          flowTNodeId: executionContext.flowTNodeId,
+          tNodeId: tNode.id,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.nodeType,
+          eventType: executionContext.event?.type,
+        });
+        try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
+      });
       break;
 
     case 'switch':
@@ -50,7 +77,7 @@ export function executeNode(
       // If we get here, complete immediately as a safety net.
       logger.warn(`Schedule node "${node.label}" executed as step — this shouldn't happen`);
       setTimeout(() => {
-        actor.send({ type: 'COMPLETE', result: { executed: true } });
+        try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
       }, 100);
       break;
 
@@ -58,7 +85,7 @@ export function executeNode(
       // For unknown node types, complete immediately
       logger.warn(`Unknown node type: ${node.nodeType}`);
       setTimeout(() => {
-        actor.send({ type: 'COMPLETE', result: { executed: true } });
+        try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
       }, 100);
   }
 } 

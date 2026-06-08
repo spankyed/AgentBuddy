@@ -23,6 +23,8 @@ function errorPageHtml(url: string, description: string): string {
 export class BrowserTabManager {
   readonly #tabs = new Map<number, WebContentsView>();
   readonly #pendingUrls = new Map<number, string>(); // lazy tabs: tabId → URL to load on demand
+  readonly #favicons = new Map<number, string>(); // tabId → last known favicon URL
+  readonly #persistedIds = new Map<number, string>(); // tabId → stable app-level tab ID
   #activeTabId: number | null = null;
   #bounds: TabBounds = {x: 0, y: 0, width: 800, height: 600};
   #visible = false;
@@ -75,9 +77,10 @@ export class BrowserTabManager {
     const id = wc.id;
     return {
       id,
+      persistedId: this.#persistedIds.get(id),
       url: wc.getURL() || this.#pendingUrls.get(id) || '',
       title: wc.getTitle() || 'New Tab',
-      favicon: '',
+      favicon: this.#favicons.get(id) || '',
       isLoading: wc.isLoading(),
       canGoBack: wc.canGoBack(),
       canGoForward: wc.canGoForward(),
@@ -118,6 +121,7 @@ export class BrowserTabManager {
 
     wc.on('page-favicon-updated', (_e, favicons) => {
       if (favicons.length > 0) {
+        this.#favicons.set(id, favicons[0]);
         sendUpdate({favicon: favicons[0]});
       }
     });
@@ -172,7 +176,7 @@ export class BrowserTabManager {
     view.setBounds(this.#bounds);
   }
 
-  createTab(url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }): TabState | null {
+  createTab(url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean; persistedId?: string }): TabState | null {
     if (this.#mainWindow.isDestroyed()) return null;
 
     const view = new WebContentsView({
@@ -187,6 +191,9 @@ export class BrowserTabManager {
 
     const id = view.webContents.id;
     this.#tabs.set(id, view);
+    if (options?.persistedId) {
+      this.#persistedIds.set(id, options.persistedId);
+    }
     this.#attachListeners(view);
 
     // Add to the main window's content view
@@ -208,9 +215,13 @@ export class BrowserTabManager {
     }
 
     // Build tab state — for lazy tabs, use provided metadata since the page hasn't loaded
+    if (options?.favicon) {
+      this.#favicons.set(id, options.favicon);
+    }
     const tabState: TabState = options?.lazy
       ? {
         id,
+        persistedId: options.persistedId,
         url: targetUrl,
         title: options.title || 'New Tab',
         favicon: options.favicon || '',
@@ -224,7 +235,9 @@ export class BrowserTabManager {
     // Send tab-created BEFORE selectTab so the renderer has the tab in its
     // array when active-tab-changed arrives (otherwise address bar won't sync).
     this.#sendToRenderer('browser:tab-created', tabState);
-    this.selectTab(id);
+    if (options?.activate !== false) {
+      this.selectTab(id);
+    }
 
     // Auto-focus address bar for blank new tabs
     if (targetUrl === 'about:blank') {
@@ -259,6 +272,8 @@ export class BrowserTabManager {
     view.webContents.close();
     this.#tabs.delete(tabId);
     this.#pendingUrls.delete(tabId);
+    this.#favicons.delete(tabId);
+    this.#persistedIds.delete(tabId);
 
     this.#sendToRenderer('browser:tab-removed', tabId);
 
@@ -401,6 +416,7 @@ export class BrowserTabManager {
       view.webContents.close();
     }
     this.#tabs.clear();
+    this.#persistedIds.clear();
     this.#activeTabId = null;
   }
 }

@@ -159,6 +159,29 @@ class TerminalEventBus {
     }
     this.outputs.clear()
   }
+
+  prunePersistedOutputs(liveTerminalIds: Iterable<string>) {
+    if (!this.USE_LOCAL_STORAGE || typeof window === 'undefined') return
+
+    try {
+      const liveIds = new Set(liveTerminalIds)
+      const prefix = this.STORAGE_KEY_PREFIX
+      const staleKeys: string[] = []
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (!key || !key.startsWith(prefix)) continue
+        const id = key.substring(prefix.length)
+        if (!liveIds.has(id)) staleKeys.push(key)
+      }
+
+      for (const key of staleKeys) {
+        localStorage.removeItem(key)
+      }
+    } catch (e) {
+      console.warn('Failed to prune stale terminal output cache:', e)
+    }
+  }
   
   /**
    * Reclaim localStorage quota without destroying active terminal scrollback.

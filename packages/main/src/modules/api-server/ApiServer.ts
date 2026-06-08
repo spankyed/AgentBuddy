@@ -1,7 +1,9 @@
 import { spawn } from 'child_process';
+import { execFile } from 'child_process';
 import { app, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { randomUUID } from 'crypto';
 import getPort from 'get-port';
 import { AppModule } from '../../AppModule.js';
 import { ModuleContext } from '../../ModuleContext.js';
@@ -25,8 +27,10 @@ export class ApiServer implements AppModule {
   private serverReadyReject?: (error: Error) => void;
   private actualPort?: number;
   private lastError?: { message: string; stack?: string };
+  private readonly startupId = randomUUID();
 
   constructor() {
+    process.env.AGENTBUDDY_STARTUP_ID = this.startupId;
     this.processManager = new ProcessManager({
       onReady: (port) => this.handleServerReady(port),
       onExit: (code, signal) => this.handleProcessExit(code, signal),
@@ -49,8 +53,11 @@ export class ApiServer implements AppModule {
     // Log production startup info
     if (app.isPackaged) {
       logStartupBanner();
+      logInfo('Startup ID:', this.startupId);
       logInfo('AgentBuddy API Server Module Enabled');
       logInfo('Log file location:', getLogger().getLogPath());
+      logInfo('Renderer log file location:', getLogger().getRendererLogPath());
+      logInfo('App events log file location:', getLogger().getAppEventsLogPath());
     }
 
     // Let renderer query current API status on startup (avoids IPC race condition)
@@ -59,6 +66,10 @@ export class ApiServer implements AppModule {
       port: this.actualPort,
       error: this.lastError,
       restartAttempts: this.restartAttempts,
+      startupId: this.startupId,
+      logPath: getLogger().getLogPath(),
+      rendererLogPath: getLogger().getRendererLogPath(),
+      appEventsLogPath: getLogger().getAppEventsLogPath(),
     }));
 
     // Reveal the log file in the system file manager
@@ -101,7 +112,52 @@ export class ApiServer implements AppModule {
     broadcastEvent(API_EVENTS.STARTING);
 
     const paths = getApiPaths();
+    await this.cleanupOrphanedApiChildren(paths.apiPath);
     await this.launchApiServer(paths.apiPath);
+  }
+
+  private async cleanupOrphanedApiChildren(apiPath: string): Promise<void> {
+    if (process.platform !== 'darwin' && process.platform !== 'linux') return;
+
+    const serverPath = path.join(apiPath, 'dist', 'server.js');
+    const psOutput = await new Promise<string>((resolve) => {
+      execFile('ps', ['-axo', 'pid=,ppid=,command='], (error, stdout) => {
+        if (error) {
+          logWarn('[MAIN] Failed to inspect existing API processes before startup:', error.message);
+          resolve('');
+          return;
+        }
+        resolve(stdout);
+      });
+    });
+
+    for (const line of psOutput.split('\n')) {
+      const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/);
+      if (!match) continue;
+
+      const pid = Number(match[1]);
+      const ppid = Number(match[2]);
+      const command = match[3];
+      if (pid === process.pid) continue;
+      if (!command.includes(serverPath)) continue;
+      if (!command.includes('AgentBuddy')) continue;
+
+      if (ppid !== 1) {
+        logWarn('[MAIN] Existing API child found before startup; leaving attached process alone', { pid, ppid });
+        continue;
+      }
+
+      try {
+        process.kill(pid, 'SIGKILL');
+        logWarn('[MAIN] Killed orphaned API child before startup', { pid, ppid, serverPath });
+      } catch (error) {
+        logWarn('[MAIN] Failed to kill orphaned API child before startup', {
+          pid,
+          ppid,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   private async launchApiServer(apiPath: string): Promise<void> {
@@ -141,7 +197,10 @@ export class ApiServer implements AppModule {
     
     const apiProcess = spawn(nodeExecutable, execArgs, {
       cwd: apiPath,
-      env: getEnvironment(port),
+      env: getEnvironment(port, {
+        startupId: this.startupId,
+        logDir: path.dirname(getLogger().getLogPath()),
+      }),
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,
       // windowsHide: false
@@ -155,7 +214,7 @@ export class ApiServer implements AppModule {
     this.actualPort = port;
     this.lastError = undefined;
     logInfo(`[MAIN] API server is running on port ${port}`);
-    broadcastEvent(API_EVENTS.STARTED, { port });
+    broadcastEvent(API_EVENTS.STARTED, { port, startupId: this.startupId });
     
     if (this.serverReadyResolve) {
       this.serverReadyResolve();
@@ -187,7 +246,8 @@ export class ApiServer implements AppModule {
       logWarn(`[MAIN] Restarting API server (attempt ${this.restartAttempts}/${API_CONFIG.MAX_RESTART_ATTEMPTS})...`);
       broadcastEvent(API_EVENTS.RESTARTING, {
         attempt: this.restartAttempts,
-        maxAttempts: API_CONFIG.MAX_RESTART_ATTEMPTS
+        maxAttempts: API_CONFIG.MAX_RESTART_ATTEMPTS,
+        startupId: this.startupId,
       });
 
       setTimeout(() => this.startApiServer(), API_CONFIG.RESTART_DELAY);
@@ -217,12 +277,25 @@ export class ApiServer implements AppModule {
     this.processManager.kill('SIGTERM', API_CONFIG.SHUTDOWN_TIMEOUT);
   }
 
-  public getStatus(): { running: boolean; pid?: number; port?: number; restartAttempts: number } {
+  public getStatus(): {
+    running: boolean;
+    pid?: number;
+    port?: number;
+    restartAttempts: number;
+    startupId: string;
+    logPath: string;
+    rendererLogPath: string;
+    appEventsLogPath: string;
+  } {
     return {
       running: this.processManager.isRunning(),
       pid: this.processManager.getPid(),
       port: this.actualPort,
-      restartAttempts: this.restartAttempts
+      restartAttempts: this.restartAttempts,
+      startupId: this.startupId,
+      logPath: getLogger().getLogPath(),
+      rendererLogPath: getLogger().getRendererLogPath(),
+      appEventsLogPath: getLogger().getAppEventsLogPath(),
     };
   }
 

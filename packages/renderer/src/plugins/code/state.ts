@@ -162,6 +162,7 @@ export type Event =
   | { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
   | { type: 'TOGGLE_PANEL_TERMINAL' }
   | { type: 'TERMINAL_TAB_INFO_CHANGED'; terminalId: string; changes: Record<string, any> }
+  | { type: 'RESTORE_PERSISTED_TABS_SETTLED' }
   | { type: 'NAVIGATE_BACK' }
   | { type: 'NAVIGATE_FORWARD' };
 
@@ -184,9 +185,24 @@ function removeTabLogic(context: Context, system: any, path: string) {
     if (remaining.length === 0) newTabGroups = context.tabGroups.filter(g => g.id !== groupId)
   }
 
+  const pendingTabOrder = context.pendingTabOrder
+    ?.filter(tab => tab.path !== path)
+  let pendingPersistedMetadata = context.pendingPersistedMetadata
+  if (pendingPersistedMetadata?.has(path)) {
+    const next = new Map(pendingPersistedMetadata)
+    next.delete(path)
+    pendingPersistedMetadata = next.size > 0 ? next : undefined
+  }
+
   system.get('explorer').send({ type: 'explorer.CLOSE_FILE', path })
 
-  return { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
+  return {
+    openFiles: newOpenFiles,
+    activeFilePath: newActiveFilePath,
+    tabGroups: newTabGroups,
+    pendingTabOrder: pendingTabOrder && pendingTabOrder.length > 0 ? pendingTabOrder : undefined,
+    pendingPersistedMetadata,
+  }
 }
 
 // Close tab with terminal confirmation, then remove
@@ -257,6 +273,60 @@ function deleteEmptyGroups(
   return tabGroups
 }
 
+function groupIdsForOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]): Set<string> {
+  return new Set(
+    openFiles
+      .map(file => ('groupId' in file ? file.groupId : undefined))
+      .filter((groupId): groupId is string => typeof groupId === 'string' && groupId.length > 0)
+  )
+}
+
+function pruneEmptyTabGroups(
+  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
+  tabGroups: TabGroup[]
+): TabGroup[] {
+  const groupIds = groupIdsForOpenTabs(openFiles)
+  return tabGroups.filter(group => groupIds.has(group.id))
+}
+
+function prunePersistedTabGroups(
+  groups: TabGroup[],
+  tabs: Array<{ groupId?: string }>
+): TabGroup[] {
+  const groupIds = new Set(
+    tabs
+      .map(tab => tab.groupId)
+      .filter((groupId): groupId is string => typeof groupId === 'string' && groupId.length > 0)
+  )
+  return groups.filter(group => groupIds.has(group.id))
+}
+
+function persistCodeTabs(context: Context): void {
+  const tabGroups = pruneEmptyTabGroups(context.openFiles, context.tabGroups)
+  saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
+  saveTabGroups('code-plugin-tab-groups', tabGroups)
+}
+
+function finalizeRestoreState(context: Context): Partial<Context> {
+  if (context.pendingTabOrder === undefined && context.pendingPersistedMetadata === undefined && context.pendingTerminalTabIds === undefined) {
+    return {}
+  }
+
+  const openPaths = new Set(context.openFiles.map(file => file.path))
+  const tabGroups = pruneEmptyTabGroups(context.openFiles, context.tabGroups)
+  const activeFilePath = context.activeFilePath && openPaths.has(context.activeFilePath)
+    ? context.activeFilePath
+    : context.openFiles[0]?.path ?? null
+
+  return {
+    pendingTabOrder: undefined,
+    pendingPersistedMetadata: undefined,
+    pendingTerminalTabIds: undefined,
+    tabGroups,
+    activeFilePath,
+  }
+}
+
 const codeState = setup({
   types: {
     context: {} as Context,
@@ -305,8 +375,13 @@ const codeState = setup({
       if (context.pendingTabOrder !== undefined) {
         return
       }
-      saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
-      saveTabGroups('code-plugin-tab-groups', context.tabGroups)
+      persistCodeTabs(context)
+    },
+    forceSaveTabsAction: ({ context }) => {
+      if (!context.tabsRestored) {
+        return
+      }
+      persistCodeTabs(context)
     },
     addTab: assign(({ event, context }) => {
       const ev = event as { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
@@ -379,6 +454,10 @@ const codeState = setup({
         activeFilePath = openFiles[0].path
       }
 
+      const tabGroups = pendingTabOrder === undefined
+        ? pruneEmptyTabGroups(openFiles, context.tabGroups)
+        : context.tabGroups
+
       return {
         ...context,
         ...(ev.extraUpdates || {}),
@@ -386,6 +465,7 @@ const codeState = setup({
         activeFilePath,
         pendingPersistedMetadata,
         pendingTabOrder,
+        tabGroups,
         tabViewHistory: activeFilePath
           ? pushTabViewHistory(context.tabViewHistory, activeFilePath)
           : context.tabViewHistory
@@ -412,6 +492,10 @@ const codeState = setup({
         }
       }
 
+      if (updates.tabsRestored && updates.pendingTabOrder === undefined) {
+        updates.tabGroups = pruneEmptyTabGroups(updates.openFiles, updates.tabGroups)
+      }
+
       return updates
     }),
     assignFiles: assign({
@@ -423,9 +507,12 @@ const codeState = setup({
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
     },
 
-    restorePersistedTabs: enqueueActions(({ enqueue }) => {
+    restorePersistedTabs: enqueueActions(({ enqueue, self }) => {
       const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
-      const persistedGroups = loadTabGroups('code-plugin-tab-groups')
+      const persistedGroups = prunePersistedTabGroups(
+        loadTabGroups('code-plugin-tab-groups'),
+        persistedTabs
+      )
 
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
@@ -484,10 +571,11 @@ const codeState = setup({
         const promptTabs = persistedTabs.filter(tab => tab.type === 'prompt')
 
         console.log('[Code Plugin] tabs to restore:', {
-          actionTabs,
-          fileTabs,
-          terminalTabs,
-          promptTabs,
+          actionCount: actionTabs.length,
+          fileCount: fileTabs.length,
+          terminalCount: terminalTabs.length,
+          promptCount: promptTabs.length,
+          totalCount: persistedTabs.length,
         })
 
         // Send file paths to restore
@@ -520,6 +608,12 @@ const codeState = setup({
             promptIds
           })
         }
+      })
+
+      enqueue(() => {
+        window.setTimeout(() => {
+          self.send({ type: 'RESTORE_PERSISTED_TABS_SETTLED' })
+        }, 2500)
       })
     }),
     broadcastToAllFeatures: ({ event, system }) => {
@@ -1164,6 +1258,19 @@ const codeState = setup({
       }
     }),
 
+    settlePersistedTabsRestore: assign(({ context }) => {
+      const updates = finalizeRestoreState(context)
+      if (Object.keys(updates).length === 0) return {}
+
+      const nextContext = { ...context, ...updates }
+      persistCodeTabs(nextContext)
+      console.info('[Code Plugin] restored tabs settled', {
+        openTabCount: nextContext.openFiles.length,
+        prunedPendingCount: context.pendingTabOrder?.filter(tab => !nextContext.openFiles.some(file => file.path === tab.path)).length ?? 0,
+      })
+      return updates
+    }),
+
     reorderGroups: assign(({ event, context }) => {
       const ev = event as { type: 'REORDER_GROUPS'; fromIndex: number; toIndex: number }
       const groups = [...context.tabGroups]
@@ -1286,7 +1393,7 @@ const codeState = setup({
           actions: ['changeGroupColor', 'saveTabsAction']
         },
         DELETE_GROUP: {
-          actions: ['deleteGroup', 'saveTabsAction']
+          actions: ['deleteGroup', 'forceSaveTabsAction']
         },
         TOGGLE_GROUP_COLLAPSE: {
           actions: ['toggleGroupCollapse', 'saveTabsAction']
@@ -1371,13 +1478,16 @@ const codeState = setup({
           actions: 'saveActiveFile'
         },
         CLOSE_ACTIVE_TAB: {
-          actions: ['closeActiveTab', 'saveTabsAction']
+          actions: ['closeActiveTab', 'forceSaveTabsAction']
         },
         CLOSE_TAB: {
-          actions: ['closeTab', 'saveTabsAction']
+          actions: ['closeTab', 'forceSaveTabsAction']
         },
         KILL_TERMINAL: {
-          actions: ['killTerminal', 'saveTabsAction']
+          actions: ['killTerminal', 'forceSaveTabsAction']
+        },
+        RESTORE_PERSISTED_TABS_SETTLED: {
+          actions: ['settlePersistedTabsRestore']
         },
         PROMOTE_PREVIEW_TAB: {
           actions: ['promotePreviewTab', 'saveTabsAction']

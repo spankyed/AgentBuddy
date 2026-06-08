@@ -171,12 +171,19 @@ export async function action(
   });
 
   if (prior?.isRunning) {
-    log.debug('action already running — queuing message', { threadId });
-    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
-    if (userMessageId) {
-      services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+    // Handle exists → CLI process is genuinely running, queue the message
+    const handleExists = !!(services.cli as any).claudeCode.getHandle(threadId);
+    if (handleExists) {
+      log.debug('action already running — queuing message', { threadId });
+      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+      if (userMessageId) {
+        services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+      }
+      return { success: true, queued: true };
     }
-    return { success: true, queued: true };
+    // No handle → stale isRunning from a previous process, clear and proceed
+    log.info('[concurrency-guard] stale isRunning (no handle) — clearing', { threadId });
+    setRunning(services, threadId, false);
   }
 
   // If the turn is paused on a permission prompt (isRunning=false but
@@ -193,6 +200,15 @@ export async function action(
 
   // Mark this thread as having an active turn.
   setRunning(services, threadId, true);
+
+  // Race guard: if a parallel invocation (from a duplicate flow actor)
+  // already stored a CLI handle for this thread, bail out to prevent
+  // creating orphaned "Thinking…" placeholder messages.
+  const existingHandle = (services.cli as any).claudeCode.getHandle(threadId);
+  if (existingHandle) {
+    log.warn('[concurrency-guard] parallel invocation detected — bailing', { threadId });
+    return { success: false, error: 'parallel invocation' };
+  }
 
   // Disable fork on user messages in Claude Code threads. Forking from a
   // user message creates a mismatch: the app shows the message but the CLI

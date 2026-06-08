@@ -19,7 +19,7 @@ import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types'
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 
-interface CapturedEvent { type: string; result?: any; error?: string }
+interface CapturedEvent { type: string; result?: any; error?: any }
 
 function makeActor() {
   const sent: CapturedEvent[] = []
@@ -93,7 +93,7 @@ describe('switchNodeHandler', () => {
       expect(ev.result.nodeType).toBe('switch')
       expect(ev.result.branchIndex).toBe(0)
       expect(ev.result.sourceHandle).toBe('branch-0')
-      expect(ev.result.branchLabel).toBe('match-work')
+      expect(ev.result.branchLabel).toBe('match-claude-code')
       expect(ev.result.noMatch).toBeUndefined()
     })
 
@@ -188,7 +188,9 @@ describe('switchNodeHandler', () => {
 
       expect(actor.sent).toHaveLength(1)
       expect(actor.sent[0].type).toBe('ERROR')
-      expect(actor.sent[0].error).toMatch(/no conditions/i)
+      expect(actor.sent[0].error.message).toMatch(/no conditions/i)
+      expect(actor.sent[0].error.source).toBe('brain-switch')
+      expect(actor.sent[0].error.phase).toBe('switch.validate')
     })
 
     it('code-mode predicate that throws is treated as non-match, evaluation continues', () => {

@@ -15,6 +15,7 @@ import services from '@/services';
 import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { FieldContent } from '@/core/shared-types/library';
+import { reportSystemError } from '@/core/shared/system-errors';
 
 const logger = createLogger('threads');
 
@@ -45,6 +46,7 @@ type IncomingThreadsEvents =
   | { type: 'FORWARD_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'GET_ARCHIVED_THREADS' }
   | { type: 'REFRESH_THREADS' }
+  | { type: 'LOAD_MORE_MESSAGES'; threadId: string; cursor: string }
 
 export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
@@ -83,11 +85,38 @@ export type OutgoingThreadsEvents =
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
+  | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 
 export interface ThreadsContext {}
 
 export const threadsDef = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsDef.id;
+
+function reportThreadOperationError(
+  operation: 'create' | 'update' | 'delete' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'status' | 'parent',
+  error: unknown,
+  threadId?: string,
+) {
+  const operationLabels: Record<typeof operation, string> = {
+    create: 'create',
+    update: 'update',
+    delete: 'delete',
+    archive: 'archive',
+    unarchive: 'unarchive',
+    pin: 'pin',
+    unpin: 'unpin',
+    status: 'update status for',
+    parent: 'move',
+  };
+
+  reportSystemError({
+    error,
+    title: `Could not ${operationLabels[operation]} thread`,
+    source: 'threads',
+    operation,
+    entityId: threadId,
+  });
+}
 
 export const threadsSystem = setup({
   types: threadsDef.types,
@@ -154,7 +183,17 @@ export const threadsSystem = setup({
     updateThreadField: ({ system, event }) => {
       const { key, value, threadId } = threadsDef.typeOf('UPDATE_THREAD_FIELD', event);
       const updates = { [key]: value };
-      repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      try {
+        repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      } catch (error) {
+        const operation =
+          key === 'archived' ? (value ? 'archive' : 'unarchive') :
+          key === 'pinned' ? (value ? 'pin' : 'unpin') :
+          'update';
+        logger.warn('Failed to update thread field', { threadId, key, error });
+        reportThreadOperationError(operation, error, threadId);
+        return;
+      }
 
       if (key === 'status') {
         system.get(bus).send(emit(threads, {
@@ -197,7 +236,13 @@ export const threadsSystem = setup({
     updateThreadStatus: ({ system, event }) => {
       const { threadId, status } = threadsDef.typeOf('UPDATE_THREAD_STATUS', event);
       const updates = { status, updatedAt: Date.now() };
-      repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      try {
+        repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      } catch (error) {
+        logger.warn('Failed to update thread status', { threadId, status, error });
+        reportThreadOperationError('status', error, threadId);
+        return;
+      }
 
       system.get(bus).send(emit(threads, {
         type: 'THREAD_UPDATED',
@@ -281,10 +326,16 @@ export const threadsSystem = setup({
     setThreadParent: ({ system, event }) => {
       const { childIds, parentId } = threadsDef.typeOf('SET_THREAD_PARENT', event);
 
-      repository.threadCommands.setParent(
-        parentId as EARS.EntityId,
-        childIds.map(id => id as EARS.EntityId),
-      );
+      try {
+        repository.threadCommands.setParent(
+          parentId as EARS.EntityId,
+          childIds.map(id => id as EARS.EntityId),
+        );
+      } catch (error) {
+        logger.warn('Failed to set thread parent', { childIds, parentId, error });
+        reportThreadOperationError('parent', error, parentId);
+        return;
+      }
 
       // Refresh all thread data on the frontend
       system.get(bus).send(emit(threads, {
@@ -305,6 +356,7 @@ export const threadsSystem = setup({
         repository.threadCommands.delete(threadId as EARS.EntityId);
       } catch (error) {
         logger.warn('Failed to delete thread (may already be deleted)', { threadId, error });
+        reportThreadOperationError('delete', error, threadId);
         return;
       }
 
@@ -432,6 +484,15 @@ export const threadsSystem = setup({
         }));
       }
     },
+    loadMoreMessages: ({ system, event }) => {
+      const { threadId, cursor } = threadsDef.typeOf('LOAD_MORE_MESSAGES', event);
+      const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
+      system.get(bus).send(emit(threads, {
+        type: 'OLDER_MESSAGES_LOADED',
+        threadId,
+        ...result,
+      }));
+    },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = threadsDef.typeOf('OPEN_THREAD_TAB', event);
       try {
@@ -546,6 +607,7 @@ export const threadsSystem = setup({
       }
     },
     forwardUserCommand: ({ system, event }) => {
+      try {
       const { command, text, mode, phase, threadId: providedThreadId, references, cwdOverride } = threadsDef.typeOf('USER_COMMAND', event);
 
       const sanitizedRefs = references ? {
@@ -641,6 +703,9 @@ export const threadsSystem = setup({
           ...(cwdOverride && { cwdOverride }),
         },
       });
+      } catch (err) {
+        logger.error('forwardUserCommand failed', { error: err });
+      }
     },
     forkThread: ({ system, event }) => {
       const { messageId, threadId, threadTopic } = threadsDef.typeOf('FORK_THREAD', event);
@@ -708,6 +773,7 @@ export const threadsSystem = setup({
       }
     },
     revertThread: ({ system, event }) => {
+      try {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsDef.typeOf('REVERT_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
@@ -756,8 +822,12 @@ export const threadsSystem = setup({
           ...(restoreFiles && userCliUuid ? { userCliUuid } : {}),
         },
       });
+      } catch (err) {
+        logger.error('revertThread failed', { error: err });
+      }
     },
     summarizeThread: ({ system, event }) => {
+      try {
       const { messageId, threadId } = threadsDef.typeOf('SUMMARIZE_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
@@ -795,6 +865,9 @@ export const threadsSystem = setup({
         eventType: 'thread.revert',
         payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount, agents, codexDeletedUserMessageCount },
       });
+      } catch (err) {
+        logger.error('summarizeThread failed', { error: err });
+      }
     },
     pauseTurn: ({ system, event }) => {
       const { threadId } = threadsDef.typeOf('PAUSE_TURN', event);
@@ -811,6 +884,7 @@ export const threadsSystem = setup({
       brainActor.send({ type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
+      try {
       const { messageId, threadId, response } = threadsDef.typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
       if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
@@ -842,6 +916,9 @@ export const threadsSystem = setup({
         ...(result.blocks && { blocks: result.blocks }),
         ...(asideText && { asideText })
       }));
+      } catch (err) {
+        logger.error('forwardInteractiveMessageResponse failed', { error: err });
+      }
     },
     deleteMessage: ({ event }) => {
       const { messageId } = threadsDef.typeOf('DELETE_MESSAGE', event);
@@ -878,6 +955,9 @@ export const threadsSystem = setup({
       // Chat/agent global events
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',
+      },
+      LOAD_MORE_MESSAGES: {
+        actions: 'loadMoreMessages',
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',

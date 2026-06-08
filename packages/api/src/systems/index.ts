@@ -10,6 +10,7 @@ import { library, librarySystem, libraryDef } from '@/systems/library/system';
 import { codeDef, systemMachine as codeSystem } from '@/systems/code/system';
 import { notes, notesSystem, notesDef } from '@/systems/notes/system';
 import { browser, browserSystem, browserDef } from '@/systems/browser/system';
+import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 
 const code = codeDef.id;
 
@@ -39,7 +40,7 @@ const allDefs = [
 type AllDefs = (typeof allDefs)[number];
 
 export type IncomingSystemEvents = AllDefs['_incoming'];
-export type OutgoingSystemEvents = AllDefs['_outgoing'];
+export type OutgoingSystemEvents = AllDefs['_outgoing'] | ApplicationOutgoingEvents;
 
 // Derive valid event types from each machine's runtime config
 export const eventValidationMap: Map<string, Set<string>> = new Map(

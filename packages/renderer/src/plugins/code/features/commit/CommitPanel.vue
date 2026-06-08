@@ -844,6 +844,7 @@ const refreshStatus = () => {
 }
 
 const selectFile = (file: GitStatusFile) => {
+  applicationState.send({ type: 'RESTORE_CHAT' })
   commitActor?.send({ type: 'commit.SELECT_FILE', file })
   commitActor?.send({ type: 'commit.VIEW_DIFF', path: file.path, staged: file.staged })
 }
@@ -936,6 +937,7 @@ const cancelRevert = () => {
 }
 
 const openFile = (file: GitStatusFile) => {
+  applicationState.send({ type: 'RESTORE_CHAT' })
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
 }
 

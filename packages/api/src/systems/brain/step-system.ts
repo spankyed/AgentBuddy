@@ -89,6 +89,13 @@ export function createStepNodeSystem(
             });
           }
         }),
+        storeErrorResult: ({ context }) => {
+          if (context.tNodeId && context.error !== undefined) {
+            repository.brainCommands.updateTNodeResult(context.tNodeId, {
+              error: context.error,
+            });
+          }
+        },
         notifyComplete: sendParent(({ context, event }) => ({
           type: 'CHILD_COMPLETED',
           stepId: context.step.id,
@@ -105,6 +112,7 @@ export function createStepNodeSystem(
           stepLabel: context.step.label,
           tNodeId: context.tNodeId,
           result: { error: context.error },
+          failed: true,
           final: false,
           eventTNodeId: context.eventTNodeId,
           isFlow: false,
@@ -138,7 +146,7 @@ export function createStepNodeSystem(
           type: 'final',
         },
         failed: {
-          entry: ['markFailed', 'notifyFailed'],
+          entry: ['storeErrorResult', 'markFailed', 'notifyFailed'],
           type: 'final',
         },
       },

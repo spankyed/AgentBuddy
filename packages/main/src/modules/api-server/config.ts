@@ -44,7 +44,7 @@ export const getApiPaths = () => {
 };
 
 // Environment Configuration
-export const getEnvironment = (port: number) => {
+export const getEnvironment = (port: number, options?: { startupId?: string; logDir?: string }) => {
   const env = { ...process.env };
 
   // Production Electron inherits a minimal PATH missing common binary locations.
@@ -95,6 +95,8 @@ export const getEnvironment = (port: number) => {
     ...env,
     NODE_ENV: app.isPackaged ? 'production' : 'development',
     API_PORT: port.toString(),
+    AGENTBUDDY_STARTUP_ID: options?.startupId,
+    AGENTBUDDY_LOG_DIR: options?.logDir,
     DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
     USER_DATA_PATH: app.isPackaged ? app.getPath('userData') : undefined,
     ELECTRON_RUN_AS_NODE: '1',

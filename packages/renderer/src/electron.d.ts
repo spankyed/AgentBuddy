@@ -43,12 +43,26 @@ declare global {
           port?: number;
           error?: { message: string; stack?: string };
           restartAttempts: number;
+          startupId: string;
+          logPath: string;
+          rendererLogPath: string;
+          appEventsLogPath: string;
         }>;
         relaunch: () => Promise<void>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
+      rendererLog: {
+        write: (entry: {
+          level?: 'debug' | 'info' | 'warn' | 'error';
+          source?: string;
+          message?: string;
+          stack?: string;
+          meta?: unknown;
+          fatal?: boolean;
+        }) => Promise<void>;
+      };
       browser: {
-        createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) => Promise<BrowserTabState | null>;
+        createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean; persistedId?: string }) => Promise<BrowserTabState | null>;
         loadTab: (tabId: number) => Promise<void>;
         closeTab: (tabId: number) => void;
         selectTab: (tabId: number) => void;
@@ -72,11 +86,13 @@ declare global {
         getActiveTab: () => Promise<number | null>;
       };
       apiPort: number;
+      startupId?: string;
     };
   }
 
   interface BrowserTabState {
     id: number;
+    persistedId?: string;
     url: string;
     title: string;
     favicon: string;

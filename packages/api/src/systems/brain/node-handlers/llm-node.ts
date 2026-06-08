@@ -6,6 +6,7 @@ import { executeTemplate } from '@/core/shared/template-executor';
 import { createPromptContext } from '@/core/shared/prompt-context';
 import { EARS } from '@/core/types';
 import { generateText } from '@/services/llm';
+import { reportBrainRuntimeError } from '../runtime-errors';
 
 interface LLMNodeConfig {
   // Core LLM settings
@@ -119,10 +120,20 @@ export async function llmNodeHandler(
       }
     });
   } catch (error) {
-    brainLogger.error('Failed to handle LLM node:', { error, nodeLabel: node.label });
+    const runtimeError = reportBrainRuntimeError({
+      error,
+      source: 'brain-llm',
+      phase: 'llm.execute',
+      flowTNodeId: executionContext.flowTNodeId,
+      tNodeId: tNode.id,
+      nodeId: node.id,
+      nodeLabel: node.label,
+      nodeType: node.nodeType,
+      eventType: executionContext.event?.type,
+    });
     actor.send({
       type: 'ERROR',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: runtimeError
     });
   }
 } 

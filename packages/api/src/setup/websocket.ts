@@ -46,7 +46,16 @@ export function createWebSocketServer() {
   if (process.platform !== 'win32') {
     const originalPpid = process.ppid;
     const parentCheck = setInterval(() => {
-      if (process.ppid !== originalPpid) {
+      let parentGone = process.ppid === 1 || process.ppid !== originalPpid;
+      if (!parentGone) {
+        try {
+          process.kill(originalPpid, 0);
+        } catch {
+          parentGone = true;
+        }
+      }
+
+      if (parentGone) {
         console.log('[API] Parent process died, shutting down');
         clearInterval(parentCheck);
         process.kill(process.pid, 'SIGTERM');

@@ -57,12 +57,21 @@ jobs:
         run: |
           # Wait briefly for the macOS workflow to create the release
           sleep 30
+          assets=(dist/AgentBuddy-*.exe)
+
           # Upload to existing release, or create if mac workflow hasn't yet
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" dist/AgentBuddy-*.exe --clobber
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
           else
             gh release create "$GITHUB_REF_NAME" \
               --generate-notes \
               --title "AgentBuddy $GITHUB_REF_NAME" \
-              dist/AgentBuddy-*.exe
+              "${assets[@]}" || {
+                status=$?
+                if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+                  gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+                else
+                  exit "$status"
+                fi
+              }
           fi

@@ -18,6 +18,11 @@ function getApiPort(): number {
   return 3001;
 }
 
+function getStartupId(): string | undefined {
+  const startupArg = process.argv.find(arg => arg.startsWith('--startup-id='));
+  return startupArg?.split('=')[1];
+}
+
 // Window controls API
 const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
@@ -39,6 +44,7 @@ const fileUtils = {
 
 // Get the API port
 const apiPort = getApiPort();
+const startupId = getStartupId();
 
 // Shell utilities
 const shell = {
@@ -83,6 +89,10 @@ const apiStatus = {
     port?: number;
     error?: { message: string; stack?: string };
     restartAttempts: number;
+    startupId: string;
+    logPath: string;
+    rendererLogPath: string;
+    appEventsLogPath: string;
   }>,
   relaunch: () => ipcRenderer.invoke('app:relaunch'),
   reload: () => ipcRenderer.invoke('app:reload'),
@@ -102,9 +112,21 @@ const apiStatus = {
   },
 };
 
+const rendererLog = {
+  write: (entry: {
+    level?: 'debug' | 'info' | 'warn' | 'error';
+    source?: string;
+    message?: string;
+    stack?: string;
+    meta?: unknown;
+    fatal?: boolean;
+  }) => ipcRenderer.invoke('renderer-log:write', entry),
+};
+
 // Browser API
 interface TabState {
   id: number;
+  persistedId?: string;
   url: string;
   title: string;
   favicon: string;
@@ -116,7 +138,7 @@ interface TabState {
 
 const browser = {
   // Tab management
-  createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) =>
+  createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean; persistedId?: string }) =>
     ipcRenderer.invoke('browser:create-tab', url, options) as Promise<TabState | null>,
   loadTab: (tabId: number) => ipcRenderer.invoke('browser:load-tab', tabId),
   closeTab: (tabId: number) => ipcRenderer.send('browser:close-tab', tabId),
@@ -186,7 +208,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   speechRecognition,
   zoom,
   apiStatus,
+  rendererLog,
   apiPort,
+  startupId,
   browser,
 });
 

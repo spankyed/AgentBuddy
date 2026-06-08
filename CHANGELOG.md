@@ -1,5 +1,140 @@
 -e # Changelog
 
+## v0.3.12 (2026-06-08)
+
+### Features
+- settings): add browser cache clear button to general settings
+- brain): add trackKey-based trigger deduplication
+- browser): use stable tab IDs for sync instead of URL-based deduplication
+- browser): add tab normalization to filter invalid URLs and deduplicate on sync
+- onboarding): open thread chat on onboarding completion
+- api): add system error reporting with structured error events
+- terminal): add restart and kill options to panel terminal context menu
+
+### Fixes
+- brain): deduplicate trigger nodes and harden seed flow replacement
+- code): settle persisted tab restore state and prune stale pending data
+- api): add reenter flag to CLIENT_CONNECTED state transition
+- onboarding): finish onboarding immediately when user picks a thread
+- brain): prevent duplicate flow actors and parallel chat invocations
+- threads): close opposing panel before toggling dashboard or sidebar
+- code): prune orphaned tab groups that no longer have open tabs
+
+### Refactors
+- browser): introduce BrowserTabId branded type and add trackKey to trigger nodes
+- brain): move trigger deduplication to flow registration time
+
+### Other
+- Revert "chore(release): v0.3.12"
+- Revert "chore(release): v0.3.12"
+- Merge pull request #162 from spankyed/as/trigger-dedupe
+- test(api): add dedupe test for parallel tracks with same event but different trackKeys
+- Refine onboarding into focused letter and chat flow
+
+-e # Changelog
+
+## v0.3.11 (2026-06-07)
+
+### Features
+-  add diagnostics bundle generation and enhance logging for production
+-  implement renderer logging and error handling in the application
+-  enhance clean script to remove production logs and update release documentation for debugging
+-  implement findArtifactByThreadAndType function and update threadQueries for compatibility
+
+### Other
+- Revert "chore(release): v0.3.11"
+- chore: remove stale log file reference from release documentation
+
+-e # Changelog
+
+## v0.3.10 (2026-06-07)
+
+### Features
+-  add BrowserBookmark entity and enhance runtime error handling
+
+### Fixes
+- release): improve artifact upload logic for GitHub Releases
+- claude-code): update artifact handling to use chatCommands for stale session state
+- threads): add error handling to user command and thread operations
+- query): handle null values in qx mapping function
+
+### Other
+- Revert "chore(release): v0.3.10"
+- Revert "chore(release): v0.3.10"
+- Revert "chore(release): v0.3.10"
+- Revert "chore(release): v0.3.10"
+- Revert "chore(release): v0.3.10"
+
+-e # Changelog
+
+## v0.3.9 (2026-06-06)
+
+### Features
+- threads): add collapsible sections for pinned and time-based thread groups
+- browser): add bookmark support with bar, dropdown, and persistence
+- browser): dismiss inline completion on delete and preserve while typing forward
+- browser): add bookmark syncing and bookmark bar UI
+- notes): add right-click context menu to create task list
+- notes): add showCollapseIcon setting with indent guidelines
+-  add option to open links in built-in browser instead of system browser
+- WebApp): enhance responsive design with small viewport handling and overlay panel
+- Merge pull request #161 from spankyed/as/cdx-goal
+- codex): add goal-aware turns with prompt injection, auto-continuation, and token accounting
+- codex): add goal prompt injection for thread continuation turns
+- codex): add /cdx-goal command with set/show/edit/pause/resume/clear
+- codex): add goal tracking to codex thread state and commands
+- chat): add resizable thread sidebar panel with keyboard shortcut
+- threads): add cursor-based pagination for chat messages
+- threads): add context menu to set default mode and phase
+- threads): add metadata section with timestamps to thread detail view
+- panel-resizer): add subtle mode with invisible handle that appears on hover
+
+### Fixes
+- reconcile): restore boot-time run-state reconciliation to prevent message queuing
+- scheduler): improve error handling in cron job execution fix(node-handlers): enhance error handling for llm and action node handlers
+- flow-system): skip scheduling for nodes without downstream steps and improve logging for event handling
+- handle-store): ensure abort calls handle promise rejections
+- release): update migration check hint to use npm run command
+- code): restore chat state when selecting or opening files in commit and PR panels
+- claude-code): guard artifact repair with needsContextRepair and reorder update
+- renderer): increase small viewport breakpoint from 768px to 1024px
+- api): reconcile stale Codex run-state on backend startup
+- codex): handle potential promise rejection in requestTurnInterrupt
+- main): enable hardware acceleration mode
+- browser): sync address bar value when active tab is closed
+- threads): ensure threads plugin is active before showing artifacts or details
+- terminal): replace stale openFiles snapshots with surgical parent events
+
+### Refactors
+- threads): move tab group management into ThreadContextMenu component
+- threads): extract SidebarThreadItem into dedicated component
+-  replace boot-time stale state reconciliation with lazy handle-based detection
+- brain): add entry-ready gate to flow system and simplify boot reconciliation
+- threads): split sidebar toggle into separate click and context menu handlers
+- setup): remove boot-time reconcile steps and inline backfill into migration
+- renderer): remove small viewport overlay behavior from inspection panel
+- codex): move goal-continuation gating from action into flow branch
+- threads): rename batch size constants for consistency
+-  extract plugin navigation into shared navigateToPlugin utility
+- navigate): extend navigateToPlugin to support multiple and optional events
+- renderer): extract cross-plugin canvas navigation into shared utility
+- chat): remove unused prompt block from sendQuestionBlock
+
+### Other
+- Revert "chore(release): v0.3.9"
+- build(electron): disable npmRebuild on all platforms
+- style(threads): add tree-line indentation guides to sidebar sections
+- style(threads): increase left padding on thread list items for better indentation
+- Revert "chore(release): v0.3.9"
+- Revert "chore(release): v0.3.9"
+- Revert "chore(release): v0.3.9"
+- Merge pull request #161 from spankyed/as/cdx-goal
+- perf(kanban): add virtual scrolling with per-column render limiting
+- perf(threads): add virtual scrolling to thread sidebar lists
+- chore(deps): add electron-log dependency and update lockfile
+
+-e # Changelog
+
 ## v0.3.8 (2026-06-04)
 
 ### Features

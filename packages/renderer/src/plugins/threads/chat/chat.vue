@@ -2,19 +2,32 @@
   <div class="flex flex-col h-full">
     <!-- Main content: optional inline dashboard + chat -->
     <div class="flex flex-grow overflow-hidden min-h-0" ref="chatContainerRef">
-      <!-- Inline Dashboard (left) -->
-      <div v-if="showInlineDashboard" class="min-w-0 overflow-hidden shrink-0 border-r border-neutral-800" :style="{ width: dashboardWidth + '%' }">
+      <!-- Thread Sidebar (left, hidden during onboarding) -->
+      <ThreadSidebar
+        v-if="showThreadSidebar && !isOnboarding"
+        :style="{ width: sidebarWidthPx + 'px' }"
+        @select-thread="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
+        @close="showThreadSidebar = false"
+      />
+      <PanelResizer
+        v-if="showThreadSidebar && !isOnboarding"
+        orientation="horizontal"
+        @resize="handleDashboardResize"
+        @click="showThreadSidebar = false"
+      />
+      <!-- Inline Dashboard (left, hidden during onboarding) -->
+      <div v-if="showInlineDashboard && !isOnboarding" class="min-w-0 overflow-hidden shrink-0 border-r border-neutral-800" :style="{ width: dashboardWidth + '%' }">
         <AgentCanvas :inline="true" />
       </div>
       <PanelResizer
-        v-if="showInlineDashboard"
+        v-if="showInlineDashboard && !isOnboarding"
         orientation="horizontal"
         @resize="handleDashboardResize"
       />
       <!-- Chat column (right, or full width when dashboard hidden) -->
       <div class="flex flex-col flex-1 min-w-0 overflow-hidden" :class="{ 'pt-2': !showInlineTabs }" style="background-color: rgb(28 28 28)">
         <!-- Inline Tab Bar -->
-        <InlineTabBar :visible="showInlineTabs" @close="showInlineTabs = false" />
+        <InlineTabBar :visible="showInlineTabs && !isOnboarding" @close="showInlineTabs = false" />
         <!-- Shrinkable content area -->
         <div class="flex flex-col flex-grow overflow-hidden min-h-0">
           <!-- Agent Chat Content -->
@@ -24,6 +37,17 @@
                 <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
               </div>
               <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
+                <!-- Load older messages -->
+                <div v-if="messagePagination.hasMore" class="flex justify-center py-3">
+                  <button
+                    v-if="!messagePagination.isLoading"
+                    @click="requestLoadMore"
+                    class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    Load older messages
+                  </button>
+                  <span v-else class="text-xs text-neutral-600">Loading...</span>
+                </div>
                 <!-- Instructions banner -->
                 <div v-if="currentThread?.instructions" class="mb-3 rounded-lg border border-neutral-700/50 bg-neutral-800/50 px-4 py-3">
                   <div class="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5 font-medium">Instructions</div>
@@ -57,6 +81,7 @@
               :prefill-references="prefillReferences"
               :is-busy="isBusy"
               :modes="modes"
+              :default-mode="settings?.defaultMode"
               :hotkeys="hotkeys"
               :quick-prompts="quickPrompts"
               :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
@@ -68,9 +93,11 @@
               @send-command="handleSendCommand"
               @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
               @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
+              @set-default-mode="(mode: string) => updateThreadsSetting(['chat', 'defaultMode'], mode)"
+              @set-default-phase="(phase: string) => updateThreadsSetting(['chat', 'defaultPhase'], phase)"
               @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
               @open-lightbox="openLightbox"
-              @update-quick-prompts="updateQuickPrompts"
+              @update-quick-prompts="(prompts: QuickPrompt[]) => updateThreadsSetting(['chat', 'quickPrompts'], prompts)"
               @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
               @revert="(messageId: string) => handleRevert(messageId, false, true)"
               @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
@@ -79,8 +106,8 @@
             />
           </div>
         </div>
-        <!-- Thread bar — stays within chat column -->
-        <div class="flex-shrink-0 w-full">
+        <!-- Thread bar — stays within chat column (hidden during onboarding) -->
+        <div v-if="!isOnboarding" class="flex-shrink-0 w-full">
           <RecentThreads
             :current-thread="currentThread"
             :recent-threads="recentThreads"
@@ -88,6 +115,7 @@
             @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
             @view-dashboard="handleViewDashboard"
             @toggle-inline-dashboard="handleToggleInlineDashboard"
+            @toggle-thread-sidebar="handleToggleThreadSidebar"
             @toggle-inline-tabs="handleToggleInlineTabs"
             @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
             @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
@@ -118,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 
 const quotes = [
   '"If a chatbot speaks in a forest and no one reads the output, does it still hallucinate?"',
@@ -150,6 +178,7 @@ import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
 import AgentCanvas from '@/plugins/threads/canvas/agent/canvas.vue'
+import ThreadSidebar from './thread-sidebar.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
@@ -162,8 +191,21 @@ import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, Q
 import { trpc } from '@/core/trpc'
 
 const actor: ThreadsState = applicationState.system.get(id);
+const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
+const messagePagination = useSelector(actor, (state) => state.context.messagePagination);
+
+// Scroll preservation for prepending older messages
+const savedScrollHeight = ref(0);
+const isPrependPending = ref(false);
+
+function requestLoadMore() {
+  const el = messagesContainer.value;
+  if (el) savedScrollHeight.value = el.scrollHeight;
+  isPrependPending.value = true;
+  actor.send({ type: 'LOAD_MORE_MESSAGES' });
+}
 
 /** True when no processed user messages follow this one — gates queued/cancelled actions. */
 function isTailMessage(msg: MessageEntity): boolean {
@@ -207,16 +249,30 @@ const statusLine = computed(() => {
 })
 
 const showInlineDashboard = ref(false)
+const showThreadSidebar = ref(false)
 const showInlineTabs = ref(false)
 const chatContainerRef = ref<HTMLElement | null>(null)
 const dashboardWidth = ref(45)
+const sidebarWidthPx = ref(260)
 
 const MIN_PANEL_WIDTH = 400
+const SIDEBAR_MIN_PX = 160
+const SIDEBAR_MAX_PX = 320
 
 function handleDashboardResize(delta: number) {
   const container = chatContainerRef.value
   if (!container) return
   const containerWidth = container.clientWidth
+
+  if (showThreadSidebar.value) {
+    const newPx = sidebarWidthPx.value + delta
+    if (newPx < SIDEBAR_MIN_PX) return
+    const chatPx = containerWidth - newPx
+    if (newPx > SIDEBAR_MAX_PX || chatPx < MIN_PANEL_WIDTH) return
+    sidebarWidthPx.value = newPx
+    return
+  }
+
   const deltaPercent = (delta / containerWidth) * 100
   const newPercent = dashboardWidth.value + deltaPercent
   const newPx = (newPercent / 100) * containerWidth
@@ -228,7 +284,10 @@ function handleDashboardResize(delta: number) {
 const canvasHeight = useSelector(applicationState, (state) => state.context.panelSizes.canvasHeight)
 
 watch(canvasHeight, (height) => {
-  if (height >= 93) showInlineDashboard.value = false
+  if (height >= 93) {
+    showInlineDashboard.value = false
+    showThreadSidebar.value = false
+  }
 })
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
@@ -289,16 +348,21 @@ function onScroll() {
   if (!el) return
   const threshold = 100
   isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+
+  // Trigger load-more when scrolled near the top
+  if (el.scrollTop < 100 && messagePagination.value.hasMore && !isPrependPending.value) {
+    requestLoadMore()
+  }
 }
 
-function updateQuickPrompts(prompts: QuickPrompt[]) {
+function updateThreadsSetting(path: string[], value: unknown) {
   trpc.bus.send.mutate({
     systemId: 'settings',
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
     label: 'threads',
-    path: ['chat', 'quickPrompts'],
-    value: prompts,
+    path,
+    value,
   })
 }
 
@@ -319,8 +383,37 @@ function handleToggleInlineTabs() {
 }
 
 function handleToggleInlineDashboard() {
-  if (!showInlineDashboard.value) expandChatIfCollapsed()
+  if (showThreadSidebar.value) {
+    showThreadSidebar.value = false
+    return
+  }
+  if (!showInlineDashboard.value) {
+    expandChatIfCollapsed()
+  }
   showInlineDashboard.value = !showInlineDashboard.value
+}
+
+// Cmd+E / Ctrl+E toggles thread sidebar
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'e' && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    e.preventDefault()
+    handleToggleThreadSidebar()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+function handleToggleThreadSidebar() {
+  if (showInlineDashboard.value) {
+    showInlineDashboard.value = false
+    return
+  }
+  if (showThreadSidebar.value) {
+    showThreadSidebar.value = false
+    return
+  }
+  expandChatIfCollapsed()
+  showThreadSidebar.value = true
 }
 
 function handleViewDashboard() {
@@ -465,6 +558,15 @@ const prevThreadId = ref(currentThread.value?.id)
 
 watch(allMessages, async (newMsgs, oldMsgs) => {
   await nextTick()
+
+  // Handle scroll preservation for prepended older messages
+  if (isPrependPending.value) {
+    isPrependPending.value = false
+    const el = messagesContainer.value
+    if (el) el.scrollTop += (el.scrollHeight - savedScrollHeight.value)
+    return
+  }
+
   const threadChanged = currentThread.value?.id !== prevThreadId.value
   if (threadChanged) {
     prevThreadId.value = currentThread.value?.id
