@@ -3,7 +3,7 @@ import type { ActionTab } from '../features/actions/state'
 import type { PromptTab } from '../features/prompts/state'
 
 // Simplified interface for persisted tabs
-interface PersistedTab {
+export interface PersistedTab {
   path: string
   type: 'file' | 'terminal' | 'action' | 'prompt'
   terminalId?: string
@@ -17,7 +17,7 @@ interface PersistedTab {
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
 
-interface PersistedTabState {
+export interface PersistedTabState {
   tabs: PersistedTab[]
   activeFilePath: string | null
   panelTerminalId: string | null
@@ -101,10 +101,20 @@ function isPersistedTab(tab: unknown): tab is PersistedTab {
 }
 
 function normalizeTabs(rawTabs: unknown[]): PersistedTab[] {
-  return rawTabs.filter(isPersistedTab).map((tab, index) => ({
-    ...tab,
-    order: typeof tab.order === 'number' ? tab.order : index // backfill order if missing
-  }))
+  const seen = new Set<string>()
+  const normalized: PersistedTab[] = []
+
+  for (const raw of rawTabs) {
+    if (!isPersistedTab(raw)) continue
+    if (seen.has(raw.path)) continue
+    seen.add(raw.path)
+    normalized.push({
+      ...raw,
+      order: typeof raw.order === 'number' ? raw.order : normalized.length
+    })
+  }
+
+  return normalized
 }
 
 export function loadPersistedTabs(): PersistedTabState {
@@ -140,6 +150,24 @@ export function clearPersistedTabs(): void {
     localStorage.removeItem(STORAGE_KEY)
   } catch (error) {
     console.error('Failed to clear persisted tabs:', error)
+  }
+}
+
+export function prunePersistedTabsToOpenPaths(
+  state: PersistedTabState,
+  openPaths: Set<string>
+): PersistedTabState {
+  const tabs = state.tabs
+    .filter(tab => openPaths.has(tab.path))
+    .map((tab, index) => ({ ...tab, order: index }))
+  const activeFilePath = state.activeFilePath && openPaths.has(state.activeFilePath)
+    ? state.activeFilePath
+    : tabs[0]?.path ?? null
+
+  return {
+    ...state,
+    tabs,
+    activeFilePath,
   }
 }
 

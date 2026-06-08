@@ -115,6 +115,8 @@ export const terminalState = setup({
       enqueue(assign({ terminals }))
 
       enqueue(() => {
+        terminalEventBus.prunePersistedOutputs(terminals.map(t => t.id))
+
         const parentContext = getParentContext(self)
         const pendingTabIds: string[] | undefined = parentContext?.pendingTerminalTabIds
 
