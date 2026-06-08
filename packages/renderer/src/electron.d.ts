@@ -62,7 +62,7 @@ declare global {
         }) => Promise<void>;
       };
       browser: {
-        createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) => Promise<BrowserTabState | null>;
+        createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean }) => Promise<BrowserTabState | null>;
         loadTab: (tabId: number) => Promise<void>;
         closeTab: (tabId: number) => void;
         selectTab: (tabId: number) => void;

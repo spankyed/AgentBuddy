@@ -137,7 +137,7 @@ interface TabState {
 
 const browser = {
   // Tab management
-  createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }) =>
+  createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean }) =>
     ipcRenderer.invoke('browser:create-tab', url, options) as Promise<TabState | null>,
   loadTab: (tabId: number) => ipcRenderer.invoke('browser:load-tab', tabId),
   closeTab: (tabId: number) => ipcRenderer.send('browser:close-tab', tabId),

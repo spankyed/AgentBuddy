@@ -7,6 +7,9 @@ import { browserQueries } from './repository/queries';
 import { browserCommands } from './repository/commands';
 import type { SavedTab, SavedBookmark } from './types';
 import './repository/index'; // register repository
+import { createLogger } from '@/core/shared/debug/logger';
+
+const logger = createLogger('browser');
 
 type IncomingBrowserEvents =
   | { type: 'SYNC_TABS'; tabs: SavedTab[] }
@@ -56,6 +59,10 @@ export const browserSystem = setup({
     sendBrowserConnected: () => {
       const savedTabs = browserQueries.allTabs();
       const savedBookmarks = browserQueries.allBookmarks();
+      logger.info('Sending browser restore payload', {
+        savedTabCount: savedTabs.length,
+        savedBookmarkCount: savedBookmarks.length,
+      });
       const wrapped = emit(browser, {
         type: 'BROWSER_CONNECTED',
         savedTabs,

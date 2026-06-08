@@ -10,6 +10,25 @@ import { rootEvents } from '@/core/router/bus-emitter';
 
 const logger = createLogger('app-events');
 
+function summarizeEventForLog(event: IncomingSystemEvents) {
+  if (event.systemId === 'browser' && event.type === 'SYNC_TABS' && 'tabs' in event && Array.isArray(event.tabs)) {
+    return {
+      ...event,
+      tabs: {
+        count: event.tabs.length,
+        sample: event.tabs.slice(0, 5).map(tab => ({
+          url: tab.url,
+          title: tab.title,
+          displayOrder: tab.displayOrder,
+          groupId: tab.groupId,
+        })),
+      },
+    };
+  }
+
+  return event;
+}
+
 export const systemBusRouter = router({
   send: procedure
     .input(z.custom<IncomingSystemEvents>((val) =>
@@ -24,7 +43,7 @@ export const systemBusRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown event "${input.type}" for system "${input.systemId}"` });
       }
 
-      logger.info(`→ Incoming: "${input.type}"`, { event: input });
+      logger.info(`→ Incoming: "${input.type}"`, { event: summarizeEventForLog(input) });
       rootEvents.emitIncoming(input);
     }),
   sub: procedure

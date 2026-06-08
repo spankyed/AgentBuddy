@@ -174,7 +174,7 @@ export class BrowserTabManager {
     view.setBounds(this.#bounds);
   }
 
-  createTab(url?: string, options?: { lazy?: boolean; title?: string; favicon?: string }): TabState | null {
+  createTab(url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean }): TabState | null {
     if (this.#mainWindow.isDestroyed()) return null;
 
     const view = new WebContentsView({
@@ -229,7 +229,9 @@ export class BrowserTabManager {
     // Send tab-created BEFORE selectTab so the renderer has the tab in its
     // array when active-tab-changed arrives (otherwise address bar won't sync).
     this.#sendToRenderer('browser:tab-created', tabState);
-    this.selectTab(id);
+    if (options?.activate !== false) {
+      this.selectTab(id);
+    }
 
     // Auto-focus address bar for blank new tabs
     if (targetUrl === 'about:blank') {

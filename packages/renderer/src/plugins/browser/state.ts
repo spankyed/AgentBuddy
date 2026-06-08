@@ -37,6 +37,12 @@ interface SavedTab {
   groupId?: string;
 }
 
+interface NormalizeTabsResult {
+  tabs: SavedTab[];
+  invalidCount: number;
+  duplicateCount: number;
+}
+
 interface BrowserContext {
   tabs: BrowserTab[];
   activeTabId: number | null;
@@ -106,10 +112,11 @@ function navAction(method: 'goBack' | 'goForward' | 'reload' | 'stop') {
 
 // Debounce tab sync to backend (2s after last change)
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let restoreTabsRemaining = 0;
 
-function syncTabsToBackend(tabs: BrowserTab[]) {
+function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }) {
   if (syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => {
+  const send = () => {
     const persistable = tabs
       .filter(t => t.url && t.url !== 'about:blank' && !t.url.startsWith('data:'))
       .map((t, i) => ({
@@ -121,7 +128,68 @@ function syncTabsToBackend(tabs: BrowserTab[]) {
         groupId: t.groupId,
       }));
     trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
-  }, 2000);
+  };
+
+  if (options?.immediate) {
+    syncTimer = null;
+    send();
+    return;
+  }
+
+  syncTimer = setTimeout(send, 2000);
+}
+
+function isRestorableUrl(url: string | undefined): url is string {
+  if (!url) return false;
+  return url !== 'about:blank' && !url.startsWith('data:');
+}
+
+function normalizeUrlKey(url: string): string {
+  try {
+    return new URL(url).toString();
+  } catch {
+    return url.trim();
+  }
+}
+
+function savedTabKey(tab: SavedTab): string {
+  return `${normalizeUrlKey(tab.url)}\u0000${tab.groupId ?? ''}`;
+}
+
+function browserTabKey(tab: BrowserTab): string {
+  return `${normalizeUrlKey(tab.url)}\u0000${tab.groupId ?? ''}`;
+}
+
+function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
+  const seen = new Set<string>();
+  const normalized: SavedTab[] = [];
+  let invalidCount = 0;
+  let duplicateCount = 0;
+
+  for (const tab of tabs) {
+    if (!isRestorableUrl(tab.url)) {
+      invalidCount += 1;
+      continue;
+    }
+
+    const key = savedTabKey(tab);
+    if (seen.has(key)) {
+      duplicateCount += 1;
+      continue;
+    }
+    seen.add(key);
+
+    normalized.push({
+      url: tab.url,
+      title: tab.title || 'New Tab',
+      favicon: tab.favicon || '',
+      displayOrder: normalized.length,
+      isMuted: Boolean(tab.isMuted),
+      ...(tab.groupId ? { groupId: tab.groupId } : {}),
+    });
+  }
+
+  return { tabs: normalized, invalidCount, duplicateCount };
 }
 
 // Debounce bookmark sync to backend (2s after last change)
@@ -515,24 +583,45 @@ const browserState = setup({
               bookmarks: event.savedBookmarks ?? [],
             })),
             ({ context, event }) => {
-              if (context.tabs.length === 0 && event.savedTabs.length > 0) {
+              const normalized = normalizeSavedTabs(event.savedTabs ?? []);
+              if (normalized.invalidCount > 0 || normalized.duplicateCount > 0) {
+                console.warn('[Browser] Repairing saved tabs before restore', {
+                  rawCount: event.savedTabs?.length ?? 0,
+                  repairedCount: normalized.tabs.length,
+                  invalidCount: normalized.invalidCount,
+                  duplicateCount: normalized.duplicateCount,
+                });
+              }
+
+              if (context.tabs.length === 0 && normalized.tabs.length > 0) {
                 // Set up pending group assignments for restored tabs
                 pendingGroupAssignments.clear();
-                for (const saved of event.savedTabs) {
+                for (const saved of normalized.tabs) {
                   if (saved.groupId) {
                     const queue = pendingGroupAssignments.get(saved.url) ?? [];
                     queue.push(saved.groupId);
                     pendingGroupAssignments.set(saved.url, queue);
                   }
                 }
+
+                restoreTabsRemaining = normalized.tabs.length;
                 // Create tabs lazily — don't load URLs until the user opens the browser plugin
-                for (const saved of event.savedTabs) {
+                Promise.all(normalized.tabs.map(saved =>
                   window.electronAPI?.browser.createTab(saved.url, {
                     lazy: true,
                     title: saved.title,
                     favicon: saved.favicon,
-                  });
-                }
+                    activate: false,
+                  }),
+                )).then((tabs) => {
+                  const firstRestored = tabs.find(tab => tab !== null);
+                  if (firstRestored) {
+                    window.electronAPI?.browser.selectTab(firstRestored.id);
+                  }
+                }).catch((error) => {
+                  console.error('[Browser] Failed to restore saved tabs', error);
+                  restoreTabsRemaining = 0;
+                });
               }
             },
           ],
@@ -549,9 +638,21 @@ const browserState = setup({
                 tab.groupId = queue.shift();
                 if (queue.length === 0) pendingGroupAssignments.delete(tab.url);
               }
+              if (restoreTabsRemaining > 0 && context.tabs.some(existing => browserTabKey(existing) === browserTabKey(tab))) {
+                return {};
+              }
               return { tabs: [...context.tabs, tab] };
             }),
-            ({ context }) => syncTabsToBackend(context.tabs),
+            ({ context }) => {
+              if (restoreTabsRemaining > 0) {
+                restoreTabsRemaining -= 1;
+                if (restoreTabsRemaining === 0) {
+                  syncTabsToBackend(context.tabs);
+                }
+                return;
+              }
+              syncTabsToBackend(context.tabs);
+            },
           ],
         },
         'IPC.TAB_REMOVED': {
@@ -564,13 +665,16 @@ const browserState = setup({
                 tabGroups,
                 activeTabId: context.activeTabId === event.tabId
                   ? (tabs.at(-1)?.id ?? null)
-                  : context.activeTabId,
+                : context.activeTabId,
                 ...(context.activeTabId === event.tabId
                   ? { addressBarValue: tabs.at(-1)?.url ?? '' }
                   : {}),
               };
             }),
-            ({ context }) => persistState(context),
+            ({ context }) => {
+              persistGroupsOnly(context);
+              syncTabsToBackend(context.tabs, { immediate: true });
+            },
           ],
         },
         'IPC.TAB_UPDATED': {
@@ -599,6 +703,7 @@ const browserState = setup({
               }
               // Sync to backend on URL or title changes
               if (event.changes.url || event.changes.title) {
+                if (restoreTabsRemaining > 0) return;
                 syncTabsToBackend(context.tabs);
               }
             },

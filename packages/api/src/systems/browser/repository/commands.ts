@@ -2,15 +2,29 @@ import { tx } from '@/core/ears/helpers/transaction';
 import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
 import type { SavedTab, SavedBookmark } from '../types';
+import { normalizeSavedTabs } from './normalize-tabs';
+import { createLogger } from '@/core/shared/debug/logger';
+
+const logger = createLogger('browser');
 
 export const browserCommands = {
   syncTabs: (tabs: SavedTab[]): void => {
+    const normalized = normalizeSavedTabs(tabs);
+    if (normalized.invalidCount > 0 || normalized.duplicateCount > 0) {
+      logger.warn('Repairing browser tabs during sync', {
+        rawCount: tabs.length,
+        repairedCount: normalized.tabs.length,
+        invalidCount: normalized.invalidCount,
+        duplicateCount: normalized.duplicateCount,
+      });
+    }
+
     const existingIds = qx(EARS.Entity.BrowserTab).ids();
     for (const id of existingIds) {
       tx(id).destroy();
     }
 
-    for (const tab of tabs) {
+    for (const tab of normalized.tabs) {
       const id = tx(EARS.Entity.BrowserTab).id();
       tx(id).batchPut({
         entityType: EARS.Entity.BrowserTab,
