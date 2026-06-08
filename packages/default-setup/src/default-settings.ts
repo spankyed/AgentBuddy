@@ -43,8 +43,8 @@ const settings: SettingsData = {
       visibility: {
         threads: true,
         code: true,
-        library: true,
-        flows: true,
+        library: false,
+        flows: false,
         actions: false,
         prompts: false,
         brain: false,
