@@ -50,6 +50,8 @@ const settings: SettingsData = {
         brain: false,
         database: false,
         logs: false,
+        browser: false,
+        notes: false,
         settings: true,
         // blank: false,
       }
