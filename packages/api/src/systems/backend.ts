@@ -108,6 +108,7 @@ export const backendSystem = setup({
     on: {
       CLIENT_CONNECTED: {
         target: '.connected',
+        reenter: true,
       },
     },
     entry: ['spawnActors', 'setupEventListeners'],
