@@ -11,6 +11,7 @@ import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
 import { sendToBrainSystem } from '@/services/event-emitter';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportBrainRuntimeError } from './runtime-errors';
+import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
 
 /**
  * Flow Actor Registry
@@ -49,6 +50,15 @@ export function clearFlowActorRegistry(): void {
   flowActorRegistry.clear();
 }
 
+function logTriggerDedupeWarnings(warnings: TriggerDedupeWarning[]): void {
+  for (const warning of warnings) {
+    brainLogger.warn(
+      'Duplicate brain trigger trackKey skipped',
+      warning,
+    );
+  }
+}
+
 type TNodeFlowMachineContext = {
   flowId: EARS.EntityId;
   flowLabel: string;
@@ -83,12 +93,6 @@ type TNodeFlowMachineContext = {
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
-};
-
-type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
-  triggerType: 'listener' | 'schedule';
-  scope?: ListenerNode['scope'];
-  cronExpression?: string;
 };
 
 type ChildCompletedEvent =
@@ -181,12 +185,13 @@ export function createFlowNodeSystem(
 
   // Query schedule nodes and merge them into eventNodes as trigger handlers
   const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
-  const allTriggerNodes: FlowTriggerNode[] = [
+  const rawTriggerNodes: FlowTriggerNode[] = [
     ...eventNodes.map((n: ListenerNode): FlowTriggerNode => ({
       id: n.id,
       label: n.label,
       eventType: n.eventType,
       scope: n.scope,
+      trackKey: n.trackKey,
       triggerType: 'listener' as const,
     })),
     ...scheduleNodes.map((n: ScheduleNode): FlowTriggerNode => ({
@@ -194,9 +199,16 @@ export function createFlowNodeSystem(
       label: n.label,
       eventType: `schedule.${n.id}`,
       triggerType: 'schedule',
+      trackKey: n.trackKey,
       cronExpression: n.cronExpression,
     })),
   ];
+  const dedupedTriggers = dedupeTriggerNodes(
+    rawTriggerNodes,
+    { flowId: actualFlowId, flowTNodeId },
+  );
+  logTriggerDedupeWarnings(dedupedTriggers.warnings);
+  const allTriggerNodes = dedupedTriggers.nodes;
 
   const eventHandlers: Record<string, any> = {};
   allTriggerNodes.forEach((node) => {
@@ -229,7 +241,8 @@ export function createFlowNodeSystem(
           brainInspect(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
 
           // Register cron jobs for schedule nodes (skip nodes with no downstream steps)
-          for (const sn of scheduleNodes) {
+          for (const sn of allTriggerNodes.filter((node) => node.triggerType === 'schedule')) {
+            if (!sn.cronExpression) continue;
             const hasSteps = repository.brainQueries.eventAllSteps(sn.id!).length > 0;
             if (!hasSteps) continue;
             registerSchedule(`${flowTNodeId}:${sn.id}`, sn.cronExpression, () => {
@@ -257,10 +270,7 @@ export function createFlowNodeSystem(
             return;
           }
 
-          // Get ALL event nodes matching this event type (not just the first)
-          const matchingEventNodes = context.eventNodes.filter(
-            (n) => n.eventType === eventType,
-          );
+          const matchingEventNodes = context.eventNodes.filter((n) => n.eventType === eventType);
 
           if (matchingEventNodes.length === 0) return;
 

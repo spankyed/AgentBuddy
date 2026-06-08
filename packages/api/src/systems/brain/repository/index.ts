@@ -54,9 +54,22 @@ const TNODE_COLUMNS = [
 
 function buildSpawnedTree(nodeId: EARS.EntityId): TrackEntity {
   const tnode = qx(nodeId).pickOne(TNODE_COLUMNS) as TNodeEntity;
-  const directChildIds = qx(nodeId).linksTo(EARS.RelKind.SPAWNED).ids();
+  const directChildIds = uniqueEntityIds(qx(nodeId).linksTo(EARS.RelKind.SPAWNED).ids());
   const children = directChildIds.map(childId => buildSpawnedTree(childId));
   return { ...tnode, children };
+}
+
+function uniqueEntityIds(ids: EARS.EntityId[]): EARS.EntityId[] {
+  return [...new Set(ids)];
+}
+
+function uniqueNodesById<T extends { id?: EARS.EntityId }>(nodes: T[]): T[] {
+  const seen = new Set<EARS.EntityId>();
+  return nodes.filter(node => {
+    if (!node.id || seen.has(node.id)) return false;
+    seen.add(node.id);
+    return true;
+  });
 }
 
 // Type Guards
@@ -92,7 +105,7 @@ export const brainQueries = {
     return qx(flowId)
       .linksPick(
         EARS.RelKind.CONTAINS,
-        ["id", "nodeType", "label", "eventType", "scope"] as const,
+        ["id", "nodeType", "label", "eventType", "scope", "trackKey"] as const,
         [EARS.Entity.Node]
       )
       .filter(isListenerNode);
@@ -102,7 +115,7 @@ export const brainQueries = {
     return qx(flowId)
       .linksPick(
         EARS.RelKind.CONTAINS,
-        ["id", "nodeType", "label", "cronExpression"] as const,
+        ["id", "nodeType", "label", "cronExpression", "trackKey"] as const,
         [EARS.Entity.Node]
       )
       .filter(isScheduleNode);
@@ -121,10 +134,12 @@ export const brainQueries = {
   },
 
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
-    return qx(eventNodeId)
+    const nodes = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
       .map(link => qx(link.id).pickAll()[0] as unknown as NodeEntity)
       .filter(node => node && node.id);
+
+    return uniqueNodesById(nodes);
   },
   
   // Get next nodes via TRANSITIONS_TO relation
@@ -172,12 +187,14 @@ export const brainQueries = {
     }
     
     // Get all event TNodes tracked by this flow
-    const eventTNodes = qx(flowTNodeId)
-      .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode]) as TNodeEntity[];
+    const eventTNodes = uniqueNodesById(
+      qx(flowTNodeId)
+        .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode]) as TNodeEntity[]
+    );
     
     // For each event, build a hierarchical tree of spawned children
     const eventTracks = eventTNodes.map(eventTNode => {
-      const directChildIds = qx(eventTNode.id!).linksTo(EARS.RelKind.SPAWNED).ids();
+      const directChildIds = uniqueEntityIds(qx(eventTNode.id!).linksTo(EARS.RelKind.SPAWNED).ids());
       const children = directChildIds.map(childId => buildSpawnedTree(childId));
       return { ...eventTNode, children };
     });
