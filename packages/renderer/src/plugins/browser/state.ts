@@ -9,6 +9,7 @@ export const id = 'browser' as const;
 
 export interface BrowserTab {
   id: number;
+  persistedId?: string;
   url: string;
   title: string;
   favicon: string;
@@ -29,6 +30,7 @@ export interface Bookmark {
 }
 
 interface SavedTab {
+  id: string;
   url: string;
   title: string;
   favicon: string;
@@ -40,7 +42,6 @@ interface SavedTab {
 interface NormalizeTabsResult {
   tabs: SavedTab[];
   invalidCount: number;
-  duplicateCount: number;
 }
 
 interface BrowserContext {
@@ -120,6 +121,7 @@ function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }
     const persistable = tabs
       .filter(t => t.url && t.url !== 'about:blank' && !t.url.startsWith('data:'))
       .map((t, i) => ({
+        id: ensurePersistedTabId(t),
         url: t.url,
         title: t.title,
         favicon: t.favicon,
@@ -144,27 +146,17 @@ function isRestorableUrl(url: string | undefined): url is string {
   return url !== 'about:blank' && !url.startsWith('data:');
 }
 
-function normalizeUrlKey(url: string): string {
-  try {
-    return new URL(url).toString();
-  } catch {
-    return url.trim();
-  }
+function createPersistedTabId(): string {
+  return `BrowserTab-${crypto.randomUUID()}`;
 }
 
-function savedTabKey(tab: SavedTab): string {
-  return `${normalizeUrlKey(tab.url)}\u0000${tab.groupId ?? ''}`;
-}
-
-function browserTabKey(tab: BrowserTab): string {
-  return `${normalizeUrlKey(tab.url)}\u0000${tab.groupId ?? ''}`;
+function ensurePersistedTabId(tab: Pick<BrowserTab, 'persistedId'>): string {
+  return tab.persistedId || createPersistedTabId();
 }
 
 function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
-  const seen = new Set<string>();
   const normalized: SavedTab[] = [];
   let invalidCount = 0;
-  let duplicateCount = 0;
 
   for (const tab of tabs) {
     if (!isRestorableUrl(tab.url)) {
@@ -172,14 +164,8 @@ function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
       continue;
     }
 
-    const key = savedTabKey(tab);
-    if (seen.has(key)) {
-      duplicateCount += 1;
-      continue;
-    }
-    seen.add(key);
-
     normalized.push({
+      id: tab.id || createPersistedTabId(),
       url: tab.url,
       title: tab.title || 'New Tab',
       favicon: tab.favicon || '',
@@ -189,7 +175,7 @@ function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
     });
   }
 
-  return { tabs: normalized, invalidCount, duplicateCount };
+  return { tabs: normalized, invalidCount };
 }
 
 // Debounce bookmark sync to backend (2s after last change)
@@ -584,12 +570,11 @@ const browserState = setup({
             })),
             ({ context, event }) => {
               const normalized = normalizeSavedTabs(event.savedTabs ?? []);
-              if (normalized.invalidCount > 0 || normalized.duplicateCount > 0) {
-                console.warn('[Browser] Repairing saved tabs before restore', {
+              if (normalized.invalidCount > 0) {
+                console.warn('[Browser] Dropping invalid saved tabs before restore', {
                   rawCount: event.savedTabs?.length ?? 0,
                   repairedCount: normalized.tabs.length,
                   invalidCount: normalized.invalidCount,
-                  duplicateCount: normalized.duplicateCount,
                 });
               }
 
@@ -612,6 +597,7 @@ const browserState = setup({
                     title: saved.title,
                     favicon: saved.favicon,
                     activate: false,
+                    persistedId: saved.id,
                   }),
                 )).then((tabs) => {
                   const firstRestored = tabs.find(tab => tab !== null);
@@ -632,14 +618,11 @@ const browserState = setup({
             assign(({ context, event }) => {
               if (context.tabs.some(t => t.id === event.tab.id)) return {};
               // Apply pending group assignment from restore
-              const tab = { ...event.tab };
+              const tab = { ...event.tab, persistedId: ensurePersistedTabId(event.tab) };
               const queue = pendingGroupAssignments.get(tab.url);
               if (queue?.length) {
                 tab.groupId = queue.shift();
                 if (queue.length === 0) pendingGroupAssignments.delete(tab.url);
-              }
-              if (restoreTabsRemaining > 0 && context.tabs.some(existing => browserTabKey(existing) === browserTabKey(tab))) {
-                return {};
               }
               return { tabs: [...context.tabs, tab] };
             }),

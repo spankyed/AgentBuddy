@@ -14,6 +14,7 @@ export interface BrowserTabEntity {
 }
 
 export interface SavedTab {
+  id: EARS.EntityId;
   url: string;
   title: string;
   favicon: string;

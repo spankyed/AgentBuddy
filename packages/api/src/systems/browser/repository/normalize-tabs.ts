@@ -1,9 +1,10 @@
+import { EARS } from '@/core/types';
 import type { SavedTab } from '../types';
 
 export interface NormalizeTabsResult {
   tabs: SavedTab[];
   invalidCount: number;
-  duplicateCount: number;
+  duplicateIdCount: number;
 }
 
 function isRestorableUrl(url: string | undefined): url is string {
@@ -11,23 +12,15 @@ function isRestorableUrl(url: string | undefined): url is string {
   return url !== 'about:blank' && !url.startsWith('data:');
 }
 
-function normalizeUrlKey(url: string): string {
-  try {
-    return new URL(url).toString();
-  } catch {
-    return url.trim();
-  }
+function isBrowserTabId(id: string | undefined): id is EARS.EntityId {
+  return Boolean(id?.startsWith(`${EARS.Entity.BrowserTab}-`));
 }
 
-function tabKey(tab: SavedTab): string {
-  return `${normalizeUrlKey(tab.url)}\u0000${tab.groupId ?? ''}`;
-}
-
-export function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
-  const seen = new Set<string>();
+export function normalizeSavedTabs(tabs: Array<SavedTab | Omit<SavedTab, 'id'>>): NormalizeTabsResult {
   const normalized: SavedTab[] = [];
+  const seenIds = new Set<string>();
   let invalidCount = 0;
-  let duplicateCount = 0;
+  let duplicateIdCount = 0;
 
   for (const tab of tabs) {
     if (!isRestorableUrl(tab.url)) {
@@ -35,14 +28,18 @@ export function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
       continue;
     }
 
-    const key = tabKey(tab);
-    if (seen.has(key)) {
-      duplicateCount += 1;
+    const id = isBrowserTabId((tab as SavedTab).id)
+      ? (tab as SavedTab).id
+      : `${EARS.Entity.BrowserTab}-${crypto.randomUUID()}` as EARS.EntityId;
+
+    if (seenIds.has(id)) {
+      duplicateIdCount += 1;
       continue;
     }
-    seen.add(key);
+    seenIds.add(id);
 
     normalized.push({
+      id,
       url: tab.url,
       title: tab.title || 'New Tab',
       favicon: tab.favicon || '',
@@ -52,5 +49,5 @@ export function normalizeSavedTabs(tabs: SavedTab[]): NormalizeTabsResult {
     });
   }
 
-  return { tabs: normalized, invalidCount, duplicateCount };
+  return { tabs: normalized, invalidCount, duplicateIdCount };
 }

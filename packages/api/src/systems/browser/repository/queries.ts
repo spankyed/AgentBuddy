@@ -9,6 +9,7 @@ const logger = createLogger('browser');
 
 function tabToDTO(entity: BrowserTabEntity): SavedTab {
   return {
+    id: entity.id,
     url: entity.url,
     title: entity.title,
     favicon: entity.favicon,
@@ -35,12 +36,12 @@ export const browserQueries = {
       .map(tabToDTO);
     const normalized = normalizeSavedTabs(rawTabs);
 
-    if (normalized.invalidCount > 0 || normalized.duplicateCount > 0) {
+    if (normalized.invalidCount > 0 || normalized.duplicateIdCount > 0) {
       logger.warn('Repairing persisted browser tabs', {
         rawCount: rawTabs.length,
         repairedCount: normalized.tabs.length,
         invalidCount: normalized.invalidCount,
-        duplicateCount: normalized.duplicateCount,
+        duplicateIdCount: normalized.duplicateIdCount,
       });
       browserCommands.syncTabs(normalized.tabs);
     }

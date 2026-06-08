@@ -17,6 +17,7 @@ function summarizeEventForLog(event: IncomingSystemEvents) {
       tabs: {
         count: event.tabs.length,
         sample: event.tabs.slice(0, 5).map(tab => ({
+          id: tab.id,
           url: tab.url,
           title: tab.title,
           displayOrder: tab.displayOrder,
