@@ -182,6 +182,7 @@ export function createFlowNodeSystem(
       label: n.label,
       eventType: n.eventType,
       scope: n.scope,
+      trackKey: n.trackKey,
       triggerType: 'listener' as const,
     })),
     ...scheduleNodes.map((n: ScheduleNode): FlowTriggerNode => ({
@@ -189,6 +190,7 @@ export function createFlowNodeSystem(
       label: n.label,
       eventType: `schedule.${n.id}`,
       triggerType: 'schedule',
+      trackKey: n.trackKey,
       cronExpression: n.cronExpression,
     })),
   ];
@@ -260,7 +262,12 @@ export function createFlowNodeSystem(
           const matchingEventNodes = deduped.nodes;
 
           for (const warning of deduped.warnings) {
-            brainLogger.warn('Duplicate logical brain listener tracks skipped', warning);
+            brainLogger.warn(
+              warning.mode === 'skipped'
+                ? 'Duplicate brain trigger trackKey skipped'
+                : 'Suspicious duplicate legacy brain listener tracks detected',
+              warning,
+            );
           }
 
           if (matchingEventNodes.length === 0) return;

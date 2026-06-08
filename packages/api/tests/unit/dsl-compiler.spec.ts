@@ -38,6 +38,8 @@ describe('compile', () => {
       expect(listenerNodes).toHaveLength(2);
       expect(listenerNodes[0].eventType).toBe('user.created');
       expect(listenerNodes[1].eventType).toBe('user.updated');
+      expect(listenerNodes[0].trackKey).toBe('My Flow:track:0');
+      expect(listenerNodes[1].trackKey).toBe('My Flow:track:1');
     });
 
     it('assigns entry_event role to first track listener node only', () => {

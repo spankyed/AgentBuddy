@@ -88,6 +88,8 @@ export interface ListenerNode extends NodeBase {
   nodeType: 'listener';
   scope: 'global' | 'local' | 'entry'; // global=anywhere, local=current flow, entry=flow entry point
   eventType: string;
+  /** Stable identity for the compiled/source track that produced this trigger. */
+  trackKey?: string;
   debounceMs?: number;                // optional debounce for global and local scopes
 }
 
@@ -119,6 +121,8 @@ export interface KillNode extends NodeBase {
 export interface ScheduleNode extends NodeBase {
   nodeType: 'schedule';
   cronExpression: string; // 5- or 6-field cron, e.g. '0 9 * * 1-5' or '*/5 * * * * *'
+  /** Stable identity for the compiled/source track that produced this trigger. */
+  trackKey?: string;
 }
 
 export interface LLMNode extends NodeBase {

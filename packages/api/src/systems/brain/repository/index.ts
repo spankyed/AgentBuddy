@@ -105,7 +105,7 @@ export const brainQueries = {
     return qx(flowId)
       .linksPick(
         EARS.RelKind.CONTAINS,
-        ["id", "nodeType", "label", "eventType", "scope"] as const,
+        ["id", "nodeType", "label", "eventType", "scope", "trackKey"] as const,
         [EARS.Entity.Node]
       )
       .filter(isListenerNode);
@@ -115,7 +115,7 @@ export const brainQueries = {
     return qx(flowId)
       .linksPick(
         EARS.RelKind.CONTAINS,
-        ["id", "nodeType", "label", "cronExpression"] as const,
+        ["id", "nodeType", "label", "cronExpression", "trackKey"] as const,
         [EARS.Entity.Node]
       )
       .filter(isScheduleNode);
