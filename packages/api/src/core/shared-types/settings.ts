@@ -184,6 +184,11 @@ export interface NotesSettings {
   showCollapseIcon: boolean
 }
 
+// Browser plugin settings
+export interface BrowserSettings {
+  showBookmarksBar: boolean;
+}
+
 // Logs plugin settings
 export interface LogsSettings {
   maxLogs: number; // Maximum number of logs to keep in memory

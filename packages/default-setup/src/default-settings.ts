@@ -199,6 +199,9 @@ const settings: SettingsData = {
       runningRootFlowId: undefined,
       inspectEnabled: false,
     },
+    browser: {
+      showBookmarksBar: true,
+    },
     notes: {
       tasklistPanelPosition: 'left',
       showCollapseIcon: true,

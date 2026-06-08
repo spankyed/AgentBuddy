@@ -48,7 +48,7 @@
     />
 
     <BrowserBookmarkBar
-      v-if="bookmarks.length > 0"
+      v-if="bookmarks.length > 0 && showBookmarksBar"
       :bookmarks="bookmarks"
       @navigate="actor.send({ type: 'BOOKMARK.NAVIGATE', url: $event })"
       @remove="actor.send({ type: 'BOOKMARK.REMOVE', url: $event })"
@@ -78,6 +78,8 @@ import BrowserNavBar from './components/BrowserNavBar.vue';
 import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';
 
 const actor: BrowserState = applicationState.system.get(id);
+const settingsActor = applicationState.system.get('settings');
+const showBookmarksBar = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.browser?.showBookmarksBar ?? true);
 
 const tabs = useSelector(actor, s => s.context.tabs);
 const activeTabId = useSelector(actor, s => s.context.activeTabId);
