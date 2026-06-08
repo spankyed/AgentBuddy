@@ -1,5 +1,38 @@
 -e # Changelog
 
+## v0.3.12 (2026-06-08)
+
+### Features
+- settings): add browser cache clear button to general settings
+- brain): add trackKey-based trigger deduplication
+- browser): use stable tab IDs for sync instead of URL-based deduplication
+- browser): add tab normalization to filter invalid URLs and deduplicate on sync
+- onboarding): open thread chat on onboarding completion
+- api): add system error reporting with structured error events
+- terminal): add restart and kill options to panel terminal context menu
+
+### Fixes
+- brain): deduplicate trigger nodes and harden seed flow replacement
+- code): settle persisted tab restore state and prune stale pending data
+- api): add reenter flag to CLIENT_CONNECTED state transition
+- onboarding): finish onboarding immediately when user picks a thread
+- brain): prevent duplicate flow actors and parallel chat invocations
+- threads): close opposing panel before toggling dashboard or sidebar
+- code): prune orphaned tab groups that no longer have open tabs
+
+### Refactors
+- browser): introduce BrowserTabId branded type and add trackKey to trigger nodes
+- brain): move trigger deduplication to flow registration time
+
+### Other
+- Revert "chore(release): v0.3.12"
+- Revert "chore(release): v0.3.12"
+- Merge pull request #162 from spankyed/as/trigger-dedupe
+- test(api): add dedupe test for parallel tracks with same event but different trackKeys
+- Refine onboarding into focused letter and chat flow
+
+-e # Changelog
+
 ## v0.3.11 (2026-06-07)
 
 ### Features
