@@ -387,11 +387,24 @@ export const flowsCommands = {
       );
     }
 
+    const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
+    const exactDuplicate = existingEdges.some(rel => {
+      if (rel.targetEntity !== targetId) return false;
+      const info = rel.info as { sourceHandle?: string; targetHandle?: string } | undefined;
+      return (info?.sourceHandle || undefined) === (options?.sourceHandle || undefined)
+        && (info?.targetHandle || undefined) === (options?.targetHandle || undefined);
+    });
+    if (exactDuplicate) {
+      throw new RepositoryError(
+        'Edge already exists',
+        RepositoryErrorCode.VALIDATION_ERROR
+      );
+    }
+
     // Validate: source handle must not already have an outgoing edge (except trigger nodes)
     const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
     const isTrigger = sourceAttrs?.nodeType && nodeMetadata[sourceAttrs.nodeType as NodeKind]?.category === 'trigger';
     if (!isTrigger) {
-      const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
       const handleOccupied = existingEdges.some(rel => {
         const relHandle = (rel.info as any)?.sourceHandle;
         if (options?.sourceHandle) return relHandle === options.sourceHandle;

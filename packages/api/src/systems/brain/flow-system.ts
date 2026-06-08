@@ -11,6 +11,7 @@ import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
 import { sendToBrainSystem } from '@/services/event-emitter';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportBrainRuntimeError } from './runtime-errors';
+import { dedupeMatchingTriggerNodes, type FlowTriggerNode } from './trigger-dedupe';
 
 /**
  * Flow Actor Registry
@@ -83,12 +84,6 @@ type TNodeFlowMachineContext = {
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
-};
-
-type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
-  triggerType: 'listener' | 'schedule';
-  scope?: ListenerNode['scope'];
-  cronExpression?: string;
 };
 
 type ChildCompletedEvent =
@@ -258,9 +253,15 @@ export function createFlowNodeSystem(
           }
 
           // Get ALL event nodes matching this event type (not just the first)
-          const matchingEventNodes = context.eventNodes.filter(
-            (n) => n.eventType === eventType,
+          const deduped = dedupeMatchingTriggerNodes(
+            context.eventNodes.filter((n) => n.eventType === eventType),
+            { flowId: context.flowId, flowTNodeId, eventType },
           );
+          const matchingEventNodes = deduped.nodes;
+
+          for (const warning of deduped.warnings) {
+            brainLogger.warn('Duplicate logical brain listener tracks skipped', warning);
+          }
 
           if (matchingEventNodes.length === 0) return;
 

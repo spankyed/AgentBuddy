@@ -14,7 +14,7 @@ export const id = 'brain';
 export type BrainState = ActorRefFrom<typeof brainState>
 
 // Normalized structure for efficient updates
-interface NormalizedTNodeTree {
+export interface NormalizedTNodeTree {
   byId: Record<string, TNodeEntity>;
   rootIds: string[];
   childrenById: Record<string, string[]>;
@@ -74,7 +74,7 @@ export type BrainEvents = UIEvent | SystemEvent | PluginEvent | TrailClickEvent
 const typeOf = safeEvents<BrainEvents>()
 
 // Helper functions for tree normalization
-function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
+export function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
   const normalized: NormalizedTNodeTree = {
     byId: {},
     rootIds: [],
@@ -86,16 +86,21 @@ function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
     const { children, ...nodeWithoutChildren } = node;
     normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
 
-    if (isRoot) {
+    if (isRoot && !normalized.rootIds.includes(node.id)) {
       normalized.rootIds.push(node.id);
     }
 
     // Process children
     if (children && children.length > 0) {
-      normalized.childrenById[node.id] = children.map(child => child.id);
+      normalized.childrenById[node.id] = [
+        ...new Set([
+          ...(normalized.childrenById[node.id] || []),
+          ...children.map(child => child.id),
+        ])
+      ];
       children.forEach(child => processNode(child, false));
     } else {
-      normalized.childrenById[node.id] = [];
+      normalized.childrenById[node.id] ||= [];
     }
   }
 
@@ -103,7 +108,7 @@ function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
   return normalized;
 }
 
-function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
+export function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
   function buildNode(id: string): TrackEntity {
     const node = normalized.byId[id];
     const childIds = normalized.childrenById[id] || [];
@@ -117,6 +122,75 @@ function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
   return normalized.rootIds.map(id => buildNode(id));
 }
 
+function withoutId(ids: string[], id: string): string[] {
+  return ids.filter(existingId => existingId !== id);
+}
+
+function normalizeFlowTNodeData(data: FlowTNodeData): {
+  normalizedTree?: NormalizedTNodeTree;
+  tNodeTree?: TrackEntity[];
+} {
+  if (!data.tNodeTree) {
+    return { normalizedTree: undefined, tNodeTree: undefined };
+  }
+
+  const normalizedTree = normalizeTNodeTree(data.tNodeTree);
+  return {
+    normalizedTree,
+    tNodeTree: denormalizeTNodeTree(normalizedTree),
+  };
+}
+
+export function applyTNodeSpawn(
+  tree: NormalizedTNodeTree | undefined,
+  tNode: TNodeEntity,
+  parentId: string | undefined,
+  currentFlowTNodeId: string | undefined,
+): NormalizedTNodeTree {
+  const isDirectFlowChild = parentId === currentFlowTNodeId;
+
+  if (!tree) {
+    return {
+      byId: { [tNode.id]: tNode },
+      rootIds: (!parentId || isDirectFlowChild) ? [tNode.id] : [],
+      childrenById: { [tNode.id]: [] }
+    };
+  }
+
+  const newTree = {
+    byId: { ...tree.byId },
+    rootIds: [...tree.rootIds],
+    childrenById: { ...tree.childrenById }
+  };
+
+  const alreadyExists = !!newTree.byId[tNode.id];
+  newTree.byId[tNode.id] = tNode;
+  newTree.childrenById[tNode.id] = newTree.childrenById[tNode.id] || [];
+
+  if (alreadyExists) {
+    newTree.rootIds = withoutId(newTree.rootIds, tNode.id);
+    for (const [nodeId, childIds] of Object.entries(newTree.childrenById)) {
+      if (nodeId === tNode.id) continue;
+      newTree.childrenById[nodeId] = withoutId(childIds, tNode.id);
+    }
+  }
+
+  if (parentId && !isDirectFlowChild) {
+    if (!newTree.childrenById[parentId]) {
+      newTree.childrenById[parentId] = [];
+    } else {
+      newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
+    }
+    if (!newTree.childrenById[parentId].includes(tNode.id)) {
+      newTree.childrenById[parentId].push(tNode.id);
+    }
+  } else if (!newTree.rootIds.includes(tNode.id)) {
+    newTree.rootIds.push(tNode.id);
+  }
+
+  return newTree;
+}
+
 const brainState = setup({
   types: {
     context: {} as BrainContext,
@@ -127,10 +201,10 @@ const brainState = setup({
     setBrainData: assign(({ context, event }) => {
       if (context.brainIsDead) return {};
       const typedEv = typeOf('RECEIVE_PLUGIN_DATA', event);
-      const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
+      const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
-        tNodeTree: typedEv.data.tNodeTree,
+        tNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
         flowHierarchy: typedEv.data.flowHierarchy || [],
@@ -138,10 +212,10 @@ const brainState = setup({
     }),
     setTNodeData: assign(({ event }) => {
       const typedEv = typeOf('TNODE_OPENED', event);
-      const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
+      const { normalizedTree, tNodeTree } = normalizeFlowTNodeData(typedEv.data);
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
-        tNodeTree: typedEv.data.tNodeTree,
+        tNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
         flowHierarchy: typedEv.data.flowHierarchy || [],
@@ -158,45 +232,7 @@ const brainState = setup({
         return {};
       }
 
-      // Event TNodes have parentId = flowTNodeId (the flow container), but the flow
-      // container is NOT in the display tree. Event TNodes are root-level items in the
-      // display tree (matching how eventTracks() returns them from the repository).
-      const isDirectFlowChild = parentId === context.flowTNodeId;
-
-      if (!context.normalizedTree) {
-        // Initialize if not present
-        return {
-          normalizedTree: {
-            byId: { [tNode.id]: tNode },
-            rootIds: (!parentId || isDirectFlowChild) ? [tNode.id] : [],
-            childrenById: { [tNode.id]: [] }
-          }
-        };
-      }
-
-      // Clone the normalized tree for immutability
-      const newTree = {
-        byId: { ...context.normalizedTree.byId },
-        rootIds: [...context.normalizedTree.rootIds],
-        childrenById: { ...context.normalizedTree.childrenById }
-      };
-
-      // Add the new node
-      newTree.byId[tNode.id] = tNode;
-      newTree.childrenById[tNode.id] = [];
-
-      if (parentId && !isDirectFlowChild) {
-        // Child of a node that's IN the display tree (e.g., step under event)
-        if (!newTree.childrenById[parentId]) {
-          newTree.childrenById[parentId] = [];
-        } else {
-          newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
-        }
-        newTree.childrenById[parentId].push(tNode.id);
-      } else {
-        // Root node: either no parent, or parent is the flow container
-        newTree.rootIds.push(tNode.id);
-      }
+      const newTree = applyTNodeSpawn(context.normalizedTree, tNode, parentId, context.flowTNodeId);
 
       // Update denormalized tree as well
       const denormalizedTree = denormalizeTNodeTree(newTree);
