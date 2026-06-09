@@ -21,11 +21,6 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
     <div className={styles.root}>
       <div className={styles.appReveal}>
         <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
-          {view.dashboard ? (
-            <div className={styles.surfaceReveal}>
-              <ThreadDashboardSurface state={view.dashboard} />
-            </div>
-          ) : null}
           {!view.dashboard && (frame >= 150 || !view.createForm) ? (
             <div className={styles.surfaceReveal}>
               <ThreadsBoardSurface
@@ -35,8 +30,13 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
               />
             </div>
           ) : null}
+          {view.dashboard ? (
+            <div className={styles.surfaceReveal} style={view.dashboardStyle}>
+              <ThreadDashboardSurface state={view.dashboard} />
+            </div>
+          ) : null}
           {view.createForm ? (
-            <div className={styles.surfaceReveal}>
+            <div className={styles.surfaceReveal} style={view.createFormStyle}>
               <ThreadCreateForm state={view.createForm} />
             </div>
           ) : null}
@@ -126,9 +126,9 @@ function boardCursorForFrame(frame: number):
     }, 'percent');
   }
 
-  if (frame >= 292 && frame < 300) {
+  if (frame >= 292 && frame < 306) {
     return cursorMove(targets, {
-      end: 300,
+      end: 304,
       from: 'activeCard',
       start: 292,
       to: 'inProgressDrop',

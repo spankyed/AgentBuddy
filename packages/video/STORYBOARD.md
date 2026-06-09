@@ -17,6 +17,8 @@ Visible title cards use the original launch-film copy:
 
 Do not rename these headings to story-specific task names like checkout, Supafan, deploy, PR, branch, or release. Those names belong inside the UI only.
 
+The Montage / lockup copy appears exactly once, as the closing full-screen lockup (final shot). The montage itself follows the workflow chapter directly via a short dissolve — there is no separate montage title card, so the line is never shown twice.
+
 ## The Story
 
 **Sam** is a solo indie hacker building **Supafan** — a creator storefront platform where creators sell digital products (courses, templates, assets). Think Gumroad meets Lemon Squeezy. Sam's been building for a few months and is picking up paying creators.
@@ -327,8 +329,10 @@ Quick flashes across plugin surfaces showing the deploy in action.
 ### Database (frames 142–252)
 - Query results referencing checkout/payment messages
 
-### Logs (frames 252–360)
-- Return to deploy logs and completion output. Do not show Settings or mutate default app configuration in the launch film.
+### Browser (frames 252–360)
+- The deployed checkout page loads at `https://supafan.app/checkout`. Do not show Settings or mutate default app configuration in the launch film.
+
+Montage frame ranges above are source frames (the coordinates used by `montageShotViewForFrame` and the audits). The presented shot is shorter: dead air is removed by the per-shot edit decision lists in `src/film/state/timeline.ts`, and each segment boundary crosses with a short dissolve instead of a hard cut.
 
 ---
 

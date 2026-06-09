@@ -1,6 +1,6 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
-import {workflowShotViewForFrame} from '../state/workflow';
+import {workflowBeats, workflowShotViewForFrame} from '../state/workflow';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease} from '../state/timeline';
 import './WorkflowShot.module.css';
@@ -8,18 +8,12 @@ import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 
 const styles = makeStyles('WorkflowShot');
 
-const backdropRevealStartFrame = 156;
-const backdropRevealEndFrame = 238;
-const appRevealEndFrame = 276;
-const chromeRevealStartFrame = 188;
-const chromeRevealEndFrame = 276;
-
 export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = workflowShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
-  const backdropReveal = ease(frame, backdropRevealStartFrame, backdropRevealEndFrame);
-  const frameReveal = ease(frame, backdropRevealStartFrame + 34, appRevealEndFrame);
-  const chromeReveal = ease(frame, chromeRevealStartFrame, chromeRevealEndFrame);
+  const backdropReveal = ease(frame, workflowBeats.backdrop.from, workflowBeats.backdrop.to);
+  const frameReveal = ease(frame, workflowBeats.appFrame.from, workflowBeats.appFrame.to);
+  const chromeReveal = ease(frame, workflowBeats.chrome.from, workflowBeats.chrome.to);
 
   return (
     <div className={styles.root}>

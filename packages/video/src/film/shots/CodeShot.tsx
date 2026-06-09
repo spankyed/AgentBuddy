@@ -43,7 +43,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
           <div style={{height: '100%', opacity: appReveal}}>
             <CodeReview
               leftSurfaceStyle={{
-                opacity: leftSurfaceReveal,
+                opacity: Math.min(leftSurfaceReveal, leftSurfaceSwapFade(frame)),
                 transform: `translateX(${mix(-28, 0, leftSurfaceReveal)}px)`,
               }}
               panelStyle={{
@@ -102,6 +102,16 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
       {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
+}
+
+// The left pane swaps content (diff -> terminal -> blank -> diff) at these
+// frames; dissolve through the swap instead of popping.
+function leftSurfaceSwapFade(frame: number) {
+  for (const boundary of [220, 258, 316]) {
+    if (frame >= boundary - 4 && frame < boundary) return 1 - ease(frame, boundary - 4, boundary);
+    if (frame >= boundary && frame < boundary + 4) return ease(frame, boundary, boundary + 4);
+  }
+  return 1;
 }
 
 function codeCursorForFrame(frame: number): CursorPath | null {

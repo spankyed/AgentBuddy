@@ -100,6 +100,7 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
           rightRail={<NotesRightRail state={view.rightRail} />}
         >
           <NotesLayout
+            editorStyle={{opacity: contentSwapForFrame(frame)}}
             showTaskList={taskListVisible}
             taskListStyle={{
               opacity: taskListEnter,
@@ -139,6 +140,14 @@ function notesHomeCursorForFrame(
   }
 
   return null;
+}
+
+// The editor content swaps notes at 76 (tasklist overview) and 122 (todo);
+// fade the incoming content in instead of popping it.
+function contentSwapForFrame(frame: number) {
+  if (frame >= 122) return ease(frame, 122, 130);
+  if (frame >= 76) return ease(frame, 76, 84);
+  return 1;
 }
 
 function notesEditorCursorForFrame(frame: number): CursorPath | null {

@@ -228,7 +228,9 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
     commitButtonPressed: frame > 204 && frame <= 214,
     commitMenuActionPressed: frame > 128 && frame < 140,
     commitMenuOpen: frame > 112 && frame < 142,
-    commitMessage: frame < 142 ? textReveal('incomplete work', frame, 56, 88) : frame > 184 ? codeShotState.generatedCommitMessage : '',
+    commitMessage: frame < 142
+      ? textReveal('incomplete work', frame, 56, 88)
+      : textReveal(codeShotState.generatedCommitMessage, frame, 184, 206),
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
     ),

@@ -55,6 +55,11 @@ export type MontageShotView =
       surface: 'database';
     };
 
+// Surface switches (and the second database query) land on these source
+// frames; MontageShot dissolves across each boundary instead of hard-cutting.
+export const montageSegmentBoundaries = [72, 142, 196, 252];
+export const montageDissolveFrames = 8;
+
 export function montageShotViewForFrame(frame: number): MontageShotView {
   if (frame < 72) {
     const command = launchFilmStory.command;

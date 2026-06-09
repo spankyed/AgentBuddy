@@ -76,8 +76,13 @@ export type ChatShotView = {
       approval?: ApprovalBlockState;
       markdown: string;
       markdownBlock?: MarkdownBlockState;
+      markdownStyle?: {opacity: number};
       promptBlock?: PromptBlockState;
       thinking?: ThinkingBlockState;
+      thinkingStyle?: {
+        opacity: number;
+        transform: string;
+      };
       toolActivity?: ReturnType<typeof toolActivityViewForFrame>;
     };
     createdAt: string;
@@ -119,7 +124,7 @@ export const launchComposerState: ChatComposerState = {
   ],
   phase: 'Plan',
   quickPrompts: [
-    {id: 'qp-review', text: 'Conduct a thorough review of these changes for bugs and completeness, than report back with findings'},
+    {id: 'qp-review', text: 'Conduct a thorough review of these changes for bugs and completeness, then report back with findings'},
     {id: 'qp-create-ticket', text: 'create the next thread from this plan'},
     {id: 'qp-link-parent', text: 'link this to the parent ticket'},
   ],
@@ -168,7 +173,7 @@ export const chatShotState = {
   response: {text: 'I’ll scope the checkout feature from the tasklist: create the Stripe integration, wire receipt emails, add the discount engine, and prepare the creator payout stub.', from: 306, to: 346},
 };
 
-const reviewQuickPromptText = 'Conduct a thorough review of these changes for bugs and completeness, than report back with findings';
+const reviewQuickPromptText = 'Conduct a thorough review of these changes for bugs and completeness, then report back with findings';
 
 const completedDevThreadResponse = 'The checkout flow is wired. Stripe webhook handles payment_intent.succeeded, receipt emails send via Resend, and discount validation works. All three paths pass integration tests.';
 
@@ -1045,12 +1050,19 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
               ? view.response
               : '',
         markdownBlock: undefined,
+        markdownStyle: showInitialResponse && !recentThreadLoaded && !showQuickPromptResponse
+          ? {opacity: ease(frame, 306, 314)}
+          : undefined,
         promptBlock: undefined,
         thinking: showInitialThinking ? {
           defaultOpen: true,
           label: 'Thinking',
           state: frame >= chatShotState.response.from ? 'done' : 'streaming',
           content: 'Examining the tasklist and screenshot to identify the checkout components and determine the right Stripe integration pattern before creating tickets.',
+        } : undefined,
+        thinkingStyle: showInitialThinking ? {
+          opacity: ease(frame, 282, 290),
+          transform: `translateY(${(1 - ease(frame, 282, 290)) * 10}px)`,
         } : undefined,
         toolActivity: recentThreadLoaded && !showQuickPromptResponse
           ? completedDevThreadActivityViewForFrame(frame)

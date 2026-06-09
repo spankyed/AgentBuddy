@@ -244,9 +244,10 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
       editor: {
         afterLines: [],
         beforeLines: newNoteCopy.lines.map((text, index) => ({
-          caretVisible: index === newNoteCopy.lines.length - 1 && frame < 68,
+          caretVisible: index === newNoteCopy.lines.length - 1 && frame < 70,
           id: `new-note-${index}`,
-          text: textReveal(text, frame, 8 + index * 18, 34 + index * 18),
+          // Lines type one after another, never simultaneously.
+          text: textReveal(text, frame, 6 + index * 22, 26 + index * 22),
         })),
         title: {
           icon: newNoteCopy.title.icon,
@@ -284,7 +285,7 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
     editor: {
       afterLines: todoNoteCopy.afterLines.map((text, index) => ({
         id: `todo-after-${index}`,
-        text: todoComplete ? text : '',
+        text: textReveal(text, frame, 144 + index * 8, 162 + index * 8),
       })),
       beforeLines: todoNoteCopy.beforeLines.map((text, index) => ({
         caretVisible: index === todoNoteCopy.beforeLines.length - 1 && !todoComplete,

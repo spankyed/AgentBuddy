@@ -18,8 +18,10 @@ type ThreadConversationProps = {
     approval?: ApprovalBlockState;
     markdown: string;
     markdownBlock?: MarkdownBlockState;
+    markdownStyle?: CSSProperties;
     promptBlock?: PromptBlockState;
     thinking?: ThinkingBlockState;
+    thinkingStyle?: CSSProperties;
     toolActivity?: {
       rowOpacities?: number[];
       state: ToolActivityBlockState;
@@ -82,11 +84,15 @@ function AssistantMessage({createdAt, message, style}: {createdAt?: number | str
           </div>
         ) : null}
         {message.thinking ? (
-          <div className={styles.interactionBlocks}>
+          <div className={styles.interactionBlocks} style={message.thinkingStyle}>
             <ThinkingBlock state={message.thinking} />
           </div>
         ) : null}
-        {message.markdown.trim() ? <MarkdownViewer content={message.markdown} /> : null}
+        {message.markdown.trim() ? (
+          <div style={message.markdownStyle}>
+            <MarkdownViewer content={message.markdown} />
+          </div>
+        ) : null}
         {hasInteractionBlocks ? (
           <div className={styles.interactionBlocks}>
             {message.markdownBlock ? <MarkdownBlock state={message.markdownBlock} /> : null}

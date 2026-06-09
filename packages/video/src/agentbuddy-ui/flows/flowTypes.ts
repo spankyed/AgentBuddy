@@ -77,6 +77,8 @@ export type FlowNodeFormState = {
 
 export type FlowEdgeState = {
   animated?: boolean;
+  // 0..1 draw-in progress for film reveals; undefined renders the full edge.
+  drawProgress?: number;
   from: string;
   fromExit?: number;
   kind?: 'transitions_to' | 'references' | 'contains';

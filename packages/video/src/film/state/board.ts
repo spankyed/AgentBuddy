@@ -9,7 +9,9 @@ export type BoardShotView = {
   board: KanbanBoardState;
   breadcrumbs: string[];
   createForm?: ThreadCreateFormState;
+  createFormStyle?: {opacity: number};
   dashboard?: ThreadDashboardSurfaceState;
+  dashboardStyle?: {opacity: number};
   header: ThreadsHeaderState;
   mode: 'dashboard' | 'create' | 'board';
   movingCard: {
@@ -178,6 +180,10 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
   const dashboardThreadPinned = frame >= 60;
   const createVisible = frame >= 88 && frame < 264;
   const createFrame = Math.max(0, frame - 88);
+  // Crossfade dashboard -> create form -> board list instead of hard pops.
+  const formEnter = ease(frame, 88, 96);
+  const formExit = ease(frame, 256, 264);
+  const dashboardShown = frame < 96;
   const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
   const droppedCard = frame >= boardShotState.movingCard.motion.to;
   const boardColumns = boardShotState.board.columns.map(column => {
@@ -227,7 +233,8 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     },
     breadcrumbs: frame < 96 ? ['Threads', 'Dashboard'] : createVisible ? ['Threads', 'New Thread'] : boardShotState.breadcrumbs,
     createForm,
-    dashboard: dashboardVisible
+    createFormStyle: createVisible ? {opacity: Math.min(formEnter, 1 - formExit)} : undefined,
+    dashboard: dashboardShown
       ? {
           ...boardShotState.dashboard,
           pinPressed: frame >= 52 && frame < 60,
@@ -241,6 +248,7 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
           hoveredTabId: frame >= 24 && frame < 66 ? launchFilmStory.threads.stripePaymentIntegration.id : undefined,
         }
       : undefined,
+    dashboardStyle: dashboardShown ? {opacity: 1 - formEnter} : undefined,
     header: {
       ...boardShotState.header,
       activeView: dashboardVisible ? 'dashboard' : frame < 282 ? 'list' : 'kanban',

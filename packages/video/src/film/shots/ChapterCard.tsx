@@ -22,7 +22,7 @@ export function ChapterCard({
 }) {
   const titleIn = ease(frame, -12, 24);
   const subtitleIn = ease(frame, 12, 42);
-  const exit = ease(frame, Math.max(54, duration - 4), duration);
+  const exit = ease(frame, duration - 16, duration - 4);
   const opacity = Math.min(titleIn, 1 - exit);
   const y = mix(18, -10, exit) + mix(10, 0, titleIn);
 

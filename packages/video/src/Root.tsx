@@ -316,7 +316,7 @@ export const RemotionRoot = () => {
       <Composition id="CodeSurfaceDemo" component={CodeSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="NotesSurfaceDemo" component={NotesSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ChatSurfaceDemo" component={ChatSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={360} fps={fps} width={1440} height={900} />
+      <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={260} fps={fps} width={1440} height={900} />
     </>
   );
 };

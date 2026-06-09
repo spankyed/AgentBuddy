@@ -65,15 +65,40 @@ export const flowsListMenuState: FlowsListState = {
   menuFlowId: launchFilmStory.flow.id,
 };
 
+// Sequential reveal beats (260-frame shot). One focal point at a time:
+// listener -> switch -> drawn edge -> canvas/chrome/palette/controls ->
+// follow-on actions with drawn edges -> settle.
+export const workflowBeats = {
+  listener: {from: 0, to: 14},
+  switch: {from: 24, to: 56},
+  edgeListenerSwitch: {from: 48, to: 76},
+  backdrop: {from: 72, to: 104},
+  appFrame: {from: 82, to: 116},
+  chrome: {from: 96, to: 128},
+  palette: {from: 126, to: 156},
+  controls: {from: 140, to: 168},
+  action1: {from: 168, to: 192},
+  edgeAction1: {from: 184, to: 208},
+  action2: {from: 204, to: 228},
+  edgeAction2: {from: 220, to: 244},
+  settle: {from: 244, to: 260},
+} as const;
+
 export function workflowStateForFrame(frame: number): FlowCanvasState {
   const flow = releaseAutomationWorkflow.flow;
-  const paletteReveal = ease(frame, 156, 238);
-  const canvasControlsReveal = ease(frame, 252, 310);
-  const switchReveal = ease(frame, 102, 148);
-  const deleteActionReveal = ease(frame, 306, 336);
-  const logActionReveal = ease(frame, 326, 354);
+  const beats = workflowBeats;
+  const listenerReveal = ease(frame, beats.listener.from, beats.listener.to);
+  const paletteReveal = ease(frame, beats.palette.from, beats.palette.to);
+  const canvasControlsReveal = ease(frame, beats.controls.from, beats.controls.to);
+  const switchReveal = ease(frame, beats.switch.from, beats.switch.to);
+  const action1Reveal = ease(frame, beats.action1.from, beats.action1.to);
+  const action2Reveal = ease(frame, beats.action2.from, beats.action2.to);
   const listener = {
     ...flow.nodes[0],
+    style: {
+      opacity: listenerReveal,
+      transform: `translate(-50%, -50%) translateY(${mix(8, 0, listenerReveal)}px) scale(${mix(0.985, 1, listenerReveal)})`,
+    },
   };
   const switchNode = {
     ...flow.nodes[1],
@@ -82,30 +107,31 @@ export function workflowStateForFrame(frame: number): FlowCanvasState {
       transform: `translate(-50%, -50%) translateX(${mix(-64, 0, switchReveal)}px) scale(${mix(0.97, 1, switchReveal)})`,
     },
   };
-  const deleteActionNode = {
+  const action1Node = {
     ...flow.nodes[2],
     style: {
-      opacity: deleteActionReveal,
-      transform: `translate(-50%, -50%) translateX(${mix(-42, 0, deleteActionReveal)}px) scale(${mix(0.985, 1, deleteActionReveal)})`,
+      opacity: action1Reveal,
+      transform: `translate(-50%, -50%) translateX(${mix(-42, 0, action1Reveal)}px) scale(${mix(0.985, 1, action1Reveal)})`,
     },
   };
-  const logActionNode = {
+  const action2Node = {
     ...flow.nodes[3],
     style: {
-      opacity: logActionReveal,
-      transform: `translate(-50%, -50%) translateX(${mix(-42, 0, logActionReveal)}px) scale(${mix(0.985, 1, logActionReveal)})`,
+      opacity: action2Reveal,
+      transform: `translate(-50%, -50%) translateX(${mix(-42, 0, action2Reveal)}px) scale(${mix(0.985, 1, action2Reveal)})`,
     },
   };
   const nodes = [
     listener,
-    ...(frame >= 86 ? [switchNode] : []),
-    ...(frame >= 302 ? [deleteActionNode] : []),
-    ...(frame >= 322 ? [logActionNode] : []),
+    ...(frame >= beats.switch.from ? [switchNode] : []),
+    ...(frame >= beats.action1.from ? [action1Node] : []),
+    ...(frame >= beats.action2.from ? [action2Node] : []),
   ];
+  const edgeDraw = (beat: {from: number; to: number}) => ease(frame, beat.from, beat.to);
   const edges = [
-    ...(frame >= 150 ? [flow.edges[0]] : []),
-    ...(frame >= 316 ? [flow.edges[1]] : []),
-    ...(frame >= 338 ? [flow.edges[2]] : []),
+    ...(frame >= beats.edgeListenerSwitch.from ? [{...flow.edges[0], drawProgress: edgeDraw(beats.edgeListenerSwitch)}] : []),
+    ...(frame >= beats.edgeAction1.from ? [{...flow.edges[1], drawProgress: edgeDraw(beats.edgeAction1)}] : []),
+    ...(frame >= beats.edgeAction2.from ? [{...flow.edges[2], drawProgress: edgeDraw(beats.edgeAction2)}] : []),
   ];
   return {
     ...flow,

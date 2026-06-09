@@ -19,6 +19,7 @@ type NotesLayoutProps = {
       text: string;
     };
   };
+  editorStyle?: CSSProperties;
   showTaskList?: boolean;
   taskListStyle?: CSSProperties;
   taskList: {
@@ -34,7 +35,7 @@ type NotesLayoutProps = {
 
 // Mirrors the notes plugin main panel: task list on the left, note editor on
 // the right. Film-specific note text is passed in from film/state via shots.
-export function NotesLayout({editor, showTaskList = true, taskList, taskListStyle}: NotesLayoutProps) {
+export function NotesLayout({editor, editorStyle, showTaskList = true, taskList, taskListStyle}: NotesLayoutProps) {
   return (
     <div className={styles.root}>
       {showTaskList ? (
@@ -42,7 +43,7 @@ export function NotesLayout({editor, showTaskList = true, taskList, taskListStyl
           <TaskListPanel activeId={taskList.activeId} items={taskList.items} showCompleted={taskList.showCompleted} title={taskList.title} />
         </div>
       ) : null}
-      <NoteEditor afterLines={editor.afterLines} beforeLines={editor.beforeLines} image={editor.image} title={editor.title} />
+      <NoteEditor afterLines={editor.afterLines} beforeLines={editor.beforeLines} image={editor.image} style={editorStyle} title={editor.title} />
     </div>
   );
 }

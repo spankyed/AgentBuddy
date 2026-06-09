@@ -40,6 +40,7 @@ export function FlowEdge({
   const hasSiblings = allEdges.filter(sibling => sibling.to === edge.to).length >= 2;
   const isAnimated = edge.animated === true;
   const path = elbowPath(a, b, hasSiblings);
+  const drawing = edge.drawProgress !== undefined && edge.drawProgress < 1;
   return (
     <g>
       <path className={styles.edgeHitArea} d={path} vectorEffect="non-scaling-stroke" />
@@ -47,6 +48,8 @@ export function FlowEdge({
       <path
         className={cx(styles.edge, edge.selected && styles.selectedEdge, isAnimated && styles.animatedEdge)}
         d={path}
+        pathLength={drawing ? 1 : undefined}
+        style={drawing ? {strokeDasharray: `${Math.max(0, edge.drawProgress ?? 0)} 1`} : undefined}
         vectorEffect="non-scaling-stroke"
       />
     </g>

@@ -14,11 +14,11 @@ import {
 import {codeReviewViewForFrame, codeShotState, codeShotViewForFrame} from '../src/film/state/code';
 import {finalShotState, finalViewForFrame} from '../src/film/state/final';
 import {launchFilmStory} from '../src/film/state/launchStory';
-import {montageShotViewForFrame} from '../src/film/state/montage';
+import {montageDissolveFrames, montageSegmentBoundaries, montageShotViewForFrame} from '../src/film/state/montage';
 import {notesHomeNewNoteButtonTarget} from '../src/film/shots/notesGeometry';
 import {notesEditorViewForFrame, notesHomeState, notesHomeViewForFrame, notesRightRailState, notesTaskListItems} from '../src/film/state/notes';
-import {shots} from '../src/film/state/timeline';
-import {workflowStateForFrame} from '../src/film/state/workflow';
+import {cutFrames, shotCuts, shotSourceDurations, shots, type ContentShotId} from '../src/film/state/timeline';
+import {workflowBeats, workflowStateForFrame} from '../src/film/state/workflow';
 
 type Check = {
   area: ProductArea | 'final';
@@ -173,6 +173,8 @@ function notesEditorStoryboardPass() {
   const checkoutNote = notesEditorViewForFrame(70);
   const tasklistOverview = notesEditorViewForFrame(120);
   const receiptTodo = notesEditorViewForFrame(150);
+  // The completion line types in over frames 144-162; probe after it settles.
+  const receiptDone = notesEditorViewForFrame(164);
 
   return checkoutNote.breadcrumbs.join(' > ') === 'Notes > Supafan > Checkout Notes'
     && checkoutNote.editor.title.text === 'Checkout notes'
@@ -183,7 +185,7 @@ function notesEditorStoryboardPass() {
     && tasklistOverview.editor.beforeLines.map(line => line.text).join('|') === `Stripe webhooks|current|receipt emails|${launchFilmStory.threads.addDiscountCodeSupport.title}`
     && tasklistOverview.editor.afterLines[0]?.text === 'Checkout work stays beside the note instead of becoming another app.'
     && receiptTodo.editor.beforeLines.map(line => line.text).join('|') === 'Configure Resend transport|Render order summary template|Keep the linked checkout context visible'
-    && receiptTodo.editor.afterLines[0]?.text === 'Completed from the tasklist panel.';
+    && receiptDone.editor.afterLines[0]?.text === 'Completed from the tasklist panel.';
 }
 
 function codeStoryboardContinuityPass() {
@@ -229,7 +231,7 @@ function codeWorktreeAndStashFlowPass() {
 }
 
 function workflowMontageContinuityPass() {
-  const workflow = workflowStateForFrame(360);
+  const workflow = workflowStateForFrame(workflowBeats.settle.to - 4);
   const montageConversation = montageShotViewForFrame(60);
   const montageLogs = montageShotViewForFrame(120);
   const montageDatabase = montageShotViewForFrame(220);
@@ -253,10 +255,14 @@ function chapterCopyMatchesStoryboardPass() {
     ['notes-title', 'More than just a note taker', undefined],
     ['code-title', 'More than just an IDE', undefined],
     ['workflow-title', 'More than just a workflow engine', undefined],
-    ['montage-title', 'AgentBuddy is a revolution', 'to put the full power of AI into the hands of the people'],
   ] as const;
 
-  return expectedChapters.every(([id, title, subtitle]) => {
+  // The revolution lockup copy appears exactly once, in the final shot
+  // (pinned by the final-lockup check) — no duplicate montage title card.
+  const lockupCopyHeldOnce = !shots.some(shot => shot.id === 'montage-title')
+    && finalShotState.title === 'AgentBuddy is a revolution';
+
+  return lockupCopyHeldOnce && expectedChapters.every(([id, title, subtitle]) => {
     const chapter = shots.find(shot => shot.id === id)?.chapter;
     return chapter?.title === title && chapter.subtitle === subtitle;
   });
@@ -295,6 +301,45 @@ function browserMontageActionPass() {
     && loaded.browser.addressFocused === false
     && loaded.browser.addressBarValue === 'https://supafan.app/checkout'
     && loaded.browser.tabs.find(tab => tab.id === 3)?.title === 'Supafan Checkout';
+}
+
+function shotDurationsMatchCutsPass() {
+  const contentShotIds: ContentShotId[] = ['chat', 'board', 'notes', 'code', 'workflow', 'montage', 'final'];
+  return contentShotIds.every(id => {
+    const duration = shots.find(shot => shot.id === id)?.duration;
+    const removed = (shotCuts[id] ?? []).reduce((sum, cut) => sum + cut.remove, 0);
+    return duration === shotSourceDurations[id] - removed;
+  });
+}
+
+function frameCutsWellFormedPass() {
+  return Object.entries(shotCuts).every(([id, cuts]) => {
+    const sorted = cuts.every((cut, index) => cut.remove > 0
+      && (index === 0 || cuts[index - 1].at + cuts[index - 1].remove <= cut.at));
+    const duration = shots.find(shot => shot.id === id)?.duration ?? 0;
+    const sourceDuration = shotSourceDurations[id as ContentShotId];
+    let monotonic = true;
+    let previous = -1;
+    for (let frame = 0; frame < duration; frame += 1) {
+      const source = cutFrames(frame, cuts);
+      if (source <= previous || source >= sourceDuration) monotonic = false;
+      previous = source;
+    }
+    return sorted && monotonic && cutFrames(duration - 1, cuts) === sourceDuration - 1;
+  });
+}
+
+function montageDissolveIntegrityPass() {
+  const cuts = shotCuts.montage ?? [];
+  const clearOfWindows = cuts.every(cut => montageSegmentBoundaries.every(boundary =>
+    cut.at + cut.remove <= boundary - 4 || cut.at >= boundary + montageDissolveFrames + 2,
+  ));
+  const dissolvesSwapContent = montageSegmentBoundaries.every(boundary => {
+    const outgoing = montageShotViewForFrame(boundary - 1);
+    const incoming = montageShotViewForFrame(boundary + montageDissolveFrames);
+    return JSON.stringify(outgoing) !== JSON.stringify(incoming);
+  });
+  return clearOfWindows && dissolvesSwapContent;
 }
 
 const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
@@ -430,7 +475,7 @@ const checks: Check[] = [
     area: 'code',
     message: 'code shot generates commit message',
     pass: codeReviewViewForFrame(142).commitMessage === ''
-      && codeReviewViewForFrame(185).commitMessage === codeShotState.generatedCommitMessage,
+      && codeReviewViewForFrame(208).commitMessage === codeShotState.generatedCommitMessage,
   },
   {
     area: 'code',
@@ -475,15 +520,15 @@ const checks: Check[] = [
   {
     area: 'workflow',
     message: 'workflow shot reveals blueprint nodes and edges',
-    pass: workflowStateForFrame(0).nodes.length !== workflowStateForFrame(260).nodes.length
-      && workflowStateForFrame(0).edges.length !== workflowStateForFrame(260).edges.length,
+    pass: workflowStateForFrame(0).nodes.length !== workflowStateForFrame(workflowBeats.settle.to - 4).nodes.length
+      && workflowStateForFrame(0).edges.length !== workflowStateForFrame(workflowBeats.settle.to - 4).edges.length,
   },
   {
     area: 'workflow',
     message: 'workflow shot stays blueprint-only without runtime status or animated node selection',
     pass: workflowStateForFrame(130).selectedNodeId == null
       && workflowStateForFrame(130).editingNodeId == null
-      && !JSON.stringify(workflowStateForFrame(260)).includes('"status"'),
+      && !JSON.stringify(workflowStateForFrame(workflowBeats.settle.to - 4)).includes('"status"'),
   },
   {
     area: 'workflow',
@@ -506,10 +551,10 @@ const checks: Check[] = [
     area: 'workflow',
     message: 'workflow palette overlays without moving canvas viewport',
     pass: workflowStateForFrame(150).viewport == null
-      && workflowStateForFrame(260).viewport == null
-      && workflowStateForFrame(156).chrome?.paletteStyle?.opacity === 0
-      && Number(workflowStateForFrame(157).chrome?.paletteStyle?.opacity) > 0
-      && Number(workflowStateForFrame(200).chrome?.paletteStyle?.opacity) > 0
+      && workflowStateForFrame(workflowBeats.settle.to - 4).viewport == null
+      && workflowStateForFrame(workflowBeats.palette.from).chrome?.paletteStyle?.opacity === 0
+      && Number(workflowStateForFrame(workflowBeats.palette.from + 1).chrome?.paletteStyle?.opacity) > 0
+      && Number(workflowStateForFrame(Math.round((workflowBeats.palette.from + workflowBeats.palette.to) / 2)).chrome?.paletteStyle?.opacity) > 0
       && !String(workflowStateForFrame(200).chrome?.paletteStyle?.width ?? '').includes('px'),
   },
   {
@@ -539,6 +584,21 @@ const checks: Check[] = [
     area: 'final',
     message: 'final shot animates subtitle',
     pass: finalViewForFrame(0).subtitleStyle.opacity !== finalViewForFrame(100).subtitleStyle.opacity,
+  },
+  {
+    area: 'final',
+    message: 'every shot duration equals its source duration minus its edit cuts',
+    pass: shotDurationsMatchCutsPass(),
+  },
+  {
+    area: 'final',
+    message: 'frame cuts are monotonic, endpoint-exact, and sorted',
+    pass: frameCutsWellFormedPass(),
+  },
+  {
+    area: 'workflow',
+    message: 'no montage cut intersects a dissolve window and dissolves swap surfaces',
+    pass: montageDissolveIntegrityPass(),
   },
 ];
 

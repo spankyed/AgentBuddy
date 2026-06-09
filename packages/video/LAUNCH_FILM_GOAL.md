@@ -35,6 +35,7 @@ Before adding or changing a shot:
 
 - The visible chapter headings are the original launch-film copy, not story-state labels:
   AgentBuddy is...; More than just an AI chat; More than just a note taker; More than just an IDE; More than just a workflow engine; AgentBuddy is a revolution / to put the full power of AI into the hands of the people.
+  The revolution line appears exactly once, as the closing lockup; the montage has no separate title card.
 - The Sam/Supafan checkout story is internal continuity for UI content only. Do not rename title cards to checkout, branch, deploy, PR, or release-specific copy.
 - Every app-like surface must be source-backed by renderer code, renderer styles, or current app screenshots.
 - Shared replicas live in `packages/video/src/agentbuddy-ui/**`; shots compose those replicas instead of creating local fake UI.
