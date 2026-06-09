@@ -365,29 +365,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }, {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "completed" | "pending" | "in_progress";
+        status: "pending" | "in_progress" | "completed";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "completed" | "pending" | "in_progress";
+            status: "pending" | "in_progress" | "completed";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -399,19 +399,19 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     token_budget: z.ZodOptional<z.ZodNumber>;
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
-    action: "update" | "create" | "get";
-    status?: "complete" | "active" | "paused" | undefined;
+    action: "create" | "get" | "update";
+    status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
-    action: "update" | "create" | "get";
-    status?: "complete" | "active" | "paused" | undefined;
+    action: "create" | "get" | "update";
+    status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
-        action: "update" | "create" | "get";
-        status?: "complete" | "active" | "paused" | undefined;
+        action: "create" | "get" | "update";
+        status?: "active" | "paused" | "complete" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;

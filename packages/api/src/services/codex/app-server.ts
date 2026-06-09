@@ -175,6 +175,9 @@ export class CodexAppServer {
   // ── Thread management ─────────────────────────────────────────────────
 
   async startThread(params: ThreadStartParams): Promise<{ threadId: string; model: string; cwd: string }> {
+    if (!params.cwd) {
+      throw new Error('startThread requires a cwd — refusing to fall back to process.cwd()')
+    }
     const result = await this._request('thread/start', {
       ...(params.cwd && { cwd: params.cwd }),
       ...(params.model && { model: params.model }),
