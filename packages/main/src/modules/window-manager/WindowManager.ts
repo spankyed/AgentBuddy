@@ -19,6 +19,7 @@ class WindowManager implements AppModule {
   readonly #openDevTools;
   readonly #apiServer?: ApiServer;
   readonly #splashScreen?: SplashScreen;
+  readonly #popoutWindows = new Map<string, BrowserWindow>();
 
   constructor({initConfig, openDevTools = false, apiServer, splashScreen}: {
     initConfig: AppInitConfig, 
@@ -135,6 +136,28 @@ class WindowManager implements AppModule {
     ipcMain.on('window:close', () => {
       const window = BrowserWindow.getFocusedWindow();
       window?.close();
+    });
+
+    ipcMain.handle('plugin:popout', async (event, pluginId: string, title?: string) => {
+      if (!/^[a-zA-Z0-9_-]+$/.test(pluginId)) {
+        throw new Error('Invalid plugin id');
+      }
+
+      const existing = this.#popoutWindows.get(pluginId);
+      if (existing && !existing.isDestroyed()) {
+        if (existing.isMinimized()) {
+          existing.restore();
+        }
+        existing.show();
+        existing.focus();
+        return;
+      }
+
+      const popout = await this.createPopoutWindow(pluginId, title);
+      this.#popoutWindows.set(pluginId, popout);
+      popout.on('closed', () => this.#popoutWindows.delete(pluginId));
+      popout.show();
+      popout.focus();
     });
 
     ipcMain.on('zoom:changed', (event, zoomFactor: number) => {
@@ -460,6 +483,80 @@ class WindowManager implements AppModule {
     } catch (error) {
       console.error('[MAIN] Failed to load renderer:', error);
       await this.closeSplashWithDelay();
+      throw error;
+    }
+
+    return browserWindow;
+  }
+
+  async createPopoutWindow(pluginId: string, pluginTitle?: string): Promise<BrowserWindow> {
+    const iconSuffix = app.isPackaged ? '' : '-dev';
+    const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
+                     process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
+    const iconPath = join(process.cwd(), 'build', 'resources', iconName);
+    const apiPort = this.#apiServer?.getStatus().port || 3001;
+    const startupId = this.#apiServer?.getStatus().startupId;
+    const title = `${WINDOW_CONFIG.POPOUT_TITLE_PREFIX}-${pluginId}`;
+
+    const browserWindow = new BrowserWindow({
+      show: false,
+      width: 1180,
+      height: 820,
+      minWidth: 720,
+      minHeight: 480,
+      center: true,
+      title,
+      icon: iconPath,
+      titleBarStyle: 'hidden',
+      ...(process.platform === 'darwin' ? { trafficLightPosition: {x: 14, y: 10} } : {}),
+      frame: false,
+      transparent: false,
+      vibrancy: 'under-window',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        webviewTag: false,
+        preload: this.#preload.path,
+        additionalArguments: [
+          `--api-port=${apiPort}`,
+          ...(startupId ? [`--startup-id=${startupId}`] : []),
+        ],
+      },
+    });
+
+    browserWindow.webContents.on('before-input-event', (event, input) => {
+      const isCloseShortcut = input.key.toLowerCase() === 'w' && (
+        process.platform === 'darwin' ? input.meta : input.control
+      );
+
+      if (isCloseShortcut) {
+        event.preventDefault();
+        browserWindow.close();
+      }
+    });
+
+    contextMenu({ window: browserWindow });
+    this.attachRendererDiagnostics(browserWindow);
+
+    const query = {
+      popout: 'plugin',
+      pluginId,
+      ...(pluginTitle ? { title: pluginTitle } : {}),
+    };
+
+    try {
+      if (this.#renderer instanceof URL) {
+        const url = new URL(this.#renderer.href);
+        for (const [key, value] of Object.entries(query)) {
+          url.searchParams.set(key, value);
+        }
+        await browserWindow.loadURL(url.href);
+      } else {
+        await browserWindow.loadFile(this.#renderer.path, { query });
+      }
+    } catch (error) {
+      console.error('[MAIN] Failed to load popout renderer:', error);
       throw error;
     }
 

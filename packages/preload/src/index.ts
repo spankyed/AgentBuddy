@@ -30,6 +30,10 @@ const windowControls = {
   close: () => ipcRenderer.send('window:close'),
 };
 
+const plugins = {
+  popout: (pluginId: string, title?: string) => ipcRenderer.invoke('plugin:popout', pluginId, title) as Promise<void>,
+};
+
 // File utilities
 const fileUtils = {
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
@@ -202,6 +206,7 @@ const browser = {
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
+  plugins,
   fileUtils,
   shell,
   media,

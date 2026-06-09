@@ -68,6 +68,10 @@ window.addEventListener('unhandledrejection', (event) => {
   reportRendererError('window.unhandledrejection', event.reason);
 });
 
+const query = new URLSearchParams(window.location.search);
+const isPluginPopout = query.get('popout') === 'plugin';
+const initialPluginId = isPluginPopout ? query.get('pluginId') ?? undefined : undefined;
+
 // --- Pre-actor initialization ---
 window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
@@ -81,6 +85,8 @@ export const applicationState = createActor(createApplicationState(), {
   input: {
     defaultPlugin,
     plugins,
+    initialPluginId,
+    restoreLastActivePlugin: !isPluginPopout,
   }
 }).start();
 
