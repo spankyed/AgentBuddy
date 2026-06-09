@@ -2,8 +2,84 @@ import type { AppModule } from '../../AppModule.js';
 import type { ModuleContext } from '../../ModuleContext.js';
 import { protocol, net } from 'electron';
 import { resolveMediaFilePath } from './paths.js';
-import { existsSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
+import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+const MIME_TYPES: Record<string, string> = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.ogv': 'video/ogg',
+  '.ogg': 'video/ogg',
+};
+
+function getContentType(filePath: string): string {
+  return MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+}
+
+function parseRange(rangeHeader: string, fileSize: number): { start: number; end: number } | null {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!match) return null;
+
+  const [, startValue, endValue] = match;
+  if (!startValue && !endValue) return null;
+
+  if (!startValue) {
+    const suffixLength = Number(endValue);
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) return null;
+    const start = Math.max(fileSize - suffixLength, 0);
+    return { start, end: fileSize - 1 };
+  }
+
+  const start = Number(startValue);
+  const end = endValue ? Number(endValue) : fileSize - 1;
+
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)) return null;
+  if (start < 0 || end < start || start >= fileSize) return null;
+
+  return { start, end: Math.min(end, fileSize - 1) };
+}
+
+function streamFileResponse(filePath: string, request: Request): Response {
+  const fileSize = statSync(filePath).size;
+  const contentType = getContentType(filePath);
+  const rangeHeader = request.headers.get('range');
+
+  if (rangeHeader) {
+    const range = parseRange(rangeHeader, fileSize);
+    if (!range) {
+      return new Response(null, {
+        status: 416,
+        headers: {
+          'Accept-Ranges': 'bytes',
+          'Content-Range': `bytes */${fileSize}`,
+        },
+      });
+    }
+
+    const contentLength = range.end - range.start + 1;
+    return new Response(createReadStream(filePath, range) as unknown as BodyInit, {
+      status: 206,
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Length': String(contentLength),
+        'Content-Range': `bytes ${range.start}-${range.end}/${fileSize}`,
+        'Content-Type': contentType,
+      },
+    });
+  }
+
+  return new Response(createReadStream(filePath) as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      'Accept-Ranges': 'bytes',
+      'Content-Length': String(fileSize),
+      'Content-Type': contentType,
+    },
+  });
+}
 
 class MediaProtocol implements AppModule {
   enable({ app }: ModuleContext): void {
@@ -20,6 +96,7 @@ class MediaProtocol implements AppModule {
       {
         scheme: 'local-file',
         privileges: {
+          standard: true,
           secure: true,
           supportFetchAPI: true,
           bypassCSP: true,
@@ -56,7 +133,7 @@ class MediaProtocol implements AppModule {
           return new Response('Not found', { status: 404 });
         }
 
-        return net.fetch(pathToFileURL(filePath).toString());
+        return streamFileResponse(filePath, request);
       });
     });
   }
