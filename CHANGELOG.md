@@ -1,5 +1,31 @@
 -e # Changelog
 
+## v0.3.13 (2026-06-09)
+
+### Features
+- api): add migration to backfill browser and notes plugin visibility defaults
+- Merge pull request #163 from spankyed/as/popout-plugins
+- window-manager): add plugin popout window support
+- media-protocol): add HTTP range request support for media streaming
+- browser): add setting to toggle bookmarks bar visibility
+- default-setup): add browser and notes to default settings
+- default-setup): hide library and flows sections by default
+- threads): collapse all sidebar sections by default on first load
+
+### Fixes
+- threads): remove early return to allow inline dashboard toggle after closing sidebar
+- api): generalize glob expansion in resolve-cli to support arbitrary path suffixes
+
+### Refactors
+- toolbar): simplify context menu for settings plugin
+- media-protocol): replace custom streaming with net.fetch
+- threads): add watchEffect import to thread-sidebar component
+
+### Other
+- Merge pull request #163 from spankyed/as/popout-plugins
+
+-e # Changelog
+
 ## v0.3.12 (2026-06-08)
 
 ### Features
