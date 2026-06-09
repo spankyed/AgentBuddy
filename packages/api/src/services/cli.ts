@@ -16,7 +16,7 @@ import os from 'os'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
-  lastDirectoryOpened?: string | null
+  baseDirectory?: string | null
 }
 
 export interface CliServiceType {
@@ -103,7 +103,7 @@ function createCliService(): CliServiceType {
 
   function resolveCwd(): string {
     const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings | undefined
-    let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || null
+    let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
     }

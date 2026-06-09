@@ -119,7 +119,7 @@ async function handleSessions(
   const effectiveCwd = prior?.cwdOverride
     || prior?.cwd
     || codeSettings?.defaultBaseDirectory
-    || codeSettings?.lastDirectoryOpened
+    || codeSettings?.baseDirectory
     || undefined;
   const cwdOpts = effectiveCwd ? { cwd: effectiveCwd } : undefined;
 

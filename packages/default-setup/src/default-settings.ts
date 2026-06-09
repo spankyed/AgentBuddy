@@ -69,7 +69,7 @@ const settings: SettingsData = {
       },
       restoreTerminals: true,
       defaultBaseDirectory: null,
-      lastDirectoryOpened: null,
+      baseDirectory: null,
       enableShellIntegration: false,
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,

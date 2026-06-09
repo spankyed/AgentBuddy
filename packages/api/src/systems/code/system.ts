@@ -8,11 +8,11 @@
  * - Parent broadcasts directory changes to all children
  *
  * Persistence (saved to settings):
+ * - baseDirectory: Current base directory (tracked automatically on navigation)
  * - defaultBaseDirectory: User's explicit preferred default (set via settings UI)
- * - lastDirectoryOpened: Last directory user navigated to (tracked automatically)
  *
  * Priority on startup:
- *   defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
+ *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 import { setup, enqueueActions, assign } from 'xstate'
 import { emit } from '@/core/shared/actor-helpers'
@@ -71,7 +71,7 @@ export interface Context {
 
 /**
  * Resolves the initial base directory on system startup.
- * Priority chain: defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
+ * Priority chain: baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 function resolveInitialDirectory(
   codeSettings: CodeSettings | undefined,
@@ -83,8 +83,8 @@ function resolveInitialDirectory(
   }
 
   // Fall back to last directory they were in
-  if (codeSettings?.lastDirectoryOpened) {
-    return codeSettings.lastDirectoryOpened
+  if (codeSettings?.baseDirectory) {
+    return codeSettings.baseDirectory
   }
 
   // Fall back to first project directory
@@ -166,7 +166,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          repository.settingsCommands.updateSettings('plugin', 'code', ['lastDirectoryOpened'], ev.path)
+          repository.settingsCommands.updateSettings('plugin', 'code', ['baseDirectory'], ev.path)
         }
         return ev.path
       },
@@ -229,7 +229,7 @@ export const systemMachine = setup({
       if (ev.settings.defaultBaseDirectory &&
           ev.settings.defaultBaseDirectory !== context.baseDirectory) {
         // Apply the new default base directory
-        // Mark as non-navigation so it doesn't overwrite lastDirectoryOpened
+        // Mark as non-navigation so it doesn't overwrite baseDirectory
         self.send({
           type: 'SET_BASE_DIRECTORY',
           path: ev.settings.defaultBaseDirectory,
