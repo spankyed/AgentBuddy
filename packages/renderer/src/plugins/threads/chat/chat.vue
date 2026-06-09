@@ -385,7 +385,6 @@ function handleToggleInlineTabs() {
 function handleToggleInlineDashboard() {
   if (showThreadSidebar.value) {
     showThreadSidebar.value = false
-    return
   }
   if (!showInlineDashboard.value) {
     expandChatIfCollapsed()
