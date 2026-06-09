@@ -361,7 +361,11 @@ export async function action(
     });
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
-    // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
+    // For new sessions, fallback chain:
+    //   cwdOverride — explicit directory from "New Thread in Project" menu (one-shot)
+    //   prior?.cwd — thread already had a session (e.g. expired/broken); keep its project dir
+    //                even if the user navigated elsewhere since then
+    //   lastDirectoryOpened / defaultBaseDirectory — current base directory from settings
     sessionCwd = resumeSessionId
       ? prior?.cwd
       : (cwdOverride || prior?.cwd || codeSettings?.lastDirectoryOpened || codeSettings?.defaultBaseDirectory || undefined);
