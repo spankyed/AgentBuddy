@@ -8,6 +8,9 @@ declare global {
         maximize: () => void;
         close: () => void;
       };
+      plugins: {
+        popout: (pluginId: string, title?: string) => Promise<void>;
+      };
       fileUtils: {
         selectDirectory: () => Promise<string | null>;
         selectPath: (options?: {

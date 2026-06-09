@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { Settings as SettingsIcon, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
+import { Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
 import CanvasArea from '@/core/components/layout/canvas-area.vue'
 import ChatArea from '@/core/components/layout/chat-area.vue'
@@ -128,10 +128,15 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
 
   const defaultItems: ContextMenuItem[] = [
     {
+      label: 'Pop Out Plugin',
+      icon: ExternalLink,
+      event: { type: 'APP_POPOUT_PLUGIN', pluginId: currentPluginId.value },
+      separator: pluginItems.length > 0,
+    },
+    {
       label: 'Settings',
       icon: SettingsIcon,
       event: { type: 'APP_OPEN_PLUGIN_SETTINGS', pluginId: currentPluginId.value },
-      separator: pluginItems.length > 0,
     },
     {
       label: 'Show Canvas',
@@ -182,6 +187,13 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])
+    return
+  }
+
+  if (event.type === 'APP_POPOUT_PLUGIN') {
+    const plugin = plugins.value.find((item) => item.id === event.pluginId)
+      ?? activePlugin.value
+    window.electronAPI?.plugins?.popout(plugin.id, plugin.label)
     return
   }
 
