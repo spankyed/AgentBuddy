@@ -798,8 +798,9 @@ type SystemEvents = {
     type: 'CLIENT_CONNECTED';
 };
 
+type BrowserTabId = `${EARS.Entity.BrowserTab}-${string}`;
 interface SavedTab {
-    id: EARS.EntityId;
+    id: BrowserTabId;
     url: string;
     title: string;
     favicon: string;
