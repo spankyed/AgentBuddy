@@ -541,6 +541,9 @@ const codeState = setup({
       // Mark tabs as restored immediately (even if empty)
       // Collect terminal tab IDs to restore later (when TERMINALS_LISTED arrives from backend)
       const terminalTabIds = persistedTabs.filter(t => t.type === 'terminal').map(t => t.terminalId!)
+      const restoredPanelTerminal = persistedPanelTerminal && terminalTabIds.includes(persistedPanelTerminal)
+        ? null
+        : persistedPanelTerminal
 
       enqueue.assign({
         tabsRestored: true,
@@ -548,8 +551,8 @@ const codeState = setup({
         pendingPersistedMetadata: metadataMap.size > 0 ? metadataMap : undefined,
         tabGroups: persistedGroups,
         activeFilePath: seededActive,
-        panelTerminalId: persistedPanelTerminal,
-        panelTerminalExpanded: persistedExpanded,
+        panelTerminalId: restoredPanelTerminal,
+        panelTerminalExpanded: restoredPanelTerminal ? persistedExpanded : false,
         pendingTerminalTabIds: terminalTabIds.length > 0 ? terminalTabIds : undefined
       })
 

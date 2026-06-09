@@ -3,6 +3,8 @@
 ## v0.3.12 (2026-06-08)
 
 ### Features
+- tabs): enhance terminal tab persistence and sanitization logic
+- media-protocol): add HTTP range request support for video streaming
 - settings): add browser cache clear button to general settings
 - brain): add trackKey-based trigger deduplication
 - browser): use stable tab IDs for sync instead of URL-based deduplication
@@ -21,10 +23,12 @@
 - code): prune orphaned tab groups that no longer have open tabs
 
 ### Refactors
+- backend): restructure CLIENT_CONNECTED event handling in state machine
 - browser): introduce BrowserTabId branded type and add trackKey to trigger nodes
 - brain): move trigger deduplication to flow registration time
 
 ### Other
+- Revert "chore(release): v0.3.12"
 - Revert "chore(release): v0.3.12"
 - Revert "chore(release): v0.3.12"
 - Merge pull request #162 from spankyed/as/trigger-dedupe

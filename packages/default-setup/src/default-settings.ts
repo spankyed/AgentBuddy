@@ -43,13 +43,15 @@ const settings: SettingsData = {
       visibility: {
         threads: true,
         code: true,
-        library: true,
-        flows: true,
+        library: false,
+        flows: false,
         actions: false,
         prompts: false,
         brain: false,
         database: false,
         logs: false,
+        browser: false,
+        notes: false,
         settings: true,
         // blank: false,
       }
@@ -196,6 +198,9 @@ const settings: SettingsData = {
     brain: {
       runningRootFlowId: undefined,
       inspectEnabled: false,
+    },
+    browser: {
+      showBookmarksBar: true,
     },
     notes: {
       tasklistPanelPosition: 'left',

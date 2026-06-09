@@ -105,19 +105,22 @@ export const backendSystem = setup({
       threads: [],
     },
     initial: 'disconnected',
-    on: {
-      CLIENT_CONNECTED: {
-        target: '.connected',
-        reenter: true,
-      },
-    },
     entry: ['spawnActors', 'setupEventListeners'],
     states: {
       disconnected: {
+        on: {
+          CLIENT_CONNECTED: {
+            target: 'connected',
+          },
+        },
       },
       connected: {
         entry: 'sendConnected',
         on: {
+          CLIENT_CONNECTED: {
+            target: 'connected',
+            reenter: true,
+          },
           INCOMING: {
             actions: 'routeIncoming'
           },

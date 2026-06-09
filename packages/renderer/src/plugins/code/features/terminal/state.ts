@@ -151,21 +151,24 @@ export const terminalState = setup({
           updates.pendingTerminalTabIds = undefined
         }
 
-        // Auto-select panel terminal if none selected or persisted ID is stale
+        const tabbedIds = new Set(
+          (parentContext?.openFiles || []).filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+        )
+        if (pendingTabIds) {
+          for (const id of pendingTabIds) tabbedIds.add(id)
+        }
+
+        // Auto-select panel terminal if none selected, persisted ID is stale,
+        // or persisted panel placement conflicts with a terminal editor tab.
         const currentPanelId = parentContext?.panelTerminalId
         const panelTerminalExists = currentPanelId && terminals.some(t => t.id === currentPanelId)
+        const panelTerminalIsTabbed = currentPanelId ? tabbedIds.has(currentPanelId) : false
 
-        if ((!currentPanelId || !panelTerminalExists) && terminals.length > 0) {
-          const tabbedIds = new Set(
-            (parentContext?.openFiles || []).filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
-          )
-          if (pendingTabIds) {
-            for (const id of pendingTabIds) tabbedIds.add(id)
-          }
+        if ((!currentPanelId || !panelTerminalExists || panelTerminalIsTabbed) && terminals.length > 0) {
           const available = terminals.find(t => !tabbedIds.has(t.id))
           if (available) {
             updates.panelTerminalId = available.id
-          } else if (!panelTerminalExists) {
+          } else if (!panelTerminalExists || panelTerminalIsTabbed) {
             updates.panelTerminalId = null
           }
         }
