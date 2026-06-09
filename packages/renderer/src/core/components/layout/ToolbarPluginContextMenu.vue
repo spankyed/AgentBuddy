@@ -25,7 +25,18 @@ const menuItems = computed<MenuItem[]>(() => {
   const plugin = selectedPlugin.value;
   if (!plugin) return [];
 
-  const canHide = plugin.id !== 'settings';
+  if (plugin.id === 'settings') {
+    return [
+      {
+        label: 'Pop Out',
+        icon: ExternalLink,
+        class: 'text-neutral-200',
+        iconClass: 'text-neutral-500',
+        action: () => window.electronAPI?.plugins?.popout(plugin.id, plugin.label),
+      },
+    ];
+  }
+
   return [
     {
       label: 'Pop Out',
@@ -37,15 +48,14 @@ const menuItems = computed<MenuItem[]>(() => {
     {
       label: `Hide ${plugin.label}`,
       icon: EyeOff,
-      class: canHide ? 'text-neutral-200' : 'text-neutral-600 cursor-not-allowed',
-      iconClass: canHide ? 'text-neutral-500' : 'text-neutral-600',
-      action: () => canHide && updateSettings({
+      class: 'text-neutral-200',
+      iconClass: 'text-neutral-500',
+      action: () => updateSettings({
         entityType: 'plugin',
         label: '_meta',
         path: ['visibility', plugin.id],
         value: false,
       }),
-      keepOpen: !canHide,
     },
     {
       label: `${plugin.label} Settings`,
