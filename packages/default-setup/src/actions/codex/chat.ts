@@ -129,10 +129,14 @@ export async function action(params: Record<string, any>, services: Services, _z
       await codex.start();
     }
 
-    // Resolve CWD
+    // Resolve CWD — fallback chain:
+    //   cwdOverride — explicit directory from "New Thread in Project" menu (one-shot)
+    //   prior?.cwd — thread already had a session (e.g. expired/broken); keep its project dir
+    //                even if the user navigated elsewhere since then
+    //   lastDirectoryOpened / defaultBaseDirectory — current base directory from settings
     const sessionCwd = codexThreadId
       ? prior?.cwd
-      : (cwdOverride || codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined);
+      : (cwdOverride || prior?.cwd || codeSettings?.lastDirectoryOpened || codeSettings?.defaultBaseDirectory || undefined);
 
     if (sessionCwd && !prior?.cwd) persistCodexState(services, threadId, { cwd: sessionCwd });
     if (codexThreadId) {
