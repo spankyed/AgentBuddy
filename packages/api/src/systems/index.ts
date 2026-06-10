@@ -10,6 +10,7 @@ import { library, librarySystem, libraryDef } from '@/systems/library/system';
 import { codeDef, systemMachine as codeSystem } from '@/systems/code/system';
 import { notes, notesSystem, notesDef } from '@/systems/notes/system';
 import { browser, browserSystem, browserDef } from '@/systems/browser/system';
+import { calendar, calendarSystem, calendarDef } from '@/systems/calendar/system';
 import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 
 const code = codeDef.id;
@@ -26,6 +27,7 @@ const systems = {
   [code]: codeSystem,
   [notes]: notesSystem,
   [browser]: browserSystem,
+  [calendar]: calendarSystem,
 } as const;
 
 export default systems;
@@ -35,6 +37,7 @@ const allDefs = [
   settingsDef, brainDef, threadsDef, flowsDef,
   databaseDef, logsDef, promptsDef, actionsDef,
   libraryDef, codeDef, notesDef, browserDef,
+  calendarDef,
 ] as const;
 
 type AllDefs = (typeof allDefs)[number];

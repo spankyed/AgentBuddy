@@ -11,6 +11,7 @@ import Library from './library/plugin.ts';
 import Code from './code/plugin.ts';
 import Notes from './notes/plugin.ts';
 import Browser from './browser/plugin.ts';
+import Calendar from './calendar/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import {
   Code as CodeIcon,
@@ -47,6 +48,7 @@ const mockPlugins: Plugin[] = [
 export default [
   Threads,
   Notes,
+  Calendar,
   Code,
   Library,
   Flows,

@@ -367,29 +367,29 @@ declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.Zo
         step: z.ZodString;
         status: z.ZodEnum<["pending", "in_progress", "completed"]>;
     }, "strip", z.ZodTypeAny, {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }, {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }>, "many">;
     explanation: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     plan: {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }[];
     explanation?: string | undefined;
 }, {
     plan: {
-        status: "pending" | "in_progress" | "completed";
+        status: "completed" | "pending" | "in_progress";
         step: string;
     }[];
     explanation?: string | undefined;
 }>, string> & {
     execute: (args: {
         plan: {
-            status: "pending" | "in_progress" | "completed";
+            status: "completed" | "pending" | "in_progress";
             step: string;
         }[];
         explanation?: string | undefined;
@@ -402,18 +402,18 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
     action: "create" | "get" | "update";
-    status?: "active" | "paused" | "complete" | undefined;
+    status?: "complete" | "active" | "paused" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
     action: "create" | "get" | "update";
-    status?: "active" | "paused" | "complete" | undefined;
+    status?: "complete" | "active" | "paused" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
         action: "create" | "get" | "update";
-        status?: "active" | "paused" | "complete" | undefined;
+        status?: "complete" | "active" | "paused" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
@@ -709,7 +709,8 @@ declare namespace EARS {
         Secret = "Secret",
         Note = "Note",
         BrowserTab = "BrowserTab",
-        BrowserBookmark = "BrowserBookmark"
+        BrowserBookmark = "BrowserBookmark",
+        CalendarEvent = "CalendarEvent"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {
@@ -3347,6 +3348,34 @@ interface SystemDefinition<Id extends string, TEvents extends {
     _outgoing: WithPlugin<Id, TOutgoing>;
 }
 
+interface CalendarEventDTO {
+    id: string;
+    title: string;
+    notes: string;
+    startsAt: number;
+    endsAt: number;
+    allDay: boolean;
+    createdAt: number;
+    updatedAt: number;
+}
+interface CalendarConnectedData {
+    events: CalendarEventDTO[];
+}
+
+type OutgoingCalendarEvents = {
+    type: 'CALENDAR_CONNECTED';
+    data: CalendarConnectedData;
+} | {
+    type: 'CALENDAR_EVENT_CREATED';
+    calendarEvent: CalendarEventDTO;
+} | {
+    type: 'CALENDAR_EVENT_UPDATED';
+    calendarEvent: CalendarEventDTO;
+} | {
+    type: 'CALENDAR_EVENT_DELETED';
+    calendarEventId: string;
+};
+
 interface NoteDTO {
     id: string;
     title: string;
@@ -4615,7 +4644,25 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "BROWSER_CONNECTED";
     savedTabs: SavedTab[];
     savedBookmarks: SavedBookmark[];
-}, BrowserContext>];
+}, BrowserContext>, SystemDefinition<"calendar", {
+    type: "CREATE_CALENDAR_EVENT";
+    title: string;
+    startsAt: number;
+    endsAt: number;
+    allDay?: boolean;
+    notes?: string;
+} | {
+    type: "UPDATE_CALENDAR_EVENT";
+    id: string;
+    title?: string;
+    startsAt?: number;
+    endsAt?: number;
+    allDay?: boolean;
+    notes?: string;
+} | {
+    type: "DELETE_CALENDAR_EVENT";
+    id: string;
+}, OutgoingCalendarEvents, {}>];
 type AllDefs = (typeof allDefs)[number];
 type IncomingSystemEvents = AllDefs['_incoming'];
 type OutgoingSystemEvents = AllDefs['_outgoing'] | ApplicationOutgoingEvents;
@@ -4664,7 +4711,7 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boole
         roles?: string | string[];
     }) => /*elided*/ any;
     readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`;
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
 };
 
 interface FileInfo {
@@ -5459,16 +5506,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reverse: () => /*elided*/ any;
     readonly limit: (n: number) => /*elided*/ any;
     readonly page: (size: number, cursor?: string | null) => {
-        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`)[];
+        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
         readonly nextCursor: string | null;
     };
     readonly distinct: (field?: string) => /*elided*/ any;
     readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`)[];
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`;
+    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
     readonly count: () => number;
-    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`;
-    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | null;
+    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
+    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}` | null;
     readonly exists: () => boolean;
     readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
     readonly forEach: (fn: (i: EARS.EntityId) => void) => {
@@ -5498,16 +5545,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
         readonly reverse: () => /*elided*/ any;
         readonly limit: (n: number) => /*elided*/ any;
         readonly page: (size: number, cursor?: string | null) => {
-            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`)[];
+            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
             readonly nextCursor: string | null;
         };
         readonly distinct: (field?: string) => /*elided*/ any;
         readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`)[];
-        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`;
+        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
         readonly count: () => number;
-        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}`;
-        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | null;
+        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
+        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}` | null;
         readonly exists: () => boolean;
         readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
         readonly forEach: /*elided*/ any;
