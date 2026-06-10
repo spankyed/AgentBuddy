@@ -9,7 +9,7 @@
     >
       <div
         v-if="passkeyToast"
-        class="absolute top-2 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-md bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs shadow-lg pointer-events-none"
+        class="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-md px-3 py-1.5 rounded-md bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs text-center shadow-lg pointer-events-none"
       >
         {{ passkeyToast }}
       </div>
@@ -189,10 +189,10 @@ onMounted(async () => {
   // Passkey created/used notifications (virtual authenticator approves silently)
   unsubPasskeyEvent = window.electronAPI?.browser.onPasskeyEvent(({ kind, rpId }) => {
     passkeyToast.value = kind === 'created'
-      ? `Passkey created for ${rpId}`
+      ? `Passkey created for ${rpId} — stored in AgentBuddy. Keep a backup sign-in method for this account.`
       : `Signed in with passkey for ${rpId}`;
     if (passkeyToastTimer) clearTimeout(passkeyToastTimer);
-    passkeyToastTimer = setTimeout(() => { passkeyToast.value = null; }, 4000);
+    passkeyToastTimer = setTimeout(() => { passkeyToast.value = null; }, kind === 'created' ? 8000 : 4000);
   }) ?? null;
 
   // Report bounds first so the overlay appears at the correct position

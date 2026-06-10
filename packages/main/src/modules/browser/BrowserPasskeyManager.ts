@@ -91,6 +91,12 @@ export class BrowserPasskeyManager {
       console.log(`[Passkeys] Loaded ${creds.length} passkey(s)`);
     } catch (err) {
       console.error('[Passkeys] Failed to load passkey store:', err);
+      // Preserve the unreadable store so it isn't overwritten by the next save —
+      // it may become recoverable (e.g. keychain restored)
+      try {
+        renameSync(this.#storePath, `${this.#storePath}.${Date.now()}.bak`);
+        console.warn('[Passkeys] Moved unreadable passkey store to backup');
+      } catch { /* file may not exist */ }
     }
   }
 
