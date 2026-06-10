@@ -33,6 +33,14 @@ interface StoredCredential {
 
 export type PasskeyEvent = {kind: 'created' | 'used'; rpId: string};
 
+// Safe credential metadata for UI display — never exposes key material
+export interface PasskeyInfo {
+  credentialId: string;
+  rpId?: string;
+  userName?: string;
+  userDisplayName?: string;
+}
+
 const STORE_FILE = 'browser-passkeys.json';
 
 const AUTHENTICATOR_OPTIONS = {
@@ -111,6 +119,31 @@ export class BrowserPasskeyManager {
     } catch (err) {
       console.error('[Passkeys] Failed to save passkey store:', err);
     }
+  }
+
+  /** List stored passkeys (metadata only, no key material). */
+  list(): PasskeyInfo[] {
+    return [...this.#credentials.values()].map(({credentialId, rpId, userName, userDisplayName}) => ({
+      credentialId,
+      rpId,
+      userName,
+      userDisplayName,
+    }));
+  }
+
+  /** Delete a passkey from the store and from all live tab authenticators. */
+  async delete(credentialId: string): Promise<boolean> {
+    if (!this.#credentials.delete(credentialId)) return false;
+    this.#save();
+
+    // Remove from live authenticators so the credential can't be used in open
+    // tabs — a later assertion would otherwise re-persist it to the store
+    for (const {wc, authenticatorId} of this.#attached.values()) {
+      if (wc.isDestroyed()) continue;
+      await wc.debugger.sendCommand('WebAuthn.removeCredential', {authenticatorId, credentialId})
+        .catch(() => {}); // tab may not have it loaded
+    }
+    return true;
   }
 
   /** Attach a virtual authenticator to a tab's webContents. */

@@ -37,6 +37,14 @@ class BrowserManager implements AppModule {
       return this.#getTabManager(event)?.getActiveTabId() ?? null;
     });
 
+    ipcMain.handle('browser:get-passkeys', (event) => {
+      return this.#getTabManager(event)?.getPasskeys() ?? [];
+    });
+
+    ipcMain.handle('browser:delete-passkey', (event, credentialId: string) => {
+      return this.#getTabManager(event)?.deletePasskey(credentialId) ?? false;
+    });
+
     // Fire-and-forget mutations
     ipcMain.on('browser:close-tab', (event, tabId: number) => {
       this.#getTabManager(event)?.closeTab(tabId);

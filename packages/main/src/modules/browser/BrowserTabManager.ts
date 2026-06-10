@@ -1,5 +1,5 @@
 import {BrowserWindow, WebContentsView, session, type Session} from 'electron';
-import {BrowserPasskeyManager} from './BrowserPasskeyManager.js';
+import {BrowserPasskeyManager, type PasskeyInfo} from './BrowserPasskeyManager.js';
 import type {TabState, TabBounds} from './types.js';
 
 const BROWSER_PARTITION = 'persist:browser';
@@ -408,6 +408,14 @@ export class BrowserTabManager {
 
   getActiveTabId(): number | null {
     return this.#activeTabId;
+  }
+
+  getPasskeys(): PasskeyInfo[] {
+    return this.#passkeys.list();
+  }
+
+  deletePasskey(credentialId: string): Promise<boolean> {
+    return this.#passkeys.delete(credentialId);
   }
 
   getAllTabs(): TabState[] {

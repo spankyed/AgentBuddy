@@ -140,6 +140,13 @@ interface TabState {
   isMuted: boolean;
 }
 
+interface PasskeyInfo {
+  credentialId: string;
+  rpId?: string;
+  userName?: string;
+  userDisplayName?: string;
+}
+
 const browser = {
   // Tab management
   createTab: (url?: string, options?: { lazy?: boolean; title?: string; favicon?: string; activate?: boolean; persistedId?: string }) =>
@@ -193,6 +200,10 @@ const browser = {
     ipcRenderer.on('browser:focus-address-bar', handler);
     return () => { ipcRenderer.removeListener('browser:focus-address-bar', handler); };
   },
+
+  // Passkey management (virtual authenticator in main process)
+  getPasskeys: () => ipcRenderer.invoke('browser:get-passkeys') as Promise<PasskeyInfo[]>,
+  deletePasskey: (credentialId: string) => ipcRenderer.invoke('browser:delete-passkey', credentialId) as Promise<boolean>,
 
   // Passkey notifications (virtual authenticator in main process)
   onPasskeyEvent: (callback: (event: {kind: 'created' | 'used'; rpId: string}) => void) => {
