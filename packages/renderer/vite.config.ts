@@ -15,7 +15,14 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
-    vue(),
+    vue({
+      template: {
+        compilerOptions: {
+          // Vidstack player web components
+          isCustomElement: (tag) => tag.startsWith('media-'),
+        },
+      },
+    }),
     vueDevTools(),
   ],
   resolve: {
