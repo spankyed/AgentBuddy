@@ -83,6 +83,9 @@ declare global {
         onActiveTabChanged: (callback: (tabId: number) => void) => () => void;
         toggleDevTools: (tabId: number) => void;
         onFocusAddressBar: (callback: () => void) => () => void;
+        onPasskeyEvent: (callback: (event: {kind: 'created' | 'used'; rpId: string}) => void) => () => void;
+        getPasskeys: () => Promise<{credentialId: string; rpId?: string; userName?: string; userDisplayName?: string}[]>;
+        deletePasskey: (credentialId: string) => Promise<boolean>;
         duplicateTab: (tabId: number) => Promise<BrowserTabState | null>;
         setTabMuted: (tabId: number, muted: boolean) => Promise<void>;
         getTabs: () => Promise<BrowserTabState[]>;

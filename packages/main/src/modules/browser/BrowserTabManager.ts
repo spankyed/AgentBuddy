@@ -1,4 +1,5 @@
 import {BrowserWindow, WebContentsView, session, type Session} from 'electron';
+import {BrowserPasskeyManager, type PasskeyInfo} from './BrowserPasskeyManager.js';
 import type {TabState, TabBounds} from './types.js';
 
 const BROWSER_PARTITION = 'persist:browser';
@@ -30,11 +31,15 @@ export class BrowserTabManager {
   #visible = false;
   #browserSession: Session;
   #mainWindow: BrowserWindow;
+  #passkeys: BrowserPasskeyManager;
 
   constructor(mainWindow: BrowserWindow) {
     this.#mainWindow = mainWindow;
     this.#browserSession = session.fromPartition(BROWSER_PARTITION);
     this.#configureSession();
+    this.#passkeys = new BrowserPasskeyManager(event => {
+      this.#sendToRenderer('browser:passkey-event', event);
+    });
   }
 
   #configureSession(): void {
@@ -195,6 +200,7 @@ export class BrowserTabManager {
       this.#persistedIds.set(id, options.persistedId);
     }
     this.#attachListeners(view);
+    this.#passkeys.attach(view.webContents);
 
     // Add to the main window's content view
     this.#mainWindow.contentView.addChildView(view);
@@ -268,6 +274,7 @@ export class BrowserTabManager {
     }
 
     // Clean up listeners and destroy
+    this.#passkeys.detach(tabId);
     view.webContents.removeAllListeners();
     view.webContents.close();
     this.#tabs.delete(tabId);
@@ -403,15 +410,24 @@ export class BrowserTabManager {
     return this.#activeTabId;
   }
 
+  getPasskeys(): PasskeyInfo[] {
+    return this.#passkeys.list();
+  }
+
+  deletePasskey(credentialId: string): Promise<boolean> {
+    return this.#passkeys.delete(credentialId);
+  }
+
   getAllTabs(): TabState[] {
     return [...this.#tabs.values()].map(v => this.#getTabState(v));
   }
 
   destroy(): void {
-    for (const [, view] of this.#tabs) {
+    for (const [id, view] of this.#tabs) {
       if (!this.#mainWindow.isDestroyed()) {
         this.#mainWindow.contentView.removeChildView(view);
       }
+      this.#passkeys.detach(id);
       view.webContents.removeAllListeners();
       view.webContents.close();
     }
