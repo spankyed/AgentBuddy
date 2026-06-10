@@ -1,4 +1,5 @@
 import {BrowserWindow, WebContentsView, session, type Session} from 'electron';
+import {BrowserPasskeyManager} from './BrowserPasskeyManager.js';
 import type {TabState, TabBounds} from './types.js';
 
 const BROWSER_PARTITION = 'persist:browser';
@@ -30,11 +31,15 @@ export class BrowserTabManager {
   #visible = false;
   #browserSession: Session;
   #mainWindow: BrowserWindow;
+  #passkeys: BrowserPasskeyManager;
 
   constructor(mainWindow: BrowserWindow) {
     this.#mainWindow = mainWindow;
     this.#browserSession = session.fromPartition(BROWSER_PARTITION);
     this.#configureSession();
+    this.#passkeys = new BrowserPasskeyManager(event => {
+      this.#sendToRenderer('browser:passkey-event', event);
+    });
   }
 
   #configureSession(): void {
@@ -195,6 +200,7 @@ export class BrowserTabManager {
       this.#persistedIds.set(id, options.persistedId);
     }
     this.#attachListeners(view);
+    this.#passkeys.attach(view.webContents);
 
     // Add to the main window's content view
     this.#mainWindow.contentView.addChildView(view);

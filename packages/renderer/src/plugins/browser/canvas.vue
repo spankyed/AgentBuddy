@@ -1,5 +1,19 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div class="relative flex flex-col h-full bg-neutral-900">
+    <!-- Passkey toast: positioned over the nav bar (the WebContentsView covers the content area) -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      leave-active-class="transition-opacity duration-300"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="passkeyToast"
+        class="absolute top-2 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-md bg-neutral-800 border border-neutral-700 text-neutral-200 text-xs shadow-lg pointer-events-none"
+      >
+        {{ passkeyToast }}
+      </div>
+    </Transition>
     <BrowserTabBar
       :tabs="tabs"
       :activeTabId="activeTabId"
@@ -159,6 +173,10 @@ function reportBounds() {
 }
 
 let unsubFocusAddressBar: (() => void) | null = null;
+let unsubPasskeyEvent: (() => void) | null = null;
+
+const passkeyToast = ref<string | null>(null);
+let passkeyToastTimer: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown);
@@ -166,6 +184,15 @@ onMounted(async () => {
   // Listen for Cmd+L from the WebContentsView (main process forwards it)
   unsubFocusAddressBar = window.electronAPI?.browser.onFocusAddressBar(() => {
     navBar.value?.focusAddressBar();
+  }) ?? null;
+
+  // Passkey created/used notifications (virtual authenticator approves silently)
+  unsubPasskeyEvent = window.electronAPI?.browser.onPasskeyEvent(({ kind, rpId }) => {
+    passkeyToast.value = kind === 'created'
+      ? `Passkey created for ${rpId}`
+      : `Signed in with passkey for ${rpId}`;
+    if (passkeyToastTimer) clearTimeout(passkeyToastTimer);
+    passkeyToastTimer = setTimeout(() => { passkeyToast.value = null; }, 4000);
   }) ?? null;
 
   // Report bounds first so the overlay appears at the correct position
@@ -201,6 +228,8 @@ onUnmounted(() => {
   mounted = false;
   window.removeEventListener('keydown', handleKeydown);
   unsubFocusAddressBar?.();
+  unsubPasskeyEvent?.();
+  if (passkeyToastTimer) clearTimeout(passkeyToastTimer);
   window.electronAPI?.browser.hide();
 
   if (resizeObserver) {

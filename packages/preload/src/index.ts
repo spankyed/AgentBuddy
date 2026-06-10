@@ -194,6 +194,13 @@ const browser = {
     return () => { ipcRenderer.removeListener('browser:focus-address-bar', handler); };
   },
 
+  // Passkey notifications (virtual authenticator in main process)
+  onPasskeyEvent: (callback: (event: {kind: 'created' | 'used'; rpId: string}) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, event: {kind: 'created' | 'used'; rpId: string}) => callback(event);
+    ipcRenderer.on('browser:passkey-event', handler);
+    return () => { ipcRenderer.removeListener('browser:passkey-event', handler); };
+  },
+
   // Tab actions
   duplicateTab: (tabId: number) => ipcRenderer.invoke('browser:duplicate-tab', tabId) as Promise<TabState | null>,
   setTabMuted: (tabId: number, muted: boolean) => ipcRenderer.invoke('browser:set-tab-muted', tabId, muted),
