@@ -50,8 +50,12 @@ const AUTHENTICATOR_OPTIONS = {
 export class BrowserPasskeyManager {
   // wcId → authenticatorId (live CDP sessions with an authenticator)
   readonly #attached = new Map<number, {wc: WebContents; authenticatorId: string}>();
-  // wcIds with debugger listeners registered (registered once per webContents)
-  readonly #wired = new Set<number>();
+  // wcId → registered debugger listeners (registered once per webContents)
+  readonly #wired = new Map<number, {
+    wc: WebContents;
+    onMessage: (event: Electron.Event, method: string, params: unknown) => void;
+    onDetach: () => void;
+  }>();
   // credentialId → credential
   readonly #credentials = new Map<string, StoredCredential>();
   readonly #notify: (event: PasskeyEvent) => void;
@@ -107,24 +111,38 @@ export class BrowserPasskeyManager {
   attach(wc: WebContents): void {
     if (!this.#encryptionAvailable) return;
     if (this.#wired.has(wc.id)) return;
-    this.#wired.add(wc.id);
 
-    wc.debugger.on('message', (_event, method, params) => {
+    const onMessage = (_event: Electron.Event, method: string, params: unknown) => {
       this.#handleDebuggerMessage(wc.id, method, params);
-    });
+    };
 
-    // The CDP session can be terminated externally (e.g. DevTools invocation
-    // or tab close). Reconnect so passkeys keep working for the tab's lifetime.
-    wc.debugger.on('detach', () => {
+    // The CDP session can be terminated externally (e.g. DevTools invocation).
+    // Reconnect so passkeys keep working for the tab's lifetime.
+    const onDetach = () => {
       this.#attached.delete(wc.id);
       if (wc.isDestroyed()) {
         this.#wired.delete(wc.id);
         return;
       }
       setImmediate(() => this.#connect(wc));
-    });
+    };
+
+    this.#wired.set(wc.id, {wc, onMessage, onDetach});
+    wc.debugger.on('message', onMessage);
+    wc.debugger.on('detach', onDetach);
 
     this.#connect(wc);
+  }
+
+  /** Tear down listeners and bookkeeping for a tab (called before tab close). */
+  detach(wcId: number): void {
+    const wired = this.#wired.get(wcId);
+    if (wired && !wired.wc.isDestroyed()) {
+      wired.wc.debugger.removeListener('message', wired.onMessage);
+      wired.wc.debugger.removeListener('detach', wired.onDetach);
+    }
+    this.#wired.delete(wcId);
+    this.#attached.delete(wcId);
   }
 
   /** Attach the debugger (if needed) and set up the virtual authenticator. */
@@ -162,10 +180,10 @@ export class BrowserPasskeyManager {
     }
   }
 
-  #handleDebuggerMessage(wcId: number, method: string, params: any): void {
+  #handleDebuggerMessage(wcId: number, method: string, params: unknown): void {
     if (method !== 'WebAuthn.credentialAdded' && method !== 'WebAuthn.credentialAsserted') return;
 
-    const incoming = params?.credential as StoredCredential | undefined;
+    const incoming = (params as {credential?: StoredCredential} | undefined)?.credential;
     if (!incoming?.credentialId) return;
 
     const existing = this.#credentials.get(incoming.credentialId);

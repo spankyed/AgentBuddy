@@ -274,6 +274,7 @@ export class BrowserTabManager {
     }
 
     // Clean up listeners and destroy
+    this.#passkeys.detach(tabId);
     view.webContents.removeAllListeners();
     view.webContents.close();
     this.#tabs.delete(tabId);
@@ -414,10 +415,11 @@ export class BrowserTabManager {
   }
 
   destroy(): void {
-    for (const [, view] of this.#tabs) {
+    for (const [id, view] of this.#tabs) {
       if (!this.#mainWindow.isDestroyed()) {
         this.#mainWindow.contentView.removeChildView(view);
       }
+      this.#passkeys.detach(id);
       view.webContents.removeAllListeners();
       view.webContents.close();
     }
