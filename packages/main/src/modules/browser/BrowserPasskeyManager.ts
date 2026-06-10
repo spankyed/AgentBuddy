@@ -1,5 +1,5 @@
 import {app, safeStorage, type WebContents} from 'electron';
-import {readFileSync, writeFileSync, existsSync} from 'node:fs';
+import {readFileSync, writeFileSync, renameSync, existsSync} from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -48,8 +48,10 @@ const AUTHENTICATOR_OPTIONS = {
 };
 
 export class BrowserPasskeyManager {
-  // wcId → authenticatorId
+  // wcId → authenticatorId (live CDP sessions with an authenticator)
   readonly #attached = new Map<number, {wc: WebContents; authenticatorId: string}>();
+  // wcIds with debugger listeners registered (registered once per webContents)
+  readonly #wired = new Set<number>();
   // credentialId → credential
   readonly #credentials = new Map<string, StoredCredential>();
   readonly #notify: (event: PasskeyEvent) => void;
@@ -92,7 +94,10 @@ export class BrowserPasskeyManager {
     try {
       const creds = [...this.#credentials.values()];
       const encrypted = safeStorage.encryptString(JSON.stringify(creds)).toString('base64');
-      writeFileSync(this.#storePath, JSON.stringify({v: 1, data: encrypted}), 'utf8');
+      // Atomic write (tmp + rename) with owner-only perms — file holds private keys
+      const tmpPath = `${this.#storePath}.tmp`;
+      writeFileSync(tmpPath, JSON.stringify({v: 1, data: encrypted}), {encoding: 'utf8', mode: 0o600});
+      renameSync(tmpPath, this.#storePath);
     } catch (err) {
       console.error('[Passkeys] Failed to save passkey store:', err);
     }
@@ -101,7 +106,30 @@ export class BrowserPasskeyManager {
   /** Attach a virtual authenticator to a tab's webContents. */
   attach(wc: WebContents): void {
     if (!this.#encryptionAvailable) return;
-    if (this.#attached.has(wc.id)) return;
+    if (this.#wired.has(wc.id)) return;
+    this.#wired.add(wc.id);
+
+    wc.debugger.on('message', (_event, method, params) => {
+      this.#handleDebuggerMessage(wc.id, method, params);
+    });
+
+    // The CDP session can be terminated externally (e.g. DevTools invocation
+    // or tab close). Reconnect so passkeys keep working for the tab's lifetime.
+    wc.debugger.on('detach', () => {
+      this.#attached.delete(wc.id);
+      if (wc.isDestroyed()) {
+        this.#wired.delete(wc.id);
+        return;
+      }
+      setImmediate(() => this.#connect(wc));
+    });
+
+    this.#connect(wc);
+  }
+
+  /** Attach the debugger (if needed) and set up the virtual authenticator. */
+  #connect(wc: WebContents): void {
+    if (wc.isDestroyed() || this.#attached.has(wc.id)) return;
 
     try {
       if (!wc.debugger.isAttached()) {
@@ -111,19 +139,6 @@ export class BrowserPasskeyManager {
       console.error('[Passkeys] Debugger attach failed:', err);
       return;
     }
-
-    wc.debugger.on('message', (_event, method, params) => {
-      this.#handleDebuggerMessage(wc.id, method, params);
-    });
-
-    // If Chromium detaches us (shouldn't normally happen), drop bookkeeping
-    wc.debugger.on('detach', () => {
-      this.#attached.delete(wc.id);
-    });
-
-    wc.once('destroyed', () => {
-      this.#attached.delete(wc.id);
-    });
 
     void this.#setup(wc).catch(err => {
       console.error('[Passkeys] Authenticator setup failed:', err);
@@ -150,7 +165,15 @@ export class BrowserPasskeyManager {
   #handleDebuggerMessage(wcId: number, method: string, params: any): void {
     if (method !== 'WebAuthn.credentialAdded' && method !== 'WebAuthn.credentialAsserted') return;
 
-    const credential = params.credential as StoredCredential;
+    const incoming = params?.credential as StoredCredential | undefined;
+    if (!incoming?.credentialId) return;
+
+    const existing = this.#credentials.get(incoming.credentialId);
+    // Ignore echoes of our own addCredential calls (load/sync) — nothing changed
+    if (existing && existing.signCount === incoming.signCount) return;
+
+    // Merge: assertion events may omit metadata fields (userName, etc.)
+    const credential: StoredCredential = existing ? {...existing, ...incoming} : incoming;
     const isNew = method === 'WebAuthn.credentialAdded';
 
     this.#credentials.set(credential.credentialId, credential);
