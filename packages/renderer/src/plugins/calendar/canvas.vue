@@ -52,7 +52,11 @@
       :mode="editor.mode"
       :event="editingEvent"
       :default-date-ms="editor.defaultDateMs"
-      @save="(payload: SavePayload) => actor.send({ type: 'CAL.SAVE', ...payload })"
+      @save="(payload: SavePayload) => actor.send({
+        type: 'CAL.SAVE',
+        ...payload,
+        eventId: editor?.mode === 'edit' ? editor.eventId ?? undefined : undefined,
+      })"
       @delete="(eventId: string) => actor.send({ type: 'CAL.DELETE', eventId })"
       @close="actor.send({ type: 'CAL.CLOSE_EDITOR' })"
     />
@@ -69,7 +73,6 @@ import MonthGrid from './components/MonthGrid.vue';
 import EventEditorDialog from './components/EventEditorDialog.vue';
 
 interface SavePayload {
-  eventId?: string;
   title: string;
   startsAt: number;
   endsAt: number;

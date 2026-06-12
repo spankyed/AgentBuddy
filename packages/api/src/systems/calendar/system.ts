@@ -5,6 +5,7 @@ import { emit } from '@/core/shared/actor-helpers';
 import { EARS } from '@/core/types';
 import type { CalendarConnectedData, CalendarEventDTO } from './types';
 import { repository } from '@/repository';
+import { toDTO } from './repository/queries';
 import './repository/index'; // register repository
 
 type IncomingCalendarEvents =
@@ -42,19 +43,23 @@ export const calendarSystem = setup({
         notes: ev.notes,
       });
 
-      const dto = repository.calendarQueries.byIdDTO(created.id as EARS.EntityId);
-      if (dto) {
-        system.get(bus).send(emit(calendar, {
-          type: 'CALENDAR_EVENT_CREATED',
-          calendarEvent: dto,
-        }));
-      }
+      system.get(bus).send(emit(calendar, {
+        type: 'CALENDAR_EVENT_CREATED',
+        calendarEvent: toDTO(created),
+      }));
     },
 
     updateEvent: ({ system, event }) => {
       const ev = calendarDef.typeOf('UPDATE_CALENDAR_EVENT', event);
       const id = ev.id as EARS.EntityId;
-      if (!repository.calendarQueries.byId(id)) return;
+      if (!repository.calendarQueries.byId(id)) {
+        // Entity is gone — tell clients to drop it so they converge
+        system.get(bus).send(emit(calendar, {
+          type: 'CALENDAR_EVENT_DELETED',
+          calendarEventId: ev.id,
+        }));
+        return;
+      }
 
       repository.calendarCommands.update(id, {
         title: ev.title,
@@ -77,13 +82,13 @@ export const calendarSystem = setup({
       const ev = calendarDef.typeOf('DELETE_CALENDAR_EVENT', event);
       try {
         repository.calendarCommands.delete(ev.id as EARS.EntityId);
-        system.get(bus).send(emit(calendar, {
-          type: 'CALENDAR_EVENT_DELETED',
-          calendarEventId: ev.id,
-        }));
       } catch {
-        // Already deleted or missing
+        // Already deleted or missing — still emit so clients converge
       }
+      system.get(bus).send(emit(calendar, {
+        type: 'CALENDAR_EVENT_DELETED',
+        calendarEventId: ev.id,
+      }));
     },
   },
 }).createMachine({

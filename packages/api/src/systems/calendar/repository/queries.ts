@@ -2,7 +2,7 @@ import { EARS } from '@/core/types';
 import { findById, findAll } from '@/core/shared/repository';
 import type { CalendarEventEntity, CalendarEventDTO } from '../types';
 
-function toDTO(event: CalendarEventEntity): CalendarEventDTO {
+export function toDTO(event: CalendarEventEntity): CalendarEventDTO {
   return {
     id: event.id,
     title: event.title,

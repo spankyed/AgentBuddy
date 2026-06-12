@@ -94,7 +94,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'save', payload: { eventId?: string; title: string; startsAt: number; endsAt: number; allDay: boolean; notes: string }): void;
+  (e: 'save', payload: { title: string; startsAt: number; endsAt: number; allDay: boolean; notes: string }): void;
   (e: 'delete', eventId: string): void;
   (e: 'close'): void;
 }>();
@@ -118,7 +118,7 @@ function fromLocalInput(value: string): number {
 }
 
 const initialStart = props.event?.startsAt
-  ?? (props.defaultDateMs != null ? props.defaultDateMs + 9 * HOUR_MS : Date.now());
+  ?? (props.defaultDateMs != null ? new Date(props.defaultDateMs).setHours(9, 0, 0, 0) : Date.now());
 const initialEnd = props.event?.endsAt ?? initialStart + HOUR_MS;
 const initialAllDay = props.event?.allDay ?? false;
 
@@ -131,13 +131,22 @@ const endInput = ref(toLocalInput(initialEnd, initialAllDay));
 // Reformat input values when toggling all-day (date vs datetime-local formats differ)
 watch(allDay, (isAllDay) => {
   if (startInput.value) startInput.value = toLocalInput(fromLocalInput(startInput.value), isAllDay);
-  if (endInput.value) endInput.value = toLocalInput(fromLocalInput(endInput.value), isAllDay);
+  if (endInput.value) {
+    let endMs = fromLocalInput(endInput.value);
+    if (isAllDay && startInput.value) {
+      // An event ending exactly at midnight belongs to the previous day's date
+      const end = new Date(endMs);
+      const isMidnight = end.getHours() === 0 && end.getMinutes() === 0;
+      if (isMidnight && endMs > fromLocalInput(startInput.value)) endMs -= 1;
+    }
+    endInput.value = toLocalInput(endMs, isAllDay);
+  }
 });
 
 const validationError = computed(() => {
   if (!startInput.value || !endInput.value) return null;
   if (fromLocalInput(endInput.value) < fromLocalInput(startInput.value)) {
-    return 'End must be after start';
+    return "End can't be before start";
   }
   return null;
 });
@@ -158,7 +167,6 @@ function handleSave() {
     endsAt = endsAt + 24 * HOUR_MS - 1;
   }
   emit('save', {
-    ...(props.event ? { eventId: props.event.id } : {}),
     title: title.value.trim(),
     startsAt,
     endsAt,

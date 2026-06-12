@@ -21,7 +21,7 @@ export const calendarCommands = {
       throw new RepositoryError('Title is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
     if (input.endsAt < input.startsAt) {
-      throw new RepositoryError('End time must be after start time', RepositoryErrorCode.VALIDATION_ERROR);
+      throw new RepositoryError("End time can't be before start time", RepositoryErrorCode.VALIDATION_ERROR);
     }
 
     return createEntityWithDefaults<CalendarEventEntity>(
@@ -32,7 +32,7 @@ export const calendarCommands = {
         startsAt: input.startsAt,
         endsAt: input.endsAt,
         allDay: input.allDay ?? false,
-      } as any,
+      },
       'CAL',
     );
   },
@@ -55,7 +55,7 @@ export const calendarCommands = {
     const startsAt = updates.startsAt ?? existing.startsAt;
     const endsAt = updates.endsAt ?? existing.endsAt;
     if (endsAt < startsAt) {
-      throw new RepositoryError('End time must be after start time', RepositoryErrorCode.VALIDATION_ERROR);
+      throw new RepositoryError("End time can't be before start time", RepositoryErrorCode.VALIDATION_ERROR);
     }
 
     const filteredUpdates: Record<string, any> = {};

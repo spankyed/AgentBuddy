@@ -66,16 +66,16 @@ const emit = defineEmits<{
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const maxChips = 3;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const cells = computed(() => {
   const first = new Date(props.year, props.month, 1);
   const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
 
   return Array.from({ length: 42 }, (_, i) => {
-    const date = new Date(props.year, props.month, 1 - first.getDay() + i);
+    const offset = 1 - first.getDay() + i;
+    const date = new Date(props.year, props.month, offset);
     const dayStart = date.getTime();
-    const dayEnd = dayStart + DAY_MS;
+    // Construct via Date parts so DST-transition days (23h/25h) get correct boundaries
+    const dayEnd = new Date(props.year, props.month, offset + 1).getTime();
 
     const dayEvents = props.events
       .filter(ev => {

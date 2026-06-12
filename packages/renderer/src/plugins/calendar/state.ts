@@ -35,8 +35,6 @@ const typeOf = safeEvents<CalendarEvents>();
 
 export type CalendarState = ActorRefFrom<typeof calendarState>;
 
-const now = new Date();
-
 const calendarState = setup({
   types: {
     context: {} as CalendarContext,
@@ -60,11 +58,13 @@ const calendarState = setup({
         return context.events.map(e => e.id === updated.id ? updated : e);
       },
     }),
-    removeEvent: assign({
-      events: ({ context, event }) => {
-        const deletedId = typeOf('CALENDAR_EVENT_DELETED', event).calendarEventId;
-        return context.events.filter(e => e.id !== deletedId);
-      },
+    removeEvent: assign(({ context, event }) => {
+      const deletedId = typeOf('CALENDAR_EVENT_DELETED', event).calendarEventId;
+      return {
+        events: context.events.filter(e => e.id !== deletedId),
+        // Close the editor if it references the deleted event
+        editor: context.editor?.eventId === deletedId ? null : context.editor,
+      };
     }),
     prevMonth: assign(({ context }) => context.viewMonth === 0
       ? { viewMonth: 11, viewYear: context.viewYear - 1 }
@@ -126,11 +126,14 @@ const calendarState = setup({
 }).createMachine({
   id,
   initial: 'canvas',
-  context: {
-    events: [],
-    viewYear: now.getFullYear(),
-    viewMonth: now.getMonth(),
-    editor: null,
+  context: () => {
+    const now = new Date();
+    return {
+      events: [],
+      viewYear: now.getFullYear(),
+      viewMonth: now.getMonth(),
+      editor: null,
+    };
   },
   on: {
     CALENDAR_CONNECTED: { actions: 'setConnectedEvents' },
