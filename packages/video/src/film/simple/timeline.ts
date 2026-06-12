@@ -1,7 +1,7 @@
 import {cutFrames, type FrameCut} from '../state/timeline';
 
 export type SimpleCardId = 'intro-card' | 'chat-card' | 'notes-card' | 'code-card' | 'workflow-card' | 'calendar-card';
-export type SimpleContentId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'calendar' | 'montage' | 'final';
+export type SimpleContentId = 'threads' | 'notes' | 'code' | 'workflow' | 'calendar' | 'montage' | 'final';
 export type SimpleSceneId = SimpleCardId | SimpleContentId;
 
 export type SimpleScene = {
@@ -14,12 +14,18 @@ export type SimpleScene = {
   id: SimpleSceneId;
 };
 
-// The simple film keeps the full app UI on screen for every content scene:
-// chrome reveals, panel docks, and window springs are all pinned to their
-// final state, so these EDLs only have to dodge content motion (cursor
-// moves, eases, text reveals) in the source timelines.
+// The threads scene plays the chat story (source 0-629), then a cursor move
+// to the Threads breadcrumb (click at 648), then the board story starting at
+// this source offset. Board-story cuts below are board cuts shifted by it.
+export const threadsBoardSourceStart = 656;
+
+// Every chapter is one long scene in a steady full-app frame. View changes
+// happen instantly at real button clicks (no fades, no dissolves), so these
+// EDLs only have to dodge cursor moves and text reveals in source frames.
+// Each cut removes source window [at, at + remove).
 export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
-  chat: [
+  threads: [
+    // Chat story (source 0-655).
     {at: 14, remove: 6},    // quote settled (12), typing starts (24)
     {at: 156, remove: 8},   // hold after reference insert (144-168)
     {at: 292, remove: 13},  // thinking shown (eased 282-290), response at 306
@@ -28,15 +34,14 @@ export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
     {at: 483, remove: 3},   // tool rows done (482), hover move starts (486)
     {at: 527, remove: 4},   // hover ends (526), thread loads (532)
     {at: 533, remove: 5},   // thread loaded, next move starts (540)
-  ],
-  board: [
-    {at: 6, remove: 12},    // static dashboard intro, first move starts (22)
-    {at: 49, remove: 3},    // pin clicked (48), press state shows (52)
-    {at: 123, remove: 6},   // title typed (122), instructions start (130)
-    {at: 193, remove: 5},   // link dropdown opened (192), typing starts (200)
-    {at: 230, remove: 6},   // stationary hover hold on action link (228-240)
-    {at: 240, remove: 4},   // hover ends, move to save starts (244)
-    {at: 265, remove: 4},   // form faded out (264), move to kanban starts (270)
+    // Board story (board source frame + 656).
+    {at: 662, remove: 12},  // static dashboard intro, first move starts (678)
+    {at: 705, remove: 3},   // pin clicked (704), press state shows (708)
+    {at: 779, remove: 6},   // title typed (778), instructions start (786)
+    {at: 849, remove: 5},   // link dropdown opened (848), typing starts (856)
+    {at: 886, remove: 6},   // stationary hover hold on action link (884-896)
+    {at: 896, remove: 4},   // hover ends, move to save starts (900)
+    {at: 921, remove: 4},   // form closed (920), move to kanban starts (926)
   ],
   notes: [
     {at: 86, remove: 10},   // favorites shown (84), cursor move starts (118)
@@ -46,8 +51,7 @@ export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
     {at: 4, remove: 9},     // static intro, first move starts (18)
     {at: 116, remove: 8},   // commit menu opened (112), action press (128)
     {at: 192, remove: 6},   // move done (190), next move starts (198)
-    {at: 246, remove: 8},   // cursor parked (244), terminal swap dip (254)
-    {at: 286, remove: 12},  // browser settled (284), exit starts (300)
+    {at: 246, remove: 70},  // tests shown (220+); skip browser pop-over entirely
     {at: 352, remove: 6},   // publish done (350), create move starts (360)
     {at: 387, remove: 5},   // move done (386), next move starts (392)
   ],
@@ -55,22 +59,17 @@ export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
     {at: 80, remove: 88},   // chrome beats pinned: jump from drawn edge (76) to action1 (168)
   ],
   montage: [
-    {at: 60, remove: 8},    // chat reply settled (58), logs boundary (72)
-    {at: 114, remove: 10},  // log expanded (110), database boundary (142)
-    {at: 172, remove: 14},  // first query results settled, next query (196)
-    {at: 226, remove: 14},  // second results settled, browser boundary (252)
-    {at: 320, remove: 26},  // checkout page loaded (312), settle tail
+    {at: 64, remove: 8},    // logs icon clicked (60), logs surface at (72)
   ],
 };
 
 export const simpleSceneSourceDurations: Record<SimpleContentId, number> = {
-  board: 310,
   calendar: 270,
-  chat: 630,
   code: 420,
   final: 140,
-  montage: 360,
+  montage: 252,  // browser segment (252+) is not part of the simple film
   notes: 330,
+  threads: threadsBoardSourceStart + 310,
   workflow: 260,
 };
 
@@ -82,17 +81,16 @@ export function simpleSceneFrame(id: SimpleSceneId, frame: number) {
 export const simpleScenes: SimpleScene[] = [
   {id: 'intro-card', card: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 66},
   {id: 'chat-card', card: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 66},
-  {id: 'chat', duration: 576},
-  {id: 'board', duration: 270},
+  {id: 'threads', duration: 872},
   {id: 'notes-card', card: {eyebrow: '2', title: 'More than just a note taker'}, duration: 66},
   {id: 'notes', duration: 312},
   {id: 'code-card', card: {eyebrow: '3', title: 'More than just an IDE'}, duration: 66},
-  {id: 'code', duration: 366},
+  {id: 'code', duration: 316},
   {id: 'workflow-card', card: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 66},
   {id: 'workflow', duration: 172},
   {id: 'calendar-card', card: {eyebrow: '5', title: 'More than just a calendar'}, duration: 66},
   {id: 'calendar', duration: 270},
-  {id: 'montage', duration: 288},
+  {id: 'montage', duration: 244},
   {id: 'final', duration: 140},
 ];
 

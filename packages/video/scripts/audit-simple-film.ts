@@ -1,18 +1,19 @@
 import {cutFrames} from '../src/film/state/timeline';
-import {montageDissolveFrames, montageSegmentBoundaries} from '../src/film/state/montage';
+import {montageSegmentBoundaries} from '../src/film/state/montage';
 import {workflowBeats} from '../src/film/state/workflow';
 import {
   simpleSceneCuts,
   simpleSceneSourceDurations,
   simpleScenes,
   simpleTotalFrames,
+  threadsBoardSourceStart,
   type SimpleContentId,
 } from '../src/film/simple/timeline';
 
-// Structural audit for the simple (full-UI, hard-cut) film: scene durations
-// must match their EDLs, frame remaps must stay monotonic and endpoint-exact,
-// cuts must stay clear of montage dissolves, and the locked chapter copy must
-// appear exactly as written in LAUNCH_FILM_GOAL.md.
+// Structural audit for the simple (full-UI, hard-cut, click-driven) film:
+// scene durations must match their EDLs, frame remaps must stay monotonic
+// and endpoint-exact, click-response frames must survive the cuts, and the
+// locked chapter copy must appear exactly as written in LAUNCH_FILM_GOAL.md.
 
 type Failure = {check: string; detail: string};
 const failures: Failure[] = [];
@@ -37,8 +38,8 @@ for (const scene of contentScenes) {
     `${id}: duration ${scene.duration} !== source ${source} - removed ${removed}`,
   );
 
-  const sorted = cuts.every((cut, index) => index === 0 || cuts[index - 1].at < cut.at);
-  check('cuts sorted ascending', sorted, `${id}: cuts not sorted by at`);
+  const sorted = cuts.every((cut, index) => index === 0 || cuts[index - 1].at + cuts[index - 1].remove <= cut.at);
+  check('cuts sorted and non-overlapping', sorted, `${id}: cut windows overlap or are unsorted`);
 
   let previous = -1;
   let monotonic = true;
@@ -55,16 +56,39 @@ for (const scene of contentScenes) {
   );
 }
 
-const montageCuts = simpleSceneCuts.montage ?? [];
-for (const boundary of montageSegmentBoundaries) {
-  for (const cut of montageCuts) {
-    check(
-      'montage cuts clear of dissolve windows',
-      cut.at < boundary - 4 || cut.at > boundary + montageDissolveFrames + 2,
-      `montage cut at ${cut.at} lands inside dissolve window around boundary ${boundary}`,
-    );
-  }
+// A source frame survives the EDL iff it is not inside any removed window.
+function sourceFrameSurvives(id: SimpleContentId, sourceFrame: number) {
+  return !(simpleSceneCuts[id] ?? []).some(cut => sourceFrame >= cut.at && sourceFrame < cut.at + cut.remove);
 }
+
+// The montage's plugin/query switches are instant click responses; every
+// switch frame (and the browser segment's absence) must survive the cuts.
+const montageSource = simpleSceneSourceDurations.montage;
+check(
+  'montage ends before the browser segment',
+  montageSource <= montageSegmentBoundaries[montageSegmentBoundaries.length - 1],
+  `montage source duration ${montageSource} reaches into the browser segment`,
+);
+for (const boundary of montageSegmentBoundaries.filter(at => at < montageSource)) {
+  check(
+    'montage switch frames survive the cuts',
+    sourceFrameSurvives('montage', boundary),
+    `montage switch at source ${boundary} was removed by a cut`,
+  );
+}
+
+// The threads scene's breadcrumb navigation: the click (648) and the board
+// story start (656) must both survive, with the board phase aligned.
+check(
+  'threads breadcrumb click survives the cuts',
+  sourceFrameSurvives('threads', 648) && sourceFrameSurvives('threads', threadsBoardSourceStart),
+  'threads nav click or board start frame was removed by a cut',
+);
+check(
+  'threads scene spans chat + nav + board stories',
+  simpleSceneSourceDurations.threads === threadsBoardSourceStart + 310,
+  `threads source duration ${simpleSceneSourceDurations.threads} !== ${threadsBoardSourceStart} + 310`,
+);
 
 check(
   'workflow cut splices straight into action beats',
@@ -90,6 +114,14 @@ check(
   'revolution copy appears only as the final lockup',
   !cardTitles.some(title => title?.includes('revolution')) && simpleScenes[simpleScenes.length - 1].id === 'final',
   'revolution copy duplicated on a card or final scene misplaced',
+);
+
+check(
+  'one content scene per chapter',
+  simpleScenes.every((scene, index) =>
+    index === 0 || !scene.card || simpleScenes[index + 1]?.card === undefined,
+  ),
+  'a chapter card is followed by another card instead of its scene',
 );
 
 check(

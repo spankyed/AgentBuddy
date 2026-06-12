@@ -1,4 +1,4 @@
-import type {CSSProperties, ReactNode} from 'react';
+import type {ReactNode} from 'react';
 import {AppWindow} from '../../../agentbuddy-ui/chrome/AppWindow';
 import {NotesLayout} from '../../../agentbuddy-ui/notes/NotesLayout';
 import {NotesHomeSurface} from '../../../agentbuddy-ui/notes/NotesHomeSurface';
@@ -7,10 +7,9 @@ import {ReferencePill} from '../../../agentbuddy-ui/chat/ReferencePill';
 import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
 import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../../state/notes';
 import {Cursor} from '../../overlays/Cursor';
-import {cursorMove, percentTarget, viewportPoint} from '../../interaction/cursorTargets';
+import {cursorTimeline, percentTarget, viewportPoint} from '../../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
 import {useAppWindowLayout} from '../../appWindowLayout';
-import {ease, mix} from '../../state/timeline';
 import {makeStyles} from '../../../agentbuddy-ui/primitives/makeStyles';
 import {useVideoConfig} from 'remotion';
 import {notesHomeNewNoteButtonTarget} from '../../shots/notesGeometry';
@@ -18,28 +17,16 @@ import '../../shots/NotesShot.module.css';
 
 const styles = makeStyles('NotesShot');
 const notesHomeDuration = 156;
-const editorCrossfadeFrames = 12;
-const layerStyle: CSSProperties = {position: 'absolute', inset: 0};
 
-// Chrome stays pinned in both phases; the home -> editor switch crossfades
-// two full app windows (montage-style) so the frame never leaves the screen.
+// One long notes-chapter scene with no fades: clicking New Note swaps the
+// home surface for the editor instantly, clicking notes in the right rail
+// swaps the open note instantly, and the tasklist panel is simply part of
+// the tasklist note's layout — exactly how the app behaves.
 export function SimpleNotesScene({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   if (frame < notesHomeDuration) {
     return <SimpleNotesHome frame={frame} variant={variant} />;
   }
-  const editorFrame = frame - notesHomeDuration;
-  return (
-    <>
-      {editorFrame < editorCrossfadeFrames ? (
-        <div style={layerStyle}>
-          <SimpleNotesHome frame={notesHomeDuration - 1} variant={variant} />
-        </div>
-      ) : null}
-      <div style={{...layerStyle, opacity: ease(editorFrame, 0, editorCrossfadeFrames)}}>
-        <SimpleNotesEditor frame={editorFrame} variant={variant} />
-      </div>
-    </>
-  );
+  return <SimpleNotesEditor frame={frame - notesHomeDuration} variant={variant} />;
 }
 
 function SimpleNotesHome({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
@@ -77,9 +64,8 @@ function SimpleNotesHome({frame, variant}: {frame: number; variant?: 'landscape'
 
 function SimpleNotesEditor({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesEditorViewForFrame(frame);
-  const taskListVisible = frame >= 88;
+  const taskListVisible = frame >= 76;
   const layout = useAppWindowLayout({animate: false, hasRightRail: true, variant});
-  const taskListEnter = ease(frame, 88, 112);
   const cursor = notesEditorCursorForFrame(frame);
   const renderLine = (line: NotesEditorLineView) => (
     <NoteLine frame={frame} line={line} />
@@ -96,12 +82,7 @@ function SimpleNotesEditor({frame, variant}: {frame: number; variant?: 'landscap
         rightRail={<NotesRightRail state={view.rightRail} />}
       >
         <NotesLayout
-          editorStyle={{opacity: contentSwapForFrame(frame)}}
           showTaskList={taskListVisible}
-          taskListStyle={{
-            opacity: taskListEnter,
-            transform: `translateX(${mix(-36, 0, taskListEnter)}px)`,
-          }}
           taskList={view.taskList}
           editor={{
             beforeLines: view.editor.beforeLines.filter(visibleLine).map(renderLine),
@@ -124,49 +105,34 @@ function notesHomeCursorForFrame(
 ): CursorPath | null {
   const targets = notesHomeCursorTargets(layout, width, height);
 
-  if (frame >= 118 && frame < 154) {
-    return cursorMove(targets, {
+  return cursorTimeline(targets, [
+    {
       end: 146,
       from: viewportPoint(width, height, 0.52, 0.52),
       start: 118,
       to: 'newNoteButton',
       toPoint: {anchor: [0.52, 0.5]},
-    });
-  }
-
-  return null;
+    },
+  ], frame);
 }
 
-// The editor content swaps notes at 76 (tasklist overview) and 122 (todo);
-// fade the incoming content in instead of popping it.
-function contentSwapForFrame(frame: number) {
-  if (frame >= 122) return ease(frame, 122, 130);
-  if (frame >= 76) return ease(frame, 76, 84);
-  return 1;
-}
-
+// One continuous timeline: the cursor clicks the tasklist note in the rail
+// (content swaps instantly at 76), sweeps into the tasklist panel, opens the
+// todo (instant swap at 122), and checks it off — visible at every click.
 function notesEditorCursorForFrame(frame: number): CursorPath | null {
   const targets = notesEditorCursorTargets();
 
-  if (frame >= 50 && frame < 80) {
-    return cursorMove(targets, {end: 70, from: 'editorBody', start: 50, to: 'rightRailTasklist'}, 'percent');
-  }
-
-  if (frame >= 98 && frame < 128) {
-    return cursorMove(targets, {end: 116, from: 'taskListPanelMiddle', start: 98, to: 'taskListCurrentRow'}, 'percent');
-  }
-
-  if (frame >= 126 && frame < 150) {
-    return cursorMove(targets, {
+  return cursorTimeline(targets, [
+    {end: 70, from: 'editorBody', start: 50, to: 'rightRailTasklist'},
+    {end: 116, from: 'rightRailTasklist', start: 98, to: 'taskListCurrentRow'},
+    {
       end: 138,
-      from: 'taskListPanelMiddle',
+      from: 'taskListCurrentRow',
       start: 126,
       to: 'taskCheckbox',
       toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]},
-    }, 'percent');
-  }
-
-  return null;
+    },
+  ], frame, 'percent');
 }
 
 function notesHomeCursorTargets(

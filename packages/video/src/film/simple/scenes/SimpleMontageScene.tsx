@@ -1,45 +1,37 @@
+import {useVideoConfig} from 'remotion';
 import {AppWindow} from '../../../agentbuddy-ui/chrome/AppWindow';
-import {BrowserSurface} from '../../../agentbuddy-ui/browser';
 import {DatabaseSurface} from '../../../agentbuddy-ui/database/DatabaseSurface';
 import {LogsSurface} from '../../../agentbuddy-ui/logs/LogsSurface';
 import {ThreadConversation} from '../../../agentbuddy-ui/threads/ThreadConversation';
-import {montageDissolveFrames, montageSegmentBoundaries, montageShotViewForFrame} from '../../state/montage';
+import {montageShotViewForFrame} from '../../state/montage';
 import {useAppWindowLayout} from '../../appWindowLayout';
-import {ease} from '../../state/timeline';
+import {Cursor} from '../../overlays/Cursor';
+import {cursorTimeline, viewportPoint} from '../../interaction/cursorTargets';
+import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
 import {makeStyles} from '../../../agentbuddy-ui/primitives/makeStyles';
 import '../../shots/MontageShot.module.css';
 
 const styles = makeStyles('MontageShot');
 
-// Identical to the source montage (already full-UI plugin switches with
-// in-window dissolves) but with the window entrance spring pinned.
+// Epilogue scene: hop through more plugins the way a user would — by
+// clicking their toolbar icons. Each surface switch is an instant in-app
+// plugin change (no dissolves), and the database queries run off real
+// clicks on the Execute button.
 export function SimpleMontageScene({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const layout = useAppWindowLayout({animate: false, variant});
-  const boundary = montageSegmentBoundaries.find(at => frame >= at && frame < at + montageDissolveFrames);
+  const {height, width} = useVideoConfig();
   const view = montageShotViewForFrame(frame);
+  const cursor = montageCursorForFrame(frame, layout, width, height);
 
   return (
     <div className={styles.segment}>
-      {boundary !== undefined ? (
-        <div className={styles.layer}>
-          <MontageWindow layout={layout} view={montageShotViewForFrame(boundary - 1)} />
-        </div>
-      ) : null}
-      <div
-        className={styles.layer}
-        style={boundary !== undefined ? {opacity: ease(frame, boundary, boundary + montageDissolveFrames)} : undefined}
-      >
-        <MontageWindow layout={layout} view={view} />
+      <div className={styles.layer}>
+        <AppWindow activePlugin={view.activePlugin} breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
+          <MontageSurface view={view} />
+        </AppWindow>
       </div>
+      {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
-  );
-}
-
-function MontageWindow({layout, view}: {layout: ReturnType<typeof useAppWindowLayout>; view: ReturnType<typeof montageShotViewForFrame>}) {
-  return (
-    <AppWindow activePlugin={view.activePlugin} breadcrumbs={view.breadcrumbs} composer={view.composer} layout={layout}>
-      <MontageSurface view={view} />
-    </AppWindow>
   );
 }
 
@@ -61,8 +53,79 @@ function MontageSurface({view}: {view: ReturnType<typeof montageShotViewForFrame
   }
 
   if (view.surface === 'browser') {
-    return <BrowserSurface state={view.browser} />;
+    return null;
   }
 
   return <DatabaseSurface state={view.database} />;
+}
+
+function montageCursorForFrame(
+  frame: number,
+  layout: ReturnType<typeof useAppWindowLayout>,
+  width: number,
+  height: number,
+): CursorPath | null {
+  const targets = montageCursorTargets(layout, width, height);
+
+  return cursorTimeline(targets, [
+    // Click the Logs toolbar icon; the logs surface lands 4 frames later.
+    {
+      end: 60,
+      from: viewportPoint(width, height, 0.5, 0.42),
+      holdUntilNext: false,
+      start: 40,
+      to: 'logsIcon',
+    },
+    // Click the Database toolbar icon.
+    {
+      end: 132,
+      from: viewportPoint(width, height, 0.45, 0.4),
+      holdUntilNext: false,
+      start: 112,
+      to: 'databaseIcon',
+    },
+    // Run the first query: Execute pressed at 146-148 in the surface state.
+    {
+      end: 146,
+      from: 'databaseIcon',
+      start: 136,
+      to: 'executeButton',
+    },
+    // Click into the query editor; the second query is pasted in at 196.
+    {
+      end: 188,
+      from: 'executeButton',
+      start: 176,
+      to: 'queryEditor',
+    },
+    // Run the second query: Execute pressed at 200-202.
+    {
+      end: 200,
+      from: 'queryEditor',
+      start: 192,
+      to: 'executeButton',
+    },
+  ], frame);
+}
+
+// Pinned toolbar buttons are anchored to the window's bottom edge (40px
+// buttons, 24px gaps, 24px area padding): settings, logs, database, brain
+// bottom-up. The database surface targets mirror the rendered layout.
+function montageCursorTargets(
+  layout: ReturnType<typeof useAppWindowLayout>,
+  width: number,
+  height: number,
+): Record<string, TargetRect> {
+  const windowLeft = Number(layout.windowStyle.left ?? 0);
+  const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowHeight = Number(layout.windowStyle.height ?? height);
+  const windowBottom = windowTop + windowHeight;
+  const iconLeft = windowLeft + 36 - 20;
+
+  return {
+    databaseIcon: {height: 40, left: iconLeft, top: windowBottom - 172 - 20, width: 40},
+    executeButton: {height: height * 0.031, left: width * 0.893, top: height * 0.097, width: width * 0.072},
+    logsIcon: {height: 40, left: iconLeft, top: windowBottom - 108 - 20, width: 40},
+    queryEditor: {height: height * 0.09, left: width * 0.3, top: height * 0.16, width: width * 0.28},
+  };
 }

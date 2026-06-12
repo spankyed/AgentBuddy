@@ -4,18 +4,25 @@ import type {ChatComposerInlineNode} from '../../../agentbuddy-ui/chat/chatTypes
 import {EmptyThreadQuote} from '../../../agentbuddy-ui/threads/EmptyThreadQuote';
 import {ReferencePill} from '../../../agentbuddy-ui/chat/ReferencePill';
 import {ThreadConversation} from '../../../agentbuddy-ui/threads/ThreadConversation';
+import {ThreadDashboardSurface} from '../../../agentbuddy-ui/threads/ThreadDashboardSurface';
+import {ThreadCreateForm} from '../../../agentbuddy-ui/threads/ThreadCreateForm';
+import {ThreadsBoardSurface} from '../../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../../overlays/Cursor';
 import {chatShotViewForFrame} from '../../state/chat';
+import {boardShotViewForFrame} from '../../state/board';
 import {useAppWindowLayout} from '../../appWindowLayout';
 import {ease, mix} from '../../state/timeline';
-import {cursorTimeline, viewportPoint} from '../../interaction/cursorTargets';
+import {cursorTimeline, percentTarget, viewportPoint} from '../../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
+import {threadsBoardSourceStart} from '../timeline';
 import {useVideoConfig} from 'remotion';
 import '../../shots/ChatShot.module.css';
+import '../../shots/BoardShot.module.css';
 import {makeStyles} from '../../../agentbuddy-ui/primitives/makeStyles';
 
-const styles = makeStyles('ChatShot');
+const chatStyles = makeStyles('ChatShot');
+const boardStyles = makeStyles('BoardShot');
 const bottomTabsHeight = 38;
 const composerInputHeight = 112;
 const composerEditorInsetLeft = 16;
@@ -29,12 +36,21 @@ type ChatTargetId =
   | 'quickPromptSend'
   | 'recentThreadRowFirst'
   | 'recentThreads'
-  | 'sendButton';
+  | 'sendButton'
+  | 'threadsBreadcrumb';
 
-// The full app is on screen from frame 0: the chrome reveal and composer
-// dock animation from the source shot are pinned to their final state, so
-// the prompt types directly in the docked composer.
-export function SimpleChatScene({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+// One long threads-chapter scene: the chat story plays in the docked
+// composer, then the cursor clicks the Threads breadcrumb and the surface
+// switches to the dashboard -> create form -> kanban story instantly at each
+// real button click. No fades anywhere; the full app frame never moves.
+export function SimpleThreadsScene({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  if (frame < threadsBoardSourceStart) {
+    return <ThreadsChatPhase frame={frame} variant={variant} />;
+  }
+  return <ThreadsBoardPhase frame={frame - threadsBoardSourceStart} variant={variant} />;
+}
+
+function ThreadsChatPhase({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
   const layout = useAppWindowLayout({animate: false, variant});
   const {height, width} = useVideoConfig();
@@ -45,8 +61,8 @@ export function SimpleChatScene({frame, variant}: {frame: number; variant?: 'lan
   const quote = emptyThreadQuoteForFrame(frame, layout, variant);
 
   return (
-    <div className={styles.root}>
-      <div className={styles.appReveal}>
+    <div className={chatStyles.root}>
+      <div className={chatStyles.appReveal}>
         <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
           <div style={{height: '100%', ...view.conversationStyle}}>
             <ThreadConversation
@@ -56,8 +72,8 @@ export function SimpleChatScene({frame, variant}: {frame: number; variant?: 'lan
               messageStyles={view.messageStyles}
               systemMessage={view.conversation.systemMessage}
               userMessage={
-                <div className={`${styles.viewerWrapper} tiptap-wrapper tiptap-viewer tiptap-viewer-chat`}>
-                  <div className={`${styles.viewerProse} ProseMirror`} contentEditable={false}>
+                <div className={`${chatStyles.viewerWrapper} tiptap-wrapper tiptap-viewer tiptap-viewer-chat`}>
+                  <div className={`${chatStyles.viewerProse} ProseMirror`} contentEditable={false}>
                     <p>
                       {formatUserMessage(view.conversation.userMessage.text, view.conversation.userMessage.content)}
                       <TextCaret frame={frame} visible={view.conversation.userMessage.caretVisible} />
@@ -71,7 +87,7 @@ export function SimpleChatScene({frame, variant}: {frame: number; variant?: 'lan
         </AppWindow>
       </div>
       <div
-        className={styles.composerMotion}
+        className={chatStyles.composerMotion}
         style={{
           left: composerRect.left,
           top: composerRect.top,
@@ -83,6 +99,41 @@ export function SimpleChatScene({frame, variant}: {frame: number; variant?: 'lan
       </div>
       {quote ? <EmptyThreadQuote style={quote.style} text={quote.text} /> : null}
       {cursorPath ? <Cursor frame={frame} {...cursorPath} /> : null}
+    </div>
+  );
+}
+
+function ThreadsBoardPhase({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  const view = boardShotViewForFrame(frame);
+  const layout = useAppWindowLayout({animate: false, variant});
+  const cursor = boardCursorForFrame(frame);
+
+  return (
+    <div className={boardStyles.root}>
+      <div className={boardStyles.appReveal}>
+        <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
+          {!view.dashboard && (frame >= 150 || !view.createForm) ? (
+            <div className={boardStyles.surfaceReveal}>
+              <ThreadsBoardSurface
+                board={view.board}
+                header={view.header}
+                movingCard={view.movingCard}
+              />
+            </div>
+          ) : null}
+          {view.dashboard ? (
+            <div className={boardStyles.surfaceReveal}>
+              <ThreadDashboardSurface state={view.dashboard} />
+            </div>
+          ) : null}
+          {view.createForm ? (
+            <div className={boardStyles.surfaceReveal}>
+              <ThreadCreateForm state={view.createForm} />
+            </div>
+          ) : null}
+        </AppWindow>
+      </div>
+      {cursor ? <Cursor frame={frame} {...cursor} /> : null}
     </div>
   );
 }
@@ -353,6 +404,14 @@ function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetR
       start: 604,
       to: 'quickPromptSend',
     },
+    // Navigate to the threads dashboard: the board phase starts at source
+    // frame 656, right after this click lands on the breadcrumb.
+    {
+      end: 648,
+      from: 'quickPromptSend',
+      start: 630,
+      to: 'threadsBreadcrumb',
+    },
   ], frame);
 }
 
@@ -436,6 +495,12 @@ function chatTargetsForFrame({
       top: actionBarTop,
       width: sendWidth,
     },
+    threadsBreadcrumb: {
+      height: 18,
+      left: windowLeft + 118,
+      top: windowTop + 14,
+      width: 66,
+    },
   };
 }
 
@@ -490,5 +555,99 @@ function composerPlacement({
     left: mainLeft + mainWidth / 2,
     top: windowTop + windowHeight - (variant === 'square' ? 20 : 18),
     width: Math.min(mainWidth * 0.8, 1060),
+  };
+}
+
+// One continuous timeline: the cursor stays visible and parked between
+// actions, and every instant surface swap (dashboard -> form -> board)
+// lands right after its click at full cursor opacity.
+function boardCursorForFrame(frame: number):
+  | CursorPath
+  | null {
+  const targets = boardCursorTargets();
+
+  return cursorTimeline(targets, [
+    {
+      end: 48,
+      from: 'dashboardArea',
+      start: 22,
+      to: 'activeDashboardTabPin',
+      toPoint: {anchor: [0.5, 0.5]},
+    },
+    {
+      end: 84,
+      from: 'activeDashboardTabPin',
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 54,
+      to: 'createThreadButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    },
+    {
+      end: 190,
+      from: 'createThreadButton',
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 174,
+      to: 'linkThreadButton',
+    },
+    {
+      click: false,
+      end: 216,
+      from: 'linkThreadButton',
+      start: 198,
+      to: 'linkActionButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    },
+    {
+      click: false,
+      end: 240,
+      from: 'linkActionButton',
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 228,
+      to: 'linkActionButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    },
+    {
+      end: 258,
+      from: 'linkActionButton',
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 244,
+      to: 'createSaveButton',
+    },
+    {
+      end: 282,
+      from: 'createSaveButton',
+      start: 270,
+      to: 'kanbanViewButton',
+      toPoint: {anchor: [0.5, 0.5]},
+    },
+    {
+      click: false,
+      end: 290,
+      from: 'kanbanViewButton',
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 282,
+      to: 'activeCard',
+    },
+    {
+      end: 304,
+      from: 'activeCard',
+      start: 292,
+      to: 'inProgressDrop',
+    },
+  ], frame, 'percent');
+}
+
+function boardCursorTargets(): Record<string, TargetRect> {
+  return {
+    activeCard: percentTarget(27, 38, 6, 6),
+    activeDashboardTabPin: percentTarget(19.2, 16.2, 1.2, 3.2),
+    createSaveButton: percentTarget(91, 11.8, 5, 3),
+    createThreadButton: percentTarget(91, 9.6, 5, 3),
+    dashboardArea: percentTarget(65, 21, 6, 6),
+    inProgressDrop: percentTarget(48, 34, 6, 6),
+    instructionsField: percentTarget(46, 34, 12, 5),
+    kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
+    linkActionButton: percentTarget(82, 40, 4.5, 3),
+    linkThreadButton: percentTarget(73.9, 44.9, 8.8, 3.6),
   };
 }

@@ -12,10 +12,20 @@ import '../../shots/CalendarShot.module.css';
 
 const styles = makeStyles('CalendarShot');
 
-// Same as the source calendar shot minus the surface entrance fade: the
-// full app is steady from the first frame after the hard cut.
+// Same story as the source calendar shot with every fade pinned: the
+// create-event dialog opens and closes instantly at its clicks, and the
+// saved event block appears instantly — like the real app.
 export function SimpleCalendarScene({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const view = calendarViewForFrame(frame);
+  const sourceView = calendarViewForFrame(frame);
+  const view = sourceView.view === 'day'
+    ? {
+        ...sourceView,
+        day: sourceView.day
+          ? {...sourceView.day, blocks: sourceView.day.blocks.map(block => ({...block, opacity: 1}))}
+          : sourceView.day,
+        dialog: sourceView.dialog ? {...sourceView.dialog, opacity: 1} : sourceView.dialog,
+      }
+    : sourceView;
   const {height, width} = useVideoConfig();
   const layout = useAppWindowLayout({animate: false, variant});
   const cursor = calendarCursorForFrame(frame, layout, width, height);

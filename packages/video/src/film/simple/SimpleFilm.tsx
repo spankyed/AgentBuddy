@@ -5,12 +5,11 @@ import {theme} from '../../ui/theme';
 import {ChapterCard} from '../shots/ChapterCard';
 import {FinalShot} from '../shots/FinalShot';
 import {SurfaceFrame} from '../SurfaceFrame';
-import {SimpleBoardScene} from './scenes/SimpleBoardScene';
 import {SimpleCalendarScene} from './scenes/SimpleCalendarScene';
-import {SimpleChatScene} from './scenes/SimpleChatScene';
 import {SimpleCodeScene} from './scenes/SimpleCodeScene';
 import {SimpleMontageScene} from './scenes/SimpleMontageScene';
 import {SimpleNotesScene} from './scenes/SimpleNotesScene';
+import {SimpleThreadsScene} from './scenes/SimpleThreadsScene';
 import {SimpleWorkflowScene} from './scenes/SimpleWorkflowScene';
 import {simpleSceneFrame, simpleScenes, type SimpleScene} from './timeline';
 import '../AgentBuddyFilm.module.css';
@@ -56,8 +55,7 @@ function SceneSurface({scene, variant}: {scene: SimpleScene; variant: Variant}) 
   if (scene.card) {
     return <ChapterCard duration={scene.duration} eyebrow={scene.card.eyebrow} frame={frame} subtitle={scene.card.subtitle} title={scene.card.title} variant={variant} />;
   }
-  if (scene.id === 'chat') return <SimpleChatScene frame={frame} variant={variant} />;
-  if (scene.id === 'board') return <SimpleBoardScene frame={frame} variant={variant} />;
+  if (scene.id === 'threads') return <SimpleThreadsScene frame={frame} variant={variant} />;
   if (scene.id === 'notes') return <SimpleNotesScene frame={frame} variant={variant} />;
   if (scene.id === 'code') return <SimpleCodeScene frame={frame} variant={variant} />;
   if (scene.id === 'workflow') return <SimpleWorkflowScene frame={frame} variant={variant} />;
