@@ -1,7 +1,8 @@
 import { setup, type ActorRefFrom, assign } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import { trpc } from '@/core/trpc';
-import breadcrumb from '@/core/breadcrumb';
+import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
+import { targetIs, type TrailClickEvent } from '@/core/actors/route-trailer';
 import type { OutgoingCalendarEvents, CalendarEventDTO } from '@app/api';
 
 export const id = 'calendar' as const;
@@ -10,12 +11,14 @@ export interface EditorState {
   mode: 'create' | 'edit';
   eventId: string | null;
   defaultDateMs: number | null;
+  defaultHasTime: boolean;
 }
 
 export interface CalendarContext {
   events: CalendarEventDTO[];
   viewYear: number;
   viewMonth: number; // 0-11
+  viewDayMs: number; // local midnight of the day shown in day view
   editor: EditorState | null;
 }
 
@@ -23,13 +26,31 @@ type UIEvents =
   | { type: 'CAL.PREV_MONTH' }
   | { type: 'CAL.NEXT_MONTH' }
   | { type: 'CAL.TODAY' }
-  | { type: 'CAL.OPEN_CREATE'; dateMs?: number }
+  | { type: 'CAL.OPEN_DAY'; dateMs: number }
+  | { type: 'CAL.PREV_DAY' }
+  | { type: 'CAL.NEXT_DAY' }
+  | { type: 'CAL.OPEN_CREATE'; dateMs?: number; hasTime?: boolean }
   | { type: 'CAL.OPEN_EDIT'; eventId: string }
   | { type: 'CAL.CLOSE_EDITOR' }
   | { type: 'CAL.SAVE'; eventId?: string; title: string; startsAt: number; endsAt: number; allDay: boolean; notes: string }
   | { type: 'CAL.DELETE'; eventId: string };
 
-export type CalendarEvents = UIEvents | OutgoingCalendarEvents;
+export type CalendarEvents = UIEvents | OutgoingCalendarEvents | TrailClickEvent;
+
+function localMidnight(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+// Shift a local-midnight timestamp by whole days (DST-safe) and derive view fields
+function dayView(ms: number, deltaDays = 0) {
+  const d = new Date(ms);
+  const shifted = new Date(d.getFullYear(), d.getMonth(), d.getDate() + deltaDays);
+  return {
+    viewDayMs: shifted.getTime(),
+    viewYear: shifted.getFullYear(),
+    viewMonth: shifted.getMonth(),
+  };
+}
 
 const typeOf = safeEvents<CalendarEvents>();
 
@@ -74,18 +95,30 @@ const calendarState = setup({
       : { viewMonth: context.viewMonth + 1 }),
     goToToday: assign(() => {
       const today = new Date();
-      return { viewYear: today.getFullYear(), viewMonth: today.getMonth() };
+      return {
+        viewYear: today.getFullYear(),
+        viewMonth: today.getMonth(),
+        viewDayMs: localMidnight(today),
+      };
     }),
+    openDay: assign(({ event }) => dayView(typeOf('CAL.OPEN_DAY', event).dateMs)),
+    prevDay: assign(({ context }) => dayView(context.viewDayMs, -1)),
+    nextDay: assign(({ context }) => dayView(context.viewDayMs, 1)),
     openCreate: assign({
       editor: ({ event }) => {
         const ev = typeOf('CAL.OPEN_CREATE', event);
-        return { mode: 'create' as const, eventId: null, defaultDateMs: ev.dateMs ?? null };
+        return {
+          mode: 'create' as const,
+          eventId: null,
+          defaultDateMs: ev.dateMs ?? null,
+          defaultHasTime: ev.hasTime ?? false,
+        };
       },
     }),
     openEdit: assign({
       editor: ({ event }) => {
         const ev = typeOf('CAL.OPEN_EDIT', event);
-        return { mode: 'edit' as const, eventId: ev.eventId, defaultDateMs: null };
+        return { mode: 'edit' as const, eventId: ev.eventId, defaultDateMs: null, defaultHasTime: false };
       },
     }),
     closeEditor: assign({ editor: null }),
@@ -123,15 +156,17 @@ const calendarState = setup({
       });
     },
   },
+  guards: { targetIs },
 }).createMachine({
   id,
-  initial: 'canvas',
+  initial: 'month',
   context: () => {
     const now = new Date();
     return {
       events: [],
       viewYear: now.getFullYear(),
       viewMonth: now.getMonth(),
+      viewDayMs: localMidnight(now),
       editor: null,
     };
   },
@@ -140,18 +175,41 @@ const calendarState = setup({
     CALENDAR_EVENT_CREATED: { actions: 'addEvent' },
     CALENDAR_EVENT_UPDATED: { actions: 'replaceEvent' },
     CALENDAR_EVENT_DELETED: { actions: 'removeEvent' },
-    'CAL.PREV_MONTH': { actions: 'prevMonth' },
-    'CAL.NEXT_MONTH': { actions: 'nextMonth' },
     'CAL.TODAY': { actions: 'goToToday' },
     'CAL.OPEN_CREATE': { actions: 'openCreate' },
     'CAL.OPEN_EDIT': { actions: 'openEdit' },
     'CAL.CLOSE_EDITOR': { actions: 'closeEditor' },
     'CAL.SAVE': { actions: ['saveEvent', 'closeEditor'] },
     'CAL.DELETE': { actions: ['deleteEvent', 'closeEditor'] },
+    TRAIL_CLICK: [
+      {
+        guard: { type: 'targetIs', params: { view: 'month' } },
+        target: '.month',
+      },
+    ],
   },
   states: {
-    canvas: {
-      meta: breadcrumb('canvas', 'Calendar', true),
+    month: {
+      meta: breadcrumb('month', 'Calendar', true),
+      on: {
+        'CAL.PREV_MONTH': { actions: 'prevMonth' },
+        'CAL.NEXT_MONTH': { actions: 'nextMonth' },
+        'CAL.OPEN_DAY': { target: 'day', actions: 'openDay' },
+      },
+    },
+    day: {
+      meta: breadcrumbWithParams<CalendarContext>({
+        target: 'day',
+        getLabel: (ctx) => new Date(ctx.viewDayMs).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+      }),
+      on: {
+        'CAL.PREV_DAY': { actions: 'prevDay' },
+        'CAL.NEXT_DAY': { actions: 'nextDay' },
+      },
     },
   },
 });

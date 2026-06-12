@@ -91,6 +91,7 @@ const props = defineProps<{
   mode: 'create' | 'edit';
   event: CalendarEventDTO | null;
   defaultDateMs: number | null;
+  defaultHasTime: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -117,8 +118,13 @@ function fromLocalInput(value: string): number {
   return new Date(y, m - 1, d, h, min).getTime();
 }
 
+function defaultStart(dateMs: number): number {
+  // A specific time (e.g. timeline slot click) is used as-is; a bare date defaults to 9 AM
+  return props.defaultHasTime ? dateMs : new Date(dateMs).setHours(9, 0, 0, 0);
+}
+
 const initialStart = props.event?.startsAt
-  ?? (props.defaultDateMs != null ? new Date(props.defaultDateMs).setHours(9, 0, 0, 0) : Date.now());
+  ?? (props.defaultDateMs != null ? defaultStart(props.defaultDateMs) : Date.now());
 const initialEnd = props.event?.endsAt ?? initialStart + HOUR_MS;
 const initialAllDay = props.event?.allDay ?? false;
 

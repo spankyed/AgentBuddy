@@ -21,12 +21,16 @@
         @click="emit('day-click', cell.dateMs)"
       >
         <div class="flex justify-end">
-          <span
+          <button
             class="text-xs px-1.5 py-0.5 rounded-full"
-            :class="cell.isToday ? 'bg-blue-600 text-white font-semibold' : 'text-neutral-400'"
+            :class="cell.isToday
+              ? 'bg-blue-600 text-white font-semibold hover:bg-blue-500'
+              : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'"
+            title="Open day view"
+            @click.stop="emit('day-number-click', cell.dateMs)"
           >
             {{ cell.dayOfMonth }}
-          </span>
+          </button>
         </div>
         <div class="flex flex-col gap-0.5 mt-0.5 overflow-hidden">
           <EventChip
@@ -61,6 +65,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'day-click', dateMs: number): void;
+  (e: 'day-number-click', dateMs: number): void;
   (e: 'event-click', eventId: string): void;
 }>();
 
