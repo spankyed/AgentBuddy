@@ -1,6 +1,8 @@
 import {Composition} from 'remotion';
 import {AgentBuddyFilm, AgentBuddyFilmSquare} from './film/AgentBuddyFilm';
+import {AgentBuddyFilmSimple, AgentBuddyFilmSimpleSquare} from './film/simple/SimpleFilm';
 import {totalFrames} from './film/state/timeline';
+import {simpleTotalFrames} from './film/simple/timeline';
 import './global.css';
 import {
   ActionDetailDemo,
@@ -170,6 +172,8 @@ export const RemotionRoot = () => {
     <>
       <Composition id="AgentBuddyFilm" component={AgentBuddyFilm} durationInFrames={totalFrames} fps={fps} width={1440} height={900} />
       <Composition id="AgentBuddyFilmSquare" component={AgentBuddyFilmSquare} durationInFrames={totalFrames} fps={fps} width={1080} height={1080} />
+      <Composition id="AgentBuddyFilmSimple" component={AgentBuddyFilmSimple} durationInFrames={simpleTotalFrames} fps={fps} width={1440} height={900} />
+      <Composition id="AgentBuddyFilmSimpleSquare" component={AgentBuddyFilmSimpleSquare} durationInFrames={simpleTotalFrames} fps={fps} width={1080} height={1080} />
       <Composition id="ToolbarDemo" component={ToolbarDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsListDemo" component={ActionsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="ActionsEmptyDemo" component={ActionsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

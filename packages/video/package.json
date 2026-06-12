@@ -12,6 +12,7 @@
     "render:demos": "node scripts/render-component-demos.js",
     "review:snapshots": "node scripts/extract-review-snapshots.js",
     "audit:film-action": "tsx scripts/audit-film-action.ts",
+    "audit:simple-film": "tsx scripts/audit-simple-film.ts",
     "audit:fidelity": "node scripts/audit-fidelity.js",
     "audit:fidelity:strict": "REQUIRE_ACTUAL_APP_SCREENSHOTS=1 node scripts/audit-fidelity.js",
     "actual-app:capture-plan": "node scripts/actual-app-capture-plan.js",
