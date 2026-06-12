@@ -9,6 +9,7 @@ export const WINDOW_CONFIG = {
   
   // Window identification
   MAIN_TITLE: 'AgentBuddy-Main',
+  POPOUT_TITLE_PREFIX: 'AgentBuddy-Popout',
   
   // Timing
   SPLASH_CLOSE_DELAY: 200, // ms

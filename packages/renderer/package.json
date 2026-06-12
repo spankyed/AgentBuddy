@@ -51,9 +51,9 @@
     "@xterm/addon-clipboard": "^0.2.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.16.0",
-    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/addon-unicode11": "^0.9.0",
     "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^5.5.0",
     "dagre": "^0.8.5",
     "elkjs": "^0.11.0",
@@ -63,6 +63,7 @@
     "monaco-editor": "^0.55.1",
     "reka-ui": "^2.2.1",
     "tiptap-markdown": "^0.9.0",
+    "vidstack": "^1.15.5",
     "vue": "^3.5.18",
     "vue-arrange": "^1.5.0",
     "xstate": "^5.19.2"

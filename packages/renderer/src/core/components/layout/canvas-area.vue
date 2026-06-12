@@ -7,6 +7,7 @@
     <div
       class="flex items-center w-full h-header px-3 border-b border-neutral-800 overflow-x-auto overflow-y-hidden scrollbar-none"
       :class="[headerClass, menuOpen ? '' : 'canvas-header']"
+      :style="headerStyle"
       @wheel.prevent="($event.currentTarget as HTMLElement).scrollLeft += $event.deltaY"
     >
       <!-- ▸ Breadcrumbs with inline ⋮ menu trigger.
@@ -70,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ChevronRight, EllipsisVertical } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
@@ -93,11 +94,20 @@ interface Props {
   menuItems?: ContextMenuItemType[]
   headerClass?: string
   headerOnly?: boolean
+  headerInsetLeft?: number
+  headerInsetRight?: number
 }
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   menuItems: () => [],
   headerOnly: false,
+  headerInsetLeft: 0,
+  headerInsetRight: 0,
 })
+
+const headerStyle = computed(() => ({
+  paddingLeft: props.headerInsetLeft ? `${props.headerInsetLeft}px` : undefined,
+  paddingRight: props.headerInsetRight ? `${props.headerInsetRight}px` : undefined,
+}))
 defineEmits<{
   (e: 'canvas-toggle'): void
   (e: 'crumb-click', target: string, info?: any): void

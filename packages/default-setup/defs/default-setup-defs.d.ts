@@ -22,7 +22,8 @@ declare namespace EARS {
         Secret = "Secret",
         Note = "Note",
         BrowserTab = "BrowserTab",
-        BrowserBookmark = "BrowserBookmark"
+        BrowserBookmark = "BrowserBookmark",
+        CalendarEvent = "CalendarEvent"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {

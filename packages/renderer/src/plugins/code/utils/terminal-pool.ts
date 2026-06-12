@@ -61,6 +61,7 @@ export interface PoolEntry {
   pinnedToBottom: boolean
   savedScrollFraction: number | null
   webglLoaded: boolean
+  webglAddon: WebglAddon | null
 }
 
 const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
@@ -128,7 +129,8 @@ class TerminalPool {
       isShowingLoadingContent: false,
       pinnedToBottom: true,
       savedScrollFraction: null,
-      webglLoaded: false
+      webglLoaded: false,
+      webglAddon: null
     }
 
     // Shift+Enter inserts a newline instead of executing. Wired once here
@@ -203,7 +205,8 @@ class TerminalPool {
     // Load WebGL on first in-DOM attach so the GL canvas is sized from live
     // DOM metrics rather than a detached wrapper with zero dimensions.
     if (!entry.webglLoaded) {
-      try { entry.term.loadAddon(new WebglAddon()) } catch { /* falls back to canvas renderer */ }
+      const addon = new WebglAddon()
+      try { entry.term.loadAddon(addon); entry.webglAddon = addon } catch { /* falls back to canvas renderer */ }
       entry.webglLoaded = true
     }
     return entry
@@ -286,10 +289,19 @@ class TerminalPool {
     }
     entry.disposables.length = 0
 
-    try { entry.term.dispose() } catch (e) { console.error('[terminalPool] term.dispose failed:', e) }
+    // Dispose WebGL addon explicitly before the terminal — its internal
+    // disposables can reference a lost GL context, which crashes inside
+    // xterm's generic AddonManager.dispose() iteration.
+    if (entry.webglAddon) {
+      try { entry.webglAddon.dispose() } catch { /* GL context may already be lost */ }
+      entry.webglAddon = null
+    }
 
+    // Detach from DOM before disposing so the GL canvas tears down cleanly.
     entry.wrapper.remove()
     entry.attachedContainer = null
+
+    try { entry.term.dispose() } catch (e) { console.error('[terminalPool] term.dispose failed:', e) }
     this.entries.delete(terminalId)
   }
 }

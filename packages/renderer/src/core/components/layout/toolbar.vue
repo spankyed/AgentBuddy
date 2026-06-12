@@ -19,7 +19,8 @@
                 ? 'bg-primary-600 text-white'
                 : 'text-neutral-400 hover:text-white hover:bg-primary-700'
             ]"
-            @click="$emit('select-plugin', item.id)"
+            @click="onPluginClick($event, item)"
+            @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
             :title="item.label"
           >
             <component :is="item.icon" :size="24" />
@@ -39,7 +40,8 @@
               ? 'bg-primary-600 text-white'
               : 'text-neutral-400 hover:text-white hover:bg-primary-700'
           ]"
-          @click="$emit('select-plugin', item.id)"
+          @click="onPluginClick($event, item)"
+          @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
           :title="item.label"
         >
           <component :is="item.icon" :size="24" />
@@ -54,7 +56,8 @@
       </span>
     </div>
 
-    <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="pluginMenuItems" :separator-after="separatorIndex" @close="showMenu = false" />
+    <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="visibilityMenuItems" :separator-after="separatorIndex" @close="showMenu = false" />
+    <ToolbarPluginContextMenu ref="pluginContextMenu" />
   </div>
 </template>
 
@@ -63,13 +66,14 @@ import type { Plugin } from '@/core/types';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
+import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
 import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
 import { applicationState } from '@/main';
 import allPlugins from '@/plugins';
 
-defineEmits<(e: 'select-plugin', id: string) => void>();
+const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
 
 const props = defineProps<{
   activePlugin: Plugin;
@@ -82,6 +86,7 @@ const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned)
 // --- Right-click menu: toggle plugin visibility ---
 const { showMenu, menuPos, open } = useContextMenu();
 const { updateSettings } = useSettingsSaveStatus();
+const pluginContextMenu = ref<InstanceType<typeof ToolbarPluginContextMenu> | null>(null);
 const pluginVisibility = useSelector(
   applicationState,
   (state) => state.context.pluginVisibility,
@@ -103,7 +108,7 @@ const nonPinnedPlugins = allPlugins.filter(p => p.icon && !p.isPinned);
 const pinnedPlugins = allPlugins.filter(p => p.icon && p.isPinned);
 const sortedPlugins = [...nonPinnedPlugins, ...pinnedPlugins];
 
-const pluginMenuItems = computed<MenuItem[]>(() =>
+const visibilityMenuItems = computed<MenuItem[]>(() =>
   sortedPlugins.map((plugin) => {
     const locked = plugin.id === 'settings';
     const visible = isVisible(plugin.id);
@@ -128,7 +133,20 @@ const separatorIndex = nonPinnedPlugins.length > 0 && pinnedPlugins.length > 0
   : -1;
 
 const onContextMenu = (e: MouseEvent) => {
-  open(e, pluginMenuItems.value.length + (separatorIndex >= 0 ? 1 : 0));
+  open(e, visibilityMenuItems.value.length + (separatorIndex >= 0 ? 1 : 0));
+};
+
+const onPluginContextMenu = (e: MouseEvent, plugin: Plugin) => {
+  pluginContextMenu.value?.open(e, plugin);
+};
+
+const onPluginClick = (e: MouseEvent, plugin: Plugin) => {
+  if (e.metaKey) {
+    window.electronAPI?.plugins?.popout(plugin.id, plugin.label);
+    return;
+  }
+
+  emit('select-plugin', plugin.id);
 };
 
 const isDev = import.meta.env.DEV;

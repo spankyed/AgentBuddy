@@ -55,15 +55,21 @@ const CLI_COMMANDS: Record<CliName, string> = {
 function expandGlobPaths(pattern: string): string[] {
   if (!pattern.includes('*')) return [pattern]
 
-  const dir = path.dirname(path.dirname(pattern)) // e.g. ~/.nvm/versions/node
-  const binary = path.basename(pattern)
+  // Split on the glob segment to find the parent directory and the suffix.
+  // e.g. ~/.nvm/versions/node/*/bin/codex → dir=~/.nvm/versions/node, suffix=['bin','codex']
+  const parts = pattern.split(path.sep)
+  const globIndex = parts.findIndex(p => p.includes('*'))
+  if (globIndex < 0) return [pattern]
+
+  const dir = parts.slice(0, globIndex).join(path.sep)
+  const suffix = parts.slice(globIndex + 1)
 
   try {
     const entries = fs.readdirSync(dir)
     return entries
       .filter(e => e.startsWith('v'))
       .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
-      .map(version => path.join(dir, version, 'bin', binary))
+      .map(version => path.join(dir, version, ...suffix))
   } catch {
     return []
   }

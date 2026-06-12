@@ -64,13 +64,11 @@
         </div>
 
         <!-- Video player (native formats) -->
-        <div v-show="isVideoFile(activeFile) && isNativeVideo" class="flex items-center justify-center h-full bg-neutral-950">
-          <video
+        <div v-show="isVideoFile(activeFile) && isNativeVideo" class="h-full bg-neutral-950">
+          <VideoPlayer
             v-if="isVideoFile(activeFile) && isNativeVideo"
             :key="activeFile.path"
-            :src="`local-file://file?path=${encodeURIComponent(activeFile.path)}`"
-            controls
-            class="max-w-full max-h-full"
+            :file-path="activeFile.path"
           />
         </div>
 
@@ -170,6 +168,7 @@ import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import DeletedFileView from './DeletedFileView.vue'
+import VideoPlayer from './VideoPlayer.vue'
 import Tabs from './Tabs.vue'
 import { isEditableDiff, type OpenFile, type TerminalTab, type TabGroup } from '@/plugins/code/state'
 import { nativeVideoExtensions } from '@/plugins/code/utils/file-icons'

@@ -4,6 +4,7 @@ import { protocol, net } from 'electron';
 import { resolveMediaFilePath } from './paths.js';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname } from 'node:path';
+import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 
 const MIME_TYPES: Record<string, string> = {
@@ -42,6 +43,18 @@ function parseRange(rangeHeader: string, fileSize: number): { start: number; end
   return { start, end: Math.min(end, fileSize - 1) };
 }
 
+function createStreamBody(
+  filePath: string,
+  request: Request,
+  range?: { start: number; end: number },
+): BodyInit {
+  const nodeStream = createReadStream(filePath, range);
+  // Chromium aborts the prior range request on every seek — destroy the read
+  // stream so we don't leak file descriptors.
+  request.signal.addEventListener('abort', () => nodeStream.destroy(), { once: true });
+  return Readable.toWeb(nodeStream) as unknown as BodyInit;
+}
+
 function streamFileResponse(filePath: string, request: Request): Response {
   const fileSize = statSync(filePath).size;
   const contentType = getContentType(filePath);
@@ -60,7 +73,7 @@ function streamFileResponse(filePath: string, request: Request): Response {
     }
 
     const contentLength = range.end - range.start + 1;
-    return new Response(createReadStream(filePath, range) as unknown as BodyInit, {
+    return new Response(createStreamBody(filePath, request, range), {
       status: 206,
       headers: {
         'Accept-Ranges': 'bytes',
@@ -71,7 +84,7 @@ function streamFileResponse(filePath: string, request: Request): Response {
     });
   }
 
-  return new Response(createReadStream(filePath) as unknown as BodyInit, {
+  return new Response(createStreamBody(filePath, request), {
     status: 200,
     headers: {
       'Accept-Ranges': 'bytes',

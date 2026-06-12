@@ -37,4 +37,7 @@ export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType } from './se
 export type { OutgoingNotesEvents } from './systems/notes/system';
 export type * from './systems/notes/types';
 
+export type { OutgoingCalendarEvents } from './systems/calendar/system';
+export type * from './systems/calendar/types';
+
 // todo, we should probably export all the entities from here

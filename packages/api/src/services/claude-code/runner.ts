@@ -253,6 +253,9 @@ export async function spawnStream(
   args: readonly string[],
   opts: SpawnStreamOptions = {},
 ): Promise<StreamHandle> {
+  if (!opts.cwd) {
+    throw new Error('spawnStream requires a cwd — refusing to fall back to process.cwd()')
+  }
   const cliPath = opts.cliPath ?? await resolveForService('claude-code')
 
   let child: ChildProcessByStdio<Writable, Readable, Readable>

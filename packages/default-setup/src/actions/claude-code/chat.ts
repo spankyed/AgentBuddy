@@ -225,7 +225,7 @@ export async function action(
   const forceDirectoryPicker = params.forceDirectoryPicker as boolean | undefined;
 
   const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
-  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || prior?.cwd;
+  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
     const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
     const blocks: any[] = [
@@ -361,15 +361,21 @@ export async function action(
     });
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
-    // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
-    sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || prior?.cwd || undefined);
+    // For new sessions, fallback chain:
+    //   cwdOverride — explicit directory from "New Thread in Project" menu (one-shot)
+    //   prior?.cwd — thread already had a session (e.g. expired/broken); keep its project dir
+    //                even if the user navigated elsewhere since then
+    //   baseDirectory / defaultBaseDirectory — current base directory from settings
+    sessionCwd = resumeSessionId
+      ? prior?.cwd
+      : (cwdOverride || prior?.cwd || codeSettings?.baseDirectory || codeSettings?.defaultBaseDirectory || undefined);
 
     // Fallback: if resuming but prior.cwd is missing, try project settings —
     // but only if the session file actually exists under that directory.
     // Blindly using defaultBaseDirectory when it differs from the thread's
     // original cwd causes "session not found" (wrong project bucket).
     if (resumeSessionId && !sessionCwd) {
-      const fallbackCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined;
+      const fallbackCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || undefined;
       if (fallbackCwd) {
         const exists = await services.cli.claudeCode.sessionExists(resumeSessionId, { cwd: fallbackCwd });
         if (exists) {

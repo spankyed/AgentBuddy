@@ -18,6 +18,8 @@ interface BreadcrumbItem {
 export interface ApplicationParams {
   plugins: Plugin[];
   defaultPlugin: Plugin;
+  initialPluginId?: string;
+  restoreLastActivePlugin?: boolean;
 }
 
 export interface ApplicationContext {
@@ -42,6 +44,7 @@ export interface ApplicationContext {
   };
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
+  restoreLastActivePlugin: boolean;
 }
 
 export const application = 'application' as const;
@@ -324,6 +327,8 @@ export const createApplicationState = () => setup({
     }),
 
     syncLastActivePlugin: ({ event, self, context }) => {
+      if (!context.restoreLastActivePlugin) return;
+
       const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
 
       // Validate plugin exists before persisting — stale IDs (e.g., removed plugins) must not overwrite localStorage
@@ -622,9 +627,14 @@ export const createApplicationState = () => setup({
       pluginVisibility[plugin.id] = true;
     });
 
-    // Determine initial active plugin - use saved one if it exists and is valid
+    // Determine initial active plugin - use an explicit window target first, then saved state
     let initialActivePlugin = input.plugins[0];
-    if (savedLastActivePlugin) {
+    if (input.initialPluginId) {
+      const initialPlugin = input.plugins.find(p => p.id === input.initialPluginId);
+      if (initialPlugin) {
+        initialActivePlugin = initialPlugin;
+      }
+    } else if (savedLastActivePlugin) {
       const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
       if (savedPlugin) {
         initialActivePlugin = savedPlugin;
@@ -648,6 +658,7 @@ export const createApplicationState = () => setup({
       panelSizes,
       hotkeysDisabled: false,
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
+      restoreLastActivePlugin: input.restoreLastActivePlugin ?? true,
     };
   },
   initial: 'running',

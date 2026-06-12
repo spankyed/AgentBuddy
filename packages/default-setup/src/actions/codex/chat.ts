@@ -87,7 +87,7 @@ export async function action(params: Record<string, any>, services: Services, _z
   const cwdOverride = params.cwdOverride as string | undefined;
   const forceDirectoryPicker = params.forceDirectoryPicker as boolean | undefined;
   const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
-  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || prior?.cwd;
+  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
 
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
     const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
@@ -129,10 +129,14 @@ export async function action(params: Record<string, any>, services: Services, _z
       await codex.start();
     }
 
-    // Resolve CWD
+    // Resolve CWD — fallback chain:
+    //   cwdOverride — explicit directory from "New Thread in Project" menu (one-shot)
+    //   prior?.cwd — thread already had a session (e.g. expired/broken); keep its project dir
+    //                even if the user navigated elsewhere since then
+    //   baseDirectory / defaultBaseDirectory — current base directory from settings
     const sessionCwd = codexThreadId
       ? prior?.cwd
-      : (cwdOverride || codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined);
+      : (cwdOverride || prior?.cwd || codeSettings?.baseDirectory || codeSettings?.defaultBaseDirectory || undefined);
 
     if (sessionCwd && !prior?.cwd) persistCodexState(services, threadId, { cwd: sessionCwd });
     if (codexThreadId) {

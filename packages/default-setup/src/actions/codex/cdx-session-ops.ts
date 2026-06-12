@@ -75,7 +75,7 @@ function effectiveCwd(services: Services, threadId?: string, cwdOverride?: strin
     || prior?.cwdOverride
     || prior?.cwd
     || codeSettings?.defaultBaseDirectory
-    || codeSettings?.lastDirectoryOpened
+    || codeSettings?.baseDirectory
     || undefined;
 }
 

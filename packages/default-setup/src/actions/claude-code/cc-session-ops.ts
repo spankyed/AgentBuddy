@@ -149,7 +149,7 @@ async function handleResume(
     || prior?.cwdOverride
     || prior?.cwd
     || codeSettings?.defaultBaseDirectory
-    || codeSettings?.lastDirectoryOpened
+    || codeSettings?.baseDirectory
     || undefined;
   const cwdOpts = effectiveCwd ? { cwd: effectiveCwd } : undefined;
 
