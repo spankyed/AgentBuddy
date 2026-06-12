@@ -836,6 +836,10 @@ const quickPromptResponseEnd = 660;
 const noteReferenceSelectStart = 112;
 const noteReferenceSelectEnd = 144;
 const noteReferenceInsertFrame = 152;
+// The "Use #notes:" prefix finishes typing here, then holds with the
+// autocomplete menu open until the selection animates at SelectStart. Kept
+// well ahead of SelectStart so the typing reads fast, not laborious.
+const notePromptPrefixTypedEnd = 60;
 const promptAfterReferenceStart = 168;
 const promptAfterReferenceEnd = 244;
 
@@ -858,7 +862,7 @@ function typedPromptForFrame(frame: number) {
   const insertedReferenceText = 'Use #notes:tasklist ';
   const remainingText = chatShotState.prompt.text.slice(insertedReferenceText.length);
   if (frame < noteReferenceSelectEnd) {
-    return textRevealLinear(prefix, frame, chatShotState.prompt.from, noteReferenceSelectStart);
+    return textRevealLinear(prefix, frame, chatShotState.prompt.from, notePromptPrefixTypedEnd);
   }
   if (frame < promptAfterReferenceStart) return insertedReferenceText;
   return insertedReferenceText + textRevealLinear(remainingText, frame, promptAfterReferenceStart, promptAfterReferenceEnd);

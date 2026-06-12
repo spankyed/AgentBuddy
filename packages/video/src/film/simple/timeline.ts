@@ -27,6 +27,7 @@ export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
   threads: [
     // Chat story (source 0-655).
     {at: 14, remove: 6},    // quote settled (12), typing starts (24)
+    {at: 66, remove: 44},   // prefix typed (60), trim the static menu-open hold before selection (112)
     {at: 156, remove: 8},   // hold after reference insert (144-168)
     {at: 292, remove: 13},  // thinking shown (eased 282-290), response at 306
     {at: 362, remove: 7},   // response done (346), plan enters (370)
@@ -81,7 +82,7 @@ export function simpleSceneFrame(id: SimpleSceneId, frame: number) {
 export const simpleScenes: SimpleScene[] = [
   {id: 'intro-card', card: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 66},
   {id: 'chat-card', card: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 66},
-  {id: 'threads', duration: 872},
+  {id: 'threads', duration: 828},
   {id: 'notes-card', card: {eyebrow: '2', title: 'More than just a note taker'}, duration: 66},
   {id: 'notes', duration: 312},
   {id: 'code-card', card: {eyebrow: '3', title: 'More than just an IDE'}, duration: 66},
