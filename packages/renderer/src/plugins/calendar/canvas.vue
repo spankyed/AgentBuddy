@@ -3,29 +3,27 @@
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
       <div class="flex items-center gap-2">
-        <h2 class="text-lg font-semibold text-neutral-200">{{ isDayView ? dayLabel : monthLabel }}</h2>
-        <div class="flex items-center gap-1">
-          <button
-            class="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-            :title="isDayView ? 'Previous day' : 'Previous month'"
-            @click="actor.send({ type: isDayView ? 'CAL.PREV_DAY' : 'CAL.PREV_MONTH' })"
-          >
-            <ChevronLeft :size="18" />
-          </button>
-          <button
-            class="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-            :title="isDayView ? 'Next day' : 'Next month'"
-            @click="actor.send({ type: isDayView ? 'CAL.NEXT_DAY' : 'CAL.NEXT_MONTH' })"
-          >
-            <ChevronRight :size="18" />
-          </button>
-          <button
-            class="ml-1 px-3 py-1.5 text-sm rounded-md border border-neutral-700 hover:bg-neutral-800 text-neutral-300"
-            @click="actor.send({ type: 'CAL.TODAY' })"
-          >
-            Today
-          </button>
-        </div>
+        <button
+          class="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+          :title="isDayView ? 'Previous day' : 'Previous month'"
+          @click="actor.send({ type: isDayView ? 'CAL.PREV_DAY' : 'CAL.PREV_MONTH' })"
+        >
+          <ChevronLeft :size="18" />
+        </button>
+        <h2 class="text-lg font-semibold text-neutral-200 text-center">{{ isDayView ? dayLabel : monthLabel }}</h2>
+        <button
+          class="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+          :title="isDayView ? 'Next day' : 'Next month'"
+          @click="actor.send({ type: isDayView ? 'CAL.NEXT_DAY' : 'CAL.NEXT_MONTH' })"
+        >
+          <ChevronRight :size="18" />
+        </button>
+        <button
+          class="ml-1 px-3 py-1.5 text-sm rounded-md border border-neutral-700 hover:bg-neutral-800 text-neutral-300"
+          @click="actor.send({ type: 'CAL.TODAY' })"
+        >
+          Today
+        </button>
       </div>
       <button
         class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-neutral-200"
