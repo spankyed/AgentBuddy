@@ -9,7 +9,6 @@ const calendarPlugin: Plugin = {
   icon: Calendar,
   state,
   canvas,
-  isPinned: true,
 };
 
 export default calendarPlugin;
