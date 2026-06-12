@@ -40,7 +40,7 @@
               browseYear === year && m - 1 === month
                 ? 'bg-blue-600 text-white font-semibold'
                 : 'text-neutral-300 hover:bg-neutral-800',
-              isCurrentMonth(m - 1) ? 'ring-1 ring-blue-500/50' : '',
+              isCurrentMonth(m - 1) && !(browseYear === year && m - 1 === month) ? 'ring-1 ring-blue-500/50' : '',
             ]"
             @click="selectMonth(m - 1)"
           >
