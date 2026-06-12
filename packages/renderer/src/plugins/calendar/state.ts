@@ -25,6 +25,7 @@ export interface CalendarContext {
 type UIEvents =
   | { type: 'CAL.PREV_MONTH' }
   | { type: 'CAL.NEXT_MONTH' }
+  | { type: 'CAL.SET_MONTH'; year: number; month: number }
   | { type: 'CAL.TODAY' }
   | { type: 'CAL.OPEN_DAY'; dateMs: number }
   | { type: 'CAL.PREV_DAY' }
@@ -100,6 +101,10 @@ const calendarState = setup({
         viewMonth: today.getMonth(),
         viewDayMs: localMidnight(today),
       };
+    }),
+    setMonth: assign(({ event }) => {
+      const ev = typeOf('CAL.SET_MONTH', event);
+      return { viewYear: ev.year, viewMonth: ev.month };
     }),
     openDay: assign(({ event }) => dayView(typeOf('CAL.OPEN_DAY', event).dateMs)),
     prevDay: assign(({ context }) => dayView(context.viewDayMs, -1)),
@@ -194,6 +199,7 @@ const calendarState = setup({
       on: {
         'CAL.PREV_MONTH': { actions: 'prevMonth' },
         'CAL.NEXT_MONTH': { actions: 'nextMonth' },
+        'CAL.SET_MONTH': { actions: 'setMonth' },
         'CAL.OPEN_DAY': { target: 'day', actions: 'openDay' },
       },
     },
@@ -209,6 +215,7 @@ const calendarState = setup({
       on: {
         'CAL.PREV_DAY': { actions: 'prevDay' },
         'CAL.NEXT_DAY': { actions: 'nextDay' },
+        'CAL.OPEN_DAY': { actions: 'openDay' },
       },
     },
   },

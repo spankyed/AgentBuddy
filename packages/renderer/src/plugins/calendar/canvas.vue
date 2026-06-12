@@ -10,7 +10,18 @@
         >
           <ChevronLeft :size="18" />
         </button>
-        <h2 class="text-lg font-semibold text-neutral-200 text-center">{{ isDayView ? dayLabel : monthLabel }}</h2>
+        <DatePickerPopover
+          :mode="isDayView ? 'day' : 'month'"
+          :year="viewYear"
+          :month="viewMonth"
+          :day-ms="viewDayMs"
+          @select-month="(year: number, month: number) => actor.send({ type: 'CAL.SET_MONTH', year, month })"
+          @select-day="(dateMs: number) => actor.send({ type: 'CAL.OPEN_DAY', dateMs })"
+        >
+          <button class="text-lg font-semibold text-neutral-200 text-center rounded-md px-2 py-0.5 hover:bg-neutral-800">
+            {{ isDayView ? dayLabel : monthLabel }}
+          </button>
+        </DatePickerPopover>
         <button
           class="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
           :title="isDayView ? 'Next day' : 'Next month'"
@@ -20,7 +31,9 @@
         </button>
         <button
           class="ml-1 px-3 py-1.5 text-sm rounded-md border border-neutral-700 hover:bg-neutral-800 text-neutral-300"
+          title="Click: jump to today · Double-click: open today's day view"
           @click="actor.send({ type: 'CAL.TODAY' })"
+          @dblclick="actor.send({ type: 'CAL.OPEN_DAY', dateMs: Date.now() })"
         >
           Today
         </button>
@@ -82,6 +95,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next';
 import { id, type CalendarState } from './state.ts';
 import MonthGrid from './components/MonthGrid.vue';
 import DayTimeline from './components/DayTimeline.vue';
+import DatePickerPopover from './components/DatePickerPopover.vue';
 import EventEditorDialog from './components/EventEditorDialog.vue';
 
 interface SavePayload {
