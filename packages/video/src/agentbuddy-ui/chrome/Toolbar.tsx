@@ -8,6 +8,7 @@ const styles = makeStyles('Toolbar');
 export type PluginId =
   | 'threads'
   | 'notes'
+  | 'calendar'
   | 'code'
   | 'library'
   | 'flows'
@@ -27,6 +28,7 @@ type ToolbarProps = {
 const toolbarPlugins = [
   {id: 'threads', label: 'Threads', icon: Icons.BotMessageSquare, isPinned: false},
   {id: 'notes', label: 'Notes', icon: Icons.NotebookText, isPinned: false},
+  {id: 'calendar', label: 'Calendar', icon: Icons.Calendar, isPinned: false},
   {id: 'code', label: 'Code', icon: Icons.Code2, isPinned: false},
   {id: 'library', label: 'Library', icon: Icons.Library, isPinned: false},
   {id: 'flows', label: 'Flows', icon: Icons.Flows, isPinned: false},

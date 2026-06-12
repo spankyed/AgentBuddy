@@ -45,4 +45,20 @@ export const launchFilmStory = {
       notify: 'Notify #releases channel',
     },
   },
+  calendar: {
+    monthLabel: 'June 2026',
+    dayLabel: 'Saturday, June 27, 2026',
+    dayBreadcrumb: 'Jun 27, 2026',
+    launchEvent: {
+      title: 'Launch Supafan checkout',
+      start: '10:00 AM',
+      end: '11:00 AM',
+      timeLabel: '10:00 AM – 11:00 AM',
+    },
+    seededEvents: {
+      betaFreeze: {title: 'Beta freeze', day: 22},
+      stripeReview: {title: 'Stripe webhook review', day: 25, time: '2:00 PM'},
+      deployChecklist: {title: 'Deploy checklist', day: 18, time: '10:30 AM'},
+    },
+  },
 } as const;
