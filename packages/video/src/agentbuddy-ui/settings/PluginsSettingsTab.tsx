@@ -17,6 +17,7 @@ const styles = makeStyles('PluginsSettingsTab');
 const iconByPlugin = {
   threads: Icons.Threads,
   notes: Icons.NotebookText,
+  calendar: Icons.Calendar,
   code: Icons.Code2,
   library: Icons.Library,
   flows: Icons.Flows,

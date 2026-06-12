@@ -69,7 +69,7 @@ function monthCells(frame: number): CalendarMonthCellState[] {
 
 // The viewed day (Jun 27) has no events before the launch event is created,
 // so the app scrolls to 8 AM: (8h * 60 - 15) * pxPerMin.
-const dayScrollOffsetPx = Math.round((8 * 60 - 15) * pxPerMin);
+export const calendarDayScrollOffsetPx = Math.round((8 * 60 - 15) * pxPerMin);
 
 function dayState(frame: number): CalendarDayState {
   const blockEnter = ease(frame, calendarBeats.blockIn, calendarBeats.blockInDone);
@@ -92,7 +92,7 @@ function dayState(frame: number): CalendarDayState {
       : [],
     // 9:12 AM on launch morning.
     nowLineTopPx: Math.round((9 * 60 + 12) * pxPerMin),
-    scrollOffsetPx: dayScrollOffsetPx,
+    scrollOffsetPx: calendarDayScrollOffsetPx,
   };
 }
 

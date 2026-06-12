@@ -11,6 +11,8 @@ import {
   launchPlanArtifact,
   toolActivityViewForFrame,
 } from '../src/film/state/chat';
+import {calendarBeats, calendarBreadcrumbsForFrame, calendarViewForFrame} from '../src/film/state/calendar';
+import {calendarDayNumberTarget} from '../src/film/shots/calendarGeometry';
 import {codeReviewViewForFrame, codeShotState, codeShotViewForFrame} from '../src/film/state/code';
 import {finalShotState, finalViewForFrame} from '../src/film/state/final';
 import {launchFilmStory} from '../src/film/state/launchStory';
@@ -26,7 +28,7 @@ type Check = {
   pass: boolean;
 };
 
-type ProductArea = 'board' | 'browser' | 'chat' | 'code' | 'notes' | 'workflow';
+type ProductArea = 'board' | 'browser' | 'calendar' | 'chat' | 'code' | 'notes' | 'workflow';
 
 function changed<T>(before: T, after: T) {
   return JSON.stringify(before) !== JSON.stringify(after);
@@ -124,6 +126,73 @@ function notesNewNoteCursorTargetPass() {
     && clickPoint.y > target.top
     && clickPoint.y < target.top + target.height
     && target.left < width * 0.74;
+}
+
+function calendarMonthStoryboardPass() {
+  const story = launchFilmStory.calendar;
+  const view = calendarViewForFrame(0);
+  const cells = view.month?.cells ?? [];
+  // Index n is June n for n in 1..30 (index 0 is May 31).
+  return view.view === 'month'
+    && view.headerLabel === story.monthLabel
+    && cells.length === 42
+    && cells[27]?.isToday === true
+    && cells[story.seededEvents.deployChecklist.day]?.chips[0]?.title === story.seededEvents.deployChecklist.title
+    && cells[story.seededEvents.betaFreeze.day]?.chips[0]?.allDay === true
+    && cells[story.seededEvents.betaFreeze.day]?.chips[0]?.title === story.seededEvents.betaFreeze.title
+    && cells[story.seededEvents.stripeReview.day]?.chips[0]?.time === story.seededEvents.stripeReview.time;
+}
+
+function calendarDayOpenPass() {
+  const story = launchFilmStory.calendar;
+  const before = calendarViewForFrame(calendarBeats.dayOpen - 1);
+  const after = calendarViewForFrame(calendarBeats.dayOpen);
+  return before.view === 'month'
+    && after.view === 'day'
+    && after.headerLabel === story.dayLabel
+    && calendarBreadcrumbsForFrame(calendarBeats.dayOpen - 1).join('/') === 'Calendar'
+    && calendarBreadcrumbsForFrame(calendarBeats.dayOpen).join('/') === `Calendar/${story.dayBreadcrumb}`
+    && (after.day?.nowLineTopPx ?? null) !== null;
+}
+
+function calendarDialogToBlockPass() {
+  const story = launchFilmStory.calendar;
+  const typingStartView = calendarViewForFrame(calendarBeats.typingStart);
+  const typedView = calendarViewForFrame(calendarBeats.typingEnd);
+  const savedView = calendarViewForFrame(calendarBeats.blockInDone);
+  const block = savedView.day?.blocks[0];
+  return typingStartView.dialog?.title === ''
+    && typingStartView.day?.blocks.length === 0
+    && typedView.dialog?.title === story.launchEvent.title
+    && savedView.dialog == null
+    && block?.title === story.launchEvent.title
+    && block.timeLabel === story.launchEvent.timeLabel
+    && block.topPx === 480; // 10 AM at 48px per hour
+}
+
+function calendarDayNumberCursorTargetPass() {
+  const width = 1440;
+  const height = 900;
+  const target = calendarDayNumberTarget({
+    windowStyle: {
+      left: 32,
+      top: 32,
+      width: width - 64,
+      height: height - 64,
+    },
+  }, width, height);
+  const clickPoint = {
+    x: target.left + target.width * 0.5,
+    y: target.top + target.height * 0.5,
+  };
+  return target.width >= 20
+    && target.height >= 16
+    && clickPoint.x > target.left
+    && clickPoint.x < target.left + target.width
+    && clickPoint.y > target.top
+    && clickPoint.y < target.top + target.height
+    // Saturday column sits at the right edge of the grid.
+    && target.left > width * 0.8;
 }
 
 function boardStoryboardContinuityPass() {
@@ -255,6 +324,7 @@ function chapterCopyMatchesStoryboardPass() {
     ['notes-title', 'More than just a note taker', undefined],
     ['code-title', 'More than just an IDE', undefined],
     ['workflow-title', 'More than just a workflow engine', undefined],
+    ['calendar-title', 'More than just a calendar', undefined],
   ] as const;
 
   // The revolution lockup copy appears exactly once, in the final shot
@@ -304,7 +374,7 @@ function browserMontageActionPass() {
 }
 
 function shotDurationsMatchCutsPass() {
-  const contentShotIds: ContentShotId[] = ['chat', 'board', 'notes', 'code', 'workflow', 'montage', 'final'];
+  const contentShotIds: ContentShotId[] = ['chat', 'board', 'notes', 'code', 'workflow', 'calendar', 'montage', 'final'];
   return contentShotIds.every(id => {
     const duration = shots.find(shot => shot.id === id)?.duration;
     const removed = (shotCuts[id] ?? []).reduce((sum, cut) => sum + cut.remove, 0);
@@ -570,6 +640,26 @@ const checks: Check[] = [
     pass: persistentCursorTimelinePass(),
   },
   {
+    area: 'calendar',
+    message: 'calendar month view matches storyboard seeded events with today on launch day',
+    pass: calendarMonthStoryboardPass(),
+  },
+  {
+    area: 'calendar',
+    message: 'calendar day-number click swaps month grid for the launch-day timeline and breadcrumb',
+    pass: calendarDayOpenPass(),
+  },
+  {
+    area: 'calendar',
+    message: 'calendar dialog types the launch event title and saves it into the 10 AM block',
+    pass: calendarDialogToBlockPass(),
+  },
+  {
+    area: 'calendar',
+    message: 'calendar day-number cursor target lands inside the pill geometry',
+    pass: calendarDayNumberCursorTargetPass(),
+  },
+  {
     area: 'final',
     message: 'final lockup uses canonical revolution copy',
     pass: finalShotState.title === 'AgentBuddy is a revolution'
@@ -605,7 +695,7 @@ const checks: Check[] = [
 const failed = checks.filter(check => !check.pass);
 const minimumMoments = 10;
 const minimumProductMoments = 10;
-const requiredProductAreas = new Set<ProductArea>(['board', 'browser', 'chat', 'code', 'notes', 'workflow']);
+const requiredProductAreas = new Set<ProductArea>(['board', 'browser', 'calendar', 'chat', 'code', 'notes', 'workflow']);
 const productChecks = checks.filter(check => check.area !== 'final');
 const coveredProductAreas = new Set(productChecks.map(check => check.area));
 const missingProductAreas = [...requiredProductAreas].filter(area => !coveredProductAreas.has(area));

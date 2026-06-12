@@ -1,6 +1,7 @@
 export * from './ActionsDemos';
 export * from './BrainDemos';
 export * from './BrowserDemos';
+export * from './CalendarDemos';
 export * from './ChromeDemos';
 export * from './ChatDemos';
 export * from './CodeDemos';

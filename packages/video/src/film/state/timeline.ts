@@ -1,5 +1,5 @@
-export type ChapterShotId = 'intro-title' | 'chat-title' | 'notes-title' | 'code-title' | 'workflow-title' | 'montage-title';
-export type ContentShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'montage' | 'final';
+export type ChapterShotId = 'intro-title' | 'chat-title' | 'notes-title' | 'code-title' | 'workflow-title' | 'calendar-title' | 'montage-title';
+export type ContentShotId = 'chat' | 'board' | 'notes' | 'code' | 'workflow' | 'calendar' | 'montage' | 'final';
 export type ShotId = ChapterShotId | ContentShotId;
 
 export type FilmShot = {
@@ -76,6 +76,7 @@ export const shotCuts: Partial<Record<ContentShotId, FrameCut[]>> = {
 
 export const shotSourceDurations: Record<ContentShotId, number> = {
   board: 310,
+  calendar: 270,
   chat: 630,
   code: 420,
   final: 140,
@@ -112,6 +113,8 @@ export const shots: FilmShot[] = [
   {id: 'code', duration: 366},
   {id: 'workflow-title', chapter: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 66},
   {id: 'workflow', duration: 260},
+  {id: 'calendar-title', chapter: {eyebrow: '5', title: 'More than just a calendar'}, duration: 66},
+  {id: 'calendar', duration: 270},
   {id: 'montage', duration: 288, transition: {enter: 'dissolve', exit: 'fade', overlap: 10}},
   {id: 'final', duration: 140},
 ];

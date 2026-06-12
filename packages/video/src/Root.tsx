@@ -16,6 +16,11 @@ import {
   BoardSurfaceDemo,
   BrowserAutocompleteDemo,
   BrowserSurfaceDemo,
+  CalendarDayDemo,
+  CalendarDayPickerDemo,
+  CalendarDialogDemo,
+  CalendarMonthDemo,
+  CalendarMonthPickerDemo,
   BrainPausedDemo,
   BrainStoppedDemo,
   BrainSurfaceDemo,
@@ -181,6 +186,11 @@ export const RemotionRoot = () => {
       <Composition id="BrainNestedFlowDemo" component={BrainNestedFlowDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrowserSurfaceDemo" component={BrowserSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BrowserAutocompleteDemo" component={BrowserAutocompleteDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="CalendarMonthDemo" component={CalendarMonthDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="CalendarDayDemo" component={CalendarDayDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="CalendarDialogDemo" component={CalendarDialogDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="CalendarMonthPickerDemo" component={CalendarMonthPickerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="CalendarDayPickerDemo" component={CalendarDayPickerDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsListDemo" component={PromptsListDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsEmptyDemo" component={PromptsEmptyDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="PromptsFilteredDemo" component={PromptsFilteredDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

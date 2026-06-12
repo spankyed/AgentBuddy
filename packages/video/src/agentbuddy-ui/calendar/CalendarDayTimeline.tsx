@@ -5,8 +5,6 @@ import './CalendarDayTimeline.module.css';
 
 const styles = makeStyles('CalendarDayTimeline');
 
-export const calendarHourPx = 48;
-
 const hourLabels = Array.from({length: 23}, (_, index) => {
   const hour = index + 1;
   const display = hour % 12 === 0 ? 12 : hour % 12;

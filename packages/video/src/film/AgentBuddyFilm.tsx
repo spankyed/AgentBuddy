@@ -5,6 +5,7 @@ import {theme} from '../ui/theme';
 import {captionViewForFrame, ease, mix, shotContentFrame, shotOverlap, shots, type FilmShot} from './state/timeline';
 import {ChatShot} from './shots/ChatShot';
 import {BoardShot} from './shots/BoardShot';
+import {CalendarShot} from './shots/CalendarShot';
 import {ChapterCard} from './shots/ChapterCard';
 import {CodeShot} from './shots/CodeShot';
 import {FinalShot} from './shots/FinalShot';
@@ -102,6 +103,7 @@ function ShotSurface({frame, shot, variant}: {frame: number; shot: FilmShot; var
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;
   if (id === 'workflow') return <WorkflowShot frame={frame} variant={variant} />;
+  if (id === 'calendar') return <CalendarShot frame={frame} variant={variant} />;
   if (id === 'montage') return <MontageShot frame={frame} variant={variant} />;
   return <FinalShot frame={frame} variant={variant} />;
 }

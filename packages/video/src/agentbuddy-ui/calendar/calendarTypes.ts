@@ -90,5 +90,7 @@ export type CalendarSurfaceState = {
   view: 'day' | 'month';
 };
 
+export const calendarHourPx = 48;
+
 export const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const calendarPickerWeekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];

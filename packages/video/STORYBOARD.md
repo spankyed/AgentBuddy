@@ -2,7 +2,7 @@
 
 ## Non-Negotiable Visible Chapter Copy
 
-The Sam/Supafan checkout story is the internal continuity spine. It keeps the UI state coherent across chat, board, notes, code, workflow, and montage, but it must not replace the launch-film chapter headings.
+The Sam/Supafan checkout story is the internal continuity spine. It keeps the UI state coherent across chat, board, notes, code, workflow, calendar, and montage, but it must not replace the launch-film chapter headings.
 
 Visible title cards use the original launch-film copy:
 
@@ -13,11 +13,12 @@ Visible title cards use the original launch-film copy:
 | Notes | More than just a note taker |
 | Code | More than just an IDE |
 | Workflow | More than just a workflow engine |
+| Calendar | More than just a calendar |
 | Montage / lockup | AgentBuddy is a revolution / to put the full power of AI into the hands of the people |
 
 Do not rename these headings to story-specific task names like checkout, Supafan, deploy, PR, branch, or release. Those names belong inside the UI only.
 
-The Montage / lockup copy appears exactly once, as the closing full-screen lockup (final shot). The montage itself follows the workflow chapter directly via a short dissolve — there is no separate montage title card, so the line is never shown twice.
+The Montage / lockup copy appears exactly once, as the closing full-screen lockup (final shot). The montage itself follows the calendar chapter directly via a short dissolve — there is no separate montage title card, so the line is never shown twice.
 
 ## The Story
 
@@ -25,7 +26,7 @@ The Montage / lockup copy appears exactly once, as the closing full-screen locku
 
 Today Sam is shipping the **checkout flow** — Stripe-powered payments with receipts, discount codes, and creator payouts. This is the make-or-break feature: without a smooth checkout, creators can't sell.
 
-The film follows one work session: plan the feature (Chat) → organize the tickets (Board) → spec the details (Notes) → write the code (Code) → automate the deploy pipeline (Workflow) → ship it (Montage).
+The film follows one work session: plan the feature (Chat) → organize the tickets (Board) → spec the details (Notes) → write the code (Code) → automate the deploy pipeline (Workflow) → schedule the launch (Calendar) → ship it (Montage).
 
 ---
 
@@ -314,7 +315,31 @@ The deploy automation. Starts with just the listener node on black, progressivel
 
 ---
 
-## Chapter 6: Montage
+## Chapter 6: Calendar
+
+Launch morning. Sam opens the calendar to lock in the moment the checkout ships. Title card eyebrow `5`, copy "More than just a calendar". The shot dissolves into the montage.
+
+### Month view (source frames 0–80)
+- **Breadcrumbs**: Calendar
+- **Header**: ‹ June 2026 › · Today · New Event
+- **Today pill**: Sat Jun 27 (blue)
+- **Seeded events**: Jun 18 "10:30 AM Deploy checklist", Jun 22 all-day "Beta freeze", Jun 25 "2:00 PM Stripe webhook review"
+- Cursor moves to the day-number pill on the 27th and clicks (frames 56–76)
+
+### Day view (source frames 80–270)
+- **Breadcrumbs**: Calendar > Jun 27, 2026
+- **Header label**: Saturday, June 27, 2026
+- Hour grid scrolled to 8 AM; red now-line at 9:12 AM (it's launch morning)
+- Cursor clicks the 10 AM slot (frames 104–122) → New Event dialog opens
+- Dialog types `Launch Supafan checkout`, 06/27/2026 10:00 AM – 11:00 AM (frames 142–186)
+- Cursor clicks Save (frames 194–210) → dialog closes, the event block fades into the 10–11 AM slot (frames 218–230)
+- Hold on the scheduled launch until the montage dissolve
+
+Calendar frame ranges are source frames from `calendarBeats` in `src/film/state/calendar.ts`; the shot currently has no edit cuts (`shotCuts.calendar = []`).
+
+---
+
+## Chapter 7: Montage
 
 Quick flashes across plugin surfaces showing the deploy in action.
 
@@ -384,6 +409,7 @@ checkout-service.ts     —                       —                       Diff
 | `state/notes.ts` | Tasklist items, editor copy, right rail, home cards, thread reference, SVG image |
 | `state/code.ts` | Branch, diff, commits, PR details, terminal output, worktrees, author |
 | `state/workflow.ts` | Switch label, action labels, flow list |
+| `state/calendar.ts` | Month label, seeded events, launch event title/times, beat table |
 | `state/paths.ts` | Project directory paths |
 | `state/logs.ts` | Log entries referencing checkout/deploy |
 | Montage-related state (MontageShot.tsx or wherever montage data lives) | Command, response text |
