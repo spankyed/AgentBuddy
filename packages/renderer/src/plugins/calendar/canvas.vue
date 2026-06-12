@@ -2,8 +2,8 @@
   <div class="flex flex-col h-full bg-neutral-900 text-neutral-300">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-      <div class="flex items-center gap-3">
-        <h2 class="text-lg font-semibold text-neutral-200 w-44">{{ monthLabel }}</h2>
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-semibold text-neutral-200">{{ monthLabel }}</h2>
         <div class="flex items-center gap-1">
           <button
             class="p-1.5 rounded-md hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
