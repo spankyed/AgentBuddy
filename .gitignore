@@ -10,6 +10,9 @@ untracked
 .DS_Store
 .claude
 
+# Stale tsc output in source dirs (preload has no outDir)
+packages/preload/src/**/*.js
+
 # Build artifacts
 native/speech/macos/SpeechHelper
 build/prod/logs/

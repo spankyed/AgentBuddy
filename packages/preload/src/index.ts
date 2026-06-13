@@ -198,6 +198,9 @@ const browser = {
   duplicateTab: (tabId: number) => ipcRenderer.invoke('browser:duplicate-tab', tabId) as Promise<TabState | null>,
   setTabMuted: (tabId: number, muted: boolean) => ipcRenderer.invoke('browser:set-tab-muted', tabId, muted),
 
+  // Cache
+  clearCache: () => ipcRenderer.invoke('browser:clear-cache') as Promise<void>,
+
   // Query
   getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,
   getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,
