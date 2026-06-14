@@ -4,16 +4,18 @@ body {
 }
 
 /*
- * The film renders static frames, so CSS @keyframes entrance animations
- * freeze at 0% — e.g. dropdowns stuck at opacity:0/translateY, washing out
- * menus and their hover highlights. All real motion in the film is driven
- * from the frame, so neutralize CSS animations to render every element at its
- * settled state.
+ * The film renders static frames, so time-based CSS freezes mid-flight:
+ * @keyframes entrance animations stick at 0% (dropdowns at opacity:0), and
+ * CSS transitions restart every frame so a hover background fade renders
+ * half-applied (the real app has no transition — hover is instant). All real
+ * motion in the film is driven from the frame, so neutralize both and render
+ * every element at its settled state.
  */
 *,
 *::before,
 *::after {
   animation: none !important;
+  transition: none !important;
 }
 
 /*
