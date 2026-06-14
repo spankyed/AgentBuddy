@@ -5,6 +5,7 @@ import type {ReferenceRefType} from '../../agentbuddy-ui/chat/referenceConfig';
 import {launchFilmStory} from './launchStory';
 import {revealText} from './typing';
 import {createInteractionModel, type InteractionStep} from '../interaction/interactionTimeline';
+import {percentTarget, type TargetRect} from '../interaction/cursorTargets';
 
 // Notes pointer interactions — the single source of truth that drives both the
 // scene's cursor and the press/active states below. Home and editor are
@@ -17,11 +18,35 @@ export const notesHomeInteractionScript: InteractionStep<NotesHomeTargetId>[] = 
 ];
 export const notesEditorInteractionScript: InteractionStep<NotesEditorTargetId>[] = [
   {label: 'open-tasklist', start: 50, end: 70, to: 'rightRailTasklist', from: 'editorBody'},
-  {label: 'open-todo', start: 98, end: 116, to: 'taskListCurrentRow', from: 'rightRailTasklist'},
-  {label: 'complete-todo', start: 126, end: 138, to: 'taskCheckbox', from: 'taskListCurrentRow', toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]}},
+  {label: 'open-todo', start: 98, end: 122, to: 'taskListCurrentRow', from: 'rightRailTasklist'},
+  {label: 'complete-todo', start: 126, end: 138, to: 'taskCheckbox', from: 'taskListCurrentRow'},
 ];
 export const notesHomeInteractions = createInteractionModel(notesHomeInteractionScript);
 export const notesEditorInteractions = createInteractionModel(notesEditorInteractionScript);
+
+// The task panel's "receipt emails" row and its checkbox, derived from the real
+// app-window box so the cursor lands on the actual row in every variant —
+// viewport-percent targets drifted between the landscape and square windows and
+// pointed several rows below the row that highlighted. Offsets are the panel's
+// fixed chrome: icon sidebar (72), 250px panel, breadcrumb + panel header +
+// list padding above the first row, and 36px rows.
+export function notesTaskPanelTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  viewport: {height: number; width: number},
+): {taskCheckbox: TargetRect; taskListCurrentRow: TargetRect} {
+  const SIDEBAR = 72;
+  const PANEL_WIDTH = 250;
+  const FIRST_ROW_CENTER = 105; // breadcrumb + panel header + list padding + half of the first row
+  const ROW_PITCH = 36;
+  const RECEIPT_ROW_INDEX = 2;  // Stripe webhooks, current, receipt emails
+  const panelLeft = windowBox.left + SIDEBAR;
+  const rowCenterY = windowBox.top + FIRST_ROW_CENTER + RECEIPT_ROW_INDEX * ROW_PITCH;
+  const point = (x: number, y: number) => percentTarget((x / viewport.width) * 100, (y / viewport.height) * 100);
+  return {
+    taskCheckbox: point(panelLeft + PANEL_WIDTH - 18, rowCenterY),
+    taskListCurrentRow: point(panelLeft + 70, rowCenterY),
+  };
+}
 
 export type NotesTaskListPanelState = {
   activeId: string | null;
@@ -237,14 +262,13 @@ export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
 }
 
 export function notesEditorViewForFrame(frame: number): NotesShotView {
-  // Press while the cursor clicks; the note/todo opens (active) a few frames
-  // after the click settles — all derived from the cursor, never hand-timed.
+  // Press while the cursor clicks; the note/todo opens (active) right at the
+  // click and completion lands immediately — all derived from the cursor.
   const tasklistPressed = notesEditorInteractions.pressed('rightRailTasklist', frame, {lead: 12, tail: 6});
   const tasklistActive = notesEditorInteractions.clicked('rightRailTasklist', frame, 6);
-  const todoPressed = notesEditorInteractions.pressed('taskListCurrentRow', frame, {lead: 8, tail: 6});
-  const todoActive = notesEditorInteractions.clicked('taskListCurrentRow', frame, 6);
+  const todoActive = notesEditorInteractions.clicked('taskListCurrentRow', frame, 0);
   const todoCompletePressed = notesEditorInteractions.pressed('taskCheckbox', frame, {lead: 4, tail: 6});
-  const todoComplete = notesEditorInteractions.clicked('taskCheckbox', frame, 6);
+  const todoComplete = notesEditorInteractions.clicked('taskCheckbox', frame, 0);
 
   const taskList = notesTaskListForEditorFrame(frame);
   const rightRail: NotesRightRailState = {
@@ -328,14 +352,18 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
 
 function notesTaskListForEditorFrame(frame: number): NotesTaskListPanelState {
   const tasklistActive = notesEditorInteractions.clicked('rightRailTasklist', frame, 6);
-  const todoActive = notesEditorInteractions.clicked('taskListCurrentRow', frame, 6);
+  const todoActive = notesEditorInteractions.clicked('taskListCurrentRow', frame, 0);
   const todoPressed = notesEditorInteractions.pressed('taskListCurrentRow', frame, {lead: 8, tail: 6});
   const todoCompletePressed = notesEditorInteractions.pressed('taskCheckbox', frame, {lead: 4, tail: 6});
-  const todoComplete = notesEditorInteractions.clicked('taskCheckbox', frame, 6);
+  const todoComplete = notesEditorInteractions.clicked('taskCheckbox', frame, 0);
+  // receipt-emails becomes the selected row the moment it is engaged (pressed or
+  // clicked) — which also de-activates the panel header, so only one row reads
+  // as selected at a time, and never before the cursor clicks it.
+  const receiptSelected = tasklistActive && (todoPressed || todoActive);
 
   return {
     ...notesTaskListState,
-    activeId: tasklistActive && todoActive ? 'receipt-emails' : null,
+    activeId: receiptSelected ? 'receipt-emails' : null,
     items: notesTaskListItems.map(item => {
       if (item.id === 'receipt-emails') {
         return {

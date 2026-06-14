@@ -5,7 +5,7 @@ import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {TextCaret} from '../../agentbuddy-ui/primitives/TextCaret';
-import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../state/notes';
+import {notesEditorViewForFrame, notesHomeViewForFrame, notesTaskPanelTargets, type NotesEditorLineView} from '../state/notes';
 import {Cursor} from '../overlays/Cursor';
 import {cursorMove, percentTarget, viewportPoint} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
@@ -74,10 +74,17 @@ function NotesOpenShot({frame, variant}: {frame: number; variant?: 'landscape' |
 function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesEditorViewForFrame(frame);
   const taskListVisible = frame >= 88;
+  const {height, width} = useVideoConfig();
   const layout = useAppWindowLayout({animate: false, hasRightRail: true, variant});
+  const windowBox = {
+    height: Number(layout.windowStyle.height ?? height),
+    left: Number(layout.windowStyle.left ?? 0),
+    top: Number(layout.windowStyle.top ?? 0),
+    width: Number(layout.windowStyle.width ?? width),
+  };
   const editorEnter = ease(frame, 0, 12);
   const taskListEnter = ease(frame, 88, 112);
-  const cursor = notesEditorCursorForFrame(frame);
+  const cursor = notesEditorCursorForFrame(frame, windowBox, width, height);
   const renderLine = (line: NotesEditorLineView) => (
     <NoteLine frame={frame} line={line} />
   );
@@ -142,23 +149,28 @@ function notesHomeCursorForFrame(
   return null;
 }
 
-// The editor content swaps notes at 76 (tasklist overview) and 122 (todo);
-// fade the incoming content in instead of popping it.
+// The editor content swaps notes at 76 (tasklist overview) and 122 (todo, the
+// click frame); fade the incoming content in instead of popping it.
 function contentSwapForFrame(frame: number) {
   if (frame >= 122) return ease(frame, 122, 130);
   if (frame >= 76) return ease(frame, 76, 84);
   return 1;
 }
 
-function notesEditorCursorForFrame(frame: number): CursorPath | null {
-  const targets = notesEditorCursorTargets();
+function notesEditorCursorForFrame(
+  frame: number,
+  windowBox: {height: number; left: number; top: number; width: number},
+  width: number,
+  height: number,
+): CursorPath | null {
+  const targets = notesEditorCursorTargets(windowBox, width, height);
 
   if (frame >= 50 && frame < 80) {
     return cursorMove(targets, {end: 70, from: 'editorBody', start: 50, to: 'rightRailTasklist'}, 'percent');
   }
 
-  if (frame >= 98 && frame < 128) {
-    return cursorMove(targets, {end: 116, from: 'taskListPanelMiddle', start: 98, to: 'taskListCurrentRow'}, 'percent');
+  if (frame >= 98 && frame < 126) {
+    return cursorMove(targets, {end: 122, from: 'taskListPanelMiddle', start: 98, to: 'taskListCurrentRow'}, 'percent');
   }
 
   if (frame >= 126 && frame < 150) {
@@ -167,7 +179,6 @@ function notesEditorCursorForFrame(frame: number): CursorPath | null {
       from: 'taskListPanelMiddle',
       start: 126,
       to: 'taskCheckbox',
-      toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]},
     }, 'percent');
   }
 
@@ -185,12 +196,17 @@ function notesHomeCursorTargets(
   };
 }
 
-function notesEditorCursorTargets(): Record<string, TargetRect> {
+function notesEditorCursorTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  width: number,
+  height: number,
+): Record<string, TargetRect> {
+  const {taskCheckbox, taskListCurrentRow} = notesTaskPanelTargets(windowBox, {height, width});
   return {
     editorBody: percentTarget(52, 49, 6, 6),
     rightRailTasklist: percentTarget(80, 35, 8, 5),
-    taskCheckbox: percentTarget(22.3, 22.5, 2, 3),
-    taskListCurrentRow: percentTarget(15, 27.5, 9, 4),
+    taskCheckbox,
+    taskListCurrentRow,
     taskListPanelMiddle: percentTarget(18, 34, 5, 5),
   };
 }
