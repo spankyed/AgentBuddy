@@ -19,16 +19,10 @@ body {
 }
 
 /*
- * Cursor feedback must read at video scale. The app's hover/press shades are
- * tuned for a desktop pointer (a few RGB levels); on screen in the film they
- * vanish. The film drives these states from the real cursor geometry, so make
- * the hovered row and the pressed send button unmistakable.
+ * The send button's pressed state is driven by `data-pressed` (the cursor
+ * geometry), not :active — which never fires in a static render. Mirror the
+ * app's primary Button active colour exactly (active:bg-primary-600 = #1E6FD9).
  */
-.ChatComposer_recentThreadActive {
-  background: rgb(60 66 86) !important;
-}
-
 .ChatComposer_sendButton[data-pressed="true"] {
-  background: rgb(22 58 168) !important;
-  box-shadow: inset 0 2px 5px rgb(0 0 0 / 35%) !important;
+  background: #1e6fd9 !important;
 }
