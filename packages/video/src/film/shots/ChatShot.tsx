@@ -26,14 +26,18 @@ const showTargetDebug = false;
 
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const view = chatShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
   const {height, width} = useVideoConfig();
   const appReveal = ease(frame, 126, 178);
   const composerDock = ease(frame, 118, 178);
   const composerRect = composerPlacement({dock: composerDock, height, layout, variant, width});
-  const composer = withPopupPositions(view.composer, composerRect, composerDock, height);
   const targets = chatTargetsForFrame({composerRect, dock: composerDock, height, layout, variant, width});
+  const geo = {frame, space: 'px' as const, targets, viewport: {height, width}};
+  const view = chatShotViewForFrame(frame, {
+    over: (target: ChatTargetId) => chatInteractions.over(target, geo),
+    pressing: (target: ChatTargetId) => chatInteractions.pressing(target, frame),
+  });
+  const composer = withPopupPositions(view.composer, composerRect, composerDock, height);
   const cursorPath = chatCursorForFrame(frame, targets, width, height);
   const quote = emptyThreadQuoteForFrame(frame, layout, variant);
 

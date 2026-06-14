@@ -1,4 +1,4 @@
-import {cursorTimeline, viewportPoint} from './cursorTargets';
+import {cursorClickAmount, cursorPositionForPath, cursorTimeline, pointInRect, viewportPoint} from './cursorTargets';
 import type {CoordinateSpace, CursorPath, CursorTimelineMove, Point, TargetRect} from './cursorTargets';
 
 /*
@@ -106,5 +106,42 @@ export function createInteractionModel<T extends string>(steps: Array<Interactio
     return cursorTimeline(targets, resolved, frame, space);
   }
 
-  return {clickFrame, clicked, destination, hovered, opened, path, pressed, steps};
+  // --- Geometry-exact interaction (matches the rendered cursor sprite) ---
+  // These take the resolved target rects + viewport, so the answer is "where
+  // the cursor actually is", not an approximation of when it should be there.
+
+  type Geo = {frame: number; space?: CoordinateSpace; targets: Record<T, TargetRect>; viewport?: {height: number; width: number}};
+
+  /** The exact sprite position at this frame, or null when the cursor is hidden. */
+  function position({frame, space = 'px', targets, viewport}: Geo): Point | null {
+    const p = path(targets, frame, viewport, space);
+    return p ? cursorPositionForPath(p, frame) : null;
+  }
+
+  /** The click-ripple amount (0..1) the cursor is drawing at this frame. */
+  function clicking({frame, space = 'px', targets, viewport}: Geo): number {
+    const p = path(targets, frame, viewport, space);
+    return p ? cursorClickAmount(p, frame) : 0;
+  }
+
+  /** Is the cursor sprite geometrically over `target` right now? (true hover) */
+  function over(target: T, geo: Geo): boolean {
+    const pos = position(geo);
+    return pos ? pointInRect(pos, geo.targets[target]) : false;
+  }
+
+  /**
+   * Is `target` pressed right now? True exactly while the click ripple of the
+   * move that clicks `target` is firing — the same animation the cursor draws,
+   * so the button darkens in lockstep with the visible click. (The cursor is
+   * clicking this target by construction, so no containment test is needed; a
+   * click ripple plays during the approach, before the sprite lands.)
+   */
+  function pressing(target: T, frame: number): boolean {
+    const active = steps.find(step => frame >= step.start && frame < step.end);
+    if (!active || active.click === false || active.to !== target) return false;
+    return cursorClickAmount(active, frame) > 0.001;
+  }
+
+  return {clickFrame, clicked, clicking, destination, hovered, opened, over, path, position, pressed, pressing, steps};
 }

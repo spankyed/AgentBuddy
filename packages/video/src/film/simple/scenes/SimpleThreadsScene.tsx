@@ -9,7 +9,7 @@ import {ThreadCreateForm} from '../../../agentbuddy-ui/threads/ThreadCreateForm'
 import {ThreadsBoardSurface} from '../../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../../overlays/Cursor';
-import {chatInteractionScript, chatShotViewForFrame, type ChatTargetId} from '../../state/chat';
+import {chatInteractionScript, chatShotViewForFrame, type ChatPointer, type ChatTargetId} from '../../state/chat';
 import {createInteractionModel, type InteractionStep} from '../../interaction/interactionTimeline';
 import {boardInteractions, boardShotViewForFrame, type BoardTargetId} from '../../state/board';
 import {useAppWindowLayout} from '../../appWindowLayout';
@@ -50,12 +50,14 @@ export function SimpleThreadsScene({frame, variant}: {frame: number; variant?: '
 }
 
 function ThreadsChatPhase({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const view = chatShotViewForFrame(frame);
   const layout = useAppWindowLayout({animate: false, variant});
   const {height, width} = useVideoConfig();
   const composerRect = composerPlacement({height, layout, variant, width});
-  const composer = withPopupPositions(view.composer, composerRect, height);
   const targets = chatTargetsForFrame({composerRect, height, layout, variant, width});
+  // Press/hover derive from the real cursor sprite over the real target rects.
+  const pointer = chatPointerForFrame(frame, targets, width, height);
+  const view = chatShotViewForFrame(frame, pointer);
+  const composer = withPopupPositions(view.composer, composerRect, height);
   const cursorPath = chatCursorForFrame(frame, targets, width, height);
   const quote = emptyThreadQuoteForFrame(frame, layout, variant);
 
@@ -317,6 +319,16 @@ function formatUserMessage(
 
 function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
   return threadsCursorModel.path(targets, frame, {height, width});
+}
+
+// The geometric pointer: hover/press answered from where the cursor sprite
+// actually is over these exact rects — the same source as the rendered cursor.
+function chatPointerForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): ChatPointer {
+  const geo = {frame, space: 'px' as const, targets, viewport: {height, width}};
+  return {
+    over: (target: ChatTargetId) => threadsCursorModel.over(target, geo),
+    pressing: (target: ChatTargetId) => threadsCursorModel.pressing(target, frame),
+  };
 }
 
 function chatTargetsForFrame({

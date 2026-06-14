@@ -2,3 +2,31 @@ html,
 body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/*
+ * The film renders static frames, so CSS @keyframes entrance animations
+ * freeze at 0% — e.g. dropdowns stuck at opacity:0/translateY, washing out
+ * menus and their hover highlights. All real motion in the film is driven
+ * from the frame, so neutralize CSS animations to render every element at its
+ * settled state.
+ */
+*,
+*::before,
+*::after {
+  animation: none !important;
+}
+
+/*
+ * Cursor feedback must read at video scale. The app's hover/press shades are
+ * tuned for a desktop pointer (a few RGB levels); on screen in the film they
+ * vanish. The film drives these states from the real cursor geometry, so make
+ * the hovered row and the pressed send button unmistakable.
+ */
+.ChatComposer_recentThreadActive {
+  background: rgb(60 66 86) !important;
+}
+
+.ChatComposer_sendButton[data-pressed="true"] {
+  background: rgb(22 58 168) !important;
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 35%) !important;
+}

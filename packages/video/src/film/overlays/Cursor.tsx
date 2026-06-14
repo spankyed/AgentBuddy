@@ -2,9 +2,9 @@ import {ease, mix} from '../state/timeline';
 import {getCursorAsset} from '../assets/cursors/cursorRegistry';
 import {createPortal} from 'react-dom';
 import type {CursorAssetId, CursorThemeId} from '../assets/cursors/cursorRegistry';
+import {clickPulseFrames, cursorPoint} from '../interaction/cursorTargets';
 import type {CoordinateSpace, Point} from '../interaction/cursorTargets';
 
-const clickPulseFrames = 7;
 const defaultFadeFrames = 8;
 
 type CursorProps = {
@@ -92,27 +92,3 @@ export function cursorOpacityForFrame(frame: number, start: number, end: number)
   );
 }
 
-function cursorPoint(from: Point, to: Point, progress: number, coordinateSpace: CoordinateSpace) {
-  const dx = to[0] - from[0];
-  const dy = to[1] - from[1];
-  const distance = Math.hypot(dx, dy);
-  const bend = coordinateSpace === 'px'
-    ? Math.min(42, Math.max(14, distance * 0.1))
-    : Math.min(5.2, Math.max(1.5, distance * 0.1));
-  const length = Math.max(distance, 0.0001);
-  const side = dx + dy >= 0 ? 1 : -1;
-  const controlA: Point = [
-    mix(from[0], to[0], 0.34) + (-dy / length) * bend * side,
-    mix(from[1], to[1], 0.32) + (dx / length) * bend * side,
-  ];
-  const controlB: Point = [
-    mix(from[0], to[0], 0.76) + (-dy / length) * bend * side,
-    mix(from[1], to[1], 0.72) + (dx / length) * bend * side,
-  ];
-  const inv = 1 - progress;
-
-  return [
-    inv ** 3 * from[0] + 3 * inv ** 2 * progress * controlA[0] + 3 * inv * progress ** 2 * controlB[0] + progress ** 3 * to[0],
-    inv ** 3 * from[1] + 3 * inv ** 2 * progress * controlA[1] + 3 * inv * progress ** 2 * controlB[1] + progress ** 3 * to[1],
-  ] as Point;
-}

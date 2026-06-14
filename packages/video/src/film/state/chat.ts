@@ -855,9 +855,18 @@ const recentRowClickFrame = chatInteractions.clickFrame('recentThreadRowFirst')!
 const quickSelectClickFrame = chatInteractions.clickFrame('quickPromptFirst')!;
 const quickSendClickFrame = chatInteractions.clickFrame('quickPromptSend')!;
 
-// The composer commits the typed prompt a few frames after the send click —
+// The composer commits the typed prompt exactly when the click completes —
 // the bubble appears, the field clears, the button disables together.
-const promptSentFrame = sendClickFrame + 4;                       // 268
+const promptSentFrame = sendClickFrame;                           // 264
+
+// Geometric pointer supplied by the scene: whether the real cursor sprite is
+// over / pressing an element. Visual states (press, row highlight) read from
+// this so they match the rendered cursor pixel-for-pixel. Effects (menu open,
+// message sent) stay frame-timed because they fire on click completion.
+export type ChatPointer = {
+  over: (target: ChatTargetId) => boolean;
+  pressing: (target: ChatTargetId) => boolean;
+};
 const planApprovalEnd = approveClickFrame + 6;                    // 420
 const approvedSummaryStart = approveClickFrame + 18;             // 432
 const planToolActivityStart = approveClickFrame + 30;           // 444
@@ -927,7 +936,11 @@ export function chatViewForFrame(frame: number) {
   };
 }
 
-export function chatShotViewForFrame(frame: number): ChatShotView {
+export function chatShotViewForFrame(frame: number, pointer?: ChatPointer): ChatShotView {
+  // Press/hover come from the real cursor geometry when the scene provides it;
+  // a frame-timed fallback keeps non-geometric callers (e.g. audits) working.
+  const over = (target: ChatTargetId) => pointer ? pointer.over(target) : chatInteractions.hovered(target, frame);
+  const pressing = (target: ChatTargetId) => pointer ? pointer.pressing(target) : chatInteractions.pressed(target, frame);
   const view = chatViewForFrame(frame);
   const imageAttachmentEnter = ease(frame, 188, 204);
   const recentThreadLoaded = frame >= recentThreadLoadedStart;
@@ -993,9 +1006,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     composer: {
       ...launchComposerState,
       referenceAutocomplete,
-      content: frame < 268 ? noteReferencePromptContent : undefined,
+      content: frame < promptSentFrame ? noteReferencePromptContent : undefined,
       attachments: [
-        ...(frame > 188 && frame < 268 ? [{
+        ...(frame > 188 && frame < promptSentFrame ? [{
           type: 'image' as const,
           label: 'checkout mockup',
           previewUrl: launchCheckoutMockupPreviewUrl,
@@ -1012,17 +1025,16 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             // Tab is "recent" while the recent menu is up, "active" once the
             // chosen thread loads — both derived from the cursor's clicks.
             active: recentThreadLoaded ? 'active' : chatInteractions.clicked('recentThreads', frame) ? 'recent' : frame > 150 ? 'active' : undefined,
-            pressed: chatInteractions.pressed('recentThreads', frame, {lead: 6, tail: 4})
+            pressed: pressing('recentThreads')
                 ? 'recent'
-                : chatInteractions.pressed('recentThreadRowFirst', frame, {lead: 6, tail: 6}) || chatInteractions.pressed('quickPromptSend', frame, {lead: 14, tail: 4})
+                : pressing('recentThreadRowFirst') || pressing('quickPromptSend')
                   ? 'active'
                   : undefined,
             recentThreadsMenu: chatInteractions.opened('recentMenu', frame)
               ? {
                   currentId: launchFilmStory.threads.checkoutImplementation.id,
-                  // The row highlights as the cursor heads onto it (hover ==
-                  // cursor destination), never on a hand-picked frame.
-                  selectedIndex: chatInteractions.hovered('recentThreadRowFirst', frame) ? 0 : -1,
+                  // Highlighted exactly while the cursor sprite is over the row.
+                  selectedIndex: over('recentThreadRowFirst') ? 0 : -1,
                   threadStates: {
                     [launchFilmStory.threads.stripePaymentIntegration.id]: {color: '#22c55e'},
                     [launchFilmStory.threads.checkoutImplementation.id]: {busy: true},
@@ -1038,10 +1050,10 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           }
         : undefined,
       referenceButtonPressed: Boolean(typedReferenceText && !selectedNoteReference),
-      quickPromptsButtonPressed: chatInteractions.pressed('quickPromptsButton', frame, {lead: 10, tail: 2}),
+      quickPromptsButtonPressed: pressing('quickPromptsButton'),
       quickPromptsOpen: chatInteractions.opened('quickPromptsMenu', frame),
-      quickPromptsSelectedIndex: chatInteractions.hovered('quickPromptFirst', frame) ? 0 : undefined,
-      sendPressed: chatInteractions.pressed('sendButton', frame) || chatInteractions.pressed('quickPromptSend', frame),
+      quickPromptsSelectedIndex: over('quickPromptFirst') ? 0 : undefined,
+      sendPressed: pressing('sendButton') || pressing('quickPromptSend'),
       text: frame >= chatShotState.prompt.from && frame < promptSentFrame
         ? view.prompt
         : frame >= quickPromptTextStart && frame < quickSendClickFrame
@@ -1111,7 +1123,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
-        caretVisible: frame < 268 && view.promptCaretVisible,
+        caretVisible: frame < promptSentFrame && view.promptCaretVisible,
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
         text: quickPromptSent ? reviewQuickPromptText : recentThreadLoaded ? 'Polish the checkout flow and prepare the PR path.' : view.prompt,
       },

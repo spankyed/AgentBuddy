@@ -90,6 +90,30 @@ expect('[notes] tasklist not open before its click', !notesEditorViewForFrame(ta
 const checkboxClick = notesEditorInteractions.clickFrame('taskCheckbox')!;
 expect('[notes] todo completes after the checkbox click', notesEditorViewForFrame(checkboxClick + 8).taskList.items.some(item => item.completed === true && item.id === 'receipt-emails'));
 
+// Geometry-exact checks: the press fires with the click ripple, and the row
+// highlight tracks the cursor sprite actually being over the row rect.
+// Representative landscape (1440x900, animate:false) chat target rects.
+const chatGeoTargets = {
+  recentThreadRowFirst: {left: 338.72, top: 662, width: 834.56, height: 34},
+  recentThreads: {left: 338.72, top: 820, width: 160, height: 28},
+  sendButton: {left: 1169.6, top: 768, width: 92, height: 32},
+  approvePlanPrimary: {left: 0, top: 0, width: 10, height: 10},
+  quickPromptsButton: {left: 0, top: 0, width: 10, height: 10},
+  quickPromptFirst: {left: 0, top: 0, width: 10, height: 10},
+  quickPromptSend: {left: 0, top: 0, width: 10, height: 10},
+  threadsBreadcrumb: {left: 0, top: 0, width: 10, height: 10},
+} as const;
+const chatGeo = (frame: number) => ({frame, space: 'px' as const, targets: chatGeoTargets, viewport: {height: 900, width: 1440}});
+
+// Press tracks the click ripple of the send move (source 236..264).
+expect('[chat·geo] send pressed during the click ripple (~260)', chatInteractions.pressing('sendButton', 260));
+expect('[chat·geo] send not pressed mid-travel, before the ripple (245)', !chatInteractions.pressing('sendButton', 245));
+expect('[chat·geo] send not pressed once the click completes (264)', !chatInteractions.pressing('sendButton', 264));
+
+// Hover tracks the cursor sprite being over the row rect.
+expect('[chat·geo] row 0 hovered while the cursor is parked on it (499)', chatInteractions.over('recentThreadRowFirst', chatGeo(499)));
+expect('[chat·geo] row 0 NOT hovered while the cursor is on the recent button (445)', !chatInteractions.over('recentThreadRowFirst', chatGeo(445)));
+
 const failed = checks.filter(check => !check.pass);
 if (failed.length > 0) {
   console.error(`Interaction audit failed: ${failed.length} of ${checks.length} checks.`);
