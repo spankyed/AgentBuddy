@@ -1,40 +1,5 @@
 -e # Changelog
 
-## v0.3.14 (2026-06-13)
-
-### Features
-- browser): move openLinksInApp setting to browser plugin and add cache clearing
-- calendar): add date picker popover for quick navigation
-- calendar): add day view with hourly timeline
-- api): add calendar system with event CRUD support
-
-### Fixes
-- threads): prevent filename overlay from intercepting click events on image thumbnail
-- calendar): hide current-month ring on selected month in date picker
-- calendar): correct event editing edge cases and date boundary math
-- video-playbacj): add mediabunny encoders for launch film media support
-- codex): correct CWD fallback chain for chat sessions
-- codex): require explicit cwd in startThread and regenerate type defs
-- claude-code): require explicit cwd in spawnStream and add BrowserTabId type
-- claude-code): preserve prior session cwd when starting new chat
-- claude-code): fall back to last opened or default directory for new sessions
-- terminal-pool): dispose WebGL addon before terminal to prevent GL context crash
-
-### Refactors
-- code): rename lastDirectoryOpened setting to baseDirectory
-
-### Other
-- chore(renderer): reorder plugin registration list
-- Merge pull request #165 from spankyed/as/calendar-plugin
-- style(calendar): place month/day label between nav arrows in header
-- style(calendar): adjust header spacing and right-align weekday labels
-- chore(plugins): reorder Calendar and Browser in plugin list
-- chore(calendar): unpin calendar plugin by default
-- chore(video): remove agentbuddy-film-landscape.mp4 output file
-- style(renderer): reorder enum literal types to match declaration order
-
--e # Changelog
-
 ## v0.3.13 (2026-06-09)
 
 ### Features

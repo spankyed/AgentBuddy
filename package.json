@@ -1,7 +1,7 @@
 {
   "name": "abuddy",
   "description": "Vibe working platform",
-  "version": "0.3.14",
+  "version": "0.3.13",
   "private": true,
   "type": "module",
   "author": {
