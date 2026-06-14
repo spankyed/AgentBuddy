@@ -3,7 +3,8 @@ import type {ThreadCreateFormState} from '../../agentbuddy-ui/threads/ThreadCrea
 import type {ThreadDashboardSurfaceState} from '../../agentbuddy-ui/threads/ThreadDashboardSurface';
 import {launchPlanArtifact} from './chat';
 import {launchFilmStory} from './launchStory';
-import {ease, mix, textReveal} from './timeline';
+import {ease, mix} from './timeline';
+import {revealText} from './typing';
 
 export type BoardShotView = {
   board: KanbanBoardState;
@@ -68,7 +69,7 @@ export const boardShotState: {
     ],
   },
   createForm: {
-    instructions: 'Create the discount code validation endpoint and checkout price adjustment. Link it to the parent checkout thread and keep the Stripe integration visible.',
+    instructions: 'Validate discount codes and adjust pricing.',
     linkedThreadQuery: launchFilmStory.threads.checkoutImplementation.title,
     parentThread: {
       relation: 'parent_of',
@@ -213,16 +214,18 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     ? {
         ...boardShotState.createForm,
         createPressed: createFrame > 158 && createFrame < 170,
-        instructions: textReveal(boardShotState.createForm.instructions, createFrame, 42, 86),
+        instructions: revealText(boardShotState.createForm.instructions, createFrame, 42),
         instructionsCaretVisible: createFrame >= 34 && createFrame < 86,
         linkPressed: createFrame > 124 && createFrame <= 136,
         linkedThreadsOpen: createFrame >= 104,
         linkInputVisible: createFrame >= 104 && createFrame <= 140,
         linkedThreadCandidate: createFrame > 120 && createFrame <= 136 ? boardShotState.createForm.parentThread : undefined,
-        linkedThreadQuery: createFrame > 112 ? textReveal(boardShotState.createForm.linkedThreadQuery ?? '', createFrame, 112, 126) : '',
+        // Type a short search prefix (fits before the candidate is picked at
+        // ~136); the full thread title still shows as the matched candidate.
+        linkedThreadQuery: createFrame > 112 ? revealText((boardShotState.createForm.linkedThreadQuery ?? '').slice(0, 13), createFrame, 112) : '',
         parentThread: createFrame > 136 ? boardShotState.createForm.parentThread : undefined,
         tagsOpen: false,
-        title: textReveal(boardShotState.createForm.title, createFrame, 10, 34),
+        title: revealText(boardShotState.createForm.title, createFrame, 10),
         titleCaretVisible: createFrame >= 0 && createFrame < 34,
       }
     : undefined;

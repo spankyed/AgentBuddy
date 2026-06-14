@@ -1,6 +1,6 @@
 import type {LogsSurfaceState} from '../../agentbuddy-ui/logs/logTypes';
 import {launchFilmStory} from './launchStory';
-import {textReveal} from './timeline';
+import {revealText} from './typing';
 
 const now = Date.parse('2026-05-25T14:35:16Z');
 
@@ -206,7 +206,7 @@ export const logsLaunchReleaseState: LogsSurfaceState = {
 
 export function logsLaunchReleaseStateForFrame(frame: number): LogsSurfaceState {
   const local = Math.max(0, frame - 72);
-  const searchTerm = textReveal('deploy-checkout pipeline completed', local, 4, 30);
+  const searchTerm = revealText('deploy-checkout pipeline completed', local, 4);
   return {
     ...logsLaunchReleaseState,
     expandedContent: local > 38 ? logsLaunchReleaseState.expandedContent : {},

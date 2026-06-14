@@ -68,7 +68,8 @@ function chatStoryboardContentPass() {
     && chatShotState.prompt.text === 'Use #notes:tasklist and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.'
     && chatShotState.response.text === 'I’ll scope the checkout feature from the tasklist: create the Stripe integration, wire receipt emails, add the discount engine, and prepare the creator payout stub.'
     && chatViewForFrame(270).prompt === chatShotState.prompt.text
-    && chatViewForFrame(346).response === chatShotState.response.text;
+    // Response streams in at the agent cadence (~90 char/s), completing ~362.
+    && chatViewForFrame(362).response === chatShotState.response.text;
 }
 
 function chatToolAndPlanScopePass() {
@@ -239,22 +240,24 @@ function notesHomeStoryboardPass() {
 }
 
 function notesEditorStoryboardPass() {
-  const checkoutNote = notesEditorViewForFrame(70);
+  // Probe each note after its lines finish typing at the shared cadence:
+  // new-note body completes ~frame 71, the overview after-line ~120, the
+  // todo completion line ~165.
+  const checkoutNote = notesEditorViewForFrame(74);
   const tasklistOverview = notesEditorViewForFrame(120);
   const receiptTodo = notesEditorViewForFrame(150);
-  // The completion line types in over frames 144-162; probe after it settles.
-  const receiptDone = notesEditorViewForFrame(164);
+  const receiptDone = notesEditorViewForFrame(166);
 
   return checkoutNote.breadcrumbs.join(' > ') === 'Notes > Supafan > Checkout Notes'
     && checkoutNote.editor.title.text === 'Checkout notes'
-    && checkoutNote.editor.beforeLines.map(line => line.text).join('|') === 'Stripe webhook integration|checkout session flow works in staging|add checkout diagram, resize it, and keep tasks nearby'
+    && checkoutNote.editor.beforeLines.map(line => line.text).join('|') === 'Stripe webhook setup|checkout flow in staging|keep tasks nearby'
     && notesRightRailState.items.map(item => item.title).join('|') === 'Supafan|Payments|Tasklist|Design'
     && notesRightRailState.favorites.map(item => item.title).join('|') === 'current|api|Roadmap'
     && notesTaskListItems.map(item => item.title).join('|') === 'Stripe webhooks|current|receipt emails|checkout UI|discount codes|creator payouts|product variants|landing page redesign|pricing tiers|analytics dashboard'
     && tasklistOverview.editor.beforeLines.map(line => line.text).join('|') === `Stripe webhooks|current|receipt emails|${launchFilmStory.threads.addDiscountCodeSupport.title}`
-    && tasklistOverview.editor.afterLines[0]?.text === 'Checkout work stays beside the note instead of becoming another app.'
+    && tasklistOverview.editor.afterLines[0]?.text === 'Checkout work stays by the note.'
     && receiptTodo.editor.beforeLines.map(line => line.text).join('|') === 'Configure Resend transport|Render order summary template|Keep the linked checkout context visible'
-    && receiptDone.editor.afterLines[0]?.text === 'Completed from the tasklist panel.';
+    && receiptDone.editor.afterLines[0]?.text === 'Completed from panel.';
 }
 
 function codeStoryboardContinuityPass() {

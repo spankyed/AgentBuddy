@@ -6,7 +6,8 @@ import type {
   CalendarSurfaceState,
 } from '../../agentbuddy-ui/calendar';
 import {launchFilmStory} from './launchStory';
-import {ease, textReveal} from './timeline';
+import {ease} from './timeline';
+import {revealText} from './typing';
 
 const story = launchFilmStory.calendar;
 
@@ -101,7 +102,7 @@ function dialogState(frame: number): CalendarDialogState | null {
 
   const enter = ease(frame, calendarBeats.dialogOpen, calendarBeats.dialogSettled);
   const exit = ease(frame, calendarBeats.dialogClose - 6, calendarBeats.dialogClose);
-  const title = textReveal(story.launchEvent.title, frame, calendarBeats.typingStart, calendarBeats.typingEnd);
+  const title = revealText(story.launchEvent.title, frame, calendarBeats.typingStart);
 
   return {
     allDay: false,

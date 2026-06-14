@@ -3,7 +3,7 @@ import type {NoteImageBlockState} from '../../agentbuddy-ui/notes/NoteImageBlock
 import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import type {ReferenceRefType} from '../../agentbuddy-ui/chat/referenceConfig';
 import {launchFilmStory} from './launchStory';
-import {textReveal} from './timeline';
+import {revealText} from './typing';
 
 export type NotesTaskListPanelState = {
   activeId: string | null;
@@ -168,9 +168,9 @@ const newNoteCopy = {
   breadcrumbs: ['Notes', 'Supafan', 'Checkout Notes'],
   title: {icon: '📝', text: 'Checkout notes'},
   lines: [
-    'Stripe webhook integration',
-    'checkout session flow works in staging',
-    'add checkout diagram, resize it, and keep tasks nearby',
+    'Stripe webhook setup',
+    'checkout flow in staging',
+    'keep tasks nearby',
   ],
 };
 
@@ -184,7 +184,7 @@ const tasklistOverviewCopy = {
     launchFilmStory.threads.addDiscountCodeSupport.title,
   ],
   afterLines: [
-    'Checkout work stays beside the note instead of becoming another app.',
+    'Checkout work stays by the note.',
   ],
 };
 
@@ -197,12 +197,12 @@ const todoNoteCopy = {
     'Keep the linked checkout context visible',
   ],
   afterLines: [
-    'Completed from the tasklist panel.',
+    'Completed from panel.',
   ],
 };
 
 export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
-  const greeting = textReveal(notesHomeState.greeting, frame, -4, 40);
+  const greeting = revealText(notesHomeState.greeting, frame, -4);
   const showSearch = frame >= 44;
   const showRecent = frame >= 62;
   const showFavorites = frame >= 84;
@@ -246,12 +246,13 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
         beforeLines: newNoteCopy.lines.map((text, index) => ({
           caretVisible: index === newNoteCopy.lines.length - 1 && frame < 70,
           id: `new-note-${index}`,
-          // Lines type one after another, never simultaneously.
-          text: textReveal(text, frame, 6 + index * 22, 26 + index * 22),
+          // Lines type one after another, never simultaneously. Stagger
+          // (24f) exceeds the longest line so reveals never overlap.
+          text: revealText(text, frame, 6 + index * 24),
         })),
         title: {
           icon: newNoteCopy.title.icon,
-          text: textReveal(newNoteCopy.title.text, frame, 0, 22),
+          text: revealText(newNoteCopy.title.text, frame, 0),
         },
       },
       home: notesHomeState,
@@ -266,7 +267,7 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
       editor: {
         afterLines: tasklistOverviewCopy.afterLines.map((text, index) => ({
           id: `overview-after-${index}`,
-          text: textReveal(text, frame, 88 + index * 10, 116 + index * 10),
+          text: revealText(text, frame, 88 + index * 10),
         })),
         beforeLines: tasklistOverviewCopy.beforeLines.map((text, index) => ({
           id: `overview-${index}`,
@@ -285,7 +286,7 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
     editor: {
       afterLines: todoNoteCopy.afterLines.map((text, index) => ({
         id: `todo-after-${index}`,
-        text: textReveal(text, frame, 144 + index * 8, 162 + index * 8),
+        text: revealText(text, frame, 144 + index * 8),
       })),
       beforeLines: todoNoteCopy.beforeLines.map((text, index) => ({
         caretVisible: index === todoNoteCopy.beforeLines.length - 1 && !todoComplete,

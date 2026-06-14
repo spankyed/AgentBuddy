@@ -8,7 +8,8 @@ import {launchComposerState} from './chat';
 import {databaseMessagesBeforeDateState, databaseMessageLookupState} from './database';
 import {logsLaunchReleaseStateForFrame} from './logs';
 import {launchFilmStory} from './launchStory';
-import {ease, mix, textReveal} from './timeline';
+import {ease, mix} from './timeline';
+import {revealText} from './typing';
 
 export type MontageShotView =
   | {
@@ -70,21 +71,22 @@ export function montageShotViewForFrame(frame: number): MontageShotView {
         active: 'active' as const,
         activeLabel: launchFilmStory.threads.deployChecklist.title,
       },
-      sendPressed: frame > 20 && frame < 28,
-      text: frame < 24 ? textReveal(command, frame, 4, 20) : '',
+      sendPressed: frame > 26 && frame < 34,
+      // Command types at the shared cadence (ends ~28), then clears on send.
+      text: frame < 32 ? revealText(command, frame, 4) : '',
     };
     return {
       activePlugin: 'threads',
       breadcrumbs: ['Threads', launchFilmStory.threads.deployChecklist.title],
       composer: composerState,
       conversation: {
-        assistantMarkdown: frame > 24
-          ? textReveal('Matched the deploy-checkout command, ran migrations, and notified the #releases channel.', frame, 24, 58)
+        assistantMarkdown: frame > 30
+          ? revealText('Matched the deploy-checkout command, ran migrations, and notified the #releases channel.', frame, 30, 'stream')
           : '',
         createdAt: 'just now',
         messageStyles: {
-          assistant: {opacity: ease(frame, 28, 44), transform: `translateY(${mix(18, 0, ease(frame, 28, 44))}px)`},
-          user: {opacity: ease(frame, 18, 28), transform: `translateY(${mix(14, 0, ease(frame, 18, 28))}px)`},
+          assistant: {opacity: ease(frame, 32, 46), transform: `translateY(${mix(18, 0, ease(frame, 32, 46))}px)`},
+          user: {opacity: ease(frame, 26, 36), transform: `translateY(${mix(14, 0, ease(frame, 26, 36))}px)`},
         },
         topInset: 96,
         userMessage: command,
@@ -126,7 +128,7 @@ function databaseStateForMontageFrame(frame: number): DatabaseSurfaceState {
   const state = frame < 196 ? databaseMessageLookupState : databaseMessagesBeforeDateState;
   const segmentStart = frame < 196 ? 142 : 196;
   const local = frame - segmentStart;
-  const query = textReveal(state.currentQuery, local, 0, 4);
+  const query = revealText(state.currentQuery, local, 0, 'paste');
 
   if (local < 4) {
     return {

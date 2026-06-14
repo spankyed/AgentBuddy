@@ -1,6 +1,6 @@
 import type {FlowNodeFormState} from '../../agentbuddy-ui/flows/flowTypes';
 import {launchFilmStory} from './launchStory';
-import {textReveal} from './timeline';
+import {revealText} from './typing';
 
 const deployCheckoutDescription = 'Run the checkout deploy path: apply database migrations, verify the checkout branch, and notify the releases channel.';
 
@@ -45,8 +45,8 @@ export const deployCheckoutFormState: FlowNodeFormState = {
 
 export function deployCheckoutFormStateForFrame(frame: number): FlowNodeFormState {
   const local = Math.max(0, frame - 252);
-  const description = textReveal(deployCheckoutDescription, local, 4, 42);
-  const code = textReveal(deployCheckoutCode, local, 8, 84);
+  const description = revealText(deployCheckoutDescription, local, 4);
+  const code = revealText(deployCheckoutCode, local, 8, 'stream');
 
   return {
     ...deployCheckoutFormState,

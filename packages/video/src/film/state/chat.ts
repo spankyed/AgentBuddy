@@ -23,7 +23,8 @@ import type {ChatComposerInlineNode, ChatComposerState} from '../../agentbuddy-u
 import {REFERENCE_CATEGORIES} from '../../agentbuddy-ui/chat/referenceConfig';
 import {launchFilmStory} from './launchStory';
 import {filmProjectDirectories, filmProjects} from './paths';
-import {ease, mix, textReveal, textRevealLinear} from './timeline';
+import {ease, mix} from './timeline';
+import {revealText} from './typing';
 
 const checkoutMockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
   <rect width="160" height="160" rx="18" fill="#0f172a"/>
@@ -836,12 +837,12 @@ const quickPromptResponseEnd = 660;
 const noteReferenceSelectStart = 112;
 const noteReferenceSelectEnd = 144;
 const noteReferenceInsertFrame = 152;
-// The "Use #notes:" prefix finishes typing here, then holds with the
-// autocomplete menu open until the selection animates at SelectStart. Kept
-// well ahead of SelectStart so the typing reads fast, not laborious.
-const notePromptPrefixTypedEnd = 60;
+// The prompt types via the central `revealText` (type cadence): the prefix
+// finishes ~frame 35 and holds with the autocomplete menu open until the
+// selection animates at SelectStart; the sentence resumes after the
+// reference is inserted. These boundaries gate the autocomplete, not the
+// reveal rate.
 const promptAfterReferenceStart = 168;
-const promptAfterReferenceEnd = 244;
 
 export function toolActivityViewForFrame(frame: number) {
   return {
@@ -862,10 +863,10 @@ function typedPromptForFrame(frame: number) {
   const insertedReferenceText = 'Use #notes:tasklist ';
   const remainingText = chatShotState.prompt.text.slice(insertedReferenceText.length);
   if (frame < noteReferenceSelectEnd) {
-    return textRevealLinear(prefix, frame, chatShotState.prompt.from, notePromptPrefixTypedEnd);
+    return revealText(prefix, frame, chatShotState.prompt.from);
   }
   if (frame < promptAfterReferenceStart) return insertedReferenceText;
-  return insertedReferenceText + textRevealLinear(remainingText, frame, promptAfterReferenceStart, promptAfterReferenceEnd);
+  return insertedReferenceText + revealText(remainingText, frame, promptAfterReferenceStart);
 }
 
 export function chatViewForFrame(frame: number) {
@@ -883,7 +884,7 @@ export function chatViewForFrame(frame: number) {
   return {
     prompt: typedPromptForFrame(frame),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
-    response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
+    response: revealText(chatShotState.response.text, frame, chatShotState.response.from, 'stream'),
     conversationOpacity: ease(frame, 254, 284),
     conversationY: 28 - ease(frame, 254, 284) * 28,
     messageStyles: {

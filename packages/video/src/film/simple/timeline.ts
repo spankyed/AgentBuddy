@@ -60,7 +60,7 @@ export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
     {at: 80, remove: 88},   // chrome beats pinned: jump from drawn edge (76) to action1 (168)
   ],
   montage: [
-    {at: 64, remove: 8},    // logs icon clicked (60), logs surface at (72)
+    {at: 66, remove: 6},    // reply streamed (60), trim hold before logs boundary (72)
   ],
 };
 
@@ -91,7 +91,7 @@ export const simpleScenes: SimpleScene[] = [
   {id: 'workflow', duration: 172},
   {id: 'calendar-card', card: {eyebrow: '5', title: 'More than just a calendar'}, duration: 66},
   {id: 'calendar', duration: 270},
-  {id: 'montage', duration: 244},
+  {id: 'montage', duration: 246},
   {id: 'final', duration: 140},
 ];
 

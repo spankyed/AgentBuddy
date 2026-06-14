@@ -1,7 +1,8 @@
 import type {CodeReviewState, CodeReviewViewState, TerminalPanelState} from '../../agentbuddy-ui/code/codeTypes';
 import {launchFilmStory} from './launchStory';
 import {filmProjects} from './paths';
-import {ease, textReveal} from './timeline';
+import {ease} from './timeline';
+import {revealText} from './typing';
 
 export type CodeShotState = {
   breadcrumbs: string[];
@@ -229,8 +230,8 @@ export function codeReviewViewForFrame(frame: number): CodeReviewViewState {
     commitMenuActionPressed: frame > 128 && frame < 140,
     commitMenuOpen: frame > 112 && frame < 142,
     commitMessage: frame < 142
-      ? textReveal('incomplete work', frame, 56, 88)
-      : textReveal(codeShotState.generatedCommitMessage, frame, 184, 206),
+      ? revealText('incomplete work', frame, 56)
+      : revealText(codeShotState.generatedCommitMessage, frame, 184, 'stream'),
     diffLineOpacities: codeShotState.review.diff.lines.map((line, index) =>
       line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12),
     ),

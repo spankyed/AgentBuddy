@@ -57,7 +57,7 @@ export const shotCuts: Partial<Record<ContentShotId, FrameCut[]>> = {
     {at: 320, remove: 8},   // completion typed (318), settle tail remains
   ],
   montage: [
-    {at: 60, remove: 8},    // chat reply settled (58), logs boundary (72)
+    {at: 60, remove: 8},    // chat reply streamed (done 60), logs boundary (72)
     {at: 114, remove: 10},  // log expanded (110), database boundary (142)
     {at: 172, remove: 14},  // first query results settled, next query (196)
     {at: 226, remove: 14},  // second results settled, browser boundary (252)
@@ -163,14 +163,4 @@ export function ease(local: number, from: number, to: number) {
 
 export function mix(from: number, to: number, progress: number) {
   return from + (to - from) * progress;
-}
-
-export function textReveal(text: string, local: number, from: number, to: number) {
-  return text.slice(0, Math.floor(mix(0, text.length, ease(local, from, to))));
-}
-
-export function textRevealLinear(text: string, local: number, from: number, to: number) {
-  if (local <= from) return '';
-  if (local >= to) return text;
-  return text.slice(0, Math.floor(mix(0, text.length, (local - from) / (to - from))));
 }
