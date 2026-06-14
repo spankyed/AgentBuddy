@@ -203,7 +203,16 @@ const switchToFile = (filePath: string, content: string) => {
   }
   if (!model) {
     const uri = monaco.Uri.file(filePath)
-    model = monaco.editor.createModel(content, resolvedLanguage.value, uri)
+    // Check Monaco's global registry first — a model with this URI may still exist
+    // from a previous component instance that didn't fully clean up
+    model = monaco.editor.getModel(uri)
+    if (model) {
+      if (model.getValue() !== content) {
+        model.setValue(content)
+      }
+    } else {
+      model = monaco.editor.createModel(content, resolvedLanguage.value, uri)
+    }
     if (!model) return
     models.set(filePath, model)
     
