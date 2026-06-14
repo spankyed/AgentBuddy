@@ -48,6 +48,26 @@ export function notesTaskPanelTargets(
   };
 }
 
+// The editor's start point and the right-rail "Tasklist" tree item, derived
+// from the window box so they track the app window across variants instead of
+// being pinned to viewport percentages. The right rail is the 368px column
+// docked at the window's right edge (AppWindow grid: 72px | 1fr | 368px).
+export function notesEditorChromeTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  viewport: {height: number; width: number},
+): {editorBody: TargetRect; rightRailTasklist: TargetRect} {
+  const RAIL_WIDTH = 368;
+  const railLeft = windowBox.left + windowBox.width - RAIL_WIDTH;
+  const point = (x: number, y: number, w = 0, h = 0) =>
+    percentTarget((x / viewport.width) * 100, (y / viewport.height) * 100, (w / viewport.width) * 100, (h / viewport.height) * 100);
+  return {
+    // Cursor start point, centered in the editor area (between sidebar and rail).
+    editorBody: point(windowBox.left + windowBox.width * 0.52, windowBox.top + windowBox.height * 0.49),
+    // The "Tasklist" item in the right-rail tree.
+    rightRailTasklist: point(railLeft + 112, windowBox.top + 283),
+  };
+}
+
 export type NotesTaskListPanelState = {
   activeId: string | null;
   items: NoteTreeNodeState[];

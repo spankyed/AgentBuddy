@@ -11,10 +11,9 @@ import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../../overlays/Cursor';
 import {chatInteractionScript, chatShotViewForFrame, type ChatPointer, type ChatTargetId} from '../../state/chat';
 import {createInteractionModel, type InteractionStep} from '../../interaction/interactionTimeline';
-import {boardDragTargets, boardInteractions, boardShotViewForFrame, type BoardTargetId} from '../../state/board';
+import {boardChromeTargets, boardDragTargets, boardInteractions, boardShotViewForFrame, type BoardTargetId} from '../../state/board';
 import {useAppWindowLayout} from '../../appWindowLayout';
 import {ease, mix} from '../../state/timeline';
-import {percentTarget} from '../../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
 import {threadsBoardSourceStart} from '../timeline';
 import {useVideoConfig} from 'remotion';
@@ -502,15 +501,16 @@ function boardCursorTargets(
   height: number,
 ): Record<BoardTargetId, TargetRect> {
   const {activeCard, inProgressDrop} = boardDragTargets(windowBox, {height, width});
+  const chrome = boardChromeTargets(windowBox, {height, width});
   return {
     activeCard,
     inProgressDrop,
-    activeDashboardTabPin: percentTarget(19.2, 16.2, 1.2, 3.2),
-    createSaveButton: percentTarget(91, 11.8, 5, 3),
-    createThreadButton: percentTarget(91, 9.6, 5, 3),
-    dashboardArea: percentTarget(65, 21, 6, 6),
-    kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
-    linkActionButton: percentTarget(82, 40, 4.5, 3),
-    linkThreadButton: percentTarget(73.9, 44.9, 8.8, 3.6),
+    activeDashboardTabPin: chrome.activeDashboardTabPin,
+    createSaveButton: chrome.createSaveButton,
+    createThreadButton: chrome.createThreadButton,
+    dashboardArea: chrome.dashboardArea,
+    kanbanViewButton: chrome.kanbanViewButton,
+    linkActionButton: chrome.linkActionButton,
+    linkThreadButton: chrome.linkThreadButton,
   };
 }

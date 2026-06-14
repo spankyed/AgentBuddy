@@ -68,6 +68,67 @@ export function boardDragTargets(
   };
 }
 
+// The header/form cursor targets must land on the real chrome (view toggles,
+// New Thread, Save, the create-form link buttons, the dashboard tab pin), so —
+// like boardDragTargets — they are derived from the app-window box instead of
+// fixed viewport percentages. The landscape and square windows inset the
+// threads surface differently, so a single percent target would hit in one
+// variant and drift in the other. Offsets are backed out from the (correct)
+// landscape layout; right-aligned controls anchor to the window right edge and
+// the centered create-form controls anchor to the content box so they stay put
+// in square.
+export function boardChromeTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  viewport: {height: number; width: number},
+): Record<
+  | 'kanbanViewButton'
+  | 'createThreadButton'
+  | 'createSaveButton'
+  | 'activeDashboardTabPin'
+  | 'dashboardArea'
+  | 'linkActionButton'
+  | 'linkThreadButton'
+  | 'activeDashboardTab'
+  | 'boardCenter'
+  | 'boardToolbar'
+  | 'instructionsField',
+  TargetRect
+> {
+  const SIDEBAR = 72; // icon rail to the left of the threads surface
+  const HEADER = 42;  // breadcrumb chrome row above the surface
+  const surfaceLeft = windowBox.left + SIDEBAR;
+  const surfaceTop = windowBox.top + HEADER;
+  const surfaceWidth = windowBox.width - SIDEBAR;
+  const windowRight = windowBox.left + windowBox.width;
+  // The create form's content column is min(896, surface - 2rem) centered.
+  const CONTENT_MAX = 896;
+  const CONTENT_INSET = 32; // 1rem padding either side
+  const contentWidth = Math.min(CONTENT_MAX, surfaceWidth - CONTENT_INSET);
+  const contentRight = surfaceLeft + (surfaceWidth - contentWidth) / 2 + contentWidth;
+  // Right-aligned controls keep a fixed px gap from the window right edge.
+  const fromRight = (offset: number) => windowRight - offset;
+  const point = (x: number, y: number) => percentTarget((x / viewport.width) * 100, (y / viewport.height) * 100);
+  return {
+    // ThreadsHeader toolbar row (center ~26px below the surface top).
+    kanbanViewButton: point(fromRight(559), surfaceTop + 26),
+    createThreadButton: point(fromRight(62), surfaceTop + 26),
+    boardToolbar: point(fromRight(551), surfaceTop + 25),
+    // Create-form header Save button (top-right of the form).
+    createSaveButton: point(fromRight(62), surfaceTop + 46),
+    // Dashboard tab row (sits below the header; pin near the active tab's left).
+    activeDashboardTabPin: point(surfaceLeft + 181, surfaceTop + 86),
+    activeDashboardTab: point(surfaceLeft + 298, surfaceTop + 86),
+    // A point in the dashboard content — only the START of the pin cursor move.
+    dashboardArea: point(surfaceLeft + 875, surfaceTop + 142),
+    // Create-form linked-threads table buttons (right side of the content box).
+    linkActionButton: point(contentRight + 9, surfaceTop + 300),
+    linkThreadButton: point(contentRight - 76, surfaceTop + 346),
+    // Create-form instructions editor / board center — unused move endpoints.
+    instructionsField: point(surfaceLeft + 645, surfaceTop + 255),
+    boardCenter: point(surfaceLeft + 674, surfaceTop + 376),
+  };
+}
+
 export type BoardShotView = {
   board: KanbanBoardState;
   breadcrumbs: string[];

@@ -5,9 +5,8 @@ import {NotesHomeSurface} from '../../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../../agentbuddy-ui/notes/NotesRightRail';
 import {ReferencePill} from '../../../agentbuddy-ui/chat/ReferencePill';
 import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
-import {notesEditorViewForFrame, notesHomeViewForFrame, notesEditorInteractions, notesHomeInteractions, notesTaskPanelTargets, type NotesEditorLineView, type NotesEditorTargetId, type NotesHomeTargetId} from '../../state/notes';
+import {notesEditorViewForFrame, notesHomeViewForFrame, notesEditorChromeTargets, notesEditorInteractions, notesHomeInteractions, notesTaskPanelTargets, type NotesEditorLineView, type NotesEditorTargetId, type NotesHomeTargetId} from '../../state/notes';
 import {Cursor} from '../../overlays/Cursor';
-import {percentTarget} from '../../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
 import {useAppWindowLayout} from '../../appWindowLayout';
 import {makeStyles} from '../../../agentbuddy-ui/primitives/makeStyles';
@@ -67,7 +66,7 @@ function SimpleNotesEditor({frame, variant}: {frame: number; variant?: 'landscap
   const taskListVisible = frame >= 76;
   const {height, width} = useVideoConfig();
   const layout = useAppWindowLayout({animate: false, hasRightRail: true, variant});
-  const cursor = notesEditorCursorForFrame(frame, notesWindowBox(layout, width, height), width, height);
+  const cursor = notesEditorCursorForFrame(frame, notesWindowBox(layout, width, height), width, height, layout.showRightRail);
   const renderLine = (line: NotesEditorLineView) => (
     <NoteLine frame={frame} line={line} />
   );
@@ -114,7 +113,13 @@ function notesEditorCursorForFrame(
   windowBox: {height: number; left: number; top: number; width: number},
   width: number,
   height: number,
+  showRightRail: boolean,
 ): CursorPath | null {
+  // The right rail (and its "Tasklist" item) is hidden in the square layout —
+  // the app's own responsive rule. With no rail to click, suppress the
+  // rail-targeted open-tasklist move (frames < 98) instead of faking a click on
+  // a missing element; the task-panel moves below still play (the panel exists).
+  if (!showRightRail && frame < 98) return null;
   return notesEditorInteractions.path(notesEditorCursorTargets(windowBox, width, height), frame, undefined, 'percent');
 }
 
@@ -142,9 +147,10 @@ function notesEditorCursorTargets(
   height: number,
 ): Record<NotesEditorTargetId, TargetRect> {
   const {taskCheckbox, taskListCurrentRow} = notesTaskPanelTargets(windowBox, {height, width});
+  const {editorBody, rightRailTasklist} = notesEditorChromeTargets(windowBox, {height, width});
   return {
-    editorBody: percentTarget(52, 49, 6, 6),
-    rightRailTasklist: percentTarget(80, 35, 8, 5),
+    editorBody,
+    rightRailTasklist,
     taskCheckbox,
     taskListCurrentRow,
   };

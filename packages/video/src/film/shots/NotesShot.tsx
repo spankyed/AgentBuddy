@@ -5,7 +5,7 @@ import {NotesHomeSurface} from '../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {TextCaret} from '../../agentbuddy-ui/primitives/TextCaret';
-import {notesEditorViewForFrame, notesHomeViewForFrame, notesTaskPanelTargets, type NotesEditorLineView} from '../state/notes';
+import {notesEditorViewForFrame, notesHomeViewForFrame, notesEditorChromeTargets, notesTaskPanelTargets, type NotesEditorLineView} from '../state/notes';
 import {Cursor} from '../overlays/Cursor';
 import {cursorMove, percentTarget, viewportPoint} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
@@ -84,7 +84,7 @@ function NotesEditorShot({frame, variant}: {frame: number; variant?: 'landscape'
   };
   const editorEnter = ease(frame, 0, 12);
   const taskListEnter = ease(frame, 88, 112);
-  const cursor = notesEditorCursorForFrame(frame, windowBox, width, height);
+  const cursor = notesEditorCursorForFrame(frame, windowBox, width, height, layout.showRightRail);
   const renderLine = (line: NotesEditorLineView) => (
     <NoteLine frame={frame} line={line} />
   );
@@ -162,8 +162,13 @@ function notesEditorCursorForFrame(
   windowBox: {height: number; left: number; top: number; width: number},
   width: number,
   height: number,
+  showRightRail: boolean,
 ): CursorPath | null {
   const targets = notesEditorCursorTargets(windowBox, width, height);
+
+  // No right rail in the square layout → no rail "Tasklist" item to click, so
+  // skip the rail-targeted open-tasklist move instead of clicking empty space.
+  if (!showRightRail && frame < 98) return null;
 
   if (frame >= 50 && frame < 80) {
     return cursorMove(targets, {end: 70, from: 'editorBody', start: 50, to: 'rightRailTasklist'}, 'percent');
@@ -202,12 +207,16 @@ function notesEditorCursorTargets(
   height: number,
 ): Record<string, TargetRect> {
   const {taskCheckbox, taskListCurrentRow} = notesTaskPanelTargets(windowBox, {height, width});
+  const {editorBody, rightRailTasklist} = notesEditorChromeTargets(windowBox, {height, width});
+  // Move start point parked in the middle of the task panel (sidebar 72 + panel).
+  const panelMiddleX = ((windowBox.left + 72 + 155) / width) * 100;
+  const panelMiddleY = ((windowBox.top + 274) / height) * 100;
   return {
-    editorBody: percentTarget(52, 49, 6, 6),
-    rightRailTasklist: percentTarget(80, 35, 8, 5),
+    editorBody,
+    rightRailTasklist,
     taskCheckbox,
     taskListCurrentRow,
-    taskListPanelMiddle: percentTarget(18, 34, 5, 5),
+    taskListPanelMiddle: percentTarget(panelMiddleX, panelMiddleY),
   };
 }
 

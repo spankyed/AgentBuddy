@@ -118,14 +118,21 @@ function montageCursorTargets(
 ): Record<string, TargetRect> {
   const windowLeft = Number(layout.windowStyle.left ?? 0);
   const windowTop = Number(layout.windowStyle.top ?? 0);
+  const windowWidth = Number(layout.windowStyle.width ?? width);
   const windowHeight = Number(layout.windowStyle.height ?? height);
   const windowBottom = windowTop + windowHeight;
+  const windowRight = windowLeft + windowWidth;
   const iconLeft = windowLeft + 36 - 20;
+  // Database surface sits inside the window after the 72px icon sidebar; its
+  // Execute button is right-aligned in the query toolbar and the query editor
+  // input is indented from the surface left — anchor both to the window box so
+  // they track the surface in both the landscape and square variants.
+  const surfaceLeft = windowLeft + 72;
 
   return {
     databaseIcon: {height: 40, left: iconLeft, top: windowBottom - 172 - 20, width: 40},
-    executeButton: {height: height * 0.031, left: width * 0.893, top: height * 0.097, width: width * 0.072},
+    executeButton: {height: 28, left: windowRight - 122, top: windowTop + 55, width: 104},
     logsIcon: {height: 40, left: iconLeft, top: windowBottom - 108 - 20, width: 40},
-    queryEditor: {height: height * 0.09, left: width * 0.3, top: height * 0.16, width: width * 0.28},
+    queryEditor: {height: 81, left: surfaceLeft + 328, top: windowTop + 112, width: 403},
   };
 }

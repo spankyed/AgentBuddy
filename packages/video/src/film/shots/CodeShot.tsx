@@ -4,12 +4,13 @@ import {CodeReview} from '../../agentbuddy-ui/code/CodeReview';
 import {PullRequestPanel} from '../../agentbuddy-ui/code/PullRequestPanel';
 import {ExternalBrowserWindow} from '../props/ExternalBrowserWindow';
 import {Cursor} from '../overlays/Cursor';
-import {cursorMove, percentTarget} from '../interaction/cursorTargets';
+import {cursorMove} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {codeShotViewForFrame} from '../state/code';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
 import {useVideoConfig} from 'remotion';
+import {codeCursorTargetsFromLayout, type CodeCursorLayout, type CodePanelRect} from './codeShotGeometry';
 import './CodeShot.module.css';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 
@@ -28,7 +29,7 @@ export function CodeShot({frame, variant}: {frame: number; variant?: 'landscape'
   const browserRect = browserWindowPlacement({height, layout, variant, width});
   const browserEnter = ease(frame, 258, 284);
   const browserExit = ease(frame, 300, 316);
-  const cursor = codeCursorForFrame(frame);
+  const cursor = codeCursorForFrame(frame, panelRect, layout, width, height);
 
   return (
     <div className={styles.root}>
@@ -114,8 +115,14 @@ function leftSurfaceSwapFade(frame: number) {
   return 1;
 }
 
-function codeCursorForFrame(frame: number): CursorPath | null {
-  const targets = codeCursorTargets();
+function codeCursorForFrame(
+  frame: number,
+  panelRect: CodePanelRect,
+  layout: CodeCursorLayout,
+  width: number,
+  height: number,
+): CursorPath | null {
+  const targets = codeCursorTargets(panelRect, layout, width, height);
 
   if (frame >= 18 && frame < 46) {
     return cursorMove(targets, {end: 38, from: 'stageCenter', start: 18, to: 'sourceControlHeader'}, 'percent');
@@ -156,22 +163,13 @@ function codeCursorForFrame(frame: number): CursorPath | null {
   return null;
 }
 
-function codeCursorTargets(): Record<string, TargetRect> {
-  return {
-    changedFiles: percentTarget(85, 50, 8, 5),
-    commitArea: percentTarget(86, 39, 8, 6),
-    commitButton: percentTarget(82, 51.5, 8, 4),
-    createPrPrimary: percentTarget(86, 88.5, 8, 4),
-    createPullRequestButton: percentTarget(94.5, 25.5, 4, 3),
-    prDescription: percentTarget(80, 39, 10, 8),
-    publishButton: percentTarget(91, 19.5, 6, 3),
-    pullRequestTab: percentTarget(94, 14.5, 4, 3),
-    sourceControlHeader: percentTarget(59, 18, 6, 4),
-    sourceControlTab: percentTarget(90, 18.5, 4, 3),
-    stageCenter: percentTarget(46, 65, 6, 6),
-    terminalToggle: percentTarget(71, 85.5, 6, 4),
-    worktreeSection: percentTarget(89, 86, 6, 5),
-  };
+function codeCursorTargets(
+  panelRect: CodePanelRect,
+  layout: CodeCursorLayout,
+  width: number,
+  height: number,
+): Record<string, TargetRect> {
+  return codeCursorTargetsFromLayout(panelRect, layout, width, height);
 }
 
 function codePanelPlacement({

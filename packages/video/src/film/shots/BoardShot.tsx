@@ -3,9 +3,9 @@ import {ThreadDashboardSurface} from '../../agentbuddy-ui/threads/ThreadDashboar
 import {ThreadCreateForm} from '../../agentbuddy-ui/threads/ThreadCreateForm';
 import {ThreadsBoardSurface} from '../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {Cursor} from '../overlays/Cursor';
-import {cursorMove, percentTarget} from '../interaction/cursorTargets';
+import {cursorMove} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
-import {boardDragTargets, boardShotViewForFrame} from '../state/board';
+import {boardChromeTargets, boardDragTargets, boardShotViewForFrame} from '../state/board';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {useVideoConfig} from 'remotion';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
@@ -162,19 +162,10 @@ function boardCursorTargets(
   height: number,
 ): Record<string, TargetRect> {
   const {activeCard, inProgressDrop} = boardDragTargets(windowBox, {height, width});
+  const chrome = boardChromeTargets(windowBox, {height, width});
   return {
     activeCard,
     inProgressDrop,
-    activeDashboardTab: percentTarget(21.2, 16.2, 13.4, 3.2),
-    activeDashboardTabPin: percentTarget(19.2, 16.2, 1.2, 3.2),
-    boardCenter: percentTarget(51, 47, 6, 6),
-    boardToolbar: percentTarget(56, 9.5, 7, 3),
-    createSaveButton: percentTarget(91, 11.8, 5, 3),
-    createThreadButton: percentTarget(91, 9.6, 5, 3),
-    dashboardArea: percentTarget(65, 21, 6, 6),
-    instructionsField: percentTarget(46, 34, 12, 5),
-    kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
-    linkActionButton: percentTarget(82, 40, 4.5, 3),
-    linkThreadButton: percentTarget(73.9, 44.9, 8.8, 3.6),
+    ...chrome,
   };
 }
