@@ -70,7 +70,7 @@ export const simpleSceneSourceDurations: Record<SimpleContentId, number> = {
   final: 140,
   montage: 252,  // browser segment (252+) is not part of the simple film
   notes: 330,
-  threads: threadsBoardSourceStart + 310,
+  threads: threadsBoardSourceStart + 380,
   workflow: 260,
 };
 
@@ -82,7 +82,7 @@ export function simpleSceneFrame(id: SimpleSceneId, frame: number) {
 export const simpleScenes: SimpleScene[] = [
   {id: 'intro-card', card: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 66},
   {id: 'chat-card', card: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 66},
-  {id: 'threads', duration: 806},
+  {id: 'threads', duration: 876},
   {id: 'notes-card', card: {eyebrow: '2', title: 'More than just a note taker'}, duration: 66},
   {id: 'notes', duration: 312},
   {id: 'code-card', card: {eyebrow: '3', title: 'More than just an IDE'}, duration: 66},

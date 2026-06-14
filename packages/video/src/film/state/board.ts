@@ -6,6 +6,7 @@ import {launchFilmStory} from './launchStory';
 import {ease, mix} from './timeline';
 import {revealText} from './typing';
 import {createInteractionModel, type InteractionStep} from '../interaction/interactionTimeline';
+import {percentTarget, type TargetRect} from '../interaction/cursorTargets';
 
 // Board pointer interactions — the single source of truth shared by the
 // scene's cursor and the press/hover states below.
@@ -28,10 +29,44 @@ export const boardInteractionScript: InteractionStep<BoardTargetId>[] = [
   {label: 'hold-link-action', start: 228, end: 240, to: 'linkActionButton', from: 'linkActionButton', fromPoint: {anchor: [0.5, 0.5]}, toPoint: {anchor: [0.5, 0.5]}, click: false},
   {label: 'save-thread', start: 244, end: 258, to: 'createSaveButton', from: 'linkActionButton', fromPoint: {anchor: [0.5, 0.5]}},
   {label: 'to-kanban', start: 270, end: 282, to: 'kanbanViewButton', from: 'createSaveButton', toPoint: {anchor: [0.5, 0.5]}},
-  {label: 'grab-card', start: 282, end: 290, to: 'activeCard', from: 'kanbanViewButton', fromPoint: {anchor: [0.5, 0.5]}, click: false},
-  {label: 'drop-card', start: 292, end: 304, to: 'inProgressDrop', from: 'activeCard'},
+  // Kanban settles (282-294), then the cursor travels to the resting card over
+  // ~1s and clicks to grab it (ripple at 326). The card stays in its Backlog
+  // slot until the grab — only then does it lift and drag to In Progress.
+  {label: 'grab-card', start: 294, end: 326, to: 'activeCard', from: 'kanbanViewButton', fromPoint: {anchor: [0.5, 0.5]}, toPoint: {anchor: [0.5, 0.5]}},
+  {label: 'drag-card', start: 330, end: 362, to: 'inProgressDrop', from: 'activeCard', fromPoint: {anchor: [0.5, 0.5]}, toPoint: {anchor: [0.5, 0.5]}, click: false},
 ];
 export const boardInteractions = createInteractionModel(boardInteractionScript);
+
+// The grab/drop cursor targets must land on the real card, so they are derived
+// from the actual app-window box rather than fixed viewport percentages — the
+// landscape and square windows have different margins, so a single percent
+// target would hit the card in one variant and miss in the other. Offsets are
+// the kanban's fixed layout chrome (sidebar, header, board padding, card rows).
+export function boardDragTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  viewport: {height: number; width: number},
+): {activeCard: TargetRect; inProgressDrop: TargetRect} {
+  const SIDEBAR = 72;
+  const BOARD_TOP = 126;     // breadcrumb bar (42) + threads header (60) + board padding (24)
+  const HEADER_TO_CARD = 52; // column header + gap down to the first card
+  const CARD_HEIGHT = 62;
+  const CARD_GAP = 16;
+  const BOARD_PAD = 24;
+  const COL_GAP = 16;
+  const CARD_MARGIN = 12;
+  const boardWidth = windowBox.width - SIDEBAR;
+  const colWidth = (boardWidth - BOARD_PAD * 2 - COL_GAP * 2) / 3;
+  // The grabbed card is the 2nd Backlog card; it drops into the 2nd slot of In
+  // Progress — both sit on the same row, so they share a Y.
+  const rowCenterY = windowBox.top + BOARD_TOP + HEADER_TO_CARD + CARD_HEIGHT + CARD_GAP + CARD_HEIGHT / 2;
+  const cardCenterX = (columnIndex: number) =>
+    windowBox.left + SIDEBAR + BOARD_PAD + columnIndex * (colWidth + COL_GAP) + CARD_MARGIN + (colWidth - CARD_MARGIN * 2) / 2;
+  const point = (x: number, y: number) => percentTarget((x / viewport.width) * 100, (y / viewport.height) * 100);
+  return {
+    activeCard: point(cardCenterX(0), rowCenterY),
+    inProgressDrop: point(cardCenterX(1), rowCenterY),
+  };
+}
 
 export type BoardShotView = {
   board: KanbanBoardState;
@@ -65,6 +100,7 @@ export const boardShotState: {
       fromLeft: number;
       fromRotation: number;
       fromTop: number;
+      grab: number;
       to: number;
       toLeft: number;
       toRotation: number;
@@ -144,12 +180,14 @@ export const boardShotState: {
       updatedAt: 'just now',
     },
     motion: {
-      from: 282,
-      to: 304,
-      fromLeft: 8,
-      toLeft: 40,
-      fromTop: 34,
-      toTop: 24,
+      // Card is grabbed at `grab` (lifts in place), then slides `from`->`to`.
+      grab: 326,
+      from: 330,
+      to: 362,
+      fromLeft: 3,
+      toLeft: 34,
+      fromTop: 19,
+      toTop: 21,
       fromRotation: -2,
       toRotation: 1,
     },
@@ -212,7 +250,8 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
   const formEnter = ease(frame, 88, 96);
   const formExit = ease(frame, 256, 264);
   const dashboardShown = frame < 96;
-  const draggingCard = frame >= boardShotState.movingCard.motion.from && frame < boardShotState.movingCard.motion.to;
+  // The card lifts at the grab, holds its slot for a few frames, then slides.
+  const draggingCard = frame >= boardShotState.movingCard.motion.grab && frame < boardShotState.movingCard.motion.to;
   const droppedCard = frame >= boardShotState.movingCard.motion.to;
   const boardColumns = boardShotState.board.columns.map(column => {
     if (column.title === 'Backlog') {

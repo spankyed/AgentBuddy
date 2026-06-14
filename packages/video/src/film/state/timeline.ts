@@ -75,7 +75,7 @@ export const shotCuts: Partial<Record<ContentShotId, FrameCut[]>> = {
 };
 
 export const shotSourceDurations: Record<ContentShotId, number> = {
-  board: 310,
+  board: 380,
   calendar: 270,
   chat: 630,
   code: 420,
@@ -106,7 +106,7 @@ export const shots: FilmShot[] = [
   {id: 'intro-title', chapter: {eyebrow: '0', title: 'AgentBuddy is...'}, duration: 66},
   {id: 'chat-title', chapter: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 66},
   {id: 'chat', duration: 576, transition: {exit: 'hold'}},
-  {id: 'board', duration: 270, transition: {enter: 'dissolve', overlap: 10}},
+  {id: 'board', duration: 340, transition: {enter: 'dissolve', overlap: 10}},
   {id: 'notes-title', chapter: {eyebrow: '2', title: 'More than just a note taker'}, duration: 66},
   {id: 'notes', duration: 312},
   {id: 'code-title', chapter: {eyebrow: '3', title: 'More than just an IDE'}, duration: 66},

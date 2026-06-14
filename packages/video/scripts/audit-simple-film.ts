@@ -86,8 +86,8 @@ check(
 );
 check(
   'threads scene spans chat + nav + board stories',
-  simpleSceneSourceDurations.threads === threadsBoardSourceStart + 310,
-  `threads source duration ${simpleSceneSourceDurations.threads} !== ${threadsBoardSourceStart} + 310`,
+  simpleSceneSourceDurations.threads === threadsBoardSourceStart + 380,
+  `threads source duration ${simpleSceneSourceDurations.threads} !== ${threadsBoardSourceStart} + 380`,
 );
 
 check(

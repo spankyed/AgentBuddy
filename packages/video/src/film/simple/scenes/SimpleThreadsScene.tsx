@@ -11,7 +11,7 @@ import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../../overlays/Cursor';
 import {chatInteractionScript, chatShotViewForFrame, type ChatPointer, type ChatTargetId} from '../../state/chat';
 import {createInteractionModel, type InteractionStep} from '../../interaction/interactionTimeline';
-import {boardInteractions, boardShotViewForFrame, type BoardTargetId} from '../../state/board';
+import {boardDragTargets, boardInteractions, boardShotViewForFrame, type BoardTargetId} from '../../state/board';
 import {useAppWindowLayout} from '../../appWindowLayout';
 import {ease, mix} from '../../state/timeline';
 import {percentTarget} from '../../interaction/cursorTargets';
@@ -107,7 +107,8 @@ function ThreadsChatPhase({frame, variant}: {frame: number; variant?: 'landscape
 function ThreadsBoardPhase({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = boardShotViewForFrame(frame);
   const layout = useAppWindowLayout({animate: false, variant});
-  const cursor = boardCursorForFrame(frame);
+  const {height, width} = useVideoConfig();
+  const cursor = boardCursorForFrame(frame, windowBoxFromLayout(layout, width, height), width, height);
 
   return (
     <div className={boardStyles.root}>
@@ -477,18 +478,37 @@ function composerPlacement({
 // One continuous timeline: the cursor stays visible and parked between
 // actions, and every instant surface swap (dashboard -> form -> board)
 // lands right after its click at full cursor opacity.
-function boardCursorForFrame(frame: number): CursorPath | null {
-  return boardInteractions.path(boardCursorTargets(), frame, undefined, 'percent');
+function boardCursorForFrame(
+  frame: number,
+  windowBox: {height: number; left: number; top: number; width: number},
+  width: number,
+  height: number,
+): CursorPath | null {
+  return boardInteractions.path(boardCursorTargets(windowBox, width, height), frame, undefined, 'percent');
 }
 
-function boardCursorTargets(): Record<BoardTargetId, TargetRect> {
+function windowBoxFromLayout(layout: ReturnType<typeof useAppWindowLayout>, width: number, height: number) {
   return {
-    activeCard: percentTarget(27, 38, 6, 6),
+    height: Number(layout.windowStyle.height ?? height),
+    left: Number(layout.windowStyle.left ?? 0),
+    top: Number(layout.windowStyle.top ?? 0),
+    width: Number(layout.windowStyle.width ?? width),
+  };
+}
+
+function boardCursorTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  width: number,
+  height: number,
+): Record<BoardTargetId, TargetRect> {
+  const {activeCard, inProgressDrop} = boardDragTargets(windowBox, {height, width});
+  return {
+    activeCard,
+    inProgressDrop,
     activeDashboardTabPin: percentTarget(19.2, 16.2, 1.2, 3.2),
     createSaveButton: percentTarget(91, 11.8, 5, 3),
     createThreadButton: percentTarget(91, 9.6, 5, 3),
     dashboardArea: percentTarget(65, 21, 6, 6),
-    inProgressDrop: percentTarget(48, 34, 6, 6),
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
     linkActionButton: percentTarget(82, 40, 4.5, 3),
     linkThreadButton: percentTarget(73.9, 44.9, 8.8, 3.6),

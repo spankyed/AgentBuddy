@@ -512,17 +512,17 @@ const checks: Check[] = [
   {
     area: 'board',
     message: 'board shot moves card horizontally',
-    pass: boardViewForFrame(282).movingCardStyle.left !== boardViewForFrame(304).movingCardStyle.left,
+    pass: boardViewForFrame(330).movingCardStyle.left !== boardViewForFrame(362).movingCardStyle.left,
   },
   {
     area: 'board',
     message: 'board shot moves card vertically',
-    pass: boardViewForFrame(282).movingCardStyle.top !== boardViewForFrame(304).movingCardStyle.top,
+    pass: boardViewForFrame(330).movingCardStyle.top !== boardViewForFrame(362).movingCardStyle.top,
   },
   {
     area: 'board',
     message: 'board shot rotates moving card',
-    pass: boardViewForFrame(282).movingCardStyle.transform !== boardViewForFrame(304).movingCardStyle.transform,
+    pass: boardViewForFrame(330).movingCardStyle.transform !== boardViewForFrame(362).movingCardStyle.transform,
   },
   {
     area: 'code',

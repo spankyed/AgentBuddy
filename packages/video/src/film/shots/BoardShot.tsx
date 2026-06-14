@@ -5,8 +5,9 @@ import {ThreadsBoardSurface} from '../../agentbuddy-ui/threads/ThreadsBoardSurfa
 import {Cursor} from '../overlays/Cursor';
 import {cursorMove, percentTarget} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
-import {boardShotViewForFrame} from '../state/board';
+import {boardDragTargets, boardShotViewForFrame} from '../state/board';
 import {useAppWindowLayout} from '../appWindowLayout';
+import {useVideoConfig} from 'remotion';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 import './BoardShot.module.css';
 
@@ -15,7 +16,14 @@ const styles = makeStyles('BoardShot');
 export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = boardShotViewForFrame(frame);
   const layout = useAppWindowLayout({variant});
-  const cursor = boardCursorForFrame(frame);
+  const {height, width} = useVideoConfig();
+  const windowBox = {
+    height: Number(layout.windowStyle.height ?? height),
+    left: Number(layout.windowStyle.left ?? 0),
+    top: Number(layout.windowStyle.top ?? 0),
+    width: Number(layout.windowStyle.width ?? width),
+  };
+  const cursor = boardCursorForFrame(frame, windowBox, width, height);
 
   return (
     <div className={styles.root}>
@@ -47,10 +55,15 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
   );
 }
 
-function boardCursorForFrame(frame: number):
+function boardCursorForFrame(
+  frame: number,
+  windowBox: {height: number; left: number; top: number; width: number},
+  width: number,
+  height: number,
+):
   | CursorPath
   | null {
-  const targets = boardCursorTargets();
+  const targets = boardCursorTargets(windowBox, width, height);
 
   if (frame >= 22 && frame < 54) {
     return cursorMove(targets, {
@@ -117,30 +130,41 @@ function boardCursorForFrame(frame: number):
     }, 'percent');
   }
 
-  if (frame >= 282 && frame < 292) {
+  if (frame >= 294 && frame < 330) {
     return cursorMove(targets, {
-      end: 290,
+      end: 326,
       from: 'kanbanViewButton',
-      start: 282,
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 294,
       to: 'activeCard',
+      toPoint: {anchor: [0.5, 0.5]},
     }, 'percent');
   }
 
-  if (frame >= 292 && frame < 306) {
+  if (frame >= 330 && frame < 366) {
     return cursorMove(targets, {
-      end: 304,
+      click: false,
+      end: 362,
       from: 'activeCard',
-      start: 292,
+      fromPoint: {anchor: [0.5, 0.5]},
+      start: 330,
       to: 'inProgressDrop',
+      toPoint: {anchor: [0.5, 0.5]},
     }, 'percent');
   }
 
   return null;
 }
 
-function boardCursorTargets(): Record<string, TargetRect> {
+function boardCursorTargets(
+  windowBox: {height: number; left: number; top: number; width: number},
+  width: number,
+  height: number,
+): Record<string, TargetRect> {
+  const {activeCard, inProgressDrop} = boardDragTargets(windowBox, {height, width});
   return {
-    activeCard: percentTarget(27, 38, 6, 6),
+    activeCard,
+    inProgressDrop,
     activeDashboardTab: percentTarget(21.2, 16.2, 13.4, 3.2),
     activeDashboardTabPin: percentTarget(19.2, 16.2, 1.2, 3.2),
     boardCenter: percentTarget(51, 47, 6, 6),
@@ -148,7 +172,6 @@ function boardCursorTargets(): Record<string, TargetRect> {
     createSaveButton: percentTarget(91, 11.8, 5, 3),
     createThreadButton: percentTarget(91, 9.6, 5, 3),
     dashboardArea: percentTarget(65, 21, 6, 6),
-    inProgressDrop: percentTarget(48, 34, 6, 6),
     instructionsField: percentTarget(46, 34, 12, 5),
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
     linkActionButton: percentTarget(82, 40, 4.5, 3),
