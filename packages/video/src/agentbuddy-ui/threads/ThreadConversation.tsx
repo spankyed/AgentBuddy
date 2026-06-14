@@ -14,6 +14,7 @@ import './ThreadConversation.module.css';
 const styles = makeStyles('ThreadConversation');
 
 type ThreadConversationProps = {
+  align?: 'top' | 'bottom';
   assistant: {
     approval?: ApprovalBlockState;
     markdown: string;
@@ -49,9 +50,9 @@ type AssistantConversationMessage = ThreadConversationProps['assistant'] & {
 
 // Reusable thread conversation surface for app-like scenes. Film shots provide
 // frame-derived text/cursor overlays; message rendering stays here.
-export function ThreadConversation({additionalAssistantMessages, assistant, children, createdAt, messageStyles, queuedMessage, queuedMessageStyle, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
+export function ThreadConversation({align, additionalAssistantMessages, assistant, children, createdAt, messageStyles, queuedMessage, queuedMessageStyle, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
   return (
-    <ThreadChatCanvas>
+    <ThreadChatCanvas align={align}>
       {topInset > 0 ? <div style={{height: topInset}} /> : null}
       {systemMessage ? <div style={messageStyles?.system}><MessageBubble sender="system">{systemMessage}</MessageBubble></div> : null}
       <div style={messageStyles?.user}><MessageBubble sender="user" createdAt={createdAt} isTail>{userMessage}</MessageBubble></div>

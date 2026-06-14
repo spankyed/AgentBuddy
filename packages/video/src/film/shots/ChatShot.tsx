@@ -53,6 +53,7 @@ export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape'
         <AppWindow activePlugin="threads" breadcrumbs={view.breadcrumbs} composer={false} layout={layout}>
           <div style={{height: '100%', ...view.conversationStyle}}>
             <ThreadConversation
+              align="bottom"
               additionalAssistantMessages={view.conversation.additionalAssistantMessages}
               assistant={view.conversation.assistant}
               createdAt={view.conversation.createdAt}
