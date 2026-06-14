@@ -327,15 +327,16 @@ function chatTargetsForFrame({
   const windowWidth = Number(layout.windowStyle.width ?? width);
   const windowHeight = Number(layout.windowStyle.height ?? height);
   const mainLeft = windowLeft + 72;
-  const mainTop = windowTop + 42;
   const mainWidth = windowWidth - 72;
-  const mainHeight = windowHeight - 42 - composerInputHeight - bottomTabsHeight - (variant === 'square' ? 34 : 28);
 
   return {
+    // Anchored to the window bottom: the approve buttons sit a fixed distance
+    // above it in the bottom-pinned conversation (queued message + composer
+    // clearance below are fixed-height), unlike the old content-fraction value.
     approvePlanPrimary: {
       height: 32,
       left: mainLeft + mainWidth * 0.145,
-      top: mainTop + mainHeight * 0.915,
+      top: windowTop + windowHeight - 329,
       width: 280,
     },
     quickPromptFirst: {
