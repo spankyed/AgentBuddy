@@ -105,10 +105,11 @@ const chatGeoTargets = {
 } as const;
 const chatGeo = (frame: number) => ({frame, space: 'px' as const, targets: chatGeoTargets, viewport: {height: 900, width: 1440}});
 
-// Press tracks the click ripple of the send move (source 236..264).
-expect('[chat·geo] send pressed during the click ripple (~260)', chatInteractions.pressing('sendButton', 260));
-expect('[chat·geo] send not pressed mid-travel, before the ripple (245)', !chatInteractions.pressing('sendButton', 245));
-expect('[chat·geo] send not pressed once the click completes (264)', !chatInteractions.pressing('sendButton', 264));
+// Press tracks the click ripple of the send move (source 264..282 — the move
+// now starts only after the prompt finishes typing at ~263).
+expect('[chat·geo] send pressed during the click ripple (~278)', chatInteractions.pressing('sendButton', 278));
+expect('[chat·geo] send not pressed mid-travel, before the ripple (267)', !chatInteractions.pressing('sendButton', 267));
+expect('[chat·geo] send not pressed once the click completes (286)', !chatInteractions.pressing('sendButton', 286));
 
 // Hover tracks the cursor sprite being over the row rect.
 expect('[chat·geo] row 0 hovered while the cursor is parked on it (499)', chatInteractions.over('recentThreadRowFirst', chatGeo(499)));

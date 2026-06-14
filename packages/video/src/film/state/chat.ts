@@ -832,7 +832,10 @@ export type ChatTargetId =
 // one list, so a click and the element it acts on can never disagree.
 // Frames are source frames; the simple film appends the breadcrumb-nav step.
 export const chatInteractionScript: InteractionStep<ChatTargetId>[] = [
-  {label: 'send', start: 236, end: 264, to: 'sendButton', fromViewport: [0.52, 0.53]},
+  // The prompt finishes typing at ~263 (revealText of the sentence from 168);
+  // the cursor only starts travelling to Send after that, so the click never
+  // lands before the message is fully typed.
+  {label: 'send', start: 264, end: 282, to: 'sendButton', fromViewport: [0.52, 0.53]},
   {label: 'approach-approve', start: 370, end: 396, to: 'approvePlanPrimary', from: 'sendButton', click: false, toPoint: {anchor: [0.42, 0.5]}},
   {label: 'approve-plan', start: 400, end: 414, to: 'approvePlanPrimary', from: 'approvePlanPrimary', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.42, 0.5]}},
   {label: 'open-recent', start: 424, end: 454, to: 'recentThreads', from: 'approvePlanPrimary', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.42, 0.5]}, opens: 'recentMenu'},
@@ -925,8 +928,8 @@ export function chatViewForFrame(frame: number) {
     prompt: typedPromptForFrame(frame),
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: revealText(chatShotState.response.text, frame, chatShotState.response.from, 'stream'),
-    conversationOpacity: ease(frame, 254, 284),
-    conversationY: 28 - ease(frame, 254, 284) * 28,
+    conversationOpacity: ease(frame, 272, 302),
+    conversationY: 28 - ease(frame, 272, 302) * 28,
     messageStyles: {
       assistant: messageReveal(250),
       system: messageReveal(210),
