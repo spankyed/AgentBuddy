@@ -45,7 +45,7 @@ export const simpleSceneCuts: Partial<Record<SimpleContentId, FrameCut[]>> = {
     {at: 921, remove: 4},   // form closed (920), move to kanban starts (926)
   ],
   notes: [
-    {at: 86, remove: 10},   // favorites shown (84), cursor move starts (118)
+    {at: 36, remove: 82},   // home shown at once (0); hold ~1.2s, then trim the static hold to the New Note move (118)
     {at: 320, remove: 8},   // completion typed (318), settle tail remains
   ],
   code: [
@@ -84,7 +84,7 @@ export const simpleScenes: SimpleScene[] = [
   {id: 'chat-card', card: {eyebrow: '1', title: 'More than just an AI chat'}, duration: 66},
   {id: 'threads', duration: 876},
   {id: 'notes-card', card: {eyebrow: '2', title: 'More than just a note taker'}, duration: 66},
-  {id: 'notes', duration: 312},
+  {id: 'notes', duration: 240},
   {id: 'code-card', card: {eyebrow: '3', title: 'More than just an IDE'}, duration: 66},
   {id: 'code', duration: 316},
   {id: 'workflow-card', card: {eyebrow: '4', title: 'More than just a workflow engine'}, duration: 66},

@@ -220,21 +220,19 @@ const todoNoteCopy = {
 };
 
 export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
+  // Every section renders at once (like the real app on load); only the
+  // greeting types in over the top. New Note press stays cursor-driven.
   const greeting = revealText(notesHomeState.greeting, frame, -4);
-  const showSearch = frame >= 44;
-  const showRecent = frame >= 62;
-  const showFavorites = frame >= 84;
   const newNotePressed = notesHomeInteractions.pressed('newNoteButton', frame, {lead: 10, tail: 8});
 
   return {
     ...notesHomeState,
-    favorites: showFavorites ? notesHomeState.favorites : [],
     greeting,
     newNotePressed,
-    recent: showRecent ? notesHomeState.recent.map(note => ({...note, active: false, pressed: false})) : [],
-    showFavorites,
-    showRecent,
-    showSearch,
+    recent: notesHomeState.recent.map(note => ({...note, active: false, pressed: false})),
+    showFavorites: true,
+    showRecent: true,
+    showSearch: true,
   };
 }
 
