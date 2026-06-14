@@ -7,12 +7,15 @@ import './ThreadDashboardSurface.module.css';
 
 const styles = makeStyles('ThreadDashboardSurface');
 
+export type ArtifactSidebarType = 'plan' | 'diff' | 'claude-session' | 'code' | 'note' | 'text';
+
 export type ThreadDashboardSurfaceState = {
   activeTabId: string;
   artifactSidebar?: Array<{
+    color?: 'purple' | 'emerald' | 'amber' | 'cyan';
     id: string;
-    meta?: string;
     title: string;
+    type?: ArtifactSidebarType;
   }>;
   artifact: PlanArtifactState;
   header?: ThreadsHeaderState;
@@ -26,7 +29,19 @@ export type ThreadDashboardSurfaceState = {
   }>;
 };
 
-// Mirrors the threads dashboard tab surface: tab row first, selected thread body below.
+const artifactTypeIcon: Record<ArtifactSidebarType, typeof Icons.FileText> = {
+  'claude-session': Icons.Wrench,
+  code: Icons.Code,
+  diff: Icons.GitBranch,
+  note: Icons.StickyNote,
+  plan: Icons.ClipboardList,
+  text: Icons.FileText,
+};
+
+// Mirrors packages/renderer/src/plugins/threads/canvas/agent/canvas.vue: the tab
+// bar, then a content viewer split into the thread's artifact list (left) and
+// the selected artifact (right). There is no thread-name header above the
+// artifact — the artifact card itself is the top of the content area.
 export function ThreadDashboardSurface({state}: {state: ThreadDashboardSurfaceState}) {
   const pinnedTabs = state.tabs.filter(tab => tab.pinned || (tab.id === state.activeTabId && state.pinned));
   const regularTabs = state.tabs.filter(tab => !pinnedTabs.some(pinned => pinned.id === tab.id));
@@ -41,6 +56,7 @@ export function ThreadDashboardSurface({state}: {state: ThreadDashboardSurfaceSt
               active={tab.id === state.activeTabId}
               hovered={tab.id === state.hoveredTabId}
               key={tab.id}
+              pinPressed={tab.id === state.activeTabId && state.pinPressed}
               pinned
               tab={tab}
             />
@@ -61,31 +77,24 @@ export function ThreadDashboardSurface({state}: {state: ThreadDashboardSurfaceSt
       <div className={styles.body} data-sidebar={state.artifactSidebar?.length ? 'true' : 'false'}>
         {state.artifactSidebar?.length ? (
           <aside className={styles.artifactSidebar}>
-            <h3>Artifacts</h3>
-            {state.artifactSidebar.map(item => (
-              <div className={item.id === state.artifact.id ? styles.artifactItemActive : styles.artifactItem} key={item.id}>
-                <Icons.FileText size={14} />
-                <div>
-                  <strong>{item.title}</strong>
-                  {item.meta ? <small>{item.meta}</small> : null}
+            {state.artifactSidebar.map(item => {
+              const Icon = artifactTypeIcon[item.type ?? 'text'];
+              return (
+                <div
+                  className={styles.artifactItem}
+                  data-color={item.color}
+                  data-selected={item.id === state.artifact.id || undefined}
+                  key={item.id}
+                >
+                  <Icon className={styles.artifactItemIcon} size={16} />
+                  <span className={styles.artifactItemTitle}>{item.title}</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </aside>
         ) : null}
         <section className={styles.content}>
-          <div className={styles.threadHeader}>
-            <div className={styles.threadTitle}>
-              <span className={styles.dot} />
-              <h2>{state.tabs.find(tab => tab.id === state.activeTabId)?.label}</h2>
-            </div>
-            <button className={state.pinned ? styles.pinButtonActive : styles.pinButton} type="button">
-              <Icons.Pin size={14} />
-            </button>
-          </div>
-          <div className={styles.artifactWrap}>
-            <PlanArtifactCard artifact={state.artifact} />
-          </div>
+          <PlanArtifactCard artifact={state.artifact} />
         </section>
       </div>
     </div>

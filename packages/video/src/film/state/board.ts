@@ -111,16 +111,17 @@ export const boardShotState: {
   breadcrumbs: ['Threads', 'Board'],
   dashboard: {
     activeTabId: launchFilmStory.threads.stripePaymentIntegration.id,
+    // The active thread's artifacts (a flat list, like the real content viewer).
     artifactSidebar: [
-      {id: launchFilmStory.threads.stripePaymentIntegration.id, title: launchFilmStory.threads.stripePaymentIntegration.title, meta: 'done'},
-      {id: launchFilmStory.threads.checkoutImplementation.id, title: launchFilmStory.threads.checkoutImplementation.title, meta: 'approved'},
-      {id: launchFilmStory.threads.deployChecklist.id, title: launchFilmStory.threads.deployChecklist.title, meta: 'ready'},
-      {id: launchFilmStory.threads.receiptEmailTemplates.id, title: launchFilmStory.threads.receiptEmailTemplates.title, meta: 'next'},
+      {id: launchPlanArtifact.id, title: launchPlanArtifact.title, type: 'plan'},
+      {id: 'checkout-stripe-diff', title: 'checkout.ts, stripe.ts', type: 'diff'},
+      {id: 'checkout-claude-session', title: 'Claude Code session', type: 'claude-session', color: 'purple'},
     ],
     artifact: {
       ...launchPlanArtifact,
       content: {
         ...launchPlanArtifact.content,
+        branch: launchFilmStory.branch,
         status: 'approved',
       },
     },
