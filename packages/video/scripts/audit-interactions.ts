@@ -97,6 +97,7 @@ const chatGeoTargets = {
   recentThreadRowFirst: {left: 338.72, top: 662, width: 834.56, height: 34},
   recentThreads: {left: 338.72, top: 820, width: 160, height: 28},
   sendButton: {left: 1169.6, top: 768, width: 92, height: 32},
+  queueSendButton: {left: 1169.6, top: 768, width: 92, height: 32},
   approvePlanPrimary: {left: 0, top: 0, width: 10, height: 10},
   quickPromptsButton: {left: 0, top: 0, width: 10, height: 10},
   quickPromptFirst: {left: 0, top: 0, width: 10, height: 10},

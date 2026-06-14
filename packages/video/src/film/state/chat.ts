@@ -88,6 +88,7 @@ export type ChatShotView = {
       toolActivity?: ReturnType<typeof toolActivityViewForFrame>;
     };
     createdAt: string;
+    queuedMessage?: {text: string};
     systemMessage?: string;
     userMessage: {
       caretVisible: boolean;
@@ -819,6 +820,7 @@ export function chatComposerMixedAttachmentsDemoState(previewUrl: string): ChatC
 
 export type ChatTargetId =
   | 'sendButton'
+  | 'queueSendButton'
   | 'approvePlanPrimary'
   | 'recentThreads'
   | 'recentThreadRowFirst'
@@ -836,6 +838,11 @@ export const chatInteractionScript: InteractionStep<ChatTargetId>[] = [
   // the cursor only starts travelling to Send after that, so the click never
   // lands before the message is fully typed.
   {label: 'send', start: 264, end: 282, to: 'sendButton', fromViewport: [0.52, 0.53]},
+  // While the agent is busy responding, the user types a follow-up and clicks
+  // Send again — it queues (same Send button, distinct target so it doesn't
+  // move the first send's click frame). The cursor is parked on Send from the
+  // first click, so this is an in-place press at the same rect.
+  {label: 'queue-send', start: 338, end: 350, to: 'queueSendButton', from: 'sendButton', fromPoint: {anchor: [0.5, 0.5]}, toPoint: {anchor: [0.5, 0.5]}},
   {label: 'approach-approve', start: 370, end: 396, to: 'approvePlanPrimary', from: 'sendButton', click: false, toPoint: {anchor: [0.42, 0.5]}},
   {label: 'approve-plan', start: 400, end: 414, to: 'approvePlanPrimary', from: 'approvePlanPrimary', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.42, 0.5]}},
   {label: 'open-recent', start: 424, end: 454, to: 'recentThreads', from: 'approvePlanPrimary', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.42, 0.5]}, opens: 'recentMenu'},
@@ -853,6 +860,7 @@ export const chatInteractions = createInteractionModel(chatInteractionScript);
 // Click frames, read once from the script. Downstream beats are expressed as
 // offsets from these, never as free-floating numbers.
 const sendClickFrame = chatInteractions.clickFrame('sendButton')!;
+const queueSendClickFrame = chatInteractions.clickFrame('queueSendButton')!;
 const approveClickFrame = chatInteractions.clickFrame('approvePlanPrimary')!;
 const recentRowClickFrame = chatInteractions.clickFrame('recentThreadRowFirst')!;
 const quickSelectClickFrame = chatInteractions.clickFrame('quickPromptFirst')!;
@@ -860,7 +868,14 @@ const quickSendClickFrame = chatInteractions.clickFrame('quickPromptSend')!;
 
 // The composer commits the typed prompt exactly when the click completes —
 // the bubble appears, the field clears, the button disables together.
-const promptSentFrame = sendClickFrame;                           // 264
+const promptSentFrame = sendClickFrame;                           // 282
+
+// A second message the user types while the agent is busy, then queues. It
+// types in the composer after the first send and commits (clears + appears as
+// a "Queued" bubble at the bottom) when the queue-send click lands.
+const queuedMessageText = 'Also add refund and dispute handling.';
+const queuedTypeStart = 300;
+const queuedMessageSentFrame = queueSendClickFrame;               // 350
 
 // Geometric pointer supplied by the scene: whether the real cursor sprite is
 // over / pressing an element. Visual states (press, row highlight) read from
@@ -1056,12 +1071,14 @@ export function chatShotViewForFrame(frame: number, pointer?: ChatPointer): Chat
       quickPromptsButtonPressed: pressing('quickPromptsButton'),
       quickPromptsOpen: chatInteractions.opened('quickPromptsMenu', frame),
       quickPromptsSelectedIndex: over('quickPromptFirst') ? 0 : undefined,
-      sendPressed: pressing('sendButton') || pressing('quickPromptSend'),
+      sendPressed: pressing('sendButton') || pressing('queueSendButton') || pressing('quickPromptSend'),
       text: frame >= chatShotState.prompt.from && frame < promptSentFrame
         ? view.prompt
-        : frame >= quickPromptTextStart && frame < quickSendClickFrame
-          ? reviewQuickPromptText
-          : undefined,
+        : frame >= queuedTypeStart && frame < queuedMessageSentFrame
+          ? revealText(queuedMessageText, frame, queuedTypeStart)
+          : frame >= quickPromptTextStart && frame < quickSendClickFrame
+            ? reviewQuickPromptText
+            : undefined,
     },
     conversation: {
       additionalAssistantMessages: [
@@ -1130,6 +1147,11 @@ export function chatShotViewForFrame(frame: number, pointer?: ChatPointer): Chat
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
         text: quickPromptSent ? reviewQuickPromptText : recentThreadLoaded ? 'Polish the checkout flow and prepare the PR path.' : view.prompt,
       },
+      // Queued follow-up: sits at the bottom of the conversation from the
+      // queue-send click until the thread is switched away via recent threads.
+      queuedMessage: frame >= queuedMessageSentFrame && !recentThreadLoaded && !showQuickPromptResponse
+        ? {text: queuedMessageText}
+        : undefined,
     },
     conversationStyle: {
       opacity: view.conversationOpacity,

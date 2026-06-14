@@ -35,6 +35,8 @@ type ThreadConversationProps = {
     system?: CSSProperties;
     user?: CSSProperties;
   };
+  queuedMessage?: ReactNode;
+  queuedMessageStyle?: CSSProperties;
   systemMessage?: ReactNode;
   topInset?: number;
   userMessage: ReactNode;
@@ -47,7 +49,7 @@ type AssistantConversationMessage = ThreadConversationProps['assistant'] & {
 
 // Reusable thread conversation surface for app-like scenes. Film shots provide
 // frame-derived text/cursor overlays; message rendering stays here.
-export function ThreadConversation({additionalAssistantMessages, assistant, children, createdAt, messageStyles, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
+export function ThreadConversation({additionalAssistantMessages, assistant, children, createdAt, messageStyles, queuedMessage, queuedMessageStyle, systemMessage, topInset = 0, userMessage}: ThreadConversationProps) {
   return (
     <ThreadChatCanvas>
       {topInset > 0 ? <div style={{height: topInset}} /> : null}
@@ -57,6 +59,8 @@ export function ThreadConversation({additionalAssistantMessages, assistant, chil
       {additionalAssistantMessages?.map((message, index) => (
         <AssistantMessage createdAt={createdAt} key={index} message={message} style={message.style} />
       ))}
+      {/* A queued follow-up message always renders last, at the bottom of the conversation. */}
+      {queuedMessage ? <div style={queuedMessageStyle}><MessageBubble sender="user" status="queued">{queuedMessage}</MessageBubble></div> : null}
       {children}
     </ThreadChatCanvas>
   );

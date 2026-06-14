@@ -70,6 +70,13 @@ function ThreadsChatPhase({frame, variant}: {frame: number; variant?: 'landscape
               assistant={view.conversation.assistant}
               createdAt={view.conversation.createdAt}
               messageStyles={view.messageStyles}
+              queuedMessage={view.conversation.queuedMessage ? (
+                <div className={`${chatStyles.viewerWrapper} tiptap-wrapper tiptap-viewer tiptap-viewer-chat`}>
+                  <div className={`${chatStyles.viewerProse} ProseMirror`} contentEditable={false}>
+                    <p>{view.conversation.queuedMessage.text}</p>
+                  </div>
+                </div>
+              ) : undefined}
               systemMessage={view.conversation.systemMessage}
               userMessage={
                 <div className={`${chatStyles.viewerWrapper} tiptap-wrapper tiptap-viewer tiptap-viewer-chat`}>
@@ -406,6 +413,13 @@ function chatTargetsForFrame({
       width: recentButtonWidth,
     },
     sendButton: {
+      height: sendHeight,
+      left: composerLeft + inputWidth - sendWidth - 16,
+      top: actionBarTop,
+      width: sendWidth,
+    },
+    // Same rect as sendButton — the queued follow-up clicks the same Send button.
+    queueSendButton: {
       height: sendHeight,
       left: composerLeft + inputWidth - sendWidth - 16,
       top: actionBarTop,
