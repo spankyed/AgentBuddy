@@ -7,10 +7,10 @@ import {ReferencePill} from '../../agentbuddy-ui/chat/ReferencePill';
 import {ThreadConversation} from '../../agentbuddy-ui/threads/ThreadConversation';
 import {TextCaret} from '../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../overlays/Cursor';
-import {chatShotViewForFrame} from '../state/chat';
+import {chatInteractions, chatShotViewForFrame, type ChatTargetId} from '../state/chat';
 import {useAppWindowLayout} from '../appWindowLayout';
 import {ease, mix} from '../state/timeline';
-import {cursorTimeline, targetDebugOverlay, viewportPoint} from '../interaction/cursorTargets';
+import {targetDebugOverlay} from '../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../interaction/cursorTargets';
 import {useVideoConfig} from 'remotion';
 import './ChatShot.module.css';
@@ -24,16 +24,6 @@ const composerEditorInsetTop = 12;
 const referencePopupAboveCursorOffset = 4;
 const showTargetDebug = false;
 
-type ChatTargetId =
-  | 'activeThreadTitle'
-  | 'approvePlanPrimary'
-  | 'newThread'
-  | 'quickPromptFirst'
-  | 'quickPromptsButton'
-  | 'quickPromptSend'
-  | 'recentThreadRowFirst'
-  | 'recentThreads'
-  | 'sendButton';
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = chatShotViewForFrame(frame);
@@ -285,94 +275,7 @@ function formatUserMessage(
 }
 
 function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
-  return cursorTimeline(targets, [
-    {
-      end: 264,
-      from: viewportPoint(width, height, 0.52, 0.53),
-      start: 236,
-      to: 'sendButton',
-    },
-    {
-      click: false,
-      end: 396,
-      from: 'sendButton',
-      start: 370,
-      to: 'approvePlanPrimary',
-      toPoint: {anchor: [0.42, 0.5]},
-    },
-    {
-      end: 414,
-      from: 'approvePlanPrimary',
-      fromPoint: {anchor: [0.42, 0.5]},
-      start: 400,
-      to: 'approvePlanPrimary',
-      toPoint: {anchor: [0.42, 0.5]},
-    },
-    {
-      end: 454,
-      from: 'approvePlanPrimary',
-      fromPoint: {anchor: [0.42, 0.5]},
-      start: 424,
-      to: 'recentThreads',
-      toPoint: {anchor: [0.42, 0.5]},
-    },
-    {
-      click: false,
-      end: 482,
-      from: 'recentThreads',
-      fromPoint: {anchor: [0.42, 0.5]},
-      start: 462,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    },
-    {
-      click: false,
-      end: 506,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 486,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    },
-    {
-      end: 526,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 508,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    },
-    {
-      end: 550,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 540,
-      to: 'quickPromptsButton',
-    },
-    {
-      click: false,
-      end: 570,
-      from: 'quickPromptsButton',
-      start: 554,
-      to: 'quickPromptFirst',
-      toPoint: {anchor: [0.25, 0.5]},
-    },
-    {
-      end: 586,
-      from: 'quickPromptFirst',
-      fromPoint: {anchor: [0.25, 0.5]},
-      start: 574,
-      to: 'quickPromptFirst',
-      toPoint: {anchor: [0.25, 0.5]},
-    },
-    {
-      end: 624,
-      from: 'quickPromptFirst',
-      fromPoint: {anchor: [0.25, 0.5]},
-      start: 604,
-      to: 'quickPromptSend',
-    },
-  ], frame);
+  return chatInteractions.path(targets, frame, {height, width});
 }
 
 function chatTargetsForFrame({
@@ -417,23 +320,11 @@ function chatTargetsForFrame({
   const mainHeight = windowHeight - 42 - composerInputHeight - bottomTabsHeight - (variant === 'square' ? 34 : 28);
 
   return {
-    activeThreadTitle: {
-      height: bottomButtonHeight,
-      left: bottomTabs.left + bottomTabs.width / 2 - activeThreadWidth / 2,
-      top: bottomButtonTop,
-      width: activeThreadWidth,
-    },
     approvePlanPrimary: {
       height: 32,
       left: mainLeft + mainWidth * 0.145,
       top: mainTop + mainHeight * 0.915,
       width: 280,
-    },
-    newThread: {
-      height: bottomButtonHeight,
-      left: bottomTabs.left + bottomTabs.width - newThreadButtonWidth,
-      top: bottomButtonTop,
-      width: newThreadButtonWidth,
     },
     quickPromptFirst: {
       height: 36,
@@ -471,6 +362,9 @@ function chatTargetsForFrame({
       top: actionBarTop,
       width: sendWidth,
     },
+    // Unused by the old film's cursor (no breadcrumb nav); present only to
+    // satisfy the shared ChatTargetId map.
+    threadsBreadcrumb: {height: 18, left: windowLeft + 118, top: windowTop + 14, width: 66},
   };
 }
 

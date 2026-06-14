@@ -25,6 +25,7 @@ import {launchFilmStory} from './launchStory';
 import {filmProjectDirectories, filmProjects} from './paths';
 import {ease, mix} from './timeline';
 import {revealText} from './typing';
+import {createInteractionModel, type InteractionStep} from '../interaction/interactionTimeline';
 
 const checkoutMockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
   <rect width="160" height="160" rx="18" fill="#0f172a"/>
@@ -816,27 +817,54 @@ export function chatComposerMixedAttachmentsDemoState(previewUrl: string): ChatC
   };
 }
 
-const planApprovalEnd = 420;
-// Recent-threads menu opens on the button click (~454): press brackets the
-// click, the menu appears immediately, and the active-thread tab only
-// presses as the chosen row loads (~520+).
-const recentThreadsClickStart = 448;
-const recentThreadsClickEnd = 458;
-const recentThreadsMenuStart = 453;
-const recentThreadsMenuEnd = 532;
-const recentThreadSelectStart = 520;
-const recentThreadLoadedStart = 532;
-const approvedSummaryStart = 432;
-const planToolActivityStart = 444;
-const quickPromptClickStart = 540;
-const quickPromptClickEnd = 552;
-const quickPromptMenuStart = 554;
-const quickPromptMenuEnd = 594;
-const quickPromptTextStart = 596;
-const quickPromptSendStart = 610;
-const quickPromptSendEnd = 622;
+export type ChatTargetId =
+  | 'sendButton'
+  | 'approvePlanPrimary'
+  | 'recentThreads'
+  | 'recentThreadRowFirst'
+  | 'quickPromptsButton'
+  | 'quickPromptFirst'
+  | 'quickPromptSend'
+  | 'threadsBreadcrumb';
+
+// THE single source of truth for the chat thread's pointer interactions.
+// The cursor (in the scene) and every composer state below derive from this
+// one list, so a click and the element it acts on can never disagree.
+// Frames are source frames; the simple film appends the breadcrumb-nav step.
+export const chatInteractionScript: InteractionStep<ChatTargetId>[] = [
+  {label: 'send', start: 236, end: 264, to: 'sendButton', fromViewport: [0.52, 0.53]},
+  {label: 'approach-approve', start: 370, end: 396, to: 'approvePlanPrimary', from: 'sendButton', click: false, toPoint: {anchor: [0.42, 0.5]}},
+  {label: 'approve-plan', start: 400, end: 414, to: 'approvePlanPrimary', from: 'approvePlanPrimary', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.42, 0.5]}},
+  {label: 'open-recent', start: 424, end: 454, to: 'recentThreads', from: 'approvePlanPrimary', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.42, 0.5]}, opens: 'recentMenu'},
+  {label: 'reach-row', start: 462, end: 482, to: 'recentThreadRowFirst', from: 'recentThreads', fromPoint: {anchor: [0.42, 0.5]}, toPoint: {anchor: [0.14, 0.68]}, click: false},
+  {label: 'hover-row', start: 486, end: 506, to: 'recentThreadRowFirst', from: 'recentThreadRowFirst', fromPoint: {anchor: [0.14, 0.68]}, toPoint: {anchor: [0.14, 0.68]}, click: false},
+  {label: 'select-row', start: 508, end: 526, to: 'recentThreadRowFirst', from: 'recentThreadRowFirst', fromPoint: {anchor: [0.14, 0.68]}, toPoint: {anchor: [0.14, 0.68]}, closes: 'recentMenu'},
+  {label: 'open-quick-prompts', start: 540, end: 550, to: 'quickPromptsButton', from: 'recentThreadRowFirst', fromPoint: {anchor: [0.14, 0.68]}, opens: 'quickPromptsMenu'},
+  {label: 'reach-quick-item', start: 554, end: 570, to: 'quickPromptFirst', from: 'quickPromptsButton', toPoint: {anchor: [0.25, 0.5]}, click: false},
+  {label: 'select-quick-item', start: 574, end: 586, to: 'quickPromptFirst', from: 'quickPromptFirst', fromPoint: {anchor: [0.25, 0.5]}, toPoint: {anchor: [0.25, 0.5]}, closes: 'quickPromptsMenu'},
+  {label: 'send-quick-prompt', start: 604, end: 624, to: 'quickPromptSend', from: 'quickPromptFirst', fromPoint: {anchor: [0.25, 0.5]}},
+];
+
+export const chatInteractions = createInteractionModel(chatInteractionScript);
+
+// Click frames, read once from the script. Downstream beats are expressed as
+// offsets from these, never as free-floating numbers.
+const sendClickFrame = chatInteractions.clickFrame('sendButton')!;
+const approveClickFrame = chatInteractions.clickFrame('approvePlanPrimary')!;
+const recentRowClickFrame = chatInteractions.clickFrame('recentThreadRowFirst')!;
+const quickSelectClickFrame = chatInteractions.clickFrame('quickPromptFirst')!;
+const quickSendClickFrame = chatInteractions.clickFrame('quickPromptSend')!;
+
+// The composer commits the typed prompt a few frames after the send click —
+// the bubble appears, the field clears, the button disables together.
+const promptSentFrame = sendClickFrame + 4;                       // 268
+const planApprovalEnd = approveClickFrame + 6;                    // 420
+const approvedSummaryStart = approveClickFrame + 18;             // 432
+const planToolActivityStart = approveClickFrame + 30;           // 444
+const recentThreadLoadedStart = recentRowClickFrame + 6;        // 532
+const quickPromptTextStart = quickSelectClickFrame + 10;        // 596
+const quickPromptSentFrame = quickSendClickFrame + 2;           // 626
 const quickPromptResponseStart = 660;
-const quickPromptResponseEnd = 660;
 const noteReferenceSelectStart = 112;
 const noteReferenceSelectEnd = 144;
 const noteReferenceInsertFrame = 152;
@@ -873,8 +901,8 @@ function typedPromptForFrame(frame: number) {
 }
 
 export function chatViewForFrame(frame: number) {
-  const quickPromptSent = frame > quickPromptSendEnd;
-  const sentUserMessageStyle = frame >= 268
+  const quickPromptSent = frame >= quickPromptSentFrame;
+  const sentUserMessageStyle = frame >= promptSentFrame
     ? {opacity: 1, transform: 'translateY(0px)'}
     : {opacity: 0, transform: 'translateY(0px)'};
   const messageReveal = (from: number) => {
@@ -893,7 +921,7 @@ export function chatViewForFrame(frame: number) {
     messageStyles: {
       assistant: messageReveal(250),
       system: messageReveal(210),
-      user: quickPromptSent ? messageReveal(quickPromptSendEnd) : sentUserMessageStyle,
+      user: quickPromptSent ? messageReveal(quickPromptSentFrame) : sentUserMessageStyle,
     },
     toolActivity: undefined,
   };
@@ -909,7 +937,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
   const showPlanApproval = frame >= 382 && frame < planApprovalEnd;
   const showApprovedSummary = frame >= approvedSummaryStart && frame < recentThreadLoadedStart;
   const showPlanToolActivity = frame >= planToolActivityStart && frame < recentThreadLoadedStart;
-  const quickPromptSent = frame > quickPromptSendEnd;
+  const quickPromptSent = frame >= quickPromptSentFrame;
   const showQuickPromptResponse = frame > quickPromptResponseStart;
   const referenceStartIndex = 'Use '.length;
   const referenceCompleteText = 'Use #notes:tasklist ';
@@ -981,18 +1009,20 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
         ? {
             ...launchComposerState.bottomTabs!,
             activeLabel: recentThreadLoaded ? launchFilmStory.threads.stripePaymentIntegration.title : launchComposerState.bottomTabs!.activeLabel,
-            active: frame >= recentThreadLoadedStart ? 'active' : frame > recentThreadsClickStart && frame < recentThreadLoadedStart ? 'recent' : frame > 150 ? 'active' : undefined,
-            pressed: frame > recentThreadsClickStart && frame < recentThreadsClickEnd
+            // Tab is "recent" while the recent menu is up, "active" once the
+            // chosen thread loads — both derived from the cursor's clicks.
+            active: recentThreadLoaded ? 'active' : chatInteractions.clicked('recentThreads', frame) ? 'recent' : frame > 150 ? 'active' : undefined,
+            pressed: chatInteractions.pressed('recentThreads', frame, {lead: 6, tail: 4})
                 ? 'recent'
-                : (frame > recentThreadSelectStart && frame < recentThreadLoadedStart) || (frame > quickPromptSendStart && frame < quickPromptSendEnd)
+                : chatInteractions.pressed('recentThreadRowFirst', frame, {lead: 6, tail: 6}) || chatInteractions.pressed('quickPromptSend', frame, {lead: 14, tail: 4})
                   ? 'active'
                   : undefined,
-            recentThreadsMenu: frame > recentThreadsMenuStart && frame < recentThreadsMenuEnd
+            recentThreadsMenu: chatInteractions.opened('recentMenu', frame)
               ? {
                   currentId: launchFilmStory.threads.checkoutImplementation.id,
-                  // First row stays highlighted while the menu is open, so the
-                  // cursor moves onto an already-selected row (no hover lag).
-                  selectedIndex: 0,
+                  // The row highlights as the cursor heads onto it (hover ==
+                  // cursor destination), never on a hand-picked frame.
+                  selectedIndex: chatInteractions.hovered('recentThreadRowFirst', frame) ? 0 : -1,
                   threadStates: {
                     [launchFilmStory.threads.stripePaymentIntegration.id]: {color: '#22c55e'},
                     [launchFilmStory.threads.checkoutImplementation.id]: {busy: true},
@@ -1008,13 +1038,13 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
           }
         : undefined,
       referenceButtonPressed: Boolean(typedReferenceText && !selectedNoteReference),
-      quickPromptsButtonPressed: frame > quickPromptClickStart && frame <= quickPromptClickEnd,
-      quickPromptsOpen: frame > quickPromptMenuStart && frame < quickPromptMenuEnd,
-      quickPromptsSelectedIndex: frame > quickPromptMenuStart + 14 && frame < quickPromptMenuEnd ? 0 : undefined,
-      sendPressed: (frame >= 262 && frame < 268) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
-      text: frame >= chatShotState.prompt.from && frame < 268
+      quickPromptsButtonPressed: chatInteractions.pressed('quickPromptsButton', frame, {lead: 10, tail: 2}),
+      quickPromptsOpen: chatInteractions.opened('quickPromptsMenu', frame),
+      quickPromptsSelectedIndex: chatInteractions.hovered('quickPromptFirst', frame) ? 0 : undefined,
+      sendPressed: chatInteractions.pressed('sendButton', frame) || chatInteractions.pressed('quickPromptSend', frame),
+      text: frame >= chatShotState.prompt.from && frame < promptSentFrame
         ? view.prompt
-        : frame > quickPromptTextStart && frame < quickPromptSendEnd
+        : frame >= quickPromptTextStart && frame < quickSendClickFrame
           ? reviewQuickPromptText
           : undefined,
     },

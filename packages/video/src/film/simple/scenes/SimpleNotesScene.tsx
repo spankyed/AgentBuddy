@@ -5,9 +5,9 @@ import {NotesHomeSurface} from '../../../agentbuddy-ui/notes/NotesHomeSurface';
 import {NotesRightRail} from '../../../agentbuddy-ui/notes/NotesRightRail';
 import {ReferencePill} from '../../../agentbuddy-ui/chat/ReferencePill';
 import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
-import {notesEditorViewForFrame, notesHomeViewForFrame, type NotesEditorLineView} from '../../state/notes';
+import {notesEditorViewForFrame, notesHomeViewForFrame, notesEditorInteractions, notesHomeInteractions, type NotesEditorLineView, type NotesEditorTargetId, type NotesHomeTargetId} from '../../state/notes';
 import {Cursor} from '../../overlays/Cursor';
-import {cursorTimeline, percentTarget, viewportPoint} from '../../interaction/cursorTargets';
+import {percentTarget} from '../../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
 import {useAppWindowLayout} from '../../appWindowLayout';
 import {makeStyles} from '../../../agentbuddy-ui/primitives/makeStyles';
@@ -97,62 +97,36 @@ function SimpleNotesEditor({frame, variant}: {frame: number; variant?: 'landscap
   );
 }
 
+// Both cursors are built from the shared notes interaction scripts — the same
+// source the press/active states derive from.
 function notesHomeCursorForFrame(
   frame: number,
   layout: ReturnType<typeof useAppWindowLayout>,
   width: number,
   height: number,
 ): CursorPath | null {
-  const targets = notesHomeCursorTargets(layout, width, height);
-
-  return cursorTimeline(targets, [
-    {
-      end: 146,
-      from: viewportPoint(width, height, 0.52, 0.52),
-      start: 118,
-      to: 'newNoteButton',
-      toPoint: {anchor: [0.52, 0.5]},
-    },
-  ], frame);
+  return notesHomeInteractions.path(notesHomeCursorTargets(layout, width), frame, {height, width});
 }
 
-// One continuous timeline: the cursor clicks the tasklist note in the rail
-// (content swaps instantly at 76), sweeps into the tasklist panel, opens the
-// todo (instant swap at 122), and checks it off — visible at every click.
 function notesEditorCursorForFrame(frame: number): CursorPath | null {
-  const targets = notesEditorCursorTargets();
-
-  return cursorTimeline(targets, [
-    {end: 70, from: 'editorBody', start: 50, to: 'rightRailTasklist'},
-    {end: 116, from: 'rightRailTasklist', start: 98, to: 'taskListCurrentRow'},
-    {
-      end: 138,
-      from: 'taskListCurrentRow',
-      start: 126,
-      to: 'taskCheckbox',
-      toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]},
-    },
-  ], frame, 'percent');
+  return notesEditorInteractions.path(notesEditorCursorTargets(), frame, undefined, 'percent');
 }
 
 function notesHomeCursorTargets(
   layout: ReturnType<typeof useAppWindowLayout>,
   width: number,
-  height: number,
-): Record<string, TargetRect> {
+): Record<NotesHomeTargetId, TargetRect> {
   return {
-    homeCenter: percentTarget(49, 55, 6, 6),
     newNoteButton: notesHomeNewNoteButtonTarget(layout, width),
   };
 }
 
-function notesEditorCursorTargets(): Record<string, TargetRect> {
+function notesEditorCursorTargets(): Record<NotesEditorTargetId, TargetRect> {
   return {
     editorBody: percentTarget(52, 49, 6, 6),
     rightRailTasklist: percentTarget(80, 35, 8, 5),
     taskCheckbox: percentTarget(22.3, 22.5, 2, 3),
     taskListCurrentRow: percentTarget(15, 27.5, 9, 4),
-    taskListPanelMiddle: percentTarget(18, 34, 5, 5),
   };
 }
 

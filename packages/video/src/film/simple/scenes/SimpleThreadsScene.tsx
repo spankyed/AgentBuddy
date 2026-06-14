@@ -9,11 +9,12 @@ import {ThreadCreateForm} from '../../../agentbuddy-ui/threads/ThreadCreateForm'
 import {ThreadsBoardSurface} from '../../../agentbuddy-ui/threads/ThreadsBoardSurface';
 import {TextCaret} from '../../../agentbuddy-ui/primitives/TextCaret';
 import {Cursor} from '../../overlays/Cursor';
-import {chatShotViewForFrame} from '../../state/chat';
-import {boardShotViewForFrame} from '../../state/board';
+import {chatInteractionScript, chatShotViewForFrame, type ChatTargetId} from '../../state/chat';
+import {createInteractionModel, type InteractionStep} from '../../interaction/interactionTimeline';
+import {boardInteractions, boardShotViewForFrame, type BoardTargetId} from '../../state/board';
 import {useAppWindowLayout} from '../../appWindowLayout';
 import {ease, mix} from '../../state/timeline';
-import {cursorTimeline, percentTarget, viewportPoint} from '../../interaction/cursorTargets';
+import {percentTarget} from '../../interaction/cursorTargets';
 import type {CursorPath, TargetRect} from '../../interaction/cursorTargets';
 import {threadsBoardSourceStart} from '../timeline';
 import {useVideoConfig} from 'remotion';
@@ -29,15 +30,13 @@ const composerEditorInsetLeft = 16;
 const composerEditorInsetTop = 12;
 const referencePopupAboveCursorOffset = 4;
 
-type ChatTargetId =
-  | 'approvePlanPrimary'
-  | 'quickPromptFirst'
-  | 'quickPromptsButton'
-  | 'quickPromptSend'
-  | 'recentThreadRowFirst'
-  | 'recentThreads'
-  | 'sendButton'
-  | 'threadsBreadcrumb';
+// The cursor for the threads scene is the shared chat interaction script
+// (the single source of truth that also drives every composer state) plus
+// the simple-film-only breadcrumb navigation that joins chat -> board.
+const threadsBreadcrumbStep: InteractionStep<ChatTargetId> = {
+  label: 'nav-board', start: 630, end: 648, to: 'threadsBreadcrumb', from: 'quickPromptSend',
+};
+const threadsCursorModel = createInteractionModel<ChatTargetId>([...chatInteractionScript, threadsBreadcrumbStep]);
 
 // One long threads-chapter scene: the chat story plays in the docked
 // composer, then the cursor clicks the Threads breadcrumb and the surface
@@ -317,102 +316,7 @@ function formatUserMessage(
 }
 
 function chatCursorForFrame(frame: number, targets: Record<ChatTargetId, TargetRect>, width: number, height: number): CursorPath | null {
-  return cursorTimeline(targets, [
-    {
-      end: 264,
-      from: viewportPoint(width, height, 0.52, 0.53),
-      start: 236,
-      to: 'sendButton',
-    },
-    {
-      click: false,
-      end: 396,
-      from: 'sendButton',
-      start: 370,
-      to: 'approvePlanPrimary',
-      toPoint: {anchor: [0.42, 0.5]},
-    },
-    {
-      end: 414,
-      from: 'approvePlanPrimary',
-      fromPoint: {anchor: [0.42, 0.5]},
-      start: 400,
-      to: 'approvePlanPrimary',
-      toPoint: {anchor: [0.42, 0.5]},
-    },
-    {
-      end: 454,
-      from: 'approvePlanPrimary',
-      fromPoint: {anchor: [0.42, 0.5]},
-      start: 424,
-      to: 'recentThreads',
-      toPoint: {anchor: [0.42, 0.5]},
-    },
-    {
-      click: false,
-      end: 482,
-      from: 'recentThreads',
-      fromPoint: {anchor: [0.42, 0.5]},
-      start: 462,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    },
-    {
-      click: false,
-      end: 506,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 486,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    },
-    {
-      end: 526,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 508,
-      to: 'recentThreadRowFirst',
-      toPoint: {anchor: [0.14, 0.68]},
-    },
-    {
-      end: 550,
-      from: 'recentThreadRowFirst',
-      fromPoint: {anchor: [0.14, 0.68]},
-      start: 540,
-      to: 'quickPromptsButton',
-    },
-    {
-      click: false,
-      end: 570,
-      from: 'quickPromptsButton',
-      start: 554,
-      to: 'quickPromptFirst',
-      toPoint: {anchor: [0.25, 0.5]},
-    },
-    {
-      end: 586,
-      from: 'quickPromptFirst',
-      fromPoint: {anchor: [0.25, 0.5]},
-      start: 574,
-      to: 'quickPromptFirst',
-      toPoint: {anchor: [0.25, 0.5]},
-    },
-    {
-      end: 624,
-      from: 'quickPromptFirst',
-      fromPoint: {anchor: [0.25, 0.5]},
-      start: 604,
-      to: 'quickPromptSend',
-    },
-    // Navigate to the threads dashboard: the board phase starts at source
-    // frame 656, right after this click lands on the breadcrumb.
-    {
-      end: 648,
-      from: 'quickPromptSend',
-      start: 630,
-      to: 'threadsBreadcrumb',
-    },
-  ], frame);
+  return threadsCursorModel.path(targets, frame, {height, width});
 }
 
 function chatTargetsForFrame({
@@ -561,83 +465,11 @@ function composerPlacement({
 // One continuous timeline: the cursor stays visible and parked between
 // actions, and every instant surface swap (dashboard -> form -> board)
 // lands right after its click at full cursor opacity.
-function boardCursorForFrame(frame: number):
-  | CursorPath
-  | null {
-  const targets = boardCursorTargets();
-
-  return cursorTimeline(targets, [
-    {
-      end: 48,
-      from: 'dashboardArea',
-      start: 22,
-      to: 'activeDashboardTabPin',
-      toPoint: {anchor: [0.5, 0.5]},
-    },
-    {
-      end: 84,
-      from: 'activeDashboardTabPin',
-      fromPoint: {anchor: [0.5, 0.5]},
-      start: 54,
-      to: 'createThreadButton',
-      toPoint: {anchor: [0.5, 0.5]},
-    },
-    {
-      end: 190,
-      from: 'createThreadButton',
-      fromPoint: {anchor: [0.5, 0.5]},
-      start: 174,
-      to: 'linkThreadButton',
-    },
-    {
-      click: false,
-      end: 216,
-      from: 'linkThreadButton',
-      start: 198,
-      to: 'linkActionButton',
-      toPoint: {anchor: [0.5, 0.5]},
-    },
-    {
-      click: false,
-      end: 240,
-      from: 'linkActionButton',
-      fromPoint: {anchor: [0.5, 0.5]},
-      start: 228,
-      to: 'linkActionButton',
-      toPoint: {anchor: [0.5, 0.5]},
-    },
-    {
-      end: 258,
-      from: 'linkActionButton',
-      fromPoint: {anchor: [0.5, 0.5]},
-      start: 244,
-      to: 'createSaveButton',
-    },
-    {
-      end: 282,
-      from: 'createSaveButton',
-      start: 270,
-      to: 'kanbanViewButton',
-      toPoint: {anchor: [0.5, 0.5]},
-    },
-    {
-      click: false,
-      end: 290,
-      from: 'kanbanViewButton',
-      fromPoint: {anchor: [0.5, 0.5]},
-      start: 282,
-      to: 'activeCard',
-    },
-    {
-      end: 304,
-      from: 'activeCard',
-      start: 292,
-      to: 'inProgressDrop',
-    },
-  ], frame, 'percent');
+function boardCursorForFrame(frame: number): CursorPath | null {
+  return boardInteractions.path(boardCursorTargets(), frame, undefined, 'percent');
 }
 
-function boardCursorTargets(): Record<string, TargetRect> {
+function boardCursorTargets(): Record<BoardTargetId, TargetRect> {
   return {
     activeCard: percentTarget(27, 38, 6, 6),
     activeDashboardTabPin: percentTarget(19.2, 16.2, 1.2, 3.2),
@@ -645,7 +477,6 @@ function boardCursorTargets(): Record<string, TargetRect> {
     createThreadButton: percentTarget(91, 9.6, 5, 3),
     dashboardArea: percentTarget(65, 21, 6, 6),
     inProgressDrop: percentTarget(48, 34, 6, 6),
-    instructionsField: percentTarget(46, 34, 12, 5),
     kanbanViewButton: percentTarget(57.7, 9.6, 2.5, 3),
     linkActionButton: percentTarget(82, 40, 4.5, 3),
     linkThreadButton: percentTarget(73.9, 44.9, 8.8, 3.6),

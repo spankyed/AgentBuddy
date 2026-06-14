@@ -5,6 +5,33 @@ import {launchPlanArtifact} from './chat';
 import {launchFilmStory} from './launchStory';
 import {ease, mix} from './timeline';
 import {revealText} from './typing';
+import {createInteractionModel, type InteractionStep} from '../interaction/interactionTimeline';
+
+// Board pointer interactions — the single source of truth shared by the
+// scene's cursor and the press/hover states below.
+export type BoardTargetId =
+  | 'dashboardArea'
+  | 'activeDashboardTabPin'
+  | 'createThreadButton'
+  | 'linkThreadButton'
+  | 'linkActionButton'
+  | 'createSaveButton'
+  | 'kanbanViewButton'
+  | 'activeCard'
+  | 'inProgressDrop';
+
+export const boardInteractionScript: InteractionStep<BoardTargetId>[] = [
+  {label: 'pin-thread', start: 22, end: 48, to: 'activeDashboardTabPin', from: 'dashboardArea', toPoint: {anchor: [0.5, 0.5]}},
+  {label: 'open-create', start: 54, end: 84, to: 'createThreadButton', from: 'activeDashboardTabPin', fromPoint: {anchor: [0.5, 0.5]}, toPoint: {anchor: [0.5, 0.5]}},
+  {label: 'open-link', start: 174, end: 190, to: 'linkThreadButton', from: 'createThreadButton', fromPoint: {anchor: [0.5, 0.5]}},
+  {label: 'reach-link-action', start: 198, end: 216, to: 'linkActionButton', from: 'linkThreadButton', toPoint: {anchor: [0.5, 0.5]}, click: false},
+  {label: 'hold-link-action', start: 228, end: 240, to: 'linkActionButton', from: 'linkActionButton', fromPoint: {anchor: [0.5, 0.5]}, toPoint: {anchor: [0.5, 0.5]}, click: false},
+  {label: 'save-thread', start: 244, end: 258, to: 'createSaveButton', from: 'linkActionButton', fromPoint: {anchor: [0.5, 0.5]}},
+  {label: 'to-kanban', start: 270, end: 282, to: 'kanbanViewButton', from: 'createSaveButton', toPoint: {anchor: [0.5, 0.5]}},
+  {label: 'grab-card', start: 282, end: 290, to: 'activeCard', from: 'kanbanViewButton', fromPoint: {anchor: [0.5, 0.5]}, click: false},
+  {label: 'drop-card', start: 292, end: 304, to: 'inProgressDrop', from: 'activeCard'},
+];
+export const boardInteractions = createInteractionModel(boardInteractionScript);
 
 export type BoardShotView = {
   board: KanbanBoardState;
@@ -178,7 +205,7 @@ export function boardViewForFrame(frame: number) {
 export function boardShotViewForFrame(frame: number): BoardShotView {
   const view = boardViewForFrame(frame);
   const dashboardVisible = frame < 88;
-  const dashboardThreadPinned = frame >= 60;
+  const dashboardThreadPinned = boardInteractions.clicked('activeDashboardTabPin', frame, 12);
   const createVisible = frame >= 88 && frame < 264;
   const createFrame = Math.max(0, frame - 88);
   // Crossfade dashboard -> create form -> board list instead of hard pops.
@@ -213,10 +240,12 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
   const createForm = createVisible
     ? {
         ...boardShotState.createForm,
-        createPressed: createFrame > 158 && createFrame < 170,
+        createPressed: boardInteractions.pressed('createSaveButton', frame, {lead: 12, tail: 0}),
         instructions: revealText(boardShotState.createForm.instructions, createFrame, 42),
         instructionsCaretVisible: createFrame >= 34 && createFrame < 86,
-        linkPressed: createFrame > 124 && createFrame <= 136,
+        // The link action has no discrete click (a hold opens the dropdown), so
+        // its press is gated on the cursor hovering it.
+        linkPressed: boardInteractions.hovered('linkActionButton', frame) && createFrame > 124 && createFrame <= 136,
         linkedThreadsOpen: createFrame >= 104,
         linkInputVisible: createFrame >= 104 && createFrame <= 140,
         linkedThreadCandidate: createFrame > 120 && createFrame <= 136 ? boardShotState.createForm.parentThread : undefined,
@@ -240,23 +269,24 @@ export function boardShotViewForFrame(frame: number): BoardShotView {
     dashboard: dashboardShown
       ? {
           ...boardShotState.dashboard,
-          pinPressed: frame >= 52 && frame < 60,
+          pinPressed: boardInteractions.pressed('activeDashboardTabPin', frame, {lead: -4, tail: 12}),
           pinned: dashboardThreadPinned,
           header: {
             ...boardShotState.header,
             activeView: 'dashboard',
-            newThreadPressed: frame > 72 && frame < 86,
+            newThreadPressed: boardInteractions.pressed('createThreadButton', frame, {lead: 12, tail: 2}),
             pressedView: undefined,
           },
-          hoveredTabId: frame >= 24 && frame < 66 ? launchFilmStory.threads.stripePaymentIntegration.id : undefined,
+          // Tab stays hovered from the cursor reaching it until it leaves for the create button.
+          hoveredTabId: boardInteractions.clicked('activeDashboardTabPin', frame, -24) && !boardInteractions.clicked('createThreadButton', frame, -18) ? launchFilmStory.threads.stripePaymentIntegration.id : undefined,
         }
       : undefined,
     dashboardStyle: dashboardShown ? {opacity: 1 - formEnter} : undefined,
     header: {
       ...boardShotState.header,
       activeView: dashboardVisible ? 'dashboard' : frame < 282 ? 'list' : 'kanban',
-      hoveredView: frame > 272 && frame < 282 ? 'kanban' : undefined,
-      newThreadPressed: frame > 72 && frame < 86,
+      hoveredView: boardInteractions.hovered('kanbanViewButton', frame) ? 'kanban' : undefined,
+      newThreadPressed: boardInteractions.pressed('createThreadButton', frame, {lead: 12, tail: 2}),
       pressedView: undefined,
     },
     mode: dashboardVisible ? 'dashboard' : createVisible ? 'create' : 'board',

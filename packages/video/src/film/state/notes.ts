@@ -4,6 +4,24 @@ import type {NotesHomeCardState} from '../../agentbuddy-ui/notes/NotesHomeSurfac
 import type {ReferenceRefType} from '../../agentbuddy-ui/chat/referenceConfig';
 import {launchFilmStory} from './launchStory';
 import {revealText} from './typing';
+import {createInteractionModel, type InteractionStep} from '../interaction/interactionTimeline';
+
+// Notes pointer interactions — the single source of truth that drives both the
+// scene's cursor and the press/active states below. Home and editor are
+// separate cursor phases, so they have separate scripts.
+export type NotesHomeTargetId = 'newNoteButton';
+export type NotesEditorTargetId = 'editorBody' | 'rightRailTasklist' | 'taskListCurrentRow' | 'taskCheckbox';
+
+export const notesHomeInteractionScript: InteractionStep<NotesHomeTargetId>[] = [
+  {label: 'new-note', start: 118, end: 146, to: 'newNoteButton', fromViewport: [0.52, 0.52], toPoint: {anchor: [0.52, 0.5]}},
+];
+export const notesEditorInteractionScript: InteractionStep<NotesEditorTargetId>[] = [
+  {label: 'open-tasklist', start: 50, end: 70, to: 'rightRailTasklist', from: 'editorBody'},
+  {label: 'open-todo', start: 98, end: 116, to: 'taskListCurrentRow', from: 'rightRailTasklist'},
+  {label: 'complete-todo', start: 126, end: 138, to: 'taskCheckbox', from: 'taskListCurrentRow', toPoint: {anchor: [0.5, 0.5], offset: [0.3, 0]}},
+];
+export const notesHomeInteractions = createInteractionModel(notesHomeInteractionScript);
+export const notesEditorInteractions = createInteractionModel(notesEditorInteractionScript);
 
 export type NotesTaskListPanelState = {
   activeId: string | null;
@@ -206,7 +224,7 @@ export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
   const showSearch = frame >= 44;
   const showRecent = frame >= 62;
   const showFavorites = frame >= 84;
-  const newNotePressed = frame >= 136 && frame < 154;
+  const newNotePressed = notesHomeInteractions.pressed('newNoteButton', frame, {lead: 10, tail: 8});
 
   return {
     ...notesHomeState,
@@ -221,12 +239,14 @@ export function notesHomeViewForFrame(frame: number): NotesShotView['home'] {
 }
 
 export function notesEditorViewForFrame(frame: number): NotesShotView {
-  const tasklistPressed = frame >= 58 && frame < 76;
-  const tasklistActive = frame >= 76;
-  const todoPressed = frame >= 108 && frame < 122;
-  const todoActive = frame >= 122;
-  const todoCompletePressed = frame >= 134 && frame < 144;
-  const todoComplete = frame >= 144;
+  // Press while the cursor clicks; the note/todo opens (active) a few frames
+  // after the click settles — all derived from the cursor, never hand-timed.
+  const tasklistPressed = notesEditorInteractions.pressed('rightRailTasklist', frame, {lead: 12, tail: 6});
+  const tasklistActive = notesEditorInteractions.clicked('rightRailTasklist', frame, 6);
+  const todoPressed = notesEditorInteractions.pressed('taskListCurrentRow', frame, {lead: 8, tail: 6});
+  const todoActive = notesEditorInteractions.clicked('taskListCurrentRow', frame, 6);
+  const todoCompletePressed = notesEditorInteractions.pressed('taskCheckbox', frame, {lead: 4, tail: 6});
+  const todoComplete = notesEditorInteractions.clicked('taskCheckbox', frame, 6);
 
   const taskList = notesTaskListForEditorFrame(frame);
   const rightRail: NotesRightRailState = {
@@ -309,11 +329,11 @@ export function notesEditorViewForFrame(frame: number): NotesShotView {
 }
 
 function notesTaskListForEditorFrame(frame: number): NotesTaskListPanelState {
-  const tasklistActive = frame >= 76;
-  const todoActive = frame >= 122;
-  const todoPressed = frame >= 108 && frame < 122;
-  const todoCompletePressed = frame >= 134 && frame < 144;
-  const todoComplete = frame >= 144;
+  const tasklistActive = notesEditorInteractions.clicked('rightRailTasklist', frame, 6);
+  const todoActive = notesEditorInteractions.clicked('taskListCurrentRow', frame, 6);
+  const todoPressed = notesEditorInteractions.pressed('taskListCurrentRow', frame, {lead: 8, tail: 6});
+  const todoCompletePressed = notesEditorInteractions.pressed('taskCheckbox', frame, {lead: 4, tail: 6});
+  const todoComplete = notesEditorInteractions.clicked('taskCheckbox', frame, 6);
 
   return {
     ...notesTaskListState,
