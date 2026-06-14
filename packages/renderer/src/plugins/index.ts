@@ -48,9 +48,9 @@ const mockPlugins: Plugin[] = [
 export default [
   Threads,
   Notes,
-  Code,
-  Browser,
   Calendar,
+  Browser,
+  Code,
   Library,
   Flows,
   Actions,

@@ -11,7 +11,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState, updateClaudeState, updateChatState } from './_helpers/thread-context';
+import { getClaudeState, updateClaudeState, updateChatState, endGoal } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 
 export const meta: ActionMeta = {
@@ -81,6 +81,67 @@ export async function action(
   // the replayed turn's own turn-completed will handle both.
   const ccState = getClaudeState(services, threadId);
   const running = ccState?.isRunning === true;
+
+  // ─── Goal loop (checked before chatState transition to avoid success flash) ──
+  const goalState = ccState?.goal;
+  if (goalState?.status === 'active' && !running && !ccState?.commandActive) {
+    const MAX_GOAL_ITERATIONS = 20;
+
+    // Check if model signaled goal met in the most recent assistant message
+    const threadData = services.repository.chatQueries.threadData(threadId as any);
+    const messages = threadData?.messages ?? [];
+    const lastAssistant = [...messages].reverse().find(
+      (m: any) => m.sender !== 'user' && m.text && !m.compacted && !m.deleted,
+    );
+    const goalMet = lastAssistant?.text ? /\bGOAL_MET\b/.test(lastAssistant.text) : false;
+
+    if (goalMet) {
+      endGoal(services, threadId, 'met');
+      services.chat.sendBlockMessage({
+        threadId: threadId as any,
+        text: `Goal achieved: ${goalState.condition}`,
+        blocks: [],
+      });
+      // Fall through to chatState transition + diff artifact below
+    } else if (goalState.iterations + 1 >= MAX_GOAL_ITERATIONS) {
+      endGoal(services, threadId, 'failed');
+      services.chat.sendBlockMessage({
+        threadId: threadId as any,
+        text: `Goal failed after ${MAX_GOAL_ITERATIONS} iterations: ${goalState.condition}`,
+        blocks: [],
+      });
+      // Fall through to chatState transition + diff artifact below
+    } else {
+      // Increment iteration and auto-continue — skip chatState transition
+      updateClaudeState(services, threadId as EntityId, {
+        goal: { ...goalState, iterations: goalState.iterations + 1 },
+      });
+      updateChatState(services, threadId as EntityId, 'working');
+
+      const iteration = goalState.iterations + 1;
+      const prompt = [
+        `Continue working toward the goal: "${goalState.condition}" (iteration ${iteration}/${MAX_GOAL_ITERATIONS}).`,
+        'If the goal is fully met, say "GOAL_MET" in your response. Otherwise, keep working.',
+      ].join('\n');
+
+      try {
+        await services.action.getAndExecute('Claude Code Chat', {
+          threadId,
+          text: prompt,
+        });
+      } catch (goalErr: any) {
+        log.warn('goal continuation failed', { message: goalErr?.message });
+        endGoal(services, threadId, 'failed');
+        services.chat.sendBlockMessage({
+          threadId: threadId as any,
+          text: `Goal loop error: ${goalErr?.message || 'Unknown error'}`,
+          blocks: [],
+        });
+      }
+
+      return { success: true, goalContinuation: true };
+    }
+  }
 
   if (!running && !ccState?.commandActive) {
     // Don't overwrite a persistent 'error' state (e.g. session-not-found) —

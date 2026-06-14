@@ -1,5 +1,5 @@
 import type {AppModule} from '../../AppModule.js';
-import {BrowserWindow, ipcMain} from 'electron';
+import {BrowserWindow, ipcMain, session} from 'electron';
 import {BrowserTabManager} from './BrowserTabManager.js';
 import type {TabBounds} from './types.js';
 
@@ -89,6 +89,10 @@ class BrowserManager implements AppModule {
 
     ipcMain.handle('browser:set-tab-muted', (event, tabId: number, muted: boolean) => {
       this.#getTabManager(event)?.setTabMuted(tabId, muted);
+    });
+
+    ipcMain.handle('browser:clear-cache', () => {
+      return session.fromPartition('persist:browser').clearStorageData();
     });
   }
 }

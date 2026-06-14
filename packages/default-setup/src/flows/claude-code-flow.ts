@@ -235,6 +235,20 @@ export default {
       ]],
       "Worktree toggle updated",
     ),
+    on(
+      "user.goal.clear",
+      [[
+        action("CC: Goal", {
+          label: "goal-clear",
+          map: {
+            command: "cc-goal",
+            text: "clear",
+            threadId: "$.event.data.payload.threadId",
+          },
+        }),
+      ]],
+      "Goal cleared",
+    ),
     // ─── Thread lifecycle ────────────────────────────────────────────
     // Clean up Claude Code state when threads are reverted or forked.
     // Unified revert-family route — the `kind` discriminator routes to
@@ -323,6 +337,7 @@ export default {
                 { if: "$.event.data.payload.command == 'cc-fork'", steps: [action("CC: Fork", { label: "cc-fork", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
                 { if: "$.event.data.payload.command == 'cc-context'", steps: [action("CC: Context", { label: "cc-context", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
                 { if: "$.event.data.payload.command == 'cc-recap'", steps: [action("CC: Recap", { label: "cc-recap", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId" } })] },
+                { if: "$.event.data.payload.command == 'cc-goal'", steps: [action("CC: Goal", { label: "cc-goal", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
                 // Directory operations (add-dir, set-dir) — share path helpers
                 { if: "$.event.data.payload.command == 'cc-add-dir'", steps: [action("CC: Dir Ops", { label: "cc-add-dir", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
                 { if: "$.event.data.payload.command == 'cc-set-dir'", steps: [action("CC: Dir Ops", { label: "cc-set-dir", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },

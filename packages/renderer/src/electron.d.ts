@@ -85,6 +85,7 @@ declare global {
         onFocusAddressBar: (callback: () => void) => () => void;
         duplicateTab: (tabId: number) => Promise<BrowserTabState | null>;
         setTabMuted: (tabId: number, muted: boolean) => Promise<void>;
+        clearCache: () => Promise<void>;
         getTabs: () => Promise<BrowserTabState[]>;
         getActiveTab: () => Promise<number | null>;
       };

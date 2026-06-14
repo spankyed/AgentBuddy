@@ -323,17 +323,17 @@ declare function grepTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
     include: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     pattern: string;
-    path?: string | undefined;
     include?: string | undefined;
+    path?: string | undefined;
 }, {
     pattern: string;
-    path?: string | undefined;
     include?: string | undefined;
+    path?: string | undefined;
 }>, string> & {
     execute: (args: {
         pattern: string;
-        path?: string | undefined;
         include?: string | undefined;
+        path?: string | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
 };
 declare function listDirTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
@@ -401,19 +401,19 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     token_budget: z.ZodOptional<z.ZodNumber>;
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
-    action: "create" | "get" | "update";
-    status?: "complete" | "active" | "paused" | undefined;
+    action: "update" | "create" | "get";
+    status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
-    action: "create" | "get" | "update";
-    status?: "complete" | "active" | "paused" | undefined;
+    action: "update" | "create" | "get";
+    status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
-        action: "create" | "get" | "update";
-        status?: "complete" | "active" | "paused" | undefined;
+        action: "update" | "create" | "get";
+        status?: "active" | "paused" | "complete" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
@@ -427,27 +427,27 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
             label: z.ZodString;
             description: z.ZodString;
         }, "strip", z.ZodTypeAny, {
-            label: string;
             description: string;
+            label: string;
         }, {
-            label: string;
             description: string;
+            label: string;
         }>, "many">>;
     }, "strip", z.ZodTypeAny, {
         id: string;
         header: string;
         question: string;
         options?: {
-            label: string;
             description: string;
+            label: string;
         }[] | undefined;
     }, {
         id: string;
         header: string;
         question: string;
         options?: {
-            label: string;
             description: string;
+            label: string;
         }[] | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
@@ -456,8 +456,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
         header: string;
         question: string;
         options?: {
-            label: string;
             description: string;
+            label: string;
         }[] | undefined;
     }[];
 }, {
@@ -466,8 +466,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
         header: string;
         question: string;
         options?: {
-            label: string;
             description: string;
+            label: string;
         }[] | undefined;
     }[];
 }>, string> & {
@@ -477,8 +477,8 @@ declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool
             header: string;
             question: string;
             options?: {
-                label: string;
                 description: string;
+                label: string;
             }[] | undefined;
         }[];
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
