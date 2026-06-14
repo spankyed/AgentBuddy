@@ -170,7 +170,7 @@ export const chatShotState = {
   breadcrumbs: ['Threads', launchFilmStory.threads.checkoutImplementation.title],
   createdAt: '9:41 AM',
   systemMessage: undefined,
-  prompt: {text: 'Use #notes:tasklist and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.', from: 24, to: 214, caretUntil: 270},
+  prompt: {text: 'Use #notes:tasklist and this screenshot to scope the checkout flow — Stripe payments, receipts, and discount codes.', from: 24, to: 214, caretUntil: 268},
   response: {text: 'I’ll scope the checkout feature from the tasklist: create the Stripe integration, wire receipt emails, add the discount engine, and prepare the creator payout stub.', from: 306, to: 346},
 };
 
@@ -817,11 +817,14 @@ export function chatComposerMixedAttachmentsDemoState(previewUrl: string): ChatC
 }
 
 const planApprovalEnd = 420;
-const recentThreadsClickStart = 438;
-const recentThreadsClickEnd = 450;
-const recentThreadsMenuStart = 462;
+// Recent-threads menu opens on the button click (~454): press brackets the
+// click, the menu appears immediately, and the active-thread tab only
+// presses as the chosen row loads (~520+).
+const recentThreadsClickStart = 448;
+const recentThreadsClickEnd = 458;
+const recentThreadsMenuStart = 453;
 const recentThreadsMenuEnd = 532;
-const recentThreadSelectStart = 482;
+const recentThreadSelectStart = 520;
 const recentThreadLoadedStart = 532;
 const approvedSummaryStart = 432;
 const planToolActivityStart = 444;
@@ -871,7 +874,7 @@ function typedPromptForFrame(frame: number) {
 
 export function chatViewForFrame(frame: number) {
   const quickPromptSent = frame > quickPromptSendEnd;
-  const sentUserMessageStyle = frame >= 270
+  const sentUserMessageStyle = frame >= 268
     ? {opacity: 1, transform: 'translateY(0px)'}
     : {opacity: 0, transform: 'translateY(0px)'};
   const messageReveal = (from: number) => {
@@ -962,9 +965,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
     composer: {
       ...launchComposerState,
       referenceAutocomplete,
-      content: frame < 270 ? noteReferencePromptContent : undefined,
+      content: frame < 268 ? noteReferencePromptContent : undefined,
       attachments: [
-        ...(frame > 188 && frame < 270 ? [{
+        ...(frame > 188 && frame < 268 ? [{
           type: 'image' as const,
           label: 'checkout mockup',
           previewUrl: launchCheckoutMockupPreviewUrl,
@@ -987,7 +990,9 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
             recentThreadsMenu: frame > recentThreadsMenuStart && frame < recentThreadsMenuEnd
               ? {
                   currentId: launchFilmStory.threads.checkoutImplementation.id,
-                  selectedIndex: frame > recentThreadSelectStart ? 0 : -1,
+                  // First row stays highlighted while the menu is open, so the
+                  // cursor moves onto an already-selected row (no hover lag).
+                  selectedIndex: 0,
                   threadStates: {
                     [launchFilmStory.threads.stripePaymentIntegration.id]: {color: '#22c55e'},
                     [launchFilmStory.threads.checkoutImplementation.id]: {busy: true},
@@ -1006,8 +1011,8 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       quickPromptsButtonPressed: frame > quickPromptClickStart && frame <= quickPromptClickEnd,
       quickPromptsOpen: frame > quickPromptMenuStart && frame < quickPromptMenuEnd,
       quickPromptsSelectedIndex: frame > quickPromptMenuStart + 14 && frame < quickPromptMenuEnd ? 0 : undefined,
-      sendPressed: (frame >= 258 && frame < 266) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
-      text: frame >= chatShotState.prompt.from && frame < 270
+      sendPressed: (frame >= 262 && frame < 268) || (frame > quickPromptSendStart && frame < quickPromptSendEnd),
+      text: frame >= chatShotState.prompt.from && frame < 268
         ? view.prompt
         : frame > quickPromptTextStart && frame < quickPromptSendEnd
           ? reviewQuickPromptText
@@ -1076,7 +1081,7 @@ export function chatShotViewForFrame(frame: number): ChatShotView {
       createdAt: chatShotState.createdAt,
       systemMessage: chatShotState.systemMessage,
       userMessage: {
-        caretVisible: frame < 270 && view.promptCaretVisible,
+        caretVisible: frame < 268 && view.promptCaretVisible,
         content: showQuickPromptResponse || recentThreadLoaded ? undefined : noteReferencePromptContent,
         text: quickPromptSent ? reviewQuickPromptText : recentThreadLoaded ? 'Polish the checkout flow and prepare the PR path.' : view.prompt,
       },
