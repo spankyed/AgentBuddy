@@ -10,12 +10,12 @@ export type CodeCursorLayout = {
 };
 
 export type CodeCursorTargetId =
+  | 'commitButton'
   | 'createPrButton'
-  | 'createPullRequestButton'
+  | 'generateCommitButton'
   | 'mergePrButton'
-  | 'prDescription'
   | 'prTabIcon'
-  | 'publishButton'
+  | 'pushButton'
   | 'sourceControlIcon'
   | 'stageCenter';
 
@@ -42,21 +42,23 @@ const SOURCE_CONTROL_ICON_FROM_RIGHT = 163.8;
 const PR_TAB_ICON_FROM_RIGHT = 132.2;
 const ICON_ROW_CENTER_FROM_PANEL_TOP = 62.8; // panel header (42) + half the icon row (20)
 
-// Right-aligned action buttons further down the panel.
-const PUBLISH_FROM_RIGHT = 54.4;
-const PUBLISH_FROM_PANEL_TOP = 115;
-const CREATE_PR_FROM_RIGHT = 18.4;
-const CREATE_PR_FROM_PANEL_TOP = 169;
+// Source-control (commit) panel elements. The push/"publish" icon (up-arrow +
+// commit-count badge) and the generate-message sparkle are right-aligned in the
+// branch + commit-message rows; the green Commit button spans the panel width.
+const PUSH_FROM_RIGHT = 23;
+const PUSH_FROM_PANEL_TOP = 106;
+const GENERATE_FROM_RIGHT = 30;
+const GENERATE_FROM_PANEL_TOP = 155;
+const COMMIT_BUTTON_FROM_PANEL_TOP = 300; // centered horizontally in the panel
 
-// Mid-panel PR description field.
-const PR_DESCRIPTION_FROM_LEFT = 246;
-const PR_DESCRIPTION_FROM_PANEL_TOP = 313;
-
-// Bottom action bar — anchored to the window's bottom edge.
-const CREATE_PR_BUTTON_FROM_RIGHT = 274.7;
-const CREATE_PR_BUTTON_FROM_BOTTOM = 75.1;
-const MERGE_PR_BUTTON_FROM_RIGHT = 369.8;
-const MERGE_PR_BUTTON_FROM_BOTTOM = 68.8;
+// PR-panel bottom action bar. Both the create-mode "Create PR" button and the
+// details-mode "Merge" button are LEFT-anchored in the action bar (the prior
+// right-edge anchor only matched the 430px landscape panel and drifted in the
+// 360px square panel). Y is measured up from the window bottom.
+const CREATE_PR_BUTTON_FROM_LEFT = 156;
+const CREATE_PR_BUTTON_FROM_BOTTOM = 75;
+const MERGE_PR_BUTTON_FROM_LEFT = 56;
+const MERGE_PR_BUTTON_FROM_BOTTOM = 70;
 
 type WindowBox = {height: number; left: number; top: number; width: number};
 
@@ -110,12 +112,12 @@ export function codeCursorTargets(
     );
 
   return {
-    createPrButton: point(panel.right - CREATE_PR_BUTTON_FROM_RIGHT, panel.bottom - CREATE_PR_BUTTON_FROM_BOTTOM, 58, 27),
-    createPullRequestButton: point(panel.right - CREATE_PR_FROM_RIGHT, panel.top + CREATE_PR_FROM_PANEL_TOP, 58, 27),
-    mergePrButton: point(panel.right - MERGE_PR_BUTTON_FROM_RIGHT, panel.bottom - MERGE_PR_BUTTON_FROM_BOTTOM, 58, 27),
-    prDescription: point(panel.left + PR_DESCRIPTION_FROM_LEFT, panel.top + PR_DESCRIPTION_FROM_PANEL_TOP, 144, 72),
+    commitButton: point(panel.left + panelWidth / 2, panel.top + COMMIT_BUTTON_FROM_PANEL_TOP, 120, 27),
+    createPrButton: point(panel.left + CREATE_PR_BUTTON_FROM_LEFT, panel.bottom - CREATE_PR_BUTTON_FROM_BOTTOM, 58, 27),
+    generateCommitButton: point(panel.right - GENERATE_FROM_RIGHT, panel.top + GENERATE_FROM_PANEL_TOP, 24, 24),
+    mergePrButton: point(panel.left + MERGE_PR_BUTTON_FROM_LEFT, panel.bottom - MERGE_PR_BUTTON_FROM_BOTTOM, 58, 27),
     prTabIcon: point(panel.right - PR_TAB_ICON_FROM_RIGHT, panel.top + ICON_ROW_CENTER_FROM_PANEL_TOP, 40, 27),
-    publishButton: point(panel.right - PUBLISH_FROM_RIGHT, panel.top + PUBLISH_FROM_PANEL_TOP, 86, 27),
+    pushButton: point(panel.right - PUSH_FROM_RIGHT, panel.top + PUSH_FROM_PANEL_TOP, 28, 24),
     sourceControlIcon: point(panel.right - SOURCE_CONTROL_ICON_FROM_RIGHT, panel.top + ICON_ROW_CENTER_FROM_PANEL_TOP, 40, 27),
     stageCenter: point(stageCenterX, stageCenterY, 86, 54),
   };

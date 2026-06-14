@@ -104,7 +104,8 @@ export function boardChromeTargets(
   const CONTENT_MAX = 896;
   const CONTENT_INSET = 32; // 1rem padding either side
   const contentWidth = Math.min(CONTENT_MAX, surfaceWidth - CONTENT_INSET);
-  const contentRight = surfaceLeft + (surfaceWidth - contentWidth) / 2 + contentWidth;
+  const contentLeft = surfaceLeft + (surfaceWidth - contentWidth) / 2;
+  const contentRight = contentLeft + contentWidth;
   // Right-aligned controls keep a fixed px gap from the window right edge.
   const fromRight = (offset: number) => windowRight - offset;
   const point = (x: number, y: number) => percentTarget((x / viewport.width) * 100, (y / viewport.height) * 100);
@@ -113,15 +114,20 @@ export function boardChromeTargets(
     kanbanViewButton: point(fromRight(559), surfaceTop + 26),
     createThreadButton: point(fromRight(62), surfaceTop + 26),
     boardToolbar: point(fromRight(551), surfaceTop + 25),
-    // Create-form header Save button (top-right of the form).
-    createSaveButton: point(fromRight(62), surfaceTop + 46),
-    // Dashboard tab row (sits below the header; pin near the active tab's left).
-    activeDashboardTabPin: point(surfaceLeft + 181, surfaceTop + 86),
-    activeDashboardTab: point(surfaceLeft + 298, surfaceTop + 86),
+    // Create-form header "Create" button (top-right of the form), center ~y32.
+    createSaveButton: point(fromRight(62), surfaceTop + 32),
+    // The pin icon on the ACTIVE dashboard tab (the 2nd pinned tab, "Stripe
+    // payment integration") — fixed offset from the surface left (tab widths
+    // are label-driven and identical in both variants).
+    activeDashboardTabPin: point(surfaceLeft + 353, surfaceTop + 71),
+    activeDashboardTab: point(surfaceLeft + 298, surfaceTop + 71),
     // A point in the dashboard content — only the START of the pin cursor move.
     dashboardArea: point(surfaceLeft + 875, surfaceTop + 142),
-    // Create-form linked-threads table buttons (right side of the content box).
-    linkActionButton: point(contentRight + 9, surfaceTop + 300),
+    // Create-form: the relation (parent_of) dropdown in the new linked-thread
+    // row (the cursor holds it to set the relation), and the "Link Thread"
+    // button above it. The form content column is ~896px in both variants, so
+    // these in-content offsets are stable.
+    linkActionButton: point(contentLeft + 136, surfaceTop + 477),
     linkThreadButton: point(contentRight - 76, surfaceTop + 346),
     // Create-form instructions editor / board center — unused move endpoints.
     instructionsField: point(surfaceLeft + 645, surfaceTop + 255),

@@ -17,21 +17,20 @@ const styles = makeStyles('CodeShot');
 // left-pane fades. The feature panel switches commit <-> PR instantly at
 // the cursor clicks, matching real app navigation.
 
-// The cursor move to the PR tab icon runs PR_TAB_MOVE_START -> PR_TAB_CLICK_FRAME
-// and clicks at its END (the move end, see codeCursorForFrame); the source
-// timeline flips back to the PR panel at PR_TAB_MOVE_START, before that click
-// lands. Keep the commit panel + terminal held until the click (plus a short
-// land tail) so the panel switch reads as a response to the click, not a guess.
-const PR_TAB_MOVE_START = 316;
-const PR_TAB_CLICK_FRAME = 332; // = move end; the click ripple lands here
-const PR_TAB_LAND_TAIL = 2;
+// The source timeline flips to the PR panel just after frame 316, but the
+// cursor first PUSHES the branch (push icon, ~326) and then clicks the PR tab
+// (~333) — both while the Source Control panel is still showing. Hold the
+// commit panel + terminal across that window so the PR panel only appears as a
+// response to the PR-tab click, never before the cursor gets there.
+const COMMIT_PANEL_HOLD_START = 316;
+const COMMIT_PANEL_HOLD_END = 334; // = the PR-tab click frame; PR panel shows after
 
 export function SimpleCodeScene({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = codeShotViewForFrame(frame);
   const layout = useAppWindowLayout({animate: false, variant});
   const {height, width} = useVideoConfig();
   const cursor = codeCursorForFrame(frame, layout, variant, width, height);
-  const holdCommitPanel = frame > PR_TAB_MOVE_START && frame < PR_TAB_CLICK_FRAME + PR_TAB_LAND_TAIL;
+  const holdCommitPanel = frame > COMMIT_PANEL_HOLD_START && frame < COMMIT_PANEL_HOLD_END;
   const reviewView = {
     ...view.review.view,
     // Diffs render complete in the real app; never stream lines in.
@@ -74,13 +73,22 @@ function codeCursorForFrame(
 ): CursorPath | null {
   const targets = codeCursorTargets(layout, variant, width, height);
 
+  // Each click lands exactly when the code state machine fires the matching
+  // press, on the element that is actually on screen at that frame:
+  //  - 38  source-control icon  -> opens the commit (Source Control) panel
+  //  - 153 generate sparkle     -> generates the commit message (148-158)
+  //  - 209 Commit button        -> commits (commitButtonPressed 204-214)
+  //  - 326 push icon            -> publishes the branch (prPublishPressed 318-328)
+  //  - 333 PR tab icon          -> switches to the Pull Request panel
+  //  - 376 Create PR button     -> creates the PR (prCreatePressed 368-380)
+  //  - 404 Merge button         -> merges (prMergePressed 394-404)
   return cursorTimeline(targets, [
     {end: 38, from: 'stageCenter', start: 18, to: 'sourceControlIcon'},
-    {end: 156, from: 'sourceControlIcon', start: 142, to: 'publishButton'},
-    {end: 180, from: 'publishButton', start: 166, to: 'createPullRequestButton'},
-    {end: 214, from: 'createPullRequestButton', start: 198, to: 'prDescription'},
-    {end: PR_TAB_CLICK_FRAME, from: 'prDescription', start: PR_TAB_MOVE_START, to: 'prTabIcon'},
-    {end: 376, from: 'prTabIcon', start: 360, to: 'createPrButton'},
+    {end: 153, from: 'sourceControlIcon', start: 140, to: 'generateCommitButton'},
+    {end: 209, from: 'generateCommitButton', start: 195, to: 'commitButton'},
+    {end: 326, from: 'commitButton', start: 318, to: 'pushButton'},
+    {end: COMMIT_PANEL_HOLD_END, from: 'pushButton', start: 328, to: 'prTabIcon'},
+    {end: 376, from: 'prTabIcon', start: 358, to: 'createPrButton'},
     {end: 404, from: 'createPrButton', start: 392, to: 'mergePrButton'},
   ], frame, 'percent');
 }

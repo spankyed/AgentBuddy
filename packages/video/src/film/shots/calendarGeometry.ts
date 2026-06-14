@@ -43,8 +43,10 @@ export function calendarDayNumberTarget(layout: CalendarCursorLayout, width: num
   const pillWidth = 28;
   const pillHeight = 20;
   return {
-    left: surface.left + todayCellColumn * cellWidth + cellWidth - 4 - pillWidth,
-    top: gridTop + todayCellRow * cellHeight + 4,
+    // The day-number pill sits in the top-right of the cell; nudge a touch up
+    // and left so the cursor lands on its centre rather than its bottom-right edge.
+    left: surface.left + todayCellColumn * cellWidth + cellWidth - 10 - pillWidth,
+    top: gridTop + todayCellRow * cellHeight - 6,
     width: pillWidth,
     height: pillHeight,
   };
@@ -63,15 +65,20 @@ export function calendarTenAmSlotTarget(layout: CalendarCursorLayout, width: num
 
 export function calendarDialogSaveTarget(layout: CalendarCursorLayout, width: number, height: number): TargetRect {
   const surface = surfaceRect(layout, width, height);
+  // The event dialog is centered horizontally (90%, max 480px). Its Save button
+  // sits at the bottom-right of the panel; the panel's rendered vertical
+  // position is NOT a clean center (the prior panelHeight=430 centered guess
+  // put the target ~200px too high). The Save button's centre measures to a
+  // fixed offset below the surface top in BOTH variants (the panel's content
+  // height is identical), so anchor it there.
   const panelWidth = Math.min(480, surface.width * 0.9);
-  const panelHeight = 430; // approximate rendered dialog height
   const panelLeft = surface.left + (surface.width - panelWidth) / 2;
-  const panelTop = surface.top + (surface.height - panelHeight) / 2;
   const saveWidth = 52;
   const saveHeight = 32;
+  const saveCenterY = surface.top + 775;
   return {
     left: panelLeft + panelWidth - 24 - saveWidth,
-    top: panelTop + panelHeight - 24 - saveHeight,
+    top: saveCenterY - saveHeight / 2,
     width: saveWidth,
     height: saveHeight,
   };
