@@ -1,10 +1,12 @@
 <template>
   <media-player
-    class="w-full h-full video-player"
+    ref="playerRef"
+    class="w-full max-h-full video-player"
     :title="fileName"
     :src="source"
     playsinline
     load="eager"
+    @can-play="restoreSavedTime"
   >
     <media-provider />
     <media-video-layout color-scheme="dark" />
@@ -17,9 +19,30 @@ import 'vidstack/player/styles/default/layouts/video.css'
 import 'vidstack/player'
 import 'vidstack/player/layouts/default'
 import 'vidstack/player/ui'
-import { computed } from 'vue'
+import { computed, ref, onBeforeUnmount } from 'vue'
 
 const props = defineProps<{ filePath: string }>()
+
+// Preserve seek position across tab switches (component destroy/recreate cycles)
+const savedTimes = new Map<string, number>()
+const playerRef = ref<HTMLElement | null>(null)
+
+function restoreSavedTime() {
+  const saved = savedTimes.get(props.filePath)
+  if (!saved || !playerRef.value) return
+  const player = playerRef.value as any
+  if (typeof player.currentTime === 'number') {
+    player.currentTime = saved
+  }
+}
+
+onBeforeUnmount(() => {
+  if (!playerRef.value) return
+  const player = playerRef.value as any
+  if (typeof player.currentTime === 'number' && player.currentTime > 0) {
+    savedTimes.set(props.filePath, player.currentTime)
+  }
+})
 
 // Mirrors MIME_TYPES in packages/main/src/modules/media-protocol/MediaProtocol.ts.
 // The local-file:// URL carries the path in a query param, so Vidstack cannot

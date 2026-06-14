@@ -64,7 +64,7 @@
         </div>
 
         <!-- Video player (native formats) -->
-        <div v-show="isVideoFile(activeFile) && isNativeVideo" class="h-full bg-neutral-950">
+        <div v-show="isVideoFile(activeFile) && isNativeVideo" class="flex items-center justify-center h-full bg-neutral-950">
           <VideoPlayer
             v-if="isVideoFile(activeFile) && isNativeVideo"
             :key="activeFile.path"
