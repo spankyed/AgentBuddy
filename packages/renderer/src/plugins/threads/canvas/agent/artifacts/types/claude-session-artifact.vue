@@ -40,6 +40,41 @@
         {{ content.sessionError }}
       </div>
 
+      <!-- Goal status -->
+      <div
+        v-if="content.goal"
+        class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800"
+      >
+        <span class="relative inline-block w-2 h-2">
+          <span
+            :class="[
+              'block w-2 h-2 rounded-full transition-colors duration-300',
+              content.goal.status === 'active' ? 'mosaic-dot' : '',
+            ]"
+            :style="
+              content.goal.status === 'met' ? { backgroundColor: '#22c55e' } :
+              content.goal.status === 'failed' ? { backgroundColor: '#ef4444' } :
+              content.goal.status === 'active' ? undefined : { backgroundColor: '#6B7280' }
+            "
+          />
+          <span
+            v-if="content.goal.status === 'active'"
+            class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
+          />
+        </span>
+        <span class="text-xs text-neutral-300 truncate flex-1" :title="content.goal.condition">
+          {{ content.goal.condition }}
+        </span>
+        <span class="text-[10px] text-neutral-500 tabular-nums">
+          {{ content.goal.iterations }}/20
+        </span>
+        <button
+          v-if="content.goal.status === 'active'"
+          @click="clearGoal"
+          class="text-neutral-500 hover:text-neutral-300 transition-colors text-xs"
+        >Clear</button>
+      </div>
+
       <!-- Key/value grid -->
       <div class="px-3 py-3 space-y-2 text-xs">
         <div class="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2">
@@ -273,6 +308,13 @@ interface SessionContent {
   sessionError?: string
   contextUsage?: ContextUsageData
   additionalDirs?: string[]
+  goal?: {
+    condition: string
+    setAt: number
+    status: 'active' | 'met' | 'failed'
+    iterations: number
+    prevPermissionMode?: PermissionMode
+  }
 }
 
 const props = defineProps<{
@@ -435,6 +477,17 @@ function selectPermissionMode(mode: PermissionMode) {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.permissionMode',
     payload: { threadId, mode },
+  })
+}
+
+function clearGoal() {
+  const threadId = currentThreadId.value
+  if (!threadId) return
+  trpc.bus.send.mutate({
+    systemId: 'threads',
+    type: 'FORWARD_BRAIN_EVENT',
+    eventType: 'user.goal.clear',
+    payload: { threadId },
   })
 }
 

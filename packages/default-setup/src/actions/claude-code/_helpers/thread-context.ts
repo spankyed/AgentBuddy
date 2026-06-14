@@ -157,6 +157,15 @@ export interface ClaudeCodeThreadState {
   cwdOverride?: string;
   /** When true, force the directory picker on first message regardless of global defaultBaseDirectory. */
   forceDirectoryPicker?: boolean;
+  /** Active goal-loop state. Set by CC: Goal, cleared on met/failed/clear. */
+  goal?: {
+    condition: string;
+    setAt: number;
+    status: 'active' | 'met' | 'failed';
+    iterations: number;
+    /** Permission mode before auto-elevation, restored when goal ends. */
+    prevPermissionMode?: PermissionMode;
+  };
 }
 
 export const CLAUDE_CODE_TAG = 'claude-code';
@@ -310,6 +319,34 @@ export function markSessionBroken(
     sessionWorktree: undefined,
   });
   updateChatState(services, threadId, 'error');
+}
+
+// ─── Goal helpers ────────────────────────────────────────────────────────────
+
+/**
+ * End an active goal: restore the prior permission mode and either update the
+ * goal status (met/failed — kept for UI display) or remove it entirely
+ * (explicit clear).
+ */
+export function endGoal(
+  services: Services,
+  threadId: string,
+  status: 'met' | 'failed' | undefined,
+): void {
+  const state = getClaudeState(services, threadId);
+  if (!state?.goal) return;
+  const restore = state.goal.prevPermissionMode ?? 'default';
+  if (status) {
+    persistClaudeState(services, threadId, {
+      goal: { ...state.goal, status },
+      permissionMode: restore,
+    });
+  } else {
+    persistClaudeState(services, threadId, {
+      goal: undefined,
+      permissionMode: restore,
+    });
+  }
 }
 
 // ─── Concurrency helpers ─────────────────────────────────────────────────────
