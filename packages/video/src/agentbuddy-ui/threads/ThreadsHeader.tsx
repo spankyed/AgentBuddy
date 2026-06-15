@@ -13,7 +13,7 @@ export function ThreadsHeader({state}: {state: ThreadsHeaderState}) {
   return (
     <div className={styles.root}>
       <div className={styles.left}>
-        <HeadingIcon size={16} />
+        <HeadingIcon size={16} color="rgb(115 115 115)" />
         <span>{headingLabel}</span>
       </div>
       <div className={styles.actions}>

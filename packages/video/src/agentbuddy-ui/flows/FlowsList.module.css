@@ -41,7 +41,7 @@
   width: 2rem;
   height: 2rem;
   background: transparent;
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
 }
 
 .FlowsList_searchButton:hover {
@@ -114,7 +114,7 @@
 
 .FlowsList_clearSearch:hover {
   background: rgb(64 64 64 / 50%);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
 }
 
 .FlowsList_list {
@@ -247,7 +247,7 @@
 }
 
 .FlowsList_menuEditIcon {
-  color: rgb(96 165 250);
+  color: #4B96F3;
 }
 
 .FlowsList_dangerMenuItem {
@@ -287,7 +287,7 @@
 }
 
 .FlowsList_emptyTitle {
-  color: rgb(212 212 216) !important;
+  color: rgb(212 212 212) !important;
   font-weight: 500;
 }
 

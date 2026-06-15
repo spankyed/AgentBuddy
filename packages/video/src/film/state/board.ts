@@ -54,17 +54,18 @@ export function boardDragTargets(
   const BOARD_PAD = 24;
   const COL_GAP = 16;
   const CARD_MARGIN = 12;
+  const COLUMNS = 5; // Backlog, Open, In Progress, In Review, Done
   const boardWidth = windowBox.width - SIDEBAR;
-  const colWidth = (boardWidth - BOARD_PAD * 2 - COL_GAP * 2) / 3;
-  // The grabbed card is the 2nd Backlog card; it drops into the 2nd slot of In
-  // Progress — both sit on the same row, so they share a Y.
+  const colWidth = (boardWidth - BOARD_PAD * 2 - COL_GAP * (COLUMNS - 1)) / COLUMNS;
+  // The grabbed card is the 2nd Backlog card (column 0); it drops into the 2nd
+  // slot of In Progress (column 2) — both sit on the same row, so they share a Y.
   const rowCenterY = windowBox.top + BOARD_TOP + HEADER_TO_CARD + CARD_HEIGHT + CARD_GAP + CARD_HEIGHT / 2;
   const cardCenterX = (columnIndex: number) =>
     windowBox.left + SIDEBAR + BOARD_PAD + columnIndex * (colWidth + COL_GAP) + CARD_MARGIN + (colWidth - CARD_MARGIN * 2) / 2;
   const point = (x: number, y: number) => percentTarget((x / viewport.width) * 100, (y / viewport.height) * 100);
   return {
     activeCard: point(cardCenterX(0), rowCenterY),
-    inProgressDrop: point(cardCenterX(1), rowCenterY),
+    inProgressDrop: point(cardCenterX(2), rowCenterY),
   };
 }
 
@@ -219,6 +220,9 @@ export const boardShotState: {
     searchPlaceholder: 'Search threads...',
     subtitle: 'Manage agent threads',
   },
+  // Mirrors the seeded board: five status columns, all neutral headers
+  // (packages/default-setup default-settings statuses + kanban.vue, which colours
+  // every column bg-neutral-800 / border-neutral-700/50).
   board: {
     columns: [
       {
@@ -230,14 +234,24 @@ export const boardShotState: {
         tone: 'neutral',
       },
       {
-        cards: [{title: 'Wire receipt email templates', tags: ['receipts'], updatedAt: '4m ago'}],
-        title: 'In Progress',
-        tone: 'blue',
+        cards: [{title: launchFilmStory.threads.checkoutImplementation.title, tags: ['checkout'], updatedAt: '8m ago'}],
+        title: 'Open',
+        tone: 'neutral',
       },
       {
-        cards: [],
+        cards: [{title: 'Wire receipt email templates', tags: ['receipts'], updatedAt: '4m ago'}],
+        title: 'In Progress',
+        tone: 'neutral',
+      },
+      {
+        cards: [{title: launchFilmStory.threads.stripePaymentIntegration.title, tags: ['payments'], updatedAt: '15m ago'}],
+        title: 'In Review',
+        tone: 'neutral',
+      },
+      {
+        cards: [{title: launchFilmStory.threads.deployChecklist.title, tags: ['deploy'], updatedAt: '1h ago'}],
         title: 'Done',
-        tone: 'emerald',
+        tone: 'neutral',
       },
     ],
   },
@@ -252,8 +266,11 @@ export const boardShotState: {
       grab: 326,
       from: 330,
       to: 362,
+      // Left edges as a % of the board width: column 0 (Backlog) -> column 2
+      // (In Progress) across the five-column board. Derived from the same chrome
+      // offsets as boardDragTargets (col i left ≈ (24 + i*(colWidth+16) + 12)/boardWidth).
       fromLeft: 3,
-      toLeft: 34,
+      toLeft: 42,
       fromTop: 19,
       toTop: 21,
       fromRotation: -2,

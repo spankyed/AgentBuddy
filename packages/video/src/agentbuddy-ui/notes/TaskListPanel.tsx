@@ -26,7 +26,7 @@ export function TaskListPanel({activeId = null, headerMenuOpen, items, showCompl
 
   return (
     <aside className={styles.root}>
-      <header className={activeId ? styles.header : styles.activeHeader}>
+      <header className={activeId ? styles.activeHeader : styles.header}>
         <div className={styles.title}>
           {title.icon ? <span className={styles.emoji}>{title.icon}</span> : <Icons.ListChecks size={16} />}
           <span>{title.text}</span>

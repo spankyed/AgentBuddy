@@ -114,7 +114,7 @@
 }
 
 .CreatePRForm_primary[data-pressed="true"] {
-  background: rgb(29 78 216);
+  background: rgb(59 130 246);
   transform: translateY(1px) scale(0.985);
 }
 

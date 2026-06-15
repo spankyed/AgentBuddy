@@ -155,7 +155,7 @@
 
 .BrainPluginSettings_toggleLabel {
   min-width: 120px;
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 14px;
   font-weight: 500;
 }
@@ -174,7 +174,7 @@
 
 .BrainPluginSettings_toggle:hover {
   background: rgb(64 64 64);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
 }
 
 .BrainPluginSettings_toggle[data-enabled="true"] {

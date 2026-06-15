@@ -53,7 +53,7 @@
 }
 
 .PRActionBar_merge[data-variant="merging"] {
-  background: rgb(22 101 52);
+  background: rgb(21 128 61 / 60%);
   color: white;
 }
 
@@ -64,7 +64,7 @@
 
 .PRActionBar_chevron {
   width: 24px;
-  border-left: 1px solid rgb(22 101 52);
+  border-left: 1px solid rgb(22 163 74 / 50%);
   border-radius: 0 0.25rem 0.25rem 0;
   background: rgb(21 128 61 / 80%);
   color: white;
@@ -89,15 +89,15 @@
 }
 
 .PRActionBar_chevron[data-variant="merging"] {
-  border-left-color: rgb(20 83 45);
+  border-left-color: rgb(22 163 74 / 50%);
   background: rgb(22 101 52);
   color: white;
 }
 
 .PRActionBar_draft {
   border-radius: 0.25rem;
-  background: rgb(64 64 64 / 60%);
-  color: rgb(212 212 212);
+  background: rgb(64 64 64 / 50%);
+  color: rgb(163 163 163);
   padding: 0 0.5rem;
 }
 

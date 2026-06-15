@@ -116,12 +116,12 @@
 }
 
 .CodePanelToolbar_activePanelButton {
-  background: rgb(29 78 216);
+  background: rgb(26 91 180);
   color: rgb(245 245 245);
 }
 
 .CodePanelToolbar_activePanelButton:hover {
-  background: rgb(29 78 216);
+  background: rgb(26 91 180);
   color: rgb(245 245 245);
 }
 

@@ -52,7 +52,7 @@
 
 .NotesPluginSettings_segment:not([data-active='true']):hover {
   background: rgb(64 64 64);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
 }
 
 .NotesPluginSettings_formatToggle {

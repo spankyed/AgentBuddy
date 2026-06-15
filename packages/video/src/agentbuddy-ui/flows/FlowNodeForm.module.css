@@ -14,8 +14,7 @@
   min-width: 420px;
   height: 100%;
   flex-direction: column;
-  border-left: 1px solid rgb(38 38 38);
-  background: rgb(23 23 23);
+  background: rgb(38 38 38);
   color: rgb(229 229 229);
   will-change: opacity, transform;
 }
@@ -243,7 +242,7 @@
 .FlowNodeForm_badge {
   border-radius: 0.25rem;
   background: rgb(64 64 64);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 12px;
   font-weight: 650;
   padding: 0.125rem 0.5rem;
@@ -257,7 +256,7 @@
 .FlowNodeForm_cardTitle {
   min-width: 0;
   flex: 1;
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 13px;
   font-weight: 600;
 }

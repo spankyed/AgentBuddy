@@ -60,7 +60,7 @@
 }
 
 .BrowserSurface_faviconFallback {
-  border-radius: 3px;
+  border-radius: 2px;
   background: rgb(64 64 64);
 }
 
@@ -139,6 +139,10 @@
 
 .BrowserSurface_navButton[data-disabled='true'] {
   color: rgb(82 82 82);
+}
+
+.BrowserSurface_devtoolsButton {
+  color: rgb(163 163 163);
 }
 
 .BrowserSurface_addressWrap {

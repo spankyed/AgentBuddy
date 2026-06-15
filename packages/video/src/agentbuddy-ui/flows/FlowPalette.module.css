@@ -109,7 +109,7 @@
 .FlowPalette_item[data-kind="llm"] { border-color: rgb(129 140 248 / 25%); background: rgb(49 46 129 / 42%); color: rgb(115 115 115); }
 .FlowPalette_item[data-kind="flow"] { border-color: rgb(192 132 252 / 25%); background: rgb(88 28 135 / 60%); }
 .FlowPalette_item[data-kind="switch"] { border-color: rgb(250 204 21 / 25%); background: rgb(113 63 18 / 60%); }
-.FlowPalette_item[data-kind="fire"] { border-color: rgb(251 146 60 / 25%); background: rgb(124 45 18 / 60%); }
+.FlowPalette_item[data-kind="fire"] { border-color: rgb(251 146 60 / 25%); background: rgb(120 53 15 / 60%); }
 .FlowPalette_item[data-kind="kill"] { border-color: rgb(248 113 113 / 25%); background: rgb(127 29 29 / 60%); }
 
 .FlowPalette_dot {
@@ -127,7 +127,7 @@
 .FlowPalette_item[data-kind="llm"] .FlowPalette_dot { background: rgb(79 70 229); }
 .FlowPalette_item[data-kind="flow"] .FlowPalette_dot { background: rgb(168 85 247); }
 .FlowPalette_item[data-kind="switch"] .FlowPalette_dot { background: rgb(245 158 11); }
-.FlowPalette_item[data-kind="fire"] .FlowPalette_dot { background: rgb(249 115 22); }
+.FlowPalette_item[data-kind="fire"] .FlowPalette_dot { background: rgb(245 158 11); }
 .FlowPalette_item[data-kind="kill"] .FlowPalette_dot { background: rgb(239 68 68); }
 
 .FlowPalette_label {
@@ -140,7 +140,7 @@
 
 .FlowPalette_icon {
   flex-shrink: 0;
-  opacity: 0.75;
+  opacity: 0.7;
   margin-left: auto;
 }
 
@@ -150,7 +150,7 @@
 .FlowPalette_item[data-kind="llm"] .FlowPalette_icon { color: rgb(165 180 252 / 70%); }
 .FlowPalette_item[data-kind="flow"] .FlowPalette_icon { color: rgb(216 180 254 / 80%); }
 .FlowPalette_item[data-kind="switch"] .FlowPalette_icon { color: rgb(252 211 77 / 80%); }
-.FlowPalette_item[data-kind="fire"] .FlowPalette_icon { color: rgb(253 186 116 / 80%); }
+.FlowPalette_item[data-kind="fire"] .FlowPalette_icon { color: rgb(252 211 77 / 80%); }
 .FlowPalette_item[data-kind="kill"] .FlowPalette_icon { color: rgb(252 165 165 / 80%); }
 
 .FlowPalette_item[data-kind="keep_alive"] .FlowPalette_glow { background: rgb(16 185 129 / 5%); }

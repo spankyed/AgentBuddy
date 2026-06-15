@@ -17,12 +17,3 @@ body {
   animation: none !important;
   transition: none !important;
 }
-
-/*
- * The send button's pressed state is driven by `data-pressed` (the cursor
- * geometry), not :active — which never fires in a static render. Mirror the
- * app's primary Button active colour exactly (active:bg-primary-600 = #1E6FD9).
- */
-.ChatComposer_sendButton[data-pressed="true"] {
-  background: #1e6fd9 !important;
-}

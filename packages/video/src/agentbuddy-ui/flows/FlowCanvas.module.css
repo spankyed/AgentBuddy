@@ -13,8 +13,8 @@
   flex: 1;
   min-width: 0;
   background-color: rgb(23 23 23 / var(--flow-canvas-bg-opacity, 1));
-  background-image: radial-gradient(rgb(255 255 255 / calc(var(--flow-canvas-bg-opacity, 1) * 8%)) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(#81818a 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .FlowCanvas_backButton {
@@ -28,7 +28,7 @@
   border: 1px solid rgb(38 38 38);
   border-radius: 0.375rem;
   background: rgb(23 23 23 / 90%);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font: inherit;
   font-weight: 500;
   font-size: 14px;
@@ -60,9 +60,9 @@
 
 .FlowCanvas_edge {
   fill: none;
-  stroke: rgb(115 115 115 / 86%);
-  stroke-width: 1.5;
-  stroke-dasharray: 5 5;
+  stroke: #666666;
+  stroke-width: 2;
+  stroke-dasharray: none;
   stroke-linecap: butt;
   stroke-linejoin: miter;
   marker-end: url(#flow-arrow);
@@ -78,12 +78,15 @@
 }
 
 .FlowCanvas_selectedEdge {
-  stroke: rgb(147 197 253 / 90%);
-  stroke-width: 1.75;
+  stroke: #3b82f6;
+  stroke-width: 2.5;
 }
 
 .FlowCanvas_animatedEdge {
-  animation: FlowCanvas_dashFlow 0.9s linear infinite;
+  /* Executing edges dash (and flow, when not in a static render); normal edges
+     stay solid. Mirrors the renderer's GenericEdge animated state. */
+  stroke-dasharray: 5 5;
+  animation: FlowCanvas_dashFlow 0.5s linear infinite;
 }
 
 @keyframes FlowCanvas_dashFlow {
@@ -93,7 +96,7 @@
 }
 
 .FlowCanvas_edgeMarker {
-  fill: rgb(115 115 115 / 86%);
+  fill: #666666;
 }
 
 .FlowCanvas_controls {
@@ -106,7 +109,7 @@
   border: 1px solid rgb(64 64 64);
   border-radius: 0.375rem;
   background: rgb(23 23 23 / 90%);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   padding: 0.375rem;
   backdrop-filter: blur(4px);
 }

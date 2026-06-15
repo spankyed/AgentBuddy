@@ -615,7 +615,7 @@
 }
 
 .ChatComposer_sendButton[data-pressed="true"] {
-  background: rgb(29 78 216);
+  background: rgb(30 111 217);
 }
 
 .ChatComposer_sendIcon {
@@ -706,7 +706,7 @@
 
 .ChatComposer_statusLine:hover {
   border-color: rgb(115 115 115);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
 }
 
 .ChatComposer_bottomTabs {
@@ -1022,7 +1022,7 @@
   border-radius: 0.5rem;
   background: rgb(23 23 23);
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 10%), 0 8px 10px -6px rgb(0 0 0 / 10%);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   text-align: left;
   padding: 0.25rem;
   animation: ChatComposer_slideDown 0.2s ease-out;

@@ -15,12 +15,11 @@
   color: rgb(212 212 212);
   font-size: 12px;
   line-height: 1;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 24%);
 }
 
 .FlowAddHandle_selected {
-  border-color: rgb(96 165 250 / 70%);
-  background: rgb(37 99 235);
+  border-color: rgb(96 165 250);
+  background: rgb(59 130 246);
   color: white;
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 18%), 0 2px 8px rgb(0 0 0 / 24%);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 30%), 0 2px 8px rgb(0 0 0 / 24%);
 }

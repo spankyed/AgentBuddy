@@ -86,7 +86,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 12px;
 }
 
@@ -202,7 +202,7 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;

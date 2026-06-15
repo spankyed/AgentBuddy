@@ -36,7 +36,7 @@
 }
 
 .PRComparison_branchLabel span:first-of-type {
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
 }
 
 .PRComparison_branchLabel span:last-of-type {
@@ -108,7 +108,7 @@
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.25rem;
-  color: rgb(212 212 212);
+  color: rgb(229 229 229);
   font-size: 14px;
   padding: 0.25rem 0.5rem;
 }
@@ -157,9 +157,12 @@
   color: rgb(34 197 94);
 }
 
-.PRComparison_fileRow strong[data-status="deleted"],
-.PRComparison_fileRow strong[data-status="unmerged"] {
+.PRComparison_fileRow strong[data-status="deleted"] {
   color: rgb(239 68 68);
+}
+
+.PRComparison_fileRow strong[data-status="unmerged"] {
+  color: rgb(220 38 38);
 }
 
 .PRComparison_fileRow strong[data-status="renamed"] {
@@ -182,8 +185,12 @@
   text-align: left;
 }
 
+.PRComparison_fileRow svg:first-child {
+  color: rgb(163 163 163);
+}
+
 .PRComparison_fileRow svg:last-child {
-  color: rgb(115 115 115);
+  color: rgb(163 163 163);
 }
 
 .PRComparison_children {

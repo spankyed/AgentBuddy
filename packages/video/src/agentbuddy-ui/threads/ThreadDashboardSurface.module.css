@@ -53,10 +53,6 @@
   margin-right: 10px;
 }
 
-.ThreadDashboardSurface_tabActive .ThreadDashboardSurface_tabDot {
-  background: rgb(59 130 246);
-}
-
 .ThreadDashboardSurface_tabLabel {
   min-width: 0;
   overflow: hidden;

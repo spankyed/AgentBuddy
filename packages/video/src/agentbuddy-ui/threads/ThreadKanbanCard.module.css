@@ -16,9 +16,10 @@
 }
 
 .ThreadKanbanCard_activeRoot {
-  border-color: rgb(64 64 64 / 80%);
-  background: rgb(38 38 38 / 80%);
-  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 55%);
+  border-color: rgb(64 64 64 / 50%);
+  background: rgb(38 38 38 / 50%);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  opacity: 0.9;
 }
 
 .ThreadKanbanCard_top {
@@ -82,7 +83,7 @@
 .ThreadKanbanCard_tags span {
   border-radius: 999px;
   background: rgb(64 64 64 / 50%);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 0.75rem;
   padding: 0.125rem 0.5rem;
 }

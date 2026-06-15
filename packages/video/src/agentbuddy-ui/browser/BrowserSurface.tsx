@@ -59,7 +59,7 @@ export function BrowserSurface({state}: {state: BrowserSurfaceState}) {
             </div>
           ) : null}
         </div>
-        <button className={styles.navButton} type="button">
+        <button className={`${styles.navButton} ${styles.devtoolsButton}`} type="button">
           <Code2 size={14} strokeWidth={2} />
         </button>
       </div>

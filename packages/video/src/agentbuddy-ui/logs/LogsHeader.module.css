@@ -123,7 +123,7 @@
 }
 
 .LogsHeader_info {
-  color: rgb(96 165 250 / 65%);
+  color: rgb(96 165 250 / 60%);
 }
 
 .LogsHeader_info:hover {
@@ -131,7 +131,7 @@
 }
 
 .LogsHeader_warn {
-  color: rgb(250 204 21 / 65%);
+  color: rgb(250 204 21 / 60%);
 }
 
 .LogsHeader_warn:hover {
@@ -139,7 +139,7 @@
 }
 
 .LogsHeader_error {
-  color: rgb(248 113 113 / 65%);
+  color: rgb(248 113 113 / 60%);
 }
 
 .LogsHeader_error:hover {

@@ -61,8 +61,8 @@
 }
 
 .FlowNode_node[data-kind="fire"] {
-  border-color: rgb(251 146 60 / 25%);
-  background: rgb(124 45 18 / 60%);
+  border-color: rgb(251 191 36 / 25%);
+  background: rgb(120 53 15 / 60%);
 }
 
 .FlowNode_node[data-kind="kill"] {
@@ -100,21 +100,21 @@
 .FlowNode_nodeIcon {
   flex-shrink: 0;
   margin-right: 0.125rem;
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .FlowNode_node[data-kind="entry"] .FlowNode_nodeIcon,
 .FlowNode_node[data-kind="listener"] .FlowNode_nodeIcon,
-.FlowNode_node[data-kind="event"] .FlowNode_nodeIcon { color: rgb(147 197 253 / 85%); }
-.FlowNode_node[data-kind="flow"] .FlowNode_nodeIcon { color: rgb(216 180 254 / 85%); }
-.FlowNode_node[data-kind="keep_alive"] .FlowNode_nodeIcon { color: rgb(110 231 183 / 85%); }
+.FlowNode_node[data-kind="event"] .FlowNode_nodeIcon { color: rgb(96 165 250); }
+.FlowNode_node[data-kind="flow"] .FlowNode_nodeIcon { color: rgb(192 132 252); }
+.FlowNode_node[data-kind="keep_alive"] .FlowNode_nodeIcon { color: rgb(52 211 153); }
 .FlowNode_node[data-kind="action"] .FlowNode_nodeIcon { color: rgb(163 163 163); }
-.FlowNode_node[data-kind="create"] .FlowNode_nodeIcon { color: rgb(216 180 254 / 85%); }
-.FlowNode_node[data-kind="llm"] .FlowNode_nodeIcon { color: rgb(165 180 252 / 85%); }
-.FlowNode_node[data-kind="schedule"] .FlowNode_nodeIcon { color: rgb(103 232 249 / 85%); }
-.FlowNode_node[data-kind="switch"] .FlowNode_nodeIcon { color: rgb(252 211 77 / 85%); }
-.FlowNode_node[data-kind="fire"] .FlowNode_nodeIcon { color: rgb(253 186 116 / 85%); }
-.FlowNode_node[data-kind="kill"] .FlowNode_nodeIcon { color: rgb(252 165 165 / 85%); }
+.FlowNode_node[data-kind="create"] .FlowNode_nodeIcon { color: rgb(192 132 252); }
+.FlowNode_node[data-kind="llm"] .FlowNode_nodeIcon { color: rgb(129 140 248); }
+.FlowNode_node[data-kind="schedule"] .FlowNode_nodeIcon { color: rgb(34 211 238); }
+.FlowNode_node[data-kind="switch"] .FlowNode_nodeIcon { color: rgb(250 204 21); }
+.FlowNode_node[data-kind="fire"] .FlowNode_nodeIcon { color: rgb(251 191 36); }
+.FlowNode_node[data-kind="kill"] .FlowNode_nodeIcon { color: rgb(248 113 113); }
 
 .FlowNode_header span:nth-child(2) {
   min-width: 0;
@@ -128,7 +128,7 @@
   align-items: center;
   justify-content: center;
   margin-top: 0.375rem;
-  border-top: 1px solid rgb(96 165 250 / 25%);
+  border-top: 1px solid rgb(96 165 250 / 40%);
   padding-top: 0.375rem;
   color: rgb(163 163 163);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -144,7 +144,7 @@
 
 .FlowNode_branchList {
   margin-top: 0.5rem;
-  border-top: 1px solid rgb(250 204 21 / 25%);
+  border-top: 1px solid rgb(234 179 8 / 40%);
   padding-top: 0.5rem;
 }
 
@@ -182,7 +182,7 @@
   justify-content: center;
   border-radius: 0.375rem;
   background: rgb(82 82 82 / 60%);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 10px;
   font-weight: 600;
 }
@@ -220,7 +220,7 @@
   border: 1px solid rgb(82 82 82);
   border-radius: 999px;
   background: rgb(64 64 64);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font-size: 12px;
   line-height: 1;
   transform: translateY(-50%);

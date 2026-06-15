@@ -11,5 +11,8 @@
 
 .KanbanBoard_movingCard {
   position: absolute;
-  width: 300px;
+  /* One column-card wide, as a % of the board so it matches a real card in both
+     the landscape and square five-column layouts (a fixed px width would overhang
+     the narrower square columns). */
+  width: 16%;
 }
