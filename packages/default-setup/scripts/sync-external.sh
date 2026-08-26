@@ -35,7 +35,7 @@ rsync -av --delete \
   "$ROOT/src/" "$EXTERNAL/src/"
 
 # Sync root doc files
-for f in CLAUDE.md abuddy-pack.json; do
+for f in CLAUDE.md abuddy.json; do
   if [ -f "$ROOT/$f" ]; then
     cp "$ROOT/$f" "$EXTERNAL/$f"
     echo "$f"
