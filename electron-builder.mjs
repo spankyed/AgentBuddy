@@ -44,6 +44,10 @@ export default /** @type import('electron-builder').Configuration */
       NSSpeechRecognitionUsageDescription: 'AgentBuddy uses speech recognition to convert voice to text.',
       NSDesktopFolderUsageDescription: 'AgentBuddy may need access to your Desktop when selecting files.',
       NSNetworkVolumesUsageDescription: 'AgentBuddy may need to access network volumes to locate development tools.',
+      CFBundleURLTypes: [{
+        CFBundleURLName: 'AgentBuddy Protocol',
+        CFBundleURLSchemes: ['abuddy'],
+      }],
     },
     notarize: !!process.env.APPLE_TEAM_ID,
     target: [

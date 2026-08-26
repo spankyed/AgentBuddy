@@ -13,6 +13,7 @@ import {createMediaProtocol} from './modules/media-protocol/index.js';
 import {createSpeechRecognition} from './modules/speech-recognition/index.js';
 import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
 import {createBrowserModule} from './modules/browser/index.js';
+import {createProtocolHandler} from './modules/ProtocolHandler.js';
 import {app} from 'electron';
 import {initializeMainLogCapture} from './modules/api-server/logger.js';
 
@@ -29,6 +30,7 @@ export async function initApp(initConfig: AppInitConfig) {
 
   const moduleRunner = createModuleRunner()
     .init(disallowMultipleAppInstance())
+    .init(createProtocolHandler())
     .init(hardwareAccelerationMode({enable: true}))
     .init(createMediaProtocol())  // Must register protocol schemes before app ready
     .init(splashScreen)  // Show splash screen early
