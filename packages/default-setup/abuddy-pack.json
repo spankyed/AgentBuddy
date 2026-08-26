@@ -1,0 +1,7 @@
+{
+  "name": "Default Setup",
+  "version": "0.1.0",
+  "description": "The official AgentBuddy starter pack — actions, prompts, flows, library docs, and default settings.",
+  "artifactTypes": ["actions", "prompts", "flows", "library", "notes", "settings"],
+  "license": "MIT"
+}
