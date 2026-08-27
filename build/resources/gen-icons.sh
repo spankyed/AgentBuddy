@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEFAULT_SOURCE="$SCRIPT_DIR/../../resources/logo-dark.png"
+DEFAULT_SOURCE="$SCRIPT_DIR/../../resources/modern logo/app-icon.png"
 SOURCE="${1:-$DEFAULT_SOURCE}"
 OUT_DIR="$SCRIPT_DIR"
 WORK="$(mktemp -d)"
