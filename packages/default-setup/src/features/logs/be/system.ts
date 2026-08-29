@@ -7,7 +7,7 @@ import { rootEvents } from '@/core/router/bus-emitter';
 import { LogEvent } from '@/core/shared/debug/logger';
 import { IncomingSystemEvents } from '@/core/router/events';
 import { repository } from '@/repository';
-import type { LogsSettings } from '../settings/types';
+import type { LogsSettings } from '@/features/settings/be/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.

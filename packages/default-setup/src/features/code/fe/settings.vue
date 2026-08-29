@@ -455,7 +455,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import DirectorySelect from '@/core/components/design/DirectorySelect.vue'
 import { X, Plus } from 'lucide-vue-next'

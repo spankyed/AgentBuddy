@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core'
 import { commandSuggestionPlugin } from './command-suggestion-plugin'
 import { applicationState } from '@/main'
-import { id as threadsId } from '@/plugins/threads/state'
+import { threadsId } from '@/registries/extensions'
 import type { CommandItem } from './command-config'
 
 export const CommandSuggestion = Extension.create({

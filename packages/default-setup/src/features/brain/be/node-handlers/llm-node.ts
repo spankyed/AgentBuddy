@@ -1,11 +1,11 @@
-import type { NodeEntity } from '@/core/shared-types/flows';
-import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
+import type { NodeEntity } from '@/features/flows/be/config/types';
+import type { ExecutionContext, FieldMapping, TNodeEntity } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { repository } from '@/repository';
 import { executeTemplate } from '@/core/shared/template-executor';
 import { createPromptContext } from '@/core/shared/prompt-context';
 import { EARS } from '@/core/types';
-import { generateText } from '@/services/llm';
+import { generateText } from '@/shared-services/llm';
 import { reportBrainRuntimeError } from '../runtime-errors';
 
 interface LLMNodeConfig {

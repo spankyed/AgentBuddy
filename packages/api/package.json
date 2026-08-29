@@ -5,10 +5,10 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts --shims --minify",
+    "build": "tsc --noEmit && NODE_OPTIONS='--max-old-space-size=8192' tsup src/types.ts src/server.ts --format esm,cjs --dts --shims --minify",
     "dev": "run-p dev:types dev:serve",
-    "dev:types": "tsc -p . --watch --preserveWatchOutput",
-    "dev:serve": "nodemon dist/server.js",
+    "dev:types": "tsc -p . --noEmit --watch --preserveWatchOutput",
+    "dev:serve": "tsx --watch src/server.ts",
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
@@ -22,7 +22,7 @@
     "db:import": "tsx scripts/db/import-backup.ts",
     "db:reset": "tsx scripts/db/reset.ts",
     "db:seed": "tsx scripts/db/seed/index.ts",
-    "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts"
+    "dsl:export": "tsx ../default-setup/src/features/flows/be/dsl/export-to-dsl.ts"
   },
   "keywords": [],
   "author": "angel santiago",

@@ -247,21 +247,21 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { id as codeId, type CodeState } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
   Loader2, ArrowLeft, X
 } from 'lucide-vue-next'
-import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
-import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
-import EmptyState from '@/plugins/code/features/EmptyState.vue'
-import PRSelector from '@/plugins/code/features/pull-request/PRSelector.vue'
-import PRComparison from '@/plugins/code/features/pull-request/PRComparison.vue'
-import CreatePRForm from '@/plugins/code/features/pull-request/CreatePRForm.vue'
-import PRInfo from '@/plugins/code/features/pull-request/PRInfo.vue'
-import PRComments from '@/plugins/code/features/pull-request/PRComments.vue'
-import PRActionBar from '@/plugins/code/features/pull-request/PRActionBar.vue'
-import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
+import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
+import EmptyState from '@/features/code/fe/features/EmptyState.vue'
+import PRSelector from '@/features/code/fe/features/pull-request/PRSelector.vue'
+import PRComparison from '@/features/code/fe/features/pull-request/PRComparison.vue'
+import CreatePRForm from '@/features/code/fe/features/pull-request/CreatePRForm.vue'
+import PRInfo from '@/features/code/fe/features/pull-request/PRInfo.vue'
+import PRComments from '@/features/code/fe/features/pull-request/PRComments.vue'
+import PRActionBar from '@/features/code/fe/features/pull-request/PRActionBar.vue'
+import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import type { TreeNode } from './types'
 
 // Get actors

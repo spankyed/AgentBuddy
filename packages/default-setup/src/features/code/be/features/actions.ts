@@ -3,7 +3,7 @@ import { emit } from '@/core/shared/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
-import type { ActionEntity } from '@/core/shared-types/actions'
+import type { ActionEntity } from '@/features/actions/be/types'
 
 const pluginId = 'code' as const
 

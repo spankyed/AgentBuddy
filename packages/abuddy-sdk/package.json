@@ -15,7 +15,15 @@
     "./ids": "./src/ids/index.ts",
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
+    "./fe/design/*": "./src/fe/design/*",
+    "./fe/composables/*": "./src/fe/composables/*",
     "./build": "./src/build/index.ts"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": { "optional": true }
   },
   "devDependencies": {
     "typescript": "^5.8.3",

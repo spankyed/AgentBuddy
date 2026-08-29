@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { AlertCircle } from 'lucide-vue-next'
-import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 
 const props = defineProps<{
   show: boolean

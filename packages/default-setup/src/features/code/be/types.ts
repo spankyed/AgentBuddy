@@ -1,5 +1,5 @@
 import { EARS } from '@/core/types'
-import type { KeyboardShortcut } from '../settings/types'
+import type { KeyboardShortcut } from '@/features/settings/be/types'
 
 export interface FileInfo {
   name: string

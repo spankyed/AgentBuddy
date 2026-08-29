@@ -1,17 +1,21 @@
-import * as fs from 'fs'
-import * as path from 'path'
+import { pathToFileURL } from 'url';
 
-const ROOT = path.resolve(import.meta.dirname, '..')
-const COMPILED_DIR = path.join(ROOT, 'dist')
-const OUTPUT_FILE = path.join(COMPILED_DIR, 'compiled-settings.json')
+export async function loadSettingsFromFile(settingsPath: string): Promise<Record<string, any>> {
+  const mod = await import(pathToFileURL(settingsPath).href);
+  return mod.default;
+}
 
-export async function compileSettings(): Promise<void> {
-  const mod = await import('../src/default-settings.ts')
-  const settings = mod.default
-
-  fs.mkdirSync(COMPILED_DIR, { recursive: true })
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(settings, null, 2) + '\n')
-
-  const sections = Object.keys(settings)
-  console.log(`Wrote settings (${sections.join(', ')}) to ${path.relative(process.cwd(), OUTPUT_FILE)}`)
+export function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (
+      result[key] && typeof result[key] === 'object' && !Array.isArray(result[key]) &&
+      source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])
+    ) {
+      result[key] = deepMerge(result[key], source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
 }

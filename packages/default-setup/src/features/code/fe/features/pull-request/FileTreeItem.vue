@@ -80,9 +80,9 @@ import {
   ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal
 } from 'reka-ui'
-import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '@/plugins/code/features/explorer/constants'
+import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '@/features/code/fe/features/explorer/constants'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
-import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import type { TreeNode } from './types'
 
 const props = withDefaults(defineProps<{

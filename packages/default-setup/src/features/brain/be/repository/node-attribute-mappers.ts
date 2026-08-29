@@ -1,5 +1,5 @@
-import type { NodeEntity } from '@/core/shared-types/flows';
-import type { ExecutionContext, FieldMapping, SourceResolver } from '@/systems/brain/types';
+import type { NodeEntity } from '@/features/flows/be/config/types';
+import type { ExecutionContext, FieldMapping, SourceResolver } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '../utils/result-truncator';
 

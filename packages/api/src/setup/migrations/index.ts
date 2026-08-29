@@ -1,4 +1,4 @@
-import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { settingsQueries, settingsCommands } from '@/features/settings/be/repository';
 import { APP_VERSION } from '@/version';
 
 export interface Migration {

@@ -76,7 +76,7 @@ import {
   isJsonObject,
   isJsonArray,
   formatJsonValue
-} from '@/plugins/database/components/simple-table/utils/json-detection';
+} from '@/registries/extensions';
 
 interface Props {
   value: any;

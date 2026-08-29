@@ -1,4 +1,4 @@
-import { app, net, protocol } from 'electron';
+import { app, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.js';
@@ -27,7 +27,6 @@ class PackProtocol implements AppModule {
         privileges: {
           secure: true,
           supportFetchAPI: true,
-          bypassCSP: true,
         },
       },
     ]);
@@ -41,7 +40,9 @@ class PackProtocol implements AppModule {
         const packsDir = getPacksDir();
         const resolved = path.resolve(packsDir, packId, filePath.replace(/^\//, ''));
 
-        if (!resolved.startsWith(path.join(packsDir, packId))) {
+        // Trailing separator prevents pack "fo" accessing pack "foobar"
+        const allowedPrefix = path.join(packsDir, packId) + path.sep;
+        if (!resolved.startsWith(allowedPrefix)) {
           return new Response('Forbidden', { status: 403 });
         }
 
@@ -52,7 +53,7 @@ class PackProtocol implements AppModule {
         const ext = path.extname(resolved);
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-        return net.fetch(`file://${resolved}`, {
+        return new Response(fs.readFileSync(resolved), {
           headers: { 'Content-Type': contentType },
         });
       });

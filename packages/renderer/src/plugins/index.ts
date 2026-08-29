@@ -1,29 +1,6 @@
-import Threads from './threads/plugin.ts';
-import Flows from './flows/plugin.ts';
-import Database from './database/plugin.ts';
-import Brain from './brain/plugin.ts';
-import Logs from './logs/plugin.ts';
-import Prompts from './prompts/plugin.ts';
-import Settings from './settings/plugin.ts';
-import Actions from './actions/plugin.ts';
+import { plugins, defaultPlugin } from '@/registries/plugins';
 import Blank from './_blank/plugin.ts';
-import Library from './library/plugin.ts';
-import Code from './code/plugin.ts';
-import Notes from './notes/plugin.ts';
-import Browser from './browser/plugin.ts';
-import Calendar from './calendar/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
-import {
-  Code as CodeIcon,
-  AtSign,
-  Sparkle,
-  Workflow,
-  Bird,
-  ListTodo,
-  Library as LucideLibrary,
-  NotebookText,
-  Play
-} from 'lucide-vue-next';
 
 export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
   return {
@@ -34,33 +11,11 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
   };
 }
 
-const mockPlugins: Plugin[] = [
-  // wont do
-  // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
-  // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
-  // mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
-
-  // planned
-  // mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
-  // mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
-];
+const mockPlugins: Plugin[] = [];
 
 export default [
-  Threads,
-  Code,
-  Notes,
-  Calendar,
-  Browser,
-  Library,
-  Flows,
-  Actions,
-  Prompts,
-  Brain,
-  Database,
-  Logs,
-  Settings,
-  // Blank,
+  ...plugins,
   ...mockPlugins,
 ];
 
-export const defaultPlugin = Threads;
+export { defaultPlugin };

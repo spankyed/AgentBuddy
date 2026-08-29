@@ -102,7 +102,7 @@ import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
 import { applicationState } from '@/main';
-import { id as threadsId } from '@/plugins/threads/state';
+import { id as threadsId } from '@/features/threads/fe/state';
 
 interface TodoTask {
   id: string;

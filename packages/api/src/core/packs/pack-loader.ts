@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
+import { APP_VERSION } from '@/version';
 
 const logger = createLogger('pack-loader');
 
@@ -96,7 +97,7 @@ function loadSystemFromCJS(
     // Intercept @abuddy/sdk requires so pack code uses the host's SDK
     (Module as any)._resolveFilename = function (request: string, ...args: any[]) {
       if (request.startsWith('@abuddy/sdk')) {
-        return originalResolve.call(this, request.replace('@abuddy/sdk', require.resolve('@abuddy/sdk').replace(/\/index\.(js|cjs)$/, '')), ...args);
+        return originalResolve.call(this, request.replace('@abuddy/sdk', require.resolve('@abuddy/sdk').replace(/\/index\.(js|cjs|ts)$/, '')), ...args);
       }
       return originalResolve.call(this, request, ...args);
     };
@@ -108,8 +109,7 @@ function loadSystemFromCJS(
       return null;
     }
 
-    const events = new Set<string>(machine.events || []);
-    return { machine, events };
+    return { machine, events: new Set<string>(machine.events || []) };
   } catch (err) {
     logger.error(`Failed to load system from ${entry}:`, err as Error);
     return null;
@@ -128,6 +128,14 @@ export function loadExternalPacks(): LoadedPack[] {
   const loaded: LoadedPack[] = [];
 
   for (const { manifest, dir } of discovered) {
+    if (manifest.hostVersion) {
+      const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
+      if (APP_VERSION.localeCompare(minVersion, undefined, { numeric: true }) < 0) {
+        logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
+        continue;
+      }
+    }
+
     const systems = new Map<string, { machine: any; events: Set<string> }>();
 
     if (manifest.features) {
@@ -136,6 +144,12 @@ export function loadExternalPacks(): LoadedPack[] {
 
         const system = loadSystemFromCJS(feature.system.entry, dir);
         if (system) {
+          // Merge manifest-declared events with runtime-detected events
+          if (feature.system.events?.incoming) {
+            for (const evt of feature.system.events.incoming) {
+              system.events.add(evt);
+            }
+          }
           systems.set(feature.id, system);
           logger.info(`Loaded system: ${manifest.id}/${feature.id}`);
         }

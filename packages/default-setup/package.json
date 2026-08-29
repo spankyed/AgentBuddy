@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./build": "./build/compile-pack.ts"
+  },
   "scripts": {
     "compile:actions": "tsx build/compile.ts actions",
     "compile:prompts": "tsx build/compile.ts prompts",
@@ -11,11 +14,15 @@
     "compile:notes": "tsx build/compile.ts notes",
     "compile:settings": "tsx build/compile.ts settings",
     "compile:faq": "tsx build/compile.ts faq",
-    "compile": "npm run compile:settings && npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes",
+    "compile:all": "tsx build/compile.ts all",
+    "compile": "tsx build/compile.ts all",
     "sync:external": "bash scripts/sync-external.sh",
     "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@abuddy/sdk": "*"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

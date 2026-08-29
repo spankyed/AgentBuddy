@@ -8,8 +8,8 @@ import { repository } from '@/repository';
 import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@/core/shared/debug/logger';
-import type { ActionEntity } from '@/core/shared-types/actions';
-import type { PromptEntity } from '@/core/shared-types/prompts';
+import type { ActionEntity } from '@/features/actions/be/types';
+import type { PromptEntity } from '@/features/prompts/be/types';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');

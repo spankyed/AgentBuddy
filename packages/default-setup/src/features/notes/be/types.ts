@@ -1,5 +1,5 @@
 import { BaseEntity, EARS } from '@/core/types';
-import type { NotesSettings } from '@/core/shared-types/settings';
+import type { NotesSettings } from '@/features/settings/be/types';
 
 export const REFERENCES = EARS.RelKind.Custom('references');
 

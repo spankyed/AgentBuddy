@@ -103,6 +103,34 @@ async function validateFeatures(featuresDir: string): Promise<ManifestValidation
         }
       }
 
+      if (config.library) {
+        const libraryDir = path.resolve(featureDir, config.library);
+        if (!fs.existsSync(libraryDir)) {
+          errors.push(`Feature "${entry.name}": library dir "${config.library}" not found`);
+        }
+      }
+
+      if (config.notes) {
+        const notesDir = path.resolve(featureDir, config.notes);
+        if (!fs.existsSync(notesDir)) {
+          errors.push(`Feature "${entry.name}": notes dir "${config.notes}" not found`);
+        }
+      }
+
+      if (config.faqs) {
+        const faqsDir = path.resolve(featureDir, config.faqs);
+        if (!fs.existsSync(faqsDir)) {
+          errors.push(`Feature "${entry.name}": faqs dir "${config.faqs}" not found`);
+        }
+      }
+
+      if (config.settings) {
+        const settingsFile = path.resolve(featureDir, config.settings);
+        if (!fs.existsSync(settingsFile)) {
+          errors.push(`Feature "${entry.name}": settings file "${config.settings}" not found`);
+        }
+      }
+
       featureCount++;
     } catch (err) {
       errors.push(`Feature "${entry.name}": failed to load pack.config.ts: ${err}`);

@@ -271,7 +271,7 @@ import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
 import { navigateToPlugin } from '@/core/utils/navigate'
-import { id as threadsId } from '@/plugins/threads/state'
+import { id as threadsId } from '@/features/threads/fe/state'
 import { trpc } from '@/core/trpc'
 
 type ApprovalMode = 'user' | 'auto_review'

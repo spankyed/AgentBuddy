@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { MarkerType, type EdgeProps, useVueFlow } from '@vue-flow/core'
-import { LAYOUT_CONFIG } from '@/plugins/flows/canvas/layout-utils'
+import { LAYOUT_CONFIG } from '@/features/flows/fe/canvas/layout-utils'
 
 const props = defineProps<EdgeProps>()
 const { getEdges } = useVueFlow()

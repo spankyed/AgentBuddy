@@ -1,6 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { applicationState } from '@/main'
 import type { SETTINGS_SCOPE } from '@app/api'
+import { settingsId } from '@/registries/extensions'
 
 /**
  * Composable for managing settings save status with automatic timeout
@@ -10,7 +11,7 @@ export function useSettingsSaveStatus() {
   const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
   let saveTimeout: NodeJS.Timeout | null = null
   
-  const settingsActor = applicationState.system.get('settings')
+  const settingsActor = applicationState.system.get(settingsId)
   
   /**
    * Set the save status with automatic timeout for 'saved' state

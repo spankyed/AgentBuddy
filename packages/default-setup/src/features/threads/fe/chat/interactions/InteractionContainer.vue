@@ -203,7 +203,7 @@ import SessionListBlock from './blocks/SessionListBlock.vue'
 import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
 import { navigateToPlugin } from '@/core/utils/navigate'
-import { id as threadsId } from '@/plugins/threads/state'
+import { id as threadsId } from '@/features/threads/fe/state'
 
 interface Props {
   blocks: BlockConfig[]

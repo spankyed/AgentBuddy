@@ -2,6 +2,8 @@ import type { PackConfig } from '@abuddy/sdk/build';
 
 export default {
   name: 'code',
-  actions: '../../actions/claude-code',
-  prompts: '../../prompts',
+  actions: './actions',
+  prompts: './prompts',
+  flows: './flows',
+  settings: './settings.ts',
 } satisfies PackConfig;

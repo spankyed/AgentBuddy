@@ -146,9 +146,9 @@ import {
   Pencil,
   PanelBottom
 } from 'lucide-vue-next'
-import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/plugins/code/state'
-import type { ActionTab } from '@/plugins/code/features/actions/state'
-import type { PromptTab } from '@/plugins/code/features/prompts/state'
+import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/features/code/fe/state'
+import type { ActionTab } from '@/features/code/fe/features/actions/state'
+import type { PromptTab } from '@/features/code/fe/features/prompts/state'
 
 type TabType = OpenFile | TerminalTab | ActionTab | PromptTab
 

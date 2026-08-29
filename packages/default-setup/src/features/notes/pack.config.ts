@@ -2,5 +2,5 @@ import type { PackConfig } from '@abuddy/sdk/build';
 
 export default {
   name: 'notes',
-  notes: '../../notes',
+  settings: './settings.ts',
 } satisfies PackConfig;

@@ -29,9 +29,9 @@
 <script setup lang="ts">
 import { Pin } from 'lucide-vue-next'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
-import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue'
-import type { ThreadListItem } from '@/plugins/threads/state'
-import type { ThreadTabGroup } from '@/plugins/threads/canvas/agent/tabs/types'
+import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
+import type { ThreadListItem } from '@/features/threads/fe/state'
+import type { ThreadTabGroup } from '@/features/threads/fe/canvas/agent/tabs/types'
 
 defineProps<{
   thread: ThreadListItem

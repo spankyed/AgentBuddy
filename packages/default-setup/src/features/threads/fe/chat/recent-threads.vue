@@ -281,8 +281,8 @@ import {
 } from 'reka-ui'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id as threadsId, type ThreadsState } from '@/plugins/threads/state'
-import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue'
+import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state'
+import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
 
 export interface ThreadsProps {

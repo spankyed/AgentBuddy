@@ -177,7 +177,7 @@ import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
-import AgentCanvas from '@/plugins/threads/canvas/agent/canvas.vue'
+import AgentCanvas from '@/features/threads/fe/canvas/agent/canvas.vue'
 import ThreadSidebar from './thread-sidebar.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
@@ -186,7 +186,7 @@ import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
 import { navigateToPlugin } from '@/core/utils/navigate'
 import { useSelector } from '@xstate/vue'
-import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/state';
+import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 

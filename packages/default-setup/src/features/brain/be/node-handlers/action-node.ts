@@ -1,5 +1,5 @@
-import type { NodeEntity } from '@/core/shared-types/flows';
-import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
+import type { NodeEntity } from '@/features/flows/be/config/types';
+import type { ExecutionContext, TNodeEntity } from '../types';
 import { brainInspect } from '../utils/brain-inspect';
 import { repository } from '@/repository';
 import { z } from 'zod';

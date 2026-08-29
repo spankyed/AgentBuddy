@@ -1,4 +1,4 @@
-import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { settingsQueries, settingsCommands } from '@/features/settings/be/repository';
 import type { Migration } from './index';
 
 export const migration: Migration = {

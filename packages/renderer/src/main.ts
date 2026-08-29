@@ -7,7 +7,9 @@ import './style.css'
 import plugins, { defaultPlugin } from '@/plugins';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
+import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
+import { loadPackPlugins } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
 
 declare const __APP_VERSION__: string;
@@ -127,3 +129,20 @@ app.config.errorHandler = (err, _instance, info) => {
 };
 
 app.mount('#app');
+
+// Load external pack plugins after boot
+trpc.packs.registry.query().then(async (registry) => {
+  if (!registry.length) return;
+  for (const pack of registry) {
+    if (!pack.plugins.length) continue;
+    const plugins = await loadPackPlugins(
+      pack.plugins.map(p => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon })),
+      `pack://${pack.id}`,
+    );
+    if (plugins.length > 0) {
+      applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+    }
+  }
+}).catch(err => {
+  console.warn('[pack-loader] Failed to load pack registry:', err);
+});

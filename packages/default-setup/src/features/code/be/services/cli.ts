@@ -1,0 +1,310 @@
+import { GitRepository } from '@/features/code/be/services/git'
+import * as ghCli from '@/features/code/be/services/gh-cli'
+import { repository } from '@/repository'
+import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/features/code/be/types'
+import { claudeCode } from './claude-code'
+import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from './claude-code'
+import type { ExecOnceOptions, ExecOnceResult } from './claude-code/runner'
+import { storeHandle, getHandle, clearHandle } from './claude-code/handle-store'
+import { codexExec } from './codex/runner'
+import type { CodexExecOptions, CodexExecResult } from './codex/runner'
+import { testCli, isCliName } from '@/core/shared/resolve-cli'
+import { configDir } from './claude-code/sessions'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
+
+interface CodeSettings {
+  defaultBaseDirectory?: string | null
+  baseDirectory?: string | null
+}
+
+export interface CliServiceType {
+  git: {
+    commit(message: string): Promise<void>
+    getStatus(): Promise<GitStatusFile[]>
+    getCurrentBranch(): Promise<string>
+    getWorkingDir(): string
+    /**
+     * Return the unified diff for the working copy vs HEAD. Pass a list of
+     * paths to restrict to specific files; omit to get all changes. Used by
+     * the Claude Code chat action to assemble a `diff` artifact after file-
+     * mutating tool calls (Write/Edit/NotebookEdit).
+     */
+    getDiff(paths?: string[]): Promise<string>
+  }
+  gh: {
+    getPRForBranch(branch?: string): Promise<GhPullRequest | null>
+    getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }>
+    getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]>
+  }
+  /**
+   * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
+   * plugins, skills, …) is available via `import { claudeCode } from
+   * '@/services/claude-code'`.
+   */
+  /** Clear-cache resolve + exec test — same path as the Settings test button. */
+  testCli(provider: string): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }>
+  claudeCode: {
+    query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
+    version(): Promise<string>
+    authStatus(): Promise<AuthStatus>
+    listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
+    /** List sessions across ALL project directories (not just the configured cwd). */
+    listAllSessions(opts?: { limit?: number }): Promise<SessionInfo[]>
+    /**
+     * Parse a session's JSONL transcript into an in-memory array of entries.
+     * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
+     * on pre-existing user messages from Claude's own session file.
+     * `cwd` defaults to the configured project directory.
+     */
+    viewSession(id: string, opts?: Omit<SessionViewOptions, 'cwd'> & { cwd?: string }): Promise<SessionTranscriptEntry[]>
+    /** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
+    viewSessionByFile(filePath: string, opts?: { limit?: number; offset?: number }): Promise<SessionTranscriptEntry[]>
+    getWorkingDir(): string
+    /** Store a live query handle so other actions can write control_responses. */
+    storeHandle(key: string, handle: QueryHandle): void
+    /** Retrieve a stored query handle by key (typically threadId). */
+    getHandle(key: string): QueryHandle | undefined
+    /** Clear a stored handle (call on query end to avoid leaking references). */
+    clearHandle(key: string): void
+    /**
+     * Low-level one-shot CLI invocation. Used by `CC: Handle Revert` to run
+     * `claude --resume <sid> --rewind-files <uuid>` for file-rewind on revert.
+     * `cwd` defaults to the configured project directory.
+     */
+    exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & { cwd?: string }): Promise<ExecOnceResult>
+    /** Read the CLI's user-scope settings.json (~/.claude/settings.json). */
+    readSettings(): Promise<Record<string, any>>
+    /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
+    writeSettings(settings: Record<string, any>): Promise<void>
+    /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
+    listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** List memory/CLAUDE.md files from known locations. */
+    listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** Rename a Claude Code session by appending a metadata entry to its JSONL file. */
+    renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
+    /** Check whether a session JSONL file exists under the given (or default) project directory. */
+    sessionExists(id: string, opts?: { cwd?: string }): Promise<boolean>
+  }
+  /** Codex CLI wrapper for one-shot tasks. */
+  codex: {
+    /**
+     * Low-level one-shot CLI invocation via `codex exec`.
+     * `cwd` defaults to the configured project directory.
+     */
+    exec(args: readonly string[], opts?: Omit<CodexExecOptions, 'cwd'> & { cwd?: string }): Promise<CodexExecResult>
+  }
+}
+
+function createCliService(): CliServiceType {
+  let gitRepo: GitRepository | null = null
+  let lastCwd: string | null = null
+
+  function resolveCwd(): string {
+    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings | undefined
+    let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || null
+    if (!cwd) {
+      throw new Error('No project directory configured. Open a directory in the Code panel first.')
+    }
+    if (cwd.startsWith('~/')) {
+      cwd = path.join(os.homedir(), cwd.slice(2))
+    } else if (cwd === '~') {
+      cwd = os.homedir()
+    }
+    return cwd
+  }
+
+  function getGitRepo(): GitRepository {
+    const cwd = resolveCwd()
+    if (!gitRepo || lastCwd !== cwd) {
+      gitRepo = new GitRepository(cwd)
+      lastCwd = cwd
+    }
+    return gitRepo
+  }
+
+  return {
+    testCli(provider: string) {
+      if (!isCliName(provider)) {
+        return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
+      }
+      const storedPath = repository.settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
+      return testCli(provider, storedPath);
+    },
+    git: {
+      async commit(message: string): Promise<void> {
+        await getGitRepo().commit(message)
+      },
+      async getStatus(): Promise<GitStatusFile[]> {
+        return getGitRepo().getStatus()
+      },
+      async getCurrentBranch(): Promise<string> {
+        return getGitRepo().getCurrentBranch()
+      },
+      getWorkingDir(): string {
+        return resolveCwd()
+      },
+      async getDiff(paths?: string[]): Promise<string> {
+        const repo = getGitRepo()
+        if (!paths || paths.length === 0) {
+          return repo.getDiff()
+        }
+        return repo.getDiffMulti(paths)
+      },
+    },
+    gh: {
+      async getPRForBranch(branch?: string): Promise<GhPullRequest | null> {
+        const cwd = resolveCwd()
+        const branchName = branch || await getGitRepo().getCurrentBranch()
+        return ghCli.getPRForBranch(cwd, branchName)
+      },
+      async getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }> {
+        const cwd = resolveCwd()
+        return ghCli.getPRDetails(cwd, number, repo)
+      },
+      async getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]> {
+        const cwd = resolveCwd()
+        return ghCli.getReviewThreads(cwd, number, repo)
+      },
+    },
+    claudeCode: {
+      query(opts) {
+        const cwd = opts.cwd ?? resolveCwd()
+        // Default replayUserMessages=true so the CLI emits post-persistence
+        // user replay events (SDKUserMessageReplay) carrying the canonical
+        // `uuid`. Without this flag, only the input-echo user event is
+        // emitted — which has no uuid — and stream-consumer's live
+        // `context.cliUuid` write for user messages never fires. Gated
+        // in Claude at src/main.tsx:1944-1950 (cliArgs.replayUserMessages
+        // || UDS_INBOX feature). Callers can still override by passing
+        // `replayUserMessages: false` explicitly (spread order honors it).
+        return claudeCode.query({ replayUserMessages: true, ...opts, cwd })
+      },
+      version() {
+        return claudeCode.system.version()
+      },
+      authStatus() {
+        return claudeCode.auth.status()
+      },
+      listSessions(opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return claudeCode.sessions.list({ ...opts, cwd })
+      },
+      listAllSessions(opts) {
+        return claudeCode.sessions.listAll(opts)
+      },
+      viewSession(id, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return claudeCode.sessions.view(id, { ...opts, cwd })
+      },
+      viewSessionByFile(filePath, opts) {
+        return claudeCode.sessions.viewByFile(filePath, opts)
+      },
+      getWorkingDir() {
+        return resolveCwd()
+      },
+      storeHandle,
+      getHandle,
+      clearHandle,
+      exec(args, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return claudeCode.exec(args, { ...opts, cwd })
+      },
+      async readSettings() {
+        const settingsPath = path.join(configDir(), 'settings.json')
+        try {
+          const raw = await fs.promises.readFile(settingsPath, 'utf-8')
+          return JSON.parse(raw)
+        } catch {
+          return {}
+        }
+      },
+      async writeSettings(settings) {
+        const settingsPath = path.join(configDir(), 'settings.json')
+        try {
+          await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2))
+        } catch (err: any) {
+          if (err?.code === 'ENOENT') {
+            throw new Error('Claude Code config directory not found (~/.claude/). Is Claude Code installed?')
+          }
+          throw err
+        }
+      },
+      async listSkills() {
+        const results: Array<{ name: string; scope: string; path: string }> = []
+        const dirs = [
+          { dir: path.join(configDir(), 'skills'), scope: 'user' },
+          { dir: path.join(resolveCwd(), '.claude', 'skills'), scope: 'project' },
+        ]
+        for (const { dir, scope } of dirs) {
+          try {
+            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push({
+                  name: entry.name.replace(/\.md$/, ''),
+                  scope,
+                  path: path.join(dir, entry.name),
+                })
+              }
+            }
+          } catch { /* dir doesn't exist */ }
+        }
+        return results
+      },
+      async listMemoryFiles() {
+        const cwd = resolveCwd()
+        const results: Array<{ name: string; scope: string; path: string }> = []
+        const candidates = [
+          { filePath: path.join(os.homedir(), '.claude', 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'user' },
+          { filePath: path.join(cwd, 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'project' },
+          { filePath: path.join(cwd, 'CLAUDE.local.md'), name: 'CLAUDE.local.md', scope: 'local' },
+        ]
+        for (const { filePath, name, scope } of candidates) {
+          try {
+            await fs.promises.access(filePath)
+            results.push({ name, scope, path: filePath })
+          } catch { /* doesn't exist */ }
+        }
+        // Scan rules directories
+        const rulesDirs = [
+          { dir: path.join(os.homedir(), '.claude', 'rules'), scope: 'user' },
+          { dir: path.join(cwd, '.claude', 'rules'), scope: 'project' },
+        ]
+        for (const { dir, scope } of rulesDirs) {
+          try {
+            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push({
+                  name: `rules/${entry.name}`,
+                  scope,
+                  path: path.join(dir, entry.name),
+                })
+              }
+            }
+          } catch { /* dir doesn't exist */ }
+        }
+        return results
+      },
+      async renameSession(id, title, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        await claudeCode.sessions._experimental_rename(id, title, { cwd })
+      },
+      async sessionExists(id, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        const info = await claudeCode.sessions.get(id, { cwd })
+        return info !== null
+      },
+    },
+    codex: {
+      exec(args, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return codexExec(args, { ...opts, cwd })
+      },
+    },
+  }
+}
+
+export const cliService = createCliService()

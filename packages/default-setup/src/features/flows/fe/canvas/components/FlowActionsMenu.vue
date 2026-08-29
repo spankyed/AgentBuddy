@@ -57,7 +57,7 @@ import {
 } from 'reka-ui'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/flows/state'
+import { id } from '@/features/flows/fe/state'
 
 interface Props {
   selectedFlowId?: string | null

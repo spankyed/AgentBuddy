@@ -16,6 +16,7 @@ import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
 import { navigateToPlugin } from '@/core/utils/navigate';
+import { settingsId } from '@/registries/extensions';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const { updateSettings } = useSettingsSaveStatus();
@@ -25,7 +26,7 @@ const menuItems = computed<MenuItem[]>(() => {
   const plugin = selectedPlugin.value;
   if (!plugin) return [];
 
-  if (plugin.id === 'settings') {
+  if (plugin.id === settingsId) {
     return [
       {
         label: 'Pop Out',
@@ -62,7 +63,7 @@ const menuItems = computed<MenuItem[]>(() => {
       icon: SettingsIcon,
       class: 'text-neutral-200',
       iconClass: 'text-neutral-500',
-      action: () => navigateToPlugin('settings', [
+      action: () => navigateToPlugin(settingsId, [
         { type: 'TAB.SELECT', tab: 'plugins' },
         { type: 'PLUGIN.SELECT', pluginId: plugin.id },
       ]),

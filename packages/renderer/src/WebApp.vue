@@ -89,7 +89,7 @@ import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
 import { navigateToPlugin } from '@/core/utils/navigate'
 import Router from '@/core/components/layout/router.vue'
-import BrainInspectPanel from '@/plugins/brain/panel.vue'
+import { BrainInspectPanel, brainId, settingsId } from '@/registries/extensions'
 import type { ContextMenuItem } from '@/core/context-menu'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
 import { registerGlobalToast } from '@/core/toast'
@@ -111,7 +111,7 @@ const panelSizes = useSelector(applicationState, (state) => state.context.panelS
 const chatMaximized = useSelector(applicationState, (state) => state.context.panelSizes.chatMaximized ?? false)
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
-const brainActor = applicationState.system.get('brain')
+const brainActor = applicationState.system.get(brainId)
 const inspectMode = useSelector(brainActor, (state: any) =>
   state.context.inspectEnabled ?? false
 )
@@ -183,7 +183,7 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
-    navigateToPlugin('settings', [
+    navigateToPlugin(settingsId, [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])

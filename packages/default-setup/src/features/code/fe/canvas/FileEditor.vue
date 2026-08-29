@@ -170,11 +170,11 @@ import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import DeletedFileView from './DeletedFileView.vue'
 import VideoPlayer from './VideoPlayer.vue'
 import Tabs from './Tabs.vue'
-import { isEditableDiff, type OpenFile, type TerminalTab, type TabGroup } from '@/plugins/code/state'
-import { nativeVideoExtensions } from '@/plugins/code/utils/file-icons'
-import type { ActionTab } from '@/plugins/code/features/actions/state'
-import type { PromptTab } from '@/plugins/code/features/prompts/state'
-import type { GitDiff } from '@/plugins/code/features/commit/state'
+import { isEditableDiff, type OpenFile, type TerminalTab, type TabGroup } from '@/features/code/fe/state'
+import { nativeVideoExtensions } from '@/features/code/fe/utils/file-icons'
+import type { ActionTab } from '@/features/code/fe/features/actions/state'
+import type { PromptTab } from '@/features/code/fe/features/prompts/state'
+import type { GitDiff } from '@/features/code/fe/features/commit/state'
 
 // Props
 const props = defineProps<{

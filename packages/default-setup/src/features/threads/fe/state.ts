@@ -16,9 +16,9 @@ import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
 import { navigateToPlugin } from '@/core/utils/navigate';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
-import type { ThreadTabGroup, TabGroupColor } from '@/plugins/threads/canvas/agent/tabs/types';
-import { getNextAvailableColor } from '@/plugins/threads/canvas/agent/tabs/types';
-import { saveThreadTabGroups, loadThreadTabGroups } from '@/plugins/threads/canvas/agent/tabs/tab-groups';
+import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
+import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
+import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
 
 export const id = 'threads' as const;
 

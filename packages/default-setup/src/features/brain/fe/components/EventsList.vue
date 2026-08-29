@@ -59,7 +59,7 @@
 import { computed } from 'vue';
 import type { EventListenerEntity } from '@app/api';
 import { Clock, Radio } from 'lucide-vue-next';
-import { cronToHuman } from '@/plugins/flows/helpers/cron-utils';
+import { cronToHuman } from '@/features/flows/fe/helpers/cron-utils';
 
 interface Props {
   events: EventListenerEntity[];

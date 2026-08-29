@@ -7,7 +7,7 @@
  * and fail with "Invalid API key · Fix external API key".
  */
 
-import { buildChildEnv } from '@/services/claude-code/runner'
+import { buildChildEnv } from '@/systems/code/services/claude-code/runner'
 
 describe('buildChildEnv', () => {
   const originalKey = process.env.ANTHROPIC_API_KEY

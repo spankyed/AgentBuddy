@@ -107,12 +107,12 @@ import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuItem,
   ContextMenuSeparator,
 } from 'reka-ui';
-import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue';
+import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue';
 import type { Tab } from '@app/api';
 import type { ThreadTabGroup } from './types';
 import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
-import { id as threadsId, type ThreadsState } from '@/plugins/threads/state';
+import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state';
 
 const props = defineProps<{
   tab: Tab;

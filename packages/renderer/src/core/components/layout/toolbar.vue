@@ -72,6 +72,7 @@ import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
 import { applicationState } from '@/main';
 import allPlugins from '@/plugins';
+import { settingsId } from '@/registries/extensions';
 
 const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
 
@@ -95,7 +96,7 @@ const pluginVisibility = useSelector(
 const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
 
 const togglePluginVisibility = (id: string) => {
-  if (id === 'settings') return; // Settings plugin cannot be hidden
+  if (id === settingsId) return;
   updateSettings({
     entityType: 'plugin',
     label: '_meta',
@@ -110,7 +111,7 @@ const sortedPlugins = [...nonPinnedPlugins, ...pinnedPlugins];
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>
   sortedPlugins.map((plugin) => {
-    const locked = plugin.id === 'settings';
+    const locked = plugin.id === settingsId;
     const visible = isVisible(plugin.id);
     const textClass = locked
       ? 'text-neutral-600 cursor-not-allowed'

@@ -1,5 +1,5 @@
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
-import type { ListenerNode, NodeEntity, ScheduleNode } from '@/core/shared-types/flows';
+import type { ListenerNode, NodeEntity, ScheduleNode } from '@/features/flows/be/config/types';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext } from '@/types';
@@ -7,7 +7,7 @@ import { safeEvents } from '@/core/shared/actor-helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
+import { registerSchedule, unregisterByPrefix } from '@/shared-services/scheduler';
 import { sendToBrainSystem } from '@/services/event-emitter';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportBrainRuntimeError } from './runtime-errors';

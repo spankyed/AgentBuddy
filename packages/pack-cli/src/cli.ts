@@ -1,8 +1,13 @@
 #!/usr/bin/env node
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { init } from './commands/init';
 import { build } from './commands/build';
 import { validate } from './commands/validate';
 import { dev } from './commands/dev';
+import { install } from './commands/install';
+
+const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8'));
 
 const USAGE = `
 abuddy - AgentBuddy Pack CLI
@@ -11,6 +16,7 @@ Commands:
   init [name]         Scaffold a new pack
   build               Compile pack artifacts to dist/
   validate            Check manifest and types
+  install <path>      Install a pack from a directory or .zip
   dev                 Watch mode for local development
 
 Options:
@@ -28,7 +34,7 @@ async function main() {
   }
 
   if (command === '--version' || command === '-v') {
-    console.log('0.1.0');
+    console.log(pkg.version);
     process.exit(0);
   }
 
@@ -42,6 +48,9 @@ async function main() {
         break;
       case 'validate':
         await validate(args.slice(1));
+        break;
+      case 'install':
+        await install(args.slice(1));
         break;
       case 'dev':
         await dev(args.slice(1));

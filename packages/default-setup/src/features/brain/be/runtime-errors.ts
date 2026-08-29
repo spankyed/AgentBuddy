@@ -1,7 +1,7 @@
 import { rootEvents } from '@/core/router/bus-emitter';
 import { createLogger } from '@/core/shared/debug/logger';
 import { randomId } from '@/core/shared/random-id';
-import type { BrainRuntimeError } from '@/core/shared-types/brain';
+import type { BrainRuntimeError } from './types';
 import type { EARS } from '@/core/types';
 import { repository } from '@/repository';
 

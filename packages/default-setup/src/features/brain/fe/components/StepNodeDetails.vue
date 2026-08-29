@@ -119,7 +119,7 @@
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
-import DataRenderer from '@/plugins/logs/data-renderer.vue';
+import DataRenderer from '@/features/logs/fe/data-renderer.vue';
 import { applicationState } from '@/main';
 import { navigateToPlugin } from '@/core/utils/navigate';
 

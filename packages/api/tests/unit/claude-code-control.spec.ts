@@ -9,8 +9,8 @@
  *   - `BoundedSet` LRU eviction
  */
 
-import { createControlRouter, BoundedSet } from '@/services/claude-code/control'
-import type { ControlRequestLine } from '@/services/claude-code/types'
+import { createControlRouter, BoundedSet } from '@/systems/code/services/claude-code/control'
+import type { ControlRequestLine } from '@/systems/code/services/claude-code/types'
 
 function makeRequest(requestId: string, subtype: string, extra: Record<string, unknown> = {}): ControlRequestLine {
   return {

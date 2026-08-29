@@ -54,14 +54,14 @@ import {
   ContextMenuPortal,
   ContextMenuSeparator,
 } from 'reka-ui'
-import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/features/code/fe/features/explorer/constants'
 import { Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw, Trash2 } from 'lucide-vue-next'
 import type { Terminal, IDisposable } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import { applicationState } from '@/main'
-import { id, type CodeState } from '@/plugins/code/state'
-import type { TerminalInfo } from '@/plugins/code/features/terminal/state'
-import { terminalPool } from '@/plugins/code/utils/terminal-pool'
+import { id, type CodeState } from '@/features/code/fe/state'
+import type { TerminalInfo } from '@/features/code/fe/features/terminal/state'
+import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
 
 /* --------------------------------------------------------------------------
  * Props & actor -------------------------------------------------------------------------- */

@@ -21,8 +21,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import FileTreeItem from '@/plugins/code/features/pull-request/FileTreeItem.vue'
-import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import FileTreeItem from '@/features/code/fe/features/pull-request/FileTreeItem.vue'
+import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import type { TreeNode } from './types'
 
 const props = defineProps<{

@@ -1,24 +1,24 @@
 import { loggerAction, loggerService } from './logger';
-import * as llm from './llm';
+import * as llm from '@/shared-services/llm';
 import * as emitter from './event-emitter';
-import * as database from './database';
-import { promptService } from './prompt';
-import { actionService } from './action';
-import { libraryService } from './library';
-import * as browser from './browser';
+import * as database from '@/features/database/be/services/database';
+import { promptService } from '@/features/prompts/be/services/prompt';
+import { actionService } from '@/features/actions/be/services/action';
+import { libraryService } from '@/features/library/be/services/library';
+import * as browser from '@/features/browser/be/services/browser';
 import { repositoryService } from './repository';
-import { settingsService } from './settings';
-import { createTextStreamService } from './text-stream';
-import * as chat from './chat';
-import * as artifact from './artifact';
-import * as brain from './brain';
-import * as media from './media';
-import { cliService } from './cli';
-import { filesystemService } from './filesystem';
-import * as threads from './threads';
-import { codexService } from './codex';
-import { modelClientService } from './model-client';
-import { openaiAuthService } from './openai-auth';
+import { settingsService } from '@/features/settings/be/services/settings';
+import { createTextStreamService } from '@/shared-services/text-stream';
+import * as chat from '@/features/threads/be/services/chat';
+import * as artifact from '@/features/threads/be/services/artifact';
+import * as brain from '@/features/brain/be/services/brain';
+import * as media from '@/shared-services/media';
+import { cliService } from '@/features/code/be/services/cli';
+import { filesystemService } from '@/shared-services/filesystem';
+import * as threads from '@/features/threads/be/services/threads';
+import { codexService } from '@/features/code/be/services/codex';
+import { modelClientService } from '@/shared-services/model-client';
+import { openaiAuthService } from '@/shared-services/openai-auth';
 
 const services = {
   logger: loggerService,

@@ -1,6 +1,7 @@
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus, flows } from '@/core/system-ids';
+import { bus } from '@/core/system-ids';
+import { flows } from '@/registries/system-ids';
 import { emit } from '@/core/shared/actor-helpers';
 import { EARS } from '@/core/types';
 import { ActionsStartupData, ActionEntity } from './types';

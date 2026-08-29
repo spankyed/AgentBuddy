@@ -142,9 +142,9 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { id as codeId, type CodeState, type QuickOpenResult } from '@/plugins/code/state'
-import { fuzzySearch, highlightMatches } from '@/plugins/code/utils/fuzzy-search'
-import { getRecencyScore } from '@/plugins/code/utils/recent-files'
+import { id as codeId, type CodeState, type QuickOpenResult } from '@/features/code/fe/state'
+import { fuzzySearch, highlightMatches } from '@/features/code/fe/utils/fuzzy-search'
+import { getRecencyScore } from '@/features/code/fe/utils/recent-files'
 import { 
   Search, FileCode, FileText, FileJson, Image, 
   Video, FileArchive, FileType, Folder, Clock 

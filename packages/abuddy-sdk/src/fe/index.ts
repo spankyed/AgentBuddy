@@ -1,2 +1,3 @@
-// Frontend helpers — will be populated when FE code is extracted
-// (safe-events, breadcrumb, etc.)
+export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './composables/useMenuState'
+export { useContextMenu } from './composables/useContextMenu'
+export type { MenuItem } from './composables/useContextMenu'

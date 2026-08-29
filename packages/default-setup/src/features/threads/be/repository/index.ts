@@ -19,7 +19,7 @@ import type {
   ThreadTagOption,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
-import type { ThreadsSettings } from '@/core/shared-types/settings';
+import type { ThreadsSettings } from '@/features/settings/be/types';
 import { repository } from '@/repository';
 
 /**

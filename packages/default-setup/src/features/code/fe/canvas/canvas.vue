@@ -100,8 +100,8 @@ import { useSelector } from '@xstate/vue'
 import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
-import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
+import FileEditor from '@/features/code/fe/canvas/FileEditor.vue'
+import QuickOpenPalette from '@/features/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
 
 const actor: CodeState = applicationState.system.get(id)

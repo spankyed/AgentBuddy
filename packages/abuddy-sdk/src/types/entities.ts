@@ -1,34 +1,17 @@
 /*───────────────────────────────────────────────────────────────────────────
  * EARS entities, relations, roles & attributes
+ *
+ * Entity is an open type — features declare their entities in pack.config.ts
+ * and the host assembles them via a registry. The SDK provides only the core
+ * Relation entity; the full set is composed at the app level.
  *───────────────────────────────────────────────────────────────────────────*/
 export namespace EARS {
-  export enum Entity {
-    Agent    = 'Agent',
-    Brain    = 'Brain',
-    Message  = 'Message',
-    Thread   = 'Thread',
-    Relation = 'Relation',
-    Artifact = 'Artifact',
-    Flow = 'Flow',
-    Node = 'Node',
-    TNode = 'TNode',
-    Prompt = 'Prompt',
-    Action = 'Action',
-    Document = 'Document',
-    Collection = 'Collection',
-    SearchIndex = 'SearchIndex',
-    IndexedDoc = 'IndexedDoc',
-    Terminal = 'Terminal',
-    Directory = 'Directory',
-    Settings = 'Settings',
-    FAQ = 'FAQ',
-    Secret = 'Secret',
-    Note = 'Note',
-    BrowserTab = 'BrowserTab',
-    BrowserBookmark = 'BrowserBookmark',
-    CalendarEvent = 'CalendarEvent',
-  }
-  export type EntityId = `${Entity}-${string}`;
+  export const Entity = {
+    Relation: 'Relation',
+  } as const;
+
+  export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
+  export type EntityId = `${string}-${string}`;
 
   const RelKindValues = {
     PARENT_OF   : 'parent_of',

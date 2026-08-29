@@ -121,7 +121,7 @@ import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
-import type { LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
+import type { LayoutDirection } from '@/features/flows/fe/canvas/layout-utils'
 import { isTriggerNode } from '../nodes/node-config'
 
 interface Props {

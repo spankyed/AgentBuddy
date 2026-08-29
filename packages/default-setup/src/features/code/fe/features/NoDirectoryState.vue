@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import { FolderOpen } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-import { id as codeId, type CodeState } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { useProjectActions } from './explorer/composables/useProjectActions'
 
 const codeActor: CodeState = applicationState.system.get(codeId)

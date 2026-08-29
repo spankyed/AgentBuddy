@@ -18,11 +18,11 @@ export type Services = typeof importedServices;
 
 
 // Re-export service interfaces for better type generation
-export { ActionService } from '@/services/action';
-export { PromptService } from '@/services/prompt';
-export { LibraryService } from '@/services/library';
-export type { ActionEntity } from '@/systems/actions/types';
-export type { SettingsData } from '@/systems/settings/types';
+export { ActionService } from '@/features/actions/be/services/action';
+export { PromptService } from '@/features/prompts/be/services/prompt';
+export { LibraryService } from '@/features/library/be/services/library';
+export type { ActionEntity } from '@/features/actions/be/types';
+export type { SettingsData } from '@/features/settings/be/types';
 
 // Export runtime placeholders for Monaco Editor intellisense
 // These will be available when the module is imported

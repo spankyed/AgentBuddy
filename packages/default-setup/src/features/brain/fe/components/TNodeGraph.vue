@@ -86,10 +86,10 @@ import {
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
-import { BaseNode } from '@/plugins/flows/canvas/nodes';
+import { BaseNode } from '@/features/flows/fe/canvas/nodes';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
-import { cronToHuman } from '@/plugins/flows/helpers/cron-utils';
+import { cronToHuman } from '@/features/flows/fe/helpers/cron-utils';
 
 interface Props {
   tnodeTree?: TrackEntity[];

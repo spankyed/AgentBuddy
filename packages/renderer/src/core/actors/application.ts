@@ -8,6 +8,7 @@ import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import type { ContextMenuItem } from '@/core/context-menu';
 import { globalToast } from '@/core/toast';
+import { settingsId, threadsId } from '@/registries/extensions';
 
 interface BreadcrumbItem {
   label: string;
@@ -82,6 +83,7 @@ export type ApplicationEvent =
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
+  | { type: 'PACK_PLUGINS_LOADED'; plugins: Plugin[] }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
@@ -312,6 +314,21 @@ export const createApplicationState = () => setup({
       return { hotkeys };
     }),
 
+    mergePackPlugins: assign(({ event, context }) => {
+      const { plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
+      const existingIds = new Set(context.plugins.map(p => p.id));
+      const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
+      if (newPlugins.length === 0) return {};
+      const allPlugins = [...context.plugins, ...newPlugins];
+      const pluginVisibility = { ...context.pluginVisibility };
+      for (const p of newPlugins) pluginVisibility[p.id] = true;
+      return {
+        plugins: allPlugins,
+        visiblePlugins: allPlugins.filter(p => pluginVisibility[p.id] !== false),
+        pluginVisibility,
+      };
+    }),
+
     updatePluginVisibility: assign(({ event, context }) => {
       const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
 
@@ -479,7 +496,7 @@ export const createApplicationState = () => setup({
 
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
-            systemId: 'settings',
+            systemId: settingsId,
             type: 'UPDATE_SETTINGS',
             entityType: 'plugin',
             label: '_meta',
@@ -579,7 +596,7 @@ export const createApplicationState = () => setup({
       };
     }),
     closeDevLetter: ({ self }) => {
-      self.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
+      self.send({ type: 'SELECT_PLUGIN', pluginId: threadsId });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({
@@ -766,6 +783,9 @@ export const createApplicationState = () => setup({
   on: {
     APPLICATION_HOTKEYS: {
       actions: 'updateHotkeys'
+    },
+    PACK_PLUGINS_LOADED: {
+      actions: 'mergePackPlugins'
     },
     PLUGIN_VISIBILITY_UPDATED: {
       actions: 'updatePluginVisibility'

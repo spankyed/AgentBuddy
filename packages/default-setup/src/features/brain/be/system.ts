@@ -8,11 +8,11 @@ import type { BrainRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from 
 import { repository } from '@/repository';
 import { createLogger } from '@/core/shared/debug/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
-import { settings } from '../settings/system';
+import { settings } from '@/features/settings/be/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
-import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from '@/services/brain';
-import { clearAllSchedules } from '@/services/scheduler';
+import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
+import { clearAllSchedules } from '@/shared-services/scheduler';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }

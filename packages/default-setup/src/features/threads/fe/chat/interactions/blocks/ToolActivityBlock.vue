@@ -91,7 +91,7 @@ import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from
 import JsonHoverPopup from '@/core/components/JsonHoverPopup.vue'
 import { computeLabel, computeBadge } from './tool-activity-label'
 import { applicationState } from '@/main'
-import { id as threadsId } from '@/plugins/threads/state'
+import { id as threadsId } from '@/features/threads/fe/state'
 
 interface ToolActivityEntry {
   id: string

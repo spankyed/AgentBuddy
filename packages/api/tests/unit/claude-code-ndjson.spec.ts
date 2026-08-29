@@ -8,7 +8,7 @@
  */
 
 import { Readable } from 'stream'
-import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from '@/services/claude-code/ndjson'
+import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from '@/systems/code/services/claude-code/ndjson'
 
 /** Build a Readable that emits each element as a separate chunk. */
 function chunked(chunks: string[]): Readable {

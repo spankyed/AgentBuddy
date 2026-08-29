@@ -142,8 +142,8 @@ import {
 import BaseForm from './BaseForm.vue'
 import TipSection from '../components/TipSection.vue'
 import type { FlowEntity, NodeEntity } from '@app/api'
-import type { FormResources } from '@/plugins/flows/types/form-props'
-import { flowsId } from '@/plugins/flows/state'
+import type { FormResources } from '@/features/flows/fe/types/form-props'
+import { flowsId } from '@/features/flows/fe/state'
 
 const props = defineProps<{
   node: NodeEntity

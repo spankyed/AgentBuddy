@@ -112,11 +112,11 @@ import type { PromptEntity, TemplateInput, Category } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
-import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@/core/components/JsonSchemaEditor.vue';
 import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
 import { applicationState } from '@/main';
 import { navigateToPlugin } from '@/core/utils/navigate';
-import { id as promptsId, type PromptsState } from '@/plugins/prompts/state';
+import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
 
 const props = defineProps<{
   prompt?: PromptEntity;

@@ -54,12 +54,12 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { id as codeId, type CodeState } from '@/plugins/code/state'
-import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import { File, Copy } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
-import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
+import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/features/code/fe/features/explorer/constants'
 
 const props = defineProps<{
   file: GitStatusFile

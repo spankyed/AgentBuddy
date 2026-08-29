@@ -5,9 +5,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { FlowDSL } from '@/systems/flows/dsl';
-import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
-import type { ExportedNotes } from '@/systems/notes/export-types';
+import type { FlowDSL } from '@/features/flows/be/dsl';
+import type { ExportedLibrary, ExportedItem } from '@/features/library/be/export-types';
+import type { ExportedNotes } from '@/features/notes/be/export-types';
 import { loadJSON } from './index';
 
 export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';

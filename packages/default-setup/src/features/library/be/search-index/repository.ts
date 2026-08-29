@@ -14,9 +14,9 @@ import type {
   IndexedDocCreateData,
   IndexedDocUpdateData
 } from './types/search-index'
-import type { DocumentDTO } from '@/systems/library/types'
+import type { DocumentDTO } from '../types'
 import * as searchService from './service'
-import { libraryQueries, libraryCommands } from '@/systems/library/repository'
+import { libraryQueries, libraryCommands } from '../repository'
 
 const logger = createLogger('search-index')
 

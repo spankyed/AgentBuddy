@@ -21,20 +21,20 @@ import {
   ClaudeAbortError,
   ClaudeExitError,
   ClaudeProtocolError,
-} from '@/services/claude-code/errors'
-import { finaliseNoResult, query } from '@/services/claude-code/query'
-import type { StreamHandle } from '@/services/claude-code/runner'
-import type { DecodedLine } from '@/services/claude-code/ndjson'
+} from '@/systems/code/services/claude-code/errors'
+import { finaliseNoResult, query } from '@/systems/code/services/claude-code/query'
+import type { StreamHandle } from '@/systems/code/services/claude-code/runner'
+import type { DecodedLine } from '@/systems/code/services/claude-code/ndjson'
 
-vi.mock('@/services/claude-code/runner', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/claude-code/runner')>()
+vi.mock('@/systems/code/services/claude-code/runner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/systems/code/services/claude-code/runner')>()
   return {
     ...actual,
     spawnStream: vi.fn(),
   }
 })
 
-import { spawnStream } from '@/services/claude-code/runner'
+import { spawnStream } from '@/systems/code/services/claude-code/runner'
 
 describe('finaliseNoResult', () => {
   const args = ['--print', '--input-format', 'stream-json'] as const

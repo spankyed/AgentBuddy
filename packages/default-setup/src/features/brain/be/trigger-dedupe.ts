@@ -1,4 +1,4 @@
-import type { ListenerNode } from '@/core/shared-types/flows';
+import type { ListenerNode } from '@/features/flows/be/config/types';
 import { EARS } from '@/core/types';
 
 export type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {

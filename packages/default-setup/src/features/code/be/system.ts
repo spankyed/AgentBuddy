@@ -61,7 +61,8 @@ import { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 export const codeDef = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
-const id = codeDef.id;
+export const code = codeDef.id;
+const id = code;
 
 export interface Context {
   baseDirectory: string | null

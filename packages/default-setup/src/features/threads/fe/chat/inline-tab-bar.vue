@@ -21,8 +21,8 @@
 import { X } from 'lucide-vue-next';
 import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
-import { id, type ThreadsState } from '@/plugins/threads/state';
-import TabBar from '@/plugins/threads/canvas/agent/tabs/tab-bar.vue';
+import { id, type ThreadsState } from '@/features/threads/fe/state';
+import TabBar from '@/features/threads/fe/canvas/agent/tabs/tab-bar.vue';
 
 defineProps<{
   visible: boolean;

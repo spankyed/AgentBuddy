@@ -1,7 +1,7 @@
 import { LmdbQuery } from '@/core/persistence/lmdb/query';
 import { envs } from '@/core/ears/attribute-storage';
 import { EARS } from '@/core/types';
-import type { TNodeEntity, TrackEntity } from '@/core/shared-types/brain';
+import type { TNodeEntity, TrackEntity } from '@/features/brain/be/types';
 import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('database:trace');

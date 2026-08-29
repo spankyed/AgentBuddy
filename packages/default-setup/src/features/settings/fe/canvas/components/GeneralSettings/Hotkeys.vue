@@ -114,7 +114,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
-import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
 import { useDebounceFn } from '@/core/composables/useDebounce'
 import type { KeyboardShortcut } from '@app/api'
 

@@ -33,7 +33,7 @@
 import { computed, ref } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id, type ThreadsState } from '@/plugins/threads/state';
+import { id, type ThreadsState } from '@/features/threads/fe/state';
 import { useAnchorTracking } from './composables/useAnchorTracking'
 
 const props = defineProps<{

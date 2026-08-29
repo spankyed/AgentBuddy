@@ -147,7 +147,7 @@ import type { BrainSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id as brainId, type BrainState } from '@/plugins/brain/state'
+import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 
 interface Props {
   settings?: BrainSettings

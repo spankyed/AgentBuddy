@@ -8,7 +8,8 @@ import { createEntity } from '@/core/ears';
 import { createLogger } from '@/core/shared/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { repository } from '@/repository';
-import { bus, threads } from '@/core/system-ids';
+import { bus } from '@/core/system-ids';
+import { threads } from '@/registries/system-ids';
 
 const logger = createLogger('backend');
 

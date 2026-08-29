@@ -24,10 +24,10 @@
 import { computed } from 'vue';
 import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
-import { id, type ThreadsState } from '@/plugins/threads/state';
-import TabBar from '@/plugins/threads/canvas/agent/tabs/tab-bar.vue';
-import ContentViewer from '@/plugins/threads/canvas/agent/content-viewer.vue';
-import ThreadsHeader from '@/plugins/threads/canvas/components/ThreadsHeader.vue';
+import { id, type ThreadsState } from '@/features/threads/fe/state';
+import TabBar from '@/features/threads/fe/canvas/agent/tabs/tab-bar.vue';
+import ContentViewer from '@/features/threads/fe/canvas/agent/content-viewer.vue';
+import ThreadsHeader from '@/features/threads/fe/canvas/components/ThreadsHeader.vue';
 
 defineProps<{
   inline?: boolean;

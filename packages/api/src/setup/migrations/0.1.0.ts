@@ -1,4 +1,4 @@
-import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { settingsQueries, settingsCommands } from '@/features/settings/be/repository';
 
 export const migration = {
   target: '0.1.0',

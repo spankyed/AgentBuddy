@@ -64,7 +64,7 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue'
-import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@app/api'

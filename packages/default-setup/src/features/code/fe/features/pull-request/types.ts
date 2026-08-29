@@ -1,4 +1,4 @@
-import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 
 export interface TreeNode {
   name: string

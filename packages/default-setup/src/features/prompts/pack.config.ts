@@ -2,5 +2,5 @@ import type { PackConfig } from '@abuddy/sdk/build';
 
 export default {
   name: 'prompts',
-  prompts: '../../prompts',
+  settings: './settings.ts',
 } satisfies PackConfig;

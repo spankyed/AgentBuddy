@@ -119,11 +119,11 @@ import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
-import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@/core/components/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
 import { navigateToPlugin } from '@/core/utils/navigate';
 import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
-import { id as actionsId, type ActionsState } from '@/plugins/actions/state';
+import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
 
 const props = defineProps<{
   action?: ActionEntity;

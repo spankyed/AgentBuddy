@@ -1,16 +1,17 @@
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { logsSystem } from '@/systems/logs/system';
+import { logsSystem } from '@/features/logs/be/system';
 import { backendSystem } from '@/systems/backend';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/systems/settings/repository';
+import { createDefaultSettings } from '@/features/settings/be/repository';
 import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { loadExternalPacks, registerPackSystems } from '@/core/packs/pack-loader';
+import { setLoadedPacks } from '@/core/packs/pack-api';
 import systems, { eventValidationMap } from '@/systems';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -43,6 +44,7 @@ export async function setupBackend(): Promise<void> {
   const externalPacks = loadExternalPacks();
   if (externalPacks.length > 0) {
     registerPackSystems(externalPacks, systems as Record<string, any>, eventValidationMap);
+    setLoadedPacks(externalPacks);
   }
 
   // Start backend actor

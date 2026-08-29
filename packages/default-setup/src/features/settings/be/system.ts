@@ -1,6 +1,7 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus, threads } from '@/core/system-ids';
+import { bus } from '@/core/system-ids';
+import { threads } from '@/registries/system-ids';
 import { emit } from '@/core/shared/actor-helpers';
 import { SettingsData, type FAQItem } from './types';
 import { loadFaqs } from './faqs';

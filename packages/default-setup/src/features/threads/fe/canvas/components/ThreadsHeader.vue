@@ -120,7 +120,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import FilterPopover from './FilterPopover.vue'
-import { id, type ThreadsState } from '@/plugins/threads/state'
+import { id, type ThreadsState } from '@/features/threads/fe/state'
 import type { ThreadTagOption } from '@app/api'
 
 const actor: ThreadsState = applicationState.system.get(id)

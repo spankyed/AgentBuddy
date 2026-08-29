@@ -5,7 +5,7 @@ import { createContext } from '@/core/router/context';
 import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
-import { terminalService } from '@/systems/code/services/terminal';
+import { terminalService } from '@/features/code/be/services/terminal';
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;

@@ -163,7 +163,7 @@ import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverConte
 import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '@app/api'
-import { terminalPool } from '@/plugins/code/utils/terminal-pool'
+import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
 
 const props = defineProps<{
   prompts: QuickPrompt[]

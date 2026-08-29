@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@abuddy/sdk": "*"
+    "@abuddy/sdk": "*",
+    "@app/default-setup": "*"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

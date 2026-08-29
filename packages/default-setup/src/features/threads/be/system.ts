@@ -1,6 +1,7 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus, brain } from '@/core/system-ids';
+import { bus } from '@/core/system-ids';
+import { brain } from '@/registries/system-ids';
 import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
 import { emit, getActor, sendParentSafe } from '@/core/shared/actor-helpers';
 import { EARS } from '@/core/types';
@@ -12,9 +13,9 @@ import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
 import services from '@/services';
-import { generateAsideText } from '@/services/chat';
+import { generateAsideText } from './services/chat';
 import { createLogger } from '@/core/shared/debug/logger';
-import type { FieldContent } from '@/core/shared-types/library';
+import type { FieldContent } from '@/features/library/be/types';
 import { reportSystemError } from '@/core/shared/system-errors';
 
 const logger = createLogger('threads');

@@ -11,7 +11,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { ListenerNode, ScheduleNode, FlowEntity, FlowNode, NodeEntity } from '@/core/shared-types/flows';
+import type { ListenerNode, ScheduleNode, FlowEntity, FlowNode, NodeEntity } from '@/features/flows/be/config/types';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
