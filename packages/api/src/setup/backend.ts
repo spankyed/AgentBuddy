@@ -10,6 +10,8 @@ import { createDefaultSettings } from '@/systems/settings/repository';
 import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
+import { loadExternalPacks, registerPackSystems } from '@/core/packs/pack-loader';
+import systems, { eventValidationMap } from '@/systems';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
 export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
@@ -36,6 +38,12 @@ export async function setupBackend(): Promise<void> {
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   runBootSeed();
+
+  // Load and register external pack systems
+  const externalPacks = loadExternalPacks();
+  if (externalPacks.length > 0) {
+    registerPackSystems(externalPacks, systems as Record<string, any>, eventValidationMap);
+  }
 
   // Start backend actor
   backendActor = createActor(backendSystem, {

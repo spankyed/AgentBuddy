@@ -89,6 +89,9 @@ declare global {
         getTabs: () => Promise<BrowserTabState[]>;
         getActiveTab: () => Promise<number | null>;
       };
+      protocolAction: {
+        onAction: (callback: (data: { action: string; params: Record<string, string> }) => void) => () => void;
+      };
       apiPort: number;
       startupId?: string;
     };

@@ -7,6 +7,8 @@ import './style.css'
 import plugins, { defaultPlugin } from '@/plugins';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
+import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
+import '@/core/packs/host-deps';
 
 declare const __APP_VERSION__: string;
 
@@ -100,6 +102,16 @@ applicationState.subscribe({
       'Something went wrong',
       error instanceof Error ? error.stack || error.message : String(error)
     );
+  }
+});
+
+// Listen for deep link protocol actions (abuddy://install?pack=...)
+window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
+  if (action === 'install') {
+    const request = handleProtocolInstall(params);
+    if (request) {
+      requestPackInstall(request);
+    }
   }
 });
 
