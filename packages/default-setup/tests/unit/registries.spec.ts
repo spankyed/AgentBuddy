@@ -80,18 +80,23 @@ describe('registries/services — feature services assembly', () => {
   });
 });
 
-describe('registries/seed — seed helper exports', () => {
-  it('exports validate, compile, and isFlowConfig from flows DSL', async () => {
-    const { validate, compile, isFlowConfig } = await import('../../src/registries/seed');
+describe('registries/seed — seed logic exports', () => {
+  it('exports seedData and runBootSeed functions', async () => {
+    const { seedData, runBootSeed } = await import('../../src/registries/seed');
 
-    expect(typeof validate).toBe('function');
-    expect(typeof compile).toBe('function');
-    expect(typeof isFlowConfig).toBe('function');
+    expect(typeof seedData).toBe('function');
+    expect(typeof runBootSeed).toBe('function');
   });
 
-  it('exports importNotesFromData from notes feature', async () => {
-    const { importNotesFromData } = await import('../../src/registries/seed');
+  it('exports loadJSON utility', async () => {
+    const { loadJSON } = await import('../../src/registries/seed');
 
-    expect(typeof importNotesFromData).toBe('function');
+    expect(typeof loadJSON).toBe('function');
+  });
+
+  it('exports preview types and function', async () => {
+    const { previewSetupPack } = await import('../../src/registries/seed/preview');
+
+    expect(typeof previewSetupPack).toBe('function');
   });
 });
