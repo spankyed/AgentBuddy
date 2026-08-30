@@ -5,8 +5,7 @@ module.exports = {
   content: [
     path.join(__dirname, './index.html'),
     path.join(__dirname, './src/**/*.{vue,js,ts,jsx,tsx}'),
-    // Also scan for test file
-    path.join(__dirname, './src/test-tailwind.vue'),
+    path.join(__dirname, '../default-setup/src/**/*.{vue,js,ts,jsx,tsx}'),
   ],
   safelist: [
     // Ensure these classes are always generated for testing
