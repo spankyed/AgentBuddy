@@ -33,7 +33,7 @@ export const migration: Migration = {
     // treated as "untracked" (user-created) and skipped forever. Stamping a
     // placeholder value forces the next boot seed to update them and set the
     // real hash.
-    const dslEntityTypes = [
+    const dslEntityTypes: EARS.Entity[] = [
       EARS.Entity.Document,
       EARS.Entity.Collection,
       EARS.Entity.Action,

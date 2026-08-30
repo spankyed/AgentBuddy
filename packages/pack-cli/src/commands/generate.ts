@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackManifest, PackTypeManifest } from '@abuddy/sdk/build';
+import { resolveDep } from './fetch-deps';
 
 function findPackRoot(from: string): string {
   let dir = from;
@@ -11,18 +12,16 @@ function findPackRoot(from: string): string {
   throw new Error('No abuddy.json found. Run this command from inside a pack directory.');
 }
 
-function loadDepTypeManifests(root: string, deps: Record<string, string>): Map<string, PackTypeManifest> {
+async function loadDepTypeManifests(root: string, deps: Record<string, string>): Promise<Map<string, PackTypeManifest>> {
   const result = new Map<string, PackTypeManifest>();
-  const depsDir = path.join(root, '.abuddy', 'deps');
 
   for (const depId of Object.keys(deps)) {
-    const typesPath = path.join(depsDir, depId, 'types.json');
-    if (!fs.existsSync(typesPath)) {
-      console.warn(`  Warning: no types.json for dependency "${depId}" — run "abuddy fetch-deps" first`);
+    const resolved = await resolveDep(root, depId);
+    if (!resolved) {
+      console.warn(`  Warning: could not resolve dependency "${depId}" — try "abuddy fetch-deps"`);
       continue;
     }
-    const typeManifest = JSON.parse(fs.readFileSync(typesPath, 'utf-8')) as PackTypeManifest;
-    result.set(depId, typeManifest);
+    result.set(depId, resolved);
   }
 
   return result;
@@ -156,15 +155,32 @@ function emitEARS(ownId: string, registry: MergedRegistry): string {
     }
   }
 
+  // Custom helper
+  lines.push(`    export const Custom = <T extends string>(k: T) => k as T & RelKind;`);
   lines.push('  }');
 
   const relUnion = [...registry.relKinds.keys()].map(k => `RelKind.${k}`).join(' | ');
   lines.push(`  export type RelKind = ${relUnion ? `${relUnion} | ` : ''}(string & {});`);
   lines.push('');
 
-  // ── SDK infrastructure ──
+  // ── SDK infrastructure (runtime values + types) ──
+  lines.push('  export namespace RoleKind {');
+  lines.push('    export const Custom = <T extends string>(k: T) => k as T & RoleKind;');
+  lines.push('  }');
   lines.push("  export type RoleKind = import('@abuddy/sdk').EARS.RoleKind;");
+  lines.push('');
+
+  lines.push('  export const AttrKindValues = { Role: \'role\', RelationDetails: \'relationDetails\' } as const;');
+  lines.push('  export namespace AttrKind {');
+  lines.push("    export const Role = 'role';");
+  lines.push('    export type Role = typeof Role;');
+  lines.push("    export const RelationDetails = 'relationDetails';");
+  lines.push('    export type RelationDetails = typeof RelationDetails;');
+  lines.push('    export const Custom = <T extends string>(k: T) => k as T & AttrKind;');
+  lines.push('  }');
   lines.push("  export type AttrKind = import('@abuddy/sdk').EARS.AttrKind;");
+  lines.push('');
+
   lines.push("  export type Blueprint = import('@abuddy/sdk').EARS.Blueprint;");
   lines.push("  export type RelationDetail = import('@abuddy/sdk').EARS.RelationDetail;");
   lines.push("  export type AttributePayloads = import('@abuddy/sdk').EARS.AttributePayloads;");
@@ -184,6 +200,11 @@ function emitEARS(ownId: string, registry: MergedRegistry): string {
   lines.push('}');
   lines.push('');
 
+  // ── AllEntities (backward compat) ──
+  lines.push('export const AllEntities = EARS.Entity;');
+  lines.push('export type AllEntities = EARS.Entity;');
+  lines.push('');
+
   return lines.join('\n');
 }
 
@@ -194,16 +215,16 @@ export async function generate(_args: string[]) {
   console.log(`Generating types for: ${manifest.name}`);
 
   const depManifests = manifest.dependencies
-    ? loadDepTypeManifests(root, manifest.dependencies)
+    ? await loadDepTypeManifests(root, manifest.dependencies)
     : new Map<string, PackTypeManifest>();
 
   const registry = mergeRegistries(manifest.id, manifest, depManifests);
   const output = emitEARS(manifest.id, registry);
 
-  const outDir = path.join(root, '.abuddy', 'generated');
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const outPath = path.join(outDir, 'ears.ts');
+  const outPath = manifest.earsOutput
+    ? path.resolve(root, manifest.earsOutput)
+    : path.join(root, '.abuddy', 'generated', 'ears.ts');
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, output);
 
   const entityCount = registry.entities.size;
