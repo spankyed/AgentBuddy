@@ -1,8 +1,4 @@
 import BrainInspectPanel from '../features/brain/fe/panel.vue';
-import { id as brainId } from '../features/brain/fe/state';
-import { id as settingsId } from '../features/settings/fe/state';
-import { id as threadsId } from '../features/threads/fe/state';
-import { threadsFromStore } from '../features/threads/fe/state';
 import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } from '../features/database/fe/components/simple-table/utils/json-detection';
 import DataRenderer from '../features/logs/fe/data-renderer.vue';
 import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '../features/flows/fe/canvas/nodes';
@@ -12,9 +8,16 @@ import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProv
 import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../features/notes/fe/references';
 import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from './reference-types';
 
-export { BrainInspectPanel, brainId };
-export { settingsId };
-export { threadsId, threadsFromStore };
+// IDs inlined to avoid importing heavyweight state modules (which import @/main, causing circular deps)
+export const brainId = 'brain';
+export const settingsId = 'settings';
+export const threadsId = 'threads' as const;
+
+export function threadsFromStore<T>(threadMap: Record<string, T>, threadIds: string[]): T[] {
+  return threadIds.map(id => threadMap[id]).filter((thread): thread is T => Boolean(thread));
+}
+
+export { BrainInspectPanel };
 export { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue };
 export { DataRenderer };
 export { getNodeConfig, nodeConfigs };
