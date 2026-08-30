@@ -190,7 +190,7 @@ import MessageList from './components/message-list.vue'
 import TagInput from '@abuddy/sdk/fe/design/tag-input.vue'
 import ThreadLinkInput from '@/features/threads/fe/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);
 const mediaEntityId = crypto.randomUUID();

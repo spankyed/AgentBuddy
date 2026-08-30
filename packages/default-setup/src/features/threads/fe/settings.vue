@@ -686,7 +686,7 @@
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
+import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInput.vue'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/sdk/fe/design/ColorPicker.vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { useDebounce } from '@abuddy/sdk/fe'

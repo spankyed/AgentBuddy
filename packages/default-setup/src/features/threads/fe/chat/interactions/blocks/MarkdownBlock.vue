@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 
 defineProps<{

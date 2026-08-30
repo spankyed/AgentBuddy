@@ -196,7 +196,7 @@ import ImageThumbnail from './ImageThumbnail.vue'
 import StatusLine from './StatusLine.vue'
 import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
-import { DOUBLE_ESC_MS } from '@/core/components/tiptap/composables/createEditorKeyboard'
+import { DOUBLE_ESC_MS } from '@abuddy/sdk/fe/components/tiptap/composables/createEditorKeyboard'
 import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments'
 import { useExternalFileDrag } from '@abuddy/sdk/fe'
 import {
@@ -211,10 +211,10 @@ import PauseIcon from './pause-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@abuddy/sdk/fe/design/button.vue'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '@app/api'
-import { commandSuggestionPluginKey } from '@/core/components/tiptap/command-suggestion-plugin'
+import { commandSuggestionPluginKey } from '../../../../shared/tiptap/command-suggestion-plugin'
 import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@abuddy/sdk/fe'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 import RevertHistoryPopup from './RevertHistoryPopup.vue'
@@ -351,7 +351,10 @@ const historyIndex = ref(-1)
 const lastClearedContent = ref<string | null>(null)
 
 const commandHighlight = computed(() => {
-  return tiptapRef.value?.commandActive || tiptapRef.value?.commandModeActive
+  const editor = tiptapRef.value?.editor
+  if (!editor) return false
+  const state = commandSuggestionPluginKey.getState(editor.state)
+  return state?.active === true
 })
 
 const {

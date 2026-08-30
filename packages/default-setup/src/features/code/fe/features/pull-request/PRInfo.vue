@@ -134,7 +134,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, useTemplateRef } from 'vue'
 import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
 import { openInAppBrowser } from '@abuddy/sdk/fe'

@@ -58,7 +58,7 @@ import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { FAQItem } from '@app/api'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import { DISCORD_URL, MEMORIAL_URL } from '@abuddy/sdk/fe/constants'
 import { openInAppBrowser } from '@abuddy/sdk/fe'
 

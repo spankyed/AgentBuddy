@@ -219,7 +219,7 @@ import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown, ChevronUp
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
 import { useContextMenu } from '@abuddy/sdk/fe'
 

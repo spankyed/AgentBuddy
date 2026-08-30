@@ -112,7 +112,7 @@ import type { PromptEntity, TemplateInput, Category } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
-import JsonSchemaEditor from '@/core/components/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@abuddy/sdk/fe/components/JsonSchemaEditor.vue';
 import { useCollapsibleState } from '@abuddy/sdk/fe';
 import { applicationState } from '@/main';
 import { navigateToPlugin } from '@abuddy/sdk/fe';

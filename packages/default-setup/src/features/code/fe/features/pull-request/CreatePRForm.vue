@@ -78,7 +78,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { GitPullRequest, Loader2, FileEdit, GitBranch, ArrowRight } from 'lucide-vue-next'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 
 const props = defineProps<{
   title: string

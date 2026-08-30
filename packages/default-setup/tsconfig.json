@@ -10,7 +10,7 @@
     "types": ["node", "vitest/globals"],
     "paths": {
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts"],
+      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
       "@/shared-services/*": ["./src/shared/services/*"],

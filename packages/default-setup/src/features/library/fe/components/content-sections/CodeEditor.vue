@@ -18,8 +18,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import type { editor, IDisposable } from 'monaco-editor'
-import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
-import { getLanguageFromPath } from '@/core/utils/monaco-config'
+import UnifiedMonacoEditor from '@abuddy/sdk/fe/components/UnifiedMonacoEditor.vue'
+import { getLanguageFromPath } from '@abuddy/sdk/fe/components/monaco-config'
 import type { CodeContent } from '@app/api'
 
 const MIN_HEIGHT = 320 // 20rem

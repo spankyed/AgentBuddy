@@ -119,7 +119,7 @@ import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
-import JsonSchemaEditor from '@/core/components/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@abuddy/sdk/fe/components/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
 import { navigateToPlugin } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/sdk/fe';

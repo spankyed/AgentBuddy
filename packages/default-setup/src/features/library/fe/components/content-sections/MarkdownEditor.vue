@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import type { MarkdownContent } from '@app/api'
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 
 defineProps<{
   content: MarkdownContent

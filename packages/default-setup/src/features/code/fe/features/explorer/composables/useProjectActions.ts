@@ -1,6 +1,6 @@
-import { computed, inject } from 'vue'
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
 export interface Project {
   name: string
   directories: string[]
@@ -8,7 +8,7 @@ export interface Project {
 }
 
 export function useProjectActions() {
-  const system = inject<{ get(id: string): any }>('actorSystem')!
+  const system = useActorSystem()
   const settingsActor = system.get('settings')
   const projects = useSelector(settingsActor, (state: any) =>
     state.context.settings?.general?.projects || []

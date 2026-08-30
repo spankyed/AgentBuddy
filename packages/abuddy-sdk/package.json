@@ -19,6 +19,7 @@
     "./fe/composables/*": "./src/fe/composables/*",
     "./fe/layout/*": "./src/fe/layout/*",
     "./fe/utils/*": "./src/fe/utils/*",
+    "./fe/components/*": "./src/fe/components/*",
     "./fe/constants": "./src/fe/constants.ts",
     "./build": "./src/build/index.ts",
     "./runtime": "./src/runtime/index.ts",
@@ -28,10 +29,30 @@
     "./services": "./src/services/index.ts"
   },
   "peerDependencies": {
-    "vue": "^3.0.0"
+    "vue": "^3.0.0",
+    "@tiptap/core": "^3.20.1",
+    "@tiptap/vue-3": "^3.20.1",
+    "@tiptap/starter-kit": "^3.20.1",
+    "@tiptap/pm": "^3.20.1",
+    "monaco-editor": "^0.55.1",
+    "@guolao/vue-monaco-editor": "^1.5.5",
+    "reka-ui": "^2.2.1",
+    "tiptap-markdown": "^0.9.0",
+    "lowlight": "^3.3.0",
+    "lucide-vue-next": "^0.503.0"
   },
   "peerDependenciesMeta": {
-    "vue": { "optional": true }
+    "vue": { "optional": true },
+    "@tiptap/core": { "optional": true },
+    "@tiptap/vue-3": { "optional": true },
+    "@tiptap/starter-kit": { "optional": true },
+    "@tiptap/pm": { "optional": true },
+    "monaco-editor": { "optional": true },
+    "@guolao/vue-monaco-editor": { "optional": true },
+    "reka-ui": { "optional": true },
+    "tiptap-markdown": { "optional": true },
+    "lowlight": { "optional": true },
+    "lucide-vue-next": { "optional": true }
   },
   "devDependencies": {
     "typescript": "^5.8.3",

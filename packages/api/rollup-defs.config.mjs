@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
-const outDir = resolve(__dirname, '../renderer/src/core/types/generated');
+const outDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
 const defaultSetupOutDir = resolve(apiDir, 'defs/dist/default-setup');
 const defaultSetupDefsDir = resolve(__dirname, '../default-setup/defs');
 

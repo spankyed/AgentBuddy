@@ -88,7 +88,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
-import JsonHoverPopup from '@/core/components/JsonHoverPopup.vue'
+import JsonHoverPopup from '@abuddy/sdk/fe/components/JsonHoverPopup.vue'
 import { computeLabel, computeBadge } from './tool-activity-label'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/features/threads/fe/state'

@@ -203,7 +203,7 @@ import { computed, shallowRef, watch } from 'vue'
 import { Plus, Trash2, Code } from 'lucide-vue-next'
 import BaseForm from './BaseForm.vue'
 import TipSection from '../components/TipSection.vue'
-import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue'
+import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
 import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@app/api'
 
 // Type guard and accessor for object predicates (vs function predicates)

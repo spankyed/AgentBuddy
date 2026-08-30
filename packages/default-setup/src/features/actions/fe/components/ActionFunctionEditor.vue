@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue';
+import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
 import type { ActionParameter } from '@app/api';
 
 defineProps<{

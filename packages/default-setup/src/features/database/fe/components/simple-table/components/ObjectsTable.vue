@@ -104,7 +104,7 @@ import {
   ContextMenuPortal,
   ContextMenuSeparator,
 } from 'reka-ui';
-import JsonHoverPopup from '@/core/components/JsonHoverPopup.vue';
+import JsonHoverPopup from '@abuddy/sdk/fe/components/JsonHoverPopup.vue';
 import { isJsonLike } from '../utils/json-detection';
 
 interface Props {

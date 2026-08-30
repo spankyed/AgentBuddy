@@ -84,7 +84,7 @@ import { computed, ref, watch } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
-import TNodeListItem from '@/core/components/TNodeListItem.vue'
+import TNodeListItem from '@abuddy/sdk/fe/components/TNodeListItem.vue'
 import type { TrackEntity } from '@app/api'
 import { trpc } from '@abuddy/sdk/rpc'
 

@@ -201,7 +201,7 @@ import {
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
 import TipSection from '../components/TipSection.vue'
-import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue'
+import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
 import type { ActionEntity, NodeEntity } from '@app/api'
 import type { FormResources } from '../../types/form-props'
 
