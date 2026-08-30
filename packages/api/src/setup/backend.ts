@@ -6,7 +6,7 @@ import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { runBootSeed } from '@/setup/seed/index';
+import { runBootSeed } from '@/registries/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { loadExternalPacks, registerPackSystems } from '@/core/packs/pack-loader';

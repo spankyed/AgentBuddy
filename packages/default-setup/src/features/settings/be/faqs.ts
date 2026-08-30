@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { DEFAULT_COMPILED_DIR, loadJSON } from '@/setup/seed/index';
+import { DEFAULT_COMPILED_DIR, loadJSON } from '../../../registries/seed/index';
 import type { FAQItem } from './types';
 
 /**
