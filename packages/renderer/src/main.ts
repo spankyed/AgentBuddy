@@ -128,6 +128,7 @@ app.config.errorHandler = (err, _instance, info) => {
   );
 };
 
+app.provide('actorSystem', applicationState.system);
 app.mount('#app');
 
 // Load external pack plugins after boot

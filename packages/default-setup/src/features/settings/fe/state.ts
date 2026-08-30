@@ -8,8 +8,6 @@ import {
 } from '@abuddy/sdk/fe'
 import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType, FAQItem } from '@app/api'
 import { trpc } from '@abuddy/sdk/rpc'
-import plugins from '@/plugins'
-import { applicationState } from '@/main'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -122,21 +120,22 @@ const settingsState = setup({
 
     setSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_LOADED', event);
-
-      // Send plugin visibility to application state on initial load
-      if (ev.data?.plugins?._meta?.visibility) {
-        applicationState.send({
-          type: 'PLUGIN_VISIBILITY_UPDATED',
-          pluginVisibility: ev.data.plugins._meta.visibility
-        });
-      }
-
       return {
         settings: ev.data,
         faqs: ev.faqs ?? [],
         isLoading: false,
       }
     }),
+
+    notifyPluginVisibility: ({ event, system }) => {
+      const data = (event as any).data;
+      if (data?.plugins?._meta?.visibility) {
+        system.get('application')?.send({
+          type: 'PLUGIN_VISIBILITY_UPDATED',
+          pluginVisibility: data.plugins._meta.visibility,
+        });
+      }
+    },
 
     setSecretsData: assign(({ event }) => {
       const ev = event as { type: 'SECRETS.EVENT.LOADED'; data: any[] };
@@ -147,15 +146,6 @@ const settingsState = setup({
 
     updateSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_UPDATED', event);
-      
-      // Send plugin visibility updates to application state
-      if (ev.data?.plugins?._meta?.visibility) {
-        applicationState.send({
-          type: 'PLUGIN_VISIBILITY_UPDATED',
-          pluginVisibility: ev.data.plugins._meta.visibility
-        });
-      }
-      
       return {
         settings: ev.data,
       }
@@ -418,12 +408,11 @@ const settingsState = setup({
 }).createMachine({
   id,
   initial: 'loading',
-  context: () => {
-    // Get plugins with settings
-    const pluginsWithSettings = plugins.filter(plugin => plugin.settings)
-    // Set first plugin as default if available
-    const defaultPluginId = pluginsWithSettings.length > 0 ? pluginsWithSettings[0].id : null
-    
+  context: ({ self }) => {
+    const appPlugins = self.system.get('application')?.getSnapshot()?.context?.plugins ?? [];
+    const pluginsWithSettings = appPlugins.filter((plugin: any) => plugin.settings);
+    const defaultPluginId = pluginsWithSettings.length > 0 ? pluginsWithSettings[0].id : null;
+
     return {
       settings: null,
       faqs: [],
@@ -443,7 +432,7 @@ const settingsState = setup({
       on: {
         SETTINGS_LOADED: {
           target: 'ready',
-          actions: 'setSettingsData',
+          actions: ['setSettingsData', 'notifyPluginVisibility'],
         },
       },
     },
@@ -472,10 +461,10 @@ const settingsState = setup({
           target: 'loading',
         },
         SETTINGS_UPDATED: {
-          actions: 'updateSettingsData',
+          actions: ['updateSettingsData', 'notifyPluginVisibility'],
         },
         SETTINGS_RESET: {
-          actions: 'updateSettingsData',
+          actions: ['updateSettingsData', 'notifyPluginVisibility'],
         },
         'SECRETS.EVENT.LOADED': {
           actions: 'setSecretsData',
