@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { compilePack, type CompilePackOptions } from '@abuddy/sdk/build';
+import { compilePack, type CompilePackOptions } from '@app/default-setup/build';
 
 function findPackRoot(from: string): string {
   let dir = from;

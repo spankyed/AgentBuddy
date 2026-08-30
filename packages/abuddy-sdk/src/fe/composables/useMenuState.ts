@@ -5,7 +5,7 @@ const openCount = ref(0)
 export const isAnyMenuOpen = computed(() => openCount.value > 0)
 
 export function onMenuOpenChange(open: boolean) {
-  openCount.value += open ? 1 : -1
+  openCount.value = Math.max(0, openCount.value + (open ? 1 : -1))
 }
 
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>) {

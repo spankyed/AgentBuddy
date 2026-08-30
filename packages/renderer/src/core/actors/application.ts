@@ -317,6 +317,10 @@ export const createApplicationState = () => setup({
     mergePackPlugins: assign(({ event, context }) => {
       const { plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
       const existingIds = new Set(context.plugins.map(p => p.id));
+      const skipped = packPlugins.filter(p => existingIds.has(p.id));
+      if (skipped.length > 0) {
+        console.warn(`[pack-loader] Skipping plugins with duplicate IDs: ${skipped.map(p => p.id).join(', ')}`);
+      }
       const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
       if (newPlugins.length === 0) return {};
       const allPlugins = [...context.plugins, ...newPlugins];
