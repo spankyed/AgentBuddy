@@ -7,6 +7,9 @@ import { APP_VERSION } from '@/version';
 
 const logger = createLogger('pack-loader');
 
+// Packages provided by the host that packs can require() without bundling
+const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
+
 export interface PackManifest {
   id: string;
   name: string;
@@ -93,11 +96,28 @@ function loadSystemFromCJS(
   }
 
   const originalResolve = (Module as any)._resolveFilename;
+
+  // Pre-resolve all host-provided paths BEFORE installing the override to avoid recursion
+  const hostResolutions = new Map<string, string>();
   try {
-    // Intercept @abuddy/sdk requires so pack code uses the host's SDK
+    const sdkEntry = require.resolve('@abuddy/sdk');
+    hostResolutions.set('@abuddy/sdk', sdkEntry.replace(/\/index\.(js|cjs|ts)$/, ''));
+  } catch {}
+  for (const pkg of HOST_PROVIDED_PACKAGES) {
+    try { hostResolutions.set(pkg, require.resolve(pkg)); } catch {}
+  }
+
+  try {
     (Module as any)._resolveFilename = function (request: string, ...args: any[]) {
       if (request.startsWith('@abuddy/sdk')) {
-        return originalResolve.call(this, request.replace('@abuddy/sdk', require.resolve('@abuddy/sdk').replace(/\/index\.(js|cjs|ts)$/, '')), ...args);
+        const sdkBase = hostResolutions.get('@abuddy/sdk');
+        if (sdkBase) {
+          const mapped = request.replace('@abuddy/sdk', sdkBase);
+          return originalResolve.call(this, mapped, ...args);
+        }
+      }
+      if (hostResolutions.has(request)) {
+        return hostResolutions.get(request)!;
       }
       return originalResolve.call(this, request, ...args);
     };

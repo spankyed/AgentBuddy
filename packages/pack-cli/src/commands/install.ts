@@ -3,10 +3,15 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFileSync } from 'node:child_process';
 
-const PACKS_DIR = path.join(os.homedir(), '.agentbuddy', 'packs');
+function getPacksDir(): string {
+  const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
+  return path.join(userDataPath, 'packs');
+}
 
-function ensurePacksDir(): void {
-  fs.mkdirSync(PACKS_DIR, { recursive: true });
+function ensurePacksDir(): string {
+  const dir = getPacksDir();
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 function extractZip(zipPath: string, destDir: string): void {
@@ -57,7 +62,7 @@ export async function install(args: string[]) {
     throw new Error('Usage: abuddy install <path-to-pack>\n\nProvide a path to a pack directory or .zip file.');
   }
 
-  ensurePacksDir();
+  const packsDir = ensurePacksDir();
   const resolved = path.resolve(source);
 
   if (!fs.existsSync(resolved)) {
@@ -70,9 +75,13 @@ export async function install(args: string[]) {
   if (resolved.endsWith('.zip')) {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-'));
     extractZip(resolved, tmpDir);
-    const entries = fs.readdirSync(tmpDir, { withFileTypes: true });
-    const dirs = entries.filter(e => e.isDirectory() && !e.isSymbolicLink());
-    sourceDir = dirs.length === 1 ? path.join(tmpDir, dirs[0].name) : tmpDir;
+    if (fs.existsSync(path.join(tmpDir, 'abuddy.json'))) {
+      sourceDir = tmpDir;
+    } else {
+      const entries = fs.readdirSync(tmpDir, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory() && !e.isSymbolicLink());
+      sourceDir = dirs.length === 1 ? path.join(tmpDir, dirs[0].name) : tmpDir;
+    }
     cleanup = () => fs.rmSync(tmpDir, { recursive: true, force: true });
   } else if (fs.statSync(resolved).isDirectory()) {
     sourceDir = resolved;
@@ -82,7 +91,7 @@ export async function install(args: string[]) {
 
   try {
     const manifest = validateInstallSource(sourceDir);
-    const destDir = path.join(PACKS_DIR, manifest.id);
+    const destDir = path.join(packsDir, manifest.id);
 
     if (fs.existsSync(destDir)) {
       const existingManifest = JSON.parse(

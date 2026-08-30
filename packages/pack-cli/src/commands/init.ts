@@ -6,7 +6,7 @@ const MANIFEST_TEMPLATE = (name: string) => JSON.stringify({
   id: name,
   name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
   version: '0.1.0',
-  hostVersion: '>=0.4.0',
+  hostVersion: '>=0.3.0',
   artifactTypes: ['actions', 'flows'],
   features: [],
   permissions: [],
