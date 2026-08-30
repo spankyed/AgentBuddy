@@ -1,4 +1,5 @@
 node_modules/
 dist/
+.abuddy/
 .env
 .DS_Store
