@@ -2,7 +2,7 @@
 export { defineSystem, type SystemDefinition, type SystemEvents } from './framework/index';
 
 // Helpers
-export { safeEvents, emit, logErrors } from './helpers/index';
+export { safeEvents, emit } from './helpers/index';
 export type { Simplify } from './helpers/index';
 
 // Types

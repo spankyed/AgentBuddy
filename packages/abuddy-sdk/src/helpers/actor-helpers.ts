@@ -52,19 +52,4 @@ export function emit<E extends { type: string }>(
   };
 }
 
-export function logErrors(actor: string) {
-  return {
-    error: (error: unknown) => {
-      const err = error instanceof Error ? error : new Error(String(error));
-      console.error(`${actor} State Error:`, err);
-      process.stderr.write(JSON.stringify({
-        __fatal: true,
-        message: err.message,
-        stack: err.stack,
-        source: actor,
-      }) + '\n');
-    }
-  }
-}
-
 export type { Simplify };
