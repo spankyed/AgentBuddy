@@ -90,7 +90,7 @@ import { applicationState } from '@/main'
 import { navigateToPlugin } from '@/core/utils/navigate'
 import Router from '@/core/components/layout/router.vue'
 import { BrainInspectPanel, brainId, settingsId } from '@/registries/extensions'
-import type { ContextMenuItem } from '@/core/context-menu'
+import type { ContextMenuItem } from '@abuddy/sdk/fe'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
 import { registerGlobalToast } from '@/core/toast'
 

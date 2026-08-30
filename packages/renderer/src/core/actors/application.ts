@@ -1,12 +1,10 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
-import type { HotkeyEvent } from '@/core/utils/hotkeys';
-import { processHotkeys } from '@/core/utils/hotkeys';
+import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
+import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
-import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
-import type { ContextMenuItem } from '@/core/context-menu';
 import { globalToast } from '@/core/toast';
 import { settingsId, threadsId } from '@/registries/extensions';
 

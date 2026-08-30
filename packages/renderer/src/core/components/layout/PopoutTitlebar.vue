@@ -72,7 +72,7 @@ import {
 import WindowControls from '@/core/components/layout/WindowControls.vue'
 import PluginMenuItems from '@/core/components/layout/PluginMenuItems.vue'
 import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
-import type { ContextMenuItem } from '@/core/context-menu'
+import type { ContextMenuItem } from '@abuddy/sdk/fe'
 
 withDefaults(defineProps<{
   breadcrumbs?: { label: string; target?: string; info?: any }[]

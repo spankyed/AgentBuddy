@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next';
-import type { ContextMenuItem } from '@/core/context-menu';
+import type { ContextMenuItem } from '@abuddy/sdk/fe';
 
 defineProps<{
   items: ContextMenuItem[];

@@ -13,6 +13,11 @@ import { loadPackPlugins } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
 import { TIPTAP_PLUGINS_KEY } from '@/core/components/tiptap/injection-keys';
 import { tiptapPlugins } from '@/registries/tiptap-plugins';
+import { registerHostModule } from '@abuddy/sdk/runtime';
+import * as navigateMod from '@/core/utils/navigate';
+import * as openBrowserMod from '@/core/utils/openInAppBrowser';
+import * as settingsSaveStatusMod from '@/core/composables/useSettingsSaveStatus';
+import * as pluginsMod from '@/core/composables/plugins';
 
 declare const __APP_VERSION__: string;
 
@@ -97,6 +102,11 @@ export const applicationState = createActor(createApplicationState(), {
 }).start();
 
 window.applicationState = applicationState;
+
+registerHostModule('navigate', navigateMod);
+registerHostModule('open-in-app-browser', openBrowserMod);
+registerHostModule('settings-save-status', settingsSaveStatusMod);
+registerHostModule('plugins', pluginsMod);
 
 applicationState.subscribe({
   error: (error: unknown) => {

@@ -1,20 +1,19 @@
 // plugins/types.ts
 import type { Component } from 'vue';
 import type { AnyStateMachine } from 'xstate';
-import type { PluginHotkeyDefinition } from '@/core/utils/hotkeys';
+import type { PluginHotkeyDefinition } from '@abuddy/sdk/fe';
 
 type RouteName = string;
 export type RouteComponents = Record<RouteName, Component>;
 
-// Re-export hotkey utilities for backward compatibility
-export { 
+export {
   type HotkeyEvent,
   type HotkeysMap,
   type PluginHotkeyDefinition,
   matchesHotkey,
   processHotkeys,
   createHotkeyProcessor
-} from '@/core/utils/hotkeys';
+} from '@abuddy/sdk/fe';
 
 export interface Plugin {
   id: string; // Toolbar key

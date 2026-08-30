@@ -1,8 +1,6 @@
-import type { Component } from 'vue';
-
 export interface ContextMenuItem {
   label: string;
-  icon?: Component;
+  icon?: any;
   iconColor?: string;
   event: { type: string; [key: string]: any };
   separator?: boolean;

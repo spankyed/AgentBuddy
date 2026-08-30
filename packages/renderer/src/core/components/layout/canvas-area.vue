@@ -83,7 +83,7 @@ import {
 } from 'reka-ui'
 import PluginMenuItems from './PluginMenuItems.vue'
 import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
-import type { ContextMenuItem as ContextMenuItemType } from '@/core/context-menu'
+import type { ContextMenuItem as ContextMenuItemType } from '@abuddy/sdk/fe'
 
 const menuOpen = ref(false)
 useTrackedMenuOpen(menuOpen)

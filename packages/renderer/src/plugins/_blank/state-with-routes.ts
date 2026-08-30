@@ -1,11 +1,5 @@
 import { assign, setup } from 'xstate';
-import breadcrumb from '@/core/breadcrumb';
-import { safeEvents } from '@/core/types/safe-events';
-import {
-  targetIs,          // guard that checks event.target against a CSS selector
-  TRAIL_CLICK,        // helper that converts selector → state mappings
-  type TrailClickEvent
-} from '@/core/actors/route-trailer';
+import breadcrumb, { safeEvents, targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
 
 
 export const id = '_blank';

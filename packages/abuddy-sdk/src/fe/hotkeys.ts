@@ -1,5 +1,8 @@
-// Hotkey utilities and types
-import type { KeyboardShortcut } from '@app/api';
+export interface KeyboardShortcut {
+  key: string;
+  modifiers: string[];
+  global?: boolean;
+}
 
 export interface HotkeyEvent {
   type: 'HOTKEY_PRESSED';
@@ -17,32 +20,29 @@ export type HotkeysMap = {
 }
 
 export interface PluginHotkeyDefinition {
-  action: string; // Action name that maps to handler in state machine
-  global?: boolean; // If true, hotkey works regardless of active plugin
+  action: string;
+  global?: boolean;
 }
 
-// Check if a HotkeyEvent matches a KeyboardShortcut
 export function matchesHotkey(event: HotkeyEvent, config: KeyboardShortcut): boolean {
   if (!config?.key) return false;
-  
-  const modifierMatch = 
+
+  const modifierMatch =
     (config.modifiers.includes('cmd') === event.metaKey) &&
     (config.modifiers.includes('ctrl') === event.ctrlKey) &&
     (config.modifiers.includes('alt') || config.modifiers.includes('option') ? event.altKey : !event.altKey) &&
     (config.modifiers.includes('shift') === event.shiftKey);
-  
+
   return event.key.toLowerCase() === config.key.toLowerCase() && modifierMatch;
 }
 
-// Process hotkeys with action map - returns matched action value or undefined
-// Accepts any object where the keys we care about have KeyboardShortcut values
 export function processHotkeys<const T extends Record<string, string>, H = any>(
   event: HotkeyEvent,
   hotkeys: H | undefined,
   actionMap: T
 ): T[keyof T] | undefined {
   if (!hotkeys) return undefined;
-  
+
   for (const actionName of Object.keys(actionMap) as (keyof T)[]) {
     if (event.allowedActions && !event.allowedActions.has(actionName as string)) continue;
     const hotkeyConfig = (hotkeys as any)[actionName as string];
@@ -51,12 +51,10 @@ export function processHotkeys<const T extends Record<string, string>, H = any>(
       return actionMap[actionName];
     }
   }
-  
+
   return undefined;
 }
 
-// Create a hotkey processor action for XState machines
-// Usage: handleHotkey: createHotkeyProcessor({ actionName: 'EVENT_TYPE' })
 export function createHotkeyProcessor<
   const TMap extends Record<string, string>,
   TContext extends { hotkeys: HotkeysMap } = { hotkeys: HotkeysMap },
@@ -74,7 +72,7 @@ export function createHotkeyProcessor<
       context.hotkeys,
       actionMap
     );
-    
+
     if (actionType) {
       self.send({ type: actionType });
     }

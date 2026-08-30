@@ -1,8 +1,8 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
-import { safeEvents } from "@/core/types/safe-events";
+import { safeEvents } from "@abuddy/sdk/fe";
 import { capitalizeFirstLetter } from "../utils";
 import Label from '@/core/components/design/label.vue';
-import type { ContextMenuItem, ContextMenuMeta } from '@/core/context-menu';
+import type { ContextMenuItem, ContextMenuMeta } from '@abuddy/sdk/fe';
 
 export interface BreadcrumbItem {
   label: string;
