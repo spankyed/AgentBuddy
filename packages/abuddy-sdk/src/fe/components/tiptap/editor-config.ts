@@ -6,8 +6,6 @@ export interface EditorConfig {
   richFormatting: boolean       // Headings, strike, horizontalRule, trailingNode (false = disabled)
   markdownHtml: boolean         // Markdown HTML support
   markdownBreaks: boolean       // Single \n → <br> (for chat viewer where Claude uses single newlines)
-  commandSuggestion: boolean    // /command input rule
-  commandViewerDeco: boolean    // command decoration in viewer (runtime-gated by isCommand prop)
   listShiftEnter: boolean       // Shift+Enter → new bullet
   editorInteractions: boolean   // click/paste/drop handlers for sub-doc links, images
   viewerImageClick: boolean     // image lightbox click in viewer
@@ -16,8 +14,6 @@ export interface EditorConfig {
   enterSubmit: boolean          // Enter submits, Shift+Enter splits
   blockMenu: boolean            // block menu + image bubble (also gated by showGutter prop)
   textBubbleMenu: boolean
-  referencePopup: boolean
-  commandPopup: boolean
   searchBar: boolean
 }
 
@@ -30,8 +26,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     richFormatting: true,
     markdownHtml: true,
     markdownBreaks: false,
-    commandSuggestion: false,
-    commandViewerDeco: false,
     listShiftEnter: false,
     editorInteractions: true,
     viewerImageClick: false,
@@ -40,8 +34,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     enterSubmit: false,
     blockMenu: true,
     textBubbleMenu: true,
-    referencePopup: true,
-    commandPopup: false,
     searchBar: true,
   },
   'input:chat': {
@@ -50,8 +42,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     richFormatting: false,
     markdownHtml: false,
     markdownBreaks: false,
-    commandSuggestion: true,
-    commandViewerDeco: false,
     listShiftEnter: true,
     editorInteractions: false,
     viewerImageClick: false,
@@ -60,8 +50,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     enterSubmit: true,
     blockMenu: false,
     textBubbleMenu: true,
-    referencePopup: true,
-    commandPopup: true,
     searchBar: false,
   },
   'viewer:full': {
@@ -70,8 +58,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     richFormatting: true,
     markdownHtml: true,
     markdownBreaks: false,
-    commandSuggestion: false,
-    commandViewerDeco: false,
     listShiftEnter: false,
     editorInteractions: false,
     viewerImageClick: true,
@@ -80,8 +66,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     enterSubmit: false,
     blockMenu: false,
     textBubbleMenu: false,
-    referencePopup: false,
-    commandPopup: false,
     searchBar: false,
   },
   'viewer:chat': {
@@ -90,8 +74,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     richFormatting: true, // headings / strike / hr — Claude responses use them
     markdownHtml: false,
     markdownBreaks: true, // Claude Code text uses single \n for paragraph breaks
-    commandSuggestion: false,
-    commandViewerDeco: true,
     listShiftEnter: false,
     editorInteractions: false,
     viewerImageClick: true,
@@ -100,8 +82,6 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     enterSubmit: false,
     blockMenu: false,
     textBubbleMenu: false,
-    referencePopup: false,
-    commandPopup: false,
     searchBar: false,
   },
 }

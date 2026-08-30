@@ -5,6 +5,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 export const CommandViewerDecoration = Extension.create({
   name: 'commandViewerDecoration',
   addProseMirrorPlugins() {
+    if (this.editor.isEditable) return []
     return [
       new Plugin({
         props: {

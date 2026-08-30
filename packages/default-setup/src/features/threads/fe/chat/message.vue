@@ -162,7 +162,7 @@
 
         <!-- Message content -->
         <div class="leading-relaxed text-[15px]">
-          <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" :is-command="isCommand" />
+          <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" />
         </div>
 
         <!-- Other block types (approval, choice, etc.) render BELOW text -->

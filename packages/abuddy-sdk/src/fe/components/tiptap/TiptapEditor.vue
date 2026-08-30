@@ -59,7 +59,6 @@ const props = withDefaults(defineProps<{
   entityId?: string
   disableImages?: boolean
   showGutter?: boolean
-  isCommand?: boolean
   inHistoryMode?: boolean
   pauseAvailable?: boolean
 }>(), {
@@ -71,7 +70,6 @@ const props = withDefaults(defineProps<{
   entityId: undefined,
   disableImages: false,
   showGutter: false,
-  isCommand: false,
   inHistoryMode: false,
   pauseAvailable: false,
 })
