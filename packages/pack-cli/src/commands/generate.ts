@@ -208,8 +208,8 @@ function emitEARS(ownId: string, registry: MergedRegistry): string {
   return lines.join('\n');
 }
 
-export async function generate(_args: string[]) {
-  const root = findPackRoot(process.cwd());
+export async function generate(_args: string[], packRoot?: string) {
+  const root = packRoot ?? findPackRoot(process.cwd());
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8')) as PackManifest;
 
   console.log(`Generating types for: ${manifest.name}`);

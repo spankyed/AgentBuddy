@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
+import { generate } from './generate';
 
 const MANIFEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
@@ -27,6 +28,9 @@ export default {
 } satisfies PackConfig;
 `;
 
+const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../.abuddy/generated/ears';
+`;
+
 const TSCONFIG_TEMPLATE = JSON.stringify({
   compilerOptions: {
     target: 'ES2022',
@@ -48,7 +52,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   type: 'module',
   scripts: {
     generate: 'abuddy generate',
-    build: 'abuddy generate && abuddy build',
+    build: 'abuddy build',
     validate: 'abuddy validate',
     dev: 'abuddy dev',
     typecheck: 'tsc --noEmit',
@@ -99,8 +103,17 @@ export async function init(args: string[]) {
     path.join(dir, 'src', 'features', name, 'pack.config.ts'),
     PACK_CONFIG_TEMPLATE(name),
   );
+  fs.writeFileSync(
+    path.join(dir, 'src', 'entities.ts'),
+    ENTITIES_TEMPLATE,
+  );
+
+  await generate([], dir);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
+  console.log(`\nGenerated types at .abuddy/generated/ears.ts`);
+  console.log(`\nImport entities in your pack code:`);
+  console.log(`  import { EARS } from '../entities';`);
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);
