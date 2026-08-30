@@ -1,12 +1,11 @@
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { logsSystem } from '@/features/logs/be/system';
+import { earlyBootSystem, createDefaultSettings } from '@/registries/boot';
 import { backendSystem } from '@/systems/backend';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/features/settings/be/repository';
 import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
@@ -22,7 +21,7 @@ export async function setupBackend(): Promise<void> {
   initializeLogCapture();
 
   // Start logs actor before any other work
-  const logsActor = createActor(logsSystem).start();
+  const logsActor = createActor(earlyBootSystem).start();
   logsActor.subscribe(logErrors('Logs'));
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);

@@ -10,22 +10,19 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { EARS } from '@/core/types';
 import { findById, findWhere, findAll } from '@/core/shared/repository/query-helpers';
-import { actionCommands } from '@/features/actions/be/repository';
-import { promptQueries, promptCommands } from '@/features/prompts/be/repository';
-import { validate, compile, isFlowConfig } from '@/features/flows/be/dsl';
-import { flowsCommands } from '@/features/flows/be/repository';
-import { settingsQueries, settingsCommands } from '@/features/settings/be/repository';
+import { repository } from '@/repository';
+import { validate, compile, isFlowConfig, importNotesFromData } from '@/registries/seed';
 import type { ActionEntity } from '@/features/actions/be/types';
 import type { PromptEntity } from '@/features/prompts/be/types';
 import type { FlowDSL } from '@/features/flows/be/dsl';
 import type { FlowEntity } from '@/features/flows/be/config/types';
-import { libraryCommands } from '@/features/library/be/repository';
 import type { ContentSection, Document, Collection } from '@/features/library/be/types';
 import type { ExportedLibrary, ExportedItem } from '@/features/library/be/export-types';
 import { getMediaPath } from '@/core/shared/paths';
-import { importNotesFromData } from '@/features/notes/be/import-notes';
-import { noteCommands } from '@/features/notes/be/repository';
 import type { ExportedNotes } from '@/features/notes/be/export-types';
+
+const { actionCommands, promptQueries, promptCommands, flowsCommands,
+        settingsQueries, settingsCommands, libraryCommands, noteCommands } = repository;
 
 interface SeedCounts {
   created: number;

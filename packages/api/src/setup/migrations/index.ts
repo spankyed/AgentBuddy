@@ -1,5 +1,7 @@
-import { settingsQueries, settingsCommands } from '@/features/settings/be/repository';
+import { repository } from '@/repository';
 import { APP_VERSION } from '@/version';
+
+const { settingsQueries, settingsCommands } = repository;
 
 export interface Migration {
   target: string;

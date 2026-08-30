@@ -2,7 +2,8 @@ import { EARS } from '@/core/types';
 import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { settingsQueries, settingsCommands } from '@/features/settings/be/repository';
+import { repository } from '@/repository';
+const { settingsQueries, settingsCommands } = repository;
 import type { ThreadEntity, ArtifactEntity } from '@/features/threads/be/types';
 import type { Migration } from './index';
 

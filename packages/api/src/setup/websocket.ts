@@ -5,7 +5,7 @@ import { createContext } from '@/core/router/context';
 import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
-import { terminalService } from '@/features/code/be/services/terminal';
+import { runShutdownHooks } from '@/registries/lifecycle';
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
@@ -29,7 +29,7 @@ export function createWebSocketServer() {
 
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
-    terminalService.killAll();
+    runShutdownHooks();
   });
 
   // Setup graceful shutdown
