@@ -2,7 +2,7 @@
  * Local mirror of the `tool-activity` block types so helper files in this
  * directory can typecheck before the backend `defs/` rollup is regenerated.
  *
- * Kept in sync with `packages/api/src/systems/threads/types.ts`. If the
+ * Kept in sync with the threads feature types. If the
  * canonical shape changes, mirror it here too.
  */
 

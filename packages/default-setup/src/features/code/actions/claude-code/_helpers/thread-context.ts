@@ -3,7 +3,7 @@
  * the `claude-code` tag.
  *
  * The Thread entity carries a free-form `context` field (see
- * `packages/api/src/systems/threads/types.ts` → `ThreadContext`). Claude
+ * `ThreadContext` in the threads feature types). Claude
  * Code parks its per-thread session state under `context.claudeCode` so the
  * chat action can resume the right conversation on subsequent turns.
  *

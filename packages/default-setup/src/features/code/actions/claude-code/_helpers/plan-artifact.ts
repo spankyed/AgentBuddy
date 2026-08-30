@@ -14,8 +14,7 @@
  * module-level cache. EARS is LMDB-backed and kept in memory, so the
  * repository query is essentially a Map access.
  *
- * Shape contract: PlanArtifactContent lives at
- *   packages/api/src/systems/threads/types.ts:375-387
+ * Shape contract: PlanArtifactContent lives in the threads feature types
  * — { notes: string, status: PlanStatus, steps: [] }
  *
  * Files without `export const meta` are auto-inlined into the consuming
