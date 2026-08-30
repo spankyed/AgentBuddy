@@ -1,4 +1,5 @@
 import { getHostModule } from '../runtime/host';
+import type { EARS } from '../types/entities';
 
 let _graphMod: any;
 function graphMod() {
@@ -6,7 +7,9 @@ function graphMod() {
   return _graphMod;
 }
 
-export function wouldCreateCycle(...args: any[]) { return graphMod().wouldCreateCycle(...args); }
+export function wouldCreateCycle(sourceId: EARS.EntityId, targetId: EARS.EntityId, relKinds: readonly string[]): boolean {
+  return graphMod().wouldCreateCycle(sourceId, targetId, relKinds);
+}
 
 let _entityUtilsMod: any;
 function entityUtilsMod() {
@@ -14,10 +17,12 @@ function entityUtilsMod() {
   return _entityUtilsMod;
 }
 
-export function getTimestamp(...args: any[]) { return entityUtilsMod().getTimestamp(...args); }
-export function generateShortCode(...args: any[]) { return entityUtilsMod().generateShortCode(...args); }
-export function generateLabelWithCount(...args: any[]) { return entityUtilsMod().generateLabelWithCount(...args); }
-export function filterSystemFields(...args: any[]) { return entityUtilsMod().filterSystemFields(...args); }
+export function getTimestamp(): number { return entityUtilsMod().getTimestamp(); }
+export function generateShortCode(entityType: EARS.Entity, prefix?: string): string { return entityUtilsMod().generateShortCode(entityType, prefix); }
+export function generateLabelWithCount(base: string, entityType: EARS.Entity): string { return entityUtilsMod().generateLabelWithCount(base, entityType); }
+export function filterSystemFields<T extends Record<string, unknown>>(updates: T, excludes?: string[]): Partial<T> {
+  return entityUtilsMod().filterSystemFields(updates, excludes);
+}
 
 let _queryMod: any;
 function queryMod() {
@@ -25,8 +30,8 @@ function queryMod() {
   return _queryMod;
 }
 
-export function b64Encode(...args: any[]) { return queryMod().b64Encode(...args); }
-export function b64Decode(...args: any[]) { return queryMod().b64Decode(...args); }
+export function b64Encode(n: number): string { return queryMod().b64Encode(n); }
+export function b64Decode(s: string): number { return queryMod().b64Decode(s); }
 
 let _lmdbQueryMod: any;
 function lmdbQueryMod() {
@@ -34,7 +39,6 @@ function lmdbQueryMod() {
   return _lmdbQueryMod;
 }
 
-export function getLmdbQuery() { return lmdbQueryMod().LmdbQuery; }
 export const LmdbQuery: any = new Proxy({} as any, {
   get(_, prop: string) { return lmdbQueryMod().LmdbQuery[prop]; },
   construct(_, args) { return new (lmdbQueryMod().LmdbQuery)(...args); },
@@ -46,4 +50,4 @@ function hydrateMod() {
   return _hydrateMod;
 }
 
-export function hydrateSharded(...args: any[]) { return hydrateMod().hydrateSharded(...args); }
+export function hydrateSharded(...args: any[]): Promise<void> { return hydrateMod().hydrateSharded(...args); }

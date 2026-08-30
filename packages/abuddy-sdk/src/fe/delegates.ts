@@ -1,86 +1,155 @@
 import { getHostModule } from '../runtime/host';
 
+// --- Breadcrumb ---
 let _breadcrumbMod: any;
 function breadcrumbMod() {
   if (!_breadcrumbMod) _breadcrumbMod = getHostModule('breadcrumb');
   return _breadcrumbMod;
 }
 
-export function breadcrumb(...args: any[]) { return breadcrumbMod().default(...args); }
-export function breadcrumbWithParams(...args: any[]) { return breadcrumbMod().breadcrumbWithParams(...args); }
-export function breadcrumbList(...args: any[]) { return breadcrumbMod().breadcrumbList(...args); }
+export function breadcrumb(target: string, label: string, isDefault?: boolean): {
+  breadcrumb: { label: string; target: string; default: boolean };
+} {
+  return breadcrumbMod().default(target, label, isDefault);
+}
 
+export function breadcrumbWithParams<C>(opts: {
+  target: string;
+} & (
+  | { getLabel: (ctx: C) => string; prefix?: never; paramName?: never }
+  | { getLabel?: never; prefix?: string; paramName: keyof C }
+)): { readonly breadcrumb: (ctx: C) => { label: string; target: string } } {
+  return breadcrumbMod().breadcrumbWithParams(opts);
+}
+
+export function breadcrumbList<C>(
+  getCrumbs: (ctx: C) => Array<{ label: string; target: string; info?: any }>
+): { readonly breadcrumb: (ctx: C) => Array<{ label: string; target: string; info?: any }> } {
+  return breadcrumbMod().breadcrumbList(getCrumbs);
+}
+
+export function staticBreadcrumbList(
+  crumbs: Array<{ label: string; target: string; info?: any }>
+): { readonly breadcrumb: Array<{ label: string; target: string; info?: any }> } {
+  return breadcrumbMod().staticBreadcrumbList(crumbs);
+}
+
+// --- FE Safe Events ---
 let _safeEventsMod: any;
 function safeEventsMod() {
   if (!_safeEventsMod) _safeEventsMod = getHostModule('fe-safe-events');
   return _safeEventsMod;
 }
 
-export function feSafeEvents(...args: any[]) { return safeEventsMod().safeEvents(...args); }
+export function feSafeEvents<T extends { type: string }>(): {
+  [K in T['type']]: K;
+} {
+  return safeEventsMod().safeEvents();
+}
 
+// --- Route Trailer ---
 let _routeTrailerMod: any;
 function routeTrailerMod() {
   if (!_routeTrailerMod) _routeTrailerMod = getHostModule('route-trailer');
   return _routeTrailerMod;
 }
 
-export function targetIs(...args: any[]) { return routeTrailerMod().targetIs(...args); }
-export function getTrailClick() { return routeTrailerMod().TRAIL_CLICK; }
-export const TRAIL_CLICK: string = 'TRAIL_CLICK';
-export type TrailClickEvent = any;
+export const targetIs: any = (...args: any[]) => routeTrailerMod().targetIs(...args);
 
+export function getTrailClick(): string { return routeTrailerMod().TRAIL_CLICK; }
+export const TRAIL_CLICK: string = 'TRAIL_CLICK';
+export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string; info?: any };
+
+// --- Context Menu ---
 let _contextMenuMod: any;
 function contextMenuMod() {
   if (!_contextMenuMod) _contextMenuMod = getHostModule('context-menu');
   return _contextMenuMod;
 }
 
-export function contextMenuFn(...args: any[]) { return contextMenuMod().contextMenuFn(...args); }
-export function contextMenu(...args: any[]) { return contextMenuMod().contextMenu(...args); }
+export interface ContextMenuItem {
+  label: string;
+  icon?: any;
+  iconColor?: string;
+  event: { type: string; [key: string]: any };
+  separator?: boolean;
+  isActive?: boolean;
+  confirm?: string;
+}
 
+export function contextMenuFn<C>(getItems: (ctx: C) => ContextMenuItem[]): {
+  readonly contextMenu: (ctx: C) => ContextMenuItem[];
+} {
+  return contextMenuMod().contextMenuFn(getItems);
+}
+
+export function contextMenu(items: ContextMenuItem[]): { contextMenu: ContextMenuItem[] } {
+  return contextMenuMod().contextMenu(items);
+}
+
+// --- Navigate ---
 let _navigateMod: any;
 function navigateMod() {
   if (!_navigateMod) _navigateMod = getHostModule('navigate');
   return _navigateMod;
 }
 
-export function navigateToPlugin(...args: any[]) { return navigateMod().navigateToPlugin(...args); }
+export function navigateToPlugin(...args: any[]): void {
+  return navigateMod().navigateToPlugin(...args);
+}
 
+// --- Nav History ---
 let _navHistoryMod: any;
 function navHistoryMod() {
   if (!_navHistoryMod) _navHistoryMod = getHostModule('nav-history');
   return _navHistoryMod;
 }
 
-export function createNavHistory(...args: any[]) { return navHistoryMod().createNavHistory(...args); }
-export function pushNavHistory(...args: any[]) { return navHistoryMod().pushNavHistory(...args); }
-export function goBack(...args: any[]) { return navHistoryMod().goBack(...args); }
-export function goForward(...args: any[]) { return navHistoryMod().goForward(...args); }
-export function canGoBack(...args: any[]) { return navHistoryMod().canGoBack(...args); }
-export function canGoForward(...args: any[]) { return navHistoryMod().canGoForward(...args); }
-export type NavHistory = any;
+export interface NavHistory {
+  entry: any;
+  history: any[];
+  [key: string]: any;
+}
 
+export function createNavHistory<T = string>(initialView?: T): NavHistory { return navHistoryMod().createNavHistory(initialView); }
+export function pushNavHistory(history: NavHistory, target: string, info?: any): NavHistory {
+  return navHistoryMod().pushNavHistory(history, target, info);
+}
+export function goBack(history: NavHistory): NavHistory { return navHistoryMod().goBack(history); }
+export function goForward(history: NavHistory): NavHistory { return navHistoryMod().goForward(history); }
+export function canGoBack(history: NavHistory): boolean { return navHistoryMod().canGoBack(history); }
+export function canGoForward(history: NavHistory): boolean { return navHistoryMod().canGoForward(history); }
+
+// --- Hotkeys ---
 let _hotkeysMod: any;
 function hotkeysMod() {
   if (!_hotkeysMod) _hotkeysMod = getHostModule('hotkeys');
   return _hotkeysMod;
 }
 
-export function createHotkeyProcessor(...args: any[]) { return hotkeysMod().createHotkeyProcessor(...args); }
 export type HotkeyEvent = any;
 export type HotkeysMap = any;
 
+export function createHotkeyProcessor(...args: any[]): any {
+  return hotkeysMod().createHotkeyProcessor(...args);
+}
+
+// --- Tab Groups ---
 let _tabGroupsMod: any;
 function tabGroupsMod() {
   if (!_tabGroupsMod) _tabGroupsMod = getHostModule('tab-groups');
   return _tabGroupsMod;
 }
 
-export function saveTabGroups(...args: any[]) { return tabGroupsMod().saveTabGroups(...args); }
-export function loadTabGroups(...args: any[]) { return tabGroupsMod().loadTabGroups(...args); }
-export function clearTabGroups(...args: any[]) { return tabGroupsMod().clearTabGroups(...args); }
-export function getNextAvailableColor(...args: any[]) { return tabGroupsMod().getNextAvailableColor(...args); }
-export function getAllColors() { return tabGroupsMod().ALL_COLORS; }
+export type TabGroup = any;
+
+export type TabGroupColor = string;
+
+export function saveTabGroups(pluginId: string, groups: TabGroup[]): void { return tabGroupsMod().saveTabGroups(pluginId, groups); }
+export function loadTabGroups(pluginId: string): TabGroup[] { return tabGroupsMod().loadTabGroups(pluginId); }
+export function clearTabGroups(pluginId: string): void { return tabGroupsMod().clearTabGroups(pluginId); }
+export function getNextAvailableColor(...args: any[]): string { return tabGroupsMod().getNextAvailableColor(...args); }
+export function getAllColors(): TabGroupColor[] { return tabGroupsMod().ALL_COLORS; }
 export const ALL_COLORS: any = new Proxy([] as any, {
   get(_, prop) {
     if (prop === Symbol.iterator || prop === 'length') {
@@ -89,29 +158,30 @@ export const ALL_COLORS: any = new Proxy([] as any, {
     return tabGroupsMod().ALL_COLORS[prop];
   }
 });
-export type TabGroup = any;
-export type TabGroupColor = any;
 
+// --- Open in App Browser ---
 let _openBrowserMod: any;
 function openBrowserMod() {
   if (!_openBrowserMod) _openBrowserMod = getHostModule('open-in-app-browser');
   return _openBrowserMod;
 }
 
-export function openInAppBrowser(...args: any[]) { return openBrowserMod().openInAppBrowser(...args); }
+export function openInAppBrowser(url: string): void { return openBrowserMod().openInAppBrowser(url); }
 
+// --- Settings Save Status ---
 let _settingsSaveStatusMod: any;
 function settingsSaveStatusMod() {
   if (!_settingsSaveStatusMod) _settingsSaveStatusMod = getHostModule('settings-save-status');
   return _settingsSaveStatusMod;
 }
 
-export function useSettingsSaveStatus(...args: any[]) { return settingsSaveStatusMod().useSettingsSaveStatus(...args); }
+export function useSettingsSaveStatus(...args: any[]): any { return settingsSaveStatusMod().useSettingsSaveStatus(...args); }
 
+// --- Plugins ---
 let _pluginsMod: any;
 function pluginsMod() {
   if (!_pluginsMod) _pluginsMod = getHostModule('plugins');
   return _pluginsMod;
 }
 
-export function useState(...args: any[]) { return pluginsMod().useState(...args); }
+export function useState(...args: any[]): any { return pluginsMod().useState(...args); }

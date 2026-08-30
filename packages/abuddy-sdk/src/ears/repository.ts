@@ -1,6 +1,5 @@
 import { getHostModule } from '../runtime/host';
-
-type AnyFn = (...args: any[]) => any;
+import type { EARS } from '../types/entities';
 
 let _repositoryMod: any;
 function repoMod() {
@@ -14,7 +13,7 @@ export const repository: any = new Proxy({} as any, {
   },
 });
 
-export function registerRepository(...args: any[]) {
+export function registerRepository(...args: any[]): void {
   return repoMod().registerRepository(...args);
 }
 
@@ -24,22 +23,66 @@ function sharedRepo() {
   return _sharedRepoMod;
 }
 
-export function findById(...args: any[]) { return sharedRepo().findById(...args); }
-export function findByIdRaw(...args: any[]) { return sharedRepo().findByIdRaw(...args); }
-export function findAll(...args: any[]) { return sharedRepo().findAll(...args); }
-export function findWhere(...args: any[]) { return sharedRepo().findWhere(...args); }
-export function hasIdCollision(...args: any[]) { return sharedRepo().hasIdCollision(...args); }
-export function createEntityWithDefaults(...args: any[]) { return sharedRepo().createEntityWithDefaults(...args); }
-export function updateEntity(...args: any[]) { return sharedRepo().updateEntity(...args); }
-export function exists(...args: any[]) { return sharedRepo().exists(...args); }
-export function createRelation(...args: any[]) { return sharedRepo().createRelation(...args); }
+export function findById<T>(id: EARS.EntityId): T | undefined {
+  return sharedRepo().findById(id);
+}
 
-export const RepositoryError: any = new Proxy(function () {} as any, {
+export function findByIdRaw<T>(id: EARS.EntityId): T | undefined {
+  return sharedRepo().findByIdRaw(id);
+}
+
+export function findAll<T>(entityType: EARS.Entity): T[] {
+  return sharedRepo().findAll(entityType);
+}
+
+export function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[] {
+  return sharedRepo().findWhere(entityType, field, value);
+}
+
+export function hasIdCollision(id: EARS.EntityId): boolean {
+  return sharedRepo().hasIdCollision(id);
+}
+
+export function createEntityWithDefaults<T extends Record<string, any> = Record<string, any>>(
+  entityType: EARS.Entity,
+  data: Partial<T>,
+  prefix?: string,
+  providedId?: EARS.EntityId,
+): T & { id: EARS.EntityId; entityType: EARS.Entity } {
+  return sharedRepo().createEntityWithDefaults(entityType, data, prefix, providedId);
+}
+
+export function updateEntity(id: EARS.EntityId, updates: Record<string, any>, skipTimestamp?: boolean): void {
+  return sharedRepo().updateEntity(id, updates, skipTimestamp);
+}
+
+export function exists(id: EARS.EntityId): boolean {
+  return sharedRepo().exists(id);
+}
+
+export function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void {
+  return sharedRepo().createRelation(sourceId, relationType, targetId);
+}
+
+export const RepositoryErrorCode = new Proxy({} as {
+  readonly NOT_FOUND: 'NOT_FOUND';
+  readonly VALIDATION_ERROR: 'VALIDATION_ERROR';
+  readonly CONSTRAINT_VIOLATION: 'CONSTRAINT_VIOLATION';
+  readonly PERMISSION_DENIED: 'PERMISSION_DENIED';
+  readonly CONCURRENCY_ERROR: 'CONCURRENCY_ERROR';
+  readonly OPERATION_FAILED: 'OPERATION_FAILED';
+  readonly UNKNOWN: 'UNKNOWN';
+}, {
+  get(_, prop: string) { return sharedRepo().RepositoryErrorCode[prop]; },
+});
+
+export type RepositoryErrorCode = typeof RepositoryErrorCode[keyof typeof RepositoryErrorCode];
+
+export const RepositoryError: {
+  new (message: string, code?: RepositoryErrorCode, details?: any): Error & { code: RepositoryErrorCode; details?: any };
+} = new Proxy(function () {} as any, {
   construct(_, args) { return new (sharedRepo().RepositoryError)(...args); },
   get(_, prop) { return sharedRepo().RepositoryError[prop]; },
-});
-export const RepositoryErrorCode: any = new Proxy({} as any, {
-  get(_, prop: string) { return sharedRepo().RepositoryErrorCode[prop]; },
 });
 
 let _queryHelpers: any;
@@ -48,9 +91,9 @@ function queryHelpersM() {
   return _queryHelpers;
 }
 export const queryHelpers = {
-  findById: (...args: any[]) => queryHelpersM().findById(...args),
-  findWhere: (...args: any[]) => queryHelpersM().findWhere(...args),
-  findAll: (...args: any[]) => queryHelpersM().findAll(...args),
+  findById: <T>(id: EARS.EntityId): T | undefined => queryHelpersM().findById(id),
+  findWhere: <T>(entityType: EARS.Entity, field: string, value: any): T[] => queryHelpersM().findWhere(entityType, field, value),
+  findAll: <T>(entityType: EARS.Entity): T[] => queryHelpersM().findAll(entityType),
 };
 
 let _txHelpers: any;

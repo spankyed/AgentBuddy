@@ -1,4 +1,5 @@
 import { getHostModule } from '../runtime/host';
+import type { EARS } from '../types/entities';
 
 let _mod: any;
 function mod() {
@@ -6,22 +7,42 @@ function mod() {
   return _mod;
 }
 
-export function getAttr(...args: any[]) { return mod().getAttr(...args); }
-export function removeRelation(...args: any[]) { return mod().removeRelation(...args); }
-export function getEntitiesOfType(...args: any[]) { return mod().getEntitiesOfType(...args); }
-export function getAll(...args: any[]) { return mod().getAll(...args); }
-export function getAllEntityTypes(...args: any[]) { return mod().getAllEntityTypes(...args); }
-export function getAllAttributeKinds(...args: any[]) { return mod().getAllAttributeKinds(...args); }
-export function getAllRelationKinds(...args: any[]) { return mod().getAllRelationKinds(...args); }
-export function getAttributeStats(...args: any[]) { return mod().getAttributeStats(...args); }
-export function resetLmdbFiles(...args: any[]) { return mod().resetLmdbFiles(...args); }
-export function clearMemory(...args: any[]) { return mod().clearMemory(...args); }
-export function closePersistence(...args: any[]) { return mod().closePersistence(...args); }
-export function reinitializeLmdb(...args: any[]) { return mod().reinitializeLmdb(...args); }
+export function getAttr(id: EARS.EntityId, kind: string): EARS.AttributeValue[] | null {
+  return mod().getAttr(id, kind);
+}
 
-export function getEnvs() { return mod().envs; }
-export function getPolicy() { return mod().policy; }
-export function getPersistence() { return mod().persistence; }
+export function removeRelation(...args: any[]): void {
+  return mod().removeRelation(...args);
+}
+
+export function getEntitiesOfType(entityType: EARS.Entity): EARS.EntityId[] {
+  return mod().getEntitiesOfType(entityType);
+}
+
+export function getAll(id: EARS.EntityId): Record<string, unknown> {
+  return mod().getAll(id);
+}
+
+export function getAllEntityTypes(): any[] {
+  return mod().getAllEntityTypes();
+}
+
+export function getAllAttributeKinds(): string[] {
+  return mod().getAllAttributeKinds();
+}
+
+export function getAllRelationKinds(): string[] {
+  return mod().getAllRelationKinds();
+}
+
+export function getAttributeStats(kind: string): { entityCount: number; totalValues: number } {
+  return mod().getAttributeStats(kind);
+}
+
+export function resetLmdbFiles(): void { return mod().resetLmdbFiles(); }
+export function clearMemory(): void { return mod().clearMemory(); }
+export function closePersistence(): void { return mod().closePersistence(); }
+export function reinitializeLmdb(): void { return mod().reinitializeLmdb(); }
 
 export const envs: any = new Proxy({} as any, { get(_, p) { return mod().envs[p]; } });
 export const policy: any = new Proxy({} as any, { get(_, p) { return mod().policy[p]; } });

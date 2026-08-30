@@ -1,4 +1,5 @@
 import { getHostModule } from '../runtime/host';
+import type { Logger } from '../ears/runtime';
 
 let _mod: any;
 function mod() {
@@ -6,9 +7,12 @@ function mod() {
   return _mod;
 }
 
-export function createLogger(...args: any[]) { return mod().createLogger(...args); }
+export type { Logger };
 
-export function getLogEvent() { return mod().LogEvent; }
+export function createLogger(source?: string): Logger {
+  return mod().createLogger(source);
+}
+
 export const LogEvent: any = new Proxy({} as any, {
   get(_, prop: string) { return mod().LogEvent[prop]; },
 });

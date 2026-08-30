@@ -1,4 +1,8 @@
-export { initEARSRuntime, qx, tx, createEntity, type EARSRuntimeDeps, type SafeLinkOptions } from './runtime';
+export {
+  initEARSRuntime, qx, tx, createEntity,
+  type EARSRuntimeDeps, type SafeLinkOptions,
+  type QueryBuilder, type TransactionBuilder, type Logger,
+} from './runtime';
 export {
   repository, registerRepository,
   findById, findByIdRaw, findAll, findWhere, hasIdCollision,
