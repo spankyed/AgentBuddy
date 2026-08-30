@@ -7,7 +7,6 @@ export interface PackManifest {
   artifactTypes?: ArtifactType[];
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
-  earsOutput?: string;
   features?: PackFeatureEntry[];
   dependencies?: Record<string, string>;
   permissions?: PackPermission[];

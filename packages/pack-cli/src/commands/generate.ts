@@ -221,9 +221,7 @@ export async function generate(_args: string[]) {
   const registry = mergeRegistries(manifest.id, manifest, depManifests);
   const output = emitEARS(manifest.id, registry);
 
-  const outPath = manifest.earsOutput
-    ? path.resolve(root, manifest.earsOutput)
-    : path.join(root, '.abuddy', 'generated', 'ears.ts');
+  const outPath = path.join(root, '.abuddy', 'generated', 'ears.ts');
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, output);
 

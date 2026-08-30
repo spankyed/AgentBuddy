@@ -46,7 +46,6 @@
     "SPAWNED": "spawned",
     "TRACKED": "tracked"
   },
-  "earsOutput": "src/registries/ears.ts",
   "features": [
     { "id": "settings", "priority": -100 },
     { "id": "logs", "priority": -50 },
