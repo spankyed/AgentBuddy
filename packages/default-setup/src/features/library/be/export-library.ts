@@ -5,17 +5,17 @@
  * Supports JSON (full-fidelity) and Markdown (flat, human-readable) formats.
  */
 
-import { qx } from '@/core/ears/helpers/query'
-import { EARS } from '@/core/types'
+import { qx } from '@abuddy/sdk/ears'
+import { EARS } from '@/registries/ears'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
-import { extractMediaRefs, copyMediaByRef } from '@/core/shared/media'
-import { ensureDirectoryExists, createExportDir } from '@/core/shared/paths'
+import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
+import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
 import type { ExportFormat } from './export-types'
 import { exportLibraryMarkdown } from './export-markdown'
 import { countExportedItems } from './utils'
-import { writeExportJson } from '@/core/shared/export'
+import { writeExportJson } from '@abuddy/sdk/utils'
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]

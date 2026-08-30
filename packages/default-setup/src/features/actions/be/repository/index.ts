@@ -1,5 +1,5 @@
-import { registerRepository } from '@/repository';
-import { EARS } from '@/core/types';
+import { registerRepository } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
 import {
   findById,
   findByIdRaw,
@@ -9,7 +9,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/shared/repository';
+} from '@abuddy/sdk/ears';
 import type { ActionEntity } from '../types';
 
 /**

@@ -1,3 +1,4 @@
+import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { earlyBootSystem, createDefaultSettings } from '@/registries/boot';

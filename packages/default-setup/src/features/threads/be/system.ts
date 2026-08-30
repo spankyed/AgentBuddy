@@ -1,22 +1,23 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/core/system-ids';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/registries/system-ids';
 import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
-import { emit, getActor, sendParentSafe } from '@/core/shared/actor-helpers';
-import { EARS } from '@/core/types';
-import { repository } from '@/repository';
-import { tx } from '@/core/ears/helpers/transaction';
-import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData, CommandItem } from '@/types';
+import { emit, getActor, sendParentSafe } from '@abuddy/sdk/helpers';
+import { EARS } from '@/registries/ears';
+import { repository } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
+import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
+import type { AgentSettings, CommandItem } from '../../settings/be/types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
-import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/core/shared/settings-changes';
+import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
-import services from '@/services';
+import services from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 import type { FieldContent } from '@/features/library/be/types';
-import { reportSystemError } from '@/core/shared/system-errors';
+import { reportSystemError } from '@abuddy/sdk/utils';
 
 const logger = createLogger('threads');
 

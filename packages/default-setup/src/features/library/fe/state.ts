@@ -1,17 +1,17 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
 import type { SearchIndexFormData } from './types/search-index'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@/core/context-menu'
-import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
+import { contextMenuFn } from '@abuddy/sdk/fe'
+import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import {
   targetIs,
   TRAIL_CLICK,
   type TrailClickEvent,
-} from '@/core/actors/route-trailer'
+} from '@abuddy/sdk/fe'
 import { tagStorage } from './services/tagStorage'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 // Helper function to convert DocumentItem to DocumentDTO
 function documentItemToDTO(item: DocumentItem): DocumentDTO {

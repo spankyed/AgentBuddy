@@ -2,7 +2,7 @@
  * Prompt template types and definitions
  */
 
-import type { BaseEntity, EARS } from '@/core/types';
+import type { BaseEntity, EARS } from '@/registries/ears';
 import type { Category } from '@/features/settings/be/types';
 
 /**

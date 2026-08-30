@@ -1,13 +1,13 @@
 import { assign, log, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
-import { contextMenuFn } from '@/core/context-menu'
+import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
+import { contextMenuFn } from '@abuddy/sdk/fe'
 import { Edit, Trash2 } from 'lucide-vue-next'
-import { safeEvents } from '@/core/types/safe-events'
+import { safeEvents } from '@abuddy/sdk/fe'
 import {
   targetIs,
   type TrailClickEvent,
-} from '@/core/actors/route-trailer'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
+} from '@abuddy/sdk/fe'
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 import type {
   FlowEntity,
   OutgoingFlowsEvents,
@@ -21,7 +21,7 @@ import type {
   TrackEntity,
   OutgoingBrainEvents,
 } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import { getNodeConfig, isTriggerNode } from './canvas/nodes'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimensions'

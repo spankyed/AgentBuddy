@@ -195,7 +195,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@app/api'
 import { applicationState } from '@/main'

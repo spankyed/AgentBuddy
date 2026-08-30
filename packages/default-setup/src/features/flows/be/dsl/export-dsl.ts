@@ -5,11 +5,11 @@
  * Safe to import from the running server (no CLI side effects).
  */
 
-import { createExportDir, ensureDirectoryExists } from '@/core/shared/paths';
-import { writeExportJson } from '@/core/shared/export';
-import { qx } from '@/core/ears/helpers/query';
-import { edgeStore } from '@/core/ears/helpers/edge-store';
-import { EARS } from '@/core/types';
+import { createExportDir, ensureDirectoryExists } from '@abuddy/sdk/utils';
+import { writeExportJson } from '@abuddy/sdk/utils';
+import { qx } from '@abuddy/sdk/ears';
+import { edgeStore } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
 import { FLOW_ROLES } from '../repository/index';
 import type {
   FlowDSL,

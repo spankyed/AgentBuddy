@@ -456,12 +456,12 @@
 import { reactive, ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
-import DirectorySelect from '@/core/components/design/DirectorySelect.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
+import DirectorySelect from '@abuddy/sdk/fe/design/DirectorySelect.vue'
 import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
-import { trpc } from '@/core/trpc'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { trpc } from '@abuddy/sdk/rpc'
 import type { CodeSettings, TerminalScript } from '@app/api'
 
 interface Project {

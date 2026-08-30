@@ -17,7 +17,15 @@
     "./fe": "./src/fe/index.ts",
     "./fe/design/*": "./src/fe/design/*",
     "./fe/composables/*": "./src/fe/composables/*",
-    "./build": "./src/build/index.ts"
+    "./fe/layout/*": "./src/fe/layout/*",
+    "./fe/utils/*": "./src/fe/utils/*",
+    "./fe/constants": "./src/fe/constants.ts",
+    "./build": "./src/build/index.ts",
+    "./runtime": "./src/runtime/index.ts",
+    "./logger": "./src/logger/index.ts",
+    "./rpc": "./src/rpc/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./services": "./src/services/index.ts"
   },
   "peerDependencies": {
     "vue": "^3.0.0"

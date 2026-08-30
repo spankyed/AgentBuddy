@@ -1,4 +1,4 @@
-import type { EARS } from '@/core/types';
+import type { EARS } from '@/registries/ears';
 
 export type BrowserTabId = `${EARS.Entity.BrowserTab}-${string}`;
 

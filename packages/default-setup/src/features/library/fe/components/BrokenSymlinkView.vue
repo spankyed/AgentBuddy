@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Link2Off } from 'lucide-vue-next'
-import Button from '@/core/components/design/button.vue'
+import Button from '@abuddy/sdk/fe/design/button.vue'
 
 const props = defineProps<{
   lastKnownPath: string | null

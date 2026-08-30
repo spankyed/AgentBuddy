@@ -1,7 +1,7 @@
-import { registerRepository } from '@/repository';
-import { EARS } from '@/core/types';
-import { qx } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
+import { registerRepository } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
+import { qx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
 import { SettingsEntity, SettingsData } from '../types';
 import { defaultSettings } from '../defaults';
 

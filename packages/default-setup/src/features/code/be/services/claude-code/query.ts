@@ -27,7 +27,7 @@
  * between "internal logic" and "caller" without races.
  */
 
-import { createLogger } from '@/core/shared/debug/logger'
+import { createLogger } from '@abuddy/sdk/logger'
 import { argsFromOptions } from './args'
 import { createControlRouter } from './control'
 import {

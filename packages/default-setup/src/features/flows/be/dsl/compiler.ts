@@ -5,7 +5,7 @@
  * Each track creates a listener node + sequential step nodes.
  */
 
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 import type {
   FlowDSL,
   Track,

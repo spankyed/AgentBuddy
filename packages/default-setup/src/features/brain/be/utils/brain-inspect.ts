@@ -1,4 +1,4 @@
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 // Toggle this flag to enable/disable brain inspect logs. Default ON in dev so
 // switch/action/flow transitions are visible without the user having to click

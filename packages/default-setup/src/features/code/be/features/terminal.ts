@@ -1,9 +1,9 @@
 import { setup, assign, fromPromise } from 'xstate'
-import { emit } from '@/core/shared/actor-helpers'
-import { rootEvents } from '@/core/router/bus-emitter'
+import { emit } from '@abuddy/sdk/helpers'
+import { rootEvents } from '@abuddy/sdk/rpc'
 import { terminalService } from '../services/terminal'
 import { TerminalInfo, CodeSettings } from '../types'
-import { repository } from '@/repository'
+import { repository } from '@abuddy/sdk/ears'
 
 const pluginId = 'code' as const
 

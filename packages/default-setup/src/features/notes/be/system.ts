@@ -1,15 +1,15 @@
 import { setup } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/core/system-ids';
-import { emit } from '@/core/shared/actor-helpers';
-import { EARS } from '@/core/types';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { bus } from '@abuddy/sdk/ids';
+import { emit } from '@abuddy/sdk/helpers';
+import { EARS } from '@/registries/ears';
 import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
-import { repository } from '@/repository';
-import { qx } from '@/core/ears/helpers/query';
+import { repository } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears';
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('notes');
 

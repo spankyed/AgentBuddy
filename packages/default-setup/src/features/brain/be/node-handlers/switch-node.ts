@@ -1,5 +1,5 @@
 import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/features/flows/be/config/types';
-import { BinaryOperator as Op } from '@/core/shared/binary-operator';
+import { BinaryOperator as Op } from '@abuddy/sdk/utils';
 import type { ExecutionContext, TNodeEntity } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { reportBrainRuntimeError } from '../runtime-errors';

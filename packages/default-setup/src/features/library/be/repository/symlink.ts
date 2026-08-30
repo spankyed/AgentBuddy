@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { qx } from '@/core/ears/helpers/query'
-import { EARS } from '@/core/types'
+import { qx } from '@abuddy/sdk/ears'
+import { EARS } from '@/registries/ears'
 import type { LibraryItem, FolderItem, DocumentItem, DocumentShortCode, FolderContents, BreadcrumbItem } from '../types'
 import { formatFileSize, findParentCollection } from './helpers'
 

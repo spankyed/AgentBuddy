@@ -5,9 +5,9 @@
  * stripping internal fields (id, entityType, timestamps, etc.).
  */
 
-import { repository } from '@/repository';
-import { createExportDir } from '@/core/shared/paths';
-import { stripInternalFields, writeExportJson } from '@/core/shared/export';
+import { repository } from '@abuddy/sdk/ears';
+import { createExportDir } from '@abuddy/sdk/utils';
+import { stripInternalFields, writeExportJson } from '@abuddy/sdk/utils';
 
 export function exportPrompts(outputDir: string): { filePath: string; promptCount: number } {
   outputDir = createExportDir(outputDir, 'prompts');

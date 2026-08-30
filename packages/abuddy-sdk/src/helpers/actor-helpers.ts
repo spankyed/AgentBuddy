@@ -52,4 +52,25 @@ export function emit<E extends { type: string }>(
   };
 }
 
+export function sendParentSafe<TEvent extends { type: string }>() {
+  return <Type extends TEvent['type']>(
+    payload: Extract<TEvent, { type: Type }>
+  ) => {
+    const { sendParent } = require('xstate');
+    return sendParent(payload);
+  };
+}
+
+export function getActor(system: any, id: string) {
+  const actor = system.get(id);
+  if (!actor) throw new Error(`Actor with id '${id}' not found in the system`);
+  return actor;
+}
+
+export function getBus(system: any) {
+  const busActor = system.get('bus');
+  if (!busActor) throw new Error("Bus actor not found in the system");
+  return busActor;
+}
+
 export type { Simplify };

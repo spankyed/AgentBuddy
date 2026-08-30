@@ -1,13 +1,13 @@
 import { setup, fromCallback, spawnChild } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { emit } from '@/core/shared/actor-helpers';
-import { rootEvents } from '@/core/router/bus-emitter';
-import type { IncomingSystemEvents } from '@/core/router/events';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { emit } from '@abuddy/sdk/helpers';
+import { rootEvents } from '@abuddy/sdk/rpc';
+import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
 import { browserQueries } from './repository/queries';
 import { browserCommands } from './repository/commands';
 import type { SavedTab, SavedBookmark } from './types';
 import './repository/index'; // register repository
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');
 

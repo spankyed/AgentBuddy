@@ -1,12 +1,12 @@
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 import {
   findById,
   createEntityWithDefaults,
   updateEntity,
   RepositoryError,
   RepositoryErrorCode,
-} from '@/core/shared/repository';
-import { tx } from '@/core/ears/helpers/transaction';
+} from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
 import type { CalendarEventEntity } from '../types';
 
 export const calendarCommands = {

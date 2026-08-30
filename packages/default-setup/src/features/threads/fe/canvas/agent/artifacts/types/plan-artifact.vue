@@ -54,7 +54,7 @@ import { computed } from 'vue'
 import { ClipboardList } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import CopyButton from '@/core/components/design/CopyButton.vue'
+import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 
 type PlanStatus = 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected'
 

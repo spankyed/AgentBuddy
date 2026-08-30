@@ -106,16 +106,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue';
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
+import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue';
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';
 import type { PromptEntity, TemplateInput, Category } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@/core/components/JsonSchemaEditor.vue';
-import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
+import { useCollapsibleState } from '@abuddy/sdk/fe';
 import { applicationState } from '@/main';
-import { navigateToPlugin } from '@/core/utils/navigate';
+import { navigateToPlugin } from '@abuddy/sdk/fe';
 import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
 
 const props = defineProps<{

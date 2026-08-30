@@ -1,8 +1,8 @@
-import { registerRepository } from '@/repository';
-import { EARS } from '@/core/types';
-import { qx } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
-import { edgeStore } from '@/core/ears/helpers/edge-store';
+import { registerRepository } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
+import { qx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
+import { edgeStore } from '@abuddy/sdk/ears';
 import type {
   FlowTNodeData,
   TNodeEntity,

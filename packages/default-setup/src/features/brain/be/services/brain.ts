@@ -18,7 +18,7 @@
  * // Later, in a different action:
  * services.brain.unlisten('my-listener');
  */
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('brain-service');
 

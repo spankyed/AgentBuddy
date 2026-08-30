@@ -45,8 +45,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
-import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
+import ScrollToBottomFob from '@abuddy/sdk/fe/design/ScrollToBottomFob.vue'
+import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
 import {
   ContextMenuTrigger,
   ContextMenuContent,

@@ -1,9 +1,9 @@
-import { tx } from '@/core/ears/helpers/transaction';
-import { qx } from '@/core/ears/helpers/query';
-import { EARS } from '@/core/types';
+import { tx } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');
 

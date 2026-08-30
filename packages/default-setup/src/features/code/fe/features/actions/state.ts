@@ -1,5 +1,5 @@
 import { setup } from 'xstate';
-import { trpc } from '@/core/trpc';
+import { trpc } from '@abuddy/sdk/rpc';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { ActionEntity } from '@app/api';
 

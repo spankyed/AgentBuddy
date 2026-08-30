@@ -1,9 +1,9 @@
-import { findAll } from '@/core/shared/repository/query-helpers';
-import { EARS } from '@/core/types';
+import { findAll } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
 import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';
 import { browserCommands } from './commands';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('browser');
 

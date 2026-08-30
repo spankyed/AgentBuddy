@@ -1,5 +1,5 @@
-import { EARS } from '@/core/types';
-import { findById, findAll } from '@/core/shared/repository';
+import { EARS } from '@/registries/ears';
+import { findById, findAll } from '@abuddy/sdk/ears';
 import type { CalendarEventEntity, CalendarEventDTO } from '../types';
 
 export function toDTO(event: CalendarEventEntity): CalendarEventDTO {

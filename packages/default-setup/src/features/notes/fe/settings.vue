@@ -194,7 +194,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'

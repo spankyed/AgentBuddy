@@ -244,10 +244,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from 'reka-ui'
-import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
-import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
-import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
-import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
+import EmojiPicker from '@abuddy/sdk/fe/design/EmojiPicker.vue'
+import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
+import { useContextMenu, type MenuItem } from '@abuddy/sdk/fe'
+import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8

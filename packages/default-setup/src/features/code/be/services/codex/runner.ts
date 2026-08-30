@@ -6,7 +6,7 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process'
-import { resolveForService } from '@/core/shared/resolve-cli'
+import { resolveForService } from '@abuddy/sdk/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

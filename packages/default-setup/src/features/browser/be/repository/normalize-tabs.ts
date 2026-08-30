@@ -1,4 +1,4 @@
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 import type { BrowserTabId, SavedTab } from '../types';
 
 export interface NormalizeTabsResult {

@@ -1,5 +1,5 @@
 import { Cron } from 'croner';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('scheduler');
 

@@ -29,7 +29,7 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '../constants'
-import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
+import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
 
 defineProps<{
   terminalPath?: string

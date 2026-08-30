@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
 import { GitPullRequest } from 'lucide-vue-next'
-import { useClickOutside } from '@/core/composables/useClickOutside'
+import { useClickOutside } from '@abuddy/sdk/fe'
 import type { GhPullRequest } from '@app/api'
 
 defineProps<{

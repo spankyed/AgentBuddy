@@ -33,7 +33,7 @@
 import { Plus } from 'lucide-vue-next';
 import { ref } from 'vue';
 import type { TemplateInput } from '@app/api';
-import ParameterRow from '@/core/components/design/ParameterRow.vue';
+import ParameterRow from '@abuddy/sdk/fe/design/ParameterRow.vue';
 
 const props = defineProps<{
   inputs: Record<string, TemplateInput>;

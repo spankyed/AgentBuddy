@@ -1,15 +1,15 @@
-import { registerRepository } from '@/repository';
-import { EARS } from '@/core/types';
+import { registerRepository } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
 import {
   findById,
   findAll,
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/shared/repository';
-import { wouldCreateCycle } from '@/core/ears/helpers/graph';
-import { qx, b64Encode, b64Decode } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
+} from '@abuddy/sdk/ears';
+import { wouldCreateCycle } from '@abuddy/sdk/ears';
+import { qx, b64Encode, b64Decode } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,
@@ -20,7 +20,7 @@ import type {
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
 import type { ThreadsSettings } from '@/features/settings/be/types';
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 
 /**
  * Threads Repository

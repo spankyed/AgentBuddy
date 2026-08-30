@@ -121,7 +121,7 @@ import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
 import DataRenderer from '@/features/logs/fe/data-renderer.vue';
 import { applicationState } from '@/main';
-import { navigateToPlugin } from '@/core/utils/navigate';
+import { navigateToPlugin } from '@abuddy/sdk/fe';
 
 interface Props {
   node?: TNodeEntity;

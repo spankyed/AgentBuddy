@@ -17,6 +17,7 @@ export default defineConfig({
       'tests/integration/**/*.spec.ts',
     ],
     testTimeout: 120_000,
+    setupFiles: ['./tests/setup.ts'],
   },
 
   resolve: {
@@ -24,6 +25,8 @@ export default defineConfig({
       { find: '@/features', replacement: new URL('./src/features', import.meta.url).pathname },
       { find: '@/registries', replacement: new URL('./src/registries', import.meta.url).pathname },
       { find: '@/shared-services', replacement: new URL('./src/shared/services', import.meta.url).pathname },
+      { find: /^@abuddy\/sdk\/(.+)$/, replacement: new URL('../abuddy-sdk/src/$1/index.ts', import.meta.url).pathname },
+      { find: '@abuddy/sdk', replacement: new URL('../abuddy-sdk/src/index.ts', import.meta.url).pathname },
       { find: /^@\//, replacement: new URL('../api/src/', import.meta.url).pathname },
     ],
   },

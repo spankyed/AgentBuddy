@@ -86,7 +86,7 @@ import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 import TNodeListItem from '@/core/components/TNodeListItem.vue'
 import type { TrackEntity } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 
 const brainActor: BrainState = applicationState.system.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);

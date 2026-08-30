@@ -1,7 +1,7 @@
 import type { NodeEntity } from '@/features/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
-import { sendToBrainSystem } from '@/services/event-emitter';
+import { sendToBrainSystem } from '@abuddy/sdk/services';
 
 /**
  * Handle execution of a fire node

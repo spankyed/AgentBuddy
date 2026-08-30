@@ -1,5 +1,5 @@
 import { NodeKind, NodeEntity } from './types';
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 import { Cron } from 'croner';
 
 export interface NodeMetadata {

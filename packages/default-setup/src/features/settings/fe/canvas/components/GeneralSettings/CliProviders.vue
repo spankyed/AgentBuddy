@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useDebounce } from '@/core/composables/useDebounce'
+import { useDebounce } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import CliProviderRow from './CliProviderRow.vue'

@@ -59,8 +59,8 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { FAQItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import { DISCORD_URL, MEMORIAL_URL } from '@/core/constants'
-import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
+import { DISCORD_URL, MEMORIAL_URL } from '@abuddy/sdk/fe/constants'
+import { openInAppBrowser } from '@abuddy/sdk/fe'
 
 function openDiscordLink() {
   openInAppBrowser(DISCORD_URL)

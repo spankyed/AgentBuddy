@@ -8,11 +8,11 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { EARS } from '@/core/types'
-import { tx } from '@/core/ears/helpers/transaction'
-import { hasIdCollision } from '@/core/shared/repository'
-import { restoreJsonMediaRefs } from '@/core/shared/media'
-import { repository } from '@/repository'
+import { EARS } from '@/registries/ears'
+import { tx } from '@abuddy/sdk/ears'
+import { hasIdCollision } from '@abuddy/sdk/ears'
+import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
+import { repository } from '@abuddy/sdk/ears'
 import type { ExportedThreadsData } from './export-types'
 
 interface ImportResult {

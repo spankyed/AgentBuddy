@@ -1,11 +1,11 @@
 import * as pty from 'node-pty'
-import { tx } from '@/core/ears/helpers/transaction'
+import { tx } from '@abuddy/sdk/ears'
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
-import { EARS } from '@/core/types'
-import { repository } from '@/repository'
+import { EARS } from '@/registries/ears'
+import { repository } from '@abuddy/sdk/ears'
 
 interface Terminal {
   info: TerminalInfo

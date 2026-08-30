@@ -85,7 +85,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { CalendarEventDTO } from '@app/api';
-import Dialog from '@/core/components/design/dialog.vue';
+import Dialog from '@abuddy/sdk/fe/design/dialog.vue';
 
 const props = defineProps<{
   mode: 'create' | 'edit';

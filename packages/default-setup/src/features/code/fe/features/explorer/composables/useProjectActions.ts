@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 
 export interface Project {
   name: string

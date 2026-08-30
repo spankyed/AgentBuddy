@@ -5,7 +5,7 @@
  * for common operations on general, plugin, and internal settings.
  */
 
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import type { SETTINGS_SCOPE, SettingsData } from '@/features/settings/be/types';
 
 export class SettingsService {

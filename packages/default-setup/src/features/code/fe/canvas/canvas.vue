@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { applicationState } from '@/main'
-import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
+import { useExternalFileDrag } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'

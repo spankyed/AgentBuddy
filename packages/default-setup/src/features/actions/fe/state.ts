@@ -1,11 +1,11 @@
 import { assign, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
-import { safeEvents } from '@/core/types/safe-events'
+import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
+import { safeEvents } from '@abuddy/sdk/fe'
 import {
   targetIs,
   TRAIL_CLICK,
   type TrailClickEvent,
-} from '@/core/actors/route-trailer'
+} from '@abuddy/sdk/fe'
 import type {
   ActionEntity,
   OutgoingActionEvents,
@@ -14,9 +14,9 @@ import type {
   Category,
   ActionsSettings,
 } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@/core/context-menu'
+import { contextMenuFn } from '@abuddy/sdk/fe'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

@@ -1,7 +1,7 @@
-import { EARS } from '@/core/types';
-import { repository } from '@/repository';
+import { EARS } from '@/registries/ears';
+import { repository } from '@abuddy/sdk/ears';
 import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
-import { sendToPlugin } from '@/services/event-emitter';
+import { sendToPlugin } from '@abuddy/sdk/services';
 import * as media from '@/shared-services/media';
 import { libraryService } from '@/features/library/be/services/library';
 import * as symlink from '@/features/library/be/repository/symlink';

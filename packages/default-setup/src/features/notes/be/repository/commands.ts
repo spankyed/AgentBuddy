@@ -1,4 +1,4 @@
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 import {
   findById,
   findByIdRaw,
@@ -8,9 +8,9 @@ import {
   removeRelation,
   RepositoryError,
   RepositoryErrorCode,
-} from '@/core/shared/repository';
-import { qx } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
+} from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
 import type { NoteEntity } from '../types';
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';

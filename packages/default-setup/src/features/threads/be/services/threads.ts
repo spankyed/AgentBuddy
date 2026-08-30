@@ -10,10 +10,10 @@
  * processes without knowing about specific services like Claude Code.
  */
 
-import { EARS } from '@/core/types';
-import { sendToPlugin } from '@/services/event-emitter';
-import { repository } from '@/repository';
-import { createLogger } from '@/core/shared/debug/logger';
+import { EARS } from '@/registries/ears';
+import { sendToPlugin } from '@abuddy/sdk/services';
+import { repository } from '@abuddy/sdk/ears';
+import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('threads-service');
 

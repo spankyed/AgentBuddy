@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import type { SearchIndexConfig, EmbeddingResult, Occurrence, SearchIndex, EmbeddingModel } from './types/search-index'
 import type { ContentSection } from '../types'
-import type { EARS } from '@/core/types'
+import type { EARS } from '@/registries/ears'
 import { getModelConfig, getModelDimensions } from './config/embedding-models'
 import { getFastEmbedModel } from './config/fastembed-mapping'
 import { 
@@ -14,7 +14,7 @@ import {
   getIndexMetadataPath,
   getIndexMappingsPath,
   getSearchIndicesPath
-} from '@/core/shared/paths'
+} from '@abuddy/sdk/utils'
 
 // Lazy-loaded embedding models cache
 const embeddingModels = new Map<string, FlagEmbedding | null>()
@@ -412,4 +412,4 @@ export function deleteIndexFiles(indexId: EARS.EntityId): void {
 
 // Export commonly used functions
 export { getModelDimensions as getVectorDimensions } from './config/embedding-models'
-export { getIndexFilePath as getIndexPath } from '@/core/shared/paths'
+export { getIndexFilePath as getIndexPath } from '@abuddy/sdk/utils'

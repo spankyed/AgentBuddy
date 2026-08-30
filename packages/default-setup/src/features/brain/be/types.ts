@@ -1,4 +1,4 @@
-import type { BaseEntity, EARS } from '@/core/types';
+import type { BaseEntity, EARS } from '@/registries/ears';
 
 /** ── Shared aliases ─────────────────────────────────────────────────────── */
 export type TimestampMs = number;

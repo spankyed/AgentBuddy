@@ -1,9 +1,9 @@
-import { rootEvents } from '@/core/router/bus-emitter';
-import { createLogger } from '@/core/shared/debug/logger';
-import { randomId } from '@/core/shared/random-id';
+import { rootEvents } from '@abuddy/sdk/rpc';
+import { createLogger } from '@abuddy/sdk/logger';
+import { randomId } from '@abuddy/sdk/utils';
 import type { BrainRuntimeError } from './types';
-import type { EARS } from '@/core/types';
-import { repository } from '@/repository';
+import type { EARS } from '@/registries/ears';
+import { repository } from '@abuddy/sdk/ears';
 
 const logger = createLogger('brain-runtime');
 

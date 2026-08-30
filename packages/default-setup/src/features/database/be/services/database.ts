@@ -14,14 +14,14 @@ export {
   removeRelation,
   grantRole,
   revokeRole
-} from '@/core/shared/repository/transaction-helpers';
+} from '@abuddy/sdk/ears';
 
 // Export EARS transaction builder
-export { tx } from '@/core/ears/helpers/transaction';
-export type { SafeLinkOptions } from '@/core/ears/helpers/transaction';
+export { tx } from '@abuddy/sdk/ears';
+export type { SafeLinkOptions } from '@abuddy/sdk/ears';
 
 // Export EARS query builder
-export { qx } from '@/core/ears/helpers/query';
+export { qx } from '@abuddy/sdk/ears';
 
 // Export type-safe query helpers
 export {
@@ -35,16 +35,16 @@ export {
   exists,
   findWithRole,
   findFirstWithRole
-} from '@/core/shared/repository/query-helpers';
+} from '@abuddy/sdk/ears';
 
 // Re-export EARS types for convenience
-export { EARS } from '@/core/types';
+export { EARS } from '@/registries/ears';
 
 // ─── Query context for AI prompt generation ─────────────────────────────
 
-import { EARS as EARSTypes } from '@/core/types';
-import { getEntitiesOfType, getAll, getAllEntityTypes } from '@/core/ears/attribute-storage';
-import { relationIndex } from '@/core/ears/relation-index';
+import { EARS as EARSTypes } from '@/registries/ears';
+import { getEntitiesOfType, getAll, getAllEntityTypes } from '@abuddy/sdk/ears';
+import { relationIndex } from '@abuddy/sdk/ears';
 
 /**
  * Build a query context from live data for AI query generation.

@@ -1,7 +1,7 @@
 /** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
 
 import type { CodexTurnHandle } from './types'
-import { createLogger } from '@/core/shared/debug/logger'
+import { createLogger } from '@abuddy/sdk/logger'
 import { registerCleanup } from '@/features/threads/be/services/threads'
 
 const logger = createLogger('codex-handle-store')

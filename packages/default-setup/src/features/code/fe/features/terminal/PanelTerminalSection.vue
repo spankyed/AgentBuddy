@@ -206,7 +206,7 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
-import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
+import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/features/code/fe/features/explorer/constants'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
@@ -214,7 +214,7 @@ import type { TerminalInfo } from './state'
 import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
 import { useTerminalActions } from '@/features/code/fe/composables/useTerminalActions'
 import RunScriptPopover from './RunScriptPopover.vue'
-import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
 import type { TerminalScript } from '@app/api'
 import type { Terminal } from '@xterm/xterm'

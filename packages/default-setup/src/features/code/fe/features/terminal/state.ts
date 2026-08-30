@@ -1,5 +1,5 @@
 import { setup, assign, enqueueActions } from 'xstate';
-import { trpc } from '@/core/trpc';
+import { trpc } from '@abuddy/sdk/rpc';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { terminalPool } from '../../utils/terminal-pool';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';

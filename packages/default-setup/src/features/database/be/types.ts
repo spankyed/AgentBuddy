@@ -1,4 +1,4 @@
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 
 export interface DatabaseQueryResult {
   nodes: Array<{

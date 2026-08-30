@@ -1,7 +1,7 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
-import { trpc } from '@/core/trpc';
-import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@/shared/tab-groups';
+import { trpc } from '@abuddy/sdk/rpc';
+import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
 

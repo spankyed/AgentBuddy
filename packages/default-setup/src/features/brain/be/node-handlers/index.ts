@@ -6,7 +6,7 @@ import { killNodeHandler } from './kill-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 import { reportBrainRuntimeError } from '../runtime-errors';
 
 const logger = createLogger('node-executor');

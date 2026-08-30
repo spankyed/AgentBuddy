@@ -23,8 +23,8 @@ import {
 } from 'child_process'
 import type { Readable, Writable } from 'stream'
 
-import { resolveForService } from '@/core/shared/resolve-cli'
-import { createLogger } from '@/core/shared/debug/logger'
+import { resolveForService } from '@abuddy/sdk/utils'
+import { createLogger } from '@abuddy/sdk/logger'
 
 import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from './ndjson'
 import {

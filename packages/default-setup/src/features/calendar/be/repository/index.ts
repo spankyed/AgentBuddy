@@ -1,4 +1,4 @@
-import { registerRepository } from '@/repository';
+import { registerRepository } from '@abuddy/sdk/ears';
 import { calendarQueries } from './queries';
 import { calendarCommands } from './commands';
 

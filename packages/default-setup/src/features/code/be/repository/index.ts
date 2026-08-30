@@ -1,8 +1,8 @@
-import { registerRepository } from '@/repository'
-import { EARS } from '@/core/types'
-import { tx } from '@/core/ears/helpers/transaction'
-import { qx } from '@/core/ears/helpers/query'
-import { createEntityWithDefaults, updateEntity, findById, findAll, exists } from '@/core/shared/repository'
+import { registerRepository } from '@abuddy/sdk/ears'
+import { EARS } from '@/registries/ears'
+import { tx } from '@abuddy/sdk/ears'
+import { qx } from '@abuddy/sdk/ears'
+import { createEntityWithDefaults, updateEntity, findById, findAll, exists } from '@abuddy/sdk/ears'
 import type { TerminalInfo } from '../types'
 import { terminalService } from '../services/terminal'
 

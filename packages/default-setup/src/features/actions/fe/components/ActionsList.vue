@@ -116,9 +116,9 @@
 <script setup lang="ts">
 import type { ActionEntity, EARS, Category } from '@app/api'
 import { Play, Trash2, Plus } from 'lucide-vue-next'
-import Button from '@/core/components/design/button.vue'
-import CategoryFilter from '@/core/components/design/CategoryFilter.vue'
-import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll'
+import Button from '@abuddy/sdk/fe/design/button.vue'
+import CategoryFilter from '@abuddy/sdk/fe/design/CategoryFilter.vue'
+import { useInfiniteScroll } from '@abuddy/sdk/fe'
 
 interface Props {
   actions: ActionEntity[]

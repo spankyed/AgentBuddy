@@ -1,12 +1,12 @@
 import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
-import breadcrumb from '@/core/breadcrumb';
-import { trpc } from '@/core/trpc';
-import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
+import breadcrumb from '@abuddy/sdk/fe';
+import { trpc } from '@abuddy/sdk/rpc';
+import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
-import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@/shared/tab-groups';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
+import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
 // Import child state machines

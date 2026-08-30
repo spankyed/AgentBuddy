@@ -116,8 +116,8 @@ import NodePalette from './components/NodePalette.vue'
 import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
-import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
-import ToastNotification from '@/core/components/design/ToastNotification.vue'
+import ConfirmationDialog from '@abuddy/sdk/fe/design/ConfirmationDialog.vue'
+import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue'
 
 const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 

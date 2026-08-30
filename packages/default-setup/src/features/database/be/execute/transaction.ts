@@ -1,6 +1,6 @@
-import { EARS } from '@/core/types';
-import { qx } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
+import { EARS } from '@/registries/ears';
+import { qx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
 import { 
   getAllEntities, 
   getAll, 
@@ -12,8 +12,8 @@ import {
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   destroyEntity
-} from '@/core/ears/attribute-storage';
-import { relationIndex } from '@/core/ears/relation-index';
+} from '@abuddy/sdk/ears';
+import { relationIndex } from '@abuddy/sdk/ears';
 import {
   prepareEntity,
   createEntityWithDefaults,
@@ -22,7 +22,7 @@ import {
   removeRelation,
   grantRole,
   revokeRole
-} from '@/core/shared/repository/transaction-helpers';
+} from '@abuddy/sdk/ears';
 
 /**
  * Execute a user-provided transaction against the EARS database

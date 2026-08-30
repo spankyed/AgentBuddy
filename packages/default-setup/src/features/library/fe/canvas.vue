@@ -12,7 +12,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useState } from '@/core/composables/plugins'
+import { useState } from '@abuddy/sdk/fe'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'

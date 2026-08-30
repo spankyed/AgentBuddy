@@ -220,8 +220,8 @@ import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
-import { useContextMenu } from '@/core/composables/useContextMenu'
+import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
+import { useContextMenu } from '@abuddy/sdk/fe'
 
 interface ChatMessageProps {
   message: MessageEntity

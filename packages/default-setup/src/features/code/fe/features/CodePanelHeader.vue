@@ -81,7 +81,7 @@ import { computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/features/code/fe/state'
-import { isAnyMenuOpen } from '@/core/composables/useMenuState'
+import { isAnyMenuOpen } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '@/features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
 import {
   FolderOpen,

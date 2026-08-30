@@ -1,8 +1,8 @@
-import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
-import { targetIs, type TrailClickEvent } from '@/core/actors/route-trailer';
-import { safeEvents } from '@/core/types/safe-events';
+import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
+import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
+import { safeEvents } from '@abuddy/sdk/fe';
 import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history';
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
   ThreadEntity, OutgoingThreadsEvents,
@@ -10,12 +10,12 @@ import type {
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
-import { trpc } from '@/core/trpc';
+import { trpc } from '@abuddy/sdk/rpc';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
-import { contextMenuFn } from '@/core/context-menu';
-import type { Simplify } from '@/core/types/type-helpers';
-import { navigateToPlugin } from '@/core/utils/navigate';
-import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
+import { contextMenuFn } from '@abuddy/sdk/fe';
+import type { Simplify } from '@abuddy/sdk/helpers';
+import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';

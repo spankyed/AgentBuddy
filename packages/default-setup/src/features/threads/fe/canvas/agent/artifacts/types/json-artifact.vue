@@ -15,7 +15,7 @@
 import { computed } from 'vue';
 import type { ArtifactItem } from '@app/api';
 import DataRenderer from '@/features/logs/fe/data-renderer.vue';
-import CopyButton from '@/core/components/design/CopyButton.vue'
+import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 
 const props = defineProps<{
   artifact: ArtifactItem;

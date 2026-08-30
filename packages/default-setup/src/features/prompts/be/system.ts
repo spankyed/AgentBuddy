@@ -1,12 +1,12 @@
 import { setup } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/core/system-ids';
-import { emit } from '@/core/shared/actor-helpers';
-import { EARS } from '@/core/types';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { bus } from '@abuddy/sdk/ids';
+import { emit } from '@abuddy/sdk/helpers';
+import { EARS } from '@/registries/ears';
 import { PromptsConnectedData, PromptEntity } from './types';
-import { repository } from '@/repository';
-import { createLogger } from '@/core/shared/debug/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@/core/shared/settings-changes';
+import { repository } from '@abuddy/sdk/ears';
+import { createLogger } from '@abuddy/sdk/logger';
+import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');

@@ -237,7 +237,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { id as promptsPluginId } from '@/features/prompts/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -252,8 +252,8 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
-import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll'
-import Button from '@/core/components/design/button.vue'
+import { useInfiniteScroll } from '@abuddy/sdk/fe'
+import Button from '@abuddy/sdk/fe/design/button.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management

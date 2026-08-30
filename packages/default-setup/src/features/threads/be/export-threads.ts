@@ -5,13 +5,13 @@
  * artifacts, fork relations, and media from both instructions and messages.
  */
 
-import { qx } from '@/core/ears/helpers/query'
-import { EARS } from '@/core/types'
-import { createExportDir } from '@/core/shared/paths'
-import { extractMediaRefs, copyMediaByRef } from '@/core/shared/media'
-import { writeExportJson } from '@/core/shared/export'
-import type { MediaRef } from '@/core/shared/media'
-import { repository } from '@/repository'
+import { qx } from '@abuddy/sdk/ears'
+import { EARS } from '@/registries/ears'
+import { createExportDir } from '@abuddy/sdk/utils'
+import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
+import { writeExportJson } from '@abuddy/sdk/utils'
+import type { MediaRef } from '@abuddy/sdk/utils'
+import { repository } from '@abuddy/sdk/ears'
 import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThreadLink, ExportedArtifact } from './export-types'
 import type { MessageEntity } from './types'
 

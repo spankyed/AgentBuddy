@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Dialog from '@/core/components/design/dialog.vue'
+import Dialog from '@abuddy/sdk/fe/design/dialog.vue'
 import DataRenderer from '../data-renderer.vue'
 
 interface Props {

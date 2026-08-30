@@ -1,13 +1,13 @@
 import { assign, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
-import { safeEvents } from '@/core/types/safe-events'
+import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
+import { safeEvents } from '@abuddy/sdk/fe'
 import {
   targetIs,
   TRAIL_CLICK,
   type TrailClickEvent,
-} from '@/core/actors/route-trailer'
+} from '@abuddy/sdk/fe'
 import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType, FAQItem } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import plugins from '@/plugins'
 import { applicationState } from '@/main'
 

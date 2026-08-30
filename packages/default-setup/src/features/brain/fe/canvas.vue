@@ -133,7 +133,7 @@ import { id, type BrainState } from '@/features/brain/fe/state.ts';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
-import { trpc } from '@/core/trpc';
+import { trpc } from '@abuddy/sdk/rpc';
 
 const actor: BrainState = applicationState.system.get(id);
 

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
-import { APP_VERSION } from '@/version';
+import { APP_VERSION } from '@abuddy/sdk/utils';
 
 const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'dist', 'compiled-settings.json');
 

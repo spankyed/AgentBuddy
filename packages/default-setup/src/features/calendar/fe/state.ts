@@ -1,8 +1,8 @@
 import { setup, type ActorRefFrom, assign } from 'xstate';
-import { safeEvents } from '@/core/types/safe-events';
-import { trpc } from '@/core/trpc';
-import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
-import { targetIs, type TrailClickEvent } from '@/core/actors/route-trailer';
+import { safeEvents } from '@abuddy/sdk/fe';
+import { trpc } from '@abuddy/sdk/rpc';
+import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
+import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type { OutgoingCalendarEvents, CalendarEventDTO } from '@app/api';
 
 export const id = 'calendar' as const;

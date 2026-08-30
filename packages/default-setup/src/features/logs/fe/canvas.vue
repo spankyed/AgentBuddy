@@ -364,7 +364,7 @@ import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from './data-renderer.vue';
 import { applicationState } from '@/main';
-import { navigateToPlugin } from '@/core/utils/navigate';
+import { navigateToPlugin } from '@abuddy/sdk/fe';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();

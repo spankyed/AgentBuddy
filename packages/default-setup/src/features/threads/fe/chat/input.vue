@@ -198,7 +198,7 @@ import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import { DOUBLE_ESC_MS } from '@/core/components/tiptap/composables/createEditorKeyboard'
 import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments'
-import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
+import { useExternalFileDrag } from '@abuddy/sdk/fe'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -210,12 +210,12 @@ import {
 import PauseIcon from './pause-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
-import Button from '@/core/components/design/button.vue'
+import Button from '@abuddy/sdk/fe/design/button.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '@app/api'
 import { commandSuggestionPluginKey } from '@/core/components/tiptap/command-suggestion-plugin'
-import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@/core/utils/hotkeys'
+import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@abuddy/sdk/fe'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 import RevertHistoryPopup from './RevertHistoryPopup.vue'
 

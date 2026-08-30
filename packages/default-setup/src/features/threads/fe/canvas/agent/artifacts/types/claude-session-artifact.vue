@@ -263,9 +263,9 @@ import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/features/threads/fe/state'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 
 type PermissionMode =
   | 'default'

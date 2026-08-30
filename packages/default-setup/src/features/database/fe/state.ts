@@ -1,8 +1,8 @@
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb from '@/core/breadcrumb'
-import { contextMenu } from '@/core/context-menu'
-import { safeEvents } from '@/core/types/safe-events'
-import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer'
+import breadcrumb from '@abuddy/sdk/fe'
+import { contextMenu } from '@abuddy/sdk/fe'
+import { safeEvents } from '@abuddy/sdk/fe'
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
 import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
@@ -11,7 +11,7 @@ import type {
   TNodeEntity,
   DatabaseSettings,
 } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
 

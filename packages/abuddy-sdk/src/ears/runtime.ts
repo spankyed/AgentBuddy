@@ -50,3 +50,9 @@ export function tx(...args: any[]) {
 export function createEntity(...args: any[]) {
   return ensureInit('createEntity', _createEntity)(...args);
 }
+
+export interface SafeLinkOptions {
+  info?: unknown;
+  symmetric?: boolean;
+  acyclicGroup?: readonly string[];
+}

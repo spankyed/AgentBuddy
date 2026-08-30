@@ -33,8 +33,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
-import Dialog from '@/core/components/design/dialog.vue';
-import Button from '@/core/components/design/button.vue';
+import Dialog from '@abuddy/sdk/fe/design/dialog.vue';
+import Button from '@abuddy/sdk/fe/design/button.vue';
 import { applicationState } from '@/main';
 import { id, type DatabaseState } from '../../state';
 

@@ -179,16 +179,16 @@ import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
 import AgentCanvas from '@/features/threads/fe/canvas/agent/canvas.vue'
 import ThreadSidebar from './thread-sidebar.vue'
-import PanelResizer from '@/core/components/layout/panel-resizer.vue'
-import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
-import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
-import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
+import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
+import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
+import ConfirmationDialog from '@abuddy/sdk/fe/design/ConfirmationDialog.vue'
+import ScrollToBottomFob from '@abuddy/sdk/fe/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 
 const actor: ThreadsState = applicationState.system.get(id);
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));

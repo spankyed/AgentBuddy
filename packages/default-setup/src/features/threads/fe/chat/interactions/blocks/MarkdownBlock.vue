@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import CopyButton from '@/core/components/design/CopyButton.vue'
+import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 
 defineProps<{
   content: string

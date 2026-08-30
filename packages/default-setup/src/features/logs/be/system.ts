@@ -1,12 +1,12 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { emit, getActor } from '@/core/shared/actor-helpers';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { emit, getActor } from '@abuddy/sdk/helpers';
 import type { LogsState, LogEntry } from './types';
-import { randomId } from '@/core/shared/random-id';
-import { rootEvents } from '@/core/router/bus-emitter';
-import { LogEvent } from '@/core/shared/debug/logger';
-import { IncomingSystemEvents } from '@/core/router/events';
-import { repository } from '@/repository';
+import { randomId } from '@abuddy/sdk/utils';
+import { rootEvents } from '@abuddy/sdk/rpc';
+import { LogEvent } from '@abuddy/sdk/logger';
+import { IncomingSystemEvents } from '@abuddy/sdk/rpc';
+import { repository } from '@abuddy/sdk/ears';
 import type { LogsSettings } from '@/features/settings/be/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 

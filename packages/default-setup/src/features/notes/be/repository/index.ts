@@ -1,4 +1,4 @@
-import { registerRepository } from '@/repository';
+import { registerRepository } from '@abuddy/sdk/ears';
 import { noteQueries } from './queries';
 import { noteCommands } from './commands';
 

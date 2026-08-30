@@ -1,12 +1,12 @@
 import { assign, setup } from 'xstate'
-import { emit } from '@/core/shared/actor-helpers'
-import { rootEvents } from '@/core/router/bus-emitter'
+import { emit } from '@abuddy/sdk/helpers'
+import { rootEvents } from '@abuddy/sdk/rpc'
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import { sendToBrainSystem } from '@/services/event-emitter'
-import { repository } from '@/repository'
+import { sendToBrainSystem } from '@abuddy/sdk/services'
+import { repository } from '@abuddy/sdk/ears'
 
 const pluginId = 'code' as const
 

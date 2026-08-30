@@ -115,7 +115,7 @@
 import { ref, reactive } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
-import { useDebounceFn } from '@/core/composables/useDebounce'
+import { useDebounceFn } from '@abuddy/sdk/fe'
 import type { KeyboardShortcut } from '@app/api'
 
 interface Props {

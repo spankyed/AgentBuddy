@@ -5,9 +5,9 @@
  * Follows a pure vs side-effect pattern similar to chat service.
  */
 
-import { EARS } from '@/core/types';
-import { sendToPlugin } from '@/services/event-emitter';
-import { repository } from '@/repository';
+import { EARS } from '@/registries/ears';
+import { sendToPlugin } from '@abuddy/sdk/services';
+import { repository } from '@abuddy/sdk/ears';
 import type { ArtifactType } from '@/features/threads/be/types';
 
 export interface CreateArtifactOptions {

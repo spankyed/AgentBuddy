@@ -5,7 +5,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { terminalEventBus } from './terminal-events'
-import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
+import { openInAppBrowser } from '@abuddy/sdk/fe'
 import type { TerminalInfo } from '../features/terminal/state'
 import '@xterm/xterm/css/xterm.css'
 

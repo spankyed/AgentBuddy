@@ -92,9 +92,9 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
-import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue'
+import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
-import TagInput from '@/core/components/design/tag-input.vue'
+import TagInput from '@abuddy/sdk/fe/design/tag-input.vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { DocumentDTO, CollectionDTO, ContentSection } from '@app/api'

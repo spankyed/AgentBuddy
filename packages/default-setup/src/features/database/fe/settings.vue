@@ -65,11 +65,11 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import KeyboardShortcutInput from '@/core/components/KeyboardShortcutInput.vue'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@app/api'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 
 interface Props {
   settings?: DatabaseSettings

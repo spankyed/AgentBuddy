@@ -1,12 +1,12 @@
 import { assign, setup, enqueueActions, raise } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/core/system-ids';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
-import { emit, getActor } from '@/core/shared/actor-helpers';
-import { EARS } from '@/core/types';
+import { emit, getActor } from '@abuddy/sdk/helpers';
+import { EARS } from '@/registries/ears';
 import type { BrainRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
-import { repository } from '@/repository';
-import { createLogger } from '@/core/shared/debug/logger';
+import { repository } from '@abuddy/sdk/ears';
+import { createLogger } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
 import { settings } from '@/features/settings/be/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';

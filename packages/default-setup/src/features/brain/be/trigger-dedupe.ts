@@ -1,5 +1,5 @@
 import type { ListenerNode } from '@/features/flows/be/config/types';
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 
 export type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
   triggerType: 'listener' | 'schedule';

@@ -136,7 +136,7 @@ import {
   ContextMenuSeparator, ContextMenuPortal, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent,
 } from 'reka-ui';
 import type { BrowserTab } from '../state.ts';
-import type { TabGroup, TabGroupColor } from '@/shared/tab-groups';
+import type { TabGroup, TabGroupColor } from '@abuddy/sdk/fe';
 import BrowserGroupLabel from './BrowserGroupLabel.vue';
 import '@/shared/tab-groups/group-colors.css';
 

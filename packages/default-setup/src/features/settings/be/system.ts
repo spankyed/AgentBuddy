@@ -1,8 +1,8 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/core/system-ids';
+import { defineSystem } from '@abuddy/sdk/framework';
+import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/registries/system-ids';
-import { emit } from '@/core/shared/actor-helpers';
+import { emit } from '@abuddy/sdk/helpers';
 import { SettingsData, type FAQItem } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
@@ -12,10 +12,10 @@ import { detectAllArrayChanges } from './change-detection';
 import * as path from 'path';
 import { seedData, type SeedCounts, type SeedIncludeSet } from '../../../registries/seed/index';
 import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '../../../registries/seed/preview';
-import { testCli, isCliName, clearCliPathCache } from '@/core/shared/resolve-cli';
-import { resetLmdbFiles } from '@/core/ears/attribute-storage';
+import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
+import { resetLmdbFiles } from '@abuddy/sdk/ears';
 import { createDefaultSettings } from './repository';
-import { runMigrations } from '@/setup/migrations';
+import { runMigrations } from '@abuddy/sdk/utils';
 import { mergeSecretReferences } from './secrets/merge-secret-settings';
 
 /**

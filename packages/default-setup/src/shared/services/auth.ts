@@ -8,8 +8,8 @@
  * Priority: ChatGPT OAuth tokens > explicit API key > settings/secrets > env vars.
  */
 
-import { repository } from '@/repository'
-import { EARS } from '@/core/types'
+import { repository } from '@abuddy/sdk/ears'
+import { EARS } from '@/registries/ears'
 import { getValidCredentials } from './openai-auth/refresh'
 
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere'

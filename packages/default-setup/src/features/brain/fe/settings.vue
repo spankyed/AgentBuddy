@@ -141,10 +141,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'

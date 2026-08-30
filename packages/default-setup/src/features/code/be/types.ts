@@ -1,4 +1,4 @@
-import { EARS } from '@/core/types'
+import { EARS } from '@/registries/ears'
 import type { KeyboardShortcut } from '@/features/settings/be/types'
 
 export interface FileInfo {

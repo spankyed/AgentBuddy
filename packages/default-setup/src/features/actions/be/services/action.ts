@@ -1,6 +1,6 @@
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import type { ActionEntity } from '@/features/actions/be/types';
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 
 // Lazy services getter to avoid circular dependency
 function getServices() {

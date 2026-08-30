@@ -202,7 +202,7 @@ import ContextUsageBlock from './blocks/ContextUsageBlock.vue'
 import SessionListBlock from './blocks/SessionListBlock.vue'
 import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/features/threads/fe/state'
 
 interface Props {

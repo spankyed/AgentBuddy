@@ -258,7 +258,7 @@ import {
 import { useProjectActions } from './composables/useProjectActions'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from './constants'
 import { getFileIcon, videoExtensions } from '../../utils/file-icons'
-import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
+import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
 import type { FileInfo } from './state'
 
 const props = defineProps<{

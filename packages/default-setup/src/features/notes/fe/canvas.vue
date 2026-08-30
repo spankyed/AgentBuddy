@@ -291,7 +291,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
-import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
+import { useExternalFileDrag } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '@app/api'
 import { id, type NotesState } from './state'
@@ -299,13 +299,13 @@ import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
 import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star, Plus } from 'lucide-vue-next'
-import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
-import { useDebounce } from '@/core/composables/useDebounce'
+import EmojiPicker from '@abuddy/sdk/fe/design/EmojiPicker.vue'
+import { useDebounce } from '@abuddy/sdk/fe'
 import { useNoteFocus } from './composables/useNoteFocus'
 import { useNoteScroll } from './composables/useNoteScroll'
 import { useSubDocumentInsert } from './composables/useSubDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
-import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
+import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
 import TiptapSearchBar from '@/core/components/tiptap/TiptapSearchBar.vue'
 
 const actor: NotesState = applicationState.system.get(id)

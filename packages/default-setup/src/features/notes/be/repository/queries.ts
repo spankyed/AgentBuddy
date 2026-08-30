@@ -1,6 +1,6 @@
-import { EARS } from '@/core/types';
-import { findById, findAll } from '@/core/shared/repository';
-import { qx } from '@/core/ears/helpers/query';
+import { EARS } from '@/registries/ears';
+import { findById, findAll } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears';
 import type { NoteEntity, NoteDTO } from '../types';
 import { REFERENCES } from '../types';
 

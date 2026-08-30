@@ -166,9 +166,9 @@
 import { ref, watch, computed } from 'vue'
 import { X, Plus, ChevronRight } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import OccurrenceInput from './form/OccurrenceInput.vue'
-import CopyFeedback from '@/core/components/design/CopyFeedback.vue'
+import CopyFeedback from '@abuddy/sdk/fe/design/CopyFeedback.vue'
 import type { SearchIndexFormData, SegmentRule } from '../../types/search-index'
 
 const props = defineProps<{

@@ -1,5 +1,5 @@
 import { setup, assign } from 'xstate';
-import { trpc } from '@/core/trpc';
+import { trpc } from '@abuddy/sdk/rpc';
 import { getParentContext } from '../../utils/parent-communication';
 
 // Search types

@@ -69,7 +69,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { isAnyMenuOpen } from '@/core/composables/useMenuState';
+import { isAnyMenuOpen } from '@abuddy/sdk/fe';
 import { useSelector } from '@xstate/vue';
 import { applicationState } from '@/main';
 import { id, type BrowserState } from './state.ts';

@@ -1,6 +1,6 @@
 import { executeTemplate } from '@/features/brain/be/utils/template-executor';
 import { createPromptContext } from '@/features/brain/be/utils/prompt-context';
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import type { PromptEntity } from '@/features/prompts/be/types';
 
 export class PromptService {

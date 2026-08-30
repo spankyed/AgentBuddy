@@ -1,4 +1,4 @@
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import { brainInspect, brainLogger } from './brain-inspect';
 
 /**

@@ -6,7 +6,7 @@
  * exposing a clean, typed Node API to the rest of AgentBuddy.
  *
  * Shape:
- *   import { claudeCode } from '@/services/claude-code'
+ *   import { claudeCode } from '@abuddy/sdk/services'
  *
  *   // Streaming conversation
  *   const conv = await claudeCode.query({ cwd, prompt: 'hi' })

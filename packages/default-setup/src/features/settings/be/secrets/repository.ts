@@ -1,7 +1,7 @@
-import { registerRepository } from '@/repository';
-import { EARS } from '@/core/types';
-import { tx } from '@/core/ears/helpers/transaction';
-import { qx } from '@/core/ears/helpers/query';
+import { registerRepository } from '@abuddy/sdk/ears';
+import { EARS } from '@/registries/ears';
+import { tx } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears';
 import type { SecretEntity, SecretProvider, CreateSecretParams, SecretData } from './types';
 
 export const secretsQueries = {

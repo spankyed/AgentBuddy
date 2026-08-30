@@ -185,7 +185,7 @@
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import {
   ComboboxAnchor,
   ComboboxContent,

@@ -65,9 +65,9 @@
 <script setup lang="ts">
 import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
-import { truncatePath } from '@/core/utils/path-truncation'
+import { truncatePath } from '@abuddy/sdk/fe/utils/path-truncation'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 
 interface Project {

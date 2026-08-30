@@ -9,8 +9,8 @@
  */
 
 import * as path from 'node:path';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
+import { hydrateSharded } from '@abuddy/sdk/ears';
+import { envs, policy, persistence, closePersistence } from '@abuddy/sdk/ears';
 import { exportFlowsDSL } from './export-dsl';
 
 // Use process.cwd() relative path since this runs from api package

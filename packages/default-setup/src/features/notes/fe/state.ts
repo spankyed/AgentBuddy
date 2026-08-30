@@ -1,18 +1,18 @@
 import { assign, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbList } from '@/core/breadcrumb'
-import { safeEvents } from '@/core/types/safe-events'
+import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe'
+import { safeEvents } from '@abuddy/sdk/fe'
 import {
   targetIs,
   type TrailClickEvent,
-} from '@/core/actors/route-trailer'
+} from '@abuddy/sdk/fe'
 import type {
   OutgoingNotesEvents,
   NoteDTO,
 } from '@app/api'
-import { trpc } from '@/core/trpc'
+import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@/core/context-menu'
-import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@/core/utils/nav-history'
+import { contextMenuFn } from '@abuddy/sdk/fe'
+import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
 export const id = 'notes'
 export type NotesState = ActorRefFrom<typeof notesState>

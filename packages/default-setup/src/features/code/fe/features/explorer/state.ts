@@ -1,5 +1,5 @@
 import { setup, assign, enqueueActions } from 'xstate';
-import { trpc } from '@/core/trpc';
+import { trpc } from '@abuddy/sdk/rpc';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
 import { addRecentFile } from '../../utils/recent-files';

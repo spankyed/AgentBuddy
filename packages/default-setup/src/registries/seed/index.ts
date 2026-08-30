@@ -7,13 +7,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { EARS } from '@/core/types';
-import { findById, findWhere, findAll } from '@/core/shared/repository/query-helpers';
-import { repository } from '@/repository';
+import { EARS } from '@/registries/ears';
+import { findById, findWhere, findAll } from '@abuddy/sdk/ears';
+import { repository } from '@abuddy/sdk/ears';
 import {
   registerSeeder, seedData, seedCollection, loadJSON, shouldSeedAll,
   type SeedCounts, type SeedIncludeSet, type ImportMode, type SeederContext,
-} from '@/core/shared/seed';
+} from '@abuddy/sdk/utils';
 import { validate, compile, isFlowConfig } from '../../features/flows/be/dsl';
 import { importNotesFromData } from '../../features/notes/be/import-notes';
 import type { ActionEntity } from '../../features/actions/be/types';
@@ -22,7 +22,7 @@ import type { FlowDSL } from '../../features/flows/be/dsl';
 import type { FlowEntity } from '../../features/flows/be/config/types';
 import type { ContentSection, Document, Collection } from '../../features/library/be/types';
 import type { ExportedLibrary, ExportedItem } from '../../features/library/be/export-types';
-import { getMediaPath } from '@/core/shared/paths';
+import { getMediaPath } from '@abuddy/sdk/utils';
 import type { ExportedNotes } from '../../features/notes/be/export-types';
 
 function repo() {

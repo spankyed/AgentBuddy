@@ -1,7 +1,7 @@
 import type { NodeEntity } from '@/features/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '../types';
 import { brainInspect } from '../utils/brain-inspect';
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
 import { reportBrainRuntimeError } from '../runtime-errors';
 

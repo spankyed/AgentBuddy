@@ -16,7 +16,7 @@
  */
 
 import type { QueryHandle } from './query'
-import { createLogger } from '@/core/shared/debug/logger'
+import { createLogger } from '@abuddy/sdk/logger'
 import { registerCleanup } from '@/features/threads/be/services/threads'
 
 const logger = createLogger('claude-code-handle-store')

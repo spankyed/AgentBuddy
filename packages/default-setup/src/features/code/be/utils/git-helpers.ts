@@ -1,5 +1,5 @@
-import { emit } from '@/core/shared/actor-helpers'
-import { rootEvents } from '@/core/router/bus-emitter'
+import { emit } from '@abuddy/sdk/helpers'
+import { rootEvents } from '@abuddy/sdk/rpc'
 import { GitRepository } from '../services/git'
 
 const pluginId = 'code' as const

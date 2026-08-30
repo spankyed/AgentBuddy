@@ -1,10 +1,10 @@
 import type { NodeEntity } from '@/features/flows/be/config/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
-import { repository } from '@/repository';
-import { executeTemplate } from '@/core/shared/template-executor';
-import { createPromptContext } from '@/core/shared/prompt-context';
-import { EARS } from '@/core/types';
+import { repository } from '@abuddy/sdk/ears';
+import { executeTemplate } from '@abuddy/sdk/utils';
+import { createPromptContext } from '@abuddy/sdk/utils';
+import { EARS } from '@/registries/ears';
 import { generateText } from '@/shared-services/llm';
 import { reportBrainRuntimeError } from '../runtime-errors';
 

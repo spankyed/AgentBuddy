@@ -123,7 +123,7 @@ import {
 import {
   HoverCardRoot, HoverCardTrigger, HoverCardContent, HoverCardPortal, HoverCardArrow,
 } from 'reka-ui'
-import { useClickOutside } from '@/core/composables/useClickOutside'
+import { useClickOutside } from '@abuddy/sdk/fe'
 import type { GhPullRequest } from '@app/api'
 import { isFailing, isPending } from './merge-checks'
 import MergeButtonTooltip, { type MergeVariant } from './MergeButtonTooltip.vue'

@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDebounce } from '@/core/composables/useDebounce'
+import { useDebounce } from '@abuddy/sdk/fe'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
 

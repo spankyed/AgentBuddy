@@ -1,4 +1,4 @@
-import { extractMediaRefs, resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs } from '@/core/shared/media'
+import { extractMediaRefs, resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs } from '@abuddy/sdk/utils'
 
 export { extractMediaRefs, resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs }
 

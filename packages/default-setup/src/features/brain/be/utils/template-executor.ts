@@ -1,4 +1,4 @@
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 import type { PromptContext } from './prompt-context';
 
 const logger = createLogger('template-executor');

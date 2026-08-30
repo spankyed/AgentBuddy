@@ -1,9 +1,9 @@
 import { Index } from 'usearch'
-import { qx } from '@/core/ears/helpers/query'
-import { tx } from '@/core/ears/helpers/transaction'
-import { EARS } from '@/core/types'
-import { randomId } from '@/core/shared/random-id'
-import { createLogger } from '@/core/shared/debug/logger'
+import { qx } from '@abuddy/sdk/ears'
+import { tx } from '@abuddy/sdk/ears'
+import { EARS } from '@/registries/ears'
+import { randomId } from '@abuddy/sdk/utils'
+import { createLogger } from '@abuddy/sdk/logger'
 import type {
   SearchIndex,
   SearchIndexConfig,

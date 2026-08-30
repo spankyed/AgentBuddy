@@ -114,15 +114,15 @@
 import { computed } from 'vue';
 import type { ActionEntity, ActionParameter, Category } from '@app/api';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue';
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
+import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue';
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@/core/components/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
-import { navigateToPlugin } from '@/core/utils/navigate';
-import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
+import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { useCollapsibleState } from '@abuddy/sdk/fe';
 import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
 
 const props = defineProps<{

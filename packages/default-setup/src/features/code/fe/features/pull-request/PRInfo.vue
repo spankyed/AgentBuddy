@@ -135,9 +135,9 @@
 import { computed, ref, watch, nextTick, useTemplateRef } from 'vue'
 import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
+import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
-import { openInAppBrowser } from '@/core/utils/openInAppBrowser'
+import { openInAppBrowser } from '@abuddy/sdk/fe'
 
 const props = defineProps<{
   pr: GhPullRequest | null

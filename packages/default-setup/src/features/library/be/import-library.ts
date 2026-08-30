@@ -11,10 +11,10 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '@/repository'
-import type { EARS } from '@/core/types'
-import { hasIdCollision } from '@/core/shared/repository'
-import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/shared/media'
+import { repository } from '@abuddy/sdk/ears'
+import type { EARS } from '@/registries/ears'
+import { hasIdCollision } from '@abuddy/sdk/ears'
+import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
 import type { ContentSection } from './types'
 import { toDisplayName, parseFrontmatter, parseMarkdownSections } from './utils'
 

@@ -332,8 +332,8 @@ import {
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/main';
-import { trpc } from '@/core/trpc';
-import ToastNotification from '@/core/components/design/ToastNotification.vue';
+import { trpc } from '@abuddy/sdk/rpc';
+import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 

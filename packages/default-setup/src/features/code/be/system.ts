@@ -15,13 +15,13 @@
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 import { setup, enqueueActions, assign } from 'xstate'
-import { emit } from '@/core/shared/actor-helpers'
-import { rootEvents } from '@/core/router/bus-emitter'
+import { emit } from '@abuddy/sdk/helpers'
+import { rootEvents } from '@abuddy/sdk/rpc'
 import './repository' // side-effect: registers terminalQueries/terminalCommands
-import { defineSystem } from '@/core/framework/define-system'
+import { defineSystem } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
-import { repository } from '@/repository'
+import { repository } from '@abuddy/sdk/ears'
 
 // child systems
 import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'

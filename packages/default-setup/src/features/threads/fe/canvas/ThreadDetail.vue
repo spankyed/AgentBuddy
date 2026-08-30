@@ -179,17 +179,17 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { Plus, MessageSquare, Link } from 'lucide-vue-next'
-import Button from '@/core/components/design/button.vue'
+import Button from '@abuddy/sdk/fe/design/button.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state'
 import type { ThreadEditFields } from '@app/api'
 import type { Ref } from 'vue'
-import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue'
+import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue'
 import MessageList from './components/message-list.vue'
-import TagInput from '@/core/components/design/tag-input.vue'
+import TagInput from '@abuddy/sdk/fe/design/tag-input.vue'
 import ThreadLinkInput from '@/features/threads/fe/canvas/components/link-thread-input.vue'
-import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);

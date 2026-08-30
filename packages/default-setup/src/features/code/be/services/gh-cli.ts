@@ -1,8 +1,8 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import https from 'https'
-import { resolveForService } from '@/core/shared/resolve-cli'
-import { createLogger } from '@/core/shared/debug/logger'
+import { resolveForService } from '@abuddy/sdk/utils'
+import { createLogger } from '@abuddy/sdk/logger'
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 
 const logger = createLogger('gh-cli')

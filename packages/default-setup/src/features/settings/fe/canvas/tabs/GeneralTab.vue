@@ -69,7 +69,7 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
+import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 
 const actor = applicationState.system.get('settings')
 

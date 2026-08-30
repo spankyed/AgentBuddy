@@ -90,9 +90,9 @@
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
-import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
+import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import plugins from '@/plugins'
 
 const actor = applicationState.system.get('settings')

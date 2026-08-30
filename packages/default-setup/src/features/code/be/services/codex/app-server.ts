@@ -10,8 +10,8 @@
 
 import { spawn, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
-import { createLogger } from '@/core/shared/debug/logger'
-import { resolveForService } from '@/core/shared/resolve-cli'
+import { createLogger } from '@abuddy/sdk/logger'
+import { resolveForService } from '@abuddy/sdk/utils'
 import type {
   ServerStatus,
   ApprovalDecision,
