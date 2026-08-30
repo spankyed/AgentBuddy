@@ -6,9 +6,8 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {
-      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/core/components/design/*": ["../abuddy-sdk/src/fe/design/*"],
+      "@/core/components/tiptap/*": ["../abuddy-sdk/src/fe/components/tiptap/*"],
       "@/core/composables/useMenuState": ["../abuddy-sdk/src/fe/composables/useMenuState"],
       "@/core/composables/useContextMenu": ["../abuddy-sdk/src/fe/composables/useContextMenu"],
       "@/registries/*": ["../default-setup/src/registries/*"],

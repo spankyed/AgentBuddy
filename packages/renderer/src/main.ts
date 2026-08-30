@@ -11,7 +11,7 @@ import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
 import { loadPackPlugins } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
-import { TIPTAP_PLUGINS_KEY } from '@abuddy/sdk/fe/components/tiptap/injection-keys';
+import { TIPTAP_PLUGINS_KEY } from '@/core/components/tiptap/injection-keys';
 import { tiptapPlugins } from '@/registries/tiptap-plugins';
 
 declare const __APP_VERSION__: string;
