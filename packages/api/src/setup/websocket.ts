@@ -5,7 +5,7 @@ import { createContext } from '@/core/router/context';
 import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
-import { runShutdownHooks } from '@/registries/lifecycle';
+import { runShutdownHooks } from '@/core/shared/lifecycle';
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;

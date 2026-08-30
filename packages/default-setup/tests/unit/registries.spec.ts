@@ -3,10 +3,9 @@
  * into the api core without direct cross-package imports.
  */
 
-describe('registries/lifecycle — shutdown hooks', () => {
+describe('core/lifecycle — shutdown hooks', () => {
   it('runShutdownHooks calls all registered hooks', async () => {
-    // Import fresh to test the mechanism (the module also self-registers terminalService.killAll)
-    const { registerShutdownHook, runShutdownHooks } = await import('../../src/registries/lifecycle');
+    const { registerShutdownHook, runShutdownHooks } = await import('@/core/shared/lifecycle');
 
     const calls: string[] = [];
     registerShutdownHook(() => calls.push('hook-a'));
@@ -19,7 +18,7 @@ describe('registries/lifecycle — shutdown hooks', () => {
   });
 
   it('swallows errors from individual hooks without stopping others', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('../../src/registries/lifecycle');
+    const { registerShutdownHook, runShutdownHooks } = await import('@/core/shared/lifecycle');
 
     const calls: string[] = [];
     registerShutdownHook(() => { throw new Error('boom'); });
@@ -28,15 +27,6 @@ describe('registries/lifecycle — shutdown hooks', () => {
     runShutdownHooks();
 
     expect(calls).toContain('after-error');
-  });
-
-  it('self-registers the terminalService.killAll hook on module load', async () => {
-    const { runShutdownHooks } = await import('../../src/registries/lifecycle');
-
-    // The module-level registerShutdownHook(() => terminalService.killAll()) runs on import.
-    // We can't easily assert on terminalService.killAll without mocking, but we can
-    // verify runShutdownHooks doesn't throw (the hook array is non-empty).
-    expect(() => runShutdownHooks()).not.toThrow();
   });
 });
 
