@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { compilePack, type CompilePackOptions } from '@app/default-setup/build';
+import { generate } from './generate';
 
 function findPackRoot(from: string): string {
   let dir = from;
@@ -14,6 +15,8 @@ function findPackRoot(from: string): string {
 export async function build(_args: string[]) {
   const root = findPackRoot(process.cwd());
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
+
+  await generate([]);
 
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
 
@@ -37,6 +40,12 @@ export async function build(_args: string[]) {
   };
 
   const result = await compilePack(options);
+
+  const typeManifest = {
+    entities: manifest.entities ?? {},
+    relKinds: manifest.relKinds ?? {},
+  };
+  fs.writeFileSync(path.join(outputDir, 'types.json'), JSON.stringify(typeManifest, null, 2));
 
   console.log(`\nBuild complete:`);
   if (result.actions > 0) console.log(`  Actions:  ${result.actions}`);

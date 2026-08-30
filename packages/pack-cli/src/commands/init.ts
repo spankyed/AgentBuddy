@@ -2,15 +2,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 
-const MANIFEST_TEMPLATE = (name: string) => JSON.stringify({
-  id: name,
-  name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
-  version: '0.1.0',
-  hostVersion: '>=0.3.0',
-  artifactTypes: ['actions', 'flows'],
-  features: [],
-  permissions: [],
-}, null, 2);
+const MANIFEST_TEMPLATE = (name: string) => {
+  const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
+  return JSON.stringify({
+    id: name,
+    name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
+    version: '0.1.0',
+    hostVersion: '>=0.3.0',
+    entities: { [pascalName]: pascalName },
+    relKinds: {},
+    artifactTypes: ['actions', 'flows'],
+    features: [],
+    dependencies: {},
+    permissions: [],
+  }, null, 2);
+};
 
 const PACK_CONFIG_TEMPLATE = (name: string) => `import type { PackConfig } from '@abuddy/sdk/build';
 
@@ -41,7 +47,8 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   private: true,
   type: 'module',
   scripts: {
-    build: 'abuddy build',
+    generate: 'abuddy generate',
+    build: 'abuddy generate && abuddy build',
     validate: 'abuddy validate',
     dev: 'abuddy dev',
     typecheck: 'tsc --noEmit',

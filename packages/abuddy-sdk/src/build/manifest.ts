@@ -5,10 +5,17 @@ export interface PackManifest {
   description?: string;
   hostVersion?: string;
   artifactTypes?: ArtifactType[];
+  entities?: Record<string, string>;
+  relKinds?: Record<string, string>;
   features?: PackFeatureEntry[];
   dependencies?: Record<string, string>;
   permissions?: PackPermission[];
   license?: string;
+}
+
+export interface PackTypeManifest {
+  entities: Record<string, string>;
+  relKinds: Record<string, string>;
 }
 
 export type ArtifactType =

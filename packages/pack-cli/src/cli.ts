@@ -6,6 +6,7 @@ import { build } from './commands/build';
 import { validate } from './commands/validate';
 import { dev } from './commands/dev';
 import { install } from './commands/install';
+import { generate } from './commands/generate';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8'));
 
@@ -14,6 +15,7 @@ abuddy - AgentBuddy Pack CLI
 
 Commands:
   init [name]         Scaffold a new pack
+  generate            Generate EARS types from manifest + deps
   build               Compile pack artifacts to dist/
   validate            Check manifest and types
   install <path>      Install a pack from a directory or .zip
@@ -42,6 +44,9 @@ async function main() {
     switch (command) {
       case 'init':
         await init(args.slice(1));
+        break;
+      case 'generate':
+        await generate(args.slice(1));
         break;
       case 'build':
         await build(args.slice(1));
