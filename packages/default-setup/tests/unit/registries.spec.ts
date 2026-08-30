@@ -70,21 +70,75 @@ describe('registries/services — feature services assembly', () => {
   });
 });
 
-describe('registries/seed — seed logic exports', () => {
-  it('exports seedData and runBootSeed functions', async () => {
-    const { seedData, runBootSeed } = await import('../../src/registries/seed');
+describe('core/seed — seeder registry', () => {
+  it('seedData runs registered seeders and returns keyed counts', async () => {
+    const { registerSeeder, seedData } = await import('@/core/shared/seed');
+    const os = await import('os');
+    const path = await import('path');
 
-    expect(typeof seedData).toBe('function');
-    expect(typeof runBootSeed).toBe('function');
+    registerSeeder({
+      key: 'test-artifact',
+      seed(ctx) {
+        return { created: 2, updated: 1, skipped: 0 };
+      },
+    });
+
+    const result = seedData({ compiledDir: path.join(os.tmpdir(), 'nonexistent') });
+
+    expect(result['test-artifact']).toEqual({ created: 2, updated: 1, skipped: 0 });
   });
 
-  it('exports loadJSON utility', async () => {
-    const { loadJSON } = await import('../../src/registries/seed');
+  it('skips seeders whose include set is empty', async () => {
+    const { registerSeeder, seedData } = await import('@/core/shared/seed');
+    const os = await import('os');
+    const path = await import('path');
 
-    expect(typeof loadJSON).toBe('function');
+    let called = false;
+    registerSeeder({
+      key: 'skip-me',
+      seed() {
+        called = true;
+        return { created: 0, updated: 0, skipped: 0 };
+      },
+    });
+
+    seedData({
+      compiledDir: path.join(os.tmpdir(), 'nonexistent'),
+      include: { 'skip-me': new Set() },
+    });
+
+    expect(called).toBe(false);
   });
 
-  it('exports preview types and function', async () => {
+  it('rejects duplicate seeder keys', async () => {
+    const { registerSeeder } = await import('@/core/shared/seed');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    registerSeeder({ key: 'dup-test', seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
+    registerSeeder({ key: 'dup-test', seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Duplicate seeder key'));
+    warn.mockRestore();
+  });
+
+  it('default-setup registers all built-in seeders', async () => {
+    await import('../../src/registries/seed');
+    const { seedData } = await import('@/core/shared/seed');
+    const os = await import('os');
+    const path = await import('path');
+
+    const result = seedData({ compiledDir: path.join(os.tmpdir(), 'empty-dir-' + Date.now()) });
+
+    const keys = Object.keys(result);
+    expect(keys).toContain('actions');
+    expect(keys).toContain('prompts');
+    expect(keys).toContain('flows');
+    expect(keys).toContain('library');
+    expect(keys).toContain('notes');
+    expect(keys).toContain('settings');
+  });
+
+  it('exports preview function', async () => {
     const { previewSetupPack } = await import('../../src/registries/seed/preview');
 
     expect(typeof previewSetupPack).toBe('function');

@@ -10,7 +10,7 @@ import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import * as path from 'path';
-import { seedData, type SeedResult, type SeedInclude } from '../../../registries/seed/index';
+import { seedData, type SeedCounts, type SeedIncludeSet } from '../../../registries/seed/index';
 import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '../../../registries/seed/preview';
 import { testCli, isCliName, clearCliPathCache } from '@/core/shared/resolve-cli';
 import { resetLmdbFiles } from '@/core/ears/attribute-storage';
@@ -32,8 +32,8 @@ function toSeedInclude(
     notes: string[] | null;
     settings: string[] | null;
   },
-): SeedInclude {
-  const conv = (v: string[] | null) => (v === null ? true : new Set(v));
+): Record<string, SeedIncludeSet | undefined> {
+  const conv = (v: string[] | null): SeedIncludeSet => (v === null ? true : new Set(v));
   return {
     actions: conv(include.actions),
     prompts: conv(include.prompts),
@@ -68,7 +68,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
-  | { type: 'SETUP_PACK_IMPORTED'; result: SeedResult }
+  | { type: 'SETUP_PACK_IMPORTED'; result: Record<string, SeedCounts> }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
   | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
   | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }

@@ -10,7 +10,8 @@ import * as path from 'path';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
-import { seedData } from '@/registries/seed/index';
+import '@/registries/seed/index';
+import { seedData } from '@/core/shared/seed';
 
 async function run() {
   console.log('Initializing database...');
@@ -24,9 +25,9 @@ async function run() {
   });
 
   console.log('\nSeed summary:');
-  console.log(`  Actions  — created: ${result.actions.created}, skipped: ${result.actions.skipped}`);
-  console.log(`  Prompts  — created: ${result.prompts.created}, skipped: ${result.prompts.skipped}`);
-  console.log(`  Flows    — created: ${result.flows.created}, skipped: ${result.flows.skipped}`);
+  for (const [key, counts] of Object.entries(result)) {
+    console.log(`  ${key} — created: ${counts.created}, updated: ${counts.updated}, skipped: ${counts.skipped}`);
+  }
 
   closePersistence();
 }
