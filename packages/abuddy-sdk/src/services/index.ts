@@ -28,13 +28,6 @@ export function onIncoming(callback: (event: any) => void): () => void {
   return emitterMod().onIncoming(callback);
 }
 
-let _claudeCodeMod: any;
-function claudeCodeMod() { if (!_claudeCodeMod) _claudeCodeMod = getHostModule('claude-code'); return _claudeCodeMod; }
-
-export const claudeCode: any = new Proxy({} as any, {
-  get(_, prop: string) { return claudeCodeMod().claudeCode[prop]; },
-});
-
 let _servicesMod: any;
 function servicesMod() { if (!_servicesMod) _servicesMod = getHostModule('services'); return _servicesMod; }
 

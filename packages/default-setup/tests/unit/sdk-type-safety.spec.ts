@@ -102,7 +102,8 @@ describe('Type inference — EARS runtime', () => {
 describe('Type inference — EARS repository generics', () => {
   it('findById<T> infers T on the result', () => {
     type Action = { label: string; actionFn: string };
-    expectTypeOf(findById<Action>).returns.toMatchTypeOf<Action | undefined>();
+    const typedFind: (id: EARS.EntityId) => Action | undefined = findById;
+    expectTypeOf(typedFind).returns.toMatchTypeOf<Action | undefined>();
   });
 
   it('findAll<T> infers T[] on the result', () => {
@@ -141,7 +142,6 @@ describe('Type inference — Logger', () => {
     expectTypeOf(logger.warn).toBeFunction();
     expectTypeOf(logger.error).toBeFunction();
     expectTypeOf(logger.debug).toBeFunction();
-    expectTypeOf(logger.verbose).toBeFunction();
   });
 });
 

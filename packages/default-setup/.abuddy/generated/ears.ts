@@ -53,7 +53,7 @@ export namespace EARS {
   }
   export type Entity = Entity.Relation | Entity.Agent | Entity.Thread | Entity.Message | Entity.Artifact | Entity.Brain | Entity.Flow | Entity.Node | Entity.TNode | Entity.Document | Entity.Collection | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.Directory | Entity.Settings | Entity.Secret | Entity.FAQ | Entity.CalendarEvent | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Note | Entity.Action | Entity.Prompt;
 
-  export type EntityId = import('@abuddy/sdk').EARS.EntityId;
+  export type EntityId<E extends string = string> = import('@abuddy/sdk').EARS.EntityId<E>;
 
   export namespace RelKind {
     export const PARENT_OF = 'parent_of';

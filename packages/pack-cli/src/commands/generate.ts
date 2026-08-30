@@ -123,7 +123,7 @@ function emitEARS(ownId: string, registry: MergedRegistry): string {
   lines.push('');
 
   // ── EntityId ──
-  lines.push("  export type EntityId = import('@abuddy/sdk').EARS.EntityId;");
+  lines.push("  export type EntityId<E extends string = string> = import('@abuddy/sdk').EARS.EntityId<E>;");
   lines.push('');
 
   // ── RelKind ──

@@ -1,1 +1,1 @@
-export { EARS, type BaseEntity } from './entities';
+export { EARS, type BaseEntity, type EntityShapeRegistry, type EntityShape, type PluginEventRegistry } from './entities';

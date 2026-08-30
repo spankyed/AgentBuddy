@@ -1,4 +1,5 @@
 import type { Simplify } from './type-helpers';
+import type { PluginEventRegistry } from '../types/entities';
 
 type ExtractEvent<
   TEvent extends { type: string },
@@ -42,10 +43,17 @@ export function safeEvents<TEvent extends { type: string }>() {
  * Each system uses this with its own outgoing type for per-system type safety.
  * The global OutgoingSystemEvents union is assembled in api/src/systems/index.ts.
  */
+export function emit<P extends keyof PluginEventRegistry & string>(
+  pluginId: P,
+  event: PluginEventRegistry[P]
+): { type: 'OUTGOING'; event: PluginEventRegistry[P] & { pluginId: P } };
+
 export function emit<E extends { type: string }>(
   pluginId: string,
   event: E
-) {
+): { type: 'OUTGOING'; event: E & { pluginId: string } };
+
+export function emit(pluginId: string, event: { type: string }) {
   return {
     type: 'OUTGOING' as const,
     event: { ...event, pluginId },

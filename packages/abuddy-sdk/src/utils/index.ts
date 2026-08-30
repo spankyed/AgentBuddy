@@ -50,9 +50,7 @@ export function testCli(...args: any[]): any { return cliMod().testCli(...args);
 export function isCliName(name: string): boolean { return cliMod().isCliName(name); }
 export function clearCliPathCache(): void { return cliMod().clearCliPathCache(); }
 
-// --- Settings Changes ---
-let _settingsChangesMod: any;
-function settingsChangesMod() { if (!_settingsChangesMod) _settingsChangesMod = getHostModule('settings-changes'); return _settingsChangesMod; }
+// --- Rename / Remove Mapping ---
 
 export type Rename = { from: string; to: string };
 export type ChangeBlock<T = any> = {
@@ -60,23 +58,53 @@ export type ChangeBlock<T = any> = {
   removed?: Array<T | string>;
 };
 
-export function toMap(r?: Rename[]): Map<string, string> { return settingsChangesMod().toMap(r); }
-export function toIdentifierSet<T = any>(
+export const toMap = (r?: Rename[]) =>
+  new Map<string, string>(r?.map(({ from, to }) => [from, to]) ?? []);
+
+export const toIdentifierSet = <T = any>(
   removed?: Array<T | string>,
-  keyExtractor?: (item: T) => string,
-): Set<string> { return settingsChangesMod().toIdentifierSet(removed, keyExtractor); }
-export function toNameSet(r?: ChangeBlock['removed']): Set<string> { return settingsChangesMod().toNameSet(r); }
-export function mapScalar(
+  keyExtractor: (item: T) => string = (item: any) => item.name,
+) =>
+  new Set<string>((removed ?? []).map(x =>
+    typeof x === 'string' ? x : keyExtractor(x as T)
+  ));
+
+export const mapScalar = (
   val: string | undefined,
   renames: Map<string, string>,
   removed: Set<string>,
   fallback?: () => string | undefined,
-): string | undefined { return settingsChangesMod().mapScalar(val, renames, removed, fallback); }
-export function mapArray(
+): string | undefined => {
+  if (!val) return val;
+  const renamed = renames.get(val);
+  if (renamed) return renamed;
+  if (removed.has(val)) return fallback?.();
+  return val;
+};
+
+export const mapArray = (
   vals: string[] | undefined,
   renames: Map<string, string>,
   removed: Set<string>,
-): { next: string[]; changed: boolean } { return settingsChangesMod().mapArray(vals, renames, removed); }
+): { next: string[]; changed: boolean } => {
+  if (!vals?.length) return { next: vals ?? [], changed: false };
+  let changed = false;
+  const next = vals
+    .map(v => {
+      if (removed.has(v)) {
+        changed = true;
+        return null;
+      }
+      const n = renames.get(v);
+      if (n && n !== v) {
+        changed = true;
+        return n;
+      }
+      return v;
+    })
+    .filter(Boolean) as string[];
+  return { next, changed };
+};
 
 // --- Random ID ---
 let _randomIdMod: any;
@@ -127,18 +155,6 @@ let _systemErrorsMod: any;
 function systemErrorsMod() { if (!_systemErrorsMod) _systemErrorsMod = getHostModule('system-errors'); return _systemErrorsMod; }
 
 export function reportSystemError(...args: any[]): void { return systemErrorsMod().reportSystemError(...args); }
-
-// --- Template Executor ---
-let _templateMod: any;
-function templateMod() { if (!_templateMod) _templateMod = getHostModule('template-executor'); return _templateMod; }
-
-export function executeTemplate(...args: any[]): string { return templateMod().executeTemplate(...args); }
-
-// --- Prompt Context ---
-let _promptContextMod: any;
-function promptContextMod() { if (!_promptContextMod) _promptContextMod = getHostModule('prompt-context'); return _promptContextMod; }
-
-export function createPromptContext(...args: any[]): Record<string, unknown> { return promptContextMod().createPromptContext(...args); }
 
 // --- Seed ---
 let _seedMod: any;

@@ -84,7 +84,7 @@ describe('abuddy generate', () => {
     await generate([], tmpDir);
 
     const output = readGenerated();
-    expect(output).toContain("export type EntityId = import('@abuddy/sdk').EARS.EntityId");
+    expect(output).toContain("export type EntityId<E extends string = string> = import('@abuddy/sdk').EARS.EntityId<E>");
     expect(output).toContain("export type Blueprint = import('@abuddy/sdk').EARS.Blueprint");
     expect(output).toContain("export type RoleKind = import('@abuddy/sdk').EARS.RoleKind");
     expect(output).toContain("export type AttrKind = import('@abuddy/sdk').EARS.AttrKind");

@@ -18,7 +18,7 @@ export namespace EARS {
   } as const;
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-  export type EntityId = `${string}-${string}`;
+  export type EntityId<E extends string = string> = `${string}-${string}` & { readonly __entity?: E };
 
   // ─── RelKind ───────────────────────────────────────────────────────────
   // Concrete values registered by the host; SDK provides just the type framework.
@@ -94,3 +94,50 @@ export interface BaseEntity {
   createdAt: number;
   updatedAt?: number;
 }
+
+/**
+ * Maps entity type strings to their attribute shapes.
+ *
+ * Empty by default — packs augment via declaration merging:
+ * ```ts
+ * declare module '@abuddy/sdk/types' {
+ *   interface EntityShapeRegistry {
+ *     'Action': { label: string; actionFn: string; category?: string };
+ *     'Thread': { title: string; status: string };
+ *   }
+ * }
+ * ```
+ *
+ * When augmented, functions like `findAll(Entity.Action)` return
+ * `ActionEntity[]` without an explicit generic parameter.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface EntityShapeRegistry {}
+
+/**
+ * Resolves an entity type string to its shape from the registry,
+ * falling back to `Record<string, any>` for unregistered types.
+ */
+export type EntityShape<E extends string> =
+  E extends keyof EntityShapeRegistry
+    ? EntityShapeRegistry[E] & BaseEntity
+    : Record<string, any>;
+
+/**
+ * Maps plugin IDs to their outgoing event types.
+ *
+ * Empty by default — packs augment via declaration merging:
+ * ```ts
+ * declare module '@abuddy/sdk/types' {
+ *   interface PluginEventRegistry {
+ *     'threads': { type: 'THREAD_DATA'; threads: Thread[] } | { type: 'TOKEN_STREAM'; token: string };
+ *     'code': { type: 'CODE_DATA'; data: any };
+ *   }
+ * }
+ * ```
+ *
+ * When augmented, `emit('threads', event)` constrains `event` to
+ * only the event types that the threads plugin can receive.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PluginEventRegistry {}

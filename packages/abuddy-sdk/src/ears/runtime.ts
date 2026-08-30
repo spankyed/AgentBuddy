@@ -5,7 +5,7 @@
  * Features import these from @abuddy/sdk/ears and they delegate
  * to the real LMDB-backed implementation.
  */
-import type { EARS } from '../types/entities';
+import type { EARS, EntityShapeRegistry } from '../types/entities';
 
 type AnyFn = (...args: any[]) => any;
 
@@ -32,26 +32,26 @@ function ensureInit(name: string, fn: AnyFn | null): AnyFn {
 
 // ─── QueryBuilder fluent interface ──────────────────────────────────────
 
-export interface QueryBuilder {
-  ofType(t: EARS.Entity): QueryBuilder;
-  inIds(sub: readonly EARS.EntityId[]): QueryBuilder;
-  where(k: string, v?: unknown): QueryBuilder;
-  withRole(r: string): QueryBuilder;
-  relatedTo(target: EARS.EntityId): QueryBuilder;
-  related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder;
-  linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): QueryBuilder;
+export interface QueryBuilder<E extends string = string> {
+  ofType<T extends string>(t: T): QueryBuilder<T>;
+  inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E>;
+  where(k: string, v?: unknown): QueryBuilder<E>;
+  withRole(r: string): QueryBuilder<E>;
+  relatedTo(target: EARS.EntityId): QueryBuilder<E>;
+  related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E>;
+  linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): QueryBuilder<E>;
   links<K extends string>(relKinds: K | readonly K[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId }>;
   edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
   pick<A extends readonly string[]>(fields: A): any[];
   pickOne<A extends readonly string[]>(f: A): any;
   pickAll(): any[];
   linksPick<K extends string, A extends readonly string[]>(relKinds: K | readonly K[], fields: A, tgtType?: EARS.Entity | EARS.Entity[]): any[];
-  orderBy(field: string, dir?: 'asc' | 'desc'): QueryBuilder;
-  reverse(): QueryBuilder;
-  limit(n: number): QueryBuilder;
+  orderBy(field: string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
+  reverse(): QueryBuilder<E>;
+  limit(n: number): QueryBuilder<E>;
   page(size: number, cursor?: string | null): { items: EARS.EntityId[]; nextCursor: string | null };
-  distinct(field?: string): QueryBuilder;
-  groupBy(field: string): Map<unknown, QueryBuilder>;
+  distinct(field?: string): QueryBuilder<E>;
+  groupBy(field: string): Map<unknown, QueryBuilder<E>>;
   ids(): EARS.EntityId[];
   id(): EARS.EntityId | null;
   count(): number;
@@ -59,7 +59,7 @@ export interface QueryBuilder {
   last(): EARS.EntityId | null;
   exists(): boolean;
   map<T>(fn: (id: EARS.EntityId) => T): T[];
-  forEach(fn: (id: EARS.EntityId) => void): QueryBuilder;
+  forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E>;
   reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
 }
 
@@ -103,12 +103,13 @@ export interface Logger {
   warn(...args: unknown[]): void;
   error(...args: unknown[]): void;
   debug(...args: unknown[]): void;
-  verbose(...args: unknown[]): void;
 }
 
 // ─── Runtime delegates ──────────────────────────────────────────────────
 
-export function qx(seed?: EARS.Entity | EARS.EntityId | EARS.EntityId[]): QueryBuilder {
+export function qx<E extends keyof EntityShapeRegistry & string>(seed: E): QueryBuilder<E>;
+export function qx(seed?: EARS.Entity | EARS.EntityId | EARS.EntityId[]): QueryBuilder;
+export function qx(seed?: any): QueryBuilder {
   return ensureInit('qx', _qx)(seed);
 }
 
@@ -116,6 +117,8 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolea
   return ensureInit('tx', _tx)(typeOrId, useProvidedId);
 }
 
+export function createEntity<E extends keyof EntityShapeRegistry & string>(entityType: E): EARS.EntityId<E>;
+export function createEntity(entityType: EARS.Entity): EARS.EntityId;
 export function createEntity(entityType: EARS.Entity): EARS.EntityId {
   return ensureInit('createEntity', _createEntity)(entityType);
 }

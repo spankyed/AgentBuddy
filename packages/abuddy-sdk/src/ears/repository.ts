@@ -1,5 +1,5 @@
 import { getHostModule } from '../runtime/host';
-import type { EARS } from '../types/entities';
+import type { EARS, EntityShapeRegistry, EntityShape } from '../types/entities';
 
 let _repositoryMod: any;
 function repoMod() {
@@ -23,7 +23,9 @@ function sharedRepo() {
   return _sharedRepoMod;
 }
 
-export function findById<T>(id: EARS.EntityId): T | undefined {
+export function findById<E extends keyof EntityShapeRegistry & string>(id: EARS.EntityId<E>): EntityShape<E> | undefined;
+export function findById<T>(id: EARS.EntityId): T | undefined;
+export function findById(id: EARS.EntityId): unknown {
   return sharedRepo().findById(id);
 }
 
