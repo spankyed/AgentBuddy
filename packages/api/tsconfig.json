@@ -14,6 +14,8 @@
     "noEmit": false,
     "baseUrl": ".",
     "paths": {
+      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
+      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts"],
       "@/registries/*": ["../default-setup/src/registries/*"],
       "@/features/*": ["../default-setup/src/features/*"],
       "@/shared-services/*": ["../default-setup/src/shared/services/*"],
