@@ -1,12 +1,12 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { compile } from '@/systems/flows/dsl/compiler';
-import { exportFlowsDSL } from '@/systems/flows/dsl/export-dsl';
+import { compile } from '@/features/flows/be/dsl/compiler';
+import { exportFlowsDSL } from '@/features/flows/be/dsl/export-dsl';
 import { clearMemory } from '@/core/ears/attribute-storage';
 import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
-import type { FlowDSL } from '@/systems/flows/dsl/types';
+import type { FlowDSL } from '@/features/flows/be/dsl/types';
 import { loadCompiledRows } from './load-compiled';
 
 /**

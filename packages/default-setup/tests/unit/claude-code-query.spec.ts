@@ -21,20 +21,20 @@ import {
   ClaudeAbortError,
   ClaudeExitError,
   ClaudeProtocolError,
-} from '@/systems/code/services/claude-code/errors'
-import { finaliseNoResult, query } from '@/systems/code/services/claude-code/query'
-import type { StreamHandle } from '@/systems/code/services/claude-code/runner'
-import type { DecodedLine } from '@/systems/code/services/claude-code/ndjson'
+} from '@/features/code/be/services/claude-code/errors'
+import { finaliseNoResult, query } from '@/features/code/be/services/claude-code/query'
+import type { StreamHandle } from '@/features/code/be/services/claude-code/runner'
+import type { DecodedLine } from '@/features/code/be/services/claude-code/ndjson'
 
-vi.mock('@/systems/code/services/claude-code/runner', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/systems/code/services/claude-code/runner')>()
+vi.mock('@/features/code/be/services/claude-code/runner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/code/be/services/claude-code/runner')>()
   return {
     ...actual,
     spawnStream: vi.fn(),
   }
 })
 
-import { spawnStream } from '@/systems/code/services/claude-code/runner'
+import { spawnStream } from '@/features/code/be/services/claude-code/runner'
 
 describe('finaliseNoResult', () => {
   const args = ['--print', '--input-format', 'stream-json'] as const

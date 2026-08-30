@@ -1,7 +1,7 @@
 import { createRoundTrip } from './helpers/round-trip';
 import { wrapInFlow } from './helpers/dsl-factories';
 import { steps, ctx, flows } from './helpers/fixtures';
-import { compile } from '@/systems/flows/dsl/compiler';
+import { compile } from '@/features/flows/be/dsl/compiler';
 
 /*─────────────────────────────────────────────────────────────────
  * Setup

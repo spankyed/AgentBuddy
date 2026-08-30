@@ -12,10 +12,10 @@
  * outbound events and assert their shape.
  */
 
-import { switchNodeHandler } from '@/systems/brain/node-handlers/switch-node'
-import { BinaryOperator } from '@/systems/flows/config/types'
-import type { Condition, SwitchNode } from '@/systems/flows/config/types'
-import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types'
+import { switchNodeHandler } from '@/features/brain/be/node-handlers/switch-node'
+import { BinaryOperator } from '@/features/flows/be/config/types'
+import type { Condition, SwitchNode } from '@/features/flows/be/config/types'
+import type { ExecutionContext, TNodeEntity } from '@/features/brain/be/types'
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 

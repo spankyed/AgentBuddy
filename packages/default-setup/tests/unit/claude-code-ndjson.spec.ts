@@ -7,8 +7,8 @@
  * U+2028/U+2029 escape that keeps the framing byte-safe.
  */
 
-import { Readable } from 'stream'
-import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from '@/systems/code/services/claude-code/ndjson'
+import { Readable } from 'node:stream'
+import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from '@/features/code/be/services/claude-code/ndjson'
 
 /** Build a Readable that emits each element as a separate chunk. */
 function chunked(chunks: string[]): Readable {

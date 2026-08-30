@@ -16,7 +16,7 @@
 import {
   parseApprovalDecision,
   type ApprovalDecision,
-} from '../../src/actions/claude-code/_helpers/approval-response'
+} from '../../src/features/code/actions/claude-code/_helpers/approval-response'
 
 describe('parseApprovalDecision', () => {
   // ─── Canonical happy paths ─────────────────────────────────────────────

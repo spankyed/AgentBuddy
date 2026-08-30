@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeSecretReferences } from '@/systems/settings/secrets/merge-secret-settings';
+import { mergeSecretReferences } from '@/features/settings/be/secrets/merge-secret-settings';
 
 describe('settings secret references', () => {
   it('preserves provider metadata while refreshing API key references', () => {

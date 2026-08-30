@@ -36,9 +36,9 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { resolveForService } from '@/core/helpers/resolve-cli'
-import { query } from '@/systems/code/services/claude-code/query'
-import type { PermissionHandler } from '@/systems/code/services/claude-code/types'
+import { resolveForService } from '@/core/shared/resolve-cli'
+import { query } from '@/features/code/be/services/claude-code/query'
+import type { PermissionHandler } from '@/features/code/be/services/claude-code/types'
 
 /**
  * Precondition check. Runs at module load. If `claude` isn't resolvable or

@@ -1,6 +1,6 @@
 import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
-import type { CompiledRows } from '@/systems/flows/dsl/compiler';
+import type { CompiledRows } from '@/features/flows/be/dsl/compiler';
 
 /** Load compiled rows into EARS in-memory store (mirrors importFromDSL) */
 export function loadCompiledRows(compiled: CompiledRows) {

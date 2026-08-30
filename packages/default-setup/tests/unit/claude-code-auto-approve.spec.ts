@@ -8,7 +8,7 @@
  * bypass the auto-approval gate. These tests pin that contract.
  */
 
-import { isPlanFileWrite } from '../../src/actions/claude-code/_helpers/auto-approve'
+import { isPlanFileWrite } from '../../src/features/code/actions/claude-code/_helpers/auto-approve'
 
 describe('isPlanFileWrite', () => {
   // ─── Happy paths ───────────────────────────────────────────────────

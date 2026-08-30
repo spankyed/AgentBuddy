@@ -20,7 +20,7 @@ import {
   parseExitPlanModeInput,
   buildPlanApprovalContext,
   type ParsedPlanInput,
-} from '../../src/actions/claude-code/_helpers/plan-approval'
+} from '../../src/features/code/actions/claude-code/_helpers/plan-approval'
 
 describe('parseExitPlanModeInput', () => {
   it('canonical SDK input shape → full parsed result', () => {
@@ -99,11 +99,10 @@ describe('buildPlanApprovalContext', () => {
     expect(ctx).toBe('# Do the thing\n\n1. Step one')
   })
 
-  it('long plan → truncated with trailing ellipsis and length under the cap', () => {
+  it('long plan → full body passed through (UI handles scrolling)', () => {
     const long = 'A'.repeat(500)
     const ctx = buildPlanApprovalContext(baseParsed({ plan: long }))
-    expect(ctx.length).toBeLessThanOrEqual(360)
-    expect(ctx.endsWith('…')).toBe(true)
+    expect(ctx).toBe(long)
   })
 
   it('trims whitespace before measuring length', () => {
