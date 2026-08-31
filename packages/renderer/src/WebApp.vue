@@ -70,7 +70,7 @@
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
             <component v-if="activePlugin.panel" :is="activePlugin.panel" />
-            <BrainInspectPanel v-else-if="inspectMode" />
+            <component v-else-if="inspectMode && fallbackPanel" :is="fallbackPanel" />
         </InspectionPanel>
     </div>
     </div>
@@ -89,8 +89,7 @@ import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
 import { navigateToPlugin } from '@/core/utils/navigate'
 import Router from '@/core/components/layout/router.vue'
-import { BrainInspectPanel } from '@/registries/extensions'
-import { getDesignatedPlugin } from '@abuddy/sdk/fe'
+import { getDesignatedPlugin, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
 import { registerGlobalToast } from '@/core/toast'
@@ -112,10 +111,15 @@ const panelSizes = useSelector(applicationState, (state) => state.context.panelS
 const chatMaximized = useSelector(applicationState, (state) => state.context.panelSizes.chatMaximized ?? false)
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
+const allPlugins = useSelector(applicationState, (state) => state.context.plugins)
 const brainActor = applicationState.system.get(getDesignatedPlugin('brain'))
 const inspectMode = useSelector(brainActor, (state: any) =>
   state.context.inspectEnabled ?? false
 )
+const fallbackPanel = computed(() => {
+  if (!hasDesignation('brain')) return null
+  return allPlugins.value.find(p => p.id === getDesignatedPlugin('brain'))?.panel
+})
 
 const currentPluginId = computed(() =>
   toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
