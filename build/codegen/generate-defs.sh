@@ -4,9 +4,9 @@ set -e
 # Script runs from packages/api directory
 echo "🔄 Generating DSL type definitions using Rollup..."
 
-# First, compile the TypeScript to get .d.ts files
-echo "📦 Compiling TypeScript declarations..."
-npx tsc -p defs/tsconfig.json
+# Type-check the entry files (rollup-plugin-dts resolves source directly, so no emit needed)
+echo "📦 Type-checking defs entry files..."
+npx tsc -p defs/tsconfig.json --noEmit
 
 # Run rollup to bundle the declarations into modules
 echo "🎯 Bundling declarations with Rollup..."
