@@ -1,5 +1,6 @@
 /*─────────────────────────────────────────────────────────────
  * atomic-transaction.ts – ACID transaction support for EARS
+ * STATUS: Unused — candidate for SDK extraction
  *─────────────────────────────────────────────────────────────*/
 import {
   putAttr, addAttr, mergeAttr, dropAttr, dropIf,
