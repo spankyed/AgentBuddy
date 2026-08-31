@@ -704,17 +704,6 @@ export function createEditorActions(
 }
 
 /**
- * Create standard editor keybindings (deprecated - use createEditorActions)
- * @deprecated Use createEditorActions instead
- */
-export function createEditorKeybindings(
-  monaco: Monaco,
-  onExecute?: () => void
-): editor.IActionDescriptor[] {
-  return createEditorActions(monaco, ['executeCode'], { onExecute })
-}
-
-/**
  * Convert a keybinding object to Monaco KeyCode
  */
 function convertKeybindingToMonaco(
