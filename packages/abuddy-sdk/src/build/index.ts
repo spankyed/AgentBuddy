@@ -1,6 +1,10 @@
 // Types
 export type { PackConfig, CompilePackOptions, CompilePackResult } from './types';
 
+// Seed compiler framework
+export { registerSeedCompiler, getSeedCompiler, getRegisteredSeedTypes, compilePack } from './seed-compiler';
+export type { SeedCompiler, CompileEntry, CompilationContext, ValidationResult } from './seed-compiler';
+
 // Compile utilities
 export { compileSourceDir, compileAllSourceFiles, bundleFile, sourceHash } from './compile-utils';
 export type { CompileConfig, CompiledEntry, CompileResult } from './compile-utils';

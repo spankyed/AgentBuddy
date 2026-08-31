@@ -16,7 +16,7 @@ export interface PackManifest {
   name: string;
   version: string;
   hostVersion?: string;
-  artifactTypes?: string[];
+  seedTypes?: string[];
   features?: PackFeatureEntry[];
   permissions?: string[];
 }

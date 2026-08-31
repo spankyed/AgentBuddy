@@ -6,7 +6,8 @@ import { compileLibraryFromDir, copyLibraryMedia } from './compile-library';
 import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
 import { compileFaqFromDir } from './compile-faq';
-import { seedFile } from '@abuddy/sdk/build';
+import { seedFile, compilePack } from '@abuddy/sdk/build';
+import { registerDefaultCompilers } from './seed-compilers';
 
 const baseDir = path.resolve(import.meta.dirname, '..');
 const configDir = path.join(baseDir, 'src/seeds');
@@ -23,6 +24,10 @@ function writeJson(filePath: string, data: unknown): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');
 }
+
+// ============================================================================
+// Individual compilation targets (backward compatible, compile from seeds/)
+// ============================================================================
 
 async function compileActions(): Promise<void> {
   const dir = configPath('actions');
@@ -116,7 +121,6 @@ async function compileSettings(): Promise<void> {
   const baseSettingsFile = configPath('default-settings.ts');
   let settings = await loadSettingsFromFile(baseSettingsFile);
 
-  // Merge per-feature settings from pack.config.ts declarations
   const featuresRoot = resolve('src/features');
   if (fs.existsSync(featuresRoot)) {
     const { pathToFileURL } = await import('url');
@@ -148,15 +152,23 @@ function compileFaq(): void {
   console.log(`Compiled ${result.length} FAQ(s)`);
 }
 
+// ============================================================================
+// Orchestrated compilation (uses SDK compiler framework)
+// ============================================================================
+
 async function compileAll(): Promise<void> {
-  await compileActions();
-  await compilePrompts();
-  await compileFlows();
-  compileLibrary();
-  compileNotes();
-  await compileSettings();
-  compileFaq();
+  registerDefaultCompilers();
+
+  await compilePack({
+    featuresDir: resolve('src/features'),
+    outputDir: resolve('dist'),
+    baseSettingsFile: configPath('default-settings.ts'),
+  });
 }
+
+// ============================================================================
+// CLI dispatch
+// ============================================================================
 
 const target = process.argv[2];
 

@@ -6,7 +6,7 @@ export interface PackManifest {
   version: string;
   description?: string;
   hostVersion?: string;
-  artifactTypes?: string[];
+  seedTypes?: string[];
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
   features?: PackFeatureEntry[];

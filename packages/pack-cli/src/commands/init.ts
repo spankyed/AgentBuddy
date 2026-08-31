@@ -12,7 +12,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     hostVersion: '>=0.3.0',
     entities: { [pascalName]: pascalName },
     relKinds: {},
-    artifactTypes: ['actions', 'flows'],
+    seedTypes: ['actions', 'flows'],
     features: [],
     dependencies: {},
     permissions: [],

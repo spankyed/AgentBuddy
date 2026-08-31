@@ -1,6 +1,6 @@
 /**
- * Feature artifact declaration.
- * Each feature declares what artifact types it provides.
+ * Feature seed declaration.
+ * Each feature declares what seed types it provides.
  * Paths are relative to the pack.config.ts file location.
  */
 export interface PackConfig {
@@ -12,6 +12,7 @@ export interface PackConfig {
   notes?: string;       // directory path
   faqs?: string;        // directory path
   settings?: string;    // file path, e.g. './settings.ts'
+  [key: string]: string | undefined;
 }
 
 export interface CompilePackOptions {
@@ -22,11 +23,6 @@ export interface CompilePackOptions {
 }
 
 export interface CompilePackResult {
-  actions: number;
-  prompts: number;
-  flows: number;
-  libraryDocs: number;
-  notes: number;
-  faqs: number;
+  seeds: Record<string, number>;
   warnings: string[];
 }

@@ -43,9 +43,9 @@ function validateManifest(manifestPath: string): ManifestValidation {
     warnings.push('abuddy.json: "hostVersion" should be a semver range string');
   }
 
-  if (manifest.artifactTypes) {
-    if (!Array.isArray(manifest.artifactTypes)) {
-      errors.push('abuddy.json: "artifactTypes" must be an array');
+  if (manifest.seedTypes) {
+    if (!Array.isArray(manifest.seedTypes)) {
+      errors.push('abuddy.json: "seedTypes" must be an array');
     }
   }
 
