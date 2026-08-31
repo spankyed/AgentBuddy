@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
-import { APP_VERSION } from '@abuddy/sdk/utils';
+import { getAppVersion } from '@abuddy/sdk/utils';
 
 const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'dist', 'compiled-settings.json');
 
@@ -16,7 +16,7 @@ const loadDefaults = (): SettingsData => {
     );
   }
   // Merge rather than dereference — defensive if a future edit drops `internal` from the JSON
-  settings.internal = { ...(settings.internal ?? {} as SettingsData['internal']), version: APP_VERSION };
+  settings.internal = { ...(settings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
   return settings;
 };
 

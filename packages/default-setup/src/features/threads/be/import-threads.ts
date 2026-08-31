@@ -69,7 +69,7 @@ export function importThreads(importDir: string): ImportResult {
       const tags = thread.tags.filter(t => validTags.has(t))
 
       // Skip entity if its ID already exists in the database
-      if (hasIdCollision(thread.id)) {
+      if (hasIdCollision(thread.id as EARS.EntityId)) {
         result.errors.push(`Skipped thread "${thread.topic}": entity ID already exists (${thread.id})`)
         result.skipped++
         continue

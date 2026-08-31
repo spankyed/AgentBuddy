@@ -3,7 +3,7 @@ import { emit } from '@abuddy/sdk/helpers'
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { createLogger } from '@abuddy/sdk/logger'
 import { GitRepository } from '../services/git'
-import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
+import type { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
 import { type ActiveTokenInfo } from '../services/gh-cli'
 

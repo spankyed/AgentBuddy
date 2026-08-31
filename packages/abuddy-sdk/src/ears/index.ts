@@ -7,12 +7,15 @@ export {
   repository, registerRepository,
   findById, findByIdRaw, findAll, findWhere, hasIdCollision,
   createEntityWithDefaults, updateEntity, exists, createRelation,
+  findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
   RepositoryError, RepositoryErrorCode,
   queryHelpers, transactionHelpers,
 } from './repository';
 export {
-  getAttr, removeRelation, getEntitiesOfType, getAll, getAllEntityTypes,
+  getAttr, getAttrs, removeRelation, getEntitiesOfType, getAll, getAllEntities, getAllEntityTypes,
   getAllAttributeKinds, getAllRelationKinds, getAttributeStats,
+  getRoles, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
+  destroyEntity, prepareEntity, grantRole, revokeRole,
   resetLmdbFiles, clearMemory, closePersistence, reinitializeLmdb,
   envs, policy, persistence,
 } from './attribute-storage';

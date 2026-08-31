@@ -69,7 +69,7 @@ registerSeeder({
       mode: ctx.mode,
       wipe: () => { for (const e of findAll<ActionEntity>(EARS.Entity.Action)) repo().actionCommands.delete(e.id); },
       getSourceHash: item => item.sourceHash,
-      getExistingSourceHash: existing => findById<ActionEntity>(existing.id)?.sourceHash,
+      getExistingSourceHash: existing => findById<ActionEntity>(existing.id as EARS.EntityId)?.sourceHash,
     });
   },
 });
@@ -108,7 +108,7 @@ registerSeeder({
       mode: ctx.mode,
       wipe: () => { for (const e of repo().promptQueries.all()) repo().promptCommands.delete(e.id); },
       getSourceHash: item => item.sourceHash,
-      getExistingSourceHash: existing => findById<PromptEntity>(existing.id)?.sourceHash,
+      getExistingSourceHash: existing => findById<PromptEntity>(existing.id as EARS.EntityId)?.sourceHash,
     });
   },
 });

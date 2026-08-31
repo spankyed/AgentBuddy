@@ -1,1 +1,1 @@
-export { EARS, BaseEntity, AllEntities } from '../../.abuddy/generated/ears';
+export { EARS, type BaseEntity, AllEntities } from '../../.abuddy/generated/ears';

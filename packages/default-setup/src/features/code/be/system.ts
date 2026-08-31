@@ -56,7 +56,7 @@ export type OutgoingCodeEvents =
   | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 // Import only the type needed for broadcast event
-import { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
+import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
 type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 

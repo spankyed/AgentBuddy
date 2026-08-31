@@ -402,7 +402,7 @@ export async function resolveGitHubAssetUrls(text: string, cwd: string): Promise
   )
   for (let i = 0; i < unique.length; i++) {
     if (results[i]) {
-      resolved = resolved.replaceAll(unique[i], results[i]!)
+      resolved = resolved.split(unique[i]).join(results[i]!)
     }
   }
   return resolved

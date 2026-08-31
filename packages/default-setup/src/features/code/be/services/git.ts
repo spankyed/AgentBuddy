@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import { GitStatusFile, StashEntry, CommitLogEntry } from '../types'
+import type { GitStatusFile, StashEntry, CommitLogEntry } from '../types'
 
 const execFileAsync = promisify(execFile)
 

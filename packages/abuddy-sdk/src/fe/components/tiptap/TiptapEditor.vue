@@ -37,7 +37,7 @@ import { createImageHandlers } from './composables/createImageHandlers'
 import { createEditorClickHandler, createViewerClickHandler } from './composables/createEditorClickHandler'
 import { useSubDocumentTracking } from './composables/useSubDocumentTracking'
 import { createKeyboardHandler } from './composables/createEditorKeyboard'
-import { useActorSystem } from '../composables/useActorSystem'
+import { useActorSystem } from '../../composables/useActorSystem'
 import { setEditorSystem } from './editor-system'
 import './tiptap-theme.css'
 

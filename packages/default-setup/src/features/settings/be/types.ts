@@ -1,5 +1,4 @@
-import { BaseEntity } from "@/core/ears";
-import type { EARS } from "@/types";
+import { type BaseEntity, EARS } from '@/registries/ears';
 
 // ── Agent/Chat types (moved from threads/types.ts to break circular) ──────
 

@@ -2,7 +2,7 @@ import { registerRepository } from '@abuddy/sdk/ears';
 import { EARS } from '@/registries/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
-import { SettingsEntity, SettingsData } from '../types';
+import type { SettingsEntity, SettingsData } from '../types';
 import { defaultSettings } from '../defaults';
 
 // Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.

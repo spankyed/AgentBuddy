@@ -19,8 +19,8 @@ import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
-const actor = useState<typeof librarySystem>(id)
-const context = useSelector(actor, (state) => state.context)
+const actor = useState(id)
+const context = useSelector(actor, (state: any) => state.context)
 const send = (event: LibraryEvents) => actor.send(event)
 
 const currentComponent = computed(() => {

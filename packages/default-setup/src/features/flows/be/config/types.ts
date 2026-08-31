@@ -1,4 +1,4 @@
-import { BaseEntity, EARS } from '@/registries/ears';
+import { type BaseEntity, EARS } from '@/registries/ears';
 import type { ActionEntity } from '@/features/actions/be/types';
 import type { PromptEntity } from '@/features/prompts/be/types';
 import { BinaryOperator } from '@abuddy/sdk/utils';

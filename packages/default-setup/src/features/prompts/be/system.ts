@@ -3,7 +3,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
 import { EARS } from '@/registries/ears';
-import { PromptsConnectedData, PromptEntity } from './types';
+import type { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';

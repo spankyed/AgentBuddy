@@ -63,8 +63,8 @@ export function getSchemaStats() {
       
       // Count unique relation IDs (each relation appears in both bySource and byTarget)
       const uniqueRelationIds = new Set<string>();
-      for (const relIds of Object.values(entry.bySource)) {
-        relIds.forEach(id => uniqueRelationIds.add(id));
+      for (const relIds of Object.values(entry.bySource) as string[][]) {
+        relIds.forEach((id: string) => uniqueRelationIds.add(id));
       }
       totalRelations = uniqueRelationIds.size;
       
@@ -87,8 +87,8 @@ export function getRelationCount(kind: string): number {
   if (!entry) return 0;
   
   const uniqueRelationIds = new Set<string>();
-  for (const relIds of Object.values(entry.bySource)) {
-    relIds.forEach(id => uniqueRelationIds.add(id));
+  for (const relIds of Object.values(entry.bySource) as string[][]) {
+    relIds.forEach((id: string) => uniqueRelationIds.add(id));
   }
   return uniqueRelationIds.size;
 }

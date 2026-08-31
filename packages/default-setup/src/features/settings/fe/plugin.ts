@@ -1,4 +1,4 @@
-import type { Plugin } from '@abuddy/sdk/types'
+import type { Plugin } from "@/core/types/index.ts"
 import { Settings } from 'lucide-vue-next'
 import state, { id } from './state'
 import canvas from './canvas/index.vue'

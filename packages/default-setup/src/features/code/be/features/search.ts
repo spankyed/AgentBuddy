@@ -2,7 +2,7 @@ import { assign, setup } from 'xstate'
 import { emit } from '@abuddy/sdk/helpers'
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { FileSystemRepository } from '../services/filesystem'
-import { SearchOptions, SearchResult, SearchProgress } from '../types'
+import type { SearchOptions, SearchResult, SearchProgress } from '../types'
 
 const pluginId = 'code' as const
 

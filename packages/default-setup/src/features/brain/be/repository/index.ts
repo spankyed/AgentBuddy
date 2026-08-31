@@ -165,7 +165,7 @@ export const brainQueries = {
     type EdgeInfo = { sourceHandle?: string; targetHandle?: string };
     let edge;
     if (sourceHandle) {
-      edge = edges.find(e => (e.info as EdgeInfo)?.sourceHandle === sourceHandle);
+      edge = edges.find((e: any) => (e.info as EdgeInfo)?.sourceHandle === sourceHandle);
     } else {
       brainLogger.warn(`nextNodeForBranch called without sourceHandle for node ${nodeId}, falling back to first edge`);
       edge = edges[0];

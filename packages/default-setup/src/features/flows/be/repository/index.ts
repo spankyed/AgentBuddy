@@ -397,7 +397,7 @@ export const flowsCommands = {
     }
 
     const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
-    const exactDuplicate = existingEdges.some(rel => {
+    const exactDuplicate = existingEdges.some((rel: any) => {
       if (rel.targetEntity !== targetId) return false;
       return edgeInfoMatches(rel.info, options);
     });
@@ -412,7 +412,7 @@ export const flowsCommands = {
     const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
     const isTrigger = sourceAttrs?.nodeType && nodeMetadata[sourceAttrs.nodeType as NodeKind]?.category === 'trigger';
     if (!isTrigger) {
-      const handleOccupied = existingEdges.some(rel => {
+      const handleOccupied = existingEdges.some((rel: any) => {
         const relHandle = (rel.info as any)?.sourceHandle;
         if (options?.sourceHandle) return relHandle === options.sourceHandle;
         return !relHandle;
@@ -440,7 +440,7 @@ export const flowsCommands = {
       targetEntity: targetId,
     });
 
-    const relId = relIds.find(id => {
+    const relId = relIds.find((id: any) => {
       const rel = getAttr(id, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
       return rel && edgeInfoMatches(rel.info, options);
     });
@@ -564,7 +564,7 @@ export const flowsCommands = {
         relationType: EARS.RelKind.CONTAINS,
         targetEntity: nodeId,
       });
-      containsRelIds.forEach(relId => removeRelation(relId));
+      containsRelIds.forEach((relId: any) => removeRelation(relId));
 
       // Remove INSTANCE_OF relationships (for action/llm nodes)
       const instanceOfTargets = qx(nodeId)
@@ -577,7 +577,7 @@ export const flowsCommands = {
           relationType: EARS.RelKind.INSTANCE_OF,
           targetEntity: targetId,
         });
-        instanceOfRelIds.forEach(relId => removeRelation(relId));
+        instanceOfRelIds.forEach((relId: any) => removeRelation(relId));
       });
       
       // Finally, delete the node entity
@@ -659,7 +659,7 @@ export const flowsCommands = {
     const remainingRelations = edgeStore.relIds({
       sourceEntity: flowId,
     });
-    remainingRelations.forEach(relId => {
+    remainingRelations.forEach((relId: any) => {
       try {
         removeRelation(relId);
       } catch (error) {

@@ -62,6 +62,30 @@ export function exists(id: EARS.EntityId): boolean {
   return sharedRepo().exists(id);
 }
 
+export function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined {
+  return sharedRepo().findFirst(entityType, field, value);
+}
+
+export function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[] {
+  return sharedRepo().findWithFields(entityType, fields);
+}
+
+export function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined {
+  return sharedRepo().findByIdWithFields(id, fields);
+}
+
+export function countEntities(entityType: EARS.Entity): number {
+  return sharedRepo().countEntities(entityType);
+}
+
+export function findWithRole<T>(entityType: EARS.Entity, role: string): T[] {
+  return sharedRepo().findWithRole(entityType, role);
+}
+
+export function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined {
+  return sharedRepo().findFirstWithRole(entityType, role);
+}
+
 export function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void {
   return sharedRepo().createRelation(sourceId, relationType, targetId);
 }

@@ -39,6 +39,46 @@ export function getAttributeStats(kind: string): { entityCount: number; totalVal
   return mod().getAttributeStats(kind);
 }
 
+export function getAllEntities(): any[] {
+  return mod().getAllEntities();
+}
+
+export function getAttrs(id: EARS.EntityId, kind: EARS.AttrKind): EARS.AttributeValue[] | null {
+  return mod().getAttrs(id, kind);
+}
+
+export function getRoles(id: EARS.EntityId): string[] {
+  return mod().getRoles(id);
+}
+
+export function queryEntitiesByAttribute(kind: string, value: any): EARS.EntityId[] {
+  return mod().queryEntitiesByAttribute(kind, value);
+}
+
+export function queryEntitiesByRelationTo(target: EARS.EntityId, kind?: string): EARS.EntityId[] {
+  return mod().queryEntitiesByRelationTo(target, kind);
+}
+
+export function queryEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[] {
+  return mod().queryEntitiesInRelationTo(target);
+}
+
+export function destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void {
+  return mod().destroyEntity(id, skipPersistence);
+}
+
+export function prepareEntity(...args: any[]): any {
+  return mod().prepareEntity(...args);
+}
+
+export function grantRole(id: EARS.EntityId, role: string): void {
+  return mod().grantRole(id, role);
+}
+
+export function revokeRole(id: EARS.EntityId, role: string): void {
+  return mod().revokeRole(id, role);
+}
+
 export function resetLmdbFiles(): void { return mod().resetLmdbFiles(); }
 export function clearMemory(): void { return mod().clearMemory(); }
 export function closePersistence(): void { return mod().closePersistence(); }

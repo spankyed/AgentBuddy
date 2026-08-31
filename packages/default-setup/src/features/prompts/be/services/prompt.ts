@@ -17,7 +17,7 @@ export class PromptService {
     templateFn: string, 
     templateParams: Record<string, any>
   ): string {
-    const context = createPromptContext(executeTemplate);
+    const context = createPromptContext(executeTemplate, (label) => this.getByLabel(label));
     return executeTemplate(templateFn, templateParams, context);
   }
 

@@ -1,4 +1,4 @@
-import { BaseEntity, EARS } from '@/registries/ears';
+import { type BaseEntity, EARS } from '@/registries/ears';
 
 export interface CalendarEventEntity extends BaseEntity {
   entityType: EARS.Entity.CalendarEvent;

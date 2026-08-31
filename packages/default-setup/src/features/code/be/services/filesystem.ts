@@ -2,7 +2,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { spawn, execFile } from 'child_process'
 import { rgPath } from '@vscode/ripgrep'
-import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
+import type { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 

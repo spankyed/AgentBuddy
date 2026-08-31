@@ -4,7 +4,7 @@ import { rootEvents } from '@abuddy/sdk/rpc'
 import { FileSystemRepository } from '../services/filesystem'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { FileChangeInfo } from '../services/gitwatcher'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError, QuickOpenResult } from '../types'
+import type { DirectoryContent, FileContent, FileInfo, CodeSystemError, QuickOpenResult } from '../types'
 
 const pluginId = 'code' as const
 

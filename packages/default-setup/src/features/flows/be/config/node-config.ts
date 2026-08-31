@@ -1,4 +1,4 @@
-import { NodeKind, NodeEntity } from './types';
+import type { NodeKind, NodeEntity } from './types';
 import { EARS } from '@/registries/ears';
 import { Cron } from 'croner';
 

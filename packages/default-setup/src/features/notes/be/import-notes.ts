@@ -141,7 +141,7 @@ function importNoteNodes(
     }
 
     // Skip entity if its ID already exists in the database
-    if (hasIdCollision(node.id)) {
+    if (node.id && hasIdCollision(node.id as EARS.EntityId)) {
       result.errors.push(`Skipped note "${node.title}": entity ID already exists (${node.id})`)
       result.skipped++
       continue
@@ -288,7 +288,7 @@ function importMarkdownDir(
         }
 
         // Skip entity if its ID already exists in the database
-        if (hasIdCollision(oldId)) {
+        if (oldId && hasIdCollision(oldId as EARS.EntityId)) {
           result.errors.push(`Skipped note "${name}": entity ID already exists (${oldId})`)
           result.skipped++
           continue
@@ -338,7 +338,7 @@ function importMarkdownDir(
         name = parsed.title || name
 
         // Skip entity if its ID already exists in the database
-        if (hasIdCollision(parsed.id)) {
+        if (parsed.id && hasIdCollision(parsed.id as EARS.EntityId)) {
           result.errors.push(`Skipped note "${name}": entity ID already exists (${parsed.id})`)
           result.skipped++
           continue

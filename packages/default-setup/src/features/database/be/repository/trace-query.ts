@@ -11,7 +11,7 @@ const logger = createLogger('database:trace');
  * Similar to core/ears/helpers/graph.ts descendants but for LMDB
  */
 function getDescendants(
-  query: LmdbQuery,
+  query: typeof LmdbQuery,
   startId: string,
   relKind: EARS.RelKind
 ): string[] {
@@ -42,7 +42,7 @@ function getDescendants(
  * Build a TNode entity from LMDB data with optional children
  */
 function buildTNodeEntity(
-  query: LmdbQuery,
+  query: typeof LmdbQuery,
   nodeId: string,
   meta: any,
   includeChildren = false

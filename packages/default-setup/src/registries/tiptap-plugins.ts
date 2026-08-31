@@ -11,7 +11,7 @@ export const tiptapPlugins: TiptapPlugin[] = [
   {
     extensions: [ReferenceNode, CommandSuggestion, CommandViewerDecoration],
     popups: [ReferenceSuggestionPopup, CommandSuggestionPopup],
-    isSuggestionActive: (state) =>
+    isSuggestionActive: (state: any) =>
       commandSuggestionPluginKey.getState(state)?.active === true
       || referenceSuggestionPluginKey.getState(state)?.active === true,
   },

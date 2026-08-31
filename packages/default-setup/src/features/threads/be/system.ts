@@ -13,7 +13,7 @@ import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
-import services from '@abuddy/sdk/services';
+import { services } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FieldContent } from '@/features/library/be/types';
@@ -452,9 +452,9 @@ export const threadsSystem = setup({
       try {
         const doc = await services.library.getByPath(['internal'], 'commands');
         if (doc) {
-          const fieldSection = doc.content.find((s): s is FieldContent => s.type === 'field');
+          const fieldSection = doc.content.find((s: any): s is FieldContent => s.type === 'field');
           if (fieldSection) {
-            commands = fieldSection.fields.map(f => ({ name: f.key, placeholder: f.value }));
+            commands = fieldSection.fields.map((f: any) => ({ name: f.key, placeholder: f.value }));
           }
         }
       } catch {
@@ -728,6 +728,7 @@ export const threadsSystem = setup({
         const forkTopic = `Fork ${forkCount + 1} - ${originalTopic}`;
 
         result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
+        if (!result) throw new Error('Failed to create thread');
 
         repository.threadCommands.linkFork(threadId as EARS.EntityId, result.id);
 

@@ -4,7 +4,7 @@ import { bus } from '@abuddy/sdk/ids';
 import { flows } from '@/registries/system-ids';
 import { emit } from '@abuddy/sdk/helpers';
 import { EARS } from '@/registries/ears';
-import { ActionsStartupData, ActionEntity } from './types';
+import type { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';

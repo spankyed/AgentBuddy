@@ -474,7 +474,7 @@ const documentBlockItem: BlockItem[] = [
   {
     label: 'Document',
     icon: FileText,
-    command: (editor) => {
+    command: (editor: any) => {
       const noteId = editingNote.value?.id
       if (!noteId) return
       const cursorPos = editor.state.selection.from

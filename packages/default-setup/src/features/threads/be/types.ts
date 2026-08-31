@@ -1,6 +1,5 @@
-import { BaseEntity } from "@/core/ears";
-import type { Simplify } from "@/core/shared/type-helpers";
-import type { EARS } from "@/types";
+import { type BaseEntity, EARS } from '@/registries/ears';
+type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "@/features/code/be/services/claude-code/types";
 import type { AgentSettings, CommandItem, KeyboardShortcut, ThreadsSettings, ThreadTagOption } from '@/features/settings/be/types';
 

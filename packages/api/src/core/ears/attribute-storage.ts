@@ -131,7 +131,7 @@ const bucket = (k: EARS.AttrKind) => {
 };
 const entType = (id: EARS.EntityId) => {
   const dash = id.indexOf('-');
-  return dash === -1 ? id as EARS.Entity : id.substring(0, dash) as EARS.Entity;
+  return dash === -1 ? id as unknown as EARS.Entity : id.substring(0, dash) as EARS.Entity;
 };
 
 /*─────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/registries/system-ids';
 import { emit } from '@abuddy/sdk/helpers';
-import { SettingsData, type FAQItem } from './types';
+import type { SettingsData, FAQItem } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
@@ -327,7 +327,7 @@ export const settingsSystem = setup({
 
       const storedPath = settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
 
-      testCli(provider, storedPath).then((result) => {
+      testCli(provider, storedPath).then((result: any) => {
         if (result.success) {
           const currentPaths = settingsQueries.getSettings().general.secrets.cliPaths;
           settingsCommands.updateSettings('general', 'secrets', ['cliPaths'], { ...currentPaths, [provider]: result.resolvedPath });
