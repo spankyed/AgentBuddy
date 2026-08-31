@@ -1,5 +1,6 @@
 import dts from 'rollup-plugin-dts';
 import { builtinModules } from 'module';
+import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,18 +9,21 @@ const apiDir = resolve(__dirname, '.');
 const outDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
 const defaultSetupDefsDir = resolve(__dirname, '../default-setup/defs');
 
-// Keep in sync with packages/api/tsconfig.json paths
+// Derive paths from api/tsconfig.json (single source of truth)
+const tsconfigRaw = readFileSync(resolve(apiDir, 'tsconfig.json'), 'utf-8');
+const tsconfigJson = tsconfigRaw.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+const tsconfig = JSON.parse(tsconfigJson);
+const paths = Object.fromEntries(
+  Object.entries(tsconfig.compilerOptions?.paths ?? {}).map(([key, values]) => [
+    key,
+    values.map(v => resolve(apiDir, v)),
+  ])
+);
+
 const dtsPlugin = () => dts({
-  respectExternal: false, // Bundle all external types
+  respectExternal: false,
   compilerOptions: {
-    paths: {
-      '@/features/*': [resolve(apiDir, '../default-setup/src/features/*')],
-      '@/registries/*': [resolve(apiDir, '../default-setup/src/registries/*')],
-      '@/shared-services/*': [resolve(apiDir, '../default-setup/src/shared/services/*')],
-      '@abuddy/sdk': [resolve(apiDir, '../abuddy-sdk/src/index.ts')],
-      '@abuddy/sdk/*': [resolve(apiDir, '../abuddy-sdk/src/*/index.ts')],
-      '@/*': [resolve(apiDir, 'src/*')],
-    },
+    paths,
     baseUrl: apiDir,
     declaration: true,
     emitDeclarationOnly: true,
