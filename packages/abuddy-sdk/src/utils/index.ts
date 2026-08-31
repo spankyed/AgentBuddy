@@ -27,6 +27,23 @@ export function restoreJsonMediaRefs(...args: any[]): { content: string; mediaRe
 export function restoreMarkdownMediaRefs(...args: any[]): { content: string; mediaRestored: number } { return mediaMod().restoreMarkdownMediaRefs(...args); }
 export type MediaRef = any;
 
+export interface ImagePart {
+  type: 'image'
+  image: Buffer
+  mimeType: string
+}
+
+export function extractImageParts(markdown: string): ImagePart[] {
+  return extractMediaRefs(markdown)
+    .map((ref: any) => readMediaBuffer(ref))
+    .filter((img: any): img is NonNullable<typeof img> => img !== null)
+    .map((img: any) => ({
+      type: 'image' as const,
+      image: img.data,
+      mimeType: img.mimeType,
+    }));
+}
+
 // --- Export ---
 let _exportMod: any;
 function exportMod() { if (!_exportMod) _exportMod = getHostModule('export'); return _exportMod; }

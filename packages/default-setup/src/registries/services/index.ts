@@ -9,7 +9,6 @@ import { createTextStreamService } from './text-stream';
 import * as chat from '../../features/threads/be/services/chat';
 import * as artifact from '../../features/threads/be/services/artifact';
 import * as brain from '../../features/brain/be/services/brain';
-import * as media from '../../features/threads/be/services/media';
 import { cliService } from '../../features/code/be/services/cli';
 import { filesystemService } from './filesystem';
 import * as threads from '../../features/threads/be/services/threads';
@@ -29,7 +28,6 @@ export const featureServices = {
   chat,
   artifact,
   brain,
-  media,
   cli: cliService,
   filesystem: filesystemService,
   threads,

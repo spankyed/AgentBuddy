@@ -2,7 +2,7 @@ import { EARS } from '@/registries/ears';
 import { repository } from '@abuddy/sdk/ears';
 import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
 import { sendToPlugin } from '@abuddy/sdk/services';
-import * as media from './media';
+import { readMediaBuffer } from '@abuddy/sdk/utils';
 import { libraryService } from '@/features/library/be/services/library';
 import * as symlink from '@/features/library/be/repository/symlink';
 import * as threadsService from './threads';
@@ -673,7 +673,7 @@ export async function resolveReferences(
       const match = img.url.match(/^media:\/\/([^/]+)\/(.+)$/);
       if (!match) continue;
       const mediaRef = { entityId: match[1], filename: match[2], alt: img.name || '', originalUrl: img.url };
-      const result = media.readMediaBuffer(mediaRef);
+      const result = readMediaBuffer(mediaRef);
       if (!result) continue;
       const label = img.name || match[2];
       imageBlocks.push({ type: 'text', text: `[Image: ${label}]` });
