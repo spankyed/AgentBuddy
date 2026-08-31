@@ -12,6 +12,11 @@ const dtsPlugin = () => dts({
   respectExternal: false, // Bundle all external types
   compilerOptions: {
     paths: {
+      '@/features/*': [resolve(apiDir, '../default-setup/src/features/*')],
+      '@/registries/*': [resolve(apiDir, '../default-setup/src/registries/*')],
+      '@/shared-services/*': [resolve(apiDir, '../default-setup/src/shared/services/*')],
+      '@abuddy/sdk': [resolve(apiDir, '../abuddy-sdk/src/index.ts')],
+      '@abuddy/sdk/*': [resolve(apiDir, '../abuddy-sdk/src/*/index.ts')],
       '@/*': [resolve(apiDir, 'src/*')],
     },
     baseUrl: apiDir,

@@ -12,14 +12,7 @@
     "database.ts",
     "action.ts",
     "prompt.ts",
-    "../src/**/*",
-    "../../default-setup/src/features/*/be/**/*",
-    "../../default-setup/src/registries/**/*",
-    "../../default-setup/src/shared/services/**/*"
-  ],
-  "exclude": [
-    "../../default-setup/src/registries/plugins.ts",
-    "../../default-setup/src/registries/plugin-ids.ts",
-    "../../default-setup/src/registries/extensions.ts"
+    "default-setup.ts",
+    "../src/**/*"
   ]
 }

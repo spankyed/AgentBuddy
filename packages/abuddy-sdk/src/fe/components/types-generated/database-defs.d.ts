@@ -3,96 +3,47 @@ declare module "@app/defs/database" {
 import { Database, RootDatabase } from 'lmdb';
 
 declare namespace EARS {
-    export enum Entity {
-        Agent = "Agent",
-        Brain = "Brain",
-        Message = "Message",
-        Thread = "Thread",
-        Relation = "Relation",
-        Artifact = "Artifact",
-        Flow = "Flow",
-        Node = "Node",
-        TNode = "TNode",
-        Prompt = "Prompt",
-        Action = "Action",
-        Document = "Document",
-        Collection = "Collection",
-        SearchIndex = "SearchIndex",
-        IndexedDoc = "IndexedDoc",
-        Terminal = "Terminal",
-        Directory = "Directory",
-        Settings = "Settings",
-        FAQ = "FAQ",
-        Secret = "Secret",
-        Note = "Note",
-        BrowserTab = "BrowserTab",
-        BrowserBookmark = "BrowserBookmark",
-        CalendarEvent = "CalendarEvent"
-    }
-    export type EntityId = `${Entity}-${string}`;
-    const RelKindValues: {
-        readonly PARENT_OF: "parent_of";
-        readonly CONTAINS: "contains";
-        readonly REPLIED_TO: "replied_to";
-        readonly HAS: "has";
-        readonly BLOCKS: "blocks";
-        readonly DEPENDS_ON: "depends_on";
-        readonly RELATES_TO: "relates_to";
-        readonly DUPLICATES: "duplicates";
-        readonly TRANSITIONS_TO: "transitions_to";
-        readonly EMITS: "emits";
-        readonly INSTANCE_OF: "instance_of";
-        readonly SPAWNED: "spawned";
-        readonly TRACKED: "tracked";
+    const Entity: {
+        readonly Relation: "Relation";
     };
-    export const RelKind: {
+    type Entity = typeof Entity[keyof typeof Entity] | (string & {});
+    type EntityId<E extends string = string> = `${string}-${string}` & {
+        readonly __entity?: E;
+    };
+    const RelKind: {
         readonly Custom: <T extends string>(k: T) => T & RelKind;
-        readonly PARENT_OF: "parent_of";
-        readonly CONTAINS: "contains";
-        readonly REPLIED_TO: "replied_to";
-        readonly HAS: "has";
-        readonly BLOCKS: "blocks";
-        readonly DEPENDS_ON: "depends_on";
-        readonly RELATES_TO: "relates_to";
-        readonly DUPLICATES: "duplicates";
-        readonly TRANSITIONS_TO: "transitions_to";
-        readonly EMITS: "emits";
-        readonly INSTANCE_OF: "instance_of";
-        readonly SPAWNED: "spawned";
-        readonly TRACKED: "tracked";
     };
-    export type RelKind = typeof RelKindValues[keyof typeof RelKindValues] | (string & {});
-    export interface RelationDetail {
+    type RelKind = string & {};
+    interface RelationDetail {
         sourceEntity: EntityId;
         targetEntity: EntityId;
         relationType: RelKind;
         info?: AttributeValue;
     }
-    const RoleKindValues: {};
-    export const RoleKind: {
+    const RoleKind: {
         readonly Custom: <T extends string>(k: T) => T & RoleKind;
     };
-    export type RoleKind = typeof RoleKindValues[keyof typeof RoleKindValues] | (string & {});
-    export const AttrKindValues: {
+    type RoleKind = string & {};
+    const AttrKindValues: {
         readonly Role: "role";
         readonly RelationDetails: "relationDetails";
     };
-    export const AttrKind: {
+    const AttrKind: {
         readonly Custom: <T extends string>(k: T) => T & AttrKind;
         readonly Role: "role";
         readonly RelationDetails: "relationDetails";
     };
-    export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
-    export interface AttributePayloads {
+    type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
+    interface AttributePayloads {
         [AttrKindValues.Role]: RoleKind;
         [AttrKindValues.RelationDetails]: RelationDetail;
         [key: string]: any;
     }
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
-    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
-    export type AttributeType = AttrKind;
-    export type AttributeStore = Record<string, AttributeTypeMap>;
-    export type Blueprint = {
+    type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+    type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
+    type AttributeType = AttrKind;
+    type AttributeStore = Record<string, AttributeTypeMap>;
+    type Blueprint = {
         entity: EARS.Entity;
         attrs?: Record<string, unknown>;
         roles?: EARS.RoleKind[];
@@ -103,7 +54,113 @@ declare namespace EARS {
             info?: unknown;
         }[];
     };
-    export {};
+}
+
+declare namespace EARS {
+    namespace Entity {
+        const Relation = "Relation";
+        type Relation = typeof Relation;
+        const Agent = "Agent";
+        type Agent = typeof Agent;
+        const Thread = "Thread";
+        type Thread = typeof Thread;
+        const Message = "Message";
+        type Message = typeof Message;
+        const Artifact = "Artifact";
+        type Artifact = typeof Artifact;
+        const Brain = "Brain";
+        type Brain = typeof Brain;
+        const Flow = "Flow";
+        type Flow = typeof Flow;
+        const Node = "Node";
+        type Node = typeof Node;
+        const TNode = "TNode";
+        type TNode = typeof TNode;
+        const Document = "Document";
+        type Document = typeof Document;
+        const Collection = "Collection";
+        type Collection = typeof Collection;
+        const SearchIndex = "SearchIndex";
+        type SearchIndex = typeof SearchIndex;
+        const IndexedDoc = "IndexedDoc";
+        type IndexedDoc = typeof IndexedDoc;
+        const Terminal = "Terminal";
+        type Terminal = typeof Terminal;
+        const Directory = "Directory";
+        type Directory = typeof Directory;
+        const Settings = "Settings";
+        type Settings = typeof Settings;
+        const Secret = "Secret";
+        type Secret = typeof Secret;
+        const FAQ = "FAQ";
+        type FAQ = typeof FAQ;
+        const CalendarEvent = "CalendarEvent";
+        type CalendarEvent = typeof CalendarEvent;
+        const BrowserTab = "BrowserTab";
+        type BrowserTab = typeof BrowserTab;
+        const BrowserBookmark = "BrowserBookmark";
+        type BrowserBookmark = typeof BrowserBookmark;
+        const Note = "Note";
+        type Note = typeof Note;
+        const Action = "Action";
+        type Action = typeof Action;
+        const Prompt = "Prompt";
+        type Prompt = typeof Prompt;
+    }
+    type Entity = Entity.Relation | Entity.Agent | Entity.Thread | Entity.Message | Entity.Artifact | Entity.Brain | Entity.Flow | Entity.Node | Entity.TNode | Entity.Document | Entity.Collection | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.Directory | Entity.Settings | Entity.Secret | Entity.FAQ | Entity.CalendarEvent | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Note | Entity.Action | Entity.Prompt;
+    type EntityId<E extends string = string> = EARS.EntityId<E>;
+    namespace RelKind {
+        const PARENT_OF = "parent_of";
+        type PARENT_OF = typeof PARENT_OF;
+        const CONTAINS = "contains";
+        type CONTAINS = typeof CONTAINS;
+        const REPLIED_TO = "replied_to";
+        type REPLIED_TO = typeof REPLIED_TO;
+        const HAS = "has";
+        type HAS = typeof HAS;
+        const BLOCKS = "blocks";
+        type BLOCKS = typeof BLOCKS;
+        const DEPENDS_ON = "depends_on";
+        type DEPENDS_ON = typeof DEPENDS_ON;
+        const RELATES_TO = "relates_to";
+        type RELATES_TO = typeof RELATES_TO;
+        const DUPLICATES = "duplicates";
+        type DUPLICATES = typeof DUPLICATES;
+        const TRANSITIONS_TO = "transitions_to";
+        type TRANSITIONS_TO = typeof TRANSITIONS_TO;
+        const EMITS = "emits";
+        type EMITS = typeof EMITS;
+        const INSTANCE_OF = "instance_of";
+        type INSTANCE_OF = typeof INSTANCE_OF;
+        const SPAWNED = "spawned";
+        type SPAWNED = typeof SPAWNED;
+        const TRACKED = "tracked";
+        type TRACKED = typeof TRACKED;
+        const Custom: <T extends string>(k: T) => T & RelKind;
+    }
+    type RelKind = RelKind.PARENT_OF | RelKind.CONTAINS | RelKind.REPLIED_TO | RelKind.HAS | RelKind.BLOCKS | RelKind.DEPENDS_ON | RelKind.RELATES_TO | RelKind.DUPLICATES | RelKind.TRANSITIONS_TO | RelKind.EMITS | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | (string & {});
+    namespace RoleKind {
+        const Custom: <T extends string>(k: T) => T & RoleKind;
+    }
+    type RoleKind = EARS.RoleKind;
+    const AttrKindValues: {
+        readonly Role: "role";
+        readonly RelationDetails: "relationDetails";
+    };
+    namespace AttrKind {
+        const Role = "role";
+        type Role = typeof Role;
+        const RelationDetails = "relationDetails";
+        type RelationDetails = typeof RelationDetails;
+        const Custom: <T extends string>(k: T) => T & AttrKind;
+    }
+    type AttrKind = EARS.AttrKind;
+    type Blueprint = EARS.Blueprint;
+    type RelationDetail = EARS.RelationDetail;
+    type AttributePayloads = EARS.AttributePayloads;
+    type AttributeValue<K extends AttrKind = AttrKind> = EARS.AttributeValue<K>;
+    type AttributeTypeMap = EARS.AttributeTypeMap;
+    type AttributeStore = EARS.AttributeStore;
 }
 interface BaseEntity {
     id: EARS.EntityId;
@@ -141,16 +198,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reverse: () => /*elided*/ any;
     readonly limit: (n: number) => /*elided*/ any;
     readonly page: (size: number, cursor?: string | null) => {
-        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+        readonly items: EARS.EntityId<string>[];
         readonly nextCursor: string | null;
     };
     readonly distinct: (field?: string) => /*elided*/ any;
     readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
+    readonly ids: () => EARS.EntityId<string>[];
+    readonly id: () => EARS.EntityId<string>;
     readonly count: () => number;
-    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
-    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}` | null;
+    readonly first: () => EARS.EntityId<string>;
+    readonly last: () => EARS.EntityId<string> | null;
     readonly exists: () => boolean;
     readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
     readonly forEach: (fn: (i: EARS.EntityId) => void) => {
@@ -180,16 +237,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
         readonly reverse: () => /*elided*/ any;
         readonly limit: (n: number) => /*elided*/ any;
         readonly page: (size: number, cursor?: string | null) => {
-            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+            readonly items: EARS.EntityId<string>[];
             readonly nextCursor: string | null;
         };
         readonly distinct: (field?: string) => /*elided*/ any;
         readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
-        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
+        readonly ids: () => EARS.EntityId<string>[];
+        readonly id: () => EARS.EntityId<string>;
         readonly count: () => number;
-        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
-        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}` | null;
+        readonly first: () => EARS.EntityId<string>;
+        readonly last: () => EARS.EntityId<string> | null;
         readonly exists: () => boolean;
         readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
         readonly forEach: /*elided*/ any;
@@ -277,21 +334,21 @@ declare const dropIf: (id: EARS.EntityId, kind: EARS.AttrKind, crit: unknown) =>
 declare const updateAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void;
 declare const grantRole: (id: EARS.EntityId, role: string) => void;
 declare const revokeRole: (id: EARS.EntityId, role: string) => void;
-declare function addRelation(src: EARS.EntityId, kind: string, tgt: EARS.EntityId, info?: unknown): `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
+declare function addRelation(src: EARS.EntityId, kind: string, tgt: EARS.EntityId, info?: unknown): EARS.EntityId<string>;
 declare function updateRelation(relId: EARS.EntityId, newS?: EARS.EntityId, newT?: EARS.EntityId, info?: unknown): void;
 declare const removeRelation: (relId: EARS.EntityId) => void;
 declare const getAttr: (id: EARS.EntityId, k: EARS.AttrKind, i?: number) => any;
 declare const getAttrs: (id: EARS.EntityId, k: EARS.AttrKind) => any[];
 declare const getRoles: (id: EARS.EntityId) => string[];
 declare const getAll: (id: EARS.EntityId) => Record<string, unknown>;
-declare const getAllEntities: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
-declare const getEntitiesOfType: (t: EARS.Entity) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
-declare const queryEntitiesByRole: (role: string) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
-declare const queryEntitiesByAttribute: (k: EARS.AttrKind, v?: unknown) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+declare const getAllEntities: () => EARS.EntityId<string>[];
+declare const getEntitiesOfType: (t: EARS.Entity) => EARS.EntityId<string>[];
+declare const queryEntitiesByRole: (role: string) => EARS.EntityId<string>[];
+declare const queryEntitiesByAttribute: (k: EARS.AttrKind, v?: unknown) => EARS.EntityId<string>[];
 /** target id participates in *any* relation with `target` (both directions) */
-declare const queryEntitiesInRelationTo: (target: EARS.EntityId) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+declare const queryEntitiesInRelationTo: (target: EARS.EntityId) => EARS.EntityId<string>[];
 /** one specific relation type (+ direction) */
-declare const queryEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`)[];
+declare const queryEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => EARS.EntityId<string>[];
 declare function destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void;
 declare const getAllAttributeKinds: () => EARS.AttrKind[];
 declare const getAllRelationKinds: () => string[];
@@ -309,7 +366,7 @@ declare function linkSymmetric(a: EARS.EntityId, b: EARS.EntityId, kind: EARS.Re
 declare function topoSort(roots: EARS.EntityId[], kind: EARS.RelKind): EARS.EntityId[];
 declare function shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null;
 declare function leaves(kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
-declare function lowestCommonAncestor(a: EARS.EntityId, b: EARS.EntityId, treeKind?: "contains"): EARS.EntityId | null;
+declare function lowestCommonAncestor(a: EARS.EntityId, b: EARS.EntityId, treeKind?: string): EARS.EntityId | null;
 
 interface SafeLinkOptions {
     /** Additional info to store with the relation */
@@ -355,7 +412,7 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boole
         roles?: string | string[];
     }) => /*elided*/ any;
     readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `BrowserTab-${string}` | `BrowserBookmark-${string}` | `CalendarEvent-${string}`;
+    readonly id: () => EARS.EntityId<string>;
 };
 
 declare class AtomicTransaction {
