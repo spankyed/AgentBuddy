@@ -2,7 +2,7 @@ import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { earlyBootSystem, createDefaultSettings } from '@/registries/boot';
-import { backendSystem } from '@/systems/backend';
+import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';

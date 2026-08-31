@@ -50,7 +50,7 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 - **System → System**: `system.get(otherSystemId).send({ type })`
 - **⚠️ `sendToPlugin` wraps events with `pluginId`** — never use `pluginId` as a field name inside event payloads sent via `sendToPlugin()`, it gets overwritten by the transport layer. Use `targetId` or similar instead.
 
-Systems define `IncomingSystemEvents` (Zod-validated), `SystemInternalEvents`, and `OutgoingSystemEvents`. See `packages/api/src/systems/CLAUDE.md` for the full pattern.
+Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSystemEvents`. System code lives in `packages/default-setup/src/features/<name>/be/system.ts`. The bus actor and systems registry live in `packages/api/src/systems.ts`.
 
 ### Data layer (EARS)
 
@@ -62,7 +62,7 @@ Custom entity-attribute-relation graph database backed by LMDB. All data lives i
 
 ### Frontend plugin system
 
-Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. See `packages/renderer/src/plugins/CLAUDE.md` for the full pattern.
+Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin code lives in `packages/default-setup/src/features/<name>/fe/`. The plugin registry is at `packages/default-setup/src/registries/plugins.ts`.
 
 ### Key patterns
 

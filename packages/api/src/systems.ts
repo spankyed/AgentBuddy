@@ -1,24 +1,32 @@
-import { setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
-import systems from '@/systems';
-import { emit, safeEvents, type SystemId } from '@/core/shared/actor-helpers';
+import { setup, enqueueActions, fromCallback, spawnChild } from 'xstate';
+import { systems, allDefs, buildEventValidationMap } from '@/registries/systems';
+import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
+import type { SystemEvents } from '@abuddy/sdk/framework';
+import { safeEvents, type SystemId } from '@/core/shared/actor-helpers';
 import { entries } from '@/core/shared';
-import { EARS } from '@/core/types';
-import { createEntity } from '@/core/ears';
-import { createLogger } from '@/core/shared/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { repository } from '@/repository';
 import { bus } from '@/core/system-ids';
 import { threads } from '@/registries/system-ids';
 
-const logger = createLogger('backend');
+// ─── Type aggregation ────────────────────────────────────────────────
+
+export default systems;
+
+type AllDefs = (typeof allDefs)[number];
+
+export type IncomingSystemEvents = AllDefs['_incoming'];
+export type OutgoingSystemEvents = AllDefs['_outgoing'] | ApplicationOutgoingEvents;
+
+export const eventValidationMap = buildEventValidationMap();
+
+// ─── Bus actor ───────────────────────────────────────────────────────
 
 export type BusEvent =
   | { type: 'INCOMING'; event: IncomingSystemEvents }
   | { type: 'OUTGOING'; event: OutgoingSystemEvents }
 
-export type SystemEvents =
-  | { type: 'CLIENT_CONNECTED'; }
+export type { SystemEvents };
 
 export type BackendEvents =
   | BusEvent
