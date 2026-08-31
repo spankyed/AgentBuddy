@@ -2,11 +2,12 @@
 import WebApp from './WebApp.vue';
 import PluginPopoutApp from './PluginPopoutApp.vue';
 import ApiStatus from './core/components/ApiStatus.vue';
-import Welcome from './core/components/welcome/Welcome.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
+import { getAppExtension } from '@abuddy/sdk/fe';
 
+const WelcomeComponent = getAppExtension('welcome');
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
 const isPluginPopout = new URLSearchParams(window.location.search).get('popout') === 'plugin';
@@ -24,7 +25,7 @@ window.addEventListener('keydown', (e) => {
 
 <template>
   <!-- Welcome modal overlay (first-time users) -->
-  <Welcome v-if="isWelcome && !isPluginPopout" />
+  <component v-if="isWelcome && !isPluginPopout && WelcomeComponent" :is="WelcomeComponent" />
   <!-- Main web app component (always rendered, plugins show own loading states) -->
   <PluginPopoutApp v-if="isPluginPopout" />
   <WebApp v-else />

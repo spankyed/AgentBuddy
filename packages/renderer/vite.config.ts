@@ -36,8 +36,8 @@ export default defineConfig({
       { find: /^@\/features\/(.+)$/, replacement: `${featuresDir}/$1` },
       // Map design system components to SDK
       { find: /^@\/core\/components\/design\/(.+)$/, replacement: resolve(sdkDir, 'src/fe/design/$1') },
-      // Map shared components (tiptap, monaco, etc.) to SDK — layout/ and welcome/ stay in renderer
-      { find: /^@\/core\/components\/(?!layout\/|welcome\/|ApiStatus)(.+)$/, replacement: resolve(sdkDir, 'src/fe/components/$1') },
+      // Map shared components (tiptap, monaco, etc.) to SDK — layout/ stays in renderer
+      { find: /^@\/core\/components\/(?!layout\/|ApiStatus)(.+)$/, replacement: resolve(sdkDir, 'src/fe/components/$1') },
       { find: /^@\/core\/utils\/monaco-config$/, replacement: resolve(sdkDir, 'src/fe/components/monaco-config.ts') },
       { find: /^@\/core\/composables\/(useMenuState|useContextMenu)(\.ts)?$/, replacement: resolve(sdkDir, 'src/fe/composables/$1.ts') },
       // SDK rpc module delegates to backend host modules — on the frontend, redirect to renderer's trpc

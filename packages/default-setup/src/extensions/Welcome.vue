@@ -23,9 +23,12 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
-import { applicationState } from '@/main';
-import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue';
-import { DISCORD_URL } from '@/features/settings/constants';
+import { useActorSystem } from '@abuddy/sdk/fe';
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue';
+import { DISCORD_URL } from '../features/settings/constants';
+
+const system = useActorSystem();
+const applicationActor = system.get('application');
 
 const letterContent = `Hello Testers,
 
@@ -50,7 +53,7 @@ Thanks for taking a chance on this.
 *— The Developer*`;
 
 const closeDevLetter = () => {
-  applicationState.send({ type: 'CLOSE_DEV_LETTER' });
+  applicationActor.send({ type: 'CLOSE_DEV_LETTER' });
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
