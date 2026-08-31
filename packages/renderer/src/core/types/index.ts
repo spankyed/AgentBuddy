@@ -16,18 +16,18 @@ export {
 } from '@abuddy/sdk/fe';
 
 export interface Plugin {
-  id: string; // Toolbar key
+  id: string;
   label: string;
   isPinned?: boolean;
-  state: AnyStateMachine; // XState definition – the host will spin up the actor lazily
+  state: AnyStateMachine;
   icon?: Component;
-  /** UI fragments (omit one to fall back to Main) */
   canvas?: Component | RouteComponents;
   panel?: Component;
   chat?: Component;
-  settings?: Component; // Settings component for plugin-specific configuration
+  settings?: Component;
   hotkeys?: PluginHotkeyDefinition[];
+  designations?: string[];
   options?: {
-    headerClass?: string; // Custom header class for the canvas area
+    headerClass?: string;
   };
 }

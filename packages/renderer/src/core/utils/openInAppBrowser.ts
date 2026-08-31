@@ -1,14 +1,13 @@
 import { applicationState } from '@/main';
 import { navigateToPlugin } from './navigate';
-import { settings as settingsId } from '@/registries/plugin-ids';
-import { browser } from '@/registries/plugin-ids';
+import { getDesignatedPlugin } from '@abuddy/sdk/fe';
 
 export function openInAppBrowser(url: string) {
-  const settings = applicationState.system.get(settingsId)?.getSnapshot();
+  const settings = applicationState.system.get(getDesignatedPlugin('settings'))?.getSnapshot();
   const openLinksInApp = settings?.context?.settings?.plugins?.browser?.openLinksInApp ?? true;
 
   if (openLinksInApp) {
-    navigateToPlugin(browser, { type: 'TAB.CREATE', url });
+    navigateToPlugin(getDesignatedPlugin('browser'), { type: 'TAB.CREATE', url });
   } else {
     window.electronAPI?.shell?.openExternal(url);
   }

@@ -12,6 +12,7 @@ const browserPlugin: Plugin = {
   canvas,
   settings,
   isPinned: false,
+  designations: ['browser'],
 };
 
 export default browserPlugin;

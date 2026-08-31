@@ -1,3 +1,5 @@
+import { registerPluginDesignations } from '@abuddy/sdk/fe';
+import type { Plugin } from '@/core/types';
 import Threads from '../features/threads/fe/plugin';
 import Flows from '../features/flows/fe/plugin';
 import Database from '../features/database/fe/plugin';
@@ -12,7 +14,7 @@ import Notes from '../features/notes/fe/plugin';
 import Browser from '../features/browser/fe/plugin';
 import Calendar from '../features/calendar/fe/plugin';
 
-export const plugins = [
+export const plugins: Plugin[] = [
   Threads,
   Code,
   Notes,
@@ -27,5 +29,7 @@ export const plugins = [
   Logs,
   Settings,
 ];
+
+registerPluginDesignations(plugins);
 
 export const defaultPlugin = Threads;

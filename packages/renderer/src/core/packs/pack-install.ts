@@ -1,5 +1,5 @@
 import { trpc } from '@/core/trpc';
-import { settings as settingsId } from '@/registries/plugin-ids';
+import { getDesignatedPlugin } from '@abuddy/sdk/fe';
 
 export interface PackInstallRequest {
   packSlug: string;
@@ -22,7 +22,7 @@ export function handleProtocolInstall(params: Record<string, string>): PackInsta
 export async function requestPackInstall(request: PackInstallRequest): Promise<void> {
   try {
     await trpc.bus.send.mutate({
-      systemId: settingsId,
+      systemId: getDesignatedPlugin('settings') as any,
       type: 'INSTALL_PACK',
       packSlug: request.packSlug,
       source: request.source,

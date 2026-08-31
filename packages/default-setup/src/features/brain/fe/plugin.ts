@@ -13,7 +13,8 @@ const brainPlugin: Plugin = {
   canvas,
   settings,
   panel,
-  isPinned: true
+  isPinned: true,
+  designations: ['brain'],
 };
 
 export default brainPlugin;

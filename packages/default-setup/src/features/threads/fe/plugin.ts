@@ -13,6 +13,7 @@ const threadsPlugin: Plugin = {
   label: 'Threads',
   icon: BotMessageSquare,
   state,
+  designations: ['threads'],
   canvas: {
     list,
     kanban,

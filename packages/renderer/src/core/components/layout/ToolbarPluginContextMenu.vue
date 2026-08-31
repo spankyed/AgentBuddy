@@ -14,9 +14,7 @@ import { ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next'
 import type { Plugin } from '@/core/types';
 import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
-import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
-import { navigateToPlugin } from '@/core/utils/navigate';
-import { settings as settingsId } from '@/registries/plugin-ids';
+import { useSettingsSaveStatus, navigateToPlugin, getDesignatedPlugin } from '@abuddy/sdk/fe';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const { updateSettings } = useSettingsSaveStatus();
@@ -26,7 +24,7 @@ const menuItems = computed<MenuItem[]>(() => {
   const plugin = selectedPlugin.value;
   if (!plugin) return [];
 
-  if (plugin.id === settingsId) {
+  if (plugin.id === getDesignatedPlugin('settings')) {
     return [
       {
         label: 'Pop Out',
@@ -63,7 +61,7 @@ const menuItems = computed<MenuItem[]>(() => {
       icon: SettingsIcon,
       class: 'text-neutral-200',
       iconClass: 'text-neutral-500',
-      action: () => navigateToPlugin(settingsId, [
+      action: () => navigateToPlugin(getDesignatedPlugin('settings'), [
         { type: 'TAB.SELECT', tab: 'plugins' },
         { type: 'PLUGIN.SELECT', pluginId: plugin.id },
       ]),

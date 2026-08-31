@@ -69,10 +69,9 @@ import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
 import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
-import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
+import { useSettingsSaveStatus, getDesignatedPlugin } from '@abuddy/sdk/fe';
 import { applicationState } from '@/main';
 import allPlugins from '@/plugins';
-import { settings as settingsId } from '@/registries/plugin-ids';
 
 const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
 
@@ -96,7 +95,7 @@ const pluginVisibility = useSelector(
 const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
 
 const togglePluginVisibility = (id: string) => {
-  if (id === settingsId) return;
+  if (id === getDesignatedPlugin('settings')) return;
   updateSettings({
     entityType: 'plugin',
     label: '_meta',
@@ -111,7 +110,7 @@ const sortedPlugins = [...nonPinnedPlugins, ...pinnedPlugins];
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>
   sortedPlugins.map((plugin) => {
-    const locked = plugin.id === settingsId;
+    const locked = plugin.id === getDesignatedPlugin('settings');
     const visible = isVisible(plugin.id);
     const textClass = locked
       ? 'text-neutral-600 cursor-not-allowed'
