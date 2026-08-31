@@ -20,6 +20,7 @@ import type { FieldContent } from '@/features/library/be/types';
 import { reportSystemError } from '@abuddy/sdk/utils';
 
 const logger = createLogger('threads');
+let birthFlowStarted = false;
 
 type IncomingThreadsEvents =
   // Thread management events
@@ -429,6 +430,24 @@ export const threadsSystem = setup({
     },
 
     // ---- Chat/agent actions (merged from agent system) ----
+    checkOnboarding: ({ system }) => {
+      const internalSettings = repository.settingsQueries.getInternalSettings();
+      if (!internalSettings.hasOnboarded && !birthFlowStarted) {
+        birthFlowStarted = true;
+        const assistantSettings = repository.settingsQueries.getAssistantSettings();
+        if (!assistantSettings.birthdate) {
+          const birthdate = new Date().toISOString();
+          repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+          logger.info('Assistant birthdate set', { birthdate });
+        }
+        const brainActor = getActor(system, brain);
+        brainActor.send({
+          type: 'TRIGGER_BRAIN_EVENT',
+          eventType: 'onboarding.start',
+          payload: {},
+        });
+      }
+    },
     startBirthFlow: ({ system }) => {
       const assistantSettings = repository.settingsQueries.getAssistantSettings();
 
@@ -950,7 +969,7 @@ export const threadsSystem = setup({
     context: ({ input }) => ({}),
     on: {
       CLIENT_CONNECTED: {
-        actions: ['sendThreadsConnectedData', 'sendChatConnectedData'],
+        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'checkOnboarding'],
       },
       THREADS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',

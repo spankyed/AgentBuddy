@@ -7,7 +7,6 @@ import { entries } from '@/core/shared';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { repository } from '@/repository';
 import { bus } from '@/core/system-ids';
-import { threads } from '@/registries/system-ids';
 
 // ─── Type aggregation ────────────────────────────────────────────────
 
@@ -35,8 +34,6 @@ export type BackendEvents =
 export interface BusContext {
   threads: string[];
 }
-let birthFlowStarted = false;
-
 const typeOf = safeEvents<BackendEvents>();
 export const backendSystem = setup({
   types: {
@@ -92,14 +89,6 @@ export const backendSystem = setup({
         }
       });
 
-      // Start onboarding flow once per server session for first-time users
-      if (!internalSettings.hasOnboarded && !birthFlowStarted) {
-        birthFlowStarted = true;
-        const threadsActor = system.get(threads);
-        if (threadsActor) {
-          threadsActor.send({ type: 'BIRTH_FLOW_START' });
-        }
-      }
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of entries(systems)) {
