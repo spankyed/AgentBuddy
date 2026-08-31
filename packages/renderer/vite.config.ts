@@ -8,7 +8,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 // import autoprefixer from 'autoprefixer'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
-const featuresDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../default-setup/src/features');
+const pluginsDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../default-setup/src/plugins');
 const sdkDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../abuddy-sdk');
 
 // https://vite.dev/config/
@@ -31,9 +31,9 @@ export default defineConfig({
   resolve: {
     alias: [
       // Map @/registries/... to default-setup registries
-      { find: /^@\/registries\/(.+)$/, replacement: resolve(featuresDir, '../registries/$1') },
-      // Map @/features/... to default-setup features
-      { find: /^@\/features\/(.+)$/, replacement: `${featuresDir}/$1` },
+      { find: /^@\/registries\/(.+)$/, replacement: resolve(pluginsDir, '../registries/$1') },
+      // Map @/plugins/... to default-setup plugins
+      { find: /^@\/plugins\/(.+)$/, replacement: `${pluginsDir}/$1` },
       // Map design system components to SDK
       { find: /^@\/core\/components\/design\/(.+)$/, replacement: resolve(sdkDir, 'src/fe/design/$1') },
       // Map shared components (tiptap, monaco, etc.) to SDK — layout/ stays in renderer

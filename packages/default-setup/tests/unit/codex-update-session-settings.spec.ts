@@ -1,4 +1,4 @@
-import { action as updateSessionSettings } from '../../src/features/code/actions/codex/update-session-settings';
+import { action as updateSessionSettings } from '../../src/plugins/code/actions/codex/update-session-settings';
 
 function createServices(codexState: any) {
   const thread = {

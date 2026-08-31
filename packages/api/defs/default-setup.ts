@@ -20,20 +20,20 @@ export {
   type CompilerContext,
   type ValidationError, type ValidationResult,
   isFlowConfig, resolveTracks, ROOT_FLOW_ROLE,
-} from '@/features/flows/be/dsl/types';
+} from '@/plugins/flows/be/dsl/types';
 
 // Library content types (for DSL authors — also in action-defs but not exported there)
-export type { ContentSection, ContentType, FieldContent, ListContent, MarkdownContent, TextContent, CodeContent } from '@/features/library/be/types';
+export type { ContentSection, ContentType, FieldContent, ListContent, MarkdownContent, TextContent, CodeContent } from '@/plugins/library/be/types';
 
 // Library export types (for compiler)
-export type { ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem, ExportedLibrary, ExportFormat } from '@/features/library/be/export-types';
+export type { ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem, ExportedLibrary, ExportFormat } from '@/plugins/library/be/export-types';
 
 // Thread UI types (for DSL authors)
-export type { ButtonConfig, LinkConfig, LinkEvent, LinkIcon } from '@/features/threads/be/types';
+export type { ButtonConfig, LinkConfig, LinkEvent, LinkIcon } from '@/plugins/threads/be/types';
 
 // Notes export types (for compiler)
-export type { ExportedNote, ExportedNotes } from '@/features/notes/be/export-types';
+export type { ExportedNote, ExportedNotes } from '@/plugins/notes/be/export-types';
 
 // Action/prompt authoring types
-export type { ActionParameter } from '@/features/actions/be/types';
-export type { TemplateInput } from '@/features/prompts/be/types';
+export type { ActionParameter } from '@/plugins/actions/be/types';
+export type { TemplateInput } from '@/plugins/prompts/be/types';

@@ -18,7 +18,7 @@ import '@/registries/dsl-types';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import * as navigateMod from '@/core/utils/navigate';
 import * as openBrowserMod from '@/core/utils/openInAppBrowser';
-import * as settingsSaveStatusMod from '@/features/settings/fe/useSettingsSaveStatus';
+import * as settingsSaveStatusMod from '@/plugins/settings/fe/useSettingsSaveStatus';
 import * as pluginsMod from '@/core/composables/plugins';
 
 declare const __APP_VERSION__: string;

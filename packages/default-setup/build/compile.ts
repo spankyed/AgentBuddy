@@ -121,21 +121,21 @@ async function compileSettings(): Promise<void> {
   const baseSettingsFile = configPath('default-settings.ts');
   let settings = await loadSettingsFromFile(baseSettingsFile);
 
-  const featuresRoot = resolve('src/features');
-  if (fs.existsSync(featuresRoot)) {
+  const pluginsRoot = resolve('src/plugins');
+  if (fs.existsSync(pluginsRoot)) {
     const { pathToFileURL } = await import('url');
-    const featureDirs = fs.readdirSync(featuresRoot, { withFileTypes: true })
+    const pluginDirs = fs.readdirSync(pluginsRoot, { withFileTypes: true })
       .filter(d => d.isDirectory());
-    for (const dir of featureDirs) {
-      const configPath = path.join(featuresRoot, dir.name, 'pack.config.ts');
+    for (const dir of pluginDirs) {
+      const configPath = path.join(pluginsRoot, dir.name, 'plugin.config.ts');
       if (!fs.existsSync(configPath)) continue;
       const mod = await import(pathToFileURL(configPath).href);
       const config = mod.default ?? mod;
       if (!config.settings) continue;
       const settingsPath = path.resolve(path.dirname(configPath), config.settings);
       if (fs.existsSync(settingsPath)) {
-        const featureSettings = await loadSettingsFromFile(settingsPath);
-        settings = deepMerge(settings, featureSettings);
+        const pluginSettings = await loadSettingsFromFile(settingsPath);
+        settings = deepMerge(settings, pluginSettings);
       }
     }
   }
@@ -161,7 +161,7 @@ async function compileAll(): Promise<void> {
 
   await compilePack({
     packDir: baseDir,
-    featuresDir: resolve('src/features'),
+    pluginsDir: resolve('src/plugins'),
     outputDir: resolve('dist'),
     baseSettingsFile: configPath('default-settings.ts'),
   });

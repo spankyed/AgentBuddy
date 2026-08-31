@@ -2,7 +2,7 @@ import { EARS } from '@/core/types';
 import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import type { ArtifactEntity, ThreadEntity } from '@/features/threads/be/types';
+import type { ArtifactEntity, ThreadEntity } from '@/plugins/threads/be/types';
 import type { Migration } from './index';
 
 /**

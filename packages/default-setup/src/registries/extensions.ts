@@ -1,10 +1,10 @@
 import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } from '@abuddy/sdk/fe/utils/json-detection';
-import DataRenderer from '../features/logs/fe/data-renderer.vue';
-import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '../features/flows/fe/canvas/nodes';
+import DataRenderer from '../plugins/logs/fe/data-renderer.vue';
+import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '../plugins/flows/fe/canvas/nodes';
 
-import { refTypes as threadRefTypes, categories as threadCategories, itemsProvider as threadItemsProvider } from '../features/threads/fe/references';
-import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProvider as libraryItemsProvider } from '../features/library/fe/references';
-import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../features/notes/fe/references';
+import { refTypes as threadRefTypes, categories as threadCategories, itemsProvider as threadItemsProvider } from '../plugins/threads/fe/references';
+import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProvider as libraryItemsProvider } from '../plugins/library/fe/references';
+import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../plugins/notes/fe/references';
 import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from './reference-types';
 
 export { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue };

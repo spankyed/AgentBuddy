@@ -20,21 +20,21 @@ export async function build(_args: string[]) {
 
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
 
-  const featuresDir = path.join(root, 'src', 'features');
-  const sharedDir = path.join(root, 'src', 'shared');
+  const packDir = root;
+  const pluginsDir = path.join(root, 'src', 'plugins');
   const outputDir = path.join(root, 'dist');
   const baseSettingsFile = fs.existsSync(path.join(root, 'src', 'base-settings.ts'))
     ? path.join(root, 'src', 'base-settings.ts')
     : undefined;
 
-  if (!fs.existsSync(featuresDir)) {
-    console.log('No src/features/ directory found. Nothing to compile.');
+  if (!fs.existsSync(path.join(root, 'pack.config.ts'))) {
+    console.log('No pack.config.ts found. Nothing to compile.');
     return;
   }
 
   const options: CompilePackOptions = {
-    featuresDir,
-    sharedDir: fs.existsSync(sharedDir) ? sharedDir : undefined,
+    packDir,
+    pluginsDir: fs.existsSync(pluginsDir) ? pluginsDir : undefined,
     outputDir,
     baseSettingsFile,
   };
@@ -48,17 +48,14 @@ export async function build(_args: string[]) {
   fs.writeFileSync(path.join(outputDir, 'types.json'), JSON.stringify(typeManifest, null, 2));
 
   console.log(`\nBuild complete:`);
-  if (result.actions > 0) console.log(`  Actions:  ${result.actions}`);
-  if (result.prompts > 0) console.log(`  Prompts:  ${result.prompts}`);
-  if (result.flows > 0) console.log(`  Flows:    ${result.flows}`);
-  if (result.libraryDocs > 0) console.log(`  Library:  ${result.libraryDocs} docs`);
-  if (result.notes > 0) console.log(`  Notes:    ${result.notes}`);
-  if (result.faqs > 0) console.log(`  FAQs:     ${result.faqs}`);
+  for (const [type, count] of Object.entries(result.seeds)) {
+    if (count > 0) console.log(`  ${type}: ${count}`);
+  }
 
   if (result.warnings.length > 0) {
     console.log(`\nWarnings:`);
     for (const w of result.warnings) {
-      console.log(`  ⚠ ${w}`);
+      console.log(`  ! ${w}`);
     }
   }
 

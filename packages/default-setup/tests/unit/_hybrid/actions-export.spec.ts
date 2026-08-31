@@ -3,8 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { clearMemory } from '@/core/ears/attribute-storage';
 import { repository } from '@/repository';
-import '@/features/actions/be/repository';
-import { exportActions } from '@/features/actions/be/repository/export-actions';
+import '@/plugins/actions/be/repository';
+import { exportActions } from '@/plugins/actions/be/repository/export-actions';
 import { actionFixtures } from './helpers/action-fixtures';
 
 /*─────────────────────────────────────────────────────────────────

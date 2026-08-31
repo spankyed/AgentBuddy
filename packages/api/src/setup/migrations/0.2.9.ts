@@ -4,7 +4,7 @@ import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { repository } from '@/repository';
 const { settingsQueries, settingsCommands } = repository;
-import type { ThreadEntity, ArtifactEntity } from '@/features/threads/be/types';
+import type { ThreadEntity, ArtifactEntity } from '@/plugins/threads/be/types';
 import type { Migration } from './index';
 
 export const migration: Migration = {

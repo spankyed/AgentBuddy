@@ -1,7 +1,7 @@
 import { clearMemory } from '@/core/ears/attribute-storage';
 import { RepositoryErrorCode } from '@/core/shared/repository/errors';
 import { repository } from '@/repository';
-import '@/features/flows/be/repository';
+import '@/plugins/flows/be/repository';
 
 describe('flows repository', () => {
   beforeEach(() => {

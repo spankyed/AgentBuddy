@@ -17,7 +17,7 @@
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts"],
       "@/registries/*": ["../default-setup/src/registries/*"],
-      "@/features/*": ["../default-setup/src/features/*"],
+      "@/plugins/*": ["../default-setup/src/plugins/*"],
       "@/shared-services/*": ["../default-setup/src/shared/services/*"],
       "@/*": ["src/*"]
     },
@@ -29,5 +29,5 @@
   // [SEARCH_INDEX_FF] search-index excluded because its deps (fastembed, usearch, openai) are uninstalled.
   // To re-enable: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
   // then remove "src/systems/library/search-index/**/*" from the exclude array below.
-  "exclude": ["scripts/**/*", "../default-setup/src/features/library/be/search-index/**/*"]
+  "exclude": ["scripts/**/*", "../default-setup/src/plugins/library/be/search-index/**/*"]
 }

@@ -9,7 +9,7 @@ export interface PackManifest {
   seedTypes?: string[];
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
-  features?: PackFeatureEntry[];
+  plugins?: PackPluginDefinition[];
   dependencies?: Record<string, string>;
   permissions?: PackPermission[];
   license?: string;
@@ -36,7 +36,7 @@ export type PackPermission =
   | 'network'
   | 'terminal';
 
-export interface PackFeatureEntry {
+export interface PackPluginDefinition {
   id: string;
   priority?: number;
   system?: PackSystemEntry;

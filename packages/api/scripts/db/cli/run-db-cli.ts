@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 import { DatabaseCLI, type CliOptions } from './db-cli';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/features/settings/be/repository';
+import { createDefaultSettings } from '@/plugins/settings/be/repository';
 
 async function main() {
   // Parse command line arguments

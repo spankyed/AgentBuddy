@@ -4,9 +4,9 @@
  */
 
 import * as fs from 'fs';
-import type { FlowDSL } from '../../features/flows/be/dsl';
-import type { ExportedLibrary, ExportedItem } from '../../features/library/be/export-types';
-import type { ExportedNotes } from '../../features/notes/be/export-types';
+import type { FlowDSL } from '../../plugins/flows/be/dsl';
+import type { ExportedLibrary, ExportedItem } from '../../plugins/library/be/export-types';
+import type { ExportedNotes } from '../../plugins/notes/be/export-types';
 import { loadJSON } from './index';
 import { seedPath } from '@abuddy/sdk/build';
 

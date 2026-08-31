@@ -17,11 +17,11 @@ export interface PackManifest {
   version: string;
   hostVersion?: string;
   seedTypes?: string[];
-  features?: PackFeatureEntry[];
+  plugins?: PackPluginDefinition[];
   permissions?: string[];
 }
 
-export interface PackFeatureEntry {
+export interface PackPluginDefinition {
   id: string;
   priority?: number;
   system?: {
@@ -159,20 +159,19 @@ export function loadExternalPacks(): LoadedPack[] {
 
     const systems = new Map<string, { machine: any; events: Set<string> }>();
 
-    if (manifest.features) {
-      for (const feature of manifest.features) {
-        if (!feature.system?.entry) continue;
+    if (manifest.plugins) {
+      for (const plugin of manifest.plugins) {
+        if (!plugin.system?.entry) continue;
 
-        const system = loadSystemFromCJS(feature.system.entry, dir);
+        const system = loadSystemFromCJS(plugin.system.entry, dir);
         if (system) {
-          // Merge manifest-declared events with runtime-detected events
-          if (feature.system.events?.incoming) {
-            for (const evt of feature.system.events.incoming) {
+          if (plugin.system.events?.incoming) {
+            for (const evt of plugin.system.events.incoming) {
               system.events.add(evt);
             }
           }
-          systems.set(feature.id, system);
-          logger.info(`Loaded system: ${manifest.id}/${feature.id}`);
+          systems.set(plugin.id, system);
+          logger.info(`Loaded system: ${manifest.id}/${plugin.id}`);
         }
       }
     }

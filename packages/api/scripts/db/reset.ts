@@ -12,7 +12,7 @@
 import '@/setup/sdk-host-init';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence, resetLmdbFiles } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/features/settings/be/repository';
+import { createDefaultSettings } from '@/plugins/settings/be/repository';
 
 async function run() {
   console.log('Hydrating LMDB connections...');

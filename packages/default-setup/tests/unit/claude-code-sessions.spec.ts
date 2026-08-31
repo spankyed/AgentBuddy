@@ -7,7 +7,7 @@
  * wrapper silently returns empty session lists for any real project.
  */
 
-import { encodeProjectPath, MAX_SANITIZED_LENGTH } from '@/features/code/be/services/claude-code/sessions'
+import { encodeProjectPath, MAX_SANITIZED_LENGTH } from '@/plugins/code/be/services/claude-code/sessions'
 
 describe('encodeProjectPath', () => {
   it('replaces forward slashes with dashes', () => {

@@ -21,18 +21,18 @@ export interface PackRegistryEntry {
 
 function toRegistryEntries(packs: LoadedPack[]): PackRegistryEntry[] {
   return packs
-    .filter(p => p.manifest.features?.some(f => f.plugin))
+    .filter(p => p.manifest.plugins?.some(d => d.plugin))
     .map(p => ({
       id: p.manifest.id,
       name: p.manifest.name,
       version: p.manifest.version,
-      plugins: (p.manifest.features ?? [])
-        .filter(f => f.plugin)
-        .map(f => ({
-          id: f.id,
-          entry: f.plugin!.entry,
-          label: f.plugin!.label,
-          icon: f.plugin!.icon,
+      plugins: (p.manifest.plugins ?? [])
+        .filter(d => d.plugin)
+        .map(d => ({
+          id: d.id,
+          entry: d.plugin!.entry,
+          label: d.plugin!.label,
+          icon: d.plugin!.icon,
         })),
     }));
 }

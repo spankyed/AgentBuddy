@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeSavedTabs } from '@/features/browser/be/repository/normalize-tabs';
+import { normalizeSavedTabs } from '@/plugins/browser/be/repository/normalize-tabs';
 
 describe('normalizeSavedTabs', () => {
   it('drops invalid restore URLs', () => {

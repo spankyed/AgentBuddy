@@ -22,7 +22,7 @@
     "db:import": "tsx scripts/db/import-backup.ts",
     "db:reset": "tsx scripts/db/reset.ts",
     "db:seed": "tsx scripts/db/seed/index.ts",
-    "dsl:export": "tsx ../default-setup/src/features/flows/be/dsl/export-to-dsl.ts"
+    "dsl:export": "tsx ../default-setup/src/plugins/flows/be/dsl/export-to-dsl.ts"
   },
   "keywords": [],
   "author": "angel santiago",

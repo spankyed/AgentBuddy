@@ -10,7 +10,7 @@ import '@/setup/sdk-host-init';
 import * as path from 'path';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/features/settings/be/repository';
+import { createDefaultSettings } from '@/plugins/settings/be/repository';
 import '@/registries/seed/index';
 import { seedData } from '@/core/shared/seed';
 

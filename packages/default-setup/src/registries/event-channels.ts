@@ -7,19 +7,19 @@
  * Import this file (side-effect) to activate the augmentation:
  *   import '@app/default-setup/src/registries/event-channels';
  */
-import type { OutgoingCalendarEvents } from '../features/calendar/be/system';
-import type { OutgoingThreadsEvents } from '../features/threads/be/system';
-import type { OutgoingCodeEvents } from '../features/code/be/system';
-import type { OutgoingSettingsEvents } from '../features/settings/be/system';
-import type { OutgoingDatabaseEvents } from '../features/database/be/system';
-import type { OutgoingBrainEvents } from '../features/brain/be/system';
-import type { OutgoingFlowsEvents } from '../features/flows/be/system';
-import type { OutgoingLibraryEvents } from '../features/library/be/system';
-import type { OutgoingLogsEvents } from '../features/logs/be/system';
-import type { OutgoingNotesEvents } from '../features/notes/be/system';
-import type { OutgoingBrowserEvents } from '../features/browser/be/system';
-import type { OutgoingPromptEvents } from '../features/prompts/be/system';
-import type { OutgoingActionEvents } from '../features/actions/be/system';
+import type { OutgoingCalendarEvents } from '../plugins/calendar/be/system';
+import type { OutgoingThreadsEvents } from '../plugins/threads/be/system';
+import type { OutgoingCodeEvents } from '../plugins/code/be/system';
+import type { OutgoingSettingsEvents } from '../plugins/settings/be/system';
+import type { OutgoingDatabaseEvents } from '../plugins/database/be/system';
+import type { OutgoingBrainEvents } from '../plugins/brain/be/system';
+import type { OutgoingFlowsEvents } from '../plugins/flows/be/system';
+import type { OutgoingLibraryEvents } from '../plugins/library/be/system';
+import type { OutgoingLogsEvents } from '../plugins/logs/be/system';
+import type { OutgoingNotesEvents } from '../plugins/notes/be/system';
+import type { OutgoingBrowserEvents } from '../plugins/browser/be/system';
+import type { OutgoingPromptEvents } from '../plugins/prompts/be/system';
+import type { OutgoingActionEvents } from '../plugins/actions/be/system';
 
 declare module '@abuddy/sdk/types' {
   interface PluginEventRegistry {

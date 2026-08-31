@@ -25,7 +25,7 @@ import { EARS } from '@/core/types';
 import { getAllEntities, getEntitiesOfType, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/helpers/paths';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { createDefaultSettings } from '@/features/settings/be/repository';
+import { createDefaultSettings } from '@/plugins/settings/be/repository';
 import * as os from 'node:os';
 
 // Suppress all console output except our final JSON

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import type { PackConfig, CompilePackOptions, CompilePackResult } from './types';
+import type { PackConfig, PluginConfig, CompilePackOptions, CompilePackResult } from './types';
 
 // ============================================================================
 // Compiler Interface
@@ -48,29 +48,29 @@ export function getRegisteredSeedTypes(): string[] {
 }
 
 // ============================================================================
-// Feature Settings Discovery
+// Plugin Settings Discovery
 // ============================================================================
 
-interface FeatureSettings {
+interface PluginSettings {
   name: string;
   settingsPath: string;
 }
 
-async function discoverFeatureSettings(featuresDir: string): Promise<FeatureSettings[]> {
-  const results: FeatureSettings[] = [];
-  if (!fs.existsSync(featuresDir)) return results;
+async function discoverPluginSettings(pluginsDir: string): Promise<PluginSettings[]> {
+  const results: PluginSettings[] = [];
+  if (!fs.existsSync(pluginsDir)) return results;
 
-  const entries = fs.readdirSync(featuresDir, { withFileTypes: true });
+  const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const configPath = path.join(featuresDir, entry.name, 'pack.config.ts');
+    const configPath = path.join(pluginsDir, entry.name, 'plugin.config.ts');
     if (!fs.existsSync(configPath)) continue;
 
     const mod = await import(pathToFileURL(configPath).href);
-    const config = (mod.default ?? mod) as PackConfig;
+    const config = (mod.default ?? mod) as PluginConfig;
     if (!config.settings) continue;
 
-    const settingsPath = path.resolve(path.join(featuresDir, entry.name), config.settings);
+    const settingsPath = path.resolve(path.join(pluginsDir, entry.name), config.settings);
     if (fs.existsSync(settingsPath)) {
       results.push({ name: config.name, settingsPath });
     }
@@ -84,7 +84,7 @@ async function discoverFeatureSettings(featuresDir: string): Promise<FeatureSett
 // ============================================================================
 
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
-  const { packDir, featuresDir, outputDir, baseSettingsFile } = options;
+  const { packDir, pluginsDir, outputDir, baseSettingsFile } = options;
 
   // 1. Load parent pack config
   const packConfigPath = path.join(packDir, 'pack.config.ts');
@@ -119,7 +119,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     mergedByType.set(type, merged);
   }
 
-  // 3. Compile settings — base + per-feature settings merged
+  // 3. Compile settings — base + per-plugin settings merged
   const settingsCompiler = compilers.get('settings');
   if (settingsCompiler) {
     const entries: CompileEntry<unknown>[] = [];
@@ -129,13 +129,13 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       entries.push({ data, sourcePath: baseSettingsFile, packName: '_base' });
     }
 
-    if (featuresDir) {
-      const featureSettings = await discoverFeatureSettings(featuresDir);
-      console.log(`Found ${featureSettings.length} feature(s) with settings: ${featureSettings.map(f => f.name).join(', ')}`);
+    if (pluginsDir) {
+      const pluginSettings = await discoverPluginSettings(pluginsDir);
+      console.log(`Found ${pluginSettings.length} plugin(s) with settings: ${pluginSettings.map(p => p.name).join(', ')}`);
 
-      for (const feature of featureSettings) {
-        const data = await settingsCompiler.compile(feature.settingsPath);
-        entries.push({ data, sourcePath: feature.settingsPath, packName: feature.name });
+      for (const plugin of pluginSettings) {
+        const data = await settingsCompiler.compile(plugin.settingsPath);
+        entries.push({ data, sourcePath: plugin.settingsPath, packName: plugin.name });
       }
     }
 

@@ -13,7 +13,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     entities: { [pascalName]: pascalName },
     relKinds: {},
     seedTypes: ['actions', 'flows'],
-    features: [],
+    plugins: [],
     dependencies: {},
     permissions: [],
   }, null, 2);
@@ -23,9 +23,17 @@ const PACK_CONFIG_TEMPLATE = (name: string) => `import type { PackConfig } from 
 
 export default {
   name: '${name}',
-  actions: './actions',
-  flows: './flows',
+  actions: './src/seeds/actions',
+  flows: './src/seeds/flows',
 } satisfies PackConfig;
+`;
+
+const PLUGIN_CONFIG_TEMPLATE = (name: string) => `import type { PluginConfig } from '@abuddy/sdk/build';
+
+export default {
+  name: '${name}',
+  settings: './settings.ts',
+} satisfies PluginConfig;
 `;
 
 const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../.abuddy/generated/ears';
@@ -91,17 +99,19 @@ export async function init(args: string[]) {
     throw new Error(`Directory "${name}" already exists`);
   }
 
-  fs.mkdirSync(path.join(dir, 'src', 'features', name, 'actions'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'src', 'features', name, 'flows'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'plugins', name), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
+  fs.writeFileSync(path.join(dir, 'pack.config.ts'), PACK_CONFIG_TEMPLATE(name));
   fs.writeFileSync(
-    path.join(dir, 'src', 'features', name, 'pack.config.ts'),
-    PACK_CONFIG_TEMPLATE(name),
+    path.join(dir, 'src', 'plugins', name, 'plugin.config.ts'),
+    PLUGIN_CONFIG_TEMPLATE(name),
   );
   fs.writeFileSync(
     path.join(dir, 'src', 'entities.ts'),

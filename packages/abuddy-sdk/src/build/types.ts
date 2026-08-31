@@ -15,9 +15,18 @@ export interface PackConfig {
   [key: string]: string | undefined;
 }
 
+/**
+ * Plugin configuration within a pack.
+ * Each plugin can declare its own settings slice.
+ */
+export interface PluginConfig {
+  name: string;
+  settings?: string;    // file path, e.g. './settings.ts'
+}
+
 export interface CompilePackOptions {
   packDir: string;
-  featuresDir?: string;
+  pluginsDir?: string;
   outputDir: string;
   baseSettingsFile?: string;
 }

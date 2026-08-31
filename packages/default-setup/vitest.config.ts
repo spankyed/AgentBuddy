@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
  *
  * Tests cover both feature-local helpers (pure, no deps) and feature
  * systems/repositories that depend on api core (EARS, repository proxy).
- * Path aliases bridge the two packages so imports like `@/features/*`
+ * Path aliases bridge the two packages so imports like `@/plugins/*`
  * and `@/core/*` resolve correctly.
  */
 export default defineConfig({
@@ -22,7 +22,7 @@ export default defineConfig({
 
   resolve: {
     alias: [
-      { find: '@/features', replacement: new URL('./src/features', import.meta.url).pathname },
+      { find: '@/plugins', replacement: new URL('./src/plugins', import.meta.url).pathname },
       { find: '@/registries', replacement: new URL('./src/registries', import.meta.url).pathname },
       { find: '@/shared-services', replacement: new URL('./src/shared/services', import.meta.url).pathname },
       { find: /^@abuddy\/sdk\/(.+)$/, replacement: new URL('../abuddy-sdk/src/$1/index.ts', import.meta.url).pathname },

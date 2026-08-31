@@ -1,7 +1,7 @@
-import { compile } from '@/features/flows/be/dsl/compiler';
-import type { FlowDSL } from '@/features/flows/be/dsl/types';
+import { compile } from '@/plugins/flows/be/dsl/compiler';
+import type { FlowDSL } from '@/plugins/flows/be/dsl/types';
 import { EARS } from '@/core/types';
-import { BinaryOperator } from '@/features/flows/be/config/types';
+import { BinaryOperator } from '@/plugins/flows/be/config/types';
 import { findEntity, filterEntities, filterRelations } from './helpers/compiled-result';
 import { wrapInFlow, makeSwitchDSL, parsedPredicate } from './helpers/dsl-factories';
 import { steps, ctx, flows } from './helpers/fixtures';
