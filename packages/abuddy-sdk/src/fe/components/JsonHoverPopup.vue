@@ -76,7 +76,7 @@ import {
   isJsonObject,
   isJsonArray,
   formatJsonValue
-} from '@/registries/extensions';
+} from '../utils/json-detection';
 
 interface Props {
   value: any;

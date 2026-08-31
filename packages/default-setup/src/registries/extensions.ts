@@ -1,4 +1,4 @@
-import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } from '../features/database/fe/components/simple-table/utils/json-detection';
+import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } from '@abuddy/sdk/fe/utils/json-detection';
 import DataRenderer from '../features/logs/fe/data-renderer.vue';
 import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '../features/flows/fe/canvas/nodes';
 

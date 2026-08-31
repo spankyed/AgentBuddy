@@ -19,6 +19,7 @@
     "./fe/composables/*": "./src/fe/composables/*",
     "./fe/layout/*": "./src/fe/layout/*",
     "./fe/utils/*": "./src/fe/utils/*",
+    "./fe/utils/json-detection": "./src/fe/utils/json-detection.ts",
     "./fe/utils/path-truncation": "./src/fe/utils/path-truncation.ts",
     "./fe/components/*": "./src/fe/components/*",
     "./fe/components/monaco-config": "./src/fe/components/monaco-config.ts",
