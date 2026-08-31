@@ -210,6 +210,7 @@ export interface InternalSettings {
   lastInteractionTimestamp: number | null;
   version: string;
   seedHash: string | null;
+  packSeedHashes?: Record<string, string>;
 }
 
 export interface AssistantSettings {

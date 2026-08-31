@@ -1,18 +1,21 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileSourceDir, type CompiledEntry } from './compile-utils';
+import { compileSourceDir } from './compile-utils';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows';
 import { compileLibraryFromDir, copyLibraryMedia } from './compile-library';
 import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
 import { compileFaqFromDir } from './compile-faq';
-import { compilePack } from './compile-pack';
-import type { FlowDSL } from './dsl-types';
 
 const baseDir = path.resolve(import.meta.dirname, '..');
+const configDir = path.join(baseDir, 'src/configurations');
 
 function resolve(relative: string): string {
   return path.join(baseDir, relative);
+}
+
+function configPath(relative: string): string {
+  return path.join(configDir, relative);
 }
 
 function writeJson(filePath: string, data: unknown): void {
@@ -20,110 +23,58 @@ function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');
 }
 
-/** Discover all subdirs of src/features/* that contain a given artifact type. */
-function discoverFeatureDirs(artifactType: string): string[] {
-  const featuresRoot = resolve('src/features');
-  if (!fs.existsSync(featuresRoot)) return [];
-  return fs.readdirSync(featuresRoot, { withFileTypes: true })
-    .filter(d => d.isDirectory())
-    .map(d => path.join(featuresRoot, d.name, artifactType))
-    .filter(dir => fs.existsSync(dir));
-}
-
-/** Collect all source directories for an artifact type (feature dirs + shared). */
-function collectSourceDirs(artifactType: string): string[] {
-  const dirs = discoverFeatureDirs(artifactType);
-  const sharedDir = resolve('src/shared/' + artifactType);
-  if (fs.existsSync(sharedDir)) dirs.push(sharedDir);
-  return dirs;
-}
-
 async function compileActions(): Promise<void> {
-  const dirs = collectSourceDirs('actions');
+  const dir = configPath('actions');
   const outputFile = resolve('dist/compiled-actions.json');
-  const allEntries: CompiledEntry[] = [];
-  const allWarnings: string[] = [];
 
-  for (const dir of dirs) {
-    console.log(`Compiling actions from: ${dir}`);
-    const result = await compileSourceDir(dir, {
-      functionName: 'action',
-      isAsync: true,
-      fields: { metaInput: 'input', fnBody: 'actionFn', output: 'output' },
-    });
-    for (const entry of result.entries) console.log(`  + ${entry.label}`);
-    allEntries.push(...result.entries);
-    allWarnings.push(...result.warnings);
-  }
+  console.log(`Compiling actions from: ${dir}`);
+  const result = await compileSourceDir(dir, {
+    functionName: 'action',
+    isAsync: true,
+    fields: { metaInput: 'input', fnBody: 'actionFn', output: 'output' },
+  });
+  for (const entry of result.entries) console.log(`  + ${entry.label}`);
 
-  if (allWarnings.length > 0) {
+  if (result.warnings.length > 0) {
     console.log('\nWarnings:');
-    for (const w of allWarnings) console.warn(`  ! ${w}`);
+    for (const w of result.warnings) console.warn(`  ! ${w}`);
   }
 
-  writeJson(outputFile, allEntries);
-  console.log(`\nCompiled ${allEntries.length} action(s)`);
+  writeJson(outputFile, result.entries);
+  console.log(`\nCompiled ${result.entries.length} action(s)`);
 }
 
 async function compilePrompts(): Promise<void> {
-  const dirs = collectSourceDirs('prompts');
+  const dir = configPath('prompts');
   const outputFile = resolve('dist/compiled-prompts.json');
-  const allEntries: CompiledEntry[] = [];
-  const allWarnings: string[] = [];
 
-  for (const dir of dirs) {
-    console.log(`Compiling prompts from: ${dir}`);
-    const result = await compileSourceDir(dir, {
-      functionName: 'template',
-      isAsync: false,
-      fields: { metaInput: 'inputs', fnBody: 'templateFn', output: 'outputSchema' },
-    });
-    for (const entry of result.entries) console.log(`  + ${entry.label}`);
-    allEntries.push(...result.entries);
-    allWarnings.push(...result.warnings);
-  }
+  console.log(`Compiling prompts from: ${dir}`);
+  const result = await compileSourceDir(dir, {
+    functionName: 'template',
+    isAsync: false,
+    fields: { metaInput: 'inputs', fnBody: 'templateFn', output: 'outputSchema' },
+  });
+  for (const entry of result.entries) console.log(`  + ${entry.label}`);
 
-  if (allWarnings.length > 0) {
+  if (result.warnings.length > 0) {
     console.log('\nWarnings:');
-    for (const w of allWarnings) console.warn(`  ! ${w}`);
+    for (const w of result.warnings) console.warn(`  ! ${w}`);
   }
 
-  writeJson(outputFile, allEntries);
-  console.log(`\nCompiled ${allEntries.length} prompt(s)`);
+  writeJson(outputFile, result.entries);
+  console.log(`\nCompiled ${result.entries.length} prompt(s)`);
 }
 
 async function compileFlows(): Promise<void> {
-  const flowDirs = [
-    ...discoverFeatureDirs('flows'),
-    resolve('src/shared/flows'),
-  ].filter(d => fs.existsSync(d));
-
+  const dir = configPath('flows');
   const actionsJson = resolve('dist/compiled-actions.json');
   const promptsJson = resolve('dist/compiled-prompts.json');
   const outputFile = resolve('dist/compiled-flows.json');
 
-  let merged: FlowDSL = {};
-  let rootFlowName: string | null = null;
-  let totalLoaded = 0;
+  const result = await loadFlowsFromDir(dir);
+  const merged = result.merged;
 
-  for (const dir of flowDirs) {
-    const result = await loadFlowsFromDir(dir);
-    for (const [name, value] of Object.entries(result.merged)) {
-      if (merged[name]) {
-        throw new Error(`Duplicate flow name "${name}" across directories`);
-      }
-      merged[name] = value;
-    }
-    if (result.rootFlowName) {
-      if (rootFlowName) {
-        throw new Error(`Multiple root flows: "${rootFlowName}" and "${result.rootFlowName}"`);
-      }
-      rootFlowName = result.rootFlowName;
-    }
-    totalLoaded += result.loaded;
-  }
-
-  if (!totalLoaded) {
+  if (!result.loaded) {
     writeJson(outputFile, {});
     return;
   }
@@ -142,28 +93,29 @@ async function compileFlows(): Promise<void> {
 }
 
 function compileLibrary(): void {
-  const libraryDir = resolve('src/features/library/library-docs');
+  const dir = configPath('library');
   const outputFile = resolve('dist/compiled-library.json');
-  const result = compileLibraryFromDir(libraryDir);
+  const result = compileLibraryFromDir(dir);
   writeJson(outputFile, result);
-  copyLibraryMedia(libraryDir, resolve('dist'));
+  copyLibraryMedia(dir, resolve('dist'));
   console.log(`Compiled library (${result.items.length} top-level items)`);
 }
 
 function compileNotes(): void {
-  const notesDir = resolve('src/shared/notes');
+  const dir = configPath('notes');
   const outputFile = resolve('dist/compiled-notes.json');
-  const result = compileNotesFromDir(notesDir);
+  const result = compileNotesFromDir(dir);
   writeJson(outputFile, result);
-  copyNotesMedia(notesDir, resolve('dist'));
+  copyNotesMedia(dir, resolve('dist'));
   console.log(`Compiled ${result.notes.length} note(s)`);
 }
 
 async function compileSettings(): Promise<void> {
   const outputFile = resolve('dist/compiled-settings.json');
-  const baseSettingsFile = resolve('src/base-settings.ts');
+  const baseSettingsFile = configPath('default-settings.ts');
   let settings = await loadSettingsFromFile(baseSettingsFile);
 
+  // Merge per-feature settings from pack.config.ts declarations
   const featuresRoot = resolve('src/features');
   if (fs.existsSync(featuresRoot)) {
     const { pathToFileURL } = await import('url');
@@ -188,11 +140,21 @@ async function compileSettings(): Promise<void> {
 }
 
 function compileFaq(): void {
-  const faqsDir = resolve('src/shared/faqs');
+  const dir = configPath('faqs');
   const outputFile = resolve('dist/compiled-faq.json');
-  const result = compileFaqFromDir(faqsDir);
+  const result = compileFaqFromDir(dir);
   writeJson(outputFile, result);
   console.log(`Compiled ${result.length} FAQ(s)`);
+}
+
+async function compileAll(): Promise<void> {
+  await compileActions();
+  await compilePrompts();
+  await compileFlows();
+  compileLibrary();
+  compileNotes();
+  await compileSettings();
+  compileFaq();
 }
 
 const target = process.argv[2];
@@ -224,12 +186,7 @@ if (target === 'actions') {
 } else if (target === 'faq') {
   compileFaq();
 } else if (target === 'all') {
-  compilePack({
-    featuresDir: resolve('src/features'),
-    sharedDir: resolve('src/shared'),
-    outputDir: resolve('dist'),
-    baseSettingsFile: resolve('src/base-settings.ts'),
-  }).catch(err => {
+  compileAll().catch(err => {
     console.error('Pack compilation failed:', err);
     process.exit(1);
   });

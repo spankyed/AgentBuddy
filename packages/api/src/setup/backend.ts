@@ -7,10 +7,11 @@ import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { runBootSeed } from '@/registries/seed/index';
+import { runBootSeed, seedData } from '@/registries/seed/index';
+import { repository } from '@abuddy/sdk/ears';
 import { runMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
-import { loadExternalPacks, registerPackSystems } from '@/core/packs/pack-loader';
+import { loadExternalPacks, registerPackSystems, seedPackData } from '@/core/packs/pack-loader';
 import { setLoadedPacks } from '@/core/packs/pack-api';
 import systems, { eventValidationMap } from '@/systems';
 
@@ -40,10 +41,16 @@ export async function setupBackend(): Promise<void> {
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   runBootSeed();
 
-  // Load and register external pack systems
+  // Load and register external pack systems + seed their data artifacts
   const externalPacks = loadExternalPacks();
   if (externalPacks.length > 0) {
     registerPackSystems(externalPacks, systems as Record<string, any>, eventValidationMap);
+    seedPackData(
+      externalPacks,
+      seedData,
+      () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
+      (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+    );
     setLoadedPacks(externalPacks);
   }
 

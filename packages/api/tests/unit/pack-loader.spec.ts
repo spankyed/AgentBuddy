@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadExternalPacks, registerPackSystems } from '@/core/packs/pack-loader';
+import { loadExternalPacks, registerPackSystems, seedPackData, computePackSeedHash } from '@/core/packs/pack-loader';
 import { setLoadedPacks } from '@/core/packs/pack-api';
 
 let tmpDir: string;
@@ -242,6 +242,206 @@ describe('pack-loader', () => {
       expect(Object.keys(systemsMap)).toEqual(['pack-a.feat-1', 'pack-a.feat-2', 'pack-b.feat-1']);
       expect(eventValidationMap.size).toBe(3);
     });
+  });
+});
+
+describe('seedPackData', () => {
+  function makePackWithDist(
+    packsDir: string,
+    id: string,
+    artifacts?: Record<string, any>,
+  ) {
+    const packDir = path.join(packsDir, id);
+    const distDir = path.join(packDir, 'dist');
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
+      id, name: id, version: '1.0.0',
+    }));
+    if (artifacts) {
+      for (const [name, data] of Object.entries(artifacts)) {
+        fs.writeFileSync(path.join(distDir, name), JSON.stringify(data));
+      }
+    }
+    return {
+      manifest: { id, name: id, version: '1.0.0' },
+      dir: packDir,
+      systems: new Map(),
+    } as any;
+  }
+
+  it('calls seedFn for packs with dist artifacts', () => {
+    const packsDir = path.join(tmpDir, 'packs');
+    const pack = makePackWithDist(packsDir, 'data-pack', {
+      'compiled-actions.json': [{ label: 'test-action', actionFn: 'return true' }],
+    });
+
+    const seedFn = vi.fn().mockReturnValue({});
+    let stored: Record<string, string> = {};
+
+    seedPackData(
+      [pack],
+      seedFn,
+      () => stored,
+      (h) => { stored = h; },
+    );
+
+    expect(seedFn).toHaveBeenCalledOnce();
+    expect(seedFn).toHaveBeenCalledWith({
+      compiledDir: path.join(pack.dir, 'dist'),
+      mode: 'replace-on-collision',
+    });
+  });
+
+  it('skips packs with no dist directory', () => {
+    const packDir = path.join(tmpDir, 'packs', 'no-dist');
+    fs.mkdirSync(packDir, { recursive: true });
+    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
+      id: 'no-dist', name: 'No Dist', version: '1.0.0',
+    }));
+
+    const pack = {
+      manifest: { id: 'no-dist', name: 'No Dist', version: '1.0.0' },
+      dir: packDir,
+      systems: new Map(),
+    } as any;
+
+    const seedFn = vi.fn().mockReturnValue({});
+    seedPackData([pack], seedFn, () => ({}), () => {});
+
+    expect(seedFn).not.toHaveBeenCalled();
+  });
+
+  it('skips packs whose seed hash has not changed', () => {
+    const packsDir = path.join(tmpDir, 'packs');
+    const pack = makePackWithDist(packsDir, 'cached-pack', {
+      'compiled-actions.json': [{ label: 'cached' }],
+    });
+
+    const distDir = path.join(pack.dir, 'dist');
+    const hash = computePackSeedHash(distDir);
+    const stored: Record<string, string> = { 'cached-pack': hash };
+
+    const seedFn = vi.fn().mockReturnValue({});
+    seedPackData([pack], seedFn, () => stored, () => {});
+
+    expect(seedFn).not.toHaveBeenCalled();
+  });
+
+  it('re-seeds when pack content changes', () => {
+    const packsDir = path.join(tmpDir, 'packs');
+    const pack = makePackWithDist(packsDir, 'updated-pack', {
+      'compiled-actions.json': [{ label: 'v1' }],
+    });
+
+    const stored: Record<string, string> = { 'updated-pack': 'old-hash' };
+    const seedFn = vi.fn().mockReturnValue({});
+    let savedHashes: Record<string, string> = {};
+
+    seedPackData(
+      [pack],
+      seedFn,
+      () => stored,
+      (h) => { savedHashes = h; },
+    );
+
+    expect(seedFn).toHaveBeenCalledOnce();
+    expect(savedHashes['updated-pack']).toBeTruthy();
+    expect(savedHashes['updated-pack']).not.toBe('old-hash');
+  });
+
+  it('removes hashes for uninstalled packs', () => {
+    const stored = { 'removed-pack': 'some-hash', 'another-removed': 'hash2' };
+    let savedHashes: Record<string, string> = {};
+
+    seedPackData(
+      [],
+      vi.fn().mockReturnValue({}),
+      () => stored,
+      (h) => { savedHashes = h; },
+    );
+
+    expect(savedHashes).toEqual({});
+  });
+
+  it('continues seeding other packs when one fails', () => {
+    const packsDir = path.join(tmpDir, 'packs');
+    const pack1 = makePackWithDist(packsDir, 'fail-pack', {
+      'compiled-actions.json': [{ label: 'will-fail' }],
+    });
+    const pack2 = makePackWithDist(packsDir, 'ok-pack', {
+      'compiled-actions.json': [{ label: 'will-succeed' }],
+    });
+
+    let callCount = 0;
+    const seedFn = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) throw new Error('seed failed');
+      return {};
+    });
+    let savedHashes: Record<string, string> = {};
+
+    seedPackData(
+      [pack1, pack2],
+      seedFn,
+      () => ({}),
+      (h) => { savedHashes = h; },
+    );
+
+    expect(seedFn).toHaveBeenCalledTimes(2);
+    expect(savedHashes['fail-pack']).toBeUndefined();
+    expect(savedHashes['ok-pack']).toBeTruthy();
+  });
+});
+
+describe('computePackSeedHash', () => {
+  it('returns empty string for a directory with no seed files', () => {
+    const emptyDir = path.join(tmpDir, 'empty-dist');
+    fs.mkdirSync(emptyDir, { recursive: true });
+    expect(computePackSeedHash(emptyDir)).toBe('');
+  });
+
+  it('returns consistent hash for the same content', () => {
+    const distDir = path.join(tmpDir, 'hash-test');
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(path.join(distDir, 'compiled-actions.json'), '[]');
+
+    const hash1 = computePackSeedHash(distDir);
+    const hash2 = computePackSeedHash(distDir);
+
+    expect(hash1).toBe(hash2);
+    expect(hash1).toHaveLength(16);
+  });
+
+  it('returns different hash when content changes', () => {
+    const distDir = path.join(tmpDir, 'hash-change');
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(path.join(distDir, 'compiled-actions.json'), '[{"label":"v1"}]');
+    const hash1 = computePackSeedHash(distDir);
+
+    fs.writeFileSync(path.join(distDir, 'compiled-actions.json'), '[{"label":"v2"}]');
+    const hash2 = computePackSeedHash(distDir);
+
+    expect(hash1).not.toBe(hash2);
+  });
+
+  it('hashes any JSON file, not just known artifact types', () => {
+    const distDir = path.join(tmpDir, 'custom-artifacts');
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(path.join(distDir, 'compiled-widgets.json'), '[{"id":"w1"}]');
+
+    const hash = computePackSeedHash(distDir);
+    expect(hash).toHaveLength(16);
+  });
+
+  it('ignores non-JSON files', () => {
+    const distDir = path.join(tmpDir, 'mixed-files');
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(path.join(distDir, 'system.cjs'), 'module.exports = {}');
+
+    expect(computePackSeedHash(distDir)).toBe('');
+
+    fs.writeFileSync(path.join(distDir, 'data.json'), '[]');
+    expect(computePackSeedHash(distDir)).toHaveLength(16);
   });
 });
 
