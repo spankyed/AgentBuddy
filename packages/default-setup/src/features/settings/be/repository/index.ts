@@ -3,7 +3,7 @@ import { EARS } from '@/registries/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
 import type { SettingsEntity, SettingsData } from '../types';
-import { defaultSettings } from '../defaults';
+import { getDefaultSettings } from '../defaults';
 
 // Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
 function deepMerge(defaults: any, stored: any): any {
@@ -29,15 +29,15 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
   if (!existing) {
     tx(SETTINGS_ID, true) // treatAsNew=true to add createdAt timestamp
       .put('entityType', EARS.Entity.Settings)
-      .put('data', defaultSettings);
+      .put('data', getDefaultSettings());
 
-    return { id: SETTINGS_ID, data: defaultSettings };
+    return { id: SETTINGS_ID, data: getDefaultSettings() };
   }
 
   // Merge defaults with stored data so new default fields backfill automatically
   return {
     id: SETTINGS_ID,
-    data: deepMerge(defaultSettings, existing.data)
+    data: deepMerge(getDefaultSettings(), existing.data)
   };
 };
 
@@ -69,7 +69,7 @@ export const settingsQueries = {
   getGeneralSettings: (label?: string) => {
     const general = getSettingsEntity().data.general;
     if (label) {
-      return (general as any)[label] || (defaultSettings.general as any)[label] || {};
+      return (general as any)[label] || (getDefaultSettings().general as any)[label] || {};
     }
     return general;
   },
@@ -80,7 +80,7 @@ export const settingsQueries = {
 
   getPluginSettings: (pluginId: string) => {
     const data = getSettingsEntity().data;
-    return data.plugins?.[pluginId] || (defaultSettings.plugins as any)[pluginId] || {};
+    return data.plugins?.[pluginId] || (getDefaultSettings().plugins as any)[pluginId] || {};
   },
 };
 
@@ -118,7 +118,7 @@ export const settingsCommands = {
 
   resetSettings: () => {
     const entity = getSettingsEntity();
-    tx(entity.id).put('data', defaultSettings);
+    tx(entity.id).put('data', getDefaultSettings());
   }
 };
 

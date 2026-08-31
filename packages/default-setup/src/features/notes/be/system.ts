@@ -6,6 +6,7 @@ import { EARS } from '@/registries/ears';
 import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
+import './repository';
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';

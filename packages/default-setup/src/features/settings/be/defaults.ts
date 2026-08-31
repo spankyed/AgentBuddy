@@ -5,26 +5,33 @@ import { getAppVersion } from '@abuddy/sdk/utils';
 
 const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'dist', 'compiled-settings.json');
 
-const loadDefaults = (): SettingsData => {
-  let settings: SettingsData;
+const loadJson = (): SettingsData => {
   try {
-    settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
+    return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
   } catch (err) {
     throw new Error(
       `Missing or unreadable ${path.basename(SETTINGS_PATH)} at ${SETTINGS_PATH}. ` +
       `Run \`npm run compile:settings\` before starting the backend. (${(err as Error).message})`
     );
   }
-  // Merge rather than dereference — defensive if a future edit drops `internal` from the JSON
-  settings.internal = { ...(settings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
-  return settings;
 };
 
-export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) =>
-({
-  internal: defaultSettings.internal,
-  general: defaultSettings.general[label as keyof typeof defaultSettings.general] ?? {},
-  plugin: defaultSettings.plugins[label as keyof typeof defaultSettings.plugins] ?? {},
-}[type]);
+const baseSettings = loadJson();
+let _resolved: SettingsData | null = null;
 
-export const defaultSettings: SettingsData = loadDefaults();
+export function getDefaultSettings(): SettingsData {
+  if (!_resolved) {
+    _resolved = { ...baseSettings };
+    _resolved.internal = { ...(baseSettings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
+  }
+  return _resolved;
+}
+
+export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) => {
+  const ds = getDefaultSettings();
+  return {
+    internal: ds.internal,
+    general: ds.general[label as keyof typeof ds.general] ?? {},
+    plugin: ds.plugins[label as keyof typeof ds.plugins] ?? {},
+  }[type];
+};

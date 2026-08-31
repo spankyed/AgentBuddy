@@ -8,6 +8,7 @@ import type { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
+import './repository';
 import { exportActions } from './repository/export-actions';
 
 const logger = createLogger('actions');

@@ -4,7 +4,7 @@ export {
   type QueryBuilder, type TransactionBuilder, type Logger,
 } from './runtime';
 export {
-  repository, registerRepository,
+  repository, registerRepository, _flushEarlyRegistrations,
   findById, findByIdRaw, findAll, findWhere, hasIdCollision,
   createEntityWithDefaults, updateEntity, exists, createRelation,
   findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,

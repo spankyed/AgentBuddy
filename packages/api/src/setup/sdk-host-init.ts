@@ -1,5 +1,5 @@
 import { registerHostModule } from '@abuddy/sdk/runtime';
-import { initEARSRuntime } from '@abuddy/sdk/ears';
+import { initEARSRuntime, _flushEarlyRegistrations } from '@abuddy/sdk/ears';
 import * as queryMod from '@/core/ears/helpers/query';
 import * as txMod from '@/core/ears/helpers/transaction';
 import { createEntity } from '@/core/ears/attribute-storage';
@@ -31,6 +31,7 @@ import * as versionMod from '@/version';
 initEARSRuntime({ qx: queryMod.qx, tx: txMod.tx, createEntity });
 
 registerHostModule('repository', repositoryMod);
+_flushEarlyRegistrations();
 registerHostModule('shared-repository', sharedRepository);
 registerHostModule('query-helpers', queryHelpers);
 registerHostModule('transaction-helpers', transactionHelpers);

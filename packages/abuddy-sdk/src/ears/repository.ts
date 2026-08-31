@@ -13,8 +13,22 @@ export const repository: any = new Proxy({} as any, {
   },
 });
 
+const _earlyRegistrations: any[][] = [];
+let _repoReady = false;
+
 export function registerRepository(...args: any[]): void {
-  return repoMod().registerRepository(...args);
+  if (_repoReady) {
+    return repoMod().registerRepository(...args);
+  }
+  _earlyRegistrations.push(args);
+}
+
+export function _flushEarlyRegistrations(): void {
+  _repoReady = true;
+  for (const args of _earlyRegistrations) {
+    repoMod().registerRepository(...args);
+  }
+  _earlyRegistrations.length = 0;
 }
 
 let _sharedRepoMod: any;

@@ -138,7 +138,7 @@ import {
 import type { BrowserTab } from '../state.ts';
 import type { TabGroup, TabGroupColor } from '@abuddy/sdk/fe';
 import BrowserGroupLabel from './BrowserGroupLabel.vue';
-import '@/shared/tab-groups/group-colors.css';
+import './group-colors.css';
 
 const MENU_ITEM_CLASS = 'flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none';
 

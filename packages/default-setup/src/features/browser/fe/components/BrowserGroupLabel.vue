@@ -78,7 +78,7 @@ import {
 } from 'reka-ui';
 import type { TabGroupColor } from '@abuddy/sdk/fe';
 import BrowserGroupMenuItems from './BrowserGroupMenuItems.vue';
-import '@/shared/tab-groups/group-colors.css';
+import './group-colors.css';
 
 defineProps<{
   name: string;

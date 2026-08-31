@@ -7,6 +7,7 @@ import type { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
+import './repository';
 import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');
