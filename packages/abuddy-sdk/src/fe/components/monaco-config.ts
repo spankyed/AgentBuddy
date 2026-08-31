@@ -328,6 +328,7 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
     declare global {
       const services: typeof _dsl.services;
       const z: typeof _dsl.z;
+      const flowId: string;
     }` : ''}
     ${dslType === 'prompt' ? `
     declare global {

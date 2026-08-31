@@ -1,13 +1,14 @@
 import dts from 'rollup-plugin-dts';
+import { builtinModules } from 'module';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
 const outDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
-const defaultSetupOutDir = resolve(apiDir, 'defs/dist/default-setup');
 const defaultSetupDefsDir = resolve(__dirname, '../default-setup/defs');
 
+// Keep in sync with packages/api/tsconfig.json paths
 const dtsPlugin = () => dts({
   respectExternal: false, // Bundle all external types
   compilerOptions: {
@@ -28,13 +29,12 @@ const dtsPlugin = () => dts({
 const cleanupPlugin = () => ({
   name: 'cleanup-dollar-suffixes',
   renderChunk(code) {
-    // Replace any identifier$1 with identifier
-    return code.replace(/\b(\w+)\$1\b/g, '$1');
+    return code.replace(/\b(\w+)\$\d+\b/g, '$1');
   },
 });
 
 // Monaco Editor configs (wrapped in declare module)
-const createConfig = (name, input, moduleName) => ({
+const createConfig = (name, input) => ({
   input: resolve(apiDir, input),
   output: {
     file: resolve(outDir, `${name}-defs.d.ts`),
@@ -46,25 +46,22 @@ const createConfig = (name, input, moduleName) => ({
     },
   },
   plugins: [dtsPlugin(), cleanupPlugin()],
-  external: [],
+  external: builtinModules,
 });
 
-// Default-setup configs (unwrapped, outputs to both api/defs/dist/ and workspace sibling)
+// Default-setup configs (unwrapped)
 const createDefaultSetupConfig = (name, input) => ({
   input: resolve(apiDir, input),
-  output: [
-    { file: resolve(defaultSetupOutDir, `${name}-defs.d.ts`), format: 'es' },
-    { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
-  ],
+  output: { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
   plugins: [dtsPlugin(), cleanupPlugin()],
-  external: [],
+  external: builtinModules,
 });
 
 // Export configurations for each DSL
 export default [
-  createConfig('action', 'defs/action.ts', 'ActionDSL'),
-  createConfig('prompt', 'defs/prompt.ts', 'PromptDSL'),
-  createConfig('database', 'defs/database.ts', 'DatabaseDSL'),
+  createConfig('action', 'defs/action.ts'),
+  createConfig('prompt', 'defs/prompt.ts'),
+  createConfig('database', 'defs/database.ts'),
   // Default-setup compatible (unwrapped) versions
   createDefaultSetupConfig('action', 'defs/action.ts'),
   createDefaultSetupConfig('prompt', 'defs/prompt.ts'),
