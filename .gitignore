@@ -6,6 +6,7 @@ dist
 local_cache
 search-indices
 untracked
+.data
 .serena
 .DS_Store
 .claude
