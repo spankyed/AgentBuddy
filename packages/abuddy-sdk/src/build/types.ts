@@ -1,6 +1,6 @@
 /**
- * Feature seed declaration.
- * Each feature declares what seed types it provides.
+ * Pack seed declaration.
+ * A pack declares what seed types it provides.
  * Paths are relative to the pack.config.ts file location.
  */
 export interface PackConfig {
@@ -16,8 +16,8 @@ export interface PackConfig {
 }
 
 export interface CompilePackOptions {
-  featuresDir: string;
-  sharedDir?: string;
+  packDir: string;
+  featuresDir?: string;
   outputDir: string;
   baseSettingsFile?: string;
 }

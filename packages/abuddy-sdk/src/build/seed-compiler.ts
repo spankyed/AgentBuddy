@@ -48,36 +48,35 @@ export function getRegisteredSeedTypes(): string[] {
 }
 
 // ============================================================================
-// Pack Discovery
+// Feature Settings Discovery
 // ============================================================================
 
-interface DiscoveredPack {
+interface FeatureSettings {
   name: string;
-  config: PackConfig;
-  dir: string;
+  settingsPath: string;
 }
 
-async function discoverPacks(baseDir: string): Promise<DiscoveredPack[]> {
-  const packs: DiscoveredPack[] = [];
-  if (!fs.existsSync(baseDir)) return packs;
+async function discoverFeatureSettings(featuresDir: string): Promise<FeatureSettings[]> {
+  const results: FeatureSettings[] = [];
+  if (!fs.existsSync(featuresDir)) return results;
 
-  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+  const entries = fs.readdirSync(featuresDir, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const configPath = path.join(baseDir, entry.name, 'pack.config.ts');
+    const configPath = path.join(featuresDir, entry.name, 'pack.config.ts');
     if (!fs.existsSync(configPath)) continue;
 
     const mod = await import(pathToFileURL(configPath).href);
     const config = (mod.default ?? mod) as PackConfig;
-    packs.push({ name: config.name, dir: path.join(baseDir, entry.name), config });
+    if (!config.settings) continue;
+
+    const settingsPath = path.resolve(path.join(featuresDir, entry.name), config.settings);
+    if (fs.existsSync(settingsPath)) {
+      results.push({ name: config.name, settingsPath });
+    }
   }
 
-  return packs;
-}
-
-function resolveSourcePath(packDir: string, relativePath: string | undefined): string | null {
-  if (!relativePath) return null;
-  return path.resolve(packDir, relativePath);
+  return results;
 }
 
 // ============================================================================
@@ -85,53 +84,65 @@ function resolveSourcePath(packDir: string, relativePath: string | undefined): s
 // ============================================================================
 
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
-  const { featuresDir, sharedDir, outputDir, baseSettingsFile } = options;
+  const { packDir, featuresDir, outputDir, baseSettingsFile } = options;
 
-  // 1. Discover packs
-  const featurePacks = await discoverPacks(featuresDir);
-  let sharedPack: DiscoveredPack | null = null;
-  if (sharedDir) {
-    const sharedConfigPath = path.join(sharedDir, 'pack.config.ts');
-    if (fs.existsSync(sharedConfigPath)) {
-      const mod = await import(pathToFileURL(sharedConfigPath).href);
-      const config = (mod.default ?? mod) as PackConfig;
-      sharedPack = { name: config.name, config, dir: sharedDir };
-    }
+  // 1. Load parent pack config
+  const packConfigPath = path.join(packDir, 'pack.config.ts');
+  if (!fs.existsSync(packConfigPath)) {
+    throw new Error(`No pack.config.ts found in ${packDir}`);
   }
+  const mod = await import(pathToFileURL(packConfigPath).href);
+  const packConfig = (mod.default ?? mod) as PackConfig;
 
-  const allPacks = [...featurePacks, ...(sharedPack ? [sharedPack] : [])];
-  console.log(`Found ${allPacks.length} pack(s): ${allPacks.map(p => p.name).join(', ')}`);
-
+  console.log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
 
-  // 2. Compile — for each registered compiler, collect results from all packs
+  // 2. Compile seeds from parent pack
   const compiledByType = new Map<string, CompileEntry<unknown>[]>();
   const mergedByType = new Map<string, unknown>();
   const warnings: string[] = [];
 
   for (const [type, compiler] of compilers) {
+    if (type === 'settings') continue;
+
+    const relativePath = packConfig[type];
+    if (!relativePath) continue;
+
+    const sourcePath = path.resolve(packDir, relativePath);
+    if (!fs.existsSync(sourcePath)) continue;
+
+    const data = await compiler.compile(sourcePath);
+    const entries: CompileEntry<unknown>[] = [{ data, sourcePath, packName: packConfig.name }];
+    compiledByType.set(type, entries);
+
+    const merged = compiler.merge(entries);
+    mergedByType.set(type, merged);
+  }
+
+  // 3. Compile settings — base + per-feature settings merged
+  const settingsCompiler = compilers.get('settings');
+  if (settingsCompiler) {
     const entries: CompileEntry<unknown>[] = [];
 
-    // Settings: inject base settings file as a synthetic first entry
-    if (type === 'settings' && baseSettingsFile && fs.existsSync(baseSettingsFile)) {
-      const data = await compiler.compile(baseSettingsFile);
+    if (baseSettingsFile && fs.existsSync(baseSettingsFile)) {
+      const data = await settingsCompiler.compile(baseSettingsFile);
       entries.push({ data, sourcePath: baseSettingsFile, packName: '_base' });
     }
 
-    for (const pack of allPacks) {
-      const sourcePath = resolveSourcePath(pack.dir, pack.config[type]);
-      if (!sourcePath || !fs.existsSync(sourcePath)) continue;
+    if (featuresDir) {
+      const featureSettings = await discoverFeatureSettings(featuresDir);
+      console.log(`Found ${featureSettings.length} feature(s) with settings: ${featureSettings.map(f => f.name).join(', ')}`);
 
-      const data = await compiler.compile(sourcePath);
-      entries.push({ data, sourcePath, packName: pack.name });
+      for (const feature of featureSettings) {
+        const data = await settingsCompiler.compile(feature.settingsPath);
+        entries.push({ data, sourcePath: feature.settingsPath, packName: feature.name });
+      }
     }
 
-    compiledByType.set(type, entries);
-
-    // 3. Merge
     if (entries.length > 0) {
-      const merged = compiler.merge(entries);
-      mergedByType.set(type, merged);
+      compiledByType.set('settings', entries);
+      const merged = settingsCompiler.merge(entries);
+      mergedByType.set('settings', merged);
     }
   }
 
@@ -173,7 +184,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
 
   console.log(`\nCompilation complete:`);
   for (const [type, count] of Object.entries(seedCounts)) {
-    if (count > 0) console.log(`  ${count} pack(s) contributed ${type}`);
+    if (count > 0) console.log(`  ${type}: ${count} source(s)`);
   }
   if (warnings.length) {
     console.log(`  ${warnings.length} warning(s)`);

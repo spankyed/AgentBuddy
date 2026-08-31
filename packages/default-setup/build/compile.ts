@@ -160,6 +160,7 @@ async function compileAll(): Promise<void> {
   registerDefaultCompilers();
 
   await compilePack({
+    packDir: baseDir,
     featuresDir: resolve('src/features'),
     outputDir: resolve('dist'),
     baseSettingsFile: configPath('default-settings.ts'),
