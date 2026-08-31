@@ -1,9 +1,16 @@
 import { createLogger } from '@/core/shared/debug/logger';
-import { tidyFunction } from '@/core/shared/tidy-function';
 
 const nowMs = Date.now();
 
 const loggerService = createLogger('log-service');
+
+function tidyFunction(src: string): string {
+  const lines = src.replace(/^\s*\n|\n\s*$/g, '').split('\n');
+  const indent = (lines.find(l => l.trim())?.match(/^(\t| {2,4})/) ?? [])[1];
+  return indent
+    ? lines.map(l => l.startsWith(indent) ? l.slice(indent.length) : l).join('\n')
+    : lines.join('\n');
+}
 
 const actionLog = tidyFunction(`
   const { level, message, data } = params;
