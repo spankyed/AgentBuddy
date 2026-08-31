@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 export interface PackManifest {
   id: string;
   name: string;
@@ -27,6 +29,14 @@ export type ArtifactType =
   | 'settings'
   | 'systems'
   | 'plugins';
+
+export function seedFile(name: string): string {
+  return `${name}.seed.json`;
+}
+
+export function seedPath(compiledDir: string, name: string): string {
+  return path.join(compiledDir, seedFile(name));
+}
 
 export type PackPermission =
   | 'ears'

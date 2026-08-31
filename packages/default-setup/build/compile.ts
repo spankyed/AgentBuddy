@@ -6,6 +6,7 @@ import { compileLibraryFromDir, copyLibraryMedia } from './compile-library';
 import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
 import { compileFaqFromDir } from './compile-faq';
+import { seedFile } from '@abuddy/sdk/build';
 
 const baseDir = path.resolve(import.meta.dirname, '..');
 const configDir = path.join(baseDir, 'src/configurations');
@@ -25,7 +26,7 @@ function writeJson(filePath: string, data: unknown): void {
 
 async function compileActions(): Promise<void> {
   const dir = configPath('actions');
-  const outputFile = resolve('dist/compiled-actions.json');
+  const outputFile = resolve(`dist/${seedFile('actions')}`);
 
   console.log(`Compiling actions from: ${dir}`);
   const result = await compileSourceDir(dir, {
@@ -46,7 +47,7 @@ async function compileActions(): Promise<void> {
 
 async function compilePrompts(): Promise<void> {
   const dir = configPath('prompts');
-  const outputFile = resolve('dist/compiled-prompts.json');
+  const outputFile = resolve(`dist/${seedFile('prompts')}`);
 
   console.log(`Compiling prompts from: ${dir}`);
   const result = await compileSourceDir(dir, {
@@ -67,9 +68,9 @@ async function compilePrompts(): Promise<void> {
 
 async function compileFlows(): Promise<void> {
   const dir = configPath('flows');
-  const actionsJson = resolve('dist/compiled-actions.json');
-  const promptsJson = resolve('dist/compiled-prompts.json');
-  const outputFile = resolve('dist/compiled-flows.json');
+  const actionsJson = resolve(`dist/${seedFile('actions')}`);
+  const promptsJson = resolve(`dist/${seedFile('prompts')}`);
+  const outputFile = resolve(`dist/${seedFile('flows')}`);
 
   const result = await loadFlowsFromDir(dir);
   const merged = result.merged;
@@ -94,7 +95,7 @@ async function compileFlows(): Promise<void> {
 
 function compileLibrary(): void {
   const dir = configPath('library');
-  const outputFile = resolve('dist/compiled-library.json');
+  const outputFile = resolve(`dist/${seedFile('library')}`);
   const result = compileLibraryFromDir(dir);
   writeJson(outputFile, result);
   copyLibraryMedia(dir, resolve('dist'));
@@ -103,7 +104,7 @@ function compileLibrary(): void {
 
 function compileNotes(): void {
   const dir = configPath('notes');
-  const outputFile = resolve('dist/compiled-notes.json');
+  const outputFile = resolve(`dist/${seedFile('notes')}`);
   const result = compileNotesFromDir(dir);
   writeJson(outputFile, result);
   copyNotesMedia(dir, resolve('dist'));
@@ -111,7 +112,7 @@ function compileNotes(): void {
 }
 
 async function compileSettings(): Promise<void> {
-  const outputFile = resolve('dist/compiled-settings.json');
+  const outputFile = resolve(`dist/${seedFile('settings')}`);
   const baseSettingsFile = configPath('default-settings.ts');
   let settings = await loadSettingsFromFile(baseSettingsFile);
 
@@ -141,7 +142,7 @@ async function compileSettings(): Promise<void> {
 
 function compileFaq(): void {
   const dir = configPath('faqs');
-  const outputFile = resolve('dist/compiled-faq.json');
+  const outputFile = resolve(`dist/${seedFile('faq')}`);
   const result = compileFaqFromDir(dir);
   writeJson(outputFile, result);
   console.log(`Compiled ${result.length} FAQ(s)`);

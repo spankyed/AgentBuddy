@@ -13,3 +13,4 @@ export type {
   PackManifest, PackTypeManifest, ArtifactType, PackPermission,
   PackFeatureEntry, PackSystemEntry, PackPluginEntry,
 } from './manifest';
+export { seedFile, seedPath } from './manifest';

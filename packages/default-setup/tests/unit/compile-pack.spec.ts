@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { compilePack } from '../../build/compile-pack';
+import { seedFile } from '@abuddy/sdk/build';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const FEATURES_DIR = path.join(ROOT, 'src', 'features');
@@ -28,13 +29,13 @@ describe('compilePack', () => {
     });
 
     const expected = [
-      'compiled-actions.json',
-      'compiled-prompts.json',
-      'compiled-flows.json',
-      'compiled-library.json',
-      'compiled-notes.json',
-      'compiled-faq.json',
-      'compiled-settings.json',
+      seedFile('actions'),
+      seedFile('prompts'),
+      seedFile('flows'),
+      seedFile('library'),
+      seedFile('notes'),
+      seedFile('faq'),
+      seedFile('settings'),
     ];
 
     for (const file of expected) {
@@ -42,14 +43,14 @@ describe('compilePack', () => {
     }
   });
 
-  it('compiled-actions.json is an array with label and actionFn fields', async () => {
+  it('actions artifact is an array with label and actionFn fields', async () => {
     await compilePack({
       featuresDir: FEATURES_DIR,
       sharedDir: SHARED_DIR,
       outputDir,
     });
 
-    const actions = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-actions.json'), 'utf-8'));
+    const actions = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('actions')), 'utf-8'));
     expect(Array.isArray(actions)).toBe(true);
     if (actions.length > 0) {
       expect(actions[0]).toHaveProperty('label');
@@ -58,14 +59,14 @@ describe('compilePack', () => {
     }
   });
 
-  it('compiled-prompts.json is an array with label and templateFn fields', async () => {
+  it('prompts artifact is an array with label and templateFn fields', async () => {
     await compilePack({
       featuresDir: FEATURES_DIR,
       sharedDir: SHARED_DIR,
       outputDir,
     });
 
-    const prompts = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-prompts.json'), 'utf-8'));
+    const prompts = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('prompts')), 'utf-8'));
     expect(Array.isArray(prompts)).toBe(true);
     if (prompts.length > 0) {
       expect(prompts[0]).toHaveProperty('label');
@@ -74,14 +75,14 @@ describe('compilePack', () => {
     }
   });
 
-  it('compiled-flows.json is an object with flow name keys', async () => {
+  it('flows artifact is an object with flow name keys', async () => {
     await compilePack({
       featuresDir: FEATURES_DIR,
       sharedDir: SHARED_DIR,
       outputDir,
     });
 
-    const flows = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-flows.json'), 'utf-8'));
+    const flows = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('flows')), 'utf-8'));
     expect(typeof flows).toBe('object');
     expect(Array.isArray(flows)).toBe(false);
 
@@ -93,7 +94,7 @@ describe('compilePack', () => {
     }
   });
 
-  it('compiled-settings.json is a non-empty object', async () => {
+  it('settings artifact is a non-empty object', async () => {
     await compilePack({
       featuresDir: FEATURES_DIR,
       sharedDir: SHARED_DIR,
@@ -101,7 +102,7 @@ describe('compilePack', () => {
       baseSettingsFile: fs.existsSync(BASE_SETTINGS) ? BASE_SETTINGS : undefined,
     });
 
-    const settings = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-settings.json'), 'utf-8'));
+    const settings = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('settings')), 'utf-8'));
     expect(typeof settings).toBe('object');
     expect(Object.keys(settings).length).toBeGreaterThan(0);
   });
@@ -120,9 +121,9 @@ describe('compilePack', () => {
     expect(Array.isArray(result.warnings)).toBe(true);
 
     // Cross-check counts against output
-    const actions = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-actions.json'), 'utf-8'));
-    const prompts = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-prompts.json'), 'utf-8'));
-    const flows = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-flows.json'), 'utf-8'));
+    const actions = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('actions')), 'utf-8'));
+    const prompts = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('prompts')), 'utf-8'));
+    const flows = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('flows')), 'utf-8'));
 
     expect(result.actions).toBe(actions.length);
     expect(result.prompts).toBe(prompts.length);
@@ -136,7 +137,7 @@ describe('compilePack', () => {
       outputDir,
     });
 
-    const actions = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-actions.json'), 'utf-8'));
+    const actions = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('actions')), 'utf-8'));
     const labels = actions.map((a: any) => a.label);
     const unique = new Set(labels);
     expect(labels.length).toBe(unique.size);
@@ -149,7 +150,7 @@ describe('compilePack', () => {
       outputDir,
     });
 
-    const prompts = JSON.parse(fs.readFileSync(path.join(outputDir, 'compiled-prompts.json'), 'utf-8'));
+    const prompts = JSON.parse(fs.readFileSync(path.join(outputDir, seedFile('prompts')), 'utf-8'));
     const labels = prompts.map((p: any) => p.label);
     const unique = new Set(labels);
     expect(labels.length).toBe(unique.size);
@@ -167,7 +168,7 @@ describe('compilePack', () => {
     await compilePack({ ...opts, outputDir });
     await compilePack({ ...opts, outputDir: outputDir2 });
 
-    const files = ['compiled-actions.json', 'compiled-prompts.json', 'compiled-flows.json', 'compiled-settings.json'];
+    const files = [seedFile('actions'), seedFile('prompts'), seedFile('flows'), seedFile('settings')];
     for (const file of files) {
       const a = fs.readFileSync(path.join(outputDir, file), 'utf-8');
       const b = fs.readFileSync(path.join(outputDir2, file), 'utf-8');

@@ -1,16 +1,17 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
 import { getAppVersion } from '@abuddy/sdk/utils';
+import { seedFile, seedPath } from '@abuddy/sdk/build';
+import { DEFAULT_COMPILED_DIR } from '../../../registries/seed/index';
 
-const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'dist', 'compiled-settings.json');
+const SETTINGS_PATH = seedPath(DEFAULT_COMPILED_DIR, 'settings');
 
 const loadJson = (): SettingsData => {
   try {
     return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
   } catch (err) {
     throw new Error(
-      `Missing or unreadable ${path.basename(SETTINGS_PATH)} at ${SETTINGS_PATH}. ` +
+      `Missing or unreadable ${seedFile('settings')} at ${SETTINGS_PATH}. ` +
       `Run \`npm run compile:settings\` before starting the backend. (${(err as Error).message})`
     );
   }

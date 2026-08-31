@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import type { PackConfig } from '@abuddy/sdk/build';
+import { seedFile } from '@abuddy/sdk/build';
 import type { FlowDSL, CompiledFAQ } from './dsl-types';
 import { compileSourceDir, type CompiledEntry } from './compile-utils';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows';
@@ -202,13 +203,13 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  writeJson(path.join(outputDir, 'compiled-actions.json'), allActions);
-  writeJson(path.join(outputDir, 'compiled-prompts.json'), allPrompts);
-  writeJson(path.join(outputDir, 'compiled-flows.json'), Object.keys(mergedFlows).length > 0 ? hashFlows(mergedFlows) : {});
-  writeJson(path.join(outputDir, 'compiled-library.json'), mergedLibrary);
-  writeJson(path.join(outputDir, 'compiled-notes.json'), mergedNotes);
-  writeJson(path.join(outputDir, 'compiled-faq.json'), allFaqs);
-  writeJson(path.join(outputDir, 'compiled-settings.json'), mergedSettings);
+  writeJson(path.join(outputDir, seedFile('actions')), allActions);
+  writeJson(path.join(outputDir, seedFile('prompts')), allPrompts);
+  writeJson(path.join(outputDir, seedFile('flows')), Object.keys(mergedFlows).length > 0 ? hashFlows(mergedFlows) : {});
+  writeJson(path.join(outputDir, seedFile('library')), mergedLibrary);
+  writeJson(path.join(outputDir, seedFile('notes')), mergedNotes);
+  writeJson(path.join(outputDir, seedFile('faq')), allFaqs);
+  writeJson(path.join(outputDir, seedFile('settings')), mergedSettings);
 
   const result: CompilePackResult = {
     actions: allActions.length,

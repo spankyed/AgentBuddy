@@ -4,11 +4,11 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import type { FlowDSL } from '../../features/flows/be/dsl';
 import type { ExportedLibrary, ExportedItem } from '../../features/library/be/export-types';
 import type { ExportedNotes } from '../../features/notes/be/export-types';
 import { loadJSON } from './index';
+import { seedPath } from '@abuddy/sdk/build';
 
 export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
 
@@ -48,7 +48,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
   };
 
   // --- Actions ---
-  const actionsPath = path.join(directory, 'compiled-actions.json');
+  const actionsPath = seedPath(directory, 'actions');
   const actionsData = loadJSON<CompiledActionLike[]>(actionsPath);
   if (actionsData === null) {
     preview.missing.push('actions');
@@ -60,7 +60,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
   }
 
   // --- Prompts ---
-  const promptsPath = path.join(directory, 'compiled-prompts.json');
+  const promptsPath = seedPath(directory, 'prompts');
   const promptsData = loadJSON<CompiledPromptLike[]>(promptsPath);
   if (promptsData === null) {
     preview.missing.push('prompts');
@@ -72,7 +72,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
   }
 
   // --- Flows ---
-  const flowsPath = path.join(directory, 'compiled-flows.json');
+  const flowsPath = seedPath(directory, 'flows');
   const flowsData = loadJSON<FlowDSL>(flowsPath);
   if (flowsData === null) {
     preview.missing.push('flows');
@@ -87,7 +87,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
   }
 
   // --- Library (top-level only) ---
-  const libraryPath = path.join(directory, 'compiled-library.json');
+  const libraryPath = seedPath(directory, 'library');
   const libraryData = loadJSON<ExportedLibrary | ExportedItem[]>(libraryPath);
   if (libraryData === null) {
     preview.missing.push('library');
@@ -112,7 +112,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
   }
 
   // --- Notes (top-level only) ---
-  const notesPath = path.join(directory, 'compiled-notes.json');
+  const notesPath = seedPath(directory, 'notes');
   const notesData = loadJSON<ExportedNotes>(notesPath);
   if (notesData === null) {
     preview.missing.push('notes');
@@ -126,7 +126,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
   }
 
   // --- Settings ---
-  const settingsPath = path.join(directory, 'compiled-settings.json');
+  const settingsPath = seedPath(directory, 'settings');
   if (fs.existsSync(settingsPath)) {
     preview.settings = [{ key: 'default-settings', description: 'Application defaults' }];
   } else {

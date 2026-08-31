@@ -14,6 +14,7 @@ import {
   registerSeeder, seedData, seedCollection, loadJSON, shouldSeedAll,
   type SeedCounts, type SeedIncludeSet, type ImportMode, type SeederContext,
 } from '@abuddy/sdk/utils';
+import { seedPath } from '@abuddy/sdk/build';
 import { validate, compile, isFlowConfig } from '../../features/flows/be/dsl';
 import { importNotesFromData } from '../../features/notes/be/import-notes';
 import type { ActionEntity } from '../../features/actions/be/types';
@@ -50,7 +51,7 @@ registerSeeder({
   key: 'actions',
   seed(ctx: SeederContext): SeedCounts {
     return seedCollection<CompiledAction>({
-      file: path.join(ctx.compiledDir, 'compiled-actions.json'),
+      file: seedPath(ctx.compiledDir, 'actions'),
       label: 'action',
       getKey: item => item.label,
       findExisting: item => findWhere<ActionEntity>(EARS.Entity.Action, 'label', item.label)[0],
@@ -89,7 +90,7 @@ registerSeeder({
   key: 'prompts',
   seed(ctx: SeederContext): SeedCounts {
     return seedCollection<CompiledPrompt>({
-      file: path.join(ctx.compiledDir, 'compiled-prompts.json'),
+      file: seedPath(ctx.compiledDir, 'prompts'),
       label: 'prompt',
       getKey: item => item.label,
       findExisting: item => repo().promptQueries.byLabel(item.label) ?? undefined,
@@ -123,9 +124,9 @@ registerSeeder({
   key: 'flows',
   seed(ctx: SeederContext): SeedCounts {
     const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-    const flowsDSL = loadJSON<FlowDSL>(path.join(ctx.compiledDir, 'compiled-flows.json'));
+    const flowsDSL = loadJSON<FlowDSL>(seedPath(ctx.compiledDir, 'flows'));
     if (!flowsDSL) {
-      ctx.log('  compiled-flows.json not found, skipping flows');
+      ctx.log('  flows artifact not found, skipping flows');
       return counts;
     }
 
@@ -325,10 +326,10 @@ registerSeeder({
   key: 'library',
   seed(ctx: SeederContext): SeedCounts {
     const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-    const libraryFile = path.join(ctx.compiledDir, 'compiled-library.json');
+    const libraryFile = seedPath(ctx.compiledDir, 'library');
     const libraryData = loadJSON<ExportedLibrary | ExportedItem[]>(libraryFile);
     if (!libraryData) {
-      ctx.log('  compiled-library.json not found, skipping library');
+      ctx.log('  library artifact not found, skipping library');
       return counts;
     }
     const allItems = Array.isArray(libraryData) ? libraryData : libraryData.items;
@@ -354,9 +355,9 @@ registerSeeder({
   key: 'notes',
   seed(ctx: SeederContext): SeedCounts {
     const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-    const notesData = loadJSON<ExportedNotes>(path.join(ctx.compiledDir, 'compiled-notes.json'));
+    const notesData = loadJSON<ExportedNotes>(seedPath(ctx.compiledDir, 'notes'));
     if (!notesData) {
-      ctx.log('  compiled-notes.json not found, skipping notes');
+      ctx.log('  notes artifact not found, skipping notes');
       return counts;
     }
     const filteredNotes: ExportedNotes = shouldSeedAll(ctx.include)
@@ -389,9 +390,9 @@ registerSeeder({
   key: 'settings',
   seed(ctx: SeederContext): SeedCounts {
     const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-    const settingsFile = path.join(ctx.compiledDir, 'compiled-settings.json');
+    const settingsFile = seedPath(ctx.compiledDir, 'settings');
     if (!fs.existsSync(settingsFile)) {
-      ctx.log('  compiled-settings.json not found, skipping settings');
+      ctx.log('  settings artifact not found, skipping settings');
       return counts;
     }
     if (ctx.mode === 'keep-existing') {
@@ -408,15 +409,12 @@ registerSeeder({
 
 // ── Boot seed ────────────────────────────────────────────────────────
 
-const SEED_FILES = [
-  'compiled-actions.json', 'compiled-prompts.json',
-  'compiled-flows.json', 'compiled-library.json', 'compiled-notes.json',
-];
+const SEED_ARTIFACTS = ['actions', 'prompts', 'flows', 'library', 'notes'] as const;
 
 function computeSeedHash(compiledDir: string): string {
   const hash = crypto.createHash('sha256');
-  for (const file of SEED_FILES) {
-    const filePath = path.join(compiledDir, file);
+  for (const name of SEED_ARTIFACTS) {
+    const filePath = seedPath(compiledDir, name);
     if (fs.existsSync(filePath)) hash.update(fs.readFileSync(filePath));
   }
   return hash.digest('hex').slice(0, 16);

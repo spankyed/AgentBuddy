@@ -1,15 +1,7 @@
-import * as path from 'path';
 import { DEFAULT_COMPILED_DIR, loadJSON } from '../../../registries/seed/index';
+import { seedPath } from '@abuddy/sdk/build';
 import type { FAQItem } from './types';
 
-/**
- * Load compiled FAQs from the shipped default-setup/dist build. Returns [] if
- * the file is missing or unparseable (loadJSON logs a `[seed]` warning on
- * parse errors).
- *
- * Note: FAQs are shipped-only content. Setup-pack imports do NOT replace them —
- * updated FAQ content ships with a new app build, not via user imports.
- */
 export function loadFaqs(): FAQItem[] {
-  return loadJSON<FAQItem[]>(path.join(DEFAULT_COMPILED_DIR, 'compiled-faq.json')) ?? [];
+  return loadJSON<FAQItem[]>(seedPath(DEFAULT_COMPILED_DIR, 'faq')) ?? [];
 }

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { loadExternalPacks, registerPackSystems, seedPackData, computePackSeedHash } from '@/core/packs/pack-loader';
 import { setLoadedPacks } from '@/core/packs/pack-api';
+import { seedFile } from '@abuddy/sdk/build';
 
 let tmpDir: string;
 let origUserDataPath: string | undefined;
@@ -272,7 +273,7 @@ describe('seedPackData', () => {
   it('calls seedFn for packs with dist artifacts', () => {
     const packsDir = path.join(tmpDir, 'packs');
     const pack = makePackWithDist(packsDir, 'data-pack', {
-      'compiled-actions.json': [{ label: 'test-action', actionFn: 'return true' }],
+      [seedFile('actions')]: [{ label: 'test-action', actionFn: 'return true' }],
     });
 
     const seedFn = vi.fn().mockReturnValue({});
@@ -314,7 +315,7 @@ describe('seedPackData', () => {
   it('skips packs whose seed hash has not changed', () => {
     const packsDir = path.join(tmpDir, 'packs');
     const pack = makePackWithDist(packsDir, 'cached-pack', {
-      'compiled-actions.json': [{ label: 'cached' }],
+      [seedFile('actions')]: [{ label: 'cached' }],
     });
 
     const distDir = path.join(pack.dir, 'dist');
@@ -330,7 +331,7 @@ describe('seedPackData', () => {
   it('re-seeds when pack content changes', () => {
     const packsDir = path.join(tmpDir, 'packs');
     const pack = makePackWithDist(packsDir, 'updated-pack', {
-      'compiled-actions.json': [{ label: 'v1' }],
+      [seedFile('actions')]: [{ label: 'v1' }],
     });
 
     const stored: Record<string, string> = { 'updated-pack': 'old-hash' };
@@ -366,10 +367,10 @@ describe('seedPackData', () => {
   it('continues seeding other packs when one fails', () => {
     const packsDir = path.join(tmpDir, 'packs');
     const pack1 = makePackWithDist(packsDir, 'fail-pack', {
-      'compiled-actions.json': [{ label: 'will-fail' }],
+      [seedFile('actions')]: [{ label: 'will-fail' }],
     });
     const pack2 = makePackWithDist(packsDir, 'ok-pack', {
-      'compiled-actions.json': [{ label: 'will-succeed' }],
+      [seedFile('actions')]: [{ label: 'will-succeed' }],
     });
 
     let callCount = 0;
@@ -403,7 +404,7 @@ describe('computePackSeedHash', () => {
   it('returns consistent hash for the same content', () => {
     const distDir = path.join(tmpDir, 'hash-test');
     fs.mkdirSync(distDir, { recursive: true });
-    fs.writeFileSync(path.join(distDir, 'compiled-actions.json'), '[]');
+    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[]');
 
     const hash1 = computePackSeedHash(distDir);
     const hash2 = computePackSeedHash(distDir);
@@ -415,10 +416,10 @@ describe('computePackSeedHash', () => {
   it('returns different hash when content changes', () => {
     const distDir = path.join(tmpDir, 'hash-change');
     fs.mkdirSync(distDir, { recursive: true });
-    fs.writeFileSync(path.join(distDir, 'compiled-actions.json'), '[{"label":"v1"}]');
+    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"v1"}]');
     const hash1 = computePackSeedHash(distDir);
 
-    fs.writeFileSync(path.join(distDir, 'compiled-actions.json'), '[{"label":"v2"}]');
+    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"v2"}]');
     const hash2 = computePackSeedHash(distDir);
 
     expect(hash1).not.toBe(hash2);
