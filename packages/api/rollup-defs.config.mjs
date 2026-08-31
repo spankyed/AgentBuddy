@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
-const outDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
+const monacoOutDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
 const defaultSetupDefsDir = resolve(__dirname, '../default-setup/defs');
 
 // Derive paths from api/tsconfig.json (single source of truth)
@@ -37,37 +37,47 @@ const cleanupPlugin = () => ({
   },
 });
 
-// Monaco Editor configs (wrapped in declare module)
-const createConfig = (name, input) => ({
+const shared = { plugins: [dtsPlugin(), cleanupPlugin()], external: builtinModules };
+
+// Shared entries: bundle once, output both Monaco (wrapped) and default-setup (unwrapped)
+const createSharedConfig = (name, input) => ({
+  input: resolve(apiDir, input),
+  output: [
+    {
+      file: resolve(monacoOutDir, `${name}-defs.d.ts`),
+      format: 'es',
+      intro: `declare module "@app/defs/${name}" {`,
+      outro: `}`,
+      generatedCode: { constBindings: true },
+    },
+    { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
+  ],
+  ...shared,
+});
+
+// Monaco-only entry
+const createMonacoConfig = (name, input) => ({
   input: resolve(apiDir, input),
   output: {
-    file: resolve(outDir, `${name}-defs.d.ts`),
+    file: resolve(monacoOutDir, `${name}-defs.d.ts`),
     format: 'es',
     intro: `declare module "@app/defs/${name}" {`,
     outro: `}`,
-    generatedCode: {
-      constBindings: true,
-    },
+    generatedCode: { constBindings: true },
   },
-  plugins: [dtsPlugin(), cleanupPlugin()],
-  external: builtinModules,
+  ...shared,
 });
 
-// Default-setup configs (unwrapped)
+// Default-setup-only entry
 const createDefaultSetupConfig = (name, input) => ({
   input: resolve(apiDir, input),
   output: { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
-  plugins: [dtsPlugin(), cleanupPlugin()],
-  external: builtinModules,
+  ...shared,
 });
 
-// Export configurations for each DSL
 export default [
-  createConfig('action', 'defs/action.ts'),
-  createConfig('prompt', 'defs/prompt.ts'),
-  createConfig('database', 'defs/database.ts'),
-  // Default-setup compatible (unwrapped) versions
-  createDefaultSetupConfig('action', 'defs/action.ts'),
-  createDefaultSetupConfig('prompt', 'defs/prompt.ts'),
+  createSharedConfig('action', 'defs/action.ts'),
+  createSharedConfig('prompt', 'defs/prompt.ts'),
+  createMonacoConfig('database', 'defs/database.ts'),
   createDefaultSetupConfig('default-setup', 'defs/default-setup.ts'),
 ];
