@@ -6,7 +6,7 @@ import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
-import { settingsId, threadsId } from '@/registries/extensions';
+import { settings as settingsId, threads as threadsId } from '@/registries/plugin-ids';
 
 interface BreadcrumbItem {
   label: string;

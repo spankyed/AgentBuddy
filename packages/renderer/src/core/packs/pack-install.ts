@@ -1,5 +1,5 @@
 import { trpc } from '@/core/trpc';
-import { settingsId } from '@/registries/extensions';
+import { settings as settingsId } from '@/registries/plugin-ids';
 
 export interface PackInstallRequest {
   packSlug: string;

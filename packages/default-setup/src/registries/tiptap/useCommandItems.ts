@@ -1,11 +1,10 @@
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
-import { threadsId as id } from '@/registries/extensions'
 import type { CommandItem } from './command-config'
 
 export function useCommandItems(query: Ref<string>) {
-  const actor = getEditorSystem().get(id)
+  const actor = getEditorSystem().get('threads')
   const commands = useSelector(actor, (state: any) => (state.context.commands || []) as CommandItem[])
 
   const filteredCommands = computed<CommandItem[]>(() => {

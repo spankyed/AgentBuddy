@@ -72,7 +72,7 @@ import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
 import { applicationState } from '@/main';
 import allPlugins from '@/plugins';
-import { settingsId } from '@/registries/extensions';
+import { settings as settingsId } from '@/registries/plugin-ids';
 
 const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
 

@@ -16,7 +16,7 @@ import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
 import { navigateToPlugin } from '@/core/utils/navigate';
-import { settingsId } from '@/registries/extensions';
+import { settings as settingsId } from '@/registries/plugin-ids';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const { updateSettings } = useSettingsSaveStatus();

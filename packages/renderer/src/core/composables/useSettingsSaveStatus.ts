@@ -1,7 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { applicationState } from '@/main'
 import type { SETTINGS_SCOPE } from '@app/api'
-import { settingsId } from '@/registries/extensions'
+import { settings as settingsId } from '@/registries/plugin-ids'
 
 /**
  * Composable for managing settings save status with automatic timeout

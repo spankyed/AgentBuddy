@@ -1,6 +1,6 @@
 import { applicationState } from '@/main';
 import { navigateToPlugin } from './navigate';
-import { settingsId } from '@/registries/extensions';
+import { settings as settingsId } from '@/registries/plugin-ids';
 import { browser } from '@/registries/plugin-ids';
 
 export function openInAppBrowser(url: string) {

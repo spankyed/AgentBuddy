@@ -8,15 +8,6 @@ import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProv
 import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../features/notes/fe/references';
 import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from './reference-types';
 
-// IDs inlined to avoid importing heavyweight state modules (which import @/main, causing circular deps)
-export const brainId = 'brain';
-export const settingsId = 'settings';
-export const threadsId = 'threads' as const;
-
-export function threadsFromStore<T>(threadMap: Record<string, T>, threadIds: string[]): T[] {
-  return threadIds.map(id => threadMap[id]).filter((thread): thread is T => Boolean(thread));
-}
-
 export { BrainInspectPanel };
 export { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue };
 export { DataRenderer };
