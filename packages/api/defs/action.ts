@@ -4,30 +4,20 @@
  * Used to generate type definitions for Monaco Editor
  */
 
-// Import services and zod for type definitions
-import type importedServices from '@/services/index';
-import { z } from 'zod';
+import importedServices from '@/services/index';
 
-// Type definitions that match what's available in action context
 export interface ActionParams {
   [key: string]: any;
 }
 
-// Service type definitions (these will be extracted from the actual implementations)
-export type Services = typeof importedServices;
+export const services = importedServices;
+export type Services = typeof services;
+export const params: ActionParams = undefined as any;
 
-
-// Re-export service interfaces for better type generation
 export { ActionService } from '@/features/actions/be/services/action';
 export { PromptService } from '@/features/prompts/be/services/prompt';
 export { LibraryService } from '@/features/library/be/services/library';
 export type { ActionEntity } from '@/features/actions/be/types';
 export type { SettingsData } from '@/features/settings/be/types';
 
-// Export runtime placeholders for Monaco Editor intellisense
-// These will be available when the module is imported
-export const services: Services = undefined as any;
-export const params: ActionParams = undefined as any;
-
-// Re-export zod directly so it's available in the module
 export { z } from 'zod';
