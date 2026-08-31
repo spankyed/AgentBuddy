@@ -14,6 +14,7 @@ import '@/core/packs/host-deps';
 import { TIPTAP_PLUGINS_KEY } from '@/core/components/tiptap/injection-keys';
 import { tiptapPlugins } from '@/registries/tiptap-plugins';
 import '@/registries/app-extensions';
+import '@/registries/dsl-types';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import * as navigateMod from '@/core/utils/navigate';
 import * as openBrowserMod from '@/core/utils/openInAppBrowser';

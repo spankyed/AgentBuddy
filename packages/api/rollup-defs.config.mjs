@@ -7,7 +7,7 @@ import defsManifest from './defs/defs.config.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
-const monacoOutDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
+const monacoOutDir = resolve(__dirname, '../default-setup/defs/monaco');
 const authoringOutDir = resolve(__dirname, '../default-setup/defs');
 
 // Derive paths from api/tsconfig.json (single source of truth)

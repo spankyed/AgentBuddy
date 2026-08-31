@@ -62,37 +62,25 @@ const LANGUAGE_MAP: Record<string, string> = {
   sql: 'sql',
 }
 
-// DSL type schemas (raw .d.ts strings loaded by Vite)
-import databaseDslTypes from './types-generated/database-defs.d.ts?raw'
-import actionDslTypes from './types-generated/action-defs.d.ts?raw'
-import promptDslTypes from './types-generated/prompt-defs.d.ts?raw'
+// ============================================================================
+// DSL TYPE REGISTRY
+// ============================================================================
 
-const DSL_SCHEMAS: Record<string, string> = {
-  database: databaseDslTypes,
-  action: actionDslTypes,
-  prompt: promptDslTypes,
+export interface DslTypeConfig {
+  prefix: string
+  schema: string
+  globals: Record<string, string>
+  language?: Language
 }
 
-// DSL globals: what each DSL type exposes as ambient globals in the Monaco editor.
-// Values are TypeScript type expressions referencing the DSL module via `_dsl`.
-const DSL_GLOBALS: Record<string, Record<string, string>> = {
-  action: {
-    services: 'typeof _dsl.services',
-    z: 'typeof _dsl.z',
-    flowId: 'string',
-  },
-  prompt: {
-    usePrompt: 'typeof _dsl.usePrompt',
-  },
-  database: {
-    EARS: 'typeof _dsl.EARS',
-    qx: 'typeof _dsl.qx',
-    tx: 'typeof _dsl.tx',
-    bp: 'typeof _dsl.bp',
-    spawn: 'typeof _dsl.spawn',
-    getSchemaStats: 'typeof _dsl.getSchemaStats',
-    isEntity: 'typeof _dsl.isEntity',
-  },
+const dslRegistry = new Map<string, DslTypeConfig>()
+
+export function registerDslType(name: string, config: DslTypeConfig): void {
+  dslRegistry.set(name, config)
+}
+
+export function getDslTypes(): ReadonlyMap<string, DslTypeConfig> {
+  return dslRegistry
 }
 
 // ============================================================================
@@ -253,14 +241,13 @@ const registeredFormatters = new Set<string>()
  * Get language ID from file path
  */
 export function getLanguageFromPath(filePath: string): string {
-  // Check for DSL files
-  if (filePath.startsWith('action:') || filePath.startsWith('prompt:')) {
-    return 'typescript'
+  // Check for registered DSL types
+  for (const config of dslRegistry.values()) {
+    if (filePath.startsWith(config.prefix)) {
+      return config.language || 'typescript'
+    }
   }
-  if (filePath.startsWith('database:')) {
-    return 'typescript'
-  }
-  
+
   // Handle diff file paths (e.g., "diff:path/to/file.ts:staged")
   if (filePath.startsWith('diff:')) {
     const parts = filePath.split(':')
@@ -270,7 +257,7 @@ export function getLanguageFromPath(filePath: string): string {
       return LANGUAGE_MAP[ext] || 'plaintext'
     }
   }
-  
+
   // Regular file extension mapping
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   return LANGUAGE_MAP[ext] || 'plaintext'
@@ -280,9 +267,9 @@ export function getLanguageFromPath(filePath: string): string {
  * Get DSL type from file path
  */
 export function getDslTypeFromPath(filePath: string): DslType | null {
-  if (filePath.startsWith('action:')) return 'action'
-  if (filePath.startsWith('prompt:')) return 'prompt'
-  if (filePath.startsWith('database:')) return 'database'
+  for (const [name, config] of dslRegistry) {
+    if (filePath.startsWith(config.prefix)) return name
+  }
   return null
 }
 
@@ -311,19 +298,22 @@ export function getEditorPresetForFile(filePath: string, readOnly = false): Edit
  */
 function setupDslModules(monaco: Monaco, dslType: DslType, language: Language = 'typescript'): void {
   const libKey = `${language}-${dslType}-module`
-  
+
   if (registeredDslLibs.has(libKey)) {
     return // Already registered
   }
-  
-  const langDefaults = language === 'typescript' 
+
+  const config = dslRegistry.get(dslType)
+  if (!config) return
+
+  const langDefaults = language === 'typescript'
     ? monaco.typescript.typescriptDefaults
     : monaco.typescript.javascriptDefaults
-  
+
   // Add the module as a virtual file
   const moduleUri = `inmemory:///node_modules/@app/defs/${dslType}/index.d.ts`
-  langDefaults.addExtraLib(DSL_SCHEMAS[dslType], moduleUri)
-  
+  langDefaults.addExtraLib(config.schema, moduleUri)
+
   registeredDslLibs.add(libKey)
 }
 
@@ -332,19 +322,19 @@ function setupDslModules(monaco: Monaco, dslType: DslType, language: Language = 
  */
 function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 'typescript'): void {
   const libKey = `${language}-${dslType}-globals`
-  
+
   if (registeredDslLibs.has(libKey)) {
     return // Already registered
   }
-  
-  const langDefaults = language === 'typescript' 
+
+  const config = dslRegistry.get(dslType)
+  if (!config || Object.keys(config.globals).length === 0) return
+
+  const langDefaults = language === 'typescript'
     ? monaco.typescript.typescriptDefaults
     : monaco.typescript.javascriptDefaults
-  
-  const globals = DSL_GLOBALS[dslType]
-  if (!globals) return
 
-  const declarations = Object.entries(globals)
+  const declarations = Object.entries(config.globals)
     .map(([name, type]) => `const ${name}: ${type};`)
     .join('\n      ')
 
@@ -354,7 +344,7 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
       ${declarations}
     }
   `
-  
+
   langDefaults.addExtraLib(wrapperContent, `inmemory:///dsl-wrapper-${dslType}.d.ts`)
   registeredDslLibs.add(libKey)
 }
@@ -389,7 +379,7 @@ let paramsTypeDisposable: IDisposable | null = null
 
 export function updateDslParamsType(
   monaco: Monaco,
-  dslType: 'action' | 'prompt',
+  _dslType: string,
   params: Record<string, { type: string }>,
   language: Language = 'typescript'
 ): void {
