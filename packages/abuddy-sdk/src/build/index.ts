@@ -10,7 +10,7 @@ export { validateCronExpression } from './cron-utils';
 
 // Pack manifest types
 export type {
-  PackManifest, PackTypeManifest, ArtifactType, PackPermission,
+  PackManifest, PackTypeManifest, PackPermission,
   PackFeatureEntry, PackSystemEntry, PackPluginEntry,
 } from './manifest';
 export { seedFile, seedPath } from './manifest';

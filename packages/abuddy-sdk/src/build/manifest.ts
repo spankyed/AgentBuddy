@@ -6,7 +6,7 @@ export interface PackManifest {
   version: string;
   description?: string;
   hostVersion?: string;
-  artifactTypes?: ArtifactType[];
+  artifactTypes?: string[];
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
   features?: PackFeatureEntry[];
@@ -20,15 +20,6 @@ export interface PackTypeManifest {
   relKinds: Record<string, string>;
 }
 
-export type ArtifactType =
-  | 'actions'
-  | 'prompts'
-  | 'flows'
-  | 'library'
-  | 'notes'
-  | 'settings'
-  | 'systems'
-  | 'plugins';
 
 export function seedFile(name: string): string {
   return `${name}.seed.json`;
