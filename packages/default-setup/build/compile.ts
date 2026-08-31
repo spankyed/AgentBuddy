@@ -9,7 +9,7 @@ import { compileFaqFromDir } from './compile-faq';
 import { seedFile } from '@abuddy/sdk/build';
 
 const baseDir = path.resolve(import.meta.dirname, '..');
-const configDir = path.join(baseDir, 'src/configurations');
+const configDir = path.join(baseDir, 'src/seeds');
 
 function resolve(relative: string): string {
   return path.join(baseDir, relative);
