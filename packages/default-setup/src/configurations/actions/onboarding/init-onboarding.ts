@@ -16,14 +16,22 @@ export async function action(
 ) {
   const ASSISTANT_BIRTH_ROLE = services.database.EARS.RoleKind.Custom('assistant_birth');
 
-  // Check if birth thread already exists
+  // Check if birth thread already exists and has valid data
   const existingBirthThreadId = services.database.qx().withRole(ASSISTANT_BIRTH_ROLE).first();
 
   if (existingBirthThreadId) {
-    await services.logger.info('Birth thread already exists, skipping onboarding init', {
+    const threadData = services.database.qx(existingBirthThreadId).pickOne();
+    if (threadData) {
+      await services.logger.info('Birth thread already exists, skipping onboarding init', {
+        threadId: existingBirthThreadId,
+      });
+      return { threadId: existingBirthThreadId, success: true, created: false };
+    }
+    // Stale reference — entity ID exists but data is gone (e.g. after db reset)
+    await services.logger.info('Stale birth thread reference found, cleaning up', {
       threadId: existingBirthThreadId,
     });
-    return { threadId: existingBirthThreadId, success: true, created: false };
+    services.database.tx(existingBirthThreadId).destroy();
   }
 
   // Create the birth thread (birthdate is set by startBirthFlow in threads system)
