@@ -247,7 +247,7 @@
 import { ref, computed, reactive } from 'vue'
 import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink } from 'lucide-vue-next'
 import { useDebounce } from '@abuddy/sdk/fe'
-import { API_KEY_URLS } from '@abuddy/sdk/fe/constants'
+import { API_KEY_URLS } from '../../../../constants'
 import CliProviders from './CliProviders.vue'
 import { openInAppBrowser } from '@abuddy/sdk/fe'
 

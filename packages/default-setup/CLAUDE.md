@@ -1,9 +1,9 @@
 # Default — Quick Reference
 
-Source `.ts` files in `src/actions/`, `src/prompts/`, `src/flows/` are compiled via esbuild into JSON (`dist/`) for runtime execution. Function bodies are extracted and run in a sandboxed scope — there is no module system at runtime.
+Source `.ts` files in `src/configurations/actions/`, `src/configurations/prompts/`, `src/configurations/flows/` are compiled via esbuild into JSON (`dist/`) for runtime execution. Function bodies are extracted and run in a sandboxed scope — there is no module system at runtime.
 
 
-### New repo structure
+### Repo structure
 
 ```
 default-setup/
@@ -22,28 +22,33 @@ default-setup/
     library-utils.ts            # toTitleCase, countDocs helpers
 
   src/
-    types.ts                    # Re-exports types from defs/ for action/prompt/flow authoring
-    default-settings.ts         # Default settings source — compiled to dist/compiled-settings.json, typed against SettingsData
-    actions/                    # Action source files
-    prompts/                    # Prompt template source files
-    flows/                      # Flow DSL files
-    library/                    # Markdown docs + media
-    faqs/                       # FAQ markdown files (frontmatter + # heading + body)
-    _examples/                  # Reference examples (excluded from compilation)
+    configurations/             # All DSL artifacts organized by type
+      types.ts                  # Re-exports types from defs/ for action/prompt/flow authoring
+      default-settings.ts       # Default settings source — compiled to dist/compiled-settings.json
+      actions/                  # Action source files (claude-code/, codex/, commands/, onboarding/, _helpers/)
+      prompts/                  # Prompt template source files
+      flows/                    # Flow DSL files + _patterns.ts helper
+      library/                  # Markdown docs + media
+      notes/                    # Note markdown templates
+      faqs/                     # FAQ markdown files (frontmatter + # heading + body)
+      _examples/                # Reference examples (excluded from compilation)
+    features/                   # Feature-specific code (systems, plugins, settings, services)
   dist/                         # Generated JSON output (gitignored)
 ```
 
 
 ## Directory structure
 
-- `src/actions/` — action source files
-- `src/prompts/` — prompt template source files
-- `src/flows/` — flow DSL files (dynamically imported, not bundled)
-- `src/library/` — markdown docs compiled to JSON
-- `src/faqs/` — FAQ markdown files; compiled to `dist/compiled-faq.json`, served to settings Help tab at startup
-- `src/default-settings.ts` — default settings source, typed against `SettingsData`; compiled to `dist/compiled-settings.json` via `compile:settings`
-- `src/_examples/` — reference examples (excluded from compilation and typecheck)
-- `src/types.ts` — shared type definitions (`ActionMeta`, `PromptMeta`, `Services`, `Z`, etc.)
+- `src/configurations/actions/` — action source files
+- `src/configurations/prompts/` — prompt template source files
+- `src/configurations/flows/` — flow DSL files (dynamically imported, not bundled)
+- `src/configurations/library/` — markdown docs compiled to JSON
+- `src/configurations/notes/` — note markdown templates compiled to JSON
+- `src/configurations/faqs/` — FAQ markdown files; compiled to `dist/compiled-faq.json`, served to settings Help tab at startup
+- `src/configurations/default-settings.ts` — default settings source, typed against `SettingsData`; compiled to `dist/compiled-settings.json` via `compile:settings`
+- `src/configurations/_examples/` — reference examples (excluded from compilation and typecheck)
+- `src/configurations/types.ts` — shared type definitions (`ActionMeta`, `PromptMeta`, `Services`, `Z`, etc.)
+- `src/features/` — feature-specific code (systems, plugins, settings, services)
 - `build/` — compiler infrastructure (compile scripts, validator, utils)
 - `dist/` — generated output (**do not edit**, gitignored)
 - `defs/` — auto-generated type definitions from API rollup pipeline (do not hand-edit)
@@ -58,20 +63,20 @@ default-setup/
 ## Action conventions
 
 - Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`
-- Import types: `import type { ActionMeta, Services, Z } from '../types'`
+- Import types: `import type { ActionMeta, Services, Z } from '../../types'` (adjust depth based on directory nesting under `configurations/actions/`)
 - See `WRITING-ACTIONS.md` for full reference (services list, examples, metadata schema)
 
 ## Prompt conventions
 
 - Export `meta: PromptMeta` and `function template(params, usePrompt)` (synchronous, returns string)
-- Import types: `import type { PromptMeta } from '../types'`
+- Import types: `import type { PromptMeta } from '../types'` (one level up from `configurations/prompts/`)
 - See `WRITING-PROMPTS.md` for full reference
 
 ## Helper files
 
 - Any `.ts` file without `export const meta` is auto-detected as a helper
 - Helpers are inlined into the consuming action/prompt at compile time via esbuild
-- Can live in `src/actions/`, `src/prompts/`, or subdirectories
+- Can live in `src/configurations/actions/`, `src/configurations/prompts/`, or subdirectories
 
 ## Flow conventions
 
@@ -83,17 +88,17 @@ default-setup/
 
 Commands are actions triggered by `/name` in the chat input. All commands fire a `user.command` brain event — any flow can listen for it via `on("user.command", ...)` and branch on the command name.
 
-1. **Create action** — export `meta` with `category: 'commands'` and an `action()` function. Common inputs: `text`, `threadId`, `references`. Place standalone commands in `src/actions/commands/`; feature-specific commands can live alongside their flow's actions.
+1. **Create action** — export `meta` with `category: 'commands'` and an `action()` function. Common inputs: `text`, `threadId`, `references`. Place standalone commands in `src/configurations/actions/commands/`; feature-specific commands can live alongside their flow's actions.
 2. **Add flow branch** — in the appropriate flow, add an `on("user.command", ...)` listener (or extend an existing one) with a branch condition matching the command name. Use `command-listener-flow.ts` for standalone commands; feature flows (e.g. `claude-code-flow.ts` for `cc-*` commands) can handle their own.
-3. **Register in library** — add `**<name>**: <placeholder hint>` to `src/library/internal/commands.md` (populates the frontend command palette).
+3. **Register in library** — add `**<name>**: <placeholder hint>` to `src/configurations/library/internal/commands.md` (populates the frontend command palette).
 4. **Compile** — `npm run compile`
 
-See `src/actions/commands/pr2md.ts` and `command-listener-flow.ts` for a standalone example, or the `cc-*` commands in `claude-code-flow.ts` for flow-scoped commands.
+See `src/configurations/actions/commands/pr2md.ts` and `configurations/flows/command-listener-flow.ts` for a standalone example, or the `cc-*` commands in `claude-code-flow.ts` for flow-scoped commands.
 
 ## Typing & verification
 
 - tsconfig at root `tsconfig.json`
-- Types (`Services`, `Z`, `EntityId`, flow DSL types) come from `src/types.ts`
+- Types (`Services`, `Z`, `EntityId`, flow DSL types) come from `src/configurations/types.ts`
 - Full `Services` type from generated `defs/action-defs.d.ts`
 - Type check: `npm run typecheck`
 

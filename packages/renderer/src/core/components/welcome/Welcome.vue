@@ -25,7 +25,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue';
-import { DISCORD_URL } from '@/core/constants';
+import { DISCORD_URL } from '@/features/settings/constants';
 
 const letterContent = `Hello Testers,
 
