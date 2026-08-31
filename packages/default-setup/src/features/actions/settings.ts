@@ -1,5 +1,6 @@
 export default {
   plugins: {
+    _meta: { visibility: { actions: false } },
     actions: {
       categories: [
         { name: 'Utility', color: '#6B7280' },

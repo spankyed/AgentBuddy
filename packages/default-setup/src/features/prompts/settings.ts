@@ -1,5 +1,6 @@
 export default {
   plugins: {
+    _meta: { visibility: { prompts: false } },
     prompts: {
       categories: [
         { name: 'General', color: '#6B7280' },

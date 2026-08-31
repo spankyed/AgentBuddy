@@ -1,5 +1,5 @@
 // Types
-export type { PackConfig } from './types';
+export type { PackConfig, CompilePackOptions, CompilePackResult } from './types';
 
 // Compile utilities
 export { compileSourceDir, compileAllSourceFiles, bundleFile, sourceHash } from './compile-utils';

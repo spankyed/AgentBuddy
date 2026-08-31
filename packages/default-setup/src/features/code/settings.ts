@@ -1,5 +1,6 @@
 export default {
   plugins: {
+    _meta: { visibility: { code: true } },
     code: {
       hotkeys: {
         openTerminal: { key: '`', modifiers: ['ctrl'] },

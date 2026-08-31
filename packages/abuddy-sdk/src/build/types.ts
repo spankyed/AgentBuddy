@@ -13,3 +13,20 @@ export interface PackConfig {
   faqs?: string;        // directory path
   settings?: string;    // file path, e.g. './settings.ts'
 }
+
+export interface CompilePackOptions {
+  featuresDir: string;
+  sharedDir?: string;
+  outputDir: string;
+  baseSettingsFile?: string;
+}
+
+export interface CompilePackResult {
+  actions: number;
+  prompts: number;
+  flows: number;
+  libraryDocs: number;
+  notes: number;
+  faqs: number;
+  warnings: string[];
+}

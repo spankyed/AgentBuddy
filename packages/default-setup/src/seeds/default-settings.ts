@@ -31,20 +31,7 @@ const settings: SettingsData = {
   },
   plugins: {
     _meta: {
-      visibility: {
-        threads: true,
-        code: true,
-        library: false,
-        flows: false,
-        actions: false,
-        prompts: false,
-        brain: false,
-        database: false,
-        logs: false,
-        browser: false,
-        notes: false,
-        settings: true,
-      }
+      visibility: {}
     },
   },
   internal: {

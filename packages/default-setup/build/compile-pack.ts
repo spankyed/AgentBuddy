@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import type { PackConfig } from '@abuddy/sdk/build';
+import type { PackConfig, CompilePackOptions, CompilePackResult } from '@abuddy/sdk/build';
 import { seedFile } from '@abuddy/sdk/build';
 import type { FlowDSL, CompiledFAQ } from './dsl-types';
 import { compileSourceDir, type CompiledEntry } from './compile-utils';
@@ -11,23 +11,6 @@ import { compileNotesFromDir, copyNotesMedia, countNotes } from './compile-notes
 import { compileFaqFromDir } from './compile-faq';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
 import { countDocs } from './library-utils';
-
-export interface CompilePackOptions {
-  featuresDir: string;
-  sharedDir?: string;
-  outputDir: string;
-  baseSettingsFile?: string;
-}
-
-export interface CompilePackResult {
-  actions: number;
-  prompts: number;
-  flows: number;
-  libraryDocs: number;
-  notes: number;
-  faqs: number;
-  warnings: string[];
-}
 
 interface DiscoveredPack {
   name: string;
