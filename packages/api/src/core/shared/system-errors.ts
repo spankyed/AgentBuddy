@@ -1,5 +1,5 @@
 import { rootEvents } from '@/core/router/bus-emitter';
-import { randomId } from '@/core/shared/random-id';
+import { randomId } from '@abuddy/sdk/utils';
 import { RepositoryError, RepositoryErrorCode } from '@/core/shared/repository';
 
 export type SystemErrorSeverity = 'error' | 'fatal';

@@ -106,9 +106,7 @@ export const mapArray = (
   return { next, changed };
 };
 
-// --- Random ID ---
-let _randomIdMod: any;
-function randomIdMod() { if (!_randomIdMod) _randomIdMod = getHostModule('random-id'); return _randomIdMod; }
+// ─── Random ID (pure, no host dependency) ────────────────────────────
 
 export interface RandomIdOptions {
   prefix?: string;
@@ -117,38 +115,119 @@ export interface RandomIdOptions {
   includeTimestamp?: boolean;
 }
 
-export function randomId(opt?: RandomIdOptions): string { return randomIdMod().randomId(opt); }
+const DIGITS = Array.from({ length: 36 }, (_, i) => i.toString(36));
+const toBase36 = (num: number) => {
+  let n = num >>> 0;
+  let out = '';
+  do { out = DIGITS[n % 36] + out; n = Math.floor(n / 36); } while (n);
+  return out;
+};
 
-// --- Binary Operator ---
-let _binaryOpMod: any;
-function binaryOpMod() { if (!_binaryOpMod) _binaryOpMod = getHostModule('binary-operator'); return _binaryOpMod; }
+const getRand64 = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const arr = new BigUint64Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0].toString(36);
+  }
+  const hi = (Math.random() * 0xffffffff) >>> 0;
+  const lo = (Math.random() * 0xffffffff) >>> 0;
+  return (BigInt(hi) << 32n | BigInt(lo)).toString(36);
+};
 
-export const BinaryOperator: any = new Proxy({} as any, {
-  get(_, prop: string) { return binaryOpMod().BinaryOperator[prop]; },
-});
+let counter = 0;
+const nextCounter = () => { counter = (counter + 1) & 0xfff; return counter; };
 
-// --- Change Detection ---
-let _changeDetectionMod: any;
-function changeDetectionMod() { if (!_changeDetectionMod) _changeDetectionMod = getHostModule('change-detection'); return _changeDetectionMod; }
+export function randomId(opt: RandomIdOptions = {}): string {
+  const { prefix = '', counterSafe = false, length, includeTimestamp = true } = opt;
+  const ts = includeTimestamp ? Date.now().toString(36) : '';
+  const cnt = counterSafe ? toBase36(nextCounter()) : '';
+  const rand = getRand64();
+  let core = ts + cnt + rand;
+  if (length && core.length > length) core = core.slice(0, length);
+  return prefix ? prefix + core : core;
+}
+
+// ─── Binary Operator (pure enum, no host dependency) ─────────────────
+
+export enum BinaryOperator {
+  EQUALS = 'equals',
+  NOT_EQUALS = 'not_equals',
+  GREATER_THAN = 'greater_than',
+  LESS_THAN = 'less_than',
+  GREATER_THAN_OR_EQUALS = 'greater_than_or_equals',
+  LESS_THAN_OR_EQUALS = 'less_than_or_equals',
+  CONTAINS = 'contains',
+  STARTS_WITH = 'starts_with',
+  ENDS_WITH = 'ends_with',
+  MATCHES = 'matches',
+  IS_EMPTY = 'is_empty',
+  IS_NULL = 'is_null',
+}
+
+// ─── Change Detection (pure, no host dependency) ─────────────────────
 
 export type DiffResult<T> =
   | null
   | { renames: Array<{ from: string; to: string }>; added: T[]; removed: T[] };
 
-export function detectChanges<T>(
+export const detectChanges = <T>(
   prev: T[] | undefined,
   next: T[] | undefined,
   id: (x: T) => string,
   key: (x: T) => string,
-): DiffResult<T> {
-  return changeDetectionMod().detectChanges(prev, next, id, key);
+): DiffResult<T> => {
+  if (!prev || !next) return null;
+  const prevById = new Map(prev.map(x => [id(x), x]));
+  const nextById = new Map(next.map(x => [id(x), x]));
+  const nextIdByKey = new Map(next.map(x => [key(x), id(x)]));
+  const renames = prev
+    .filter(p => !nextById.has(id(p)))
+    .map(p => ({ from: id(p), to: nextIdByKey.get(key(p)) }))
+    .filter((r): r is { from: string; to: string } => !!r.to && !prevById.has(r.to));
+  const fromSet = new Set(renames.map(r => r.from));
+  const toSet   = new Set(renames.map(r => r.to));
+  const added   = next.filter(x => !prevById.has(id(x)) && !toSet.has(id(x)));
+  const removed = prev.filter(x => !nextById.has(id(x)) && !fromSet.has(id(x)));
+  return renames.length || added.length || removed.length ? { renames, added, removed } : null;
+};
+
+export const detectAllArrayChanges = (prev: any, next: any): Record<string, DiffResult<any>> | null => {
+  if (!prev || !next || typeof prev !== 'object' || typeof next !== 'object') return null;
+  const changes: Record<string, DiffResult<any>> = {};
+  const detectInObject = (prevObj: any, nextObj: any, path: string[] = []) => {
+    for (const key in nextObj) {
+      const prevVal = prevObj?.[key];
+      const nextVal = nextObj[key];
+      if (Array.isArray(nextVal) && Array.isArray(prevVal)) {
+        if (nextVal.length > 0 && typeof nextVal[0] === 'object') {
+          const diff = detectArrayChanges(prevVal, nextVal);
+          if (diff) changes[[...path, key].join('.') || key] = diff;
+        }
+      } else if (typeof nextVal === 'object' && nextVal !== null && !Array.isArray(nextVal)) {
+        detectInObject(prevVal, nextVal, [...path, key]);
+      }
+    }
+  };
+  detectInObject(prev, next);
+  return Object.keys(changes).length > 0 ? changes : null;
+};
+
+const detectArrayChanges = (prev: any[], next: any[]): DiffResult<any> => {
+  if (!prev.length || !next.length) return null;
+  if (typeof prev[0] !== 'object' || typeof next[0] !== 'object') return null;
+  const idFields = ['id', 'label', 'name', 'key', 'code'];
+  const idField = idFields.find(f => prev[0].hasOwnProperty(f));
+  if (!idField) return null;
+  const matchFields = ['color', 'value', 'icon'];
+  const matchField = matchFields.find(f => prev[0].hasOwnProperty(f)) || idField;
+  return detectChanges(prev, next, item => String(item[idField]), item => String(item[matchField]));
+};
+
+// ─── Display Name (pure, no host dependency) ─────────────────────────
+
+export function toDisplayName(str: string): string {
+  return str.replace(/-/g, ' ');
 }
-
-// --- Display Name ---
-let _displayNameMod: any;
-function displayNameMod() { if (!_displayNameMod) _displayNameMod = getHostModule('display-name'); return _displayNameMod; }
-
-export function toDisplayName(slug: string): string { return displayNameMod().toDisplayName(slug); }
 
 // --- System Errors ---
 let _systemErrorsMod: any;

@@ -5,7 +5,7 @@ import { isPlainObject } from "@/core/shared";
 import { logInternal }   from "@/core/shared/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from "./relation-index";
 import { EARS } from "../types";
-import { randomId } from "../shared/random-id";
+import { randomId } from "@abuddy/sdk/utils";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/shared/paths";
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
