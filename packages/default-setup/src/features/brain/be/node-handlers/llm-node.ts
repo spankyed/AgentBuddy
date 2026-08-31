@@ -5,7 +5,7 @@ import { repository } from '@abuddy/sdk/ears';
 import { executeTemplate } from '../utils/template-executor';
 import { createPromptContext } from '../utils/prompt-context';
 import { EARS } from '@/registries/ears';
-import { generateText } from '@/shared-services/llm';
+import { generateText } from '../services/llm';
 import { reportBrainRuntimeError } from '../runtime-errors';
 
 interface LLMNodeConfig {
