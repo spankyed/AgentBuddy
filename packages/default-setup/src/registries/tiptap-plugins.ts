@@ -1,11 +1,11 @@
 import type { TiptapPlugin } from '@abuddy/sdk/fe/components/tiptap/injection-keys'
-import { commandSuggestionPluginKey } from '../shared/tiptap/command-suggestion-plugin'
-import { referenceSuggestionPluginKey } from '../shared/tiptap/reference-plugin-key'
-import { CommandViewerDecoration } from '../shared/tiptap/command-viewer-decoration'
-import { ReferenceNode } from '../shared/tiptap/reference-node'
-import { CommandSuggestion } from '../shared/tiptap/command-extension'
-import ReferenceSuggestionPopup from '../shared/tiptap/ReferenceSuggestionPopup.vue'
-import CommandSuggestionPopup from '../shared/tiptap/CommandSuggestionPopup.vue'
+import { commandSuggestionPluginKey } from './tiptap/command-suggestion-plugin'
+import { referenceSuggestionPluginKey } from './tiptap/reference-plugin-key'
+import { CommandViewerDecoration } from './tiptap/command-viewer-decoration'
+import { ReferenceNode } from './tiptap/reference-node'
+import { CommandSuggestion } from './tiptap/command-extension'
+import ReferenceSuggestionPopup from './tiptap/ReferenceSuggestionPopup.vue'
+import CommandSuggestionPopup from './tiptap/CommandSuggestionPopup.vue'
 
 export const tiptapPlugins: TiptapPlugin[] = [
   {
