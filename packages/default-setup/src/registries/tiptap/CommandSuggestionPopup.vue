@@ -39,7 +39,7 @@ const popupEl = ref<HTMLElement | null>(null)
 const popupStyle = ref<Record<string, string>>({ bottom: '0px', left: '0px' })
 
 const pluginState = computed(() => {
-  return commandSuggestionPluginKey.getState(props.editor.state)
+  return props.editor ? commandSuggestionPluginKey.getState(props.editor.state) : undefined
 })
 
 const isActive = computed(() => pluginState.value?.active ?? false)

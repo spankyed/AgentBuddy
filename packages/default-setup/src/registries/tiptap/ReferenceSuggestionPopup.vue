@@ -74,7 +74,7 @@ function getCategoryIcon(id: ReferenceCategory) {
 }
 
 const pluginState = computed(() => {
-  return referenceSuggestionPluginKey.getState(props.editor.state)
+  return props.editor ? referenceSuggestionPluginKey.getState(props.editor.state) : undefined
 })
 
 const isActive = computed(() => pluginState.value?.active ?? false)
