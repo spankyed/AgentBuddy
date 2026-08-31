@@ -12,7 +12,7 @@ import { settings } from '@/features/settings/be/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
-import { clearAllSchedules } from '@/shared-services/scheduler';
+import { clearAllSchedules } from './services/scheduler';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }

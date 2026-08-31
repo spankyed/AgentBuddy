@@ -8,7 +8,7 @@ import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { registerSchedule, unregisterByPrefix } from '@/shared-services/scheduler';
+import { registerSchedule, unregisterByPrefix } from './services/scheduler';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportBrainRuntimeError } from './runtime-errors';
