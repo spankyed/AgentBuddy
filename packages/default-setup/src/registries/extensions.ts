@@ -1,4 +1,3 @@
-import BrainInspectPanel from '../features/brain/fe/panel.vue';
 import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } from '../features/database/fe/components/simple-table/utils/json-detection';
 import DataRenderer from '../features/logs/fe/data-renderer.vue';
 import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '../features/flows/fe/canvas/nodes';
@@ -8,7 +7,6 @@ import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProv
 import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../features/notes/fe/references';
 import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from './reference-types';
 
-export { BrainInspectPanel };
 export { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue };
 export { DataRenderer };
 export { getNodeConfig, nodeConfigs };
