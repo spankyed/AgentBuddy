@@ -3,11 +3,12 @@ import { builtinModules } from 'module';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+import defsManifest from './defs/defs.config.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
 const monacoOutDir = resolve(__dirname, '../abuddy-sdk/src/fe/components/types-generated');
-const defaultSetupDefsDir = resolve(__dirname, '../default-setup/defs');
+const authoringOutDir = resolve(__dirname, '../default-setup/defs');
 
 // Derive paths from api/tsconfig.json (single source of truth)
 const tsconfigRaw = readFileSync(resolve(apiDir, 'tsconfig.json'), 'utf-8');
@@ -39,45 +40,29 @@ const cleanupPlugin = () => ({
 
 const shared = { plugins: [dtsPlugin(), cleanupPlugin()], external: builtinModules };
 
-// Shared entries: bundle once, output both Monaco (wrapped) and default-setup (unwrapped)
-const createSharedConfig = (name, input) => ({
-  input: resolve(apiDir, input),
-  output: [
-    {
-      file: resolve(monacoOutDir, `${name}-defs.d.ts`),
-      format: 'es',
-      intro: `declare module "@app/defs/${name}" {`,
-      outro: `}`,
-      generatedCode: { constBindings: true },
-    },
-    { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
-  ],
-  ...shared,
-});
-
-// Monaco-only entry
-const createMonacoConfig = (name, input) => ({
-  input: resolve(apiDir, input),
-  output: {
+function monacoOutput(name) {
+  return {
     file: resolve(monacoOutDir, `${name}-defs.d.ts`),
     format: 'es',
     intro: `declare module "@app/defs/${name}" {`,
     outro: `}`,
     generatedCode: { constBindings: true },
-  },
-  ...shared,
-});
+  };
+}
 
-// Default-setup-only entry
-const createDefaultSetupConfig = (name, input) => ({
-  input: resolve(apiDir, input),
-  output: { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
-  ...shared,
-});
+function authoringOutput(name) {
+  return { file: resolve(authoringOutDir, `${name}-defs.d.ts`), format: 'es' };
+}
 
-export default [
-  createSharedConfig('action', 'defs/action.ts'),
-  createSharedConfig('prompt', 'defs/prompt.ts'),
-  createMonacoConfig('database', 'defs/database.ts'),
-  createDefaultSetupConfig('default-setup', 'defs/default-setup.ts'),
-];
+// Build rollup configs from manifest
+export default defsManifest.map(({ name, entry, targets }) => {
+  const outputs = [];
+  if (targets.includes('monaco')) outputs.push(monacoOutput(name));
+  if (targets.includes('authoring')) outputs.push(authoringOutput(name));
+
+  return {
+    input: resolve(apiDir, 'defs', entry),
+    output: outputs.length === 1 ? outputs[0] : outputs,
+    ...shared,
+  };
+});

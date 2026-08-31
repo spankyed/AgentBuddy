@@ -7,7 +7,7 @@ import type { editor, IDisposable } from 'monaco-editor'
 
 type Monaco = typeof import('monaco-editor')
 type Language = 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext'
-type DslType = 'database' | 'action' | 'prompt'
+type DslType = string
 type EditorPreset = 'default' | 'readonly' | 'minimal' | 'dsl' | 'codeEditor'
 
 // ============================================================================
@@ -62,15 +62,37 @@ const LANGUAGE_MAP: Record<string, string> = {
   sql: 'sql',
 }
 
-// DSL type imports
+// DSL type schemas (raw .d.ts strings loaded by Vite)
 import databaseDslTypes from './types-generated/database-defs.d.ts?raw'
 import actionDslTypes from './types-generated/action-defs.d.ts?raw'
 import promptDslTypes from './types-generated/prompt-defs.d.ts?raw'
 
-const DSL_SCHEMAS: Record<DslType, string> = {
+const DSL_SCHEMAS: Record<string, string> = {
   database: databaseDslTypes,
   action: actionDslTypes,
   prompt: promptDslTypes,
+}
+
+// DSL globals: what each DSL type exposes as ambient globals in the Monaco editor.
+// Values are TypeScript type expressions referencing the DSL module via `_dsl`.
+const DSL_GLOBALS: Record<string, Record<string, string>> = {
+  action: {
+    services: 'typeof _dsl.services',
+    z: 'typeof _dsl.z',
+    flowId: 'string',
+  },
+  prompt: {
+    usePrompt: 'typeof _dsl.usePrompt',
+  },
+  database: {
+    EARS: 'typeof _dsl.EARS',
+    qx: 'typeof _dsl.qx',
+    tx: 'typeof _dsl.tx',
+    bp: 'typeof _dsl.bp',
+    spawn: 'typeof _dsl.spawn',
+    getSchemaStats: 'typeof _dsl.getSchemaStats',
+    isEntity: 'typeof _dsl.isEntity',
+  },
 }
 
 // ============================================================================
@@ -319,31 +341,18 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
     ? monaco.typescript.typescriptDefaults
     : monaco.typescript.javascriptDefaults
   
-  // Create wrapper that imports from the module and makes things available globally
+  const globals = DSL_GLOBALS[dslType]
+  if (!globals) return
+
+  const declarations = Object.entries(globals)
+    .map(([name, type]) => `const ${name}: ${type};`)
+    .join('\n      ')
+
   const wrapperContent = `
     import * as _dsl from '@app/defs/${dslType}';
-    
-    // Make DSL exports available globally for function body
-    ${dslType === 'action' ? `
     declare global {
-      const services: typeof _dsl.services;
-      const z: typeof _dsl.z;
-      const flowId: string;
-    }` : ''}
-    ${dslType === 'prompt' ? `
-    declare global {
-      const usePrompt: typeof _dsl.usePrompt;
-    }` : ''}
-    ${dslType === 'database' ? `
-    declare global {
-      const EARS: typeof _dsl.EARS;
-      const qx: typeof _dsl.qx;
-      const tx: typeof _dsl.tx;
-      const bp: typeof _dsl.bp;
-      const spawn: typeof _dsl.spawn;
-      const getSchemaStats: typeof _dsl.getSchemaStats;
-      const isEntity: typeof _dsl.isEntity;
-    }` : ''}
+      ${declarations}
+    }
   `
   
   langDefaults.addExtraLib(wrapperContent, `inmemory:///dsl-wrapper-${dslType}.d.ts`)
