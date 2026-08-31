@@ -40,6 +40,8 @@ export default defineConfig({
       { find: /^@\/core\/components\/(?!layout\/|welcome\/|ApiStatus)(.+)$/, replacement: resolve(sdkDir, 'src/fe/components/$1') },
       { find: /^@\/core\/utils\/monaco-config$/, replacement: resolve(sdkDir, 'src/fe/components/monaco-config.ts') },
       { find: /^@\/core\/composables\/(useMenuState|useContextMenu)(\.ts)?$/, replacement: resolve(sdkDir, 'src/fe/composables/$1.ts') },
+      // SDK rpc module delegates to backend host modules — on the frontend, redirect to renderer's trpc
+      { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
       // Catch-all @/ alias for renderer internals
       { find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
