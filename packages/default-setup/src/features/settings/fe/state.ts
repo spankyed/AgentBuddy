@@ -118,13 +118,19 @@ const settingsState = setup({
       });
     },
 
-    setSettingsData: assign(({ event }) => {
+    setSettingsData: assign(({ context, event, self }) => {
       const ev = typeOf('SETTINGS_LOADED', event);
-      return {
+      const result: Record<string, any> = {
         settings: ev.data,
         faqs: ev.faqs ?? [],
         isLoading: false,
+      };
+      if (!context.selectedPluginId) {
+        const appPlugins = self.system.get('application')?.getSnapshot()?.context?.plugins ?? [];
+        const withSettings = appPlugins.filter((p: any) => p.settings);
+        if (withSettings.length > 0) result.selectedPluginId = withSettings[0].id;
       }
+      return result;
     }),
 
     notifyPluginVisibility: ({ event, system }) => {
@@ -408,24 +414,18 @@ const settingsState = setup({
 }).createMachine({
   id,
   initial: 'loading',
-  context: ({ self }) => {
-    const appPlugins = self.system.get('application')?.getSnapshot()?.context?.plugins ?? [];
-    const pluginsWithSettings = appPlugins.filter((plugin: any) => plugin.settings);
-    const defaultPluginId = pluginsWithSettings.length > 0 ? pluginsWithSettings[0].id : null;
-
-    return {
-      settings: null,
-      faqs: [],
-      secretsData: [],
-      cliTestResults: {},
-      setupPackImport: freshSetupPack(),
-      activeTab: 'general',
-      generalNavItem: 'application',
-      selectedPluginId: defaultPluginId,
-      isLoading: true,
-      resetting: false,
-    }
-  },
+  context: () => ({
+    settings: null,
+    faqs: [],
+    secretsData: [],
+    cliTestResults: {},
+    setupPackImport: freshSetupPack(),
+    activeTab: 'general',
+    generalNavItem: 'application',
+    selectedPluginId: null as string | null,
+    isLoading: true,
+    resetting: false,
+  }),
   states: {
     loading: {
       entry: 'loadSettings',
