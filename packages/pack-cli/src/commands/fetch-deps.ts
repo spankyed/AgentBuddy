@@ -144,26 +144,25 @@ function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
   }
 }
 
-export async function resolveDep(root: string, depId: string): Promise<PackSnapshot | null> {
-  const cached = await resolveFromLocal(root, depId);
-  if (cached) return cached;
+// node_modules → workspace sibling → npm registry
+function resolveFromUpstream(root: string, depId: string): Promise<PackSnapshot | null> {
+  return resolveFromNodeModules(root, depId)
+    .then(r => r ?? resolveFromWorkspace(root, depId))
+    .then(r => r ?? resolveFromRegistry(depId));
+}
 
-  const fromNodeModules = await resolveFromNodeModules(root, depId);
-  if (fromNodeModules) {
-    cacheDep(root, depId, fromNodeModules);
-    return fromNodeModules;
+// skipCache: true = always re-resolve from upstream (used by `fetch-deps` to refresh)
+// skipCache: false = use local cache if available (used by `generate` for fast resolution)
+export async function resolveDep(root: string, depId: string, skipCache = false): Promise<PackSnapshot | null> {
+  if (!skipCache) {
+    const cached = await resolveFromLocal(root, depId);
+    if (cached) return cached;
   }
 
-  const fromWorkspace = await resolveFromWorkspace(root, depId);
-  if (fromWorkspace) {
-    cacheDep(root, depId, fromWorkspace);
-    return fromWorkspace;
-  }
-
-  const fromRegistry = await resolveFromRegistry(depId);
-  if (fromRegistry) {
-    cacheDep(root, depId, fromRegistry);
-    return fromRegistry;
+  const resolved = await resolveFromUpstream(root, depId);
+  if (resolved) {
+    cacheDep(root, depId, resolved);
+    return resolved;
   }
 
   return null;
@@ -187,7 +186,7 @@ export async function fetchDeps(_args: string[]) {
   const failed: string[] = [];
 
   for (const depId of depIds) {
-    const result = await resolveDep(root, depId);
+    const result = await resolveDep(root, depId, true);
     if (result) {
       const entityCount = Object.keys(result.types.entities).length;
       const relCount = Object.keys(result.types.relKinds).length;
