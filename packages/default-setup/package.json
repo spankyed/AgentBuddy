@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./build": "./build/compile-pack.ts"
+    "./build": "./build/index.ts"
   },
   "scripts": {
     "compile:actions": "tsx build/compile.ts actions",
@@ -16,6 +16,7 @@
     "compile:faq": "tsx build/compile.ts faq",
     "compile:all": "tsx build/compile.ts all",
     "compile": "tsx build/compile.ts all",
+    "build:snapshot": "tsx build/build-snapshot.ts",
     "sync:external": "bash scripts/sync-external.sh",
     "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit",

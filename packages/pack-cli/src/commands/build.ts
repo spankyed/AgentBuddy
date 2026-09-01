@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { compilePack, type CompilePackOptions } from '@app/default-setup/build';
+import { compilePack, type CompilePackOptions, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
+import { registerDefaultCompilers } from '@app/default-setup/build';
 import { generate } from './generate';
 
 function findPackRoot(from: string): string {
@@ -18,6 +19,7 @@ export async function build(_args: string[]) {
 
   await generate([]);
 
+  registerDefaultCompilers();
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
 
   const packDir = root;
@@ -41,11 +43,22 @@ export async function build(_args: string[]) {
 
   const result = await compilePack(options);
 
-  const typeManifest = {
+  const types: PackTypeManifest = {
     entities: manifest.entities ?? {},
     relKinds: manifest.relKinds ?? {},
   };
-  fs.writeFileSync(path.join(outputDir, 'types.json'), JSON.stringify(typeManifest, null, 2));
+  fs.writeFileSync(path.join(outputDir, 'types.json'), JSON.stringify(types, null, 2));
+
+  const defsDir = path.join(root, 'defs');
+  const defs: Record<string, string> = {};
+  if (fs.existsSync(defsDir)) {
+    for (const file of fs.readdirSync(defsDir)) {
+      if (!file.endsWith('.d.ts')) continue;
+      defs[file.replace(/\.d\.ts$/, '')] = fs.readFileSync(path.join(defsDir, file), 'utf-8');
+    }
+  }
+  const snapshot: PackSnapshot = { types, defs, manifest };
+  fs.writeFileSync(path.join(outputDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
   console.log(`\nBuild complete:`);
   for (const [type, count] of Object.entries(result.seeds)) {

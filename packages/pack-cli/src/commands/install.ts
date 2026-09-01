@@ -33,7 +33,7 @@ function copyDir(src: string, dest: string): void {
   }
 }
 
-function validateInstallSource(dir: string): { id: string; name: string; version: string } {
+function validateInstallSource(dir: string): { id: string; name: string; version: string; dependencies?: Record<string, string> } {
   const manifestPath = path.join(dir, 'abuddy.json');
   if (!fs.existsSync(manifestPath)) {
     throw new Error('No abuddy.json found in pack source. Run "abuddy build" first.');
@@ -54,6 +54,23 @@ function validateInstallSource(dir: string): { id: string; name: string; version
   }
 
   return manifest;
+}
+
+const BUILTIN_PACKS = new Set(['default-setup']);
+
+function checkDependencies(manifest: { dependencies?: Record<string, string> }, packsDir: string): string[] {
+  const deps = manifest.dependencies ?? {};
+  const missing: string[] = [];
+
+  for (const depId of Object.keys(deps)) {
+    if (BUILTIN_PACKS.has(depId)) continue;
+    const depManifest = path.join(packsDir, depId, 'abuddy.json');
+    if (!fs.existsSync(depManifest)) {
+      missing.push(depId);
+    }
+  }
+
+  return missing;
 }
 
 export async function install(args: string[]) {
@@ -91,6 +108,12 @@ export async function install(args: string[]) {
 
   try {
     const manifest = validateInstallSource(sourceDir);
+    const missing = checkDependencies(manifest, packsDir);
+    if (missing.length > 0) {
+      console.warn(`\n  Warning: missing dependencies: ${missing.join(', ')}`);
+      console.warn(`  Install them first for full functionality.`);
+    }
+
     const destDir = path.join(packsDir, manifest.id);
 
     if (fs.existsSync(destDir)) {

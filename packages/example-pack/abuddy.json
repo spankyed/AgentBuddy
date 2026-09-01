@@ -1,0 +1,16 @@
+{
+  "id": "example-pack",
+  "name": "Example Pack",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "entities": {
+    "Bookmark": "bookmark"
+  },
+  "relKinds": {},
+  "seedTypes": ["actions", "flows"],
+  "dependencies": {
+    "default-setup": ">=0.1.0"
+  },
+  "plugins": [],
+  "permissions": []
+}

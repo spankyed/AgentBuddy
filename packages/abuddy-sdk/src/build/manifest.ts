@@ -20,6 +20,12 @@ export interface PackTypeManifest {
   relKinds: Record<string, string>;
 }
 
+export interface PackSnapshot {
+  types: PackTypeManifest;
+  defs: Record<string, string>;
+  manifest: PackManifest;
+}
+
 
 export function seedFile(name: string): string {
   return `${name}.seed.json`;

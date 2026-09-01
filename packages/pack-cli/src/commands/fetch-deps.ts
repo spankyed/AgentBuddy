@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PackManifest, PackTypeManifest } from '@abuddy/sdk/build';
+import type { PackManifest, PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
 
 function findPackRoot(from: string): string {
   let dir = from;
@@ -11,51 +11,69 @@ function findPackRoot(from: string): string {
   throw new Error('No abuddy.json found. Run this command from inside a pack directory.');
 }
 
-async function resolveFromLocal(root: string, depId: string): Promise<PackTypeManifest | null> {
-  const cached = path.join(root, '.abuddy', 'deps', depId, 'types.json');
-  if (fs.existsSync(cached)) {
-    return JSON.parse(fs.readFileSync(cached, 'utf-8'));
+function wrapTypes(types: PackTypeManifest): PackSnapshot {
+  return { types, defs: {}, manifest: { id: '', name: '', version: '' } };
+}
+
+function tryReadSnapshot(snapshotPath: string): PackSnapshot | null {
+  if (fs.existsSync(snapshotPath)) {
+    return JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
   }
   return null;
 }
 
-async function resolveFromNodeModules(root: string, depId: string): Promise<PackTypeManifest | null> {
+function tryReadTypes(typesPath: string): PackSnapshot | null {
+  if (fs.existsSync(typesPath)) {
+    return wrapTypes(JSON.parse(fs.readFileSync(typesPath, 'utf-8')));
+  }
+  return null;
+}
+
+function resolveFromDir(dir: string): PackSnapshot | null {
+  return tryReadSnapshot(path.join(dir, 'snapshot.json'))
+    ?? tryReadTypes(path.join(dir, 'types.json'));
+}
+
+async function resolveFromLocal(root: string, depId: string): Promise<PackSnapshot | null> {
+  const depDir = path.join(root, '.abuddy', 'deps', depId);
+  return tryReadSnapshot(path.join(depDir, 'snapshot.json'))
+    ?? tryReadTypes(path.join(depDir, 'types.json'));
+}
+
+async function resolveFromNodeModules(root: string, depId: string): Promise<PackSnapshot | null> {
   const candidates = [
-    path.join(root, 'node_modules', `@abuddy-pack`, depId, 'dist', 'types.json'),
-    path.join(root, 'node_modules', `@abuddy-pack`, depId, 'types.json'),
+    path.join(root, 'node_modules', '@abuddy-pack', depId, 'dist'),
+    path.join(root, 'node_modules', '@abuddy-pack', depId),
   ];
 
   if (depId === 'default-setup') {
     candidates.unshift(
-      path.join(root, 'node_modules', '@abuddy', 'sdk', 'default-setup-types.json'),
-      path.join(root, 'node_modules', '@app', 'default-setup', 'dist', 'types.json'),
+      path.join(root, 'node_modules', '@app', 'default-setup', 'dist'),
     );
   }
 
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return JSON.parse(fs.readFileSync(candidate, 'utf-8'));
-    }
+  for (const dir of candidates) {
+    const result = resolveFromDir(dir);
+    if (result) return result;
   }
   return null;
 }
 
-async function resolveFromWorkspace(root: string, depId: string): Promise<PackTypeManifest | null> {
+async function resolveFromWorkspace(root: string, depId: string): Promise<PackSnapshot | null> {
   const candidates = [
-    path.resolve(root, '..', depId, 'dist', 'types.json'),
-    path.resolve(root, '..', '..', 'packages', depId, 'dist', 'types.json'),
-    path.resolve(root, '..', '..', depId, 'dist', 'types.json'),
+    path.resolve(root, '..', depId, 'dist'),
+    path.resolve(root, '..', '..', 'packages', depId, 'dist'),
+    path.resolve(root, '..', '..', depId, 'dist'),
   ];
 
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return JSON.parse(fs.readFileSync(candidate, 'utf-8'));
-    }
+  for (const dir of candidates) {
+    const result = resolveFromDir(dir);
+    if (result) return result;
   }
   return null;
 }
 
-async function resolveFromRegistry(depId: string): Promise<PackTypeManifest | null> {
+async function resolveFromRegistry(depId: string): Promise<PackSnapshot | null> {
   const packageName = `@abuddy-pack/${depId}`;
   const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`;
 
@@ -80,22 +98,17 @@ async function resolveFromRegistry(depId: string): Promise<PackTypeManifest | nu
     if (!tarballRes.ok) return null;
 
     const buffer = Buffer.from(await tarballRes.arrayBuffer());
-    const types = extractTypesFromTarball(buffer);
-    return types;
+    return extractSnapshotFromTarball(buffer);
   } catch {
     return null;
   }
 }
 
-function extractTypesFromTarball(buffer: Buffer): PackTypeManifest | null {
-  // npm tarballs are gzipped tar archives
-  // The types.json is at package/dist/types.json
-  // Using a minimal tar parser for this specific case
+function extractSnapshotFromTarball(buffer: Buffer): PackSnapshot | null {
   try {
     const { gunzipSync } = require('node:zlib') as typeof import('node:zlib');
     const decompressed = gunzipSync(buffer);
 
-    // Scan tar entries for dist/types.json or types.json
     let offset = 0;
     while (offset < decompressed.length - 512) {
       const header = decompressed.subarray(offset, offset + 512);
@@ -105,9 +118,14 @@ function extractTypesFromTarball(buffer: Buffer): PackTypeManifest | null {
       const sizeOctal = header.subarray(124, 136).toString('utf-8').replace(/\0/g, '').trim();
       const size = parseInt(sizeOctal, 8) || 0;
 
-      if (name.endsWith('dist/types.json') || name.endsWith('/types.json')) {
+      if (name.endsWith('dist/snapshot.json') || name.endsWith('/snapshot.json')) {
         const content = decompressed.subarray(offset + 512, offset + 512 + size).toString('utf-8');
         return JSON.parse(content);
+      }
+
+      if (name.endsWith('dist/types.json') || name.endsWith('/types.json')) {
+        const content = decompressed.subarray(offset + 512, offset + 512 + size).toString('utf-8');
+        return wrapTypes(JSON.parse(content));
       }
 
       offset += 512 + Math.ceil(size / 512) * 512;
@@ -116,32 +134,37 @@ function extractTypesFromTarball(buffer: Buffer): PackTypeManifest | null {
   return null;
 }
 
-function cacheDep(root: string, depId: string, manifest: PackTypeManifest): void {
+function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
   const depDir = path.join(root, '.abuddy', 'deps', depId);
   fs.mkdirSync(depDir, { recursive: true });
-  fs.writeFileSync(path.join(depDir, 'types.json'), JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
+  fs.writeFileSync(path.join(depDir, 'types.json'), JSON.stringify(snapshot.types, null, 2));
+
+  const defsDir = path.join(depDir, 'defs');
+  if (Object.keys(snapshot.defs).length > 0) {
+    fs.mkdirSync(defsDir, { recursive: true });
+    for (const [key, content] of Object.entries(snapshot.defs)) {
+      fs.writeFileSync(path.join(defsDir, `${key}.d.ts`), content);
+    }
+  }
 }
 
-export async function resolveDep(root: string, depId: string): Promise<PackTypeManifest | null> {
-  // 1. Local cache
+export async function resolveDep(root: string, depId: string): Promise<PackSnapshot | null> {
   const cached = await resolveFromLocal(root, depId);
   if (cached) return cached;
 
-  // 2. Installed node_modules
   const fromNodeModules = await resolveFromNodeModules(root, depId);
   if (fromNodeModules) {
     cacheDep(root, depId, fromNodeModules);
     return fromNodeModules;
   }
 
-  // 3. Monorepo workspace sibling
   const fromWorkspace = await resolveFromWorkspace(root, depId);
   if (fromWorkspace) {
     cacheDep(root, depId, fromWorkspace);
     return fromWorkspace;
   }
 
-  // 4. npm registry
   const fromRegistry = await resolveFromRegistry(depId);
   if (fromRegistry) {
     cacheDep(root, depId, fromRegistry);
@@ -163,7 +186,7 @@ export async function fetchDeps(_args: string[]) {
     return;
   }
 
-  console.log(`Fetching ${depIds.length} dependency type(s)...`);
+  console.log(`Fetching ${depIds.length} dependency snapshot(s)...`);
 
   let resolved = 0;
   const failed: string[] = [];
@@ -171,9 +194,10 @@ export async function fetchDeps(_args: string[]) {
   for (const depId of depIds) {
     const result = await resolveDep(root, depId);
     if (result) {
-      const entityCount = Object.keys(result.entities).length;
-      const relCount = Object.keys(result.relKinds).length;
-      console.log(`  ${depId}: ${entityCount} entities, ${relCount} relKinds`);
+      const entityCount = Object.keys(result.types.entities).length;
+      const relCount = Object.keys(result.types.relKinds).length;
+      const defCount = Object.keys(result.defs).length;
+      console.log(`  ${depId}: ${entityCount} entities, ${relCount} relKinds, ${defCount} def(s)`);
       resolved++;
     } else {
       failed.push(depId);
