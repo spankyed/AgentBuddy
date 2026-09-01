@@ -87,12 +87,17 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   const { packDir, pluginsDir, outputDir, baseSettingsFile } = options;
 
   // 1. Load parent pack config
-  const packConfigPath = path.join(packDir, 'pack.config.ts');
-  if (!fs.existsSync(packConfigPath)) {
-    throw new Error(`No pack.config.ts found in ${packDir}`);
+  let packConfig: PackConfig;
+  if (options.packConfig) {
+    packConfig = options.packConfig;
+  } else {
+    const packConfigPath = path.join(packDir, 'pack.config.ts');
+    if (!fs.existsSync(packConfigPath)) {
+      throw new Error(`No pack.config.ts found in ${packDir}`);
+    }
+    const mod = await import(pathToFileURL(packConfigPath).href);
+    packConfig = (mod.default ?? mod) as PackConfig;
   }
-  const mod = await import(pathToFileURL(packConfigPath).href);
-  const packConfig = (mod.default ?? mod) as PackConfig;
 
   if (packConfig.compilers) {
     for (const { type, compiler } of packConfig.compilers) {

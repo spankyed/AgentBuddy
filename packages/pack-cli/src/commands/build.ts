@@ -1,36 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { compilePack, registerSeedCompiler, type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
+import { compilePack, type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
 import { generate } from './generate';
 import { findPackRoot, readManifest } from '../utils';
 
-async function registerDepCompilers(root: string, depId: string): Promise<void> {
-  const candidates = [
-    // Workspace siblings (same paths as fetch-deps resolver)
-    path.resolve(root, '..', depId, 'pack.config.ts'),
-    path.resolve(root, '..', '..', 'packages', depId, 'pack.config.ts'),
-    path.resolve(root, '..', '..', depId, 'pack.config.ts'),
-    // node_modules (npm-installed dep)
-    path.resolve(root, 'node_modules', '@abuddy-pack', depId, 'pack.config.ts'),
-    path.resolve(root, 'node_modules', '@app', depId, 'pack.config.ts'),
-  ];
+async function loadPackConfig(root: string): Promise<PackConfig | null> {
+  const configPath = path.join(root, 'pack.config.ts');
+  if (!fs.existsSync(configPath)) return null;
 
-  for (const configPath of candidates) {
-    if (!fs.existsSync(configPath)) continue;
-
-    const { tsImport } = await import('tsx/esm/api');
-    const mod = await tsImport(configPath, import.meta.url);
-    const config = (mod.default ?? mod) as PackConfig;
-
-    if (config.compilers) {
-      for (const { type, compiler } of config.compilers) {
-        registerSeedCompiler(type, compiler);
-      }
-    }
-    return;
-  }
-
-  console.warn(`  Warning: could not find pack.config.ts for dependency "${depId}" — custom compilers won't be available`);
+  const { tsImport } = await import('tsx/esm/api');
+  const mod = await tsImport(configPath, import.meta.url);
+  return (mod.default ?? mod) as PackConfig;
 }
 
 export async function build(args: string[]) {
@@ -41,12 +21,13 @@ export async function build(args: string[]) {
     await generate([]);
   }
 
-  const deps = Object.keys(manifest.dependencies ?? {});
-  for (const depId of deps) {
-    await registerDepCompilers(root, depId);
-  }
-
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
+
+  const packConfig = await loadPackConfig(root);
+  if (!packConfig) {
+    console.log('No pack.config.ts found. Nothing to compile.');
+    return;
+  }
 
   const packDir = root;
   const pluginsDir = path.join(root, 'src', 'plugins');
@@ -55,16 +36,12 @@ export async function build(args: string[]) {
     ? path.join(root, 'src', 'base-settings.ts')
     : undefined;
 
-  if (!fs.existsSync(path.join(root, 'pack.config.ts'))) {
-    console.log('No pack.config.ts found. Nothing to compile.');
-    return;
-  }
-
   const options: CompilePackOptions = {
     packDir,
     pluginsDir: fs.existsSync(pluginsDir) ? pluginsDir : undefined,
     outputDir,
     baseSettingsFile,
+    packConfig,
   };
 
   const result = await compilePack(options);

@@ -30,6 +30,7 @@ export interface CompilePackOptions {
   pluginsDir?: string;
   outputDir: string;
   baseSettingsFile?: string;
+  packConfig?: PackConfig;
 }
 
 export interface CompilePackResult {
