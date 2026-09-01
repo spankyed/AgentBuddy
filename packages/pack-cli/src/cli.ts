@@ -14,6 +14,8 @@ Commands:
   build               Compile pack artifacts to dist/
   validate            Check manifest and types
   install <path>      Install a pack from a directory or .zip
+  uninstall <id>      Remove an installed pack
+  list                Show installed packs
   dev                 Watch mode for local development
 
 Options:
@@ -28,6 +30,8 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'build':      async () => (await import('./commands/build')).build,
   'validate':   async () => (await import('./commands/validate')).validate,
   'install':    async () => (await import('./commands/install')).install,
+  'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
+  'list':       async () => (await import('./commands/list')).list,
   'dev':        async () => (await import('./commands/dev')).dev,
 };
 

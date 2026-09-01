@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFileSync } from 'node:child_process';
 
-function getPacksDir(): string {
+export function getPacksDir(): string {
   const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
   return path.join(userDataPath, 'packs');
 }
