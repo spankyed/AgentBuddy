@@ -120,8 +120,8 @@ async function validateDeps(root: string, manifestPath: string): Promise<Manifes
   const deps = manifest.dependencies as Record<string, string> | undefined;
   if (!deps || Object.keys(deps).length === 0) return { errors, warnings };
 
-  for (const depId of Object.keys(deps)) {
-    const resolved = resolveDep(root, depId);
+  for (const [depId, depValue] of Object.entries(deps)) {
+    const resolved = await resolveDep(root, depId, depValue);
     if (!resolved) {
       warnings.push(`Dependency "${depId}" could not be resolved — run "abuddy fetch-deps"`);
     }

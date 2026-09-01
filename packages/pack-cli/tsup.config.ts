@@ -6,5 +6,5 @@ export default defineConfig({
   target: 'node22',
   clean: true,
   noExternal: ['@abuddy/sdk'],
-  external: ['esbuild', 'typescript', 'tsx', 'tar'],
+  external: ['esbuild', 'typescript', 'tsx', 'tar', 'semver'],
 });
