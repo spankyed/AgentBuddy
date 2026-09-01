@@ -12,6 +12,7 @@ Commands:
   generate            Generate EARS types from manifest + deps
   fetch-deps          Fetch dependency type manifests
   build [--skip-generate]  Compile pack artifacts to dist/
+  pack                Bundle dist/ into a .tgz for release
   validate            Check manifest and types
   install <path>      Install a pack from a directory or .zip
   uninstall <id>      Remove an installed pack
@@ -28,6 +29,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'generate':   async () => (await import('./commands/generate')).generate,
   'fetch-deps': async () => (await import('./commands/fetch-deps')).fetchDeps,
   'build':      async () => (await import('./commands/build')).build,
+  'pack':       async () => (await import('./commands/pack')).pack,
   'validate':   async () => (await import('./commands/validate')).validate,
   'install':    async () => (await import('./commands/install')).install,
   'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
