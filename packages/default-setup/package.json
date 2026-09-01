@@ -4,8 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "sync:external": "bash scripts/sync-external.sh",
-    "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

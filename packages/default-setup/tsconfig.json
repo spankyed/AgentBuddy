@@ -13,12 +13,12 @@
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/registries/*": ["./src/registries/*"],
       "@/plugins/*": ["./src/plugins/*"],
-      "@/shared-services/*": ["./src/shared/services/*"],
-      "@/*": ["../api/src/*"]
+      "@/*": ["../api/src/*"],
+      "@app/api/dist/*": ["../api/dist/*"]
     }
   },
   "include": [
-    "src/**/*.ts", "build/**/*.ts", "defs/**/*.ts", "tests/**/*.ts"
+    "src/**/*.ts", "tests/**/*.ts"
   ],
   "exclude": [
     "src/**/*.example.ts",

@@ -1,6 +1,5 @@
 node_modules/
 dist/
-defs/monaco/
 .abuddy/
 .env
 .DS_Store

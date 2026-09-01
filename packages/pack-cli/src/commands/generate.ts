@@ -174,15 +174,35 @@ function emitTypes(depSnapshots: Map<string, PackSnapshot>): string {
   ];
 
   const seen = new Set<string>();
+  const servicesSources: Array<{ depId: string; defKey: string }> = [];
 
   for (const [depId, snapshot] of depSnapshots) {
     for (const key of Object.keys(snapshot.defs)) {
       const exported = parseExportedTypeNames(snapshot.defs[key]);
-      const filtered = exported.filter(n => !EARS_PROVIDED.has(n) && !seen.has(n));
+
+      if (exported.includes('Services')) {
+        servicesSources.push({ depId, defKey: key });
+      }
+
+      const filtered = exported.filter(n =>
+        !EARS_PROVIDED.has(n) && !seen.has(n) && n !== 'Services'
+      );
       if (filtered.length === 0) continue;
       for (const n of filtered) seen.add(n);
       lines.push(`export type { ${filtered.join(', ')} } from '../deps/${depId}/defs/${key}';`);
     }
+  }
+
+  if (servicesSources.length === 1) {
+    const s = servicesSources[0];
+    lines.push(`export type { Services } from '../deps/${s.depId}/defs/${s.defKey}';`);
+  } else if (servicesSources.length > 1) {
+    for (let i = 0; i < servicesSources.length; i++) {
+      const s = servicesSources[i];
+      lines.push(`import type { Services as _S${i} } from '../deps/${s.depId}/defs/${s.defKey}';`);
+    }
+    const intersection = servicesSources.map((_, i) => `_S${i}`).join(' & ');
+    lines.push(`export type Services = ${intersection};`);
   }
 
   lines.push('');

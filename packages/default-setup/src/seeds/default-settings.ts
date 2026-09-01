@@ -1,4 +1,4 @@
-import type { SettingsData } from '../defs/action-defs'
+import type { SettingsData } from '@app/api/dist/defs/action-defs'
 
 const settings: SettingsData = {
   general: {

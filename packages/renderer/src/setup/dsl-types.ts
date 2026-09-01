@@ -1,8 +1,8 @@
 import { registerDslType } from '@abuddy/sdk/fe/components/monaco-config'
 
-import actionSchema from '../../defs/monaco/action-defs.d.ts?raw'
-import promptSchema from '../../defs/monaco/prompt-defs.d.ts?raw'
-import databaseSchema from '../../defs/monaco/database-defs.d.ts?raw'
+import actionSchema from '../../../api/dist/defs/monaco/action-defs.d.ts?raw'
+import promptSchema from '../../../api/dist/defs/monaco/prompt-defs.d.ts?raw'
+import databaseSchema from '../../../api/dist/defs/monaco/database-defs.d.ts?raw'
 
 registerDslType('action', {
   prefix: 'action:',

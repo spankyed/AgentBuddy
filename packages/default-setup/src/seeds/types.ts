@@ -1,6 +1,6 @@
 import type { z } from 'zod';
-import type { EARS, ActionParameter, TemplateInput } from '../defs/default-setup-defs';
-import type { Services as ImportedServices } from '../defs/action-defs';
+import type { EARS, ActionParameter, TemplateInput } from '@app/api/dist/defs/default-setup-defs';
+import type { Services as ImportedServices } from '@app/api/dist/defs/action-defs';
 
 export type Services = ImportedServices;
 export type Z = typeof z;
@@ -23,7 +23,7 @@ export type {
   DSLCreateNode,
   DSLUpdateNode,
   DSLKeepAliveNode,
-} from '../defs/default-setup-defs';
+} from '@app/api/dist/defs/default-setup-defs';
 
 export interface ActionMeta {
   label: string;
