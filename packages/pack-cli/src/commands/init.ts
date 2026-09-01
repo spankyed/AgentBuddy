@@ -78,6 +78,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
 const GITIGNORE_TEMPLATE = `node_modules/
 dist/
 .abuddy/
+*.tgz
 `;
 
 async function prompt(question: string, defaultValue?: string): Promise<string> {
