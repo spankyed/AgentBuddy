@@ -39,6 +39,10 @@ export default {
 const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../.abuddy/generated/ears';
 `;
 
+const TYPES_TEMPLATE = `export { EARS } from '../.abuddy/generated/types';
+export type { BaseEntity, EntityId } from '../.abuddy/generated/types';
+`;
+
 const TSCONFIG_TEMPLATE = JSON.stringify({
   compilerOptions: {
     target: 'ES2022',
@@ -117,13 +121,16 @@ export async function init(args: string[]) {
     path.join(dir, 'src', 'entities.ts'),
     ENTITIES_TEMPLATE,
   );
+  fs.writeFileSync(
+    path.join(dir, 'src', 'types.ts'),
+    TYPES_TEMPLATE,
+  );
 
   await generate([], dir);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
-  console.log(`\nGenerated types at .abuddy/generated/ears.ts`);
-  console.log(`\nImport entities in your pack code:`);
-  console.log(`  import { EARS } from '../entities';`);
+  console.log(`\nImport types in your seed code:`);
+  console.log(`  import type { ActionMeta, Services, Z } from '../../types';`);
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);
