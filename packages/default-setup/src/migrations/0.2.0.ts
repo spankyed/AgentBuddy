@@ -1,8 +1,8 @@
 import { repository } from '@/repository';
 const { settingsQueries, settingsCommands } = repository;
-import type { Migration } from './index';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.2.0',
   description: 'Add claude-session tag, replace chat/note modes with manager mode, backfill recentThreadsLimit, seed default mode/phase, backfill recordingLimitMinutes',
   up: () => {

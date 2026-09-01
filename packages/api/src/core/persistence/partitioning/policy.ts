@@ -16,12 +16,12 @@ export interface PartitionPolicy {
 const entTypeOf = (id: string) => (id.split('-')[0] ?? id) as EARS.Entity;
 
 export function makePolicy(config: {
-  excludedEntityTypes: Set<EARS.Entity>;          // e.g. new Set([EARS.Entity.TNode])
-  secretEntityTypes?: Set<EARS.Entity>;           // e.g. new Set([EARS.Entity.Secret])
-  hydratePartitions?: Set<Partition>;             // default: new Set(['primary', 'secrets'])
+  excludedEntityTypes: Set<EARS.Entity>;
+  secretEntityTypes?: Set<EARS.Entity>;
+  hydratePartitions?: Set<Partition>;
 }): PartitionPolicy {
   const excluded = config.excludedEntityTypes;
-  const secrets = config.secretEntityTypes ?? new Set([EARS.Entity.Secret]);
+  const secrets = config.secretEntityTypes ?? new Set<EARS.Entity>();
   const hydrate = config.hydratePartitions ?? new Set<Partition>(['primary', 'secrets']);
 
   return {
@@ -31,7 +31,7 @@ export function makePolicy(config: {
       if (excluded.has(t)) return 'volatileBackup';
       return 'primary';
     },
-    
+
     routeRelation({ srcType, tgtType }) {
       // If either side is a secret, put the relation in secrets partition
       if (secrets.has(srcType) || secrets.has(tgtType)) {
@@ -43,7 +43,7 @@ export function makePolicy(config: {
       }
       return 'primary';
     },
-    
+
     hydrate,
   };
 }

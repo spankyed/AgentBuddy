@@ -13,10 +13,11 @@ import {
 import { relationIndex } from "@/core/ears/relation-index";
 import { EARS } from "@/core/types";
 import { asArr, MaybeArr } from "@/core/shared";
+import { getRegisteredEntityTypes } from "@/core/packs/pack-registration";
 
 /*──────── helpers ────────*/
 const isEntity = (v: unknown): v is EARS.Entity =>
-  Object.values(EARS.Entity).includes(v as EARS.Entity);
+  typeof v === 'string' && getRegisteredEntityTypes().has(v);
 
 // memoised prefix checker – avoids re‑allocating closures
 const prefixCache = new Map<EARS.Entity, (id: EARS.EntityId) => boolean>();
@@ -61,10 +62,11 @@ export const qx = (
       const allEntities = new Set(getAllEntities());
       return (seed as readonly EARS.EntityId[]).filter(id => allEntities.has(id));
     }
+    if (typeof seed !== 'string') return [];
     if (isEntity(seed)) return [...getEntitiesOfType(seed)];
-    // Check if the single entity ID actually exists
+    const id = seed as EARS.EntityId;
     const allEntities = getAllEntities();
-    return allEntities.includes(seed as EARS.EntityId) ? [seed as EARS.EntityId] : [];
+    return allEntities.includes(id) ? [id] : [];
   };
 
   let ids: EARS.EntityId[] = resolveSeed();

@@ -1,15 +1,15 @@
-import { EARS } from '@/core/types';
+import { EARS } from '../registries/ears';
 import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import type { ArtifactEntity, ThreadEntity } from '@/plugins/threads/be/types';
-import type { Migration } from './index';
+import type { ArtifactEntity, ThreadEntity } from '../plugins/threads/be/types';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
 /**
  * Convert imported Codex session markers that were accidentally stored as
  * `claude-session` artifacts before Codex had a first-class artifact type.
  */
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.3.1',
   description: 'Backfill Codex session artifact markers',
   up: () => {

@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { OutgoingSystemEvents } from '@/core/router/events';
 import type { IncomingSystemEvents } from '@/systems';
-import { eventValidationMap } from '@/systems';
+import { getEventValidationMap } from '@/systems';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/shared/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
@@ -33,7 +33,7 @@ export const systemBusRouter = router({
       typeof val === 'object' && val !== null && 'type' in val && 'systemId' in val
     ))
     .mutation(({ input }) => {
-      const validTypes = eventValidationMap.get(input.systemId);
+      const validTypes = getEventValidationMap().get(input.systemId);
       if (!validTypes) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown system: "${input.systemId}"` });
       }

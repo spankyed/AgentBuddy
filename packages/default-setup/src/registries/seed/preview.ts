@@ -8,29 +8,9 @@ import type { FlowDSL } from '../../plugins/flows/be/dsl';
 import type { ExportedLibrary, ExportedItem } from '../../plugins/library/be/export-types';
 import type { ExportedNotes } from '../../plugins/notes/be/export-types';
 import { loadJSON } from './index';
-import { seedPath } from '@abuddy/sdk/build';
+import { seedPath, type SetupPackPreview, type SetupPackType } from '@abuddy/sdk/build';
 
-export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
-
-export type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
-
-export interface SetupPackPreviewItem {
-  key: string;
-  description?: string;
-  kind?: SetupPackItemKind;
-  childCount?: number;
-}
-
-export interface SetupPackPreview {
-  directory: string;
-  actions: SetupPackPreviewItem[];
-  prompts: SetupPackPreviewItem[];
-  flows: SetupPackPreviewItem[];
-  library: SetupPackPreviewItem[];
-  notes: SetupPackPreviewItem[];
-  settings: SetupPackPreviewItem[];
-  missing: SetupPackType[];
-}
+export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType, SetupPackItemKind } from '@abuddy/sdk/build';
 
 interface CompiledActionLike { label: string; description?: string }
 interface CompiledPromptLike { label: string; description?: string }

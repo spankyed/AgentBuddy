@@ -33,6 +33,9 @@ export type {
 // Cron validation
 export { validateCronExpression } from './cron-utils';
 
+// Pack preview types
+export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType, SetupPackItemKind } from './preview';
+
 // Pack manifest types
 export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackPermission,

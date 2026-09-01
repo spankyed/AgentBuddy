@@ -1,13 +1,13 @@
-import { EARS } from '@/core/types';
+import { EARS } from '../registries/ears';
 import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { repository } from '@/repository';
 const { settingsQueries, settingsCommands } = repository;
-import type { ThreadEntity, ArtifactEntity } from '@/plugins/threads/be/types';
-import type { Migration } from './index';
+import type { ThreadEntity, ArtifactEntity } from '../plugins/threads/be/types';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.2.5',
   description: 'Backfill chatState from session artifacts; backfill sourceHash on DSL entities; rename claude-session tag to claude-code',
   up: () => {

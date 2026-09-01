@@ -1,8 +1,8 @@
 import { repository } from '@/repository';
 const { settingsQueries, settingsCommands } = repository;
-import type { Migration } from './index';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.3.13',
   description: 'Backfill browser and notes plugin visibility defaults',
   up: () => {

@@ -4,9 +4,17 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
+import { registerPack } from './pack-registration';
 import { APP_VERSION } from '@/version';
 
 const logger = createLogger('pack-loader');
+
+export function loadBuiltInPack(): void {
+  // Dynamic require avoids a static import chain into default-setup source.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = require('../../../../default-setup/src/pack-entry');
+  registerPack(mod.registration);
+}
 
 // Packages provided by the host that packs can require() without bundling
 const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
@@ -194,6 +202,18 @@ export function registerPackSystems(
       eventValidationMap.set(systemId, system.events);
       logger.info(`Registered system: ${systemId}`);
     }
+  }
+}
+
+export function registerExternalPacks(packs: LoadedPack[]): void {
+  for (const pack of packs) {
+    const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => ({
+      id: `${pack.manifest.id}.${featureId}`,
+      machine: sys.machine,
+      events: sys.events,
+    }));
+    registerPack({ id: pack.manifest.id, systems });
+    logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
   }
 }
 

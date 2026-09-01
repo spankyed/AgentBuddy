@@ -1,5 +1,4 @@
-import type { ActorSystem, ActorRefFromLogic } from 'xstate';
-import type systems from '@/systems';
+import type { ActorSystem, ActorRefFromLogic, AnyStateMachine } from 'xstate';
 import type { Simplify } from '@/core/shared/type-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from '@/core/router/events';
@@ -59,17 +58,15 @@ export function safeEvents<TEvent extends { type: string }>() {
   };
 }
 
-type SystemStates = typeof systems;
-export type SystemId = keyof SystemStates;
+export type SystemId = string;
 
-export function getActor<Id extends SystemId>(
+export function getActor(
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   system: ActorSystem<any>,
-  id: Id,
+  id: SystemId,
 ) {
-  type ActorRef = ActorRefFromLogic<SystemStates[Id]>;
-  // type ActorEvents = EventFromLogic<SystemStates[Id]>;
-  
+  type ActorRef = ActorRefFromLogic<AnyStateMachine>;
+
   const actor = system.get(id);
   if (!actor) {
     throw new Error(`Actor with id '${id}' not found in the system`);

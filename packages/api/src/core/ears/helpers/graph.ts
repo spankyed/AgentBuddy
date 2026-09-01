@@ -124,6 +124,7 @@ export function linkSymmetric(
 export function topoSort(
   roots: EARS.EntityId[],
   kind: EARS.RelKind,
+  filterType?: EARS.Entity,
 ): EARS.EntityId[] {
   // Kahn's algorithm
   const outgoing = new Map<EARS.EntityId, Set<EARS.EntityId>>();
@@ -131,7 +132,7 @@ export function topoSort(
 
   const all = new Set<EARS.EntityId>(roots);
   const collect = (id: EARS.EntityId) => {
-    const kids = new Set<EARS.EntityId>(qx(id).linksTo(kind, EARS.Entity.Thread).ids());
+    const kids = new Set<EARS.EntityId>(qx(id).linksTo(kind, filterType).ids());
     outgoing.set(id, kids);
     kids.forEach(k => {
       incoming.set(k, (incoming.get(k) ?? 0) + 1);
@@ -231,7 +232,7 @@ export function leaves(
 export function lowestCommonAncestor(
   a: EARS.EntityId,
   b: EARS.EntityId,
-  treeKind = EARS.RelKind.CONTAINS,
+  treeKind: EARS.RelKind,
 ): EARS.EntityId | null {
   const pathToRoot = (id: EARS.EntityId) => {
     const path: EARS.EntityId[] = [];

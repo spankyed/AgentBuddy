@@ -1,2 +1,2 @@
-export { EARS, AllEntities } from '@/registries/ears';
-export type { BaseEntity } from '@/registries/ears';
+export { EARS } from '@abuddy/sdk';
+export type { BaseEntity } from '@abuddy/sdk';

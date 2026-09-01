@@ -1,8 +1,8 @@
 import { repository } from '@/repository';
 const { settingsQueries, settingsCommands } = repository;
-import type { Migration } from './index';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.2.22',
   description: 'Rename work mode to claude-code; add hermes mode if missing',
   up: () => {

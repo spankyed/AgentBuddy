@@ -1,8 +1,8 @@
 import { repository } from '@/repository';
 const { settingsQueries, settingsCommands } = repository;
-import type { Migration } from './index';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.2.7',
   description: 'Change default recentThreadsSortOrder from created to visited',
   up: () => {

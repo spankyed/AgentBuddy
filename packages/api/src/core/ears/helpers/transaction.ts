@@ -14,6 +14,7 @@ import { edgeStore } from "@/core/ears/helpers/edge-store";
 import { qx } from "@/core/ears/helpers/query";
 import { EARS } from "@/core/types";
 import { wouldCreateCycle, linkSymmetric } from "@/core/ears/helpers/graph";
+import { getRegisteredEntityTypes } from "@/core/packs/pack-registration";
 
 export interface SafeLinkOptions {
   /** Additional info to store with the relation */
@@ -25,7 +26,7 @@ export interface SafeLinkOptions {
 }
 
 export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false) {
-  const isEntityType = Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
+  const isEntityType = getRegisteredEntityTypes().has(typeOrId);
 
   // Generate new ID if entity type provided, otherwise use the provided ID
   const id: EARS.EntityId = isEntityType && !useProvidedId

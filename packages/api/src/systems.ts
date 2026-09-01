@@ -1,23 +1,24 @@
 import { setup, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { systems, allDefs, buildEventValidationMap } from '@/registries/systems';
+import { getRegisteredSystems, buildRegisteredEventValidationMap } from '@/core/packs/pack-registration';
 import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 import type { SystemEvents } from '@abuddy/sdk/framework';
-import { safeEvents, type SystemId } from '@/core/shared/actor-helpers';
-import { entries } from '@/core/shared';
+import { safeEvents } from '@/core/shared/actor-helpers';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { repository } from '@/repository';
 import { bus } from '@/core/system-ids';
 
 // ─── Type aggregation ────────────────────────────────────────────────
 
-export default systems;
+export type IncomingSystemEvents = { type: string; systemId: string; [key: string]: unknown };
+export type OutgoingSystemEvents = { type: string; pluginId: string; [key: string]: unknown } | ApplicationOutgoingEvents;
 
-type AllDefs = (typeof allDefs)[number];
-
-export type IncomingSystemEvents = AllDefs['_incoming'];
-export type OutgoingSystemEvents = AllDefs['_outgoing'] | ApplicationOutgoingEvents;
-
-export const eventValidationMap = buildEventValidationMap();
+let _eventValidationMap: Map<string, Set<string>> | null = null;
+export function getEventValidationMap(): Map<string, Set<string>> {
+  if (!_eventValidationMap) {
+    _eventValidationMap = buildRegisteredEventValidationMap();
+  }
+  return _eventValidationMap;
+}
 
 // ─── Bus actor ───────────────────────────────────────────────────────
 
@@ -75,7 +76,8 @@ export const backendSystem = setup({
       system.get(systemId).send(event);
     },
     sendConnected: (({ system }) => {
-      for (const id of Object.keys(systems)) {
+      const systems = getRegisteredSystems();
+      for (const id of systems.keys()) {
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
 
@@ -91,8 +93,9 @@ export const backendSystem = setup({
 
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
-      for (const [id, state] of entries(systems)) {
-        enqueue.spawnChild(state, { systemId: id as SystemId });
+      const systems = getRegisteredSystems();
+      for (const [id, state] of systems) {
+        enqueue.spawnChild(state, { systemId: id });
       }
     }),
   }

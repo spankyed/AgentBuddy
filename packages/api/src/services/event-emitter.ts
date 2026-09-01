@@ -36,7 +36,7 @@ export function sendToSystem<T extends IncomingSystemEvents>(
   systemId: string,
   event: Omit<T, 'systemId'>
 ): void {
-  const fullEvent = { ...event, systemId } as IncomingSystemEvents;
+  const fullEvent = { ...event, systemId } as unknown as IncomingSystemEvents;
   rootEvents.emitIncoming(fullEvent);
 }
 

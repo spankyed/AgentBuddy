@@ -14,4 +14,5 @@ export default [
   { name: 'prompt',        entry: './prompt.ts',        targets: ['monaco', 'authoring'] },
   { name: 'database',      entry: './database.ts',      targets: ['monaco'] },
   { name: 'default-setup', entry: './default-setup.ts', targets: ['authoring'] },
+  { name: 'plugin-types', entry: './plugin-types.ts', targets: ['authoring'] },
 ];

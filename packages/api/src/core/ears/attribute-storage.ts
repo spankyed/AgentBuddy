@@ -9,8 +9,9 @@ import { randomId } from "@abuddy/sdk/utils";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/shared/paths";
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
-import { makePolicy } from "@/core/persistence/partitioning/policy";
+import { makePolicy, type PartitionPolicy } from "@/core/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
+import { getRegisteredEARSPolicy } from "@/core/packs/pack-registration";
 
 // Configuration for hard delete mode
 const HARD_DELETE_MODE = true; // Set to true to permanently delete entities instead of tombstoning
@@ -29,12 +30,25 @@ let sinks = {
   secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
 };
 
-// 3) Policy: exclude TNode, handle secrets
-const policy = makePolicy({
-  excludedEntityTypes: new Set([EARS.Entity.TNode]),
-  secretEntityTypes: new Set([EARS.Entity.Secret]),
-  hydratePartitions: new Set(['primary', 'secrets']), // hydrate primary and secrets on startup
-});
+// 3) Policy: built lazily from registered pack EARS config (available after registerPack())
+let _resolvedPolicy: PartitionPolicy | null = null;
+function resolvePolicy(): PartitionPolicy {
+  if (!_resolvedPolicy) {
+    const earsPolicy = getRegisteredEARSPolicy();
+    _resolvedPolicy = makePolicy({
+      excludedEntityTypes: new Set(earsPolicy.excludedEntityTypes),
+      secretEntityTypes: new Set(earsPolicy.secretEntityTypes),
+      hydratePartitions: new Set(['primary', 'secrets']),
+    });
+  }
+  return _resolvedPolicy;
+}
+
+const policy: PartitionPolicy = {
+  routeEntity: (...args) => resolvePolicy().routeEntity(...args),
+  routeRelation: (...args) => resolvePolicy().routeRelation(...args),
+  get hydrate() { return resolvePolicy().hydrate; },
+};
 
 // 4) Sharded router
 let persistence = makeShardedPersistence(policy, sinks);

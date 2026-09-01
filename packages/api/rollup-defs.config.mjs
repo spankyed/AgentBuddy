@@ -11,7 +11,7 @@ const monacoOutDir = resolve(__dirname, 'dist/defs/monaco');
 const authoringOutDir = resolve(__dirname, 'dist/defs');
 
 // Derive paths from api/tsconfig.json (single source of truth)
-const tsconfigRaw = readFileSync(resolve(apiDir, 'tsconfig.json'), 'utf-8');
+const tsconfigRaw = readFileSync(resolve(apiDir, 'defs/tsconfig.json'), 'utf-8');
 const tsconfigJson = tsconfigRaw.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
 const tsconfig = JSON.parse(tsconfigJson);
 const paths = Object.fromEntries(
