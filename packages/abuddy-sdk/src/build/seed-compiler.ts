@@ -107,7 +107,7 @@ async function discoverPluginSettings(pluginsDir: string): Promise<PluginSetting
 // ============================================================================
 
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
-  const { packDir, pluginsDir, outputDir, baseSettingsFile } = options;
+  const { packDir, outputDir } = options;
 
   // 1. Load parent pack config
   let packConfig: PackConfig;
@@ -123,6 +123,14 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   }
 
   const compilers = buildCompilerMap(packConfig);
+
+  // Resolve settings and plugins paths from config
+  const baseSettingsFile = packConfig.settings
+    ? path.resolve(packDir, packConfig.settings)
+    : undefined;
+  const pluginsDir = packConfig.plugins
+    ? path.resolve(packDir, packConfig.plugins)
+    : undefined;
 
   console.log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });

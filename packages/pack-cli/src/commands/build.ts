@@ -30,17 +30,11 @@ export async function build(args: string[]) {
   }
 
   const packDir = root;
-  const pluginsDir = path.join(root, 'src', 'plugins');
   const outputDir = path.join(root, 'dist');
-  const baseSettingsFile = fs.existsSync(path.join(root, 'src', 'base-settings.ts'))
-    ? path.join(root, 'src', 'base-settings.ts')
-    : undefined;
 
   const options: CompilePackOptions = {
     packDir,
-    pluginsDir: fs.existsSync(pluginsDir) ? pluginsDir : undefined,
     outputDir,
-    baseSettingsFile,
     packConfig,
   };
 

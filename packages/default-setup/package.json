@@ -4,8 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "compile": "tsx build/compile.ts",
-    "build:snapshot": "tsx build/build-snapshot.ts",
     "sync:external": "bash scripts/sync-external.sh",
     "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit",

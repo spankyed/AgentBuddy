@@ -8,4 +8,6 @@ export default {
   library: './src/seeds/library',
   notes: './src/seeds/notes',
   faqs: './src/seeds/faqs',
+  settings: './src/seeds/default-settings.ts',
+  plugins: './src/plugins',
 } satisfies PackConfig;

@@ -11,7 +11,8 @@ export interface PackConfig {
   library?: string;     // directory path
   notes?: string;       // directory path
   faqs?: string;        // directory path
-  settings?: string;    // file path, e.g. './settings.ts'
+  settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
+  plugins?: string;     // directory path, e.g. './src/plugins' — scanned for per-plugin settings
   compilers?: Array<{ type: string; compiler: import('./seed-compiler').SeedCompiler }>;
   [key: string]: unknown;
 }
@@ -27,9 +28,7 @@ export interface PluginConfig {
 
 export interface CompilePackOptions {
   packDir: string;
-  pluginsDir?: string;
   outputDir: string;
-  baseSettingsFile?: string;
   packConfig?: PackConfig;
 }
 
