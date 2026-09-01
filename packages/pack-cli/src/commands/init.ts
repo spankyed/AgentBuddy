@@ -50,7 +50,7 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
     noEmit: true,
     types: ['node'],
   },
-  include: ['src/**/*.ts'],
+  include: ['src/**/*.ts', '.abuddy/generated/**/*.ts', '.abuddy/deps/**/*.d.ts'],
 }, null, 2);
 
 const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({

@@ -37,3 +37,23 @@ export type { ExportedNote, ExportedNotes } from '@/plugins/notes/be/export-type
 // Action/prompt authoring types
 export type { ActionParameter } from '@/plugins/actions/be/types';
 export type { TemplateInput } from '@/plugins/prompts/be/types';
+
+// Convenience meta interfaces for DSL authoring
+import type { ActionParameter as _ActionParameter } from '@/plugins/actions/be/types';
+import type { TemplateInput as _TemplateInput } from '@/plugins/prompts/be/types';
+
+export interface ActionMeta {
+  label: string;
+  description?: string;
+  category?: string;
+  input: Record<string, _ActionParameter>;
+  output?: any;
+}
+
+export interface PromptMeta {
+  label: string;
+  description?: string;
+  category?: string;
+  inputs: Record<string, _TemplateInput>;
+  outputSchema?: any;
+}

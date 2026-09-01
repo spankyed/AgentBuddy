@@ -1,9 +1,10 @@
-export {
+export type {
   EARS,
+  EntityId,
   Services,
   Z,
-  EntityId,
   ActionMeta,
+  PromptMeta,
   ActionParameter,
   TemplateInput,
   FlowDSL,

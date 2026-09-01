@@ -21,3 +21,6 @@ export type { ActionEntity } from '@/plugins/actions/be/types';
 export type { SettingsData } from '@/plugins/settings/be/types';
 
 export { z } from 'zod';
+
+import type { z as _z } from 'zod';
+export type Z = typeof _z;

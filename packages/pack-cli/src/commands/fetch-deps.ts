@@ -1,15 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PackManifest, PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
-
-function findPackRoot(from: string): string {
-  let dir = from;
-  while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, 'abuddy.json'))) return dir;
-    dir = path.dirname(dir);
-  }
-  throw new Error('No abuddy.json found. Run this command from inside a pack directory.');
-}
+import type { PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
+import { findPackRoot, readManifest } from '../utils';
 
 function wrapTypes(types: PackTypeManifest): PackSnapshot {
   return { types, defs: {}, manifest: { id: '', name: '', version: '' } };
@@ -176,7 +168,7 @@ export async function resolveDep(root: string, depId: string): Promise<PackSnaps
 
 export async function fetchDeps(_args: string[]) {
   const root = findPackRoot(process.cwd());
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8')) as PackManifest;
+  const manifest = readManifest(root);
 
   const deps = manifest.dependencies ?? {};
   const depIds = Object.keys(deps);

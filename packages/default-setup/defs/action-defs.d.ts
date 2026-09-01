@@ -5154,14 +5154,14 @@ declare function runCleanup(threadId: string): void;
  */
 declare function updateChatState(threadId: EARS.EntityId, chatState: string): void;
 
-declare const __features_threads_be_services_threads_registerCleanup: typeof registerCleanup;
-declare const __features_threads_be_services_threads_runCleanup: typeof runCleanup;
-declare const __features_threads_be_services_threads_updateChatState: typeof updateChatState;
-declare namespace __features_threads_be_services_threads {
+declare const __plugins_threads_be_services_threads_registerCleanup: typeof registerCleanup;
+declare const __plugins_threads_be_services_threads_runCleanup: typeof runCleanup;
+declare const __plugins_threads_be_services_threads_updateChatState: typeof updateChatState;
+declare namespace __plugins_threads_be_services_threads {
   export {
-    __features_threads_be_services_threads_registerCleanup as registerCleanup,
-    __features_threads_be_services_threads_runCleanup as runCleanup,
-    __features_threads_be_services_threads_updateChatState as updateChatState,
+    __plugins_threads_be_services_threads_registerCleanup as registerCleanup,
+    __plugins_threads_be_services_threads_runCleanup as runCleanup,
+    __plugins_threads_be_services_threads_updateChatState as updateChatState,
   };
 }
 
@@ -5503,16 +5503,16 @@ declare function notify(eventType: string, payload?: any, targetFlowId?: string)
  */
 declare function removeAllListeners(): void;
 
-type __features_brain_be_services_brain_BrainEventCallback = BrainEventCallback;
-type __features_brain_be_services_brain_BrainEventPayload = BrainEventPayload;
-type __features_brain_be_services_brain_ListenOptions = ListenOptions;
-declare const __features_brain_be_services_brain_listen: typeof listen;
-declare const __features_brain_be_services_brain_notify: typeof notify;
-declare const __features_brain_be_services_brain_removeAllListeners: typeof removeAllListeners;
-declare const __features_brain_be_services_brain_unlisten: typeof unlisten;
-declare namespace __features_brain_be_services_brain {
-  export { __features_brain_be_services_brain_listen as listen, __features_brain_be_services_brain_notify as notify, __features_brain_be_services_brain_removeAllListeners as removeAllListeners, __features_brain_be_services_brain_unlisten as unlisten };
-  export type { __features_brain_be_services_brain_BrainEventCallback as BrainEventCallback, __features_brain_be_services_brain_BrainEventPayload as BrainEventPayload, __features_brain_be_services_brain_ListenOptions as ListenOptions };
+type __plugins_brain_be_services_brain_BrainEventCallback = BrainEventCallback;
+type __plugins_brain_be_services_brain_BrainEventPayload = BrainEventPayload;
+type __plugins_brain_be_services_brain_ListenOptions = ListenOptions;
+declare const __plugins_brain_be_services_brain_listen: typeof listen;
+declare const __plugins_brain_be_services_brain_notify: typeof notify;
+declare const __plugins_brain_be_services_brain_removeAllListeners: typeof removeAllListeners;
+declare const __plugins_brain_be_services_brain_unlisten: typeof unlisten;
+declare namespace __plugins_brain_be_services_brain {
+  export { __plugins_brain_be_services_brain_listen as listen, __plugins_brain_be_services_brain_notify as notify, __plugins_brain_be_services_brain_removeAllListeners as removeAllListeners, __plugins_brain_be_services_brain_unlisten as unlisten };
+  export type { __plugins_brain_be_services_brain_BrainEventCallback as BrainEventCallback, __plugins_brain_be_services_brain_BrainEventPayload as BrainEventPayload, __plugins_brain_be_services_brain_ListenOptions as ListenOptions };
 }
 
 /**
@@ -5581,14 +5581,14 @@ declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: Artif
     created: boolean;
 };
 
-type __features_threads_be_services_artifact_CreateArtifactOptions = CreateArtifactOptions;
-type __features_threads_be_services_artifact_UpdateArtifactOptions = UpdateArtifactOptions;
-declare const __features_threads_be_services_artifact_createAndNotify: typeof createAndNotify;
-declare const __features_threads_be_services_artifact_findOrCreateByType: typeof findOrCreateByType;
-declare const __features_threads_be_services_artifact_updateAndNotify: typeof updateAndNotify;
-declare namespace __features_threads_be_services_artifact {
-  export { __features_threads_be_services_artifact_createAndNotify as createAndNotify, __features_threads_be_services_artifact_findOrCreateByType as findOrCreateByType, __features_threads_be_services_artifact_updateAndNotify as updateAndNotify };
-  export type { __features_threads_be_services_artifact_CreateArtifactOptions as CreateArtifactOptions, __features_threads_be_services_artifact_UpdateArtifactOptions as UpdateArtifactOptions };
+type __plugins_threads_be_services_artifact_CreateArtifactOptions = CreateArtifactOptions;
+type __plugins_threads_be_services_artifact_UpdateArtifactOptions = UpdateArtifactOptions;
+declare const __plugins_threads_be_services_artifact_createAndNotify: typeof createAndNotify;
+declare const __plugins_threads_be_services_artifact_findOrCreateByType: typeof findOrCreateByType;
+declare const __plugins_threads_be_services_artifact_updateAndNotify: typeof updateAndNotify;
+declare namespace __plugins_threads_be_services_artifact {
+  export { __plugins_threads_be_services_artifact_createAndNotify as createAndNotify, __plugins_threads_be_services_artifact_findOrCreateByType as findOrCreateByType, __plugins_threads_be_services_artifact_updateAndNotify as updateAndNotify };
+  export type { __plugins_threads_be_services_artifact_CreateArtifactOptions as CreateArtifactOptions, __plugins_threads_be_services_artifact_UpdateArtifactOptions as UpdateArtifactOptions };
 }
 
 /**
@@ -5932,30 +5932,30 @@ declare function resolveReferences(references: MessageReferences | undefined): P
  */
 declare function generateAsideText(message: MessageEntity, response: BlockResponse): string;
 
-type __features_threads_be_services_chat_AutoHideOptions = AutoHideOptions;
-declare const __features_threads_be_services_chat_addMessagesToThread: typeof addMessagesToThread;
-declare const __features_threads_be_services_chat_createBlockMessage: typeof createBlockMessage;
-declare const __features_threads_be_services_chat_createMarkerMessage: typeof createMarkerMessage;
-declare const __features_threads_be_services_chat_createThreadAndNotify: typeof createThreadAndNotify;
-declare const __features_threads_be_services_chat_generateAsideText: typeof generateAsideText;
-declare const __features_threads_be_services_chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
-declare const __features_threads_be_services_chat_openThreadTabAndRefresh: typeof openThreadTabAndRefresh;
-declare const __features_threads_be_services_chat_resolveReferences: typeof resolveReferences;
-declare const __features_threads_be_services_chat_sendApprovalBlock: typeof sendApprovalBlock;
-declare const __features_threads_be_services_chat_sendBlockMessage: typeof sendBlockMessage;
-declare const __features_threads_be_services_chat_sendButtonGroupBlock: typeof sendButtonGroupBlock;
-declare const __features_threads_be_services_chat_sendChoiceBlock: typeof sendChoiceBlock;
-declare const __features_threads_be_services_chat_sendFilePickerBlock: typeof sendFilePickerBlock;
-declare const __features_threads_be_services_chat_sendLinkBlock: typeof sendLinkBlock;
-declare const __features_threads_be_services_chat_sendQuestionBlock: typeof sendQuestionBlock;
-declare const __features_threads_be_services_chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
-declare const __features_threads_be_services_chat_sendSystemMessage: typeof sendSystemMessage;
-declare const __features_threads_be_services_chat_sendTextInputBlock: typeof sendTextInputBlock;
-declare const __features_threads_be_services_chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
-declare const __features_threads_be_services_chat_updateMessageState: typeof updateMessageState;
-declare namespace __features_threads_be_services_chat {
-  export { __features_threads_be_services_chat_addMessagesToThread as addMessagesToThread, __features_threads_be_services_chat_createBlockMessage as createBlockMessage, __features_threads_be_services_chat_createMarkerMessage as createMarkerMessage, __features_threads_be_services_chat_createThreadAndNotify as createThreadAndNotify, __features_threads_be_services_chat_generateAsideText as generateAsideText, __features_threads_be_services_chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent, __features_threads_be_services_chat_openThreadTabAndRefresh as openThreadTabAndRefresh, __features_threads_be_services_chat_resolveReferences as resolveReferences, __features_threads_be_services_chat_sendApprovalBlock as sendApprovalBlock, __features_threads_be_services_chat_sendBlockMessage as sendBlockMessage, __features_threads_be_services_chat_sendButtonGroupBlock as sendButtonGroupBlock, __features_threads_be_services_chat_sendChoiceBlock as sendChoiceBlock, __features_threads_be_services_chat_sendFilePickerBlock as sendFilePickerBlock, __features_threads_be_services_chat_sendLinkBlock as sendLinkBlock, __features_threads_be_services_chat_sendQuestionBlock as sendQuestionBlock, __features_threads_be_services_chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh, __features_threads_be_services_chat_sendSystemMessage as sendSystemMessage, __features_threads_be_services_chat_sendTextInputBlock as sendTextInputBlock, __features_threads_be_services_chat_updateMessageBlockResponse as updateMessageBlockResponse, __features_threads_be_services_chat_updateMessageState as updateMessageState };
-  export type { __features_threads_be_services_chat_AutoHideOptions as AutoHideOptions };
+type __plugins_threads_be_services_chat_AutoHideOptions = AutoHideOptions;
+declare const __plugins_threads_be_services_chat_addMessagesToThread: typeof addMessagesToThread;
+declare const __plugins_threads_be_services_chat_createBlockMessage: typeof createBlockMessage;
+declare const __plugins_threads_be_services_chat_createMarkerMessage: typeof createMarkerMessage;
+declare const __plugins_threads_be_services_chat_createThreadAndNotify: typeof createThreadAndNotify;
+declare const __plugins_threads_be_services_chat_generateAsideText: typeof generateAsideText;
+declare const __plugins_threads_be_services_chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
+declare const __plugins_threads_be_services_chat_openThreadTabAndRefresh: typeof openThreadTabAndRefresh;
+declare const __plugins_threads_be_services_chat_resolveReferences: typeof resolveReferences;
+declare const __plugins_threads_be_services_chat_sendApprovalBlock: typeof sendApprovalBlock;
+declare const __plugins_threads_be_services_chat_sendBlockMessage: typeof sendBlockMessage;
+declare const __plugins_threads_be_services_chat_sendButtonGroupBlock: typeof sendButtonGroupBlock;
+declare const __plugins_threads_be_services_chat_sendChoiceBlock: typeof sendChoiceBlock;
+declare const __plugins_threads_be_services_chat_sendFilePickerBlock: typeof sendFilePickerBlock;
+declare const __plugins_threads_be_services_chat_sendLinkBlock: typeof sendLinkBlock;
+declare const __plugins_threads_be_services_chat_sendQuestionBlock: typeof sendQuestionBlock;
+declare const __plugins_threads_be_services_chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
+declare const __plugins_threads_be_services_chat_sendSystemMessage: typeof sendSystemMessage;
+declare const __plugins_threads_be_services_chat_sendTextInputBlock: typeof sendTextInputBlock;
+declare const __plugins_threads_be_services_chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
+declare const __plugins_threads_be_services_chat_updateMessageState: typeof updateMessageState;
+declare namespace __plugins_threads_be_services_chat {
+  export { __plugins_threads_be_services_chat_addMessagesToThread as addMessagesToThread, __plugins_threads_be_services_chat_createBlockMessage as createBlockMessage, __plugins_threads_be_services_chat_createMarkerMessage as createMarkerMessage, __plugins_threads_be_services_chat_createThreadAndNotify as createThreadAndNotify, __plugins_threads_be_services_chat_generateAsideText as generateAsideText, __plugins_threads_be_services_chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent, __plugins_threads_be_services_chat_openThreadTabAndRefresh as openThreadTabAndRefresh, __plugins_threads_be_services_chat_resolveReferences as resolveReferences, __plugins_threads_be_services_chat_sendApprovalBlock as sendApprovalBlock, __plugins_threads_be_services_chat_sendBlockMessage as sendBlockMessage, __plugins_threads_be_services_chat_sendButtonGroupBlock as sendButtonGroupBlock, __plugins_threads_be_services_chat_sendChoiceBlock as sendChoiceBlock, __plugins_threads_be_services_chat_sendFilePickerBlock as sendFilePickerBlock, __plugins_threads_be_services_chat_sendLinkBlock as sendLinkBlock, __plugins_threads_be_services_chat_sendQuestionBlock as sendQuestionBlock, __plugins_threads_be_services_chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh, __plugins_threads_be_services_chat_sendSystemMessage as sendSystemMessage, __plugins_threads_be_services_chat_sendTextInputBlock as sendTextInputBlock, __plugins_threads_be_services_chat_updateMessageBlockResponse as updateMessageBlockResponse, __plugins_threads_be_services_chat_updateMessageState as updateMessageState };
+  export type { __plugins_threads_be_services_chat_AutoHideOptions as AutoHideOptions };
 }
 
 interface TextStreamOptions {
@@ -6095,18 +6095,18 @@ declare class BrowserService {
 }
 declare function createBrowser(browserType?: BrowserType): BrowserService;
 
-declare const __features_browser_be_services_browser_Browser: typeof Browser;
-type __features_browser_be_services_browser_BrowserService = BrowserService;
-declare const __features_browser_be_services_browser_BrowserService: typeof BrowserService;
-type __features_browser_be_services_browser_LaunchOptions = LaunchOptions;
-declare const __features_browser_be_services_browser_Page: typeof Page;
-declare const __features_browser_be_services_browser_chromium: typeof chromium;
-declare const __features_browser_be_services_browser_createBrowser: typeof createBrowser;
-declare const __features_browser_be_services_browser_firefox: typeof firefox;
-declare const __features_browser_be_services_browser_webkit: typeof webkit;
-declare namespace __features_browser_be_services_browser {
-  export { __features_browser_be_services_browser_Browser as Browser, BrowserContext as BrowserContext, __features_browser_be_services_browser_BrowserService as BrowserService, __features_browser_be_services_browser_Page as Page, __features_browser_be_services_browser_chromium as chromium, __features_browser_be_services_browser_createBrowser as createBrowser, __features_browser_be_services_browser_firefox as firefox, __features_browser_be_services_browser_webkit as webkit };
-  export type { __features_browser_be_services_browser_LaunchOptions as LaunchOptions };
+declare const __plugins_browser_be_services_browser_Browser: typeof Browser;
+type __plugins_browser_be_services_browser_BrowserService = BrowserService;
+declare const __plugins_browser_be_services_browser_BrowserService: typeof BrowserService;
+type __plugins_browser_be_services_browser_LaunchOptions = LaunchOptions;
+declare const __plugins_browser_be_services_browser_Page: typeof Page;
+declare const __plugins_browser_be_services_browser_chromium: typeof chromium;
+declare const __plugins_browser_be_services_browser_createBrowser: typeof createBrowser;
+declare const __plugins_browser_be_services_browser_firefox: typeof firefox;
+declare const __plugins_browser_be_services_browser_webkit: typeof webkit;
+declare namespace __plugins_browser_be_services_browser {
+  export { __plugins_browser_be_services_browser_Browser as Browser, BrowserContext as BrowserContext, __plugins_browser_be_services_browser_BrowserService as BrowserService, __plugins_browser_be_services_browser_Page as Page, __plugins_browser_be_services_browser_chromium as chromium, __plugins_browser_be_services_browser_createBrowser as createBrowser, __plugins_browser_be_services_browser_firefox as firefox, __plugins_browser_be_services_browser_webkit as webkit };
+  export type { __plugins_browser_be_services_browser_LaunchOptions as LaunchOptions };
 }
 
 declare class LibraryService {
@@ -6178,31 +6178,31 @@ declare function buildQueryContext(): {
     topology: string;
 };
 
-import __features_database_be_services_database_EARS = EARS;
-type __features_database_be_services_database_SafeLinkOptions = SafeLinkOptions;
-declare const __features_database_be_services_database_buildQueryContext: typeof buildQueryContext;
-declare const __features_database_be_services_database_countEntities: typeof countEntities;
-declare const __features_database_be_services_database_createEntityWithDefaults: typeof createEntityWithDefaults;
-declare const __features_database_be_services_database_createRelation: typeof createRelation;
-declare const __features_database_be_services_database_exists: typeof exists;
-declare const __features_database_be_services_database_findAll: typeof findAll;
-declare const __features_database_be_services_database_findById: typeof findById;
-declare const __features_database_be_services_database_findByIdWithFields: typeof findByIdWithFields;
-declare const __features_database_be_services_database_findFirst: typeof findFirst;
-declare const __features_database_be_services_database_findFirstWithRole: typeof findFirstWithRole;
-declare const __features_database_be_services_database_findWhere: typeof findWhere;
-declare const __features_database_be_services_database_findWithFields: typeof findWithFields;
-declare const __features_database_be_services_database_findWithRole: typeof findWithRole;
-declare const __features_database_be_services_database_grantRole: typeof grantRole;
-declare const __features_database_be_services_database_prepareEntity: typeof prepareEntity;
-declare const __features_database_be_services_database_qx: typeof qx;
-declare const __features_database_be_services_database_removeRelation: typeof removeRelation;
-declare const __features_database_be_services_database_revokeRole: typeof revokeRole;
-declare const __features_database_be_services_database_tx: typeof tx;
-declare const __features_database_be_services_database_updateEntity: typeof updateEntity;
-declare namespace __features_database_be_services_database {
-  export { __features_database_be_services_database_EARS as EARS, __features_database_be_services_database_buildQueryContext as buildQueryContext, __features_database_be_services_database_countEntities as countEntities, __features_database_be_services_database_createEntityWithDefaults as createEntityWithDefaults, __features_database_be_services_database_createRelation as createRelation, __features_database_be_services_database_exists as exists, __features_database_be_services_database_findAll as findAll, __features_database_be_services_database_findById as findById, __features_database_be_services_database_findByIdWithFields as findByIdWithFields, __features_database_be_services_database_findFirst as findFirst, __features_database_be_services_database_findFirstWithRole as findFirstWithRole, __features_database_be_services_database_findWhere as findWhere, __features_database_be_services_database_findWithFields as findWithFields, __features_database_be_services_database_findWithRole as findWithRole, __features_database_be_services_database_grantRole as grantRole, __features_database_be_services_database_prepareEntity as prepareEntity, __features_database_be_services_database_qx as qx, __features_database_be_services_database_removeRelation as removeRelation, __features_database_be_services_database_revokeRole as revokeRole, __features_database_be_services_database_tx as tx, __features_database_be_services_database_updateEntity as updateEntity };
-  export type { __features_database_be_services_database_SafeLinkOptions as SafeLinkOptions };
+import __plugins_database_be_services_database_EARS = EARS;
+type __plugins_database_be_services_database_SafeLinkOptions = SafeLinkOptions;
+declare const __plugins_database_be_services_database_buildQueryContext: typeof buildQueryContext;
+declare const __plugins_database_be_services_database_countEntities: typeof countEntities;
+declare const __plugins_database_be_services_database_createEntityWithDefaults: typeof createEntityWithDefaults;
+declare const __plugins_database_be_services_database_createRelation: typeof createRelation;
+declare const __plugins_database_be_services_database_exists: typeof exists;
+declare const __plugins_database_be_services_database_findAll: typeof findAll;
+declare const __plugins_database_be_services_database_findById: typeof findById;
+declare const __plugins_database_be_services_database_findByIdWithFields: typeof findByIdWithFields;
+declare const __plugins_database_be_services_database_findFirst: typeof findFirst;
+declare const __plugins_database_be_services_database_findFirstWithRole: typeof findFirstWithRole;
+declare const __plugins_database_be_services_database_findWhere: typeof findWhere;
+declare const __plugins_database_be_services_database_findWithFields: typeof findWithFields;
+declare const __plugins_database_be_services_database_findWithRole: typeof findWithRole;
+declare const __plugins_database_be_services_database_grantRole: typeof grantRole;
+declare const __plugins_database_be_services_database_prepareEntity: typeof prepareEntity;
+declare const __plugins_database_be_services_database_qx: typeof qx;
+declare const __plugins_database_be_services_database_removeRelation: typeof removeRelation;
+declare const __plugins_database_be_services_database_revokeRole: typeof revokeRole;
+declare const __plugins_database_be_services_database_tx: typeof tx;
+declare const __plugins_database_be_services_database_updateEntity: typeof updateEntity;
+declare namespace __plugins_database_be_services_database {
+  export { __plugins_database_be_services_database_EARS as EARS, __plugins_database_be_services_database_buildQueryContext as buildQueryContext, __plugins_database_be_services_database_countEntities as countEntities, __plugins_database_be_services_database_createEntityWithDefaults as createEntityWithDefaults, __plugins_database_be_services_database_createRelation as createRelation, __plugins_database_be_services_database_exists as exists, __plugins_database_be_services_database_findAll as findAll, __plugins_database_be_services_database_findById as findById, __plugins_database_be_services_database_findByIdWithFields as findByIdWithFields, __plugins_database_be_services_database_findFirst as findFirst, __plugins_database_be_services_database_findFirstWithRole as findFirstWithRole, __plugins_database_be_services_database_findWhere as findWhere, __plugins_database_be_services_database_findWithFields as findWithFields, __plugins_database_be_services_database_findWithRole as findWithRole, __plugins_database_be_services_database_grantRole as grantRole, __plugins_database_be_services_database_prepareEntity as prepareEntity, __plugins_database_be_services_database_qx as qx, __plugins_database_be_services_database_removeRelation as removeRelation, __plugins_database_be_services_database_revokeRole as revokeRole, __plugins_database_be_services_database_tx as tx, __plugins_database_be_services_database_updateEntity as updateEntity };
+  export type { __plugins_database_be_services_database_SafeLinkOptions as SafeLinkOptions };
 }
 
 /**
@@ -6261,17 +6261,17 @@ declare function generateObject<T>(params: {
     [key: string]: any;
 }): Promise<ai.GenerateObjectResult<T>>;
 
-declare const __features_brain_be_services_llm_CoreMessage: typeof CoreMessage;
-type __features_brain_be_services_llm_ModelConfig = ModelConfig;
-type __features_brain_be_services_llm_Provider = Provider;
-type __features_brain_be_services_llm_ProviderName = ProviderName;
-declare const __features_brain_be_services_llm_generateObject: typeof generateObject;
-declare const __features_brain_be_services_llm_generateText: typeof generateText;
-declare const __features_brain_be_services_llm_streamObject: typeof streamObject;
-declare const __features_brain_be_services_llm_streamText: typeof streamText;
-declare namespace __features_brain_be_services_llm {
-  export { __features_brain_be_services_llm_CoreMessage as CoreMessage, __features_brain_be_services_llm_generateObject as generateObject, __features_brain_be_services_llm_generateText as generateText, __features_brain_be_services_llm_streamObject as streamObject, __features_brain_be_services_llm_streamText as streamText };
-  export type { __features_brain_be_services_llm_ModelConfig as ModelConfig, __features_brain_be_services_llm_Provider as Provider, __features_brain_be_services_llm_ProviderName as ProviderName };
+declare const __plugins_brain_be_services_llm_CoreMessage: typeof CoreMessage;
+type __plugins_brain_be_services_llm_ModelConfig = ModelConfig;
+type __plugins_brain_be_services_llm_Provider = Provider;
+type __plugins_brain_be_services_llm_ProviderName = ProviderName;
+declare const __plugins_brain_be_services_llm_generateObject: typeof generateObject;
+declare const __plugins_brain_be_services_llm_generateText: typeof generateText;
+declare const __plugins_brain_be_services_llm_streamObject: typeof streamObject;
+declare const __plugins_brain_be_services_llm_streamText: typeof streamText;
+declare namespace __plugins_brain_be_services_llm {
+  export { __plugins_brain_be_services_llm_CoreMessage as CoreMessage, __plugins_brain_be_services_llm_generateObject as generateObject, __plugins_brain_be_services_llm_generateText as generateText, __plugins_brain_be_services_llm_streamObject as streamObject, __plugins_brain_be_services_llm_streamText as streamText };
+  export type { __plugins_brain_be_services_llm_ModelConfig as ModelConfig, __plugins_brain_be_services_llm_Provider as Provider, __plugins_brain_be_services_llm_ProviderName as ProviderName };
 }
 
 /**
@@ -6283,20 +6283,20 @@ interface ActionParams {
     [key: string]: any;
 }
 declare const services: {
-    llm: typeof __features_brain_be_services_llm;
-    database: typeof __features_database_be_services_database;
+    llm: typeof __plugins_brain_be_services_llm;
+    database: typeof __plugins_database_be_services_database;
     prompt: PromptService;
     action: ActionService;
     library: LibraryService;
-    browser: typeof __features_browser_be_services_browser;
+    browser: typeof __plugins_browser_be_services_browser;
     settings: SettingsService;
     textStream: TextStreamService;
-    chat: typeof __features_threads_be_services_chat;
-    artifact: typeof __features_threads_be_services_artifact;
-    brain: typeof __features_brain_be_services_brain;
+    chat: typeof __plugins_threads_be_services_chat;
+    artifact: typeof __plugins_threads_be_services_artifact;
+    brain: typeof __plugins_brain_be_services_brain;
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
-    threads: typeof __features_threads_be_services_threads;
+    threads: typeof __plugins_threads_be_services_threads;
     codex: {
         start: () => Promise<void>;
         stop: () => Promise<void>;
@@ -6406,5 +6406,7 @@ declare const services: {
 type Services = typeof services;
 declare const params: ActionParams;
 
+type Z = typeof z;
+
 export { ActionService, LibraryService, PromptService, params, services };
-export type { ActionEntity, ActionParams, Services, SettingsData };
+export type { ActionEntity, ActionParams, Services, SettingsData, Z };

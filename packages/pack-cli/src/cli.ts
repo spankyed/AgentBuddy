@@ -1,13 +1,6 @@
 #!/usr/bin/env node
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { init } from './commands/init';
-import { build } from './commands/build';
-import { validate } from './commands/validate';
-import { dev } from './commands/dev';
-import { install } from './commands/install';
-import { generate } from './commands/generate';
-import { fetchDeps } from './commands/fetch-deps';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8'));
 
@@ -28,6 +21,16 @@ Options:
   --version, -v       Show version
 `.trim();
 
+const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>> = {
+  'init':       async () => (await import('./commands/init')).init,
+  'generate':   async () => (await import('./commands/generate')).generate,
+  'fetch-deps': async () => (await import('./commands/fetch-deps')).fetchDeps,
+  'build':      async () => (await import('./commands/build')).build,
+  'validate':   async () => (await import('./commands/validate')).validate,
+  'install':    async () => (await import('./commands/install')).install,
+  'dev':        async () => (await import('./commands/dev')).dev,
+};
+
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
@@ -42,34 +45,16 @@ async function main() {
     process.exit(0);
   }
 
+  const loader = COMMANDS[command];
+  if (!loader) {
+    console.error(`Unknown command: ${command}`);
+    console.log(USAGE);
+    process.exit(1);
+  }
+
   try {
-    switch (command) {
-      case 'init':
-        await init(args.slice(1));
-        break;
-      case 'generate':
-        await generate(args.slice(1));
-        break;
-      case 'fetch-deps':
-        await fetchDeps(args.slice(1));
-        break;
-      case 'build':
-        await build(args.slice(1));
-        break;
-      case 'validate':
-        await validate(args.slice(1));
-        break;
-      case 'install':
-        await install(args.slice(1));
-        break;
-      case 'dev':
-        await dev(args.slice(1));
-        break;
-      default:
-        console.error(`Unknown command: ${command}`);
-        console.log(USAGE);
-        process.exit(1);
-    }
+    const fn = await loader();
+    await fn(args.slice(1));
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);

@@ -468,5 +468,28 @@ interface TemplateInput {
     example?: any;
 }
 
+/**
+ * Default-Setup DSL & Compiler Types
+ *
+ * Re-exports types needed by the default-setup package that aren't
+ * reachable from the action/prompt service type graphs.
+ * Bundled by rollup into default-setup-defs.d.ts.
+ */
+
+interface ActionMeta {
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    output?: any;
+}
+interface PromptMeta {
+    label: string;
+    description?: string;
+    category?: string;
+    inputs: Record<string, TemplateInput>;
+    outputSchema?: any;
+}
+
 export { EARS, ROOT_FLOW_ROLE, isFlowConfig, resolveTracks };
-export type { ActionParameter, BaseEntity, ButtonConfig, CodeContent, CompiledEntity, CompiledFlow, CompiledRelation, CompiledRole, CompilerContext, ContentSection, ContentType, DSLActionNode, DSLCreateNode, DSLFireNode, DSLFlowNode, DSLKeepAliveNode, DSLLLMNode, DSLQueryNode, DSLStepNode, DSLSwitchCondition, DSLSwitchNode, DSLTransformNode, DSLUpdateNode, ExportFormat, ExportedCollection, ExportedDocument, ExportedItem, ExportedLibrary, ExportedNote, ExportedNotes, ExportedSymlink, FieldContent, FlowConfig, FlowDSL, LinkConfig, LinkEvent, LinkIcon, ListContent, MarkdownContent, TemplateInput, TextContent, Track, ValidationError, ValidationResult };
+export type { ActionMeta, ActionParameter, BaseEntity, ButtonConfig, CodeContent, CompiledEntity, CompiledFlow, CompiledRelation, CompiledRole, CompilerContext, ContentSection, ContentType, DSLActionNode, DSLCreateNode, DSLFireNode, DSLFlowNode, DSLKeepAliveNode, DSLLLMNode, DSLQueryNode, DSLStepNode, DSLSwitchCondition, DSLSwitchNode, DSLTransformNode, DSLUpdateNode, ExportFormat, ExportedCollection, ExportedDocument, ExportedItem, ExportedLibrary, ExportedNote, ExportedNotes, ExportedSymlink, FieldContent, FlowConfig, FlowDSL, LinkConfig, LinkEvent, LinkIcon, ListContent, MarkdownContent, PromptMeta, TemplateInput, TextContent, Track, ValidationError, ValidationResult };
