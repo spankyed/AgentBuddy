@@ -12,9 +12,12 @@
 import '@/setup/sdk-host-init';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence, resetLmdbFiles } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/plugins/settings/be/repository';
+import { loadBuiltInPack } from '@/core/packs/pack-loader';
+import { getBootHooks } from '@/core/packs/pack-registration';
 
 async function run() {
+  loadBuiltInPack();
+
   console.log('Hydrating LMDB connections...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
 
@@ -22,20 +25,7 @@ async function run() {
   await resetLmdbFiles();
 
   console.log('Recreating default settings...');
-  createDefaultSettings();
-
-  // Pre-load central repository to resolve circular dependency
-  // (flows repo ↔ central repo — loading central first ensures flows repo
-  // is evaluated before central repo accesses flowsQueries)
-  // await import('@/repository');
-  // const { flowsCommands } = await import('@/systems/flows/repository');
-
-  // console.log('Creating root flow...');
-  // const { flow } = flowsCommands.createFlowWithEntryNode({
-  //   label: 'Root Flow',
-  //   description: 'The root flow of the application',
-  // });
-  // flowsCommands.grantRootFlowRole(flow.id);
+  for (const hooks of getBootHooks()) hooks.createDefaultSettings?.();
 
   console.log('Database reset complete.');
   closePersistence();

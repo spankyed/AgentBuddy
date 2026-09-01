@@ -10,14 +10,16 @@ import '@/setup/sdk-host-init';
 import * as path from 'path';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/plugins/settings/be/repository';
-import '@/registries/seed/index';
+import { loadBuiltInPack } from '@/core/packs/pack-loader';
+import { getBootHooks } from '@/core/packs/pack-registration';
 import { seedData } from '@/core/shared/seed';
 
 async function run() {
+  loadBuiltInPack();
+
   console.log('Initializing database...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
-  createDefaultSettings();
+  for (const hooks of getBootHooks()) hooks.createDefaultSettings?.();
 
   console.log('Seeding compiled artifacts...\n');
   const result = seedData({

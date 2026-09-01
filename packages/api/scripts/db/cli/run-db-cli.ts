@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import '@/setup/sdk-host-init';
-import * as path from 'node:path';
 import { parseArgs } from 'node:util';
 import { DatabaseCLI, type CliOptions } from './db-cli';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/plugins/settings/be/repository';
+import { loadBuiltInPack } from '@/core/packs/pack-loader';
 
 async function main() {
   // Parse command line arguments
@@ -102,15 +101,17 @@ async function main() {
 
 async function initializeDatabase(verbose: boolean) {
   try {
+    loadBuiltInPack();
+
     // Hydrate from LMDB using sharded approach
     if (verbose) {
       console.log('  - Hydrating from LMDB...');
     }
-    
-    await hydrateSharded({ 
-      envs, 
-      policy, 
-      shardedPersistence: persistence 
+
+    await hydrateSharded({
+      envs,
+      policy,
+      shardedPersistence: persistence
     });
     
     if (verbose) {

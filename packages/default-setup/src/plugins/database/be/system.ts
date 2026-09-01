@@ -9,7 +9,7 @@ import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
-import { exportDatabase, importDatabase, getBackupInfo } from './backup';
+import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/sdk/backup';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@/plugins/brain/be/types';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@abuddy/sdk/ears';
