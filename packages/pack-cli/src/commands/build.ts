@@ -1,9 +1,31 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { compilePack, type CompilePackOptions, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
-import { registerDefaultCompilers } from '@app/default-setup/build';
+import { compilePack, registerSeedCompiler, type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
 import { generate } from './generate';
 import { findPackRoot, readManifest } from '../utils';
+
+async function registerDepCompilers(root: string, depId: string): Promise<void> {
+  const candidates = [
+    path.resolve(root, '..', depId, 'pack.config.ts'),
+    path.resolve(root, '..', '..', 'packages', depId, 'pack.config.ts'),
+    path.resolve(root, '..', '..', depId, 'pack.config.ts'),
+  ];
+
+  for (const configPath of candidates) {
+    if (!fs.existsSync(configPath)) continue;
+
+    const { tsImport } = await import('tsx/esm/api');
+    const mod = await tsImport(configPath, import.meta.url);
+    const config = (mod.default ?? mod) as PackConfig;
+
+    if (config.compilers) {
+      for (const { type, compiler } of config.compilers) {
+        registerSeedCompiler(type, compiler);
+      }
+    }
+    return;
+  }
+}
 
 export async function build(args: string[]) {
   const root = findPackRoot(process.cwd());
@@ -13,7 +35,11 @@ export async function build(args: string[]) {
     await generate([]);
   }
 
-  registerDefaultCompilers();
+  const deps = Object.keys(manifest.dependencies ?? {});
+  for (const depId of deps) {
+    await registerDepCompilers(root, depId);
+  }
+
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
 
   const packDir = root;

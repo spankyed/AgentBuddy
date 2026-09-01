@@ -5,6 +5,6 @@ export default defineConfig({
   format: 'esm',
   target: 'node22',
   clean: true,
-  noExternal: ['@abuddy/sdk', '@app/default-setup'],
-  external: ['esbuild', 'typescript'],
+  noExternal: ['@abuddy/sdk'],
+  external: ['esbuild', 'typescript', 'tsx'],
 });

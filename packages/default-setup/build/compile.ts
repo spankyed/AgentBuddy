@@ -7,7 +7,6 @@ import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
 import { compileFaqFromDir } from './compile-faq';
 import { seedFile, compilePack } from '@abuddy/sdk/build';
-import { registerDefaultCompilers } from './seed-compilers';
 
 const baseDir = path.resolve(import.meta.dirname, '..');
 const configDir = path.join(baseDir, 'src/seeds');
@@ -157,8 +156,6 @@ function compileFaq(): void {
 // ============================================================================
 
 async function compileAll(): Promise<void> {
-  registerDefaultCompilers();
-
   await compilePack({
     packDir: baseDir,
     pluginsDir: resolve('src/plugins'),
