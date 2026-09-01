@@ -2,7 +2,7 @@
 export type { PackConfig, PluginConfig, CompilePackOptions, CompilePackResult } from './types';
 
 // Seed compiler framework
-export { registerSeedCompiler, getSeedCompiler, getRegisteredSeedTypes, compilePack } from './seed-compiler';
+export { compilePack } from './seed-compiler';
 export type { SeedCompiler, CompileEntry, CompilationContext, ValidationResult } from './seed-compiler';
 
 // Compile utilities

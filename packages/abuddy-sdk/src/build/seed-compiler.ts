@@ -34,22 +34,8 @@ export interface SeedCompiler<TCompiled = unknown, TMerged = unknown> {
 }
 
 // ============================================================================
-// Registry
+// Standard Compilers
 // ============================================================================
-
-const compilers = new Map<string, SeedCompiler>();
-
-export function registerSeedCompiler<TC, TM>(type: string, compiler: SeedCompiler<TC, TM>): void {
-  compilers.set(type, compiler as SeedCompiler);
-}
-
-export function getSeedCompiler(type: string): SeedCompiler | undefined {
-  return compilers.get(type);
-}
-
-export function getRegisteredSeedTypes(): string[] {
-  return Array.from(compilers.keys());
-}
 
 const STANDARD_COMPILERS: Record<string, SeedCompiler> = {
   actions: actionsCompiler,
@@ -60,6 +46,24 @@ const STANDARD_COMPILERS: Record<string, SeedCompiler> = {
   faqs: faqCompiler,
   settings: settingsCompiler,
 };
+
+function buildCompilerMap(packConfig: PackConfig): Map<string, SeedCompiler> {
+  const compilers = new Map<string, SeedCompiler>();
+
+  if (packConfig.compilers) {
+    for (const { type, compiler } of packConfig.compilers) {
+      compilers.set(type, compiler as SeedCompiler);
+    }
+  }
+
+  for (const [type, compiler] of Object.entries(STANDARD_COMPILERS)) {
+    if (!compilers.has(type)) {
+      compilers.set(type, compiler);
+    }
+  }
+
+  return compilers;
+}
 
 // ============================================================================
 // Plugin Settings Discovery
@@ -113,17 +117,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     packConfig = (mod.default ?? mod) as PackConfig;
   }
 
-  if (packConfig.compilers) {
-    for (const { type, compiler } of packConfig.compilers) {
-      registerSeedCompiler(type, compiler);
-    }
-  }
-
-  for (const [type, compiler] of Object.entries(STANDARD_COMPILERS)) {
-    if (!compilers.has(type)) {
-      compilers.set(type, compiler);
-    }
-  }
+  const compilers = buildCompilerMap(packConfig);
 
   console.log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
