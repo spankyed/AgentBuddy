@@ -1,3 +1,5 @@
+export type { ValidationError, ValidationResult } from '../seed-compiler';
+
 export interface DSLStepNode {
   type: string;
   label?: string;
@@ -23,12 +25,12 @@ export interface Track {
   exits: DSLStepNode[][];
 }
 
-export interface ValidationError {
-  path: string;
-  message: string;
+export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig {
+  return !Array.isArray(value);
 }
 
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationError[];
+export function resolveTracks(entry: Track[] | FlowConfig): Track[] {
+  return isFlowConfig(entry) ? entry.tracks : entry;
 }
+
+export const ROOT_FLOW_ROLE = 'root_flow';

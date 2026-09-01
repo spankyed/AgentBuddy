@@ -21,9 +21,14 @@ export interface CompilationContext {
   getCompiled<T = unknown>(type: string): T | undefined;
 }
 
+export interface ValidationError {
+  path: string;
+  message: string;
+}
+
 export interface ValidationResult {
   valid: boolean;
-  errors: Array<{ path: string; message: string }>;
+  errors: ValidationError[];
 }
 
 export interface SeedCompiler<TCompiled = unknown, TMerged = unknown> {

@@ -4,7 +4,7 @@ import type {
   ValidationError,
   ValidationResult,
 } from './flow-types';
-import { isFlowConfig, resolveTracks } from './flow-dsl-utils';
+import { isFlowConfig, resolveTracks } from './flow-types';
 import { validateCronExpression } from '../cron-utils';
 
 const STEP_TYPES = [

@@ -372,31 +372,6 @@ export async function compileSourceDir(
   return { entries, warnings: allWarnings };
 }
 
-// --- Legacy wrapper (reads + writes files, used by default-setup/build/compile.ts) ---
-
-export async function compileAllSourceFiles(config: CompileConfig): Promise<void> {
-  const sourceDir = path.resolve(config.sourceDir);
-  const outputFile = path.resolve(config.outputFile);
-
-  console.log(`Compiling from: ${sourceDir}`);
-
-  const result = await compileSourceDir(sourceDir, {
-    functionName: config.functionName,
-    isAsync: config.isAsync,
-    fields: config.fields,
-  });
-
-  for (const entry of result.entries) console.log(`  + ${entry.label}`);
-  if (result.warnings.length > 0) {
-    console.log('\nWarnings:');
-    for (const w of result.warnings) console.warn(`  ! ${w}`);
-  }
-
-  fs.mkdirSync(path.dirname(outputFile), { recursive: true });
-  fs.writeFileSync(outputFile, JSON.stringify(result.entries, null, 2) + '\n');
-  console.log(`\nWrote ${result.entries.length} entries to ${path.relative(process.cwd(), outputFile)}`);
-}
-
 export function sourceHash(data: object): string {
   return crypto.createHash('sha256')
     .update(JSON.stringify(data))

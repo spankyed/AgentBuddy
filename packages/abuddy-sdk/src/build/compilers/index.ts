@@ -17,11 +17,10 @@ export { compileFaqFromDir } from './compile-faq';
 export { loadSettingsFromFile, deepMerge } from './compile-settings';
 export { countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections } from './library-utils';
 
-// Flow types (generic — no hardcoded step nodes)
-export type {
-  FlowDSL, FlowConfig, Track, DSLStepNode,
-  ValidationError, ValidationResult as FlowValidationResult,
-} from './flow-types';
+// Flow types + utilities
+export type { FlowDSL, FlowConfig, Track, DSLStepNode } from './flow-types';
+export { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types';
+export { validate as validateFlowDSL } from './flow-dsl-validator';
 
 // Library output types
 export type {
@@ -34,6 +33,3 @@ export type { ExportedNote, ExportedNotes } from './compile-notes';
 
 // FAQ output types
 export type { CompiledFAQ } from './compile-faq';
-
-export { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-dsl-utils';
-export { validate as validateFlowDSL } from './flow-dsl-validator';
