@@ -153,11 +153,13 @@ export type AllEntities = EARS.Entity;
 
 const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities']);
 
-function parseExportedNames(content: string): string[] {
+// Only extract type exports — value exports (classes, instances, functions) are runtime
+// internals that pack devs receive via function parameters, not direct imports.
+function parseExportedTypeNames(content: string): string[] {
   const names: string[] = [];
-  for (const m of content.matchAll(/^export\s+(?:type\s+)?\{([^}]+)\}/gm))
+  for (const m of content.matchAll(/^export\s+type\s+\{([^}]+)\}/gm))
     names.push(...m[1].split(',').map(s => s.trim()).filter(Boolean));
-  for (const m of content.matchAll(/^export\s+(?:declare\s+)?(?:type|interface|class|function|const|let|var)\s+(\w+)/gm))
+  for (const m of content.matchAll(/^export\s+(?:declare\s+)?(?:type|interface)\s+(\w+)/gm))
     names.push(m[1]);
   return [...new Set(names)];
 }
@@ -176,7 +178,7 @@ function emitTypes(depSnapshots: Map<string, PackSnapshot>): string | null {
 
   for (const [depId, snapshot] of depSnapshots) {
     for (const key of Object.keys(snapshot.defs)) {
-      const exported = parseExportedNames(snapshot.defs[key]);
+      const exported = parseExportedTypeNames(snapshot.defs[key]);
       const filtered = exported.filter(n => !EARS_PROVIDED.has(n) && !seen.has(n));
       if (filtered.length === 0) continue;
       hasDefs = true;
