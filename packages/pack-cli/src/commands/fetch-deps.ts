@@ -96,32 +96,35 @@ async function resolveFromRegistry(depId: string): Promise<PackSnapshot | null> 
   }
 }
 
+function extractFileFromTar(decompressed: Buffer, suffix: string): string | null {
+  let offset = 0;
+  while (offset < decompressed.length - 512) {
+    const header = decompressed.subarray(offset, offset + 512);
+    const name = header.subarray(0, 100).toString('utf-8').replace(/\0/g, '');
+    if (!name) break;
+
+    const sizeOctal = header.subarray(124, 136).toString('utf-8').replace(/\0/g, '').trim();
+    const size = parseInt(sizeOctal, 8) || 0;
+
+    if (name.endsWith(suffix)) {
+      return decompressed.subarray(offset + 512, offset + 512 + size).toString('utf-8');
+    }
+
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+  return null;
+}
+
 function extractSnapshotFromTarball(buffer: Buffer): PackSnapshot | null {
   try {
     const { gunzipSync } = require('node:zlib') as typeof import('node:zlib');
     const decompressed = gunzipSync(buffer);
 
-    let offset = 0;
-    while (offset < decompressed.length - 512) {
-      const header = decompressed.subarray(offset, offset + 512);
-      const name = header.subarray(0, 100).toString('utf-8').replace(/\0/g, '');
-      if (!name) break;
+    const snapshot = extractFileFromTar(decompressed, '/snapshot.json');
+    if (snapshot) return JSON.parse(snapshot);
 
-      const sizeOctal = header.subarray(124, 136).toString('utf-8').replace(/\0/g, '').trim();
-      const size = parseInt(sizeOctal, 8) || 0;
-
-      if (name.endsWith('dist/snapshot.json') || name.endsWith('/snapshot.json')) {
-        const content = decompressed.subarray(offset + 512, offset + 512 + size).toString('utf-8');
-        return JSON.parse(content);
-      }
-
-      if (name.endsWith('dist/types.json') || name.endsWith('/types.json')) {
-        const content = decompressed.subarray(offset + 512, offset + 512 + size).toString('utf-8');
-        return wrapTypes(JSON.parse(content));
-      }
-
-      offset += 512 + Math.ceil(size / 512) * 512;
-    }
+    const types = extractFileFromTar(decompressed, '/types.json');
+    if (types) return wrapTypes(JSON.parse(types));
   } catch {}
   return null;
 }
