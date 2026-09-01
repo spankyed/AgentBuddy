@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -77,7 +78,7 @@ function tagToVersion(tag: string): string | null {
 }
 
 async function resolveFromGitHub(depId: string, repo: string, range: string): Promise<PackSnapshot | null> {
-  const url = `https://api.github.com/repos/${repo}/releases`;
+  const url = `https://api.github.com/repos/${repo}/releases?per_page=100`;
 
   const res = await fetch(url, { headers: githubHeaders() });
   if (!res.ok) {
@@ -88,7 +89,6 @@ async function resolveFromGitHub(depId: string, repo: string, range: string): Pr
 
   const releases = await res.json() as GitHubRelease[];
 
-  // Find releases with valid semver tags that satisfy the range, sorted newest first
   const matching = releases
     .map(r => ({ release: r, version: tagToVersion(r.tag_name) }))
     .filter((r): r is { release: GitHubRelease; version: string } =>
@@ -102,7 +102,6 @@ async function resolveFromGitHub(depId: string, repo: string, range: string): Pr
 
   const { release, version } = matching[0];
 
-  // Find the .tgz asset
   const asset = release.assets.find(a => a.name.endsWith('.tgz'));
   if (!asset) {
     console.warn(`  Release ${release.tag_name} in ${repo} has no .tgz asset`);
@@ -120,8 +119,7 @@ async function downloadAndExtract(assetUrl: string, depId: string, version: stri
     return null;
   }
 
-  // Extract snapshot.json from the tarball into a temp dir
-  const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.fetch-'));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fetch-'));
   try {
     const nodeStream = Readable.fromWeb(res.body as import('node:stream/web').ReadableStream);
     await pipeline(
@@ -131,7 +129,6 @@ async function downloadAndExtract(assetUrl: string, depId: string, version: stri
 
     const snapshotPath = path.join(tmpDir, 'dist', 'snapshot.json');
     if (!fs.existsSync(snapshotPath)) {
-      // Try without dist/ prefix (tarball structure may vary)
       const altPath = path.join(tmpDir, 'snapshot.json');
       if (!fs.existsSync(altPath)) {
         console.warn(`  No snapshot.json found in .tgz for ${depId}@${version}`);
@@ -148,8 +145,6 @@ async function downloadAndExtract(assetUrl: string, depId: string, version: stri
 
 // ── abuddy.com registry (stub) ──
 
-// Looks up a pack id in the abuddy.com registry to find its GitHub source.
-// Returns "owner/repo" or null.
 async function lookupRegistry(_depId: string): Promise<string | null> {
   // TODO: implement when api.abuddy.com is live
   // const res = await fetch(`https://api.abuddy.com/packs/${depId}`);
@@ -167,6 +162,9 @@ function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
   const defsDir = path.join(depDir, 'defs');
+  if (fs.existsSync(defsDir)) {
+    fs.rmSync(defsDir, { recursive: true });
+  }
   if (Object.keys(snapshot.defs).length > 0) {
     fs.mkdirSync(defsDir, { recursive: true });
     for (const [key, content] of Object.entries(snapshot.defs)) {
@@ -180,16 +178,16 @@ function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
 async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<{ snapshot: PackSnapshot; source: string } | null> {
   const { github, range } = parseDepValue(depValue);
 
-  // Explicit github: prefix — go directly to GitHub
+  // Workspace first — always try, even with github: prefix (local dev)
+  const workspace = resolveFromWorkspace(root, depId);
+  if (workspace) return { snapshot: workspace, source: 'workspace' };
+
+  // GitHub release (explicit source)
   if (github) {
     const snapshot = await resolveFromGitHub(depId, github, range);
     if (snapshot) return { snapshot, source: `github:${github}@${snapshot.manifest.version}` };
     return null;
   }
-
-  // Workspace resolution
-  const workspace = resolveFromWorkspace(root, depId);
-  if (workspace) return { snapshot: workspace, source: 'workspace' };
 
   // Registry lookup → GitHub
   const registrySource = await lookupRegistry(depId);

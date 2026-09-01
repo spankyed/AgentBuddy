@@ -6,9 +6,13 @@ import { findPackRoot, readManifest } from '../utils';
 
 async function registerDepCompilers(root: string, depId: string): Promise<void> {
   const candidates = [
+    // Workspace siblings (same paths as fetch-deps resolver)
     path.resolve(root, '..', depId, 'pack.config.ts'),
     path.resolve(root, '..', '..', 'packages', depId, 'pack.config.ts'),
     path.resolve(root, '..', '..', depId, 'pack.config.ts'),
+    // node_modules (npm-installed dep)
+    path.resolve(root, 'node_modules', '@abuddy-pack', depId, 'pack.config.ts'),
+    path.resolve(root, 'node_modules', '@app', depId, 'pack.config.ts'),
   ];
 
   for (const configPath of candidates) {
@@ -25,6 +29,8 @@ async function registerDepCompilers(root: string, depId: string): Promise<void> 
     }
     return;
   }
+
+  console.warn(`  Warning: could not find pack.config.ts for dependency "${depId}" — custom compilers won't be available`);
 }
 
 export async function build(args: string[]) {
