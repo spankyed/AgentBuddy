@@ -1,4 +1,5 @@
-import { validateCronExpression } from '../../build/cron-utils';
+import { describe, it, expect } from 'vitest';
+import { validateCronExpression } from '../../src/build/cron-utils';
 
 describe('validateCronExpression', () => {
   it('allows steps equal to 1-based field cardinality', () => {

@@ -3,19 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {
-    "./build": "./build/index.ts"
-  },
   "scripts": {
-    "compile:actions": "tsx build/compile.ts actions",
-    "compile:prompts": "tsx build/compile.ts prompts",
-    "compile:flows": "tsx build/compile.ts flows",
-    "compile:library": "tsx build/compile.ts library",
-    "compile:notes": "tsx build/compile.ts notes",
-    "compile:settings": "tsx build/compile.ts settings",
-    "compile:faq": "tsx build/compile.ts faq",
-    "compile:all": "tsx build/compile.ts all",
-    "compile": "tsx build/compile.ts all",
+    "compile": "tsx build/compile.ts",
     "build:snapshot": "tsx build/build-snapshot.ts",
     "sync:external": "bash scripts/sync-external.sh",
     "pipeline": "bash scripts/pipeline.sh",

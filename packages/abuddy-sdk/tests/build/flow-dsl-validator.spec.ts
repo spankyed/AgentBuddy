@@ -1,4 +1,5 @@
-import { validate } from '../../build/flow-dsl-validator';
+import { describe, it, expect } from 'vitest';
+import { validate } from '../../src/build/compilers/flow-dsl-validator';
 
 describe('flow DSL validator', () => {
   it('allows root flows with only a schedule track', () => {
