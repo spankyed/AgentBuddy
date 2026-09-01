@@ -7,7 +7,7 @@ import { findPackRoot, readManifest } from '../utils';
 async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<Map<string, PackSnapshot>> {
   const result = new Map<string, PackSnapshot>();
   for (const depId of Object.keys(deps)) {
-    const resolved = await resolveDep(root, depId);
+    const resolved = resolveDep(root, depId);
     if (!resolved) {
       console.warn(`  Warning: could not resolve dependency "${depId}" — try "abuddy fetch-deps"`);
       continue;

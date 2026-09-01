@@ -24,7 +24,6 @@ const snapshot: PackSnapshot = { types, defs, manifest };
 
 fs.mkdirSync(distDir, { recursive: true });
 fs.writeFileSync(path.join(distDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
-fs.writeFileSync(path.join(distDir, 'types.json'), JSON.stringify(types, null, 2));
 
 console.log(`Snapshot written to dist/snapshot.json`);
 console.log(`  ${Object.keys(defs).length} def(s): ${Object.keys(defs).join(', ')}`);

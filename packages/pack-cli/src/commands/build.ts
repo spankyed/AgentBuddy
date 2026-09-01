@@ -67,7 +67,6 @@ export async function build(args: string[]) {
     entities: manifest.entities ?? {},
     relKinds: manifest.relKinds ?? {},
   };
-  fs.writeFileSync(path.join(outputDir, 'types.json'), JSON.stringify(types, null, 2));
 
   const defsDir = path.join(root, 'defs');
   const defs: Record<string, string> = {};
