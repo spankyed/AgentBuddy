@@ -25,8 +25,6 @@ export default defineConfig(async () => {
 
   resolve: {
     alias: [
-      { find: '@/plugins', replacement: new URL('../default-setup/src/plugins', import.meta.url).pathname },
-      { find: '@/registries', replacement: new URL('../default-setup/src/registries', import.meta.url).pathname },
       { find: /^@\//, replacement: new URL('./src/', import.meta.url).pathname },
     ],
   },

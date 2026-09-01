@@ -7,10 +7,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"],
-    "paths": {
-      "@/registries/*": ["../default-setup/src/registries/*"]
-    }
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.vue"]
 }
