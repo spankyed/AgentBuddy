@@ -11,7 +11,7 @@ Commands:
   init [name]         Scaffold a new pack
   generate            Generate EARS types from manifest + deps
   fetch-deps          Fetch dependency type manifests
-  build               Compile pack artifacts to dist/
+  build [--skip-generate]  Compile pack artifacts to dist/
   validate            Check manifest and types
   install <path>      Install a pack from a directory or .zip
   uninstall <id>      Remove an installed pack

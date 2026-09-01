@@ -12,7 +12,8 @@ export interface PackConfig {
   notes?: string;       // directory path
   faqs?: string;        // directory path
   settings?: string;    // file path, e.g. './settings.ts'
-  [key: string]: string | undefined;
+  compilers?: Array<{ type: string; compiler: import('./seed-compiler').SeedCompiler }>;
+  [key: string]: unknown;
 }
 
 /**

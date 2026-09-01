@@ -94,6 +94,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   const mod = await import(pathToFileURL(packConfigPath).href);
   const packConfig = (mod.default ?? mod) as PackConfig;
 
+  if (packConfig.compilers) {
+    for (const { type, compiler } of packConfig.compilers) {
+      registerSeedCompiler(type, compiler);
+    }
+  }
+
   console.log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -106,7 +112,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     if (type === 'settings') continue;
 
     const relativePath = packConfig[type];
-    if (!relativePath) continue;
+    if (!relativePath || typeof relativePath !== 'string') continue;
 
     const sourcePath = path.resolve(packDir, relativePath);
     if (!fs.existsSync(sourcePath)) continue;

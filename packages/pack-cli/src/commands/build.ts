@@ -5,11 +5,13 @@ import { registerDefaultCompilers } from '@app/default-setup/build';
 import { generate } from './generate';
 import { findPackRoot, readManifest } from '../utils';
 
-export async function build(_args: string[]) {
+export async function build(args: string[]) {
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
 
-  await generate([]);
+  if (!args.includes('--skip-generate')) {
+    await generate([]);
+  }
 
   registerDefaultCompilers();
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
