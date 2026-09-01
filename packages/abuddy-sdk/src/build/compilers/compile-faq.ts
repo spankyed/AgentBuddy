@@ -1,6 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { CompiledFAQ } from './dsl-types';
+
+export interface CompiledFAQ {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  order?: number;
+}
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n\n?/;
 const HEADING_RE = /^#\s+(.+?)(?:\n|$)/;

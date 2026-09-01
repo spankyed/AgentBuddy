@@ -2,6 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import type { PackConfig, PluginConfig, CompilePackOptions, CompilePackResult } from './types';
+import {
+  actionsCompiler, promptsCompiler, flowsCompiler,
+  libraryCompiler, notesCompiler, faqCompiler, settingsCompiler,
+} from './compilers/standard';
 
 // ============================================================================
 // Compiler Interface
@@ -46,6 +50,16 @@ export function getSeedCompiler(type: string): SeedCompiler | undefined {
 export function getRegisteredSeedTypes(): string[] {
   return Array.from(compilers.keys());
 }
+
+const STANDARD_COMPILERS: Record<string, SeedCompiler> = {
+  actions: actionsCompiler,
+  prompts: promptsCompiler,
+  flows: flowsCompiler,
+  library: libraryCompiler,
+  notes: notesCompiler,
+  faqs: faqCompiler,
+  settings: settingsCompiler,
+};
 
 // ============================================================================
 // Plugin Settings Discovery
@@ -102,6 +116,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   if (packConfig.compilers) {
     for (const { type, compiler } of packConfig.compilers) {
       registerSeedCompiler(type, compiler);
+    }
+  }
+
+  for (const [type, compiler] of Object.entries(STANDARD_COMPILERS)) {
+    if (!compilers.has(type)) {
+      compilers.set(type, compiler);
     }
   }
 

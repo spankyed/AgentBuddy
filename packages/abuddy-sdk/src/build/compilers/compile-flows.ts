@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pathToFileURL } from 'url';
-import type { FlowDSL, FlowConfig, ValidationResult } from './dsl-types';
+import type { FlowDSL, FlowConfig, ValidationResult } from './flow-types';
 import { isFlowConfig } from './flow-dsl-utils';
 import { validate } from './flow-dsl-validator';
 

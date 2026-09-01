@@ -1,4 +1,4 @@
-import type { FlowConfig, Track } from './dsl-types';
+import type { FlowConfig, Track } from './flow-types';
 
 export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig {
   return !Array.isArray(value);

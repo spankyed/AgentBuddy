@@ -1,20 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  registerSeedCompiler,
-  compileSourceDir,
-  seedFile,
-  type SeedCompiler,
-  type CompilationContext,
-  type ValidationResult,
-  type CompiledEntry,
-} from '@abuddy/sdk/build';
+import { compileSourceDir } from '../compile-utils';
+import { seedFile } from '../manifest';
+import type { SeedCompiler, CompilationContext, ValidationResult } from '../seed-compiler';
+import type { CompiledEntry } from '../compile-utils';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows';
 import { compileLibraryFromDir, copyLibraryMedia } from './compile-library';
 import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
 import { compileFaqFromDir } from './compile-faq';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
-import type { FlowDSL, CompiledFAQ, ExportedLibrary, ExportedNotes } from './dsl-types';
+import type { FlowDSL } from './flow-types';
+import type { CompiledFAQ } from './compile-faq';
+import type { ExportedLibrary } from './compile-library';
+import type { ExportedNotes } from './compile-notes';
 import { countDocs } from './library-utils';
 
 function writeJson(filePath: string, data: unknown): void {
@@ -30,7 +28,7 @@ interface ActionsCompiled {
   warnings: string[];
 }
 
-const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
+export const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
   async compile(dir) {
     return compileSourceDir(dir, {
       functionName: 'action',
@@ -67,7 +65,7 @@ const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
 // Prompts Compiler
 // ============================================================================
 
-const promptsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
+export const promptsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
   async compile(dir) {
     return compileSourceDir(dir, {
       functionName: 'template',
@@ -109,7 +107,7 @@ interface FlowsCompiled {
   loaded: number;
 }
 
-const flowsCompiler: SeedCompiler<FlowsCompiled, FlowDSL> = {
+export const flowsCompiler: SeedCompiler<FlowsCompiled, FlowDSL> = {
   async compile(dir) {
     return loadFlowsFromDir(dir);
   },
@@ -155,7 +153,7 @@ interface LibraryMerged {
   sourcePaths: string[];
 }
 
-const libraryCompiler: SeedCompiler<ExportedLibrary, LibraryMerged> = {
+export const libraryCompiler: SeedCompiler<ExportedLibrary, LibraryMerged> = {
   async compile(dir) {
     return compileLibraryFromDir(dir);
   },
@@ -188,7 +186,7 @@ interface NotesMerged {
   sourcePaths: string[];
 }
 
-const notesCompiler: SeedCompiler<ExportedNotes, NotesMerged> = {
+export const notesCompiler: SeedCompiler<ExportedNotes, NotesMerged> = {
   async compile(dir) {
     return compileNotesFromDir(dir);
   },
@@ -217,7 +215,7 @@ const notesCompiler: SeedCompiler<ExportedNotes, NotesMerged> = {
 // FAQ Compiler
 // ============================================================================
 
-const faqCompiler: SeedCompiler<CompiledFAQ[], CompiledFAQ[]> = {
+export const faqCompiler: SeedCompiler<CompiledFAQ[], CompiledFAQ[]> = {
   async compile(dir) {
     return compileFaqFromDir(dir);
   },
@@ -241,7 +239,7 @@ const faqCompiler: SeedCompiler<CompiledFAQ[], CompiledFAQ[]> = {
 // Settings Compiler
 // ============================================================================
 
-const settingsCompiler: SeedCompiler<Record<string, any>, Record<string, any>> = {
+export const settingsCompiler: SeedCompiler<Record<string, any>, Record<string, any>> = {
   async compile(filePath) {
     return loadSettingsFromFile(filePath);
   },
@@ -258,28 +256,4 @@ const settingsCompiler: SeedCompiler<Record<string, any>, Record<string, any>> =
     writeJson(path.join(outputDir, seedFile('settings')), merged);
     console.log(`  settings compiled`);
   },
-};
-
-// ============================================================================
-// Registration
-// ============================================================================
-
-export function registerDefaultCompilers(): void {
-  registerSeedCompiler('actions', actionsCompiler);
-  registerSeedCompiler('prompts', promptsCompiler);
-  registerSeedCompiler('flows', flowsCompiler);
-  registerSeedCompiler('library', libraryCompiler);
-  registerSeedCompiler('notes', notesCompiler);
-  registerSeedCompiler('faqs', faqCompiler);
-  registerSeedCompiler('settings', settingsCompiler);
-}
-
-export {
-  actionsCompiler,
-  promptsCompiler,
-  flowsCompiler,
-  libraryCompiler,
-  notesCompiler,
-  faqCompiler,
-  settingsCompiler,
 };

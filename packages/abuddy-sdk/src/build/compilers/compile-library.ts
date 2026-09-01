@@ -1,8 +1,44 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { ExportedItem, ExportedLibrary } from './dsl-types';
 import { toDisplayName, parseMarkdownSections, parseFrontmatter } from './library-utils';
-import { sourceHash } from './compile-utils';
+import { sourceHash } from '../compile-utils';
+
+export interface ContentSection {
+  type: 'field' | 'list' | 'markdown' | 'text' | 'code';
+  [key: string]: any;
+}
+
+export interface ExportedDocument {
+  id?: string;
+  type: 'document';
+  name: string;
+  content: ContentSection[];
+  tags: string[];
+  sourceHash?: string;
+}
+
+export interface ExportedCollection {
+  id?: string;
+  type: 'collection';
+  name: string;
+  description?: string;
+  children: ExportedItem[];
+  sourceHash?: string;
+}
+
+export interface ExportedSymlink {
+  id?: string;
+  type: 'symlink';
+  name: string;
+  symlinkPath: string;
+}
+
+export type ExportedItem = ExportedDocument | ExportedCollection | ExportedSymlink;
+
+export interface ExportedLibrary {
+  version: number;
+  items: ExportedItem[];
+}
 
 function walkDirectory(dir: string): ExportedItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));

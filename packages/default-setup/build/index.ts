@@ -1,5 +1,4 @@
 export {
-  registerDefaultCompilers,
   actionsCompiler,
   promptsCompiler,
   flowsCompiler,
@@ -7,4 +6,4 @@ export {
   notesCompiler,
   faqCompiler,
   settingsCompiler,
-} from './seed-compilers';
+} from '@abuddy/sdk/build';

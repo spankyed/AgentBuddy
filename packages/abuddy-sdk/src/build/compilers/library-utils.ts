@@ -1,4 +1,4 @@
-import type { ExportedItem, ContentSection } from './dsl-types';
+import type { ExportedItem, ContentSection } from './compile-library';
 
 export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ');
