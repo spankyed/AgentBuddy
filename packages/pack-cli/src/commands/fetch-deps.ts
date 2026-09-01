@@ -32,25 +32,6 @@ async function resolveFromLocal(root: string, depId: string): Promise<PackSnapsh
     ?? tryReadTypes(path.join(depDir, 'types.json'));
 }
 
-async function resolveFromNodeModules(root: string, depId: string): Promise<PackSnapshot | null> {
-  const candidates = [
-    path.join(root, 'node_modules', '@abuddy-pack', depId, 'dist'),
-    path.join(root, 'node_modules', '@abuddy-pack', depId),
-  ];
-
-  if (depId === 'default-setup') {
-    candidates.unshift(
-      path.join(root, 'node_modules', '@app', 'default-setup', 'dist'),
-    );
-  }
-
-  for (const dir of candidates) {
-    const result = resolveFromDir(dir);
-    if (result) return result;
-  }
-  return null;
-}
-
 async function resolveFromWorkspace(root: string, depId: string): Promise<PackSnapshot | null> {
   const candidates = [
     path.resolve(root, '..', depId, 'dist'),
@@ -62,70 +43,6 @@ async function resolveFromWorkspace(root: string, depId: string): Promise<PackSn
     const result = resolveFromDir(dir);
     if (result) return result;
   }
-  return null;
-}
-
-async function resolveFromRegistry(depId: string): Promise<PackSnapshot | null> {
-  const packageName = `@abuddy-pack/${depId}`;
-  const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`;
-
-  try {
-    const metaRes = await fetch(registryUrl, {
-      headers: { 'Accept': 'application/json' },
-    });
-    if (!metaRes.ok) return null;
-
-    const meta = await metaRes.json() as {
-      'dist-tags'?: { latest?: string };
-      versions?: Record<string, { dist?: { tarball?: string } }>;
-    };
-
-    const latest = meta['dist-tags']?.latest;
-    if (!latest) return null;
-
-    const tarballUrl = meta.versions?.[latest]?.dist?.tarball;
-    if (!tarballUrl) return null;
-
-    const tarballRes = await fetch(tarballUrl);
-    if (!tarballRes.ok) return null;
-
-    const buffer = Buffer.from(await tarballRes.arrayBuffer());
-    return extractSnapshotFromTarball(buffer);
-  } catch {
-    return null;
-  }
-}
-
-function extractFileFromTar(decompressed: Buffer, suffix: string): string | null {
-  let offset = 0;
-  while (offset < decompressed.length - 512) {
-    const header = decompressed.subarray(offset, offset + 512);
-    const name = header.subarray(0, 100).toString('utf-8').replace(/\0/g, '');
-    if (!name) break;
-
-    const sizeOctal = header.subarray(124, 136).toString('utf-8').replace(/\0/g, '').trim();
-    const size = parseInt(sizeOctal, 8) || 0;
-
-    if (name.endsWith(suffix)) {
-      return decompressed.subarray(offset + 512, offset + 512 + size).toString('utf-8');
-    }
-
-    offset += 512 + Math.ceil(size / 512) * 512;
-  }
-  return null;
-}
-
-function extractSnapshotFromTarball(buffer: Buffer): PackSnapshot | null {
-  try {
-    const { gunzipSync } = require('node:zlib') as typeof import('node:zlib');
-    const decompressed = gunzipSync(buffer);
-
-    const snapshot = extractFileFromTar(decompressed, '/snapshot.json');
-    if (snapshot) return JSON.parse(snapshot);
-
-    const types = extractFileFromTar(decompressed, '/types.json');
-    if (types) return wrapTypes(JSON.parse(types));
-  } catch {}
   return null;
 }
 
@@ -144,11 +61,9 @@ function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
   }
 }
 
-// node_modules → workspace sibling → npm registry
 function resolveFromUpstream(root: string, depId: string): Promise<PackSnapshot | null> {
-  return resolveFromNodeModules(root, depId)
-    .then(r => r ?? resolveFromWorkspace(root, depId))
-    .then(r => r ?? resolveFromRegistry(depId));
+  // TODO: add GitHub release resolver (fetch .tgz from tagged releases)
+  return resolveFromWorkspace(root, depId);
 }
 
 // skipCache: true = always re-resolve from upstream (used by `fetch-deps` to refresh)
@@ -200,7 +115,7 @@ export async function fetchDeps(_args: string[]) {
 
   if (failed.length > 0) {
     console.warn(`\nFailed to resolve: ${failed.join(', ')}`);
-    console.warn('Try installing the package first: npm install @abuddy-pack/<name>');
+    console.warn('Ensure the dependency is available as a workspace sibling.');
   }
 
   console.log(`\nResolved ${resolved}/${depIds.length} dependencies`);
