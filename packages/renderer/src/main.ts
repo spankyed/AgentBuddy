@@ -4,7 +4,7 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import plugins, { defaultPlugin } from '@/plugins';
+import plugins, { defaultPlugin, tiptapPlugins, settingsSaveStatusMod } from '@/packs/built-in';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
@@ -12,13 +12,10 @@ import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-ins
 import { loadPackPlugins } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
 import { TIPTAP_PLUGINS_KEY } from '@/core/components/tiptap/injection-keys';
-import { tiptapPlugins } from '@/registries/tiptap-plugins';
-import '@/registries/app-extensions';
 import './setup/dsl-types';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import * as navigateMod from '@/core/utils/navigate';
 import * as openBrowserMod from '@/core/utils/openInAppBrowser';
-import * as settingsSaveStatusMod from '@/plugins/settings/fe/useSettingsSaveStatus';
 import * as pluginsMod from '@/core/composables/plugins';
 
 declare const __APP_VERSION__: string;

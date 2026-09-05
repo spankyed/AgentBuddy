@@ -71,7 +71,6 @@ import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
 import { useSettingsSaveStatus, getDesignatedPlugin } from '@abuddy/sdk/fe';
 import { applicationState } from '@/main';
-import allPlugins from '@/plugins';
 
 const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
 
@@ -104,12 +103,16 @@ const togglePluginVisibility = (id: string) => {
   });
 };
 
-const nonPinnedPlugins = allPlugins.filter(p => p.icon && !p.isPinned);
-const pinnedPlugins = allPlugins.filter(p => p.icon && p.isPinned);
-const sortedPlugins = [...nonPinnedPlugins, ...pinnedPlugins];
+const allPlugins = useSelector(applicationState, (state) => state.context.plugins);
+
+const sortedPlugins = computed(() => {
+  const nonPinned = allPlugins.value.filter(p => p.icon && !p.isPinned);
+  const pinned = allPlugins.value.filter(p => p.icon && p.isPinned);
+  return { sorted: [...nonPinned, ...pinned], separatorIndex: nonPinned.length > 0 && pinned.length > 0 ? nonPinned.length - 1 : -1 };
+});
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>
-  sortedPlugins.map((plugin) => {
+  sortedPlugins.value.sorted.map((plugin) => {
     const locked = plugin.id === getDesignatedPlugin('settings');
     const visible = isVisible(plugin.id);
     const textClass = locked
@@ -128,12 +131,10 @@ const visibilityMenuItems = computed<MenuItem[]>(() =>
   }),
 );
 
-const separatorIndex = nonPinnedPlugins.length > 0 && pinnedPlugins.length > 0
-  ? nonPinnedPlugins.length - 1
-  : -1;
+const separatorIndex = computed(() => sortedPlugins.value.separatorIndex);
 
 const onContextMenu = (e: MouseEvent) => {
-  open(e, visibilityMenuItems.value.length + (separatorIndex >= 0 ? 1 : 0));
+  open(e, visibilityMenuItems.value.length + (separatorIndex.value >= 0 ? 1 : 0));
 };
 
 const onPluginContextMenu = (e: MouseEvent, plugin: Plugin) => {

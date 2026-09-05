@@ -1,6 +1,6 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
-  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../default-setup/src/plugins/*/fe/**/*", "../default-setup/src/plugins/*/fe/**/*.vue", "../default-setup/src/shared/tiptap/**/*", "../default-setup/src/shared/tiptap/**/*.vue", "../default-setup/src/registries/plugins.ts", "../default-setup/src/registries/tiptap-plugins.ts", "../default-setup/src/registries/app-extensions.ts", "../default-setup/src/extensions/**/*", "../default-setup/src/extensions/**/*.vue", "../default-setup/src/shared/**/*", "../default-setup/src/shared/**/*.vue", "../abuddy-sdk/src/fe/**/*", "../abuddy-sdk/src/fe/**/*.vue"],
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../abuddy-sdk/src/fe/**/*", "../abuddy-sdk/src/fe/**/*.vue"],
   "exclude": ["src/**/__tests__/*", "src/core/types/generated/*"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
