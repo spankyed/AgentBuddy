@@ -5,7 +5,6 @@ import type {
   ValidationResult,
 } from './flow-types';
 import { isFlowConfig, resolveTracks } from './flow-types';
-import { validateCronExpression } from '../cron-utils';
 import { stepRegistry } from '../../steps/registry';
 import type { StepValidationContext } from '../../steps/types';
 
@@ -139,11 +138,11 @@ function validateTrack(
 
   const t = track as Record<string, unknown>;
 
-  // Detect which trigger track fields are present
   const triggerDefs = stepRegistry.triggers();
-  const knownTrackFields = triggerDefs.length > 0
-    ? triggerDefs.map(d => d.trigger!.trackField)
-    : ['event', 'schedule'];
+  if (triggerDefs.length === 0) {
+    throw new Error('No trigger types registered. Register triggers in the step registry before validating.');
+  }
+  const knownTrackFields = triggerDefs.map(d => d.trigger!.trackField);
   const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);
 
   if (presentFields.length === 0) {
@@ -160,9 +159,6 @@ function validateTrack(
       for (const err of result.errors) {
         errors.push({ path: `${path}.${field}`, message: err });
       }
-    } else if (field === 'schedule') {
-      const cronErr = validateCronExpression(t.schedule as string);
-      if (cronErr) errors.push({ path: `${path}.schedule`, message: cronErr });
     }
   }
 

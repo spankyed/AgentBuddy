@@ -2,8 +2,41 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { validate } from '../../src/build/compilers/flow-dsl-validator';
 import { stepRegistry } from '../../src/steps/registry';
 
+function registerBaseTriggers() {
+  stepRegistry.register({
+    type: 'listener',
+    kind: 'trigger',
+    trigger: {
+      trackField: 'event',
+      compile: () => ({}),
+      decompile: () => ({}),
+    },
+  });
+  stepRegistry.register({
+    type: 'schedule',
+    kind: 'trigger',
+    trigger: {
+      trackField: 'schedule',
+      compile: () => ({}),
+      decompile: () => ({}),
+      validateTrack(track) {
+        const cron = (track as any).schedule as string | undefined;
+        if (!cron?.trim()) return { valid: false, errors: ['Missing schedule'] };
+        const parts = cron.trim().split(/\s+/);
+        if (parts.length < 5 || parts.length > 6) {
+          return { valid: false, errors: ['Invalid cron expression'] };
+        }
+        return { valid: true, errors: [] };
+      },
+    },
+  });
+}
+
 describe('flow DSL validator', () => {
-  describe('schedule tracks (no registry)', () => {
+  describe('schedule tracks', () => {
+    beforeEach(() => registerBaseTriggers());
+    afterEach(() => stepRegistry.clear());
+
     it('allows root flows with only a schedule track', () => {
       const result = validate({
         'Scheduled Root': {
@@ -45,35 +78,8 @@ describe('flow DSL validator', () => {
   });
 
   describe('track validation with registry', () => {
-    beforeEach(() => {
-      stepRegistry.register({
-        type: 'listener',
-        kind: 'trigger',
-        trigger: {
-          trackField: 'event',
-          compile: () => ({}),
-          decompile: () => ({}),
-        },
-      });
-      stepRegistry.register({
-        type: 'schedule',
-        kind: 'trigger',
-        trigger: {
-          trackField: 'schedule',
-          compile: () => ({}),
-          decompile: () => ({}),
-          validate(node) {
-            const cron = (node as any).schedule as string | undefined;
-            if (!cron) return { valid: false, errors: ['Missing schedule'] };
-            return { valid: true, errors: [] };
-          },
-        },
-      });
-    });
-
-    afterEach(() => {
-      stepRegistry.clear();
-    });
+    beforeEach(() => registerBaseTriggers());
+    afterEach(() => stepRegistry.clear());
 
     it('accepts event tracks when listener is registered', () => {
       const result = validate({
@@ -110,7 +116,7 @@ describe('flow DSL validator', () => {
       expect(result.errors[0].message).toContain('multiple trigger fields');
     });
 
-    it('runs trigger-specific validation', () => {
+    it('runs trigger-specific validateTrack', () => {
       stepRegistry.clear();
       stepRegistry.register({
         type: 'custom-trigger',
@@ -150,33 +156,23 @@ describe('flow DSL validator', () => {
     });
   });
 
-  describe('fallback when registry is empty', () => {
-    beforeEach(() => {
-      stepRegistry.clear();
-    });
+  describe('empty registry', () => {
+    beforeEach(() => stepRegistry.clear());
 
-    it('still accepts event tracks via fallback fields', () => {
-      const result = validate({
+    it('throws when no triggers are registered', () => {
+      expect(() => validate({
         'Flow': [{ event: 'test.event', exits: [[]] }],
-      });
-
-      expect(result.valid).toBe(true);
+      })).toThrow('No trigger types registered');
     });
 
-    it('still accepts schedule tracks via fallback fields', () => {
-      const result = validate({
-        'Flow': [{ schedule: '0 * * * *', exits: [[]] }],
-      });
-
-      expect(result.valid).toBe(true);
-    });
-
-    it('still validates cron expressions via fallback', () => {
+    it('validates cron via validateTrack when schedule trigger is registered', () => {
+      registerBaseTriggers();
       const result = validate({
         'Flow': [{ schedule: 'not-valid', exits: [[]] }],
       });
 
       expect(result.valid).toBe(false);
+      stepRegistry.clear();
     });
   });
 });

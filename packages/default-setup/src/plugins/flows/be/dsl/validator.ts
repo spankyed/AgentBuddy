@@ -186,11 +186,8 @@ function validateTrack(
 
   const t = track as Record<string, unknown>;
 
-  // Validate trigger field: exactly one recognized trigger field must be present
   const triggerDefs = stepRegistry.triggers();
-  const knownTrackFields = triggerDefs.length > 0
-    ? triggerDefs.map(d => d.trigger!.trackField)
-    : ['event', 'schedule'];
+  const knownTrackFields = triggerDefs.map(d => d.trigger!.trackField);
   const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);
 
   if (presentFields.length === 0) {
