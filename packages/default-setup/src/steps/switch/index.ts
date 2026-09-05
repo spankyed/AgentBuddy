@@ -409,13 +409,15 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
 
-  const elseSteps = ctx.resolveBranch?.(node.id as string, `branch-${conditions.length}`);
+  const elseSteps = ctx.resolveBranch?.(node.id as string, `branch-${validConditions.length}`);
   if (elseSteps && elseSteps.length > 0) dsl.else = elseSteps;
 
   return dsl;
 }
 
 const SWITCH_DIMS = { rowHeight: 26, headerOffset: 43, bottomPadding: 10 };
+
+export { handler as switchNodeHandler };
 
 export const switchStep: StepDefinition = {
   type: 'switch',
