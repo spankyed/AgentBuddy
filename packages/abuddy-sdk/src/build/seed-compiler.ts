@@ -6,6 +6,7 @@ import {
   actionsCompiler, promptsCompiler, flowsCompiler,
   libraryCompiler, notesCompiler, faqCompiler, settingsCompiler,
 } from './compilers/standard';
+import { stepRegistry } from '../steps/registry';
 
 // ============================================================================
 // Compiler Interface
@@ -123,6 +124,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   }
 
   const compilers = buildCompilerMap(packConfig);
+
+  if (packConfig.steps) {
+    for (const step of packConfig.steps) {
+      stepRegistry.register(step);
+    }
+  }
 
   // Resolve settings and plugins paths from config
   const baseSettingsFile = packConfig.settings

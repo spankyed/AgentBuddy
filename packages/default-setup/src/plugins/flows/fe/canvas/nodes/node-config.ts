@@ -15,15 +15,16 @@ import {
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 import type { NodeKind } from '@app/api'
+import { stepRegistry } from '@abuddy/sdk/steps'
 
 // ===========================
 // Type Definitions
 // ===========================
 
 export interface NodeConfig {
-  type: NodeKind
+  type: NodeKind | string
   label: string
-  defaultLabel?: string // Default label for newly created nodes
+  defaultLabel?: string
   icon: Component
   color: string
   bgColor: string
@@ -32,9 +33,9 @@ export interface NodeConfig {
     inputs: number    // -1 means unlimited
     outputs: number   // -1 means unlimited
   }
-  component?: string // Vue component name for the canvas
-  isImplemented?: boolean // Whether the node type is fully implemented
-  isDisabled?: boolean // Whether the node type is temporarily disabled (shown in palette but not interactive)
+  component?: string
+  isImplemented?: boolean
+  isDisabled?: boolean
 }
 
 export interface NodeStyleOptions {
@@ -44,6 +45,33 @@ export interface NodeStyleOptions {
 
 export type NodeStatus = 'active' | 'paused' | 'completed' | 'failed'
 export type StatusVariant = 'simple' | 'detailed'
+
+// ===========================
+// Icon Resolution
+// ===========================
+
+const ICON_MAP: Record<string, Component> = {
+  Workflow,
+  Radio,
+  Zap,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Split,
+  Shuffle,
+  Activity,
+  Sparkle,
+  Plug,
+  Clock,
+}
+
+function resolveIcon(icon: unknown): Component {
+  if (typeof icon === 'string') {
+    return ICON_MAP[icon] || Play
+  }
+  return (icon as Component) || Play
+}
 
 // ===========================
 // Constants & Configuration
@@ -164,53 +192,12 @@ const STATUS_STYLE_CLASSES = {
   }
 } as const
 
-// Color mapping for node types
-const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = {
-  flow: 'purple',
-  listener: 'blue',
-  fire: 'amber',
-  query: 'cyan',
-  create: 'purple',
-  update: 'purple',
-  switch: 'yellow',
-  transform: 'emerald',
-  llm: 'indigo',
-  event: 'blue',
-  keep_alive: 'emerald',
-  kill: 'red',
-  action: 'neutral',
-  schedule: 'cyan'
-} as const
+// ===========================
+// Registry-Driven Configuration
+// ===========================
 
-// Node configuration registry
-export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
-  action: {
-    type: 'action',
-    label: 'Action',
-    defaultLabel: 'Do action',
-    icon: Play,
-    color: 'text-neutral-400',
-    bgColor: 'bg-neutral-700/20',
-    hoverBgColor: 'group-hover:bg-neutral-700/30',
-    connectionRules: { inputs: -1, outputs: -1 },  // Allow multiple inputs (converging) and outputs (parallel)
-    component: 'ActionNode',
-    isImplemented: true
-  },
-  keep_alive: {
-    type: 'keep_alive',
-    label: 'Keep alive',
-    defaultLabel: 'Keep alive',
-    icon: Activity,
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    hoverBgColor: 'group-hover:bg-emerald-500/15',
-    connectionRules: { inputs: 1, outputs: 0 },
-    component: 'VariableNode',
-    isImplemented: true
-  },
-  // Trigger nodes (listener, schedule) share the TriggerNode canvas component
-  // because they have identical structure: no inputs, dynamic exits, subtitle.
-  // See TriggerNode.vue for details.
+// Trigger configs are not step types — they're hardcoded here
+const TRIGGER_CONFIGS: Record<string, NodeConfig> = {
   listener: {
     type: 'listener',
     label: 'Listener',
@@ -235,142 +222,91 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     component: 'TriggerNode',
     isImplemented: true
   },
-  query: {
-    type: 'query',
-    label: 'Query',
-    defaultLabel: 'Query',
-    icon: Search,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10',
-    hoverBgColor: 'group-hover:bg-cyan-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: false
+}
+
+const TRIGGER_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = {
+  listener: 'blue',
+  schedule: 'cyan',
+  event: 'blue',
+}
+
+function buildNodeConfigs(): Record<string, NodeConfig> {
+  const configs: Record<string, NodeConfig> = { ...TRIGGER_CONFIGS }
+
+  for (const step of stepRegistry.all()) {
+    if (!step.fe) continue
+    configs[step.type] = {
+      ...step.fe.nodeConfig,
+      type: step.type,
+      icon: resolveIcon(step.fe.nodeConfig.icon),
+    }
+  }
+
+  return configs
+}
+
+function buildColorMap(): Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> {
+  const map: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = { ...TRIGGER_COLOR_MAP }
+
+  for (const step of stepRegistry.all()) {
+    if (step.fe?.colorKey) {
+      map[step.type] = step.fe.colorKey as keyof typeof NODE_STYLE_CLASSES.gradient
+    }
+  }
+
+  return map
+}
+
+// Built lazily on first access so the registry is populated
+let _nodeConfigs: Record<string, NodeConfig> | undefined
+let _colorMap: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> | undefined
+
+function getConfigs(): Record<string, NodeConfig> {
+  if (!_nodeConfigs) _nodeConfigs = buildNodeConfigs()
+  return _nodeConfigs
+}
+
+function getColorMap(): Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> {
+  if (!_colorMap) _colorMap = buildColorMap()
+  return _colorMap
+}
+
+// Public accessor for compatibility
+export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = new Proxy({} as any, {
+  get(_target, prop) {
+    return getConfigs()[prop as string]
   },
-  transform: {
-    type: 'transform',
-    label: 'Transform',
-    defaultLabel: 'Transform output',
-    icon: Shuffle,
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    hoverBgColor: 'group-hover:bg-emerald-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: false
+  ownKeys() {
+    return Object.keys(getConfigs())
   },
-  llm: {
-    type: 'llm',
-    label: 'LLM',
-    defaultLabel: 'Generate text',
-    icon: Sparkle,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-500/10',
-    hoverBgColor: 'group-hover:bg-indigo-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: true,
-    isDisabled: true
+  getOwnPropertyDescriptor(_target, prop) {
+    const configs = getConfigs()
+    if (prop in configs) {
+      return { configurable: true, enumerable: true, value: configs[prop as string] }
+    }
+    return undefined
   },
-  flow: {
-    type: 'flow',
-    label: 'Flow',
-    defaultLabel: 'Handle flow',
-    icon: Workflow,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    hoverBgColor: 'group-hover:bg-purple-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: true
+  has(_target, prop) {
+    return prop in getConfigs()
   },
-  create: {
-    type: 'create',
-    label: 'Create',
-    defaultLabel: 'Create entity',
-    icon: Plus,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    hoverBgColor: 'group-hover:bg-purple-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: false
-  },
-  update: {
-    type: 'update',
-    label: 'Update',
-    defaultLabel: 'Update entity',
-    icon: RefreshCw,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    hoverBgColor: 'group-hover:bg-purple-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: false
-  },
-  switch: {
-    type: 'switch',
-    label: 'Switch',
-    defaultLabel: 'Choose path',
-    icon: Split,
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/10',
-    hoverBgColor: 'group-hover:bg-yellow-500/15',
-    connectionRules: { inputs: 1, outputs: -1 },  // Multiple outputs (one per branch)
-    component: 'SwitchNode',
-    isImplemented: true
-  },
-  fire: {
-    type: 'fire',
-    label: 'Fire',
-    defaultLabel: 'Fire event',
-    icon: Zap,
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    hoverBgColor: 'group-hover:bg-amber-500/15',
-    connectionRules: { inputs: 1, outputs: 0 },
-    component: 'FireNode',
-    isImplemented: true
-  },
-  kill: {
-    type: 'kill',
-    label: 'Kill',
-    defaultLabel: 'Kill flow',
-    icon: Plug,
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/10',
-    hoverBgColor: 'group-hover:bg-red-500/15',
-    connectionRules: { inputs: 1, outputs: 0 },
-    component: 'VariableNode',
-    isImplemented: true
-  },
-} as const
+})
 
 // ===========================
 // Helper Functions
 // ===========================
 
-/**
- * Resolves the effective node type considering event override
- */
 const resolveNodeType = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   return options?.isEvent ? 'event' : nodeType
 }
 
-/**
- * Gets the color key for a node type
- */
 const getNodeColorKey = (nodeType: string): keyof typeof NODE_STYLE_CLASSES.gradient => {
-  return NODE_COLOR_MAP[nodeType] || 'neutral'
+  return getColorMap()[nodeType] || 'neutral'
 }
 
 // ===========================
 // Main Styling Functions
 // ===========================
 
-/**
- * Returns complete node styling classes including gradients, borders, and hover effects
- */
 export const getNodeClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const baseClasses = 'px-3 py-2 rounded-lg border backdrop-blur-sm transition-all duration-200'
   const effectiveType = resolveNodeType(nodeType, options)
@@ -379,18 +315,12 @@ export const getNodeClasses = (nodeType: NodeKind | string, options?: NodeStyleO
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
-/**
- * Returns glow effect classes for hover state
- */
 export const getNodeGlowClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
   return NODE_STYLE_CLASSES.glow[colorKey]
 }
 
-/**
- * Returns accent bar classes for left border
- */
 export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
@@ -411,18 +341,12 @@ export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: N
   return accentMap[colorKey] || accentMap.neutral
 }
 
-/**
- * Returns badge styling for node type labels
- */
 export const getNodeBadgeClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
   return NODE_STYLE_CLASSES.badge[colorKey]
 }
 
-/**
- * Returns divider border class matching node's color scheme
- */
 export const getNodeDividerClass = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
@@ -443,9 +367,6 @@ export const getNodeDividerClass = (nodeType: NodeKind | string, options?: NodeS
   return dividerMap[colorKey] || dividerMap.neutral
 }
 
-/**
- * Returns icon dot classes with optional ring styling
- */
 export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
@@ -459,9 +380,6 @@ export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: Nod
   return baseClass
 }
 
-/**
- * Returns text color classes for node type icons
- */
 export const getNodeIconTextColor = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const config = getNodeConfig(effectiveType)
@@ -473,9 +391,6 @@ export const getNodeIconTextColor = (nodeType: NodeKind | string, options?: Node
   return config?.color || 'text-neutral-400'
 }
 
-/**
- * Returns background color classes for node type icons
- */
 export const getNodeIconBgColor = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const config = getNodeConfig(effectiveType)
@@ -487,9 +402,6 @@ export const getNodeIconBgColor = (nodeType: NodeKind | string, options?: NodeSt
   return config?.bgColor || 'bg-neutral-500/10'
 }
 
-/**
- * Returns status indicator classes based on variant
- */
 export const getNodeStatusClasses = (
   status: NodeStatus | string,
   variant: StatusVariant = 'simple'
@@ -498,7 +410,6 @@ export const getNodeStatusClasses = (
     return STATUS_STYLE_CLASSES.simple[status as NodeStatus] || STATUS_STYLE_CLASSES.simple.default
   }
 
-  // Detailed variant returns object with outer and inner classes
   const detailedStatus = STATUS_STYLE_CLASSES.detailed[status as NodeStatus] || STATUS_STYLE_CLASSES.detailed.default
   return detailedStatus
 }
@@ -508,43 +419,26 @@ export const getNodeStatusClasses = (
 // Utility Functions
 // ===========================
 
-/**
- * Gets node configuration by type
- */
 export const getNodeConfig = (nodeType: NodeKind | string): NodeConfig | undefined => {
-  return nodeConfigs[nodeType as NodeKind]
+  return getConfigs()[nodeType]
 }
 
-/**
- * Returns true for trigger nodes (no inputs, dynamic outputs).
- * Derived from connection rules so new trigger types work automatically.
- */
 export const isTriggerNode = (nodeType: NodeKind | string | undefined): boolean => {
   if (!nodeType) return false
   const config = getNodeConfig(nodeType)
   return config?.connectionRules.inputs === 0 && config?.connectionRules.outputs === -1
 }
 
-/**
- * Returns all configured node types
- */
-export const getAllNodeTypes = (): NodeKind[] => {
-  return Object.keys(nodeConfigs) as NodeKind[]
+export const getAllNodeTypes = (): (NodeKind | string)[] => {
+  return Object.keys(getConfigs())
 }
 
-/**
- * Returns palette items for UI display
- */
 export const getPaletteItems = () => {
-  return Object.values(nodeConfigs)
+  return Object.values(getConfigs())
     .filter((config): config is NodeConfig => Boolean(config) && config.isImplemented === true)
     .map(({ type, label, icon, isImplemented, isDisabled }) => ({ type, label, icon, isImplemented, isDisabled }))
 }
 
-/**
- * Returns node types that can be created as a "next step" connection.
- * Filters to implemented, non-disabled nodes that accept inputs.
- */
 export const getConnectableNodeTypes = () => {
   return getPaletteItems().filter(item => {
     if (!item.isImplemented || item.isDisabled) return false
@@ -557,9 +451,6 @@ export const getConnectableNodeTypes = () => {
 // Palette Styling Functions
 // ===========================
 
-/**
- * Get palette item classes matching our node styles
- */
 export const getPaletteItemClasses = (type: string): string => {
   const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98]'
   const colorKey = getNodeColorKey(type)
@@ -567,9 +458,6 @@ export const getPaletteItemClasses = (type: string): string => {
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
-/**
- * Returns node styling classes for inspection panel (without grab cursor)
- */
 export const getInspectionItemClasses = (type: string): string => {
   const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200'
   const colorKey = getNodeColorKey(type)
@@ -577,9 +465,6 @@ export const getInspectionItemClasses = (type: string): string => {
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
-/**
- * Get icon dot classes for palette items
- */
 export const getPaletteIconClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
   const solidClass = NODE_STYLE_CLASSES.solid[colorKey]
@@ -591,13 +476,9 @@ export const getPaletteIconClasses = (type: string): string => {
   return `${solidClass} ${ringClass} ${hoverRingClass}`
 }
 
-/**
- * Get icon component classes for palette items
- */
 export const getPaletteIconComponentClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
 
-  // Map color keys to text classes - muted and sophisticated
   const textColorMap: Record<string, string> = {
     purple: 'text-purple-300/70 group-hover:text-purple-300/90',
     blue: 'text-blue-300/70 group-hover:text-blue-300/90',
@@ -614,21 +495,14 @@ export const getPaletteIconComponentClasses = (type: string): string => {
   return textColorMap[colorKey] || textColorMap.neutral
 }
 
-/**
- * Get glow classes for palette items
- */
 export const getPaletteGlowClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
   return NODE_STYLE_CLASSES.glow[colorKey]
 }
 
-/**
- * Get gradient overlay classes for palette items
- */
 export const getPaletteGradientClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
 
-  // Map color keys to gradient classes
   const gradientMap: Record<string, string> = {
     purple: 'from-purple-400 to-purple-600',
     blue: 'from-blue-400 to-blue-600',

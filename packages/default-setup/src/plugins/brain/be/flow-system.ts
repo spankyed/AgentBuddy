@@ -1,6 +1,7 @@
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
 import type { ListenerNode, NodeEntity, ScheduleNode } from '@/plugins/flows/be/config/types';
 import { repository } from '@abuddy/sdk/ears';
+import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
 import { EARS } from '@/registries/ears';
 import type { ExecutionContext } from './types';
@@ -135,12 +136,13 @@ function createChildNode(
   }
 
   const spawnParent = parentTNodeId ?? eventTNodeId;
-  const isFlowNode = stepOrFlowNode.nodeType === 'flow';
-  const { machine, tNodeId, tNode } = isFlowNode
+  const stepDef = stepRegistry.get(stepOrFlowNode.nodeType);
+  const spawnsSubflow = stepDef?.runtime?.spawnsSubflow ?? false;
+  const { machine, tNodeId, tNode } = spawnsSubflow
     ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
     : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
 
-  const systemId = `${isFlowNode ? 'flow' : 'step'}-tnode-${tNodeId}`;
+  const systemId = `${spawnsSubflow ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
   return [machine, systemId, tNode] as const;
 }
@@ -313,6 +315,10 @@ export function createFlowNodeSystem(
               },
               steps: [],
               lastStep: undefined,
+              runtime: {
+                getFlowActor,
+                getAppServices: () => require('@/services').default,
+              },
             };
 
             // Spawn ALL connected downstream steps in parallel

@@ -2,6 +2,8 @@ import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
+import { registerStandardSteps } from '@/steps/register';
+registerStandardSteps();
 import { emit, getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/registries/ears';
 import type { BrainRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';

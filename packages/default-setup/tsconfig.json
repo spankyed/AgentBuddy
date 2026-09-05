@@ -13,6 +13,7 @@
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/registries/*": ["./src/registries/*"],
       "@/plugins/*": ["./src/plugins/*"],
+      "@/steps/*": ["./src/steps/*"],
       "@/*": ["../api/src/*"],
       "@app/api/dist/*": ["../api/dist/*"]
     }

@@ -176,8 +176,8 @@ export type NodeEntity =
   | LLMNode
   | ScheduleNode;
 
-/** Literal union of all nodeType strings (keeps Base clean) */
-export type NodeKind = NodeEntity['nodeType'];
+/** Literal union of all nodeType strings, open for custom step types */
+export type NodeKind = NodeEntity['nodeType'] | (string & {});
 
 /* Optional—handy type guard generator */
 export const isNodeKind = <K extends NodeKind>(k: K) =>

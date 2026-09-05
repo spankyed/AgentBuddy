@@ -14,6 +14,7 @@ export interface PackConfig {
   settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
   plugins?: string;     // directory path, e.g. './src/plugins' — scanned for per-plugin settings
   compilers?: Array<{ type: string; compiler: import('./seed-compiler').SeedCompiler }>;
+  steps?: import('../steps/types').StepDefinition[];
   [key: string]: unknown;
 }
 

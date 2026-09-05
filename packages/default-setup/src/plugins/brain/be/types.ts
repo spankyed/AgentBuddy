@@ -100,11 +100,17 @@ export interface StepRun {
   timestamp: TimestampMs;
 }
 
+export interface RuntimeServices {
+  getFlowActor: (flowTNodeId: EARS.EntityId) => any | undefined;
+  getAppServices: () => any;
+}
+
 export interface ExecutionContext {
   flowTNodeId: EARS.EntityId;     // Flow instance ID (for routing & action functions)
   event: ExecutionEvent;
   steps: StepRun[];
   lastStep?: Omit<StepRun, 'timestamp'>;
+  runtime: RuntimeServices;
 }
 
 /** ── Schema definition types ────────────────────────────────────────────── */

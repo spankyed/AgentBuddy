@@ -1,91 +1,53 @@
-import type { NodeEntity, SwitchNode } from '@/plugins/flows/be/config/types';
+import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '../types';
-import { fireNodeHandler } from './fire-node';
-import { keepAliveNodeHandler } from './keep-alive-node';
-import { killNodeHandler } from './kill-node';
-import { llmNodeHandler } from './llm-node';
-import { actionNodeHandler } from './action-node';
-import { switchNodeHandler } from './switch-node';
+import { stepRegistry } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
 import { reportBrainRuntimeError } from '../runtime-errors';
 
 const logger = createLogger('node-executor');
 
-/**
- * Execute a node based on its type
- * Now accepts TNode which contains pre-processed attributes and mappings
- */
 export function executeNode(
   tNode: TNodeEntity,
   node: NodeEntity,
   executionContext: ExecutionContext,
   actor: any
 ) {
-  switch (node.nodeType) {
-    case 'fire':
-      fireNodeHandler(tNode, node, executionContext, actor);
-      break;
-      
-    case 'keep_alive':
-      keepAliveNodeHandler(tNode, node, executionContext, actor);
-      break;
+  if (node.nodeType === 'schedule') {
+    logger.warn(`Schedule node "${node.label}" executed as step — this shouldn't happen`);
+    setTimeout(() => {
+      try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
+    }, 100);
+    return;
+  }
 
-    case 'kill':
-      killNodeHandler(tNode, node, executionContext, actor);
-      break;
-      
-    case 'llm':
-      llmNodeHandler(tNode, node, executionContext, actor).catch((err) => {
-        const runtimeError = reportBrainRuntimeError({
-          error: err,
-          source: 'brain-llm',
-          phase: 'llm.handler',
-          flowTNodeId: executionContext.flowTNodeId,
-          tNodeId: tNode.id,
-          nodeId: node.id,
-          nodeLabel: node.label,
-          nodeType: node.nodeType,
-          eventType: executionContext.event?.type,
-        });
-        try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
+  const stepDef = stepRegistry.get(node.nodeType);
+  if (!stepDef?.runtime?.handler) {
+    logger.warn(`No runtime handler for node type: ${node.nodeType}`);
+    setTimeout(() => {
+      try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
+    }, 100);
+    return;
+  }
+
+  const { handler, isAsync } = stepDef.runtime;
+
+  if (isAsync) {
+    const promise = handler(tNode, node, executionContext, actor) as Promise<void>;
+    promise.catch((err) => {
+      const runtimeError = reportBrainRuntimeError({
+        error: err,
+        source: `brain-${node.nodeType}`,
+        phase: `${node.nodeType}.handler`,
+        flowTNodeId: executionContext.flowTNodeId,
+        tNodeId: tNode.id,
+        nodeId: node.id,
+        nodeLabel: node.label,
+        nodeType: node.nodeType,
+        eventType: executionContext.event?.type,
       });
-      break;
-
-    case 'action':
-      actionNodeHandler(tNode, node, executionContext, actor).catch((err) => {
-        const runtimeError = reportBrainRuntimeError({
-          error: err,
-          source: 'brain-action',
-          phase: 'action.handler',
-          flowTNodeId: executionContext.flowTNodeId,
-          tNodeId: tNode.id,
-          nodeId: node.id,
-          nodeLabel: node.label,
-          nodeType: node.nodeType,
-          eventType: executionContext.event?.type,
-        });
-        try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
-      });
-      break;
-
-    case 'switch':
-      switchNodeHandler(tNode, node as SwitchNode, executionContext, actor);
-      break;
-
-    case 'schedule':
-      // Schedule nodes are triggers — they should never be executed as step nodes.
-      // If we get here, complete immediately as a safety net.
-      logger.warn(`Schedule node "${node.label}" executed as step — this shouldn't happen`);
-      setTimeout(() => {
-        try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
-      }, 100);
-      break;
-
-    default:
-      // For unknown node types, complete immediately
-      logger.warn(`Unknown node type: ${node.nodeType}`);
-      setTimeout(() => {
-        try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
-      }, 100);
+      try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
+    });
+  } else {
+    handler(tNode, node, executionContext, actor);
   }
 } 

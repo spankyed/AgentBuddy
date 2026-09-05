@@ -5,32 +5,15 @@
  */
 
 import type {
-  FlowDSL,
   FlowConfig,
   Track,
-  DSLStepNode,
   ValidationError,
   ValidationResult,
 } from './types';
 import { isFlowConfig, resolveTracks } from './types';
 import { Cron } from 'croner';
-
-// Step node types (excludes 'listener' - that's implicit in track.event)
-const STEP_TYPES = [
-  'action',
-  'llm',
-  'switch',
-  'fire',
-  'transform',
-  'query',
-  'flow',
-  'create',
-  'update',
-  'keep_alive',
-  'kill',
-] as const;
-
-type StepType = typeof STEP_TYPES[number];
+import { stepRegistry } from '@abuddy/sdk/steps';
+import { registerStandardSteps } from '@/steps/register';
 
 /*─────────────────────────────────────────────────────────────────
  * Validation Context
@@ -66,6 +49,7 @@ interface ValidateOptions {
  * Validate a Flow DSL document (track-based format)
  */
 export function validate(dsl: unknown, options: ValidateOptions = {}): ValidationResult {
+  registerStandardSteps();
   const errors: ValidationError[] = [];
 
   // Basic structure check - should be a non-null object
@@ -284,10 +268,11 @@ function validateStep(
     return errors;
   }
 
-  if (!STEP_TYPES.includes(s.type as StepType)) {
+  const registeredTypes = stepRegistry.types();
+  if (!registeredTypes.includes(s.type as string)) {
     errors.push({
       path,
-      message: `Invalid step type: "${s.type}". Must be one of: ${STEP_TYPES.join(', ')}`,
+      message: `Invalid step type: "${s.type}". Must be one of: ${registeredTypes.join(', ')}`,
     });
     return errors;
   }
@@ -302,225 +287,37 @@ function validateStep(
     }
   }
 
-  // Type-specific validation
-  switch (s.type as StepType) {
-    case 'action':
-      errors.push(...validateActionStep(s, path, ctx, options));
-      break;
-    case 'llm':
-      errors.push(...validateLLMStep(s, path, ctx, options));
-      break;
-    case 'switch':
-      errors.push(...validateSwitchStep(s, path, ctx, options));
-      break;
-    case 'fire':
-      errors.push(...validateFireStep(s, path));
-      break;
-    case 'transform':
-      errors.push(...validateTransformStep(s, path));
-      break;
-    case 'query':
-      errors.push(...validateQueryStep(s, path));
-      break;
-    case 'flow':
-      errors.push(...validateFlowStep(s, path, ctx));
-      break;
-    case 'create':
-      errors.push(...validateCreateStep(s, path));
-      break;
-    case 'update':
-      errors.push(...validateUpdateStep(s, path, ctx));
-      break;
-    case 'keep_alive':
-    case 'kill':
-      // No specific validation needed
-      break;
+  // Registry-based per-type validation
+  const build = stepRegistry.getBuild(s.type as string);
+  if (build) {
+    const stepCtx = {
+      actions: ctx.actions,
+      prompts: ctx.prompts,
+      flowNames: ctx.flowNames,
+      nodeLabels: ctx.nodeLabels,
+      path,
+      skipReferenceCheck: options.skipReferenceCheck,
+    };
+    errors.push(...build.validate(s, path, stepCtx));
   }
 
-  return errors;
-}
-
-function validateActionStep(
-  s: Record<string, unknown>,
-  path: string,
-  ctx: ValidationContext,
-  options: ValidateOptions
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.action || typeof s.action !== 'string') {
-    errors.push({ path, message: 'Action step must have an "action" string (action name)' });
-  } else if (!options.skipReferenceCheck && !ctx.actions.has(s.action)) {
-    errors.push({
-      path: `${path}.action`,
-      message: `Action "${s.action}" not found. Available: ${Array.from(ctx.actions).join(', ') || '(none)'}`,
-    });
-  }
-
-  if (s.map !== undefined && (typeof s.map !== 'object' || s.map === null || Array.isArray(s.map))) {
-    errors.push({ path: `${path}.map`, message: '"map" must be an object { target: source }' });
-  }
-
-  return errors;
-}
-
-function validateLLMStep(
-  s: Record<string, unknown>,
-  path: string,
-  ctx: ValidationContext,
-  options: ValidateOptions
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.prompt || typeof s.prompt !== 'string') {
-    errors.push({ path, message: 'LLM step must have a "prompt" string (prompt template name)' });
-  } else if (!options.skipReferenceCheck && !ctx.prompts.has(s.prompt)) {
-    errors.push({
-      path: `${path}.prompt`,
-      message: `Prompt "${s.prompt}" not found. Available: ${Array.from(ctx.prompts).join(', ') || '(none)'}`,
-    });
-  }
-
-  if (s.map !== undefined && (typeof s.map !== 'object' || s.map === null || Array.isArray(s.map))) {
-    errors.push({ path: `${path}.map`, message: '"map" must be an object { target: source }' });
-  }
-
-  return errors;
-}
-
-function validateSwitchStep(
-  s: Record<string, unknown>,
-  path: string,
-  ctx: ValidationContext,
-  options: ValidateOptions
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!Array.isArray(s.conditions)) {
-    errors.push({ path, message: 'Switch step must have a "conditions" array' });
-    return errors;
-  }
-
-  if (s.conditions.length === 0) {
-    errors.push({ path: `${path}.conditions`, message: 'Switch must have at least one condition' });
-  }
-
-  for (let i = 0; i < s.conditions.length; i++) {
-    const cond = s.conditions[i] as Record<string, unknown>;
-    const condPath = `${path}.conditions[${i}]`;
-
-    if (!cond.if || typeof cond.if !== 'string') {
-      errors.push({ path: condPath, message: 'Condition must have an "if" expression string' });
-    }
-
-    if (!Array.isArray(cond.steps)) {
-      errors.push({ path: `${condPath}.steps`, message: 'Condition must have a "steps" array' });
-    } else {
-      // Empty steps arrays are meaningful: "match this condition, do nothing".
-      // The compiler emits no TRANSITIONS_TO edge for an empty branch, and at
-      // runtime the chain simply ends — exactly the intended no-op.
-      for (let si = 0; si < cond.steps.length; si++) {
-        errors.push(...validateStep(cond.steps[si], `${condPath}.steps[${si}]`, ctx, options));
+  // Recurse into inline steps for switch-type nodes
+  if (s.type === 'switch') {
+    if (Array.isArray(s.conditions)) {
+      for (let i = 0; i < (s.conditions as any[]).length; i++) {
+        const cond = (s.conditions as any[])[i];
+        if (Array.isArray(cond?.steps)) {
+          for (let si = 0; si < cond.steps.length; si++) {
+            errors.push(...validateStep(cond.steps[si], `${path}.conditions[${i}].steps[${si}]`, ctx, options));
+          }
+        }
       }
     }
-  }
-
-  if (s.else !== undefined) {
-    if (!Array.isArray(s.else)) {
-      errors.push({ path: `${path}.else`, message: '"else" must be an array of steps' });
-    } else {
-      // Empty else arrays are meaningful: "no conditions matched, do nothing".
-      // Same compiler + runtime treatment as empty condition steps above.
-      for (let si = 0; si < s.else.length; si++) {
-        errors.push(...validateStep(s.else[si], `${path}.else[${si}]`, ctx, options));
+    if (Array.isArray(s.else)) {
+      for (let si = 0; si < (s.else as any[]).length; si++) {
+        errors.push(...validateStep((s.else as any[])[si], `${path}.else[${si}]`, ctx, options));
       }
     }
-  }
-
-  return errors;
-}
-
-function validateFireStep(s: Record<string, unknown>, path: string): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.event || typeof s.event !== 'string') {
-    errors.push({ path, message: 'Fire step must have an "event" string' });
-  }
-
-  if (s.scope !== undefined && !['local', 'global'].includes(s.scope as string)) {
-    errors.push({ path: `${path}.scope`, message: '"scope" must be "local" or "global"' });
-  }
-
-  return errors;
-}
-
-function validateTransformStep(s: Record<string, unknown>, path: string): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.script || typeof s.script !== 'string') {
-    errors.push({ path, message: 'Transform step must have a "script" string' });
-  }
-
-  if (s.outputType !== undefined && !['json', 'text', 'custom'].includes(s.outputType as string)) {
-    errors.push({ path: `${path}.outputType`, message: '"outputType" must be "json", "text", or "custom"' });
-  }
-
-  return errors;
-}
-
-function validateQueryStep(s: Record<string, unknown>, path: string): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.prompt || typeof s.prompt !== 'string') {
-    errors.push({ path, message: 'Query step must have a "prompt" string' });
-  }
-
-  return errors;
-}
-
-function validateFlowStep(
-  s: Record<string, unknown>,
-  path: string,
-  ctx: ValidationContext
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.flow || typeof s.flow !== 'string') {
-    errors.push({ path, message: 'Flow step must have a "flow" string (sub-flow name)' });
-  }
-  // Note: Sub-flow might reference flows outside this DSL, so we don't validate flowNames
-
-  return errors;
-}
-
-function validateCreateStep(s: Record<string, unknown>, path: string): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.entity || typeof s.entity !== 'string') {
-    errors.push({ path, message: 'Create step must have an "entity" string (entity type)' });
-  }
-
-  return errors;
-}
-
-function validateUpdateStep(
-  s: Record<string, unknown>,
-  path: string,
-  ctx: ValidationContext
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  if (!s.target || typeof s.target !== 'string') {
-    errors.push({ path, message: 'Update step must have a "target" string (label of create node)' });
-  } else if (!ctx.nodeLabels.has(s.target)) {
-    errors.push({
-      path: `${path}.target`,
-      message: `Referenced create node "${s.target}" not found in this flow`,
-    });
-  }
-
-  if (s.onMissing !== undefined && !['fail', 'ignore', 'create'].includes(s.onMissing as string)) {
-    errors.push({ path: `${path}.onMissing`, message: '"onMissing" must be "fail", "ignore", or "create"' });
   }
 
   return errors;
@@ -582,21 +379,9 @@ function getTrackLabel(track: Record<string, unknown>, index: number): string {
 
 function getStepLabel(step: Record<string, unknown>, index: number): string {
   if (typeof step.label === 'string') return step.label;
-
-  switch (step.type) {
-    case 'action': return step.action as string || `Action ${index}`;
-    case 'llm': return step.prompt as string || `LLM ${index}`;
-    case 'fire': return step.event as string || `Fire ${index}`;
-    case 'flow': return step.flow as string || `Flow ${index}`;
-    case 'switch': return `Switch ${index}`;
-    case 'transform': return `Transform ${index}`;
-    case 'query': return `Query ${index}`;
-    case 'create': return `Create ${step.entity || index}`;
-    case 'update': return `Update ${index}`;
-    case 'keep_alive': return `Keep Alive ${index}`;
-    case 'kill': return `Kill Flow ${index}`;
-    default: return `Step ${index}`;
-  }
+  const build = stepRegistry.getBuild(step.type as string);
+  if (build) return build.getLabel(step, index);
+  return `Step ${index}`;
 }
 
 export default validate;

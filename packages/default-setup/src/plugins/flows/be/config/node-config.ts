@@ -1,23 +1,27 @@
 import type { NodeKind, NodeEntity } from './types';
 import { EARS } from '@/registries/ears';
 import { Cron } from 'croner';
+import { stepRegistry } from '@abuddy/sdk/steps';
 
 export interface NodeMetadata {
   nodeType: NodeKind;
   label: string;
   description: string;
   category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
-  // Node validation rules
   validation?: {
     requiredFields?: string[];
     customValidator?: (node: NodeEntity) => boolean;
   };
-  // Default values for new nodes
   defaults?: Partial<NodeEntity>;
 }
 
-// Centralized node metadata configuration
-export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
+const TRIGGER_TYPES = new Set(['listener', 'schedule']);
+
+export function isTriggerNodeType(nodeType: string): boolean {
+  return TRIGGER_TYPES.has(nodeType);
+}
+
+const triggerMetadata: Record<string, NodeMetadata> = {
   listener: {
     nodeType: 'listener',
     label: 'Listener',
@@ -28,133 +32,6 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
     },
     defaults: {
       scope: 'global',
-    } as any,
-  },
-  fire: {
-    nodeType: 'fire',
-    label: 'Fire Event',
-    description: 'Fire an event with optional payload',
-    category: 'action',
-    validation: {
-      requiredFields: ['eventType'],
-    },
-    defaults: {
-      scope: 'local',
-    } as any,
-  },
-  action: {
-    nodeType: 'action',
-    label: 'Action',
-    description: 'Execute a predefined action',
-    category: 'action',
-    validation: {
-      requiredFields: ['actionName'],
-    },
-  },
-  create: {
-    nodeType: 'create',
-    label: 'Create',
-    description: 'Create a new entity',
-    category: 'data',
-    validation: {
-      requiredFields: ['entityTypeTarget'],
-    },
-    defaults: {
-      inferLabel: true,
-    } as any,
-  },
-  update: {
-    nodeType: 'update',
-    label: 'Update',
-    description: 'Update an existing entity',
-    category: 'data',
-    validation: {
-      requiredFields: ['entityId'],
-    },
-    defaults: {
-      onMissing: 'fail',
-    } as any,
-  },
-  query: {
-    nodeType: 'query',
-    label: 'Query',
-    description: 'Query data using natural language',
-    category: 'data',
-    validation: {
-      requiredFields: ['prompt'],
-    },
-  },
-  switch: {
-    nodeType: 'switch',
-    label: 'Switch',
-    description: 'Branch flow based on conditions',
-    category: 'logic',
-    validation: {
-      requiredFields: ['conditions'],
-      customValidator: (node) => {
-        const switchNode = node as any;
-        if (!Array.isArray(switchNode.conditions) || switchNode.conditions.length === 0) {
-          return false;
-        }
-        // Last condition must be the else branch (no predicate)
-        const last = switchNode.conditions[switchNode.conditions.length - 1];
-        return last.predicate === undefined;
-      },
-    },
-    defaults: {
-      conditions: [
-        { predicate: undefined, label: 'Else' }
-      ],
-    } as any,
-  },
-  transform: {
-    nodeType: 'transform',
-    label: 'Transform',
-    description: 'Transform data using scripts',
-    category: 'data',
-    validation: {
-      requiredFields: ['script'],
-    },
-    defaults: {
-      outputType: 'json',
-    } as any,
-  },
-  flow: {
-    nodeType: 'flow',
-    label: 'Sub-flow',
-    description: 'Execute another flow',
-    category: 'logic',
-    validation: {
-      requiredFields: ['flowRef'],
-    },
-    defaults: {
-      propagateCtx: true,
-    } as any,
-  },
-  keep_alive: {
-    nodeType: 'keep_alive',
-    label: 'Keep Alive',
-    description: 'Keep the flow instance active',
-    category: 'logic',
-  },
-  kill: {
-    nodeType: 'kill',
-    label: 'Kill',
-    description: 'Terminate the containing flow',
-    category: 'logic',
-  },
-  llm: {
-    nodeType: 'llm',
-    label: 'LLM',
-    description: 'Process with AI language model',
-    category: 'ai',
-    validation: {
-      requiredFields: ['prompt'],
-    },
-    defaults: {
-      model: 'gpt-4',
-      temperature: 0.7,
-      maxTokens: 1000,
     } as any,
   },
   schedule: {
@@ -189,21 +66,40 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
   },
 };
 
-// Helper functions
-export function getNodeMetadata(nodeType: NodeKind): NodeMetadata {
+// Backward-compatible record — reads from registry for step types, triggerMetadata for triggers
+export const nodeMetadata: Record<string, NodeMetadata> = new Proxy(triggerMetadata, {
+  get(target, prop: string) {
+    if (prop in target) return target[prop];
+
+    const stepDef = stepRegistry.get(prop);
+    if (stepDef?.fe) {
+      return {
+        nodeType: prop,
+        label: stepDef.fe.nodeConfig.label,
+        description: '',
+        category: stepDef.fe.nodeConfig.category,
+        defaults: stepDef.fe.defaults,
+      } as NodeMetadata;
+    }
+    return undefined;
+  },
+  has(target, prop: string) {
+    return prop in target || stepRegistry.has(prop);
+  },
+});
+
+export function getNodeMetadata(nodeType: NodeKind): NodeMetadata | undefined {
   return nodeMetadata[nodeType];
 }
 
 export function validateNode(node: NodeEntity): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   const metadata = nodeMetadata[node.nodeType];
-  
+
   if (!metadata) {
-    errors.push(`Unknown node type: ${node.nodeType}`);
-    return { valid: false, errors };
+    return { valid: true, errors };
   }
-  
-  // Check required fields
+
   if (metadata.validation?.requiredFields) {
     for (const field of metadata.validation.requiredFields) {
       if (!(field in node) || (node as any)[field] === undefined) {
@@ -211,26 +107,44 @@ export function validateNode(node: NodeEntity): { valid: boolean; errors: string
       }
     }
   }
-  
-  // Run custom validator
+
   if (metadata.validation?.customValidator) {
     if (!metadata.validation.customValidator(node)) {
       errors.push(`Custom validation failed for ${node.nodeType}`);
     }
   }
-  
+
   return { valid: errors.length === 0, errors };
 }
 
 export function createNodeDefaults(nodeType: NodeKind): Partial<NodeEntity> {
-  const metadata = nodeMetadata[nodeType];
+  const stepDef = stepRegistry.get(nodeType);
+  if (stepDef?.fe) {
+    return {
+      nodeType,
+      label: stepDef.fe.nodeConfig.label,
+      entityType: EARS.Entity.Node,
+      ...stepDef.fe.defaults,
+    } as Partial<NodeEntity>;
+  }
+
+  const metadata = triggerMetadata[nodeType];
+  if (metadata) {
+    return {
+      nodeType,
+      label: metadata.label,
+      entityType: EARS.Entity.Node,
+      ...metadata.defaults,
+    } as Partial<NodeEntity>;
+  }
+
   return {
     nodeType,
-    label: metadata.label,
     entityType: EARS.Entity.Node,
-    ...metadata.defaults,
   } as Partial<NodeEntity>;
 }
 
-// Export all node types for iteration
-export const allNodeTypes = Object.keys(nodeMetadata) as NodeKind[]; 
+export const allNodeTypes = [
+  ...Object.keys(triggerMetadata),
+  ...stepRegistry.types(),
+] as NodeKind[];

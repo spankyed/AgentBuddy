@@ -33,6 +33,7 @@
     "./fe/components/tiptap/composables/*": "./src/fe/components/tiptap/composables/*",
     "./fe/components/tiptap/composables/createEditorKeyboard": "./src/fe/components/tiptap/composables/createEditorKeyboard.ts",
     "./fe/constants": "./src/fe/constants.ts",
+    "./steps": "./src/steps/index.ts",
     "./build": "./src/build/index.ts",
     "./runtime": "./src/runtime/index.ts",
     "./logger": "./src/logger/index.ts",

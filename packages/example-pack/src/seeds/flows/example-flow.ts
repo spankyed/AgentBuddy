@@ -12,6 +12,11 @@ export default {
               action: 'Hello World',
               params: { name: 'ExamplePack' },
             },
+            {
+              type: 'delay',
+              duration: 5,
+              label: 'Wait before next step',
+            },
           ],
         ],
       },

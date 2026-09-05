@@ -10,21 +10,12 @@ import type {
   FlowDSL,
   Track,
   DSLStepNode,
-  DSLActionNode,
-  DSLLLMNode,
   DSLSwitchNode,
-  DSLFireNode,
-  DSLTransformNode,
-  DSLQueryNode,
-  DSLFlowNode,
-  DSLCreateNode,
-  DSLUpdateNode,
-  DSLKeepAliveNode,
-  DSLKillNode,
   CompilerContext,
 } from './types';
 import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './types';
-import { BinaryOperator } from '../config/types';
+import { stepRegistry } from '@abuddy/sdk/steps';
+import { registerStandardSteps } from '@/steps/register';
 
 /*─────────────────────────────────────────────────────────────────
  * Types
@@ -70,309 +61,6 @@ function simpleHash(str: string): number {
     hash = hash & hash;
   }
   return Math.abs(hash);
-}
-
-/*─────────────────────────────────────────────────────────────────
- * Field Mapping Helpers
- *─────────────────────────────────────────────────────────────────*/
-
-function expandFieldMappings(map?: Record<string, string>): Array<{ target: string; source: string }> | undefined {
-  if (!map) return undefined;
-  return Object.entries(map).map(([target, source]) => ({ target, source }));
-}
-
-/*─────────────────────────────────────────────────────────────────
- * Step Node Compilers
- *─────────────────────────────────────────────────────────────────*/
-
-function compileActionNode(node: DSLActionNode, nodeId: string, ts: number, ctx: CompilerContext): StepResult {
-  const actionId = ctx.actions.get(node.action);
-
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'action',
-      label: node.label || node.action,
-      description: node.description,
-      actionId: actionId,
-      params: node.params,
-      fieldMappings: expandFieldMappings(node.map),
-      final: node.final,
-    },
-    relations: actionId ? [
-      { source: nodeId, kind: EARS.RelKind.INSTANCE_OF, target: actionId }
-    ] : []
-  };
-}
-
-function compileLLMNode(node: DSLLLMNode, nodeId: string, ts: number, ctx: CompilerContext): StepResult {
-  const promptId = ctx.prompts.get(node.prompt);
-
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'llm',
-      label: node.label || node.prompt,
-      description: node.description,
-      promptTemplateId: promptId,
-      fieldMappings: expandFieldMappings(node.map),
-      model: node.model,
-      temperature: node.temperature,
-      maxTokens: node.maxTokens,
-      systemPrompt: node.systemPrompt,
-      final: node.final,
-    },
-    relations: promptId ? [
-      { source: nodeId, kind: EARS.RelKind.INSTANCE_OF, target: promptId }
-    ] : []
-  };
-}
-
-/**
- * Parse a DSL expression string into a structured predicate
- * Supports formats like: "$.key == value", "$.count > 10", "$.name contains foo"
- */
-function parseExpressionToPredicate(expr: string): { key: string; operator: BinaryOperator; value?: any } | undefined {
-  if (!expr || expr.trim() === '') return undefined;  // else/default branch
-
-  const trimmed = expr.trim();
-
-  // Map DSL operators to BinaryOperator enum values.
-  // `===` / `!==` map to the same enum as `==` / `!=` — the runtime
-  // evaluator uses loose comparison regardless, and accepting both forms
-  // prevents silent breakage when authors write JS-idiomatic strict equality
-  // (see the stray `= 'value'` regression in flow conditions).
-  const operatorMap: Record<string, BinaryOperator> = {
-    '===': BinaryOperator.EQUALS,
-    '!==': BinaryOperator.NOT_EQUALS,
-    '==': BinaryOperator.EQUALS,
-    '!=': BinaryOperator.NOT_EQUALS,
-    '>=': BinaryOperator.GREATER_THAN_OR_EQUALS,
-    '<=': BinaryOperator.LESS_THAN_OR_EQUALS,
-    '>': BinaryOperator.GREATER_THAN,
-    '<': BinaryOperator.LESS_THAN,
-    'contains': BinaryOperator.CONTAINS,
-    'starts_with': BinaryOperator.STARTS_WITH,
-    'ends_with': BinaryOperator.ENDS_WITH,
-    'matches': BinaryOperator.MATCHES,
-    'is_empty': BinaryOperator.IS_EMPTY,
-    'is_null': BinaryOperator.IS_NULL,
-  };
-
-  // Try to match operators (longer ones first to avoid partial matches —
-  // `===` / `!==` must come before `==` / `!=` so the non-greedy key regex
-  // doesn't split inside a strict-equality token).
-  const operatorPatterns = ['===', '!==', '>=', '<=', '!=', '==', '>', '<', 'contains', 'starts_with', 'ends_with', 'matches', 'is_empty', 'is_null'];
-
-  for (const op of operatorPatterns) {
-    const regex = new RegExp(`^(.+?)\\s*${op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(.*)$`, 'i');
-    const match = trimmed.match(regex);
-
-    if (match) {
-      const [, key, value] = match;
-      const mappedOperator = operatorMap[op.toLowerCase()] || op;
-
-      // For unary operators like is_empty, is_null - no value needed
-      if (op === 'is_empty' || op === 'is_null') {
-        return {
-          key: key.trim(),
-          operator: mappedOperator,
-        };
-      }
-
-      // Parse value - try to detect type (skip for dynamic $. path references)
-      let parsedValue: any = value.trim();
-      if (!parsedValue.startsWith('$.')) {
-        if (parsedValue === 'true') parsedValue = true;
-        else if (parsedValue === 'false') parsedValue = false;
-        else if (!isNaN(Number(parsedValue)) && parsedValue !== '') parsedValue = Number(parsedValue);
-        else if ((parsedValue.startsWith("'") && parsedValue.endsWith("'")) ||
-                 (parsedValue.startsWith('"') && parsedValue.endsWith('"'))) {
-          parsedValue = parsedValue.slice(1, -1);
-        }
-      }
-
-      return {
-        key: key.trim(),
-        operator: mappedOperator,
-        value: parsedValue,
-      };
-    }
-  }
-
-  // Fallback: couldn't parse, return as-is with equals operator
-  return {
-    key: trimmed,
-    operator: BinaryOperator.EQUALS,
-    value: true,
-  };
-}
-
-function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): StepResult {
-  const conditions: Array<{ predicate: ReturnType<typeof parseExpressionToPredicate>; label: string }> = node.conditions.map((c, ci) => ({
-    predicate: parseExpressionToPredicate(c.if),
-    label: c.steps.length > 0 ? getStepLabel(c.steps[0], ci) : `branch-${ci}`,
-  }));
-
-  // Append an else condition (empty predicate) to match UI convention
-  // so SwitchNode.vue renders a handle for the else branch
-  if (node.else && node.else.length > 0) {
-    conditions.push({
-      predicate: undefined,
-      label: getStepLabel(node.else[0], node.conditions.length),
-    });
-  }
-
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'switch',
-      label: node.label || 'Switch',
-      description: node.description,
-      conditions,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileFireNode(node: DSLFireNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'fire',
-      label: node.label || node.event,
-      description: node.description,
-      eventType: node.event,
-      scope: node.scope || 'local',
-      payload: node.payload,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileTransformNode(node: DSLTransformNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'transform',
-      label: node.label || 'Transform',
-      description: node.description,
-      script: node.script,
-      outputType: node.outputType || 'json',
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileQueryNode(node: DSLQueryNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'query',
-      label: node.label || 'Query',
-      description: node.description,
-      prompt: node.prompt,
-      resultKey: node.as,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileFlowNode(node: DSLFlowNode, nodeId: string, ts: number, ctx: CompilerContext): StepResult {
-  const flowRef = ctx.flows.get(node.flow) || node.flow;
-
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'flow',
-      label: node.label || node.flow,
-      description: node.description,
-      flowRef,
-      propagateCtx: node.inherit !== false,
-      fieldMappings: expandFieldMappings(node.map),
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileCreateNode(node: DSLCreateNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'create',
-      label: node.label || `Create ${node.entity}`,
-      description: node.description,
-      entityTypeTarget: node.entity as EARS.Entity,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileUpdateNode(node: DSLUpdateNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'update',
-      label: node.label || 'Update',
-      description: node.description,
-      onMissing: node.onMissing,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileKeepAliveNode(node: DSLKeepAliveNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'keep_alive',
-      label: node.label || 'Keep Alive',
-      description: node.description,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function compileKillNode(node: DSLKillNode, nodeId: string, ts: number): StepResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'kill',
-      label: node.label || 'Kill Flow',
-      description: node.description,
-    },
-    relations: [],
-  };
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -573,6 +261,7 @@ export interface CompiledRows {
  * Compile a Flow DSL document into EARS Rows format
  */
 export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRows {
+  registerStandardSteps();
   const ts = Date.now();
 
   const entities: object[] = [];
@@ -789,48 +478,15 @@ function compileTrack(
 
 function getStepLabel(step: DSLStepNode, index: number): string {
   if (step.label) return step.label;
-
-  switch (step.type) {
-    case 'action': return step.action;
-    case 'llm': return step.prompt;
-    case 'fire': return step.event;
-    case 'flow': return step.flow;
-    case 'switch': return `Switch ${index}`;
-    case 'transform': return `Transform ${index}`;
-    case 'query': return `Query ${index}`;
-    case 'create': return `Create ${step.entity}`;
-    case 'update': return `Update ${index}`;
-    case 'keep_alive': return `Keep Alive ${index}`;
-    case 'kill': return `Kill Flow ${index}`;
-    default: return `Step ${index}`;
-  }
+  const build = stepRegistry.getBuild(step.type);
+  if (build) return build.getLabel(step as unknown as Record<string, unknown>, index);
+  return `Step ${index}`;
 }
 
 function compileStep(step: DSLStepNode, stepId: string, ts: number, ctx: CompilerContext): StepResult {
-  switch (step.type) {
-    case 'action':
-      return compileActionNode(step, stepId, ts, ctx);
-    case 'llm':
-      return compileLLMNode(step, stepId, ts, ctx);
-    case 'switch':
-      return compileSwitchNode(step, stepId, ts);
-    case 'fire':
-      return compileFireNode(step, stepId, ts);
-    case 'transform':
-      return compileTransformNode(step, stepId, ts);
-    case 'query':
-      return compileQueryNode(step, stepId, ts);
-    case 'flow':
-      return compileFlowNode(step, stepId, ts, ctx);
-    case 'create':
-      return compileCreateNode(step, stepId, ts);
-    case 'update':
-      return compileUpdateNode(step, stepId, ts);
-    case 'keep_alive':
-      return compileKeepAliveNode(step, stepId, ts);
-    case 'kill':
-      return compileKillNode(step, stepId, ts);
-  }
+  const build = stepRegistry.getBuild(step.type);
+  if (!build) throw new Error(`No step definition registered for type "${step.type}"`);
+  return build.compile(step as unknown as Record<string, unknown>, stepId, ts, ctx) as StepResult;
 }
 
 export default compile;
