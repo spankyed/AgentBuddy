@@ -20,7 +20,7 @@ import {
   parseExitPlanModeInput,
   buildPlanApprovalContext,
   type ParsedPlanInput,
-} from '../../src/plugins/code/actions/claude-code/_helpers/plan-approval'
+} from '../../src/seeds/actions/claude-code/_helpers/plan-approval'
 
 describe('parseExitPlanModeInput', () => {
   it('canonical SDK input shape → full parsed result', () => {

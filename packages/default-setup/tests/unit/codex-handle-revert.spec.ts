@@ -1,4 +1,4 @@
-import { action as handleRevert } from '../../src/plugins/code/actions/claude-code/handle-revert';
+import { action as handleRevert } from '../../src/seeds/actions/claude-code/handle-revert';
 
 function createServices(viewSessionResult: unknown[] | Error = [], sendBlockMessage = vi.fn()) {
   const thread = {

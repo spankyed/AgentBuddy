@@ -1,4 +1,4 @@
-import codexFlow from '../../src/plugins/code/flows/codex-flow'
+import codexFlow from '../../src/seeds/flows/codex-flow'
 
 describe('codex flow routing', () => {
   const tracks = codexFlow['Codex'] as any[]

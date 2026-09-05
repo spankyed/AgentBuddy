@@ -1,6 +1,6 @@
 import settings from '../../src/default-settings'
-import claudeCodeFlow from '../../src/plugins/code/flows/claude-code-flow'
-import { phaseTipPromptLabel } from '../../src/plugins/code/actions/claude-code/chat'
+import claudeCodeFlow from '../../src/seeds/flows/claude-code-flow'
+import { phaseTipPromptLabel } from '../../src/seeds/actions/claude-code/chat'
 
 describe('mode name routing', () => {
   it('uses display names for default mode and phase settings', () => {

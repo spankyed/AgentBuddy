@@ -37,7 +37,8 @@ import {
   ClaudeProtocolError,
   ClaudeResultError,
 } from './errors'
-import { spawnStream, type StreamHandle } from './runner'
+import * as runner from './runner'
+import type { StreamHandle } from './runner'
 
 const logger = createLogger('claude-code-query')
 import type {
@@ -80,7 +81,7 @@ export interface QueryHandle {
  */
 export async function query(opts: QueryOptions): Promise<QueryHandle> {
   const args = argsFromOptions(opts)
-  const stream = await spawnStream(args, {
+  const stream = await runner.spawnStream(args, {
     cwd: opts.cwd,
     env: opts.env,
     signal: opts.signal,

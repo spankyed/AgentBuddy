@@ -65,7 +65,7 @@ describe('pack-loader', () => {
         id: 'test-pack',
         name: 'Test Pack',
         version: '1.0.0',
-        features: [{
+        plugins: [{
           id: 'my-feature',
           system: {
             entry: 'dist/system.cjs',
@@ -124,7 +124,7 @@ describe('pack-loader', () => {
         id: 'escape-pack',
         name: 'Escape',
         version: '1.0.0',
-        features: [{
+        plugins: [{
           id: 'bad-feature',
           system: { entry: '../../etc/passwd' },
         }],
@@ -150,7 +150,7 @@ describe('pack-loader', () => {
         id: 'fe-only',
         name: 'Frontend Only',
         version: '1.0.0',
-        features: [{
+        plugins: [{
           id: 'widget',
           plugin: { entry: 'dist/plugin.js', label: 'Widget', icon: 'Zap' },
         }],
@@ -166,7 +166,7 @@ describe('pack-loader', () => {
         id: 'broken',
         name: 'Broken',
         version: '1.0.0',
-        features: [{
+        plugins: [{
           id: 'bad-system',
           system: { entry: 'dist/system.cjs' },
         }],
@@ -185,7 +185,7 @@ describe('pack-loader', () => {
         id: 'no-export',
         name: 'No Export',
         version: '1.0.0',
-        features: [{
+        plugins: [{
           id: 'empty',
           system: { entry: 'dist/system.cjs' },
         }],
@@ -453,7 +453,7 @@ describe('pack-api', () => {
         id: 'demo-pack',
         name: 'Demo Pack',
         version: '2.0.0',
-        features: [
+        plugins: [
           {
             id: 'widget',
             plugin: { entry: 'dist/plugin.js', label: 'Widget', icon: 'Zap' },

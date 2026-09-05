@@ -21,20 +21,12 @@ import {
   ClaudeAbortError,
   ClaudeExitError,
   ClaudeProtocolError,
-} from '@/plugins/code/be/services/claude-code/errors'
-import { finaliseNoResult, query } from '@/plugins/code/be/services/claude-code/query'
-import type { StreamHandle } from '@/plugins/code/be/services/claude-code/runner'
-import type { DecodedLine } from '@/plugins/code/be/services/claude-code/ndjson'
+} from '../../src/plugins/code/be/services/claude-code/errors'
+import { finaliseNoResult, query } from '../../src/plugins/code/be/services/claude-code/query'
+import type { StreamHandle } from '../../src/plugins/code/be/services/claude-code/runner'
+import type { DecodedLine } from '../../src/plugins/code/be/services/claude-code/ndjson'
 
-vi.mock('@/plugins/code/be/services/claude-code/runner', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/plugins/code/be/services/claude-code/runner')>()
-  return {
-    ...actual,
-    spawnStream: vi.fn(),
-  }
-})
-
-import { spawnStream } from '@/plugins/code/be/services/claude-code/runner'
+import * as runner from '../../src/plugins/code/be/services/claude-code/runner'
 
 describe('finaliseNoResult', () => {
   const args = ['--print', '--input-format', 'stream-json'] as const
@@ -231,7 +223,7 @@ function makeMockStream() {
 
 describe('query() — stdin EOF handling (single-turn default)', () => {
   beforeEach(() => {
-    vi.mocked(spawnStream).mockReset()
+    vi.restoreAllMocks()
   })
 
   it('closes stdin AFTER the turn completes — not synchronously on write', async () => {
@@ -242,7 +234,7 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
     // from "immediately after writeUserTurn" to "after resultPromise
     // settles", which this test pins down.
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     // Preload the 3 events the CLI would emit in response to a simple turn.
     mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-1' })
@@ -255,7 +247,7 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
       duration_ms: 42,
     })
 
-    const handle = await query({ prompt: 'hi' })
+    const handle = await query({ prompt: 'hi', cwd: '/tmp' })
 
     // Two writes: [0] = initialize control_request (SDK handshake),
     // [1] = user turn. Initialize is sent unconditionally at spawn time
@@ -292,9 +284,9 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
 
   it('does NOT close stdin when keepStdinOpen: true (multi-turn opt-in)', async () => {
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
-    const handle = await query({ prompt: 'hi', keepStdinOpen: true })
+    const handle = await query({ prompt: 'hi', keepStdinOpen: true, cwd: '/tmp' })
 
     // Two writes: initialize + user turn. stdin is left open for
     // send() / close() since the caller opted into multi-turn.
@@ -318,9 +310,9 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
 
   it('sends only the initialize handshake when no prompt is provided', async () => {
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
-    const handle = await query({})
+    const handle = await query({ cwd: '/tmp' })
 
     // One write: the initialize control_request. No user turn because
     // the caller didn't pass `prompt` (multi-turn via send() mode).
@@ -355,7 +347,7 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
 
 describe('query() — permission flow round-trip (pump + router + handler)', () => {
   beforeEach(() => {
-    vi.mocked(spawnStream).mockReset()
+    vi.restoreAllMocks()
   })
 
   /** Shape-typed helper for mock.writes entries. */
@@ -374,7 +366,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
 
   it('routes can_use_tool to onPermissionRequest and writes an allow response back', async () => {
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     const handlerCalls: any[] = []
     const onPermissionRequest = async (req: any) => {
@@ -428,6 +420,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const handle = await query({
       prompt: 'edit the file',
       onPermissionRequest,
+      cwd: '/tmp',
     })
 
     // Drain the consumer event iterator. Only init / assistant / result
@@ -469,7 +462,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
 
   it('forwards a deny decision from the handler through to stream.write', async () => {
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     const onPermissionRequest = async (_req: any) => ({
       behavior: 'deny' as const,
@@ -498,6 +491,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const handle = await query({
       prompt: 'dangerous op',
       onPermissionRequest,
+      cwd: '/tmp',
     })
     for await (const _ev of handle.events) { /* drain */ }
 
@@ -519,7 +513,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     // swallows can_use_tool requests (which would leave the CLI hanging
     // forever waiting for a response).
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-3' })
     mock.pushEvent({
@@ -541,6 +535,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
 
     const handle = await query({
       prompt: 'hi',
+      cwd: '/tmp',
       // NOTE: no onPermissionRequest
     })
     for await (const _ev of handle.events) { /* drain */ }
@@ -563,7 +558,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     // to .strict() would silently drop control_requests and route them to
     // __parse_error, which the pump swallows.
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     const handlerCalls: any[] = []
     const onPermissionRequest = async (req: any) => {
@@ -597,7 +592,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
       result: '',
     })
 
-    const handle = await query({ prompt: 'edit', onPermissionRequest })
+    const handle = await query({ prompt: 'edit', onPermissionRequest, cwd: '/tmp' })
     for await (const _ev of handle.events) { /* drain */ }
 
     // Handler should receive the full request including the extra fields.
@@ -619,7 +614,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     // The router's dedupe key is `request_id`, so each distinct id must
     // round-trip independently with its own response.
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     const handlerCalls: any[] = []
     const onPermissionRequest = async (req: any) => {
@@ -658,7 +653,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
       result: '',
     })
 
-    const handle = await query({ prompt: 'do stuff', onPermissionRequest })
+    const handle = await query({ prompt: 'do stuff', onPermissionRequest, cwd: '/tmp' })
     for await (const _ev of handle.events) { /* drain */ }
 
     expect(handlerCalls).toHaveLength(2)
@@ -688,7 +683,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     // into the public event iterator and break the consumer's assumption
     // that they only see user/assistant/stream_event/tool_progress/…
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-leak' })
     mock.pushEvent({
@@ -711,6 +706,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const handle = await query({
       prompt: 'hi',
       onPermissionRequest: async () => ({ behavior: 'allow' as const, updatedInput: {} }),
+      cwd: '/tmp',
     })
 
     const received: string[] = []
@@ -741,7 +737,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     // handlers can act on it. If this regresses, the chat.ts branch
     // won't receive anything to handle.
     const mock = makeMockStream()
-    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+    vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
 
     mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-tr-1' })
     mock.pushEvent({
@@ -766,7 +762,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
       result: '',
     })
 
-    const handle = await query({ prompt: 'edit' })
+    const handle = await query({ prompt: 'edit', cwd: '/tmp' })
 
     const received: Array<{ type: string; message?: unknown }> = []
     for await (const ev of handle.events) {

@@ -5,6 +5,12 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { EARS } from '@/core/types';
 import { openEnvAt, type LmdbDbs } from '@/core/persistence/lmdb/envs';
+
+const Entity = {
+  Document: 'Document' as EARS.Entity,
+  TNode: 'TNode' as EARS.Entity,
+  Secret: 'Secret' as EARS.Entity,
+};
 import { makeLmdbAdapter } from '@/core/persistence/lmdb/adapter';
 import { LmdbQuery, decodeAttr } from '@/core/persistence/lmdb/query';
 import { makePolicy, type Partition } from '@/core/persistence/partitioning/policy';
@@ -146,8 +152,8 @@ describe('Sharded Router', () => {
       secrets: openEnvAt(dirs.secrets),
     };
     policy = makePolicy({
-      excludedEntityTypes: new Set([EARS.Entity.TNode]),
-      secretEntityTypes: new Set([EARS.Entity.Secret]),
+      excludedEntityTypes: new Set([Entity.TNode]),
+      secretEntityTypes: new Set([Entity.Secret]),
     });
     sinks = {
       primary: makeLmdbAdapter(envs.primary),
@@ -280,8 +286,8 @@ describe('Relation Updates', () => {
       secrets: openEnvAt(dirs.secrets),
     };
     policy = makePolicy({
-      excludedEntityTypes: new Set([EARS.Entity.TNode]),
-      secretEntityTypes: new Set([EARS.Entity.Secret]),
+      excludedEntityTypes: new Set([Entity.TNode]),
+      secretEntityTypes: new Set([Entity.Secret]),
     });
     sinks = {
       primary: makeLmdbAdapter(envs.primary),
@@ -321,16 +327,16 @@ describe('Relation Updates', () => {
     // Doc -> TNode goes to volatileBackup
     sharded.onAddRelation('Relation-cp1', 'LINKS', 'Document-r1', 'TNode-t1', { w: 1 });
     const partBefore = policy.routeRelation({
-      srcType: EARS.Entity.Document,
-      tgtType: EARS.Entity.TNode,
+      srcType: Entity.Document,
+      tgtType: Entity.TNode,
     });
     expect(partBefore).toBe('volatileBackup');
 
     // Change tgt to Document -> moves to primary
     sharded.onUpdateRelation('Relation-cp1', { tgt: 'Document-r2' });
     const partAfter = policy.routeRelation({
-      srcType: EARS.Entity.Document,
-      tgtType: EARS.Entity.Document,
+      srcType: Entity.Document,
+      tgtType: Entity.Document,
     });
     expect(partAfter).toBe('primary');
 
@@ -474,8 +480,8 @@ describe('Query Layer', () => {
 // ---------------------------------------------------------------------------
 describe('Partition Routing', () => {
   const policy = makePolicy({
-    excludedEntityTypes: new Set([EARS.Entity.TNode]),
-    secretEntityTypes: new Set([EARS.Entity.Secret]),
+    excludedEntityTypes: new Set([Entity.TNode]),
+    secretEntityTypes: new Set([Entity.Secret]),
   });
 
   it('routes Document -> primary, TNode -> volatileBackup, Secret -> secrets', () => {
@@ -487,25 +493,25 @@ describe('Partition Routing', () => {
   it('routes relations based on endpoint types', () => {
     // Both primary -> primary
     expect(policy.routeRelation({
-      srcType: EARS.Entity.Document,
-      tgtType: EARS.Entity.Document,
+      srcType: Entity.Document,
+      tgtType: Entity.Document,
     })).toBe('primary');
 
     // Either excluded -> volatile
     expect(policy.routeRelation({
-      srcType: EARS.Entity.Document,
-      tgtType: EARS.Entity.TNode,
+      srcType: Entity.Document,
+      tgtType: Entity.TNode,
     })).toBe('volatileBackup');
 
     expect(policy.routeRelation({
-      srcType: EARS.Entity.TNode,
-      tgtType: EARS.Entity.Document,
+      srcType: Entity.TNode,
+      tgtType: Entity.Document,
     })).toBe('volatileBackup');
 
     // Secret involved -> secrets
     expect(policy.routeRelation({
-      srcType: EARS.Entity.Secret,
-      tgtType: EARS.Entity.Document,
+      srcType: Entity.Secret,
+      tgtType: Entity.Document,
     })).toBe('secrets');
   });
 });

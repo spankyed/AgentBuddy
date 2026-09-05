@@ -10,7 +10,7 @@
  * - openThreadChatAndRefreshRecent called AFTER state persistence (race fix)
  */
 
-import { action as handleFork } from '../../src/plugins/code/actions/claude-code/handle-fork';
+import { action as handleFork } from '../../src/seeds/actions/claude-code/handle-fork';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
