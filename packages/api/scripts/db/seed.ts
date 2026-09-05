@@ -15,7 +15,7 @@ import { getBootHooks } from '@/core/packs/pack-registration';
 import { seedData } from '@/core/shared/seed';
 
 async function run() {
-  loadBuiltInPack();
+  await loadBuiltInPack();
 
   console.log('Initializing database...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });

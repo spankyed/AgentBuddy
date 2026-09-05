@@ -44,7 +44,7 @@ process.stderr.write = () => true;
 
 async function exportJSON() {
   try {
-    loadBuiltInPack();
+    await loadBuiltInPack();
 
     // Initialize database first (silently)
     await hydrateSharded({

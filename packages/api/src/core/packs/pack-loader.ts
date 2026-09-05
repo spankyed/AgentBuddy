@@ -7,12 +7,14 @@ import { createLogger } from '@/core/shared/debug/logger';
 import { registerPack } from './pack-registration';
 import { APP_VERSION } from '@/version';
 
+// @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
+const _metaUrl: string = import.meta.url;
+const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
 const logger = createLogger('pack-loader');
 
-export function loadBuiltInPack(): void {
-  // Dynamic require avoids a static import chain into default-setup source.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('../../../../default-setup/src/pack-entry');
+const PACK_ENTRY = '../../../../default-setup/src/pack-entry';
+export async function loadBuiltInPack(): Promise<void> {
+  const mod = await import(PACK_ENTRY);
   registerPack(mod.registration);
 }
 
@@ -109,11 +111,11 @@ function loadSystemFromCJS(
   // Pre-resolve all host-provided paths BEFORE installing the override to avoid recursion
   const hostResolutions = new Map<string, string>();
   try {
-    const sdkEntry = require.resolve('@abuddy/sdk');
+    const sdkEntry = esmRequire.resolve('@abuddy/sdk');
     hostResolutions.set('@abuddy/sdk', sdkEntry.replace(/\/index\.(js|cjs|ts)$/, ''));
   } catch {}
   for (const pkg of HOST_PROVIDED_PACKAGES) {
-    try { hostResolutions.set(pkg, require.resolve(pkg)); } catch {}
+    try { hostResolutions.set(pkg, esmRequire.resolve(pkg)); } catch {}
   }
 
   try {
@@ -131,7 +133,7 @@ function loadSystemFromCJS(
       return originalResolve.call(this, request, ...args);
     };
 
-    const mod = require(fullPath);
+    const mod = esmRequire(fullPath);
     const machine = mod.default || mod.system || mod.machine;
     if (!machine) {
       logger.warn(`No machine export found in ${entry}`);

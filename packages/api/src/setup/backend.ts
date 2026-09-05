@@ -22,7 +22,7 @@ export async function setupBackend(): Promise<void> {
   initializeLogCapture();
 
   // ── Register built-in pack ──────────────────────────────────────────
-  loadBuiltInPack();
+  await loadBuiltInPack();
 
   // Run early boot hooks (logs system must start before anything else)
   for (const hooks of getBootHooks()) {

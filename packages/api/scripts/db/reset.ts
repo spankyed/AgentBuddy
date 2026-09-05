@@ -16,7 +16,7 @@ import { loadBuiltInPack } from '@/core/packs/pack-loader';
 import { getBootHooks } from '@/core/packs/pack-registration';
 
 async function run() {
-  loadBuiltInPack();
+  await loadBuiltInPack();
 
   console.log('Hydrating LMDB connections...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });

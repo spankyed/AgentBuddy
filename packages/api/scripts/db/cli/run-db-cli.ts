@@ -101,7 +101,7 @@ async function main() {
 
 async function initializeDatabase(verbose: boolean) {
   try {
-    loadBuiltInPack();
+    await loadBuiltInPack();
 
     // Hydrate from LMDB using sharded approach
     if (verbose) {
