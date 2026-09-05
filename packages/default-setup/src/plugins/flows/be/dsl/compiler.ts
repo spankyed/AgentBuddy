@@ -415,25 +415,13 @@ function compileTrack(
   const trackRoles: Array<{ entityId: string; role: string }> = [];
 
   const triggerDef = resolveTriggerFromTrack(track);
-  const isRegisteredTrigger = !!triggerDef;
   const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
   const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
-  // Create trigger node from track — registered triggers dispatch to their facet, otherwise listener (internal)
-  const listenerEntity = triggerDef?.trigger
-    ? triggerDef.trigger.compile(track as unknown as Record<string, unknown>, listenerId, fCtx.ts, trackKey)
-    : {
-        id: listenerId,
-        entityType: EARS.Entity.Node,
-        createdAt: fCtx.ts,
-        nodeType: 'listener',
-        label: listenerLabel,
-        description: track.description,
-        trackKey,
-        scope: isFirstTrack ? 'entry' : 'global',
-        eventType: track.event!,
-      };
+  // Create trigger node from track — all triggers dispatch to their registered facet
+  const trackData = { ...track, isFirstTrack } as unknown as Record<string, unknown>;
+  const listenerEntity = triggerDef!.trigger!.compile(trackData, listenerId, fCtx.ts, trackKey);
 
   // Add CONTAINS for trigger node
   trackRelations.push({
@@ -442,8 +430,8 @@ function compileTrack(
     target: listenerId,
   });
 
-  // Add entry role for first track's listener node (not schedule tracks)
-  if (isFirstTrack && !isRegisteredTrigger) {
+  // Add entry role for first track's listener node (not schedule/other trigger tracks)
+  if (isFirstTrack && triggerDef?.type === 'listener') {
     trackRoles.push({
       entityId: listenerId,
       role: 'entry_event',

@@ -11,6 +11,7 @@ import { updateStep } from './update';
 import { keepAliveStep } from './keep-alive';
 import { killStep } from './kill';
 import { scheduleTrigger } from './schedule';
+import { listenerTrigger } from './listener';
 
 const standardSteps = [
   actionStep,
@@ -25,6 +26,7 @@ const standardSteps = [
   keepAliveStep,
   killStep,
   scheduleTrigger,
+  listenerTrigger,
 ];
 
 export function registerStandardSteps(): void {

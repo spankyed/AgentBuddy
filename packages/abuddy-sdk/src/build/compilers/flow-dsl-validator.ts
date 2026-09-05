@@ -138,18 +138,33 @@ function validateTrack(
   }
 
   const t = track as Record<string, unknown>;
-  const hasEvent = typeof t.event === 'string' && t.event.length > 0;
-  const hasSchedule = typeof t.schedule === 'string' && (t.schedule as string).length > 0;
 
-  if (!hasEvent && !hasSchedule) {
-    errors.push({ path, message: 'Track must have an "event" string or a "schedule" cron expression' });
+  // Detect which trigger track fields are present
+  const triggerDefs = stepRegistry.triggers();
+  const knownTrackFields = triggerDefs.length > 0
+    ? triggerDefs.map(d => d.trigger!.trackField)
+    : ['event', 'schedule'];
+  const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);
+
+  if (presentFields.length === 0) {
+    errors.push({ path, message: `Track must have one of: ${knownTrackFields.map(f => `"${f}"`).join(', ')}` });
   }
-  if (hasEvent && hasSchedule) {
-    errors.push({ path, message: 'Track cannot have both "event" and "schedule"' });
+  if (presentFields.length > 1) {
+    errors.push({ path, message: `Track cannot have multiple trigger fields: ${presentFields.join(', ')}` });
   }
-  if (hasSchedule) {
-    const cronErr = validateCronExpression(t.schedule as string);
-    if (cronErr) errors.push({ path: `${path}.schedule`, message: cronErr });
+
+  // Run trigger-specific validation (e.g. cron expression for schedule)
+  for (const field of presentFields) {
+    const def = triggerDefs.find(d => d.trigger?.trackField === field);
+    if (def?.trigger?.validate) {
+      const result = def.trigger.validate({ [field]: t[field] });
+      for (const err of result.errors) {
+        errors.push({ path: `${path}.${field}`, message: err });
+      }
+    } else if (field === 'schedule') {
+      const cronErr = validateCronExpression(t.schedule as string);
+      if (cronErr) errors.push({ path: `${path}.schedule`, message: cronErr });
+    }
   }
 
   if (!Array.isArray(t.exits)) {
@@ -203,7 +218,7 @@ function validateStep(
     return errors;
   }
 
-  if (s.type === 'listener' || stepRegistry.isTrigger(s.type as string)) {
+  if (stepRegistry.isTrigger(s.type as string)) {
     errors.push({ path, message: `Steps cannot have type "${s.type}". Trigger types belong at the track level.` });
     return errors;
   }

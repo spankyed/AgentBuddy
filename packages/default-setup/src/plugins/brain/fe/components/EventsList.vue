@@ -94,7 +94,6 @@ const COLOR_ANIMATIONS: Record<string, {
 };
 
 function getTriggerTheme(triggerType: string) {
-  if (triggerType === 'listener') return { ...COLOR_ANIMATIONS.blue, icon: Radio };
   const config = getNodeConfig(triggerType);
   const colorKey = stepRegistry.getFE(triggerType)?.colorKey || 'blue';
   return {

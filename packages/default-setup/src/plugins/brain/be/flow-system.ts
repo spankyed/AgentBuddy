@@ -1,5 +1,5 @@
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
-import type { ListenerNode, NodeEntity } from '@/plugins/flows/be/config/types';
+import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { repository } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { stepRegistry } from '@abuddy/sdk/steps';
@@ -163,16 +163,15 @@ export function createFlowNodeSystem(
   // Use ternary to determine which creation function to call
   const result = isRootFlow
     ? (() => {
-      const { rootFlow, rootFlowTNode, eventNodes } = repository.brainCommands.createRootFlowTNode();
+      const { rootFlow, rootFlowTNode } = repository.brainCommands.createRootFlowTNode();
       return {
         actualFlowId: rootFlow.id,
         flowTNodeId: rootFlowTNode.id || 'TNode-Root',
         flowTNode: rootFlowTNode,
-        eventNodes
       };
     })()
     : (() => {
-      const { flowTNode, flowId: referencedFlowId, eventNodes } = repository.brainCommands.createFlowTNode(
+      const { flowTNode, flowId: referencedFlowId } = repository.brainCommands.createFlowTNode(
         flowId,
         parentTNodeId ?? eventTNodeId,
         executionContext
@@ -181,21 +180,20 @@ export function createFlowNodeSystem(
         actualFlowId: referencedFlowId,
         flowTNodeId: flowTNode.id,
         flowTNode,
-        eventNodes
       };
     })();
 
-  const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
+  const { actualFlowId, flowTNodeId, flowTNode } = result;
 
-  // Query registered trigger nodes and merge them into eventNodes as trigger handlers
-  const registeredTriggerNodes: FlowTriggerNode[] = [];
+  // Query all registered trigger nodes (listeners, schedules, etc.)
+  const rawTriggerNodes: FlowTriggerNode[] = [];
   for (const def of stepRegistry.triggers()) {
     const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
     const triggerNodes = qx(actualFlowId)
       .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
       .filter((n: any) => n.nodeType === def.type);
     for (const n of triggerNodes as any[]) {
-      registeredTriggerNodes.push({
+      rawTriggerNodes.push({
         id: n.id,
         label: n.label,
         eventType: `${def.type}.${n.id}`,
@@ -205,18 +203,6 @@ export function createFlowNodeSystem(
       });
     }
   }
-
-  const rawTriggerNodes: FlowTriggerNode[] = [
-    ...eventNodes.map((n: ListenerNode): FlowTriggerNode => ({
-      id: n.id,
-      label: n.label,
-      eventType: n.eventType,
-      scope: n.scope,
-      trackKey: n.trackKey,
-      triggerType: 'listener',
-    })),
-    ...registeredTriggerNodes,
-  ];
   const dedupedTriggers = dedupeTriggerNodes(
     rawTriggerNodes,
     { flowId: actualFlowId, flowTNodeId },

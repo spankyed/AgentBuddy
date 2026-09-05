@@ -10,7 +10,7 @@ export * from './node-config'
 
 export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
   get(_target, type: string) {
-    if (type === 'listener' || stepRegistry.isTrigger(type)) return TriggerNode;
+    if (stepRegistry.isTrigger(type)) return TriggerNode;
     return stepRegistry.getComponent(type) || BaseNode;
   },
   ownKeys() {

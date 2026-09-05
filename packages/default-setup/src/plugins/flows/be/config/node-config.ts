@@ -15,29 +15,11 @@ export interface NodeMetadata {
 }
 
 export function isTriggerNodeType(nodeType: string): boolean {
-  return nodeType === 'listener' || stepRegistry.isTrigger(nodeType);
+  return stepRegistry.isTrigger(nodeType);
 }
 
-const triggerMetadata: Record<string, NodeMetadata> = {
-  listener: {
-    nodeType: 'listener',
-    label: 'Listener',
-    description: 'Listener for events to trigger flows',
-    category: 'trigger',
-    validation: {
-      requiredFields: ['eventType', 'scope'],
-    },
-    defaults: {
-      scope: 'global',
-    } as any,
-  },
-};
-
-// Backward-compatible record — reads from registry for step types, triggerMetadata for triggers
-export const nodeMetadata: Record<string, NodeMetadata> = new Proxy(triggerMetadata, {
-  get(target, prop: string) {
-    if (prop in target) return target[prop];
-
+export const nodeMetadata: Record<string, NodeMetadata> = new Proxy({} as Record<string, NodeMetadata>, {
+  get(_target, prop: string) {
     const stepDef = stepRegistry.get(prop);
     if (stepDef?.fe) {
       return {
@@ -50,8 +32,8 @@ export const nodeMetadata: Record<string, NodeMetadata> = new Proxy(triggerMetad
     }
     return undefined;
   },
-  has(target, prop: string) {
-    return prop in target || stepRegistry.has(prop);
+  has(_target, prop: string) {
+    return stepRegistry.has(prop);
   },
 });
 
@@ -95,23 +77,10 @@ export function createNodeDefaults(nodeType: NodeKind): Partial<NodeEntity> {
     } as Partial<NodeEntity>;
   }
 
-  const metadata = triggerMetadata[nodeType];
-  if (metadata) {
-    return {
-      nodeType,
-      label: metadata.label,
-      entityType: EARS.Entity.Node,
-      ...metadata.defaults,
-    } as Partial<NodeEntity>;
-  }
-
   return {
     nodeType,
     entityType: EARS.Entity.Node,
   } as Partial<NodeEntity>;
 }
 
-export const allNodeTypes = [
-  ...Object.keys(triggerMetadata),
-  ...stepRegistry.types(),
-] as NodeKind[];
+export const allNodeTypes = stepRegistry.types() as NodeKind[];

@@ -24,6 +24,7 @@ export default defineConfig({
     alias: [
       { find: '@/plugins', replacement: new URL('./src/plugins', import.meta.url).pathname },
       { find: '@/registries', replacement: new URL('./src/registries', import.meta.url).pathname },
+      { find: '@/steps', replacement: new URL('./src/steps', import.meta.url).pathname },
       { find: '@/shared-services', replacement: new URL('./src/shared/services', import.meta.url).pathname },
       { find: /^@abuddy\/sdk\/(.+)$/, replacement: new URL('../abuddy-sdk/src/$1/index.ts', import.meta.url).pathname },
       { find: '@abuddy/sdk', replacement: new URL('../abuddy-sdk/src/index.ts', import.meta.url).pathname },

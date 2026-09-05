@@ -69,7 +69,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '@app/api'
-import BaseForm from './BaseForm.vue'
+import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
 
 const props = defineProps<{
   node: NodeEntity
@@ -80,7 +80,6 @@ const emit = defineEmits<{
   'close': []
 }>()
 
-// Type assertion for listen node properties
 const nodeData = computed(() => props.node as any)
 
 const scopeOptions = [
@@ -96,7 +95,6 @@ const hasDebounce = computed(() =>
 const handleScopeChange = (scope: string) => {
   const updates: Record<string, any> = { scope }
 
-  // Automatically set eventType to 'flow.entry' when scope is 'entry'
   if (scope === 'entry') {
     updates.eventType = 'flow.entry'
   }
@@ -107,16 +105,13 @@ const handleScopeChange = (scope: string) => {
 const handleDebounceToggle = (event: Event) => {
   const isChecked = (event.target as HTMLInputElement).checked
   if (isChecked) {
-    // Set a default debounce value when enabling
     emit('update-node', { debounceMs: 500 })
   } else {
-    // Clear debounce when disabling
     emit('update-node', { debounceMs: undefined })
   }
 }
 
 const handleUpdate = (updates: Record<string, any>) => {
-  // Ensure eventType stays as 'flow.entry' when scope is 'entry'
   if (nodeData.value.scope === 'entry' && updates.eventType !== undefined) {
     updates.eventType = 'flow.entry'
   }

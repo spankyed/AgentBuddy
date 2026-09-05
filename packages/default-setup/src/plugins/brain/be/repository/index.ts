@@ -11,7 +11,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { ListenerNode, FlowEntity, FlowNode, NodeEntity } from '@/plugins/flows/be/config/types';
+import type { FlowEntity, FlowNode, NodeEntity } from '@/plugins/flows/be/config/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
@@ -34,8 +34,6 @@ function resolveNodeAttributes(
 const ROOT_TNODE_ID = 'TNode-Root' as EARS.EntityId;
 const ROOT_TRACE_NODE_ROLE = EARS.RoleKind.Custom("root_trace_node");
 const ROOT_FLOW_ROLE = EARS.RoleKind.Custom("root_flow");
-const ENTRY_EVENT_MODE = 'entry' as const;
-
 // Common column selections for TNode queries
 const TNODE_COLUMNS = [
   "id", 
@@ -78,33 +76,15 @@ function isFlowTNode(tNode: Partial<TNodeEntity> | null): tNode is TNodeEntity &
   return tNode?.tNodeType === 'flow';
 }
 
-function isEventTNode(tNode: Partial<TNodeEntity> | null): tNode is TNodeEntity & { tNodeType: 'event' } {
-  return tNode?.tNodeType === 'event';
-}
-
-function isListenerNode(node: Partial<NodeEntity>): node is ListenerNode {
-  return node.nodeType === 'listener';
-}
-
 // Queries
 export const brainQueries = {
-  rootFlowTNode: () => 
+  rootFlowTNode: () =>
     qx(EARS.Entity.TNode)
       .withRole(ROOT_TRACE_NODE_ROLE)
       .first() as EARS.EntityId | undefined,
-  
+
   tNodeById: (id: EARS.EntityId) => {
     return qx(id).pickOne(TNODE_COLUMNS) as TNodeEntity | null;
-  },
-  
-  flowEventNodes: (flowId: EARS.EntityId): ListenerNode[] => {
-    return qx(flowId)
-      .linksPick(
-        EARS.RelKind.CONTAINS,
-        ["id", "nodeType", "label", "eventType", "scope", "trackKey"] as const,
-        [EARS.Entity.Node]
-      )
-      .filter(isListenerNode);
   },
 
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
@@ -202,18 +182,8 @@ export const brainQueries = {
 
     const flowId = flowLinks[0].id;
 
-    // Listeners (internal)
-    const listeners = brainQueries.flowEventNodes(flowId);
-    const events: EventListenerEntity[] = listeners.map((node): EventListenerEntity => ({
-      id: `Event-${node.id}` as EARS.EntityId,
-      nodeId: node.id!,
-      eventType: node.eventType,
-      label: node.label,
-      triggerType: 'listener',
-      scope: node.scope,
-    }));
-
-    // Registered triggers (schedule, etc.)
+    // All triggers (listeners, schedules, etc.) via registry
+    const events: EventListenerEntity[] = [];
     for (const def of stepRegistry.triggers()) {
       const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
       const triggerNodes = qx(flowId)
@@ -293,10 +263,7 @@ export const brainQueries = {
 // Commands
 export const brainCommands = {
   createEventTNode: (
-    eventNode: Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
-      triggerType?: string;
-      cronExpression?: string;
-    },
+    eventNode: { id?: string; label?: string; eventType?: string; triggerType?: string; cronExpression?: string },
     flowTNodeId: EARS.EntityId
   ): TNodeEntity => {
     const now = Date.now();
@@ -337,7 +304,7 @@ export const brainCommands = {
     flowStepId: EARS.EntityId,
     eventTrackId?: EARS.EntityId,
     executionContext?: ExecutionContext
-  ): { flowTNode: TNodeEntity; flowId: EARS.EntityId; eventNodes: ListenerNode[] } => {
+  ): { flowTNode: TNodeEntity; flowId: EARS.EntityId } => {
     // Get the flow reference from the flow node (get all fields for attributes)
     const flowStepNode = qx(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
@@ -377,9 +344,6 @@ export const brainCommands = {
         break;
       }
     }
-
-    // Get event nodes for the referenced flow (not the flow step)
-    const eventNodes = brainQueries.flowEventNodes(flowStepNode.flowRef as EARS.EntityId);
 
     const now = Date.now();
 
@@ -423,7 +387,6 @@ export const brainCommands = {
     return {
       flowTNode: flowTNode as TNodeEntity,
       flowId: flowStepNode.flowRef as EARS.EntityId,
-      eventNodes,
     };
   },
   
@@ -507,8 +470,6 @@ export const brainCommands = {
   createRootFlowTNode: (): {
     rootFlow: FlowEntity;
     rootFlowTNode: TNodeEntity;
-    eventNodes: ListenerNode[];
-    entryNode?: ListenerNode;
   } => {
     const now = Date.now();
     const rootId = ROOT_TNODE_ID;
@@ -524,12 +485,6 @@ export const brainCommands = {
         "Ensure the database is properly initialized."
       );
     }
-
-    // Get all event nodes
-    const eventNodes = brainQueries.flowEventNodes(rootFlow.id);
-
-    // Find the entry event node
-    const entryNode = eventNodes.find(node => node.scope === ENTRY_EVENT_MODE);
 
     tx(rootId)
       .batchPut({
@@ -556,8 +511,6 @@ export const brainCommands = {
     return {
       rootFlow,
       rootFlowTNode,
-      eventNodes,
-      entryNode,
     };
   },
   

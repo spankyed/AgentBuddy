@@ -196,29 +196,12 @@ const STATUS_STYLE_CLASSES = {
 // Registry-Driven Configuration
 // ===========================
 
-// Listener config is internal — not a registered trigger type
-const TRIGGER_CONFIGS: Record<string, NodeConfig> = {
-  listener: {
-    type: 'listener',
-    label: 'Listener',
-    defaultLabel: 'On event',
-    icon: Radio,
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10',
-    hoverBgColor: 'group-hover:bg-blue-500/15',
-    connectionRules: { inputs: 0, outputs: -1 },
-    component: 'TriggerNode',
-    isImplemented: true
-  },
-}
-
-const TRIGGER_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = {
-  listener: 'blue',
+const STATIC_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = {
   event: 'blue',
 }
 
 function buildNodeConfigs(): Record<string, NodeConfig> {
-  const configs: Record<string, NodeConfig> = { ...TRIGGER_CONFIGS }
+  const configs: Record<string, NodeConfig> = {}
 
   for (const step of stepRegistry.all()) {
     if (!step.fe) continue
@@ -237,7 +220,7 @@ function buildNodeConfigs(): Record<string, NodeConfig> {
 }
 
 function buildColorMap(): Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> {
-  const map: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = { ...TRIGGER_COLOR_MAP }
+  const map: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = { ...STATIC_COLOR_MAP }
 
   for (const step of stepRegistry.all()) {
     if (step.fe?.colorKey) {

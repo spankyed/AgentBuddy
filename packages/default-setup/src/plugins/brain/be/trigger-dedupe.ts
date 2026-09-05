@@ -1,9 +1,11 @@
-import type { ListenerNode } from '@/plugins/flows/be/config/types';
 import { EARS } from '@/registries/ears';
 
-export type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
+export type FlowTriggerNode = {
+  id?: string;
+  label?: string;
+  eventType?: string;
   triggerType: string;
-  scope?: ListenerNode['scope'];
+  scope?: string;
   cronExpression?: string;
   trackKey?: string;
 };

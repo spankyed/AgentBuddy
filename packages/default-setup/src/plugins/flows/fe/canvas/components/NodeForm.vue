@@ -31,9 +31,8 @@ import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@app/api'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
-// Shared infrastructure forms (triggers + fallback)
+// Shared infrastructure forms (fallback)
 import BaseForm from '../forms/BaseForm.vue'
-import ListenerForm from '../forms/ListenerForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
@@ -66,7 +65,6 @@ function handleReindexBranches(data: { type: 'inserted' | 'removed'; index: numb
 }
 
 function getFormComponent(nodeType: string) {
-  if (nodeType === 'listener') return ListenerForm;
   return stepRegistry.getFormComponent(nodeType) || BaseForm;
 }
 

@@ -80,14 +80,8 @@ const triggerDescriptor: NodeLayoutDescriptor = {
   hasInput: false,
 }
 
-const triggerDescriptors = new Map<string, NodeLayoutDescriptor>([
-  ['listener', triggerDescriptor],
-])
-
 export function getDescriptor(nodeType?: string): NodeLayoutDescriptor {
   if (!nodeType) return defaultDescriptor;
-  const triggerDesc = triggerDescriptors.get(nodeType);
-  if (triggerDesc) return triggerDesc;
   if (stepRegistry.isTrigger(nodeType)) {
     const layout = stepRegistry.getFE(nodeType)?.layout;
     if (layout) {
