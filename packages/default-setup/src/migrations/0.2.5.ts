@@ -3,7 +3,6 @@ import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { repository } from '@/repository';
-const { settingsQueries, settingsCommands } = repository;
 import type { ThreadEntity, ArtifactEntity } from '../plugins/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
 
@@ -58,7 +57,7 @@ export const migration: PackMigration = {
 
     // Clear seedHash so runBootSeed() doesn't short-circuit — forces a full
     // re-seed that replaces the "migrated" placeholder with real hashes.
-    settingsCommands.updateSettings('internal', null, ['seedHash'], null);
+    repository.settingsCommands.updateSettings('internal', null, ['seedHash'], null);
 
     // ── 3. Rename claude-session tag → claude-code on threads ──────────
     for (const thread of threads) {
@@ -69,12 +68,12 @@ export const migration: PackMigration = {
     }
 
     // ── 4. Rename claude-session tag → claude-code in settings ─────────
-    const data = settingsQueries.getSettings();
+    const data = repository.settingsQueries.getSettings();
     const settingsTags: Array<{ name: string; color?: string }> = data.plugins?.threads?.tags ?? [];
     const idx = settingsTags.findIndex((t: any) => t.name === 'claude-session');
     if (idx !== -1) {
       settingsTags[idx] = { ...settingsTags[idx], name: 'claude-code' };
-      settingsCommands.updateSettings('plugin', 'threads', ['tags'], settingsTags);
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['tags'], settingsTags);
     }
   },
 };

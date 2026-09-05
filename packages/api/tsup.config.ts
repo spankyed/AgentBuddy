@@ -26,6 +26,7 @@ export default defineConfig({
   dts: true,
   shims: true,
   minify: true,
+  external: ['typescript', 'esbuild'],
   esbuildPlugins: [{
     name: 'resolve-at-aliases',
     setup(build) {

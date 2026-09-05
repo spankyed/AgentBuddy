@@ -1,17 +1,16 @@
 import { repository } from '@/repository';
-const { settingsQueries, settingsCommands } = repository;
 import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {
   target: '0.2.0',
   description: 'Add claude-session tag, replace chat/note modes with manager mode, backfill recentThreadsLimit, seed default mode/phase, backfill recordingLimitMinutes',
   up: () => {
-    const data = settingsQueries.getSettings();
+    const data = repository.settingsQueries.getSettings();
 
     // 1. Add claude-session tag if missing
     const tags: Array<{ name: string; color: string }> = data.plugins?.threads?.tags ?? [];
     if (!tags.some(t => t.name === 'claude-session')) {
-      settingsCommands.updateSettings(
+      repository.settingsCommands.updateSettings(
         'plugin', 'threads', ['tags'],
         [...tags, { name: 'claude-session', color: '#7C3AED' }],
       );
@@ -44,7 +43,7 @@ export const migration: PackMigration = {
     }
 
     if (changed) {
-      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
     }
 
     // 3. Ensure chatStates config has all required entries
@@ -67,7 +66,7 @@ export const migration: PackMigration = {
       }
     }
     if (chatStatesChanged) {
-      settingsCommands.updateSettings('plugin', 'threads', ['chatStates'], chatStates);
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chatStates'], chatStates);
     }
 
     // 4. Remove review phase from work mode, backfill default colors on plan/edit phases
@@ -91,14 +90,14 @@ export const migration: PackMigration = {
       }
 
       if (workPhasesChanged) {
-        settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+        repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
       }
     }
 
     // 5. Add maxTerminals default to code settings
     const codeSettings = data.plugins?.code;
     if (codeSettings && codeSettings.maxTerminals === undefined) {
-      settingsCommands.updateSettings('plugin', 'code', ['maxTerminals'], 25);
+      repository.settingsCommands.updateSettings('plugin', 'code', ['maxTerminals'], 25);
     }
 
     // 6. Rename general.misc → general.application and move hotkeys into application
@@ -110,26 +109,26 @@ export const migration: PackMigration = {
       existingApp.hotkeys = hotkeys;
     }
 
-    settingsCommands.updateSettings('general', 'application', [], existingApp);
+    repository.settingsCommands.updateSettings('general', 'application', [], existingApp);
 
     // 7. Backfill recentThreadsLimit default (introduced in 0.2.0)
     if (data.plugins?.threads?.recentThreadsLimit === undefined) {
-      settingsCommands.updateSettings('plugin', 'threads', ['recentThreadsLimit'], 7);
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['recentThreadsLimit'], 7);
     }
 
     // 7b. Backfill recordingLimitMinutes default (introduced in 0.2.0)
     if (data.plugins?.threads?.recordingLimitMinutes === undefined) {
-      settingsCommands.updateSettings('plugin', 'threads', ['recordingLimitMinutes'], 3);
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['recordingLimitMinutes'], 3);
     }
 
     // 8. Seed default mode/phase for "New Thread" (introduced in 0.2.0).
     // Only set when absent so existing user customization is preserved.
     const chat = (data.plugins as any)?.threads?.chat ?? {};
     if (chat.defaultMode === undefined) {
-      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultMode'], 'work');
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultMode'], 'work');
     }
     if (chat.defaultPhase === undefined) {
-      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultPhase'], 'plan');
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultPhase'], 'plan');
     }
   },
 };

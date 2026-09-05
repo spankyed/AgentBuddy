@@ -1,12 +1,11 @@
 import { repository } from '@/repository';
-const { settingsQueries, settingsCommands } = repository;
 import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {
   target: '0.3.0',
   description: 'Add codex agent mode if missing; remove Hermes settings',
   up: () => {
-    const data = settingsQueries.getSettings();
+    const data = repository.settingsQueries.getSettings();
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> =
       (data.plugins as any)?.threads?.chat?.modes ?? [];
 
@@ -34,20 +33,20 @@ export const migration: PackMigration = {
     }
 
     const nextModes = modes.filter(mode => mode.id !== 'hermes');
-    settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], nextModes);
+    repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], nextModes);
 
     const plugins = (data.plugins as any) ?? {};
     const visibility = plugins._meta?.visibility;
     if (visibility && Object.prototype.hasOwnProperty.call(visibility, 'hermes')) {
       const nextVisibility = { ...visibility };
       delete nextVisibility.hermes;
-      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], nextVisibility);
+      repository.settingsCommands.updateSettings('plugin', '_meta', ['visibility'], nextVisibility);
     }
 
     if (Object.prototype.hasOwnProperty.call(plugins, 'hermes')) {
       const nextPlugins = { ...plugins };
       delete nextPlugins.hermes;
-      settingsCommands.updateSettings('plugins', null, [], nextPlugins);
+      repository.settingsCommands.updateSettings('plugins', null, [], nextPlugins);
     }
   },
 };

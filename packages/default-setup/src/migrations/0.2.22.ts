@@ -1,12 +1,11 @@
 import { repository } from '@/repository';
-const { settingsQueries, settingsCommands } = repository;
 import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {
   target: '0.2.22',
   description: 'Rename work mode to claude-code; add hermes mode if missing',
   up: () => {
-    const data = settingsQueries.getSettings();
+    const data = repository.settingsQueries.getSettings();
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> =
       (data.plugins as any)?.threads?.chat?.modes ?? [];
 
@@ -29,12 +28,12 @@ export const migration: PackMigration = {
       });
     }
 
-    settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+    repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
 
     // Update defaultMode if it was 'work'
     const defaultMode = (data.plugins as any)?.threads?.chat?.defaultMode;
     if (defaultMode === 'work') {
-      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultMode'], 'claude-code');
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultMode'], 'claude-code');
     }
   },
 };

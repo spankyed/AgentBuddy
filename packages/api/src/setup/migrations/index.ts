@@ -2,8 +2,6 @@ import { repository } from '@/repository';
 import { APP_VERSION } from '@/version';
 import { getRegisteredMigrations } from '@/core/packs/pack-registration';
 
-const { settingsQueries, settingsCommands } = repository;
-
 function compareVersions(a: string, b: string): number {
   const [ax, bx] = [a, b].map(v => v.split('.').map(Number));
   for (let i = 0; i < Math.max(ax.length, bx.length); i++) {
@@ -14,7 +12,7 @@ function compareVersions(a: string, b: string): number {
 }
 
 export function runMigrations(): void {
-  const current = settingsQueries.getInternalSettings().version || '0.0.0';
+  const current = repository.settingsQueries.getInternalSettings().version || '0.0.0';
   const migrations = getRegisteredMigrations().sort((a, b) => compareVersions(a.target, b.target));
 
   for (const m of migrations) {
@@ -30,6 +28,6 @@ export function runMigrations(): void {
   }
 
   if (current !== APP_VERSION) {
-    settingsCommands.updateSettings('internal', null, ['version'], APP_VERSION);
+    repository.settingsCommands.updateSettings('internal', null, ['version'], APP_VERSION);
   }
 }

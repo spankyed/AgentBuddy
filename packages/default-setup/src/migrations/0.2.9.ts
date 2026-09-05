@@ -3,7 +3,6 @@ import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { repository } from '@/repository';
-const { settingsQueries, settingsCommands } = repository;
 import type { ThreadEntity, ArtifactEntity } from '../plugins/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
 
@@ -12,14 +11,14 @@ export const migration: PackMigration = {
   description: 'Hide manager mode; migrate session artifact data to thread context; strip artifact content',
   up: () => {
     // ── Hide manager mode from mode selector ──────────────────────────
-    const data = settingsQueries.getSettings();
+    const data = repository.settingsQueries.getSettings();
     const modes: Array<{ id: string; hidden?: boolean; [k: string]: any }> =
       (data.plugins as any)?.threads?.chat?.modes ?? [];
 
     const manager = modes.find(m => m.id === 'manager');
     if (manager && !manager.hidden) {
       manager.hidden = true;
-      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
     }
 
     // ── Migrate session artifact data to thread context ───────────────
