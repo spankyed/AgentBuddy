@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc --noEmit && NODE_OPTIONS='--max-old-space-size=8192' tsup src/types.ts src/server.ts --format esm,cjs --dts --shims --minify",
+    "build": "tsc --noEmit && NODE_OPTIONS='--max-old-space-size=8192' tsup",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --noEmit --watch --preserveWatchOutput",
     "dev:serve": "tsx --watch src/server.ts",
