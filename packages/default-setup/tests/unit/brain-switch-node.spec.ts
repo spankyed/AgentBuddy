@@ -12,7 +12,7 @@
  * outbound events and assert their shape.
  */
 
-import { switchNodeHandler } from '@/steps/switch'
+import { switchNodeHandler } from '@/steps/switch/runtime'
 import { BinaryOperator } from '@/plugins/flows/be/config/types'
 import type { Condition, SwitchNode } from '@/plugins/flows/be/config/types'
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types'
