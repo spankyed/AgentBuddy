@@ -2,10 +2,23 @@ import type { StepDefinition, StepCompileResult, StepValidationError, StepValida
 import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/plugins/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import { BinaryOperator as Op } from '@abuddy/sdk/utils';
-import { EARS } from '@/registries/ears';
-import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
-import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
-import { extractValueByPath } from '@/plugins/brain/be/repository/node-attribute-mappers';
+import { EARS } from '@abuddy/sdk';
+
+let brainInspect: (...args: any[]) => void;
+let brainLogger: { warn: (...args: any[]) => void; error: (...args: any[]) => void };
+let reportBrainRuntimeError: (opts: any) => any;
+let extractValueByPath: (ctx: any, path: string) => any;
+
+async function loadRuntimeDeps() {
+  if (brainInspect) return;
+  const inspect = await import('@/plugins/brain/be/utils/brain-inspect');
+  brainInspect = inspect.brainInspect;
+  brainLogger = inspect.brainLogger;
+  const errors = await import('@/plugins/brain/be/runtime-errors');
+  reportBrainRuntimeError = errors.reportBrainRuntimeError;
+  const mappers = await import('@/plugins/brain/be/repository/node-attribute-mappers');
+  extractValueByPath = mappers.extractValueByPath;
+}
 
 /* ── Build facet ─────────────────────────────────────────────────────── */
 
@@ -283,7 +296,8 @@ function evaluateConditions(conditions: Condition[], context: ExecutionContext):
   return -1;
 }
 
-function handler(tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) {
+async function handler(tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) {
+  await loadRuntimeDeps();
   const t = tNode as TNodeEntity;
   const n = node as SwitchNode;
   const ctx = executionContext as ExecutionContext;

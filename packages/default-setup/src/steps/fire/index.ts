@@ -1,6 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@abuddy/sdk';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
 
 function compile(

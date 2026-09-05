@@ -1,5 +1,5 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@abuddy/sdk';
 
 export const listenerTrigger: StepDefinition = {
   type: 'listener',

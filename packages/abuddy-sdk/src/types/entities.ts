@@ -15,6 +15,7 @@ export namespace EARS {
   // ─── Entity ────────────────────────────────────────────────────────────
   export const Entity = {
     Relation: 'Relation',
+    Node: 'Node',
   } as const;
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
@@ -25,6 +26,7 @@ export namespace EARS {
   const _relCustom = <T extends string>(k: T) => k as T & RelKind;
 
   export const RelKind = {
+    INSTANCE_OF: 'instance_of',
     Custom: _relCustom,
   } as const;
 

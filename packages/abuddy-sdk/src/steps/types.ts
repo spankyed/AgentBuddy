@@ -137,7 +137,7 @@ export interface TriggerFacet {
   /** Whether this trigger keeps the flow alive after all tracks drain. */
   persistent?: boolean;
   /** Register trigger-specific runtime hooks (e.g. cron jobs). Called per-node during registerFlowActor. */
-  register?(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void;
+  register?(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void | Promise<void>;
   /** Additional entity fields needed when querying this trigger's nodes (e.g. ['cronExpression']). */
   queryFields?: string[];
   /** Validate a DSL track before compilation. */

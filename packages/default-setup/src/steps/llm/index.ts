@@ -1,14 +1,31 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
 import { repository } from '@abuddy/sdk/ears';
-import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
-import { executeTemplate } from '@/plugins/brain/be/utils/template-executor';
-import { createPromptContext } from '@/plugins/brain/be/utils/prompt-context';
-import { generateText } from '@/plugins/brain/be/services/llm';
-import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+
+let brainInspect: (...args: any[]) => void;
+let brainLogger: { warn: (...args: any[]) => void; error: (...args: any[]) => void };
+let executeTemplate: (fn: string, params: any, ctx: any) => string;
+let createPromptContext: (exec: any, lookup: any) => any;
+let generateText: (opts: any) => Promise<any>;
+let reportBrainRuntimeError: (opts: any) => any;
+
+async function loadRuntimeDeps() {
+  if (brainInspect) return;
+  const inspect = await import('@/plugins/brain/be/utils/brain-inspect');
+  brainInspect = inspect.brainInspect;
+  brainLogger = inspect.brainLogger;
+  const tpl = await import('@/plugins/brain/be/utils/template-executor');
+  executeTemplate = tpl.executeTemplate;
+  const pctx = await import('@/plugins/brain/be/utils/prompt-context');
+  createPromptContext = pctx.createPromptContext;
+  const llm = await import('@/plugins/brain/be/services/llm');
+  generateText = llm.generateText;
+  const errors = await import('@/plugins/brain/be/runtime-errors');
+  reportBrainRuntimeError = errors.reportBrainRuntimeError;
+}
 
 /* ── Build facet ─────────────────────────────────────────────────────── */
 
@@ -114,6 +131,7 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
 }
 
 async function handler(tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) {
+  await loadRuntimeDeps();
   const t = tNode as TNodeEntity;
   const n = node as LLMNode;
   const ctx = executionContext as ExecutionContext;

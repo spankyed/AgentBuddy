@@ -125,6 +125,9 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
 
   const compilers = buildCompilerMap(packConfig);
 
+  if (packConfig.setup) {
+    await packConfig.setup();
+  }
   if (packConfig.steps) {
     for (const step of packConfig.steps) {
       stepRegistry.register(step);

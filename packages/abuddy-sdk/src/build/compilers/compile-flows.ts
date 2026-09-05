@@ -62,8 +62,9 @@ export function validateFlows(
   merged: FlowDSL,
   actionLabels: string[],
   promptLabels: string[],
+  options?: { steps?: import('../../steps/types').StepDefinition[] },
 ): ValidationResult {
-  return validate(merged, { actions: actionLabels, prompts: promptLabels });
+  return validate(merged, { actions: actionLabels, prompts: promptLabels, steps: options?.steps });
 }
 
 export function hashFlows(merged: FlowDSL): Record<string, object> {

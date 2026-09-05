@@ -10,4 +10,8 @@ export default {
   faqs: './src/seeds/faqs',
   settings: './src/seeds/default-settings.ts',
   plugins: './src/plugins',
+  async setup() {
+    const { registerStandardSteps } = await import('./src/steps/register');
+    registerStandardSteps();
+  },
 } satisfies PackConfig;

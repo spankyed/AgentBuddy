@@ -15,6 +15,7 @@ export interface PackConfig {
   plugins?: string;     // directory path, e.g. './src/plugins' — scanned for per-plugin settings
   compilers?: Array<{ type: string; compiler: import('./seed-compiler').SeedCompiler }>;
   steps?: import('../steps/types').StepDefinition[];
+  setup?: () => void | Promise<void>;
   [key: string]: unknown;
 }
 

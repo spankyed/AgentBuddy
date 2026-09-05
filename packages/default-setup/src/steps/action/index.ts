@@ -1,12 +1,21 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
 import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
-import { brainInspect } from '@/plugins/brain/be/utils/brain-inspect';
-import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+
+let brainInspect: (...args: any[]) => void;
+let reportBrainRuntimeError: (opts: any) => any;
+
+async function loadRuntimeDeps() {
+  if (brainInspect) return;
+  const inspect = await import('@/plugins/brain/be/utils/brain-inspect');
+  brainInspect = inspect.brainInspect;
+  const errors = await import('@/plugins/brain/be/runtime-errors');
+  reportBrainRuntimeError = errors.reportBrainRuntimeError;
+}
 
 /* ── Build facet ─────────────────────────────────────────────────────── */
 
@@ -84,6 +93,7 @@ async function executeActionFunction(
 }
 
 async function handler(tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) {
+  await loadRuntimeDeps();
   const t = tNode as TNodeEntity;
   const n = node as ActionNode;
   const ctx = executionContext as ExecutionContext;

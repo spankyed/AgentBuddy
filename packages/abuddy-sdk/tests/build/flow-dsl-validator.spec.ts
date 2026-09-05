@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { validate } from '../../src/build/compilers/flow-dsl-validator';
+import type { StepDefinition } from '../../src/steps/types';
 import { stepRegistry } from '../../src/steps/registry';
 
-function registerBaseTriggers() {
-  stepRegistry.register({
+const baseTriggers: StepDefinition[] = [
+  {
     type: 'listener',
     kind: 'trigger',
     trigger: {
@@ -11,8 +12,8 @@ function registerBaseTriggers() {
       compile: () => ({}),
       decompile: () => ({}),
     },
-  });
-  stepRegistry.register({
+  },
+  {
     type: 'schedule',
     kind: 'trigger',
     trigger: {
@@ -29,23 +30,20 @@ function registerBaseTriggers() {
         return { valid: true, errors: [] };
       },
     },
-  });
-}
+  },
+];
 
 describe('flow DSL validator', () => {
-  describe('schedule tracks', () => {
-    beforeEach(() => registerBaseTriggers());
-    afterEach(() => stepRegistry.clear());
+  afterEach(() => stepRegistry.clear());
 
+  describe('schedule tracks', () => {
     it('allows root flows with only a schedule track', () => {
       const result = validate({
         'Scheduled Root': {
           root: true,
-          tracks: [
-            { schedule: '0 * * * *', exits: [[]] },
-          ],
+          tracks: [{ schedule: '0 * * * *', exits: [[]] }],
         },
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
@@ -60,7 +58,7 @@ describe('flow DSL validator', () => {
             { event: 'manual.start', exits: [[]] },
           ],
         },
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
@@ -70,29 +68,26 @@ describe('flow DSL validator', () => {
       const result = validate({
         'Root A': { root: true, tracks: [{ event: 'a', exits: [[]] }] },
         'Root B': { root: true, tracks: [{ schedule: '0 * * * *', exits: [[]] }] },
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(false);
       expect(result.errors.some(error => error.message.includes('Multiple flows marked as root'))).toBe(true);
     });
   });
 
-  describe('track validation with registry', () => {
-    beforeEach(() => registerBaseTriggers());
-    afterEach(() => stepRegistry.clear());
-
-    it('accepts event tracks when listener is registered', () => {
+  describe('track validation', () => {
+    it('accepts event tracks', () => {
       const result = validate({
         'Flow': [{ event: 'test.event', exits: [[]] }],
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(true);
     });
 
-    it('accepts schedule tracks when schedule is registered', () => {
+    it('accepts schedule tracks', () => {
       const result = validate({
         'Flow': [{ schedule: '0 * * * *', exits: [[]] }],
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(true);
     });
@@ -100,7 +95,7 @@ describe('flow DSL validator', () => {
     it('rejects tracks with no trigger field', () => {
       const result = validate({
         'Flow': [{ exits: [[]] }],
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(false);
       expect(result.errors[0].message).toContain('"event"');
@@ -110,15 +105,14 @@ describe('flow DSL validator', () => {
     it('rejects tracks with multiple trigger fields', () => {
       const result = validate({
         'Flow': [{ event: 'test', schedule: '0 * * * *', exits: [[]] }],
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(false);
       expect(result.errors[0].message).toContain('multiple trigger fields');
     });
 
     it('runs trigger-specific validateTrack', () => {
-      stepRegistry.clear();
-      stepRegistry.register({
+      const webhookTrigger: StepDefinition = {
         type: 'custom-trigger',
         kind: 'trigger',
         trigger: {
@@ -133,11 +127,11 @@ describe('flow DSL validator', () => {
             return { valid: true, errors: [] };
           },
         },
-      });
+      };
 
       const result = validate({
         'Flow': [{ webhook: 'http://insecure.com', exits: [[]] }],
-      });
+      }, { steps: [webhookTrigger] });
 
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.message.includes('HTTPS'))).toBe(true);
@@ -149,30 +143,36 @@ describe('flow DSL validator', () => {
           event: 'test',
           exits: [[{ type: 'listener' }]],
         }],
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.message.includes('Trigger types belong at the track level'))).toBe(true);
     });
-  });
 
-  describe('empty registry', () => {
-    beforeEach(() => stepRegistry.clear());
-
-    it('throws when no triggers are registered', () => {
-      expect(() => validate({
-        'Flow': [{ event: 'test.event', exits: [[]] }],
-      })).toThrow('No trigger types registered');
-    });
-
-    it('validates cron via validateTrack when schedule trigger is registered', () => {
-      registerBaseTriggers();
+    it('validates cron via validateTrack', () => {
       const result = validate({
         'Flow': [{ schedule: 'not-valid', exits: [[]] }],
-      });
+      }, { steps: baseTriggers });
 
       expect(result.valid).toBe(false);
-      stepRegistry.clear();
+    });
+  });
+
+  describe('registry fallback', () => {
+    it('falls back to step registry when options.steps is not provided', () => {
+      for (const step of baseTriggers) stepRegistry.register(step);
+
+      const result = validate({
+        'Flow': [{ event: 'test.event', exits: [[]] }],
+      });
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('throws when neither options.steps nor registry has triggers', () => {
+      expect(() => validate({
+        'Flow': [{ event: 'test.event', exits: [[]] }],
+      })).toThrow('No trigger types provided');
     });
   });
 });

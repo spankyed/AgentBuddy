@@ -1,7 +1,6 @@
 import type { StepDefinition, TriggerRuntimeNode, TriggerRuntimeContext } from '@abuddy/sdk/steps';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@abuddy/sdk';
 import { Cron } from 'croner';
-import { registerSchedule } from '@/plugins/brain/be/services/scheduler';
 
 export const scheduleTrigger: StepDefinition = {
   type: 'schedule',
@@ -24,7 +23,8 @@ export const scheduleTrigger: StepDefinition = {
       return { schedule: (node as any).cronExpression };
     },
     persistent: true,
-    register(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext) {
+    async register(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext) {
+      const { registerSchedule } = await import('@/plugins/brain/be/services/scheduler');
       registerSchedule(
         `${ctx.flowTNodeId}:${node.id}`,
         node.cronExpression as string,

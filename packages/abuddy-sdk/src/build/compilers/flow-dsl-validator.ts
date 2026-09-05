@@ -6,7 +6,7 @@ import type {
 } from './flow-types';
 import { isFlowConfig, resolveTracks } from './flow-types';
 import { stepRegistry } from '../../steps/registry';
-import type { StepValidationContext } from '../../steps/types';
+import type { StepDefinition, StepBuildFacet, StepValidationContext, TriggerFacet } from '../../steps/types';
 
 const FALLBACK_STEP_TYPES = [
   'action', 'llm', 'switch', 'fire', 'transform',
@@ -21,11 +21,41 @@ interface ValidationContext {
   path: string;
 }
 
-interface ValidateOptions {
+interface ResolvedSteps {
+  triggers: StepDefinition[];
+  isTrigger(type: string): boolean;
+  getBuild(type: string): StepBuildFacet | undefined;
+  types(): string[];
+}
+
+function resolveSteps(options: ValidateOptions): ResolvedSteps {
+  const defs = options.steps;
+  if (!defs || defs.length === 0) {
+    return {
+      triggers: stepRegistry.triggers(),
+      isTrigger: (type) => stepRegistry.isTrigger(type),
+      getBuild: (type) => stepRegistry.getBuild(type),
+      types: () => stepRegistry.types(),
+    };
+  }
+
+  const map = new Map<string, StepDefinition>();
+  for (const def of defs) map.set(def.type, def);
+
+  return {
+    triggers: defs.filter(d => d.kind === 'trigger'),
+    isTrigger: (type) => map.get(type)?.kind === 'trigger',
+    getBuild: (type) => map.get(type)?.build,
+    types: () => [...map.keys()],
+  };
+}
+
+export interface ValidateOptions {
   actions?: string[];
   prompts?: string[];
   skipReferenceCheck?: boolean;
   stepTypes?: string[];
+  steps?: StepDefinition[];
 }
 
 export function validate(dsl: unknown, options: ValidateOptions = {}): ValidationResult {
@@ -63,11 +93,13 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
     errors.push({ path: '', message: `Multiple flows marked as root: ${rootFlows.join(', ')}. At most one flow can be root.` });
   }
 
+  const resolved = resolveSteps(options);
+
   for (const [flowName, entry] of Object.entries(flows)) {
     ctx.path = flowName;
     ctx.nodeLabels = new Set();
     const tracks = resolveTracks(entry as Track[] | FlowConfig);
-    const flowErrors = validateFlow(flowName, tracks, ctx, options);
+    const flowErrors = validateFlow(flowName, tracks, ctx, options, resolved);
     errors.push(...flowErrors);
   }
 
@@ -79,6 +111,7 @@ function validateFlow(
   tracks: unknown,
   ctx: ValidationContext,
   options: ValidateOptions,
+  resolved: ResolvedSteps,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -97,7 +130,7 @@ function validateFlow(
     const track = tracks[trackIdx] as Record<string, unknown>;
     if (!track || typeof track !== 'object') continue;
 
-    const trackLabel = getTrackLabel(track, trackIdx);
+    const trackLabel = getTrackLabel(track, trackIdx, resolved);
     if (nodeLabels.has(trackLabel)) {
       errors.push({ path: `${ctx.path}[${trackIdx}]`, message: `Duplicate label: "${trackLabel}"` });
     }
@@ -108,7 +141,7 @@ function validateFlow(
       for (let exitIdx = 0; exitIdx < exits.length; exitIdx++) {
         const exitSteps = exits[exitIdx] as unknown[];
         if (Array.isArray(exitSteps)) {
-          collectStepLabels(exitSteps, nodeLabels, errors, `${ctx.path}[${trackIdx}].exits[${exitIdx}]`);
+          collectStepLabels(exitSteps, nodeLabels, errors, `${ctx.path}[${trackIdx}].exits[${exitIdx}]`, resolved);
         }
       }
     }
@@ -117,7 +150,7 @@ function validateFlow(
 
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const trackPath = `${ctx.path}[${trackIdx}]`;
-    errors.push(...validateTrack(tracks[trackIdx], trackPath, ctx, options));
+    errors.push(...validateTrack(tracks[trackIdx], trackPath, ctx, options, resolved));
   }
 
   return errors;
@@ -128,6 +161,7 @@ function validateTrack(
   path: string,
   ctx: ValidationContext,
   options: ValidateOptions,
+  resolved: ResolvedSteps,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -138,9 +172,9 @@ function validateTrack(
 
   const t = track as Record<string, unknown>;
 
-  const triggerDefs = stepRegistry.triggers();
+  const triggerDefs = resolved.triggers;
   if (triggerDefs.length === 0) {
-    throw new Error('No trigger types registered. Register triggers in the step registry before validating.');
+    throw new Error('No trigger types provided. Pass step definitions via options.steps or register them in the step registry.');
   }
   const knownTrackFields = triggerDefs.map(d => d.trigger!.trackField);
   const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);
@@ -175,7 +209,7 @@ function validateTrack(
         errors.push({ path: exitPath, message: 'Each exit must be a steps array' });
       } else {
         for (let si = 0; si < exitSteps.length; si++) {
-          errors.push(...validateStep(exitSteps[si], `${exitPath}[${si}]`, ctx, options));
+          errors.push(...validateStep(exitSteps[si], `${exitPath}[${si}]`, ctx, options, resolved));
         }
       }
     }
@@ -184,9 +218,9 @@ function validateTrack(
   return errors;
 }
 
-function getValidStepTypes(options: ValidateOptions): string[] {
+function getValidStepTypes(options: ValidateOptions, resolved: ResolvedSteps): string[] {
   const types = new Set<string>(FALLBACK_STEP_TYPES);
-  for (const t of stepRegistry.types()) types.add(t);
+  for (const t of resolved.types()) types.add(t);
   if (options.stepTypes) {
     for (const t of options.stepTypes) types.add(t);
   }
@@ -198,6 +232,7 @@ function validateStep(
   path: string,
   ctx: ValidationContext,
   options: ValidateOptions,
+  resolved: ResolvedSteps,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -213,12 +248,12 @@ function validateStep(
     return errors;
   }
 
-  if (stepRegistry.isTrigger(s.type as string)) {
+  if (resolved.isTrigger(s.type as string)) {
     errors.push({ path, message: `Steps cannot have type "${s.type}". Trigger types belong at the track level.` });
     return errors;
   }
 
-  const validTypes = getValidStepTypes(options);
+  const validTypes = getValidStepTypes(options, resolved);
   if (!validTypes.includes(s.type as string)) {
     errors.push({ path, message: `Invalid step type: "${s.type}". Must be one of: ${validTypes.join(', ')}` });
     return errors;
@@ -231,7 +266,7 @@ function validateStep(
   }
 
   const stepType = s.type as string;
-  const buildFacet = stepRegistry.getBuild(stepType);
+  const buildFacet = resolved.getBuild(stepType);
 
   if (buildFacet) {
     const stepCtx: StepValidationContext = {
@@ -252,13 +287,13 @@ function validateStep(
         if (cond && Array.isArray(cond.steps)) {
           const condPath = `${path}.conditions[${i}]`;
           for (let si = 0; si < (cond.steps as any[]).length; si++) {
-            errors.push(...validateStep((cond.steps as any[])[si], `${condPath}.steps[${si}]`, ctx, options));
+            errors.push(...validateStep((cond.steps as any[])[si], `${condPath}.steps[${si}]`, ctx, options, resolved));
           }
         }
       }
       if (Array.isArray(s.else)) {
         for (let si = 0; si < (s.else as any[]).length; si++) {
-          errors.push(...validateStep((s.else as any[])[si], `${path}.else[${si}]`, ctx, options));
+          errors.push(...validateStep((s.else as any[])[si], `${path}.else[${si}]`, ctx, options, resolved));
         }
       }
     }
@@ -272,12 +307,13 @@ function collectStepLabels(
   nodeLabels: Set<string>,
   errors: ValidationError[],
   basePath: string,
+  resolved: ResolvedSteps,
 ): void {
   for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
     const step = steps[stepIdx] as Record<string, unknown>;
     if (!step || typeof step !== 'object') continue;
 
-    const stepLabel = getStepLabel(step, stepIdx);
+    const stepLabel = getStepLabel(step, stepIdx, resolved);
     if (nodeLabels.has(stepLabel)) {
       errors.push({ path: `${basePath}[${stepIdx}]`, message: `Duplicate label: "${stepLabel}"` });
     }
@@ -287,20 +323,20 @@ function collectStepLabels(
       for (let ci = 0; ci < (step.conditions as any[]).length; ci++) {
         const cond = (step.conditions as any[])[ci];
         if (cond && Array.isArray(cond.steps)) {
-          collectStepLabels(cond.steps, nodeLabels, errors, `${basePath}[${stepIdx}].conditions[${ci}].steps`);
+          collectStepLabels(cond.steps, nodeLabels, errors, `${basePath}[${stepIdx}].conditions[${ci}].steps`, resolved);
         }
       }
       if (Array.isArray(step.else)) {
-        collectStepLabels(step.else as unknown[], nodeLabels, errors, `${basePath}[${stepIdx}].else`);
+        collectStepLabels(step.else as unknown[], nodeLabels, errors, `${basePath}[${stepIdx}].else`, resolved);
       }
     }
   }
 }
 
-function getTrackLabel(track: Record<string, unknown>, index: number): string {
+function getTrackLabel(track: Record<string, unknown>, index: number, resolved: ResolvedSteps): string {
   if (typeof track.label === 'string') return track.label;
   if (typeof track.event === 'string') return track.event;
-  for (const def of stepRegistry.triggers()) {
+  for (const def of resolved.triggers) {
     const field = def.trigger?.trackField;
     if (field && typeof track[field] === 'string') {
       const prefix = def.fe?.nodeConfig?.label || def.type || 'Trigger';
@@ -310,8 +346,8 @@ function getTrackLabel(track: Record<string, unknown>, index: number): string {
   return `Track ${index}`;
 }
 
-function getStepLabel(step: Record<string, unknown>, index: number): string {
-  const buildFacet = stepRegistry.getBuild(step.type as string);
+function getStepLabel(step: Record<string, unknown>, index: number, resolved: ResolvedSteps): string {
+  const buildFacet = resolved.getBuild(step.type as string);
   if (buildFacet) {
     return buildFacet.getLabel(step, index);
   }

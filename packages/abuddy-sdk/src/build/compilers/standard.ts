@@ -10,6 +10,7 @@ import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
 import { compileFaqFromDir } from './compile-faq';
 import { loadSettingsFromFile, deepMerge } from './compile-settings';
 import type { FlowDSL } from './flow-types';
+import { stepRegistry } from '../../steps/registry';
 import type { CompiledFAQ } from './compile-faq';
 import type { ExportedLibrary } from './compile-library';
 import type { ExportedNotes } from './compile-notes';
@@ -134,6 +135,7 @@ export const flowsCompiler: SeedCompiler<FlowsCompiled, FlowDSL> = {
       merged,
       actions.map(a => a.label),
       prompts.map(p => p.label),
+      { steps: stepRegistry.all() },
     );
   },
 
