@@ -118,13 +118,6 @@ export interface KillNode extends NodeBase {
   nodeType: 'kill';
 }
 
-export interface ScheduleNode extends NodeBase {
-  nodeType: 'schedule';
-  cronExpression: string; // 5- or 6-field cron, e.g. '0 9 * * 1-5' or '*/5 * * * * *'
-  /** Stable identity for the compiled/source track that produced this trigger. */
-  trackKey?: string;
-}
-
 export interface LLMNode extends NodeBase {
   nodeType: 'llm';
 
@@ -173,8 +166,7 @@ export type NodeEntity =
   | FlowNode
   | KeepAliveNode
   | KillNode
-  | LLMNode
-  | ScheduleNode;
+  | LLMNode;
 
 /** Literal union of all nodeType strings, open for custom step types */
 export type NodeKind = NodeEntity['nodeType'] | (string & {});

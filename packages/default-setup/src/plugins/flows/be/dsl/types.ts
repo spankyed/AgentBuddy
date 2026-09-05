@@ -44,22 +44,23 @@ export const ROOT_FLOW_ROLE = 'root_flow';
 
 /**
  * A track represents a trigger node + its sequential response steps.
- * Exactly one of `event` or `schedule` must be set.
- * - `event` creates an implicit listener node
- * - `schedule` creates an implicit schedule node (cron-based trigger)
+ * Exactly one trigger field must be set — the field name comes from the
+ * trigger's registered `trackField` (e.g. `event` for listeners,
+ * `schedule` for cron triggers). Additional trigger types are extensible
+ * via the step registry.
  */
 export interface Track {
-  /** Event type to listen for (creates a listener node). Mutually exclusive with `schedule`. */
+  /** Event type to listen for (creates a listener node). */
   event?: string;
-  /** Cron expression (creates a schedule node). Mutually exclusive with `event`. */
-  schedule?: string;
-  /** Optional label for the trigger node (defaults to event type or cron expression) */
+  /** Optional label for the trigger node (defaults to event type or trigger name) */
   label?: string;
   /** Optional description for the trigger node */
   description?: string;
   /** Exit paths from this trigger — each inner array is an independent sequential step chain.
    *  Single-exit: exits: [[step1, step2]]. Parallel: exits: [[chainA...], [chainB...]] */
   exits: DSLStepNode[][];
+  /** Registered trigger fields (e.g. `schedule: '0 * * * *'`) */
+  [key: string]: unknown;
 }
 
 /*─────────────────────────────────────────────────────────────────

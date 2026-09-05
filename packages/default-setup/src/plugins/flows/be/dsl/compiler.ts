@@ -424,9 +424,10 @@ function compileTrack(
 
   const triggerDef = resolveTriggerFromTrack(track);
   if (!triggerDef?.trigger) {
-    throw new Error(`No trigger definition found for track ${trackIdx} in flow "${fCtx.flowName}". Track must have a recognized trigger field (e.g. "event", "schedule").`);
+    const knownFields = stepRegistry.triggers().map(d => `"${d.trigger!.trackField}"`).join(', ');
+    throw new Error(`No trigger definition found for track ${trackIdx} in flow "${fCtx.flowName}". Track must have a recognized trigger field (${knownFields}).`);
   }
-  const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
+  const listenerLabel = resolveTrackLabel(track, trackIdx);
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
   const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
@@ -441,7 +442,7 @@ function compileTrack(
     target: listenerId,
   });
 
-  // Add entry role for first track's listener node (not schedule/other trigger tracks)
+  // Add entry role for first track's listener node (not other trigger tracks)
   if (isFirstTrack && triggerDef?.type === 'listener') {
     trackRoles.push({
       entityId: listenerId,

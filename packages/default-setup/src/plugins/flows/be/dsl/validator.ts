@@ -365,10 +365,10 @@ function collectStepLabels(
 
 function getTrackLabel(track: Record<string, unknown>, index: number): string {
   if (typeof track.label === 'string') return track.label;
-  if (typeof track.event === 'string') return track.event;
   for (const def of stepRegistry.triggers()) {
     const field = def.trigger?.trackField;
     if (field && typeof track[field] === 'string') {
+      if (def.type === 'listener') return track[field] as string;
       const prefix = def.fe?.nodeConfig?.label || def.type || 'Trigger';
       return `${prefix} ${index}`;
     }

@@ -181,7 +181,7 @@ interface TNodeEntity extends BaseEntity {
     startedAt: TimestampMs;
     completedAt?: TimestampMs;
     eventType?: string;
-    triggerType?: 'listener' | 'schedule';
+    triggerType?: string;
     cronExpression?: string;
     stepNodeType?: string;
     final?: boolean;
@@ -200,7 +200,7 @@ interface EventListenerEntity {
     nodeId: EARS.EntityId;
     eventType: string;
     label: string;
-    triggerType: 'listener' | 'schedule';
+    triggerType: string;
     scope?: 'global' | 'local' | 'entry';
     cronExpression?: string;
 }
@@ -673,12 +673,6 @@ interface KeepAliveNode extends NodeBase {
 interface KillNode extends NodeBase {
     nodeType: 'kill';
 }
-interface ScheduleNode extends NodeBase {
-    nodeType: 'schedule';
-    cronExpression: string;
-    /** Stable identity for the compiled/source track that produced this trigger. */
-    trackKey?: string;
-}
 interface LLMNode extends NodeBase {
     nodeType: 'llm';
     prompt?: string;
@@ -705,9 +699,9 @@ interface ActionNode extends NodeBase {
         default?: any;
     }>;
 }
-type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode | ScheduleNode;
-/** Literal union of all nodeType strings (keeps Base clean) */
-type NodeKind = NodeEntity['nodeType'];
+type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode;
+/** Literal union of all nodeType strings, open for custom step types */
+type NodeKind = NodeEntity['nodeType'] | (string & {});
 declare const isNodeKind: <K extends NodeKind>(k: K) => (n: NodeEntity) => n is Extract<NodeEntity, {
     nodeType: K;
 }>;
@@ -2927,4 +2921,4 @@ type OutgoingCalendarEvents = {
 };
 
 export { BinaryOperator, Collection, ContextPaths, Document, LogEntry, LogLevel, REFERENCES, SearchIndex, ThreadRelations, assertNever, isNodeKind };
-export type { ActionEntity, ActionNode, ActionParameter, ActionsSettings, ActionsStartupData, Address, AgentConnectedData, AgentMode, AgentPhase, AgentSettings, AgentThreadData, AppSettings, ApplicationHotkeys, ArtifactEntity, ArtifactItem, ArtifactType, AssistantSettings, BlockConfig, BlockResponse, BlockType, BrainRuntimeError, BrainSettings, BreadcrumbItem, BrowserSettings, ButtonConfig, ButtonGroupResponse, CalendarConnectedData, CalendarEventDTO, CalendarEventEntity, Category, ChatStateConfig, ClaudeSessionArtifactContent, CodeConnectedData, CodeContent, CodeSettings, CodeSystemError, CollectionDTO, CommandItem, CommitLogEntry, Condition, ContentSection, ContentType, ContextReference, ContextReferenceType, CreateNode, CustomHotkey, DatabaseQueryResult, DatabaseSchemaInfo, DatabaseSettings, DatabaseStartupData, DiffArtifactContent, DirectoryContent, DocumentDTO, DocumentItem, DocumentShortCode, EdgeEntity, EmbeddingModel, EmbeddingModelConfig, EmbeddingModelId, EmbeddingResult, EntityStatus, EventListenerEntity, EventReceived, EventSchema, ExecutionContext, ExecutionEvent, FAQItem, FieldContent, FieldMapping, FieldSchema, FileContent, FileInfo, FileOperation, FileReference, FireNode, FlowEntity, FlowExtendedData, FlowNode, FlowTNodeData, FlowsConnectedData, FlowsSettings, FolderContents, FolderItem, GeneralSettings, GhPRComment, GhPullRequest, GhReviewComment, GhReviewThread, GitBranch, GitCommitInfo, GitDiff, GitStatusFile, ImageReference, IndexMetric, IndexSearchResult, IndexedDocument, InternalSettings, JsonPath, KeepAliveNode, KeyboardShortcut, KillNode, LLMNode, LibraryItem, LibrarySystemContext, LinkConfig, LinkEvent, LinkIcon, ListContent, ListenerNode, LogsSettings, LogsState, MarkdownContent, MessageEntity, MessageReferences, ModelCatalogEntry, ModelProvider, NodeCreateInput, NodeEntity, NodeKind, NoteDTO, NoteEntity, NotesConnectedData, NotesSettings, Occurrence, OutgoingActionEvents, OutgoingBrainEvents, OutgoingCalendarEvents, OutgoingCodeEvents, OutgoingDatabaseEvents, OutgoingFlowsEvents, OutgoingLibraryEvents, OutgoingLogsEvents, OutgoingNotesEvents, OutgoingNotesSearchEvent, OutgoingPromptEvents, OutgoingSettingsEvents, OutgoingThreadsEvents, PersonalInfo, PlanArtifactContent, PluginSettings, PluginVisibilitySettings, Predicate, Project, PromptEntity, PromptsConnectedData, PromptsSettings, QueryNode, QuickOpenOptions, QuickOpenResult, QuickPrompt, RecentThreadRefreshData, SETTINGS_SCOPE, ScheduleNode, SearchIndexConfig, SearchMatch, SearchOptions, SearchProgress, SearchResult, Secrets, SegmentRule, SettingsData, SettingsEntity, SourceResolver, StashEntry, StepOutputSchema, StepRun, SwitchNode, TNodeEntity, TNodeKind, TNodeUpdate, Tab, TemplateInput, TerminalClose, TerminalCreate, TerminalInfo, TerminalInput, TerminalOutput, TerminalResize, TerminalScript, TextContent, ThinkingBlockProps, ThreadConnectedData, ThreadContext, ThreadCreateData, ThreadEditFields, ThreadEntity, ThreadExtended, ThreadExtendedData, ThreadLinkItem, ThreadLinkRelation, ThreadLinkedFields, ThreadStatusOption, ThreadTagOption, ThreadTypeShortCode, ThreadViewData, ThreadsSettings, TimestampMs, ToolActivityBlockProps, ToolActivityEntry, TrackEntity, TransformNode, UpdateNode, WorktreeEntry };
+export type { ActionEntity, ActionNode, ActionParameter, ActionsSettings, ActionsStartupData, Address, AgentConnectedData, AgentMode, AgentPhase, AgentSettings, AgentThreadData, AppSettings, ApplicationHotkeys, ArtifactEntity, ArtifactItem, ArtifactType, AssistantSettings, BlockConfig, BlockResponse, BlockType, BrainRuntimeError, BrainSettings, BreadcrumbItem, BrowserSettings, ButtonConfig, ButtonGroupResponse, CalendarConnectedData, CalendarEventDTO, CalendarEventEntity, Category, ChatStateConfig, ClaudeSessionArtifactContent, CodeConnectedData, CodeContent, CodeSettings, CodeSystemError, CollectionDTO, CommandItem, CommitLogEntry, Condition, ContentSection, ContentType, ContextReference, ContextReferenceType, CreateNode, CustomHotkey, DatabaseQueryResult, DatabaseSchemaInfo, DatabaseSettings, DatabaseStartupData, DiffArtifactContent, DirectoryContent, DocumentDTO, DocumentItem, DocumentShortCode, EdgeEntity, EmbeddingModel, EmbeddingModelConfig, EmbeddingModelId, EmbeddingResult, EntityStatus, EventListenerEntity, EventReceived, EventSchema, ExecutionContext, ExecutionEvent, FAQItem, FieldContent, FieldMapping, FieldSchema, FileContent, FileInfo, FileOperation, FileReference, FireNode, FlowEntity, FlowExtendedData, FlowNode, FlowTNodeData, FlowsConnectedData, FlowsSettings, FolderContents, FolderItem, GeneralSettings, GhPRComment, GhPullRequest, GhReviewComment, GhReviewThread, GitBranch, GitCommitInfo, GitDiff, GitStatusFile, ImageReference, IndexMetric, IndexSearchResult, IndexedDocument, InternalSettings, JsonPath, KeepAliveNode, KeyboardShortcut, KillNode, LLMNode, LibraryItem, LibrarySystemContext, LinkConfig, LinkEvent, LinkIcon, ListContent, ListenerNode, LogsSettings, LogsState, MarkdownContent, MessageEntity, MessageReferences, ModelCatalogEntry, ModelProvider, NodeCreateInput, NodeEntity, NodeKind, NoteDTO, NoteEntity, NotesConnectedData, NotesSettings, Occurrence, OutgoingActionEvents, OutgoingBrainEvents, OutgoingCalendarEvents, OutgoingCodeEvents, OutgoingDatabaseEvents, OutgoingFlowsEvents, OutgoingLibraryEvents, OutgoingLogsEvents, OutgoingNotesEvents, OutgoingNotesSearchEvent, OutgoingPromptEvents, OutgoingSettingsEvents, OutgoingThreadsEvents, PersonalInfo, PlanArtifactContent, PluginSettings, PluginVisibilitySettings, Predicate, Project, PromptEntity, PromptsConnectedData, PromptsSettings, QueryNode, QuickOpenOptions, QuickOpenResult, QuickPrompt, RecentThreadRefreshData, SETTINGS_SCOPE, SearchIndexConfig, SearchMatch, SearchOptions, SearchProgress, SearchResult, Secrets, SegmentRule, SettingsData, SettingsEntity, SourceResolver, StashEntry, StepOutputSchema, StepRun, SwitchNode, TNodeEntity, TNodeKind, TNodeUpdate, Tab, TemplateInput, TerminalClose, TerminalCreate, TerminalInfo, TerminalInput, TerminalOutput, TerminalResize, TerminalScript, TextContent, ThinkingBlockProps, ThreadConnectedData, ThreadContext, ThreadCreateData, ThreadEditFields, ThreadEntity, ThreadExtended, ThreadExtendedData, ThreadLinkItem, ThreadLinkRelation, ThreadLinkedFields, ThreadStatusOption, ThreadTagOption, ThreadTypeShortCode, ThreadViewData, ThreadsSettings, TimestampMs, ToolActivityBlockProps, ToolActivityEntry, TrackEntity, TransformNode, UpdateNode, WorktreeEntry };
