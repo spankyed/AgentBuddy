@@ -37,6 +37,25 @@ export const scheduleTrigger: StepDefinition = {
       );
     },
     queryFields: ['cronExpression'],
+    validateTrack(track) {
+      const errors: string[] = [];
+      const cron = (track as any).schedule as string | undefined;
+      if (!cron || cron.trim().length === 0) {
+        errors.push('Missing required field: schedule');
+      } else {
+        const parts = cron.trim().split(/\s+/);
+        if (parts.length < 5 || parts.length > 6) {
+          errors.push('Invalid cron expression');
+        } else {
+          try {
+            new Cron(cron);
+          } catch {
+            errors.push('Invalid cron expression');
+          }
+        }
+      }
+      return { valid: errors.length === 0, errors };
+    },
     validate(node) {
       const errors: string[] = [];
       const cron = (node as any).cronExpression as string | undefined;

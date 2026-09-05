@@ -346,7 +346,7 @@ function compileFlow(
   // First pass: generate all node IDs
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
-    const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
+    const listenerLabel = resolveTrackLabel(track, trackIdx);
     const listenerId = generateId('Node', `${flowName}-${listenerLabel}-t${trackIdx}`);
     globalLabelMap.set(listenerLabel, listenerId);
 
@@ -392,6 +392,14 @@ function compileFlow(
   return { flowEntity, nodeEntities, flowRelations, flowRoles };
 }
 
+function resolveTrackLabel(track: Track, trackIdx: number): string {
+  if (track.label) return track.label;
+  if (track.event) return track.event;
+  const triggerDef = resolveTriggerFromTrack(track);
+  const prefix = triggerDef?.fe?.nodeConfig?.label || triggerDef?.type || 'Trigger';
+  return `${prefix} ${trackIdx}`;
+}
+
 function resolveTriggerFromTrack(track: Track): StepDefinition | null {
   for (const def of stepRegistry.triggers()) {
     if (def.trigger?.trackField && (track as any)[def.trigger.trackField] !== undefined) {
@@ -415,13 +423,16 @@ function compileTrack(
   const trackRoles: Array<{ entityId: string; role: string }> = [];
 
   const triggerDef = resolveTriggerFromTrack(track);
+  if (!triggerDef?.trigger) {
+    throw new Error(`No trigger definition found for track ${trackIdx} in flow "${fCtx.flowName}". Track must have a recognized trigger field (e.g. "event", "schedule").`);
+  }
   const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
   const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
   // Create trigger node from track — all triggers dispatch to their registered facet
   const trackData = { ...track, isFirstTrack } as unknown as Record<string, unknown>;
-  const listenerEntity = triggerDef!.trigger!.compile(trackData, listenerId, fCtx.ts, trackKey);
+  const listenerEntity = triggerDef.trigger.compile(trackData, listenerId, fCtx.ts, trackKey);
 
   // Add CONTAINS for trigger node
   trackRelations.push({

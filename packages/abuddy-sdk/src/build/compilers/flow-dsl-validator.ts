@@ -153,11 +153,10 @@ function validateTrack(
     errors.push({ path, message: `Track cannot have multiple trigger fields: ${presentFields.join(', ')}` });
   }
 
-  // Run trigger-specific validation (e.g. cron expression for schedule)
   for (const field of presentFields) {
     const def = triggerDefs.find(d => d.trigger?.trackField === field);
-    if (def?.trigger?.validate) {
-      const result = def.trigger.validate({ [field]: t[field] });
+    if (def?.trigger?.validateTrack) {
+      const result = def.trigger.validateTrack(t as Record<string, unknown>);
       for (const err of result.errors) {
         errors.push({ path: `${path}.${field}`, message: err });
       }
@@ -305,7 +304,13 @@ function collectStepLabels(
 function getTrackLabel(track: Record<string, unknown>, index: number): string {
   if (typeof track.label === 'string') return track.label;
   if (typeof track.event === 'string') return track.event;
-  if (typeof track.schedule === 'string') return `Schedule ${index}`;
+  for (const def of stepRegistry.triggers()) {
+    const field = def.trigger?.trackField;
+    if (field && typeof track[field] === 'string') {
+      const prefix = def.fe?.nodeConfig?.label || def.type || 'Trigger';
+      return `${prefix} ${index}`;
+    }
+  }
   return `Track ${index}`;
 }
 

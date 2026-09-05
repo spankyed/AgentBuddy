@@ -11,7 +11,6 @@ import type {
   ValidationResult,
 } from './types';
 import { isFlowConfig, resolveTracks } from './types';
-import { Cron } from 'croner';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { registerStandardSteps } from '@/steps/register';
 
@@ -187,25 +186,26 @@ function validateTrack(
 
   const t = track as Record<string, unknown>;
 
-  // Validate trigger field: exactly one of event or schedule
-  const hasEvent = typeof t.event === 'string' && t.event.length > 0;
-  const hasSchedule = typeof t.schedule === 'string' && (t.schedule as string).length > 0;
+  // Validate trigger field: exactly one recognized trigger field must be present
+  const triggerDefs = stepRegistry.triggers();
+  const knownTrackFields = triggerDefs.length > 0
+    ? triggerDefs.map(d => d.trigger!.trackField)
+    : ['event', 'schedule'];
+  const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);
 
-  if (!hasEvent && !hasSchedule) {
-    errors.push({ path, message: 'Track must have an "event" string or a "schedule" cron expression' });
+  if (presentFields.length === 0) {
+    errors.push({ path, message: `Track must have one of: ${knownTrackFields.map(f => `"${f}"`).join(', ')}` });
   }
-  if (hasEvent && hasSchedule) {
-    errors.push({ path, message: 'Track cannot have both "event" and "schedule"' });
+  if (presentFields.length > 1) {
+    errors.push({ path, message: `Track cannot have multiple trigger fields: ${presentFields.join(', ')}` });
   }
-  if (hasSchedule) {
-    const cronParts = (t.schedule as string).trim().split(/\s+/);
-    if (cronParts.length < 5 || cronParts.length > 6) {
-      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5 or 6 field cron expression' });
-    } else {
-      try {
-        new Cron(t.schedule as string);
-      } catch {
-        errors.push({ path: `${path}.schedule`, message: 'Invalid cron expression' });
+
+  for (const field of presentFields) {
+    const def = triggerDefs.find(d => d.trigger?.trackField === field);
+    if (def?.trigger?.validateTrack) {
+      const result = def.trigger.validateTrack(t as Record<string, unknown>);
+      for (const err of result.errors) {
+        errors.push({ path: `${path}.${field}`, message: err });
       }
     }
   }
@@ -369,7 +369,13 @@ function collectStepLabels(
 function getTrackLabel(track: Record<string, unknown>, index: number): string {
   if (typeof track.label === 'string') return track.label;
   if (typeof track.event === 'string') return track.event;
-  if (typeof track.schedule === 'string') return `Schedule ${index}`;
+  for (const def of stepRegistry.triggers()) {
+    const field = def.trigger?.trackField;
+    if (field && typeof track[field] === 'string') {
+      const prefix = def.fe?.nodeConfig?.label || def.type || 'Trigger';
+      return `${prefix} ${index}`;
+    }
+  }
   return `Track ${index}`;
 }
 

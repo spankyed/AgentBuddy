@@ -12,6 +12,8 @@ class StepRegistry {
         build: def.build ?? existing.build,
         runtime: def.runtime ?? existing.runtime,
         fe: def.fe ?? existing.fe,
+        trigger: def.trigger ?? existing.trigger,
+        kind: def.kind ?? existing.kind,
       });
     } else {
       this.steps.set(def.type, def);

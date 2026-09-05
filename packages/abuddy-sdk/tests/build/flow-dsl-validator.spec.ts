@@ -119,8 +119,8 @@ describe('flow DSL validator', () => {
           trackField: 'webhook',
           compile: () => ({}),
           decompile: () => ({}),
-          validate(node) {
-            const url = (node as any).webhook as string;
+          validateTrack(track) {
+            const url = (track as any).webhook as string;
             if (!url.startsWith('https://')) {
               return { valid: false, errors: ['Webhook URL must use HTTPS'] };
             }

@@ -112,10 +112,12 @@ const displayEvents = computed(() =>
       ...event,
       ...theme,
       active,
-      subtitle: triggerType !== 'listener' && event.cronExpression
+      subtitle: event.cronExpression
         ? cronToHuman(event.cronExpression)
         : event.eventType,
-      kindLabel: triggerType !== 'listener' ? triggerType : event.scope,
+      kindLabel: triggerType === 'listener'
+        ? event.scope
+        : (stepRegistry.getFE(triggerType)?.nodeConfig?.label || triggerType),
       iconClass: active ? theme.activeIconClass : theme.idleIconClass,
       iconBgClass: active ? theme.activeBgClass : theme.idleBgClass,
     };

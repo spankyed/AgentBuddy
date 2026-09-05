@@ -140,7 +140,9 @@ export interface TriggerFacet {
   register?(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void;
   /** Additional entity fields needed when querying this trigger's nodes (e.g. ['cronExpression']). */
   queryFields?: string[];
-  /** Validate a trigger node entity on persist. */
+  /** Validate a DSL track before compilation. */
+  validateTrack?(track: Record<string, unknown>): { valid: boolean; errors: string[] };
+  /** Validate a compiled trigger node entity on persist. */
   validate?(node: Record<string, unknown>): { valid: boolean; errors: string[] };
 }
 
