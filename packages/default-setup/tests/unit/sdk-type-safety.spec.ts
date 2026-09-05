@@ -30,7 +30,7 @@ import {
   breadcrumb, breadcrumbWithParams, breadcrumbList,
   contextMenuFn,
 } from '@abuddy/sdk/fe';
-import { EARS } from '@/registries/ears';
+import { EARS } from '../../src/registries/ears';
 
 // ─── Compile-time type assertions ──────────────────────────────────────
 // These verify that generic functions return typed results, not `any`.

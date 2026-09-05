@@ -47,9 +47,12 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, 'package.json'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'tsconfig.json'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'pack.config.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'actions'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'flows'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'pack.config.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'actions'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'flows'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'plugins', packName, 'plugin.config.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'entities.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'types.ts'))).toBe(true);
 
     // Verify manifest content
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));

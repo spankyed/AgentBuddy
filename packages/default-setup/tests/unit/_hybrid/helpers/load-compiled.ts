@@ -1,5 +1,5 @@
 import { tx } from '@/core/ears/helpers/transaction';
-import { EARS } from '@/core/types';
+import { EARS } from '@/registries/ears';
 import type { CompiledRows } from '@/plugins/flows/be/dsl/compiler';
 
 /** Load compiled rows into EARS in-memory store (mirrors importFromDSL) */

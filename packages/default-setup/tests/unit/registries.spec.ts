@@ -5,7 +5,7 @@
 
 describe('core/lifecycle — shutdown hooks', () => {
   it('runShutdownHooks calls all registered hooks', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@/core/shared/lifecycle');
+    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
 
     const calls: string[] = [];
     registerShutdownHook(() => calls.push('hook-a'));
@@ -18,7 +18,7 @@ describe('core/lifecycle — shutdown hooks', () => {
   });
 
   it('swallows errors from individual hooks without stopping others', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@/core/shared/lifecycle');
+    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
 
     const calls: string[] = [];
     registerShutdownHook(() => { throw new Error('boom'); });
@@ -52,7 +52,7 @@ describe('registries/services — feature services assembly', () => {
 
     const expectedKeys = [
       'llm', 'database', 'prompt', 'action', 'library', 'browser',
-      'settings', 'textStream', 'chat', 'artifact', 'brain', 'media',
+      'settings', 'textStream', 'chat', 'artifact', 'brain',
       'cli', 'filesystem', 'threads', 'codex', 'modelClient', 'openaiAuth',
     ];
 
@@ -72,7 +72,7 @@ describe('registries/services — feature services assembly', () => {
 
 describe('core/seed — seeder registry', () => {
   it('seedData runs registered seeders and returns keyed counts', async () => {
-    const { registerSeeder, seedData } = await import('@/core/shared/seed');
+    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
     const os = await import('os');
     const path = await import('path');
 
@@ -89,7 +89,7 @@ describe('core/seed — seeder registry', () => {
   });
 
   it('skips seeders whose include set is empty', async () => {
-    const { registerSeeder, seedData } = await import('@/core/shared/seed');
+    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
     const os = await import('os');
     const path = await import('path');
 
@@ -111,7 +111,7 @@ describe('core/seed — seeder registry', () => {
   });
 
   it('rejects duplicate seeder keys', async () => {
-    const { registerSeeder } = await import('@/core/shared/seed');
+    const { registerSeeder } = await import('@abuddy/sdk/utils');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     registerSeeder({ key: 'dup-test', seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
@@ -123,7 +123,7 @@ describe('core/seed — seeder registry', () => {
 
   it('default-setup registers all built-in seeders', async () => {
     await import('../../src/registries/seed');
-    const { seedData } = await import('@/core/shared/seed');
+    const { seedData } = await import('@abuddy/sdk/utils');
     const os = await import('os');
     const path = await import('path');
 

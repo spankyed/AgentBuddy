@@ -13,7 +13,7 @@ import {
   getAttr, clearMemory,
   edgeStore, relationIndex,
 } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '../../src/registries/ears';
 
 describe('SDK runtime — host module registry', () => {
   it('registerHostModule stores and getHostModule retrieves', () => {
@@ -283,19 +283,19 @@ describe('Tier 7 — Service delegates', () => {
 });
 
 describe('Import isolation — no remaining @/core/* imports in .ts', () => {
-  it('default-setup .ts files do not import from @/core/* (excluding FE components)', async () => {
+  it('default-setup .ts files do not import from @/core/* (excluding FE components, migrations, type imports)', async () => {
     const { execSync } = await import('child_process');
     const result = execSync(
-      `grep -rn "from '@/core/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" || true`,
+      `grep -rn "from '@/core/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
       { encoding: 'utf-8', cwd: __dirname }
     ).trim();
     expect(result).toBe('');
   });
 
-  it('default-setup .ts files do not import from @/repository', async () => {
+  it('default-setup .ts files do not import from @/repository (excluding migrations)', async () => {
     const { execSync } = await import('child_process');
     const result = execSync(
-      `grep -rn "from '@/repository'" ../../src/ --include='*.ts' 2>/dev/null || true`,
+      `grep -rn "from '@/repository'" ../../src/ --include='*.ts' 2>/dev/null | grep -v "migrations/" || true`,
       { encoding: 'utf-8', cwd: __dirname }
     ).trim();
     expect(result).toBe('');

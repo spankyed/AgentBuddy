@@ -151,12 +151,16 @@ describe('abuddy generate', () => {
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
 
-    // Create local dep cache
+    // Create local dep cache with snapshot.json (PackSnapshot format)
     const depDir = path.join(tmpDir, '.abuddy', 'deps', 'dep-pack');
     fs.mkdirSync(depDir, { recursive: true });
-    fs.writeFileSync(path.join(depDir, 'types.json'), JSON.stringify({
-      entities: { DepWidget: 'DepWidget' },
-      relKinds: { DEP_REL: 'dep_rel' },
+    fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify({
+      types: {
+        entities: { DepWidget: 'DepWidget' },
+        relKinds: { DEP_REL: 'dep_rel' },
+      },
+      defs: {},
+      manifest: { id: 'dep-pack', name: 'Dep Pack', version: '0.1.0' },
     }));
 
     await generate([], tmpDir);
