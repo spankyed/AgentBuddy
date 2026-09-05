@@ -1,4 +1,5 @@
 import type { ElkPort } from 'elkjs/lib/elk.bundled.js'
+import { stepRegistry } from '@abuddy/sdk/steps'
 
 /** Shared between Vue components and layout engine — single source of truth */
 export const NODE_DIMENSIONS = {
@@ -47,28 +48,6 @@ const defaultDescriptor: NodeLayoutDescriptor = {
   hasInput: true,
 }
 
-const switchDescriptor: NodeLayoutDescriptor = {
-  getHeight: (node) => {
-    const branchCount = node.conditions?.length ?? 0
-    const { headerOffset, rowHeight, bottomPadding } = NODE_DIMENSIONS.switch
-    return Math.max(defaults.height, headerOffset + branchCount * rowHeight + bottomPadding)
-  },
-  getPorts: (node) => {
-    const branchCount = node.conditions?.length ?? 0
-    const ports: ElkPort[] = [
-      { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
-    ]
-    for (let i = 0; i < branchCount; i++) {
-      ports.push({
-        id: `${node.id}-out-branch-${i}`,
-        layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) },
-      })
-    }
-    return ports
-  },
-  hasInput: true,
-}
-
 /** Trigger nodes: no input handle, dynamic exit handles derived from edges */
 const triggerDescriptor: NodeLayoutDescriptor = {
   usesExitCount: true,
@@ -101,23 +80,29 @@ const triggerDescriptor: NodeLayoutDescriptor = {
   hasInput: false,
 }
 
-const fireDescriptor: NodeLayoutDescriptor = {
-  getHeight: () => defaults.height,
-  getPorts: (node) => [
-    { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
-  ],
-  hasInput: true,
-}
-
-const nodeLayoutDescriptors = new Map<string, NodeLayoutDescriptor>([
-  ['switch', switchDescriptor],
+const triggerDescriptors = new Map<string, NodeLayoutDescriptor>([
   ['listener', triggerDescriptor],
   ['schedule', triggerDescriptor],
-  ['fire', fireDescriptor],
 ])
 
 export function getDescriptor(nodeType?: string): NodeLayoutDescriptor {
-  return nodeLayoutDescriptors.get(nodeType ?? '') ?? defaultDescriptor
+  if (!nodeType) return defaultDescriptor;
+  const triggerDesc = triggerDescriptors.get(nodeType);
+  if (triggerDesc) return triggerDesc;
+  const layout = stepRegistry.getFE(nodeType)?.layout;
+  if (layout) {
+    return {
+      getHeight: layout.getHeight
+        ? (node, ctx) => layout.getHeight!(node as any, ctx)
+        : defaultDescriptor.getHeight,
+      getPorts: layout.getPorts
+        ? (node, ctx) => layout.getPorts!(node as any, ctx) as ElkPort[]
+        : defaultDescriptor.getPorts,
+      hasInput: layout.hasInput ?? true,
+      usesExitCount: layout.usesExitCount,
+    };
+  }
+  return defaultDescriptor;
 }
 
 export function computeExitCount(

@@ -48,6 +48,20 @@ class StepRegistry {
     }
   }
 
+  setComponents(type: string, components: { node?: unknown; form?: unknown }): void {
+    const existing = this.steps.get(type);
+    if (!existing?.fe) return;
+    existing.fe.components = { ...existing.fe.components, ...components };
+  }
+
+  getComponent(type: string): unknown | undefined {
+    return this.steps.get(type)?.fe?.components?.node;
+  }
+
+  getFormComponent(type: string): unknown | undefined {
+    return this.steps.get(type)?.fe?.components?.form;
+  }
+
   has(type: string): boolean {
     return this.steps.has(type);
   }

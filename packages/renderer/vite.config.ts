@@ -32,6 +32,8 @@ export default defineConfig({
     alias: [
       // Map @/registries/... to default-setup registries
       { find: /^@\/registries\/(.+)$/, replacement: resolve(pluginsDir, '../registries/$1') },
+      // Map @/steps/... to default-setup steps
+      { find: /^@\/steps\/(.+)$/, replacement: resolve(pluginsDir, '../steps/$1') },
       // Map @/plugins/... to default-setup plugins
       { find: /^@\/plugins\/(.+)$/, replacement: `${pluginsDir}/$1` },
       // Map design system components to SDK

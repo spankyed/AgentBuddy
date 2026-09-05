@@ -5,9 +5,11 @@ export type {
   StepRuntimeFacet,
   StepFEFacet,
   StepNodeConfig,
+  StepLayoutDescriptor,
   StepCompileContext,
   StepCompileResult,
   StepRelation,
   StepValidationError,
   StepValidationContext,
+  StepDecompileContext,
 } from './types';

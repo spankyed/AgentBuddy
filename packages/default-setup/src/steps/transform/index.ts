@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@/registries/ears';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
@@ -34,9 +34,18 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return `Transform ${index}`;
 }
 
+function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+  const dsl: Record<string, unknown> = { type: 'transform', script: node.script };
+  if (node.label) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  if (node.outputType && node.outputType !== 'json') dsl.outputType = node.outputType;
+  return dsl;
+}
+
 export const transformStep: StepDefinition = {
   type: 'transform',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   fe: {
     colorKey: 'emerald',
     nodeConfig: {

@@ -1,6 +1,6 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@/registries/ears';
-import { expandFieldMappings } from './shared';
+import { expandFieldMappings, collapseFieldMappings } from '../shared';
 
 function compile(
   node: Record<string, unknown>,
@@ -43,9 +43,21 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return (step.flow as string) || `Flow ${index}`;
 }
 
+function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
+  const flowLabel = ctx.flowMap.get(node.flowRef as string) || node.flowRef;
+  const dsl: Record<string, unknown> = { type: 'flow', flow: flowLabel };
+  if (node.label && node.label !== flowLabel) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  if (node.propagateCtx === false) dsl.inherit = false;
+  const map = collapseFieldMappings(node.fieldMappings as any);
+  if (map) dsl.map = map;
+  return dsl;
+}
+
 export const flowStep: StepDefinition = {
   type: 'flow',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   runtime: { spawnsSubflow: true },
   fe: {
     colorKey: 'purple',

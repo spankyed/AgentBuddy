@@ -2,7 +2,7 @@
  * Step Definition Contracts
  *
  * A step definition bundles everything a step type needs across
- * build (compile/validate), runtime (handler), and frontend (palette/canvas).
+ * build (compile/validate/decompile), runtime (handler), and frontend (palette/canvas/form).
  * Packs register step definitions into the StepRegistry so the flows
  * and brain systems dispatch to them instead of hardcoded switches.
  */
@@ -43,10 +43,22 @@ export interface StepValidationContext {
   skipReferenceCheck?: boolean;
 }
 
+export interface StepDecompileContext {
+  actionMap: Map<string, string>;
+  promptMap: Map<string, string>;
+  flowMap: Map<string, string>;
+  /** Resolve an inline branch chain from a source node's handle. Returns decompiled DSL steps or null. */
+  resolveBranch?: (sourceNodeId: string, sourceHandle: string) => Record<string, unknown>[] | null;
+}
+
 export interface StepBuildFacet {
   compile(node: Record<string, unknown>, nodeId: string, ts: number, ctx: StepCompileContext): StepCompileResult;
   validate(step: Record<string, unknown>, path: string, ctx: StepValidationContext): StepValidationError[];
   getLabel(step: Record<string, unknown>, index: number): string;
+  /** Entity → DSL node (reverse of compile). Omit → generic { type, label } fallback. */
+  decompile?: (node: Record<string, unknown>, ctx: StepDecompileContext) => Record<string, unknown>;
+  /** EARS relation config for this step type. Omit for steps with no entity relations. */
+  relation?: { field: string; targetEntity: string };
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -90,10 +102,25 @@ export interface StepNodeConfig {
   isDisabled?: boolean;
 }
 
+export interface StepLayoutDescriptor {
+  getHeight?: (node: Record<string, unknown>, ctx: { exitCount?: number }) => number;
+  getPorts?: (node: Record<string, unknown>, ctx: { exitCount?: number }) => Array<{ id: string; layoutOptions: Record<string, string> }>;
+  hasInput?: boolean;
+  usesExitCount?: boolean;
+}
+
 export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
   defaults?: Record<string, unknown>;
+  /** Vue component refs — set via setComponents(), never in .ts files. */
+  components?: { node?: unknown; form?: unknown };
+  /** Custom ELK layout descriptor (height/ports). Omit → default single-input single-output. */
+  layout?: StepLayoutDescriptor;
+  /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */
+  handlePrefix?: string;
+  /** Keys from FormResources this step's form needs (e.g. ['actions', 'prompts']). */
+  resourceKeys?: string[];
 }
 
 /*─────────────────────────────────────────────────────────────────

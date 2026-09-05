@@ -199,11 +199,11 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from './BaseForm.vue'
-import TipSection from '../components/TipSection.vue'
+import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
+import TipSection from '@/plugins/flows/fe/canvas/components/TipSection.vue'
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
 import type { ActionEntity, NodeEntity } from '@app/api'
-import type { FormResources } from '../../types/form-props'
+import type { FormResources } from '@/plugins/flows/fe/types/form-props'
 
 const props = defineProps<{
   node: NodeEntity

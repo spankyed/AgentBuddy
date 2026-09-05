@@ -36,6 +36,7 @@ export interface NodeConfig {
   component?: string
   isImplemented?: boolean
   isDisabled?: boolean
+  defaults?: Record<string, unknown>
 }
 
 export interface NodeStyleOptions {
@@ -220,7 +221,8 @@ const TRIGGER_CONFIGS: Record<string, NodeConfig> = {
     hoverBgColor: 'group-hover:bg-cyan-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
     component: 'TriggerNode',
-    isImplemented: true
+    isImplemented: true,
+    defaults: { cronExpression: '0 * * * *' },
   },
 }
 

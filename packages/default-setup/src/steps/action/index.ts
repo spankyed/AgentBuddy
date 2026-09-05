@@ -1,8 +1,8 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { EARS } from '@/registries/ears';
-import { expandFieldMappings } from './shared';
+import { expandFieldMappings, collapseFieldMappings } from '../shared';
 import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
 import { brainInspect } from '@/plugins/brain/be/utils/brain-inspect';
@@ -175,9 +175,23 @@ async function handler(tNode: unknown, node: unknown, executionContext: unknown,
   }
 }
 
+function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
+  const actionLabel = node.actionId
+    ? ctx.actionMap.get(node.actionId as string) || node.actionId
+    : node.label || 'Unknown Action';
+  const dsl: Record<string, unknown> = { type: 'action', action: actionLabel };
+  if (node.label && node.label !== actionLabel) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  const map = collapseFieldMappings(node.fieldMappings as any);
+  if (map) dsl.map = map;
+  if (node.params && Object.keys(node.params as any).length > 0) dsl.params = node.params;
+  return dsl;
+}
+
 export const actionStep: StepDefinition = {
   type: 'action',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } },
   runtime: { handler, isAsync: true },
   fe: {
     colorKey: 'neutral',

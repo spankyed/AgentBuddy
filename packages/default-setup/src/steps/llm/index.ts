@@ -1,8 +1,8 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { EARS } from '@/registries/ears';
-import { expandFieldMappings } from './shared';
+import { expandFieldMappings, collapseFieldMappings } from '../shared';
 import { repository } from '@abuddy/sdk/ears';
 import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
 import { executeTemplate } from '@/plugins/brain/be/utils/template-executor';
@@ -170,9 +170,26 @@ async function handler(tNode: unknown, node: unknown, executionContext: unknown,
   }
 }
 
+function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
+  const promptLabel = node.promptTemplateId
+    ? ctx.promptMap.get(node.promptTemplateId as string) || node.promptTemplateId
+    : (node as any).prompt || node.label || 'Unknown Prompt';
+  const dsl: Record<string, unknown> = { type: 'llm', prompt: promptLabel };
+  if (node.label && node.label !== promptLabel) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  const map = collapseFieldMappings(node.fieldMappings as any);
+  if (map) dsl.map = map;
+  if (node.model) dsl.model = node.model;
+  if (node.temperature !== undefined) dsl.temperature = node.temperature;
+  if (node.maxTokens !== undefined) dsl.maxTokens = node.maxTokens;
+  if (node.systemPrompt) dsl.systemPrompt = node.systemPrompt;
+  return dsl;
+}
+
 export const llmStep: StepDefinition = {
   type: 'llm',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile, relation: { field: 'promptTemplateId', targetEntity: 'Prompt' } },
   runtime: { handler, isAsync: true },
   fe: {
     colorKey: 'indigo',

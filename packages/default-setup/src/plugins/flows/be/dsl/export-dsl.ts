@@ -11,21 +11,11 @@ import { qx } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears';
 import { EARS } from '@/registries/ears';
 import { FLOW_ROLES } from '../repository/index';
+import { stepRegistry } from '@abuddy/sdk/steps';
 import type {
   FlowDSL,
   Track,
   DSLStepNode,
-  DSLActionNode,
-  DSLLLMNode,
-  DSLSwitchNode,
-  DSLFireNode,
-  DSLTransformNode,
-  DSLQueryNode,
-  DSLFlowNode,
-  DSLCreateNode,
-  DSLUpdateNode,
-  DSLKeepAliveNode,
-  DSLKillNode,
 } from './types';
 import type {
   NodeEntity,
@@ -33,37 +23,12 @@ import type {
   FlowEntity,
   ListenerNode,
   ScheduleNode,
-  ActionNode,
-  LLMNode,
-  SwitchNode,
-  FireNode,
-  TransformNode,
-  QueryNode,
-  FlowNode,
-  CreateNode,
-  UpdateNode,
 } from '../config/types';
 import type { ActionEntity } from '@/plugins/actions/be/types';
 import type { PromptEntity } from '@/plugins/prompts/be/types';
 
 // Edge kinds for flow transitions
 const FLOW_EDGE_KINDS = [EARS.RelKind.TRANSITIONS_TO] as const;
-
-/*─────────────────────────────────────────────────────────────────
- * Field Mapping Conversion
- *─────────────────────────────────────────────────────────────────*/
-
-function collapseFieldMappings(
-  fieldMappings?: Array<{ target: string; source: string }>
-): Record<string, string> | undefined {
-  if (!fieldMappings || fieldMappings.length === 0) return undefined;
-
-  const map: Record<string, string> = {};
-  for (const { target, source } of fieldMappings) {
-    map[target] = source;
-  }
-  return map;
-}
 
 /*─────────────────────────────────────────────────────────────────
  * Database Queries (avoiding circular imports)
@@ -76,22 +41,14 @@ function getFlowNodes(flowId: EARS.EntityId): NodeEntity[] {
 
   const nodes = qx(nodeIds).pickAll() as unknown as NodeEntity[];
 
-  // Hydrate action/prompt relationships
+  // Hydrate entity relationships from registry-defined relation configs
   return nodes.map(node => {
-    if (node.nodeType === 'action' || node.nodeType === 'llm') {
-      const linkedId = qx(node.id)
-        .links(EARS.RelKind.INSTANCE_OF)
-        .map(({ id }) => id)[0];
-
-      if (linkedId) {
-        if (node.nodeType === 'action') {
-          return { ...node, actionId: linkedId };
-        } else {
-          return { ...node, promptTemplateId: linkedId };
-        }
-      }
-    }
-    return node;
+    const rel = stepRegistry.getBuild(node.nodeType)?.relation;
+    if (!rel) return node;
+    const linkedId = qx(node.id)
+      .links(EARS.RelKind.INSTANCE_OF)
+      .map(({ id }) => id)[0];
+    return linkedId ? { ...node, [rel.field]: linkedId } : node;
   });
 }
 
@@ -211,302 +168,60 @@ function decompileChain(
  * Step Node Decompilation
  *─────────────────────────────────────────────────────────────────*/
 
-/** Map BinaryOperator enum values back to DSL symbols */
-const operatorToDsl: Record<string, string> = {
-  equals: '==',
-  not_equals: '!=',
-  greater_than: '>',
-  less_than: '<',
-  greater_than_or_equals: '>=',
-  less_than_or_equals: '<=',
-  contains: 'contains',
-  starts_with: 'starts_with',
-  ends_with: 'ends_with',
-  matches: 'matches',
-  is_empty: 'is_empty',
-  is_null: 'is_null',
-};
+function resolveBranch(
+  sourceNodeId: string,
+  sourceHandle: string,
+  graphCtx: DecompileGraphCtx,
+): DSLStepNode[] | null {
+  const sourceEdges = graphCtx.edges.filter(e => e.source === sourceNodeId);
+
+  // Find edge matching the handle
+  let branchEdge = sourceEdges.find(
+    e => (e.info as any)?.sourceHandle === sourceHandle
+  );
+  // Fallback for else branches: any unmatched edge from this source
+  if (!branchEdge) {
+    const matchedTargets = new Set(
+      sourceEdges
+        .filter(e => (e.info as any)?.sourceHandle)
+        .map(e => e.target)
+    );
+    branchEdge = sourceEdges.find(e => !matchedTargets.has(e.target));
+  }
+
+  if (!branchEdge) return null;
+
+  const { exclusive, chain } = isExclusiveChain(
+    branchEdge.target, sourceNodeId, graphCtx
+  );
+  if (exclusive && chain.length > 0) {
+    return decompileChain(chain, graphCtx);
+  }
+  // Non-exclusive: inline just the direct target
+  const targetNode = graphCtx.nodes.find(n => n.id === branchEdge!.target);
+  if (targetNode) {
+    graphCtx.inlinedNodeIds.add(targetNode.id as string);
+    return [decompileStepNode(targetNode, graphCtx)];
+  }
+  return null;
+}
 
 function decompileStepNode(
   node: NodeEntity,
   graphCtx: DecompileGraphCtx,
 ): DSLStepNode {
-  const { actionMap, promptMap, flowMap } = graphCtx;
-
-  switch (node.nodeType) {
-    case 'action': {
-      const actionNode = node as ActionNode;
-      const actionLabel = actionNode.actionId
-        ? actionMap.get(actionNode.actionId) || actionNode.actionId
-        : node.label || 'Unknown Action';
-
-      const dsl: DSLActionNode = {
-        type: 'action',
-        action: actionLabel,
-      };
-
-      // Add optional base fields
-      if (node.label && node.label !== actionLabel) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      const map = collapseFieldMappings(actionNode.fieldMappings);
-      if (map) dsl.map = map;
-      if (actionNode.params && Object.keys(actionNode.params).length > 0) {
-        dsl.params = actionNode.params;
-      }
-
-      return dsl;
-    }
-
-    case 'llm': {
-      const llmNode = node as LLMNode;
-      const promptLabel = llmNode.promptTemplateId
-        ? promptMap.get(llmNode.promptTemplateId) || llmNode.promptTemplateId
-        : llmNode.prompt || node.label || 'Unknown Prompt';
-
-      const dsl: DSLLLMNode = {
-        type: 'llm',
-        prompt: promptLabel,
-      };
-
-      // Add optional base fields
-      if (node.label && node.label !== promptLabel) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      const map = collapseFieldMappings(llmNode.fieldMappings);
-      if (map) dsl.map = map;
-      if (llmNode.model) dsl.model = llmNode.model;
-      if (llmNode.temperature !== undefined) dsl.temperature = llmNode.temperature;
-      if (llmNode.maxTokens !== undefined) dsl.maxTokens = llmNode.maxTokens;
-      if (llmNode.systemPrompt) dsl.systemPrompt = llmNode.systemPrompt;
-
-      return dsl;
-    }
-
-    case 'switch': {
-      const switchNode = node as SwitchNode;
-
-      // Find outgoing edges from this switch node (for inline branch detection)
-      const switchEdges = graphCtx.edges.filter(e => e.source === node.id);
-
-      // Filter out incomplete conditions (empty predicate key = unfilled UI defaults)
-      const validConditions = (Array.isArray(switchNode.conditions) ? switchNode.conditions : []).filter(c => {
-        if (!c.predicate || typeof c.predicate === 'function') return !!c.predicate;
-        return c.predicate.key && c.predicate.key.trim() !== '';
-      });
-
-      // Track which edge targets are matched by valid conditions
-      const matchedTargets = new Set<string>();
-
-      const dsl: DSLSwitchNode = {
-        type: 'switch',
-        conditions: validConditions.map((c) => {
-          // Use original index for sourceHandle matching
-          const ci = switchNode.conditions.indexOf(c);
-
-          let ifExpr = '';
-          if (c.predicate && typeof c.predicate !== 'function') {
-            const opSymbol = operatorToDsl[c.predicate.operator] || c.predicate.operator;
-            if (c.predicate.operator === 'is_empty' || c.predicate.operator === 'is_null') {
-              ifExpr = `${c.predicate.key} ${opSymbol}`;
-            } else {
-              ifExpr = `${c.predicate.key} ${opSymbol} ${c.predicate.value ?? ''}`;
-            }
-          } else if (typeof c.predicate === 'function') {
-            ifExpr = '[custom function]';
-          }
-
-          // Try to collapse exclusive branch chain into inline steps
-          const branchEdge = switchEdges.find(
-            e => (e.info as any)?.sourceHandle === `branch-${ci}`
-          );
-
-          if (branchEdge) {
-            matchedTargets.add(branchEdge.target);
-            const { exclusive, chain } = isExclusiveChain(
-              branchEdge.target, node.id as string, graphCtx
-            );
-            if (exclusive && chain.length > 0) {
-              return { if: ifExpr, steps: decompileChain(chain, graphCtx) };
-            }
-            // Non-exclusive: inline just the direct target
-            const targetNode = graphCtx.nodes.find(n => n.id === branchEdge.target);
-            if (targetNode) {
-              graphCtx.inlinedNodeIds.add(targetNode.id as string);
-              return { if: ifExpr, steps: [decompileStepNode(targetNode, graphCtx)] };
-            }
-          }
-
-          // No edge: empty steps
-          return { if: ifExpr, steps: [] };
-        }),
-      };
-
-      // Add optional base fields
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      // Handle else branch
-      // 1. Try explicit else handle first (for DSL-compiled flows)
-      let elseEdge = switchEdges.find(
-        e => (e.info as any)?.sourceHandle === `branch-${switchNode.conditions.length}`
-      );
-      // 2. Fallback: any unmatched switch edge (for UI-created flows where
-      //    "else" is just a condition with empty predicate that got filtered out)
-      if (!elseEdge) {
-        elseEdge = switchEdges.find(e => !matchedTargets.has(e.target));
-      }
-
-      if (elseEdge) {
-        const { exclusive, chain } = isExclusiveChain(
-          elseEdge.target, node.id as string, graphCtx
-        );
-        if (exclusive && chain.length > 0) {
-          dsl.else = decompileChain(chain, graphCtx);
-        } else {
-          const targetNode = graphCtx.nodes.find(n => n.id === elseEdge.target);
-          if (targetNode) {
-            graphCtx.inlinedNodeIds.add(targetNode.id as string);
-            dsl.else = [decompileStepNode(targetNode, graphCtx)];
-          }
-        }
-      }
-
-      return dsl;
-    }
-
-    case 'fire': {
-      const fireNode = node as FireNode;
-      const dsl: DSLFireNode = {
-        type: 'fire',
-        event: fireNode.eventType,
-      };
-
-      // Add optional base fields
-      if (node.label && node.label !== fireNode.eventType) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      if (fireNode.scope && fireNode.scope !== 'local') dsl.scope = fireNode.scope;
-      if (fireNode.payload !== undefined) dsl.payload = fireNode.payload;
-      return dsl;
-    }
-
-    case 'transform': {
-      const transformNode = node as TransformNode;
-      const dsl: DSLTransformNode = {
-        type: 'transform',
-        script: transformNode.script,
-      };
-
-      // Add optional base fields
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      if (transformNode.outputType && transformNode.outputType !== 'json') {
-        dsl.outputType = transformNode.outputType;
-      }
-      return dsl;
-    }
-
-    case 'query': {
-      const queryNode = node as QueryNode;
-      const dsl: DSLQueryNode = {
-        type: 'query',
-        prompt: queryNode.prompt,
-      };
-
-      // Add optional base fields
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      if (queryNode.resultKey) dsl.as = queryNode.resultKey;
-      return dsl;
-    }
-
-    case 'flow': {
-      const flowNode = node as FlowNode;
-      const flowLabel = flowMap.get(flowNode.flowRef) || flowNode.flowRef;
-      const dsl: DSLFlowNode = {
-        type: 'flow',
-        flow: flowLabel,
-      };
-
-      // Add optional base fields
-      if (node.label && node.label !== flowLabel) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      if (flowNode.propagateCtx === false) dsl.inherit = false;
-      const map = collapseFieldMappings(flowNode.fieldMappings);
-      if (map) dsl.map = map;
-      return dsl;
-    }
-
-    case 'create': {
-      const createNode = node as CreateNode;
-      const dsl: DSLCreateNode = {
-        type: 'create',
-        entity: createNode.entityTypeTarget,
-      };
-
-      // Add optional base fields
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      return dsl;
-    }
-
-    case 'update': {
-      const updateNode = node as UpdateNode;
-      const dsl: DSLUpdateNode = {
-        type: 'update',
-        target: updateNode.entityId,
-      };
-
-      // Add optional base fields
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      if (updateNode.onMissing) dsl.onMissing = updateNode.onMissing;
-      return dsl;
-    }
-
-    case 'keep_alive': {
-      const dsl: DSLKeepAliveNode = {
-        type: 'keep_alive',
-      };
-
-      // Add optional base fields
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      if (node.final) dsl.final = true;
-
-      return dsl;
-    }
-
-    case 'kill': {
-      const dsl: DSLKillNode = { type: 'kill' };
-      if (node.label) dsl.label = node.label;
-      if (node.description) dsl.description = node.description;
-      return dsl;
-    }
-
-    default:
-      console.warn(`Unknown node type: ${(node as any).nodeType}`);
-      return {
-        type: 'action',
-        action: 'Unknown',
-        label: node.label,
-      };
+  const build = stepRegistry.getBuild(node.nodeType);
+  if (build?.decompile) {
+    return build.decompile(node as any, {
+      actionMap: graphCtx.actionMap,
+      promptMap: graphCtx.promptMap,
+      flowMap: graphCtx.flowMap,
+      resolveBranch: (sourceId, handle) =>
+        resolveBranch(sourceId, handle, graphCtx) as Record<string, unknown>[] | null,
+    }) as DSLStepNode;
   }
+  console.warn(`No decompile for node type: ${node.nodeType}`);
+  return { type: node.nodeType, label: node.label } as any;
 }
 
 /*─────────────────────────────────────────────────────────────────

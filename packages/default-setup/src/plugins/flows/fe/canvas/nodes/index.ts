@@ -1,38 +1,32 @@
-import type { NodeProps } from '@vue-flow/core'
-import TriggerNode from './TriggerNode.vue'
-import FireNode from './FireNode.vue'
-import VariableNode from './VariableNode.vue'
-import ActionNode from './ActionNode.vue'
 import type { NodeKind } from '@app/api'
+import { default as TriggerNode } from './TriggerNode.vue'
 import { default as BaseNode } from './BaseNode.vue'
-import { default as SwitchNode } from './SwitchNode.vue'
 import { nodeConfigs } from './node-config'
+import { stepRegistry } from '@abuddy/sdk/steps'
 
 export { BaseNode }
-export { SwitchNode }
 export type { HandleConfig } from './BaseNode.vue'
 export * from './node-config'
 
-// Map node types to their components
-const componentMap = {
-  TriggerNode,
-  FireNode,
-  SwitchNode,
-  VariableNode,
-  ActionNode,
-}
-
-export const nodeTypes = Object.entries(nodeConfigs).reduce((acc, [nodeType, config]) => {
-  if (config) {
-    const componentName = config.component
-    if (componentName && componentMap[componentName as keyof typeof componentMap]) {
-      acc[nodeType as NodeKind] = componentMap[componentName as keyof typeof componentMap]
+export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
+  get(_target, type: string) {
+    if (type === 'listener' || type === 'schedule') return TriggerNode;
+    return stepRegistry.getComponent(type) || BaseNode;
+  },
+  ownKeys() {
+    return Object.keys(nodeConfigs);
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    if (prop in nodeConfigs) {
+      return { configurable: true, enumerable: true, value: undefined };
     }
-  }
-  return acc
-}, {} as Record<NodeKind, any>)
+    return undefined;
+  },
+  has(_target, prop: string) {
+    return prop in nodeConfigs;
+  },
+})
 
-// Define connection rules for each node type - now pulled from config
 export const nodeConnectionRules = Object.entries(nodeConfigs).reduce((acc, [nodeType, config]) => {
   if (config) {
     acc[nodeType as NodeKind] = config.connectionRules

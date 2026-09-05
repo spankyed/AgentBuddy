@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@/registries/ears';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
@@ -38,9 +38,18 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return `Update ${index}`;
 }
 
+function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+  const dsl: Record<string, unknown> = { type: 'update', target: node.entityId };
+  if (node.label) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  if (node.onMissing) dsl.onMissing = node.onMissing;
+  return dsl;
+}
+
 export const updateStep: StepDefinition = {
   type: 'update',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   fe: {
     colorKey: 'purple',
     nodeConfig: {

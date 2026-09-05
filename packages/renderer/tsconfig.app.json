@@ -11,6 +11,7 @@
       "@/core/composables/useMenuState": ["../abuddy-sdk/src/fe/composables/useMenuState"],
       "@/core/composables/useContextMenu": ["../abuddy-sdk/src/fe/composables/useContextMenu"],
       "@/registries/*": ["../default-setup/src/registries/*"],
+      "@/steps/*": ["../default-setup/src/steps/*"],
       "@/plugins/*": ["../default-setup/src/plugins/*"],
       "@/*": ["./src/*"]
     }

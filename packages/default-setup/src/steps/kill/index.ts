@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext } from '@/plugins/brain/be/types';
 import { EARS } from '@/registries/ears';
 
@@ -37,9 +37,16 @@ function handler(_tNode: unknown, _node: unknown, executionContext: unknown, act
   a.send({ type: 'COMPLETE', result: { killed: true } });
 }
 
+function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+  const dsl: Record<string, unknown> = { type: 'kill' };
+  if (node.label) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  return dsl;
+}
+
 export const killStep: StepDefinition = {
   type: 'kill',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   runtime: { handler },
   fe: {
     colorKey: 'red',

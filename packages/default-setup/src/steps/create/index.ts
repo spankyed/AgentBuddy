@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@/registries/ears';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
@@ -30,9 +30,17 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return `Create ${step.entity || index}`;
 }
 
+function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+  const dsl: Record<string, unknown> = { type: 'create', entity: node.entityTypeTarget };
+  if (node.label) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  return dsl;
+}
+
 export const createStep: StepDefinition = {
   type: 'create',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   fe: {
     colorKey: 'purple',
     nodeConfig: {

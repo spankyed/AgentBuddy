@@ -3,6 +3,9 @@ import { Network } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas/flow-canvas.vue';
 import settings from './settings.vue';
+import { registerStepComponents } from '@/steps/register-fe';
+
+registerStepComponents();
 
 const flowsPlugin: Plugin = {
   id,

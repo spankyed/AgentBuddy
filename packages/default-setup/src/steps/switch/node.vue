@@ -44,8 +44,8 @@
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { SwitchNode, Condition } from '@app/api'
-import BaseNode, { type HandleConfig } from './BaseNode.vue'
-import { NODE_DIMENSIONS } from './node-dimensions'
+import BaseNode, { type HandleConfig } from '@/plugins/flows/fe/canvas/nodes/BaseNode.vue'
+import { NODE_DIMENSIONS } from '@/plugins/flows/fe/canvas/nodes/node-dimensions'
 
 interface Branch {
   id: string

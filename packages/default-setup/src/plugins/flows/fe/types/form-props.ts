@@ -5,4 +5,5 @@ export interface FormResources {
   flows?: FlowEntity[]
   models?: ModelCatalogEntry[]
   prompts?: PromptEntity[]
+  [key: string]: unknown[] | undefined
 } 

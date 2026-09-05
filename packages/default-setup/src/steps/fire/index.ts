@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import { EARS } from '@/registries/ears';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
@@ -74,9 +74,19 @@ function handler(tNode: unknown, _node: unknown, executionContext: unknown, acto
   }
 }
 
+function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+  const dsl: Record<string, unknown> = { type: 'fire', event: node.eventType };
+  if (node.label && node.label !== node.eventType) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+  if (node.scope && node.scope !== 'local') dsl.scope = node.scope;
+  if (node.payload !== undefined) dsl.payload = node.payload;
+  return dsl;
+}
+
 export const fireStep: StepDefinition = {
   type: 'fire',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   runtime: { handler },
   fe: {
     colorKey: 'amber',
@@ -93,5 +103,11 @@ export const fireStep: StepDefinition = {
       isImplemented: true,
     },
     defaults: { scope: 'local' },
+    layout: {
+      getPorts: (node) => [
+        { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
+      ],
+      hasInput: true,
+    },
   },
 };

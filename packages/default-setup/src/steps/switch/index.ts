@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/plugins/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import { BinaryOperator as Op } from '@abuddy/sdk/utils';
@@ -366,9 +366,60 @@ function handler(tNode: unknown, node: unknown, executionContext: unknown, actor
   }
 }
 
+const operatorToDsl: Record<string, string> = {
+  equals: '==', not_equals: '!=', greater_than: '>', less_than: '<',
+  greater_than_or_equals: '>=', less_than_or_equals: '<=',
+  contains: 'contains', starts_with: 'starts_with', ends_with: 'ends_with',
+  matches: 'matches', is_empty: 'is_empty', is_null: 'is_null',
+};
+
+function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
+  const conditions = (Array.isArray(node.conditions) ? node.conditions : []) as Array<{
+    predicate?: { key: string; operator: string; value?: unknown } | Function;
+    label?: string;
+  }>;
+
+  const validConditions = conditions.filter(c => {
+    if (!c.predicate || typeof c.predicate === 'function') return !!c.predicate;
+    return c.predicate.key && c.predicate.key.trim() !== '';
+  });
+
+  const dsl: Record<string, unknown> = {
+    type: 'switch',
+    conditions: validConditions.map(c => {
+      let ifExpr = '';
+      if (c.predicate && typeof c.predicate !== 'function') {
+        const opSymbol = operatorToDsl[c.predicate.operator] || c.predicate.operator;
+        if (c.predicate.operator === 'is_empty' || c.predicate.operator === 'is_null') {
+          ifExpr = `${c.predicate.key} ${opSymbol}`;
+        } else {
+          ifExpr = `${c.predicate.key} ${opSymbol} ${c.predicate.value ?? ''}`;
+        }
+      } else if (typeof c.predicate === 'function') {
+        ifExpr = '[custom function]';
+      }
+
+      const origIdx = conditions.indexOf(c);
+      const branchSteps = ctx.resolveBranch?.(node.id as string, `branch-${origIdx}`);
+      return { if: ifExpr, steps: branchSteps || [] };
+    }),
+  };
+
+  if (node.label) dsl.label = node.label;
+  if (node.description) dsl.description = node.description;
+  if (node.final) dsl.final = true;
+
+  const elseSteps = ctx.resolveBranch?.(node.id as string, `branch-${conditions.length}`);
+  if (elseSteps && elseSteps.length > 0) dsl.else = elseSteps;
+
+  return dsl;
+}
+
+const SWITCH_DIMS = { rowHeight: 26, headerOffset: 43, bottomPadding: 10 };
+
 export const switchStep: StepDefinition = {
   type: 'switch',
-  build: { compile, validate, getLabel },
+  build: { compile, validate, getLabel, decompile },
   runtime: { handler },
   fe: {
     colorKey: 'yellow',
@@ -385,5 +436,26 @@ export const switchStep: StepDefinition = {
       isImplemented: true,
     },
     defaults: { conditions: [{ predicate: undefined, label: 'Else' }] },
+    handlePrefix: 'branch',
+    layout: {
+      getHeight: (node) => {
+        const branchCount = (node.conditions as any[])?.length ?? 0;
+        return Math.max(50, SWITCH_DIMS.headerOffset + branchCount * SWITCH_DIMS.rowHeight + SWITCH_DIMS.bottomPadding);
+      },
+      getPorts: (node) => {
+        const branchCount = (node.conditions as any[])?.length ?? 0;
+        const ports: Array<{ id: string; layoutOptions: Record<string, string> }> = [
+          { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
+        ];
+        for (let i = 0; i < branchCount; i++) {
+          ports.push({
+            id: `${node.id}-out-branch-${i}`,
+            layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) },
+          });
+        }
+        return ports;
+      },
+      hasInput: true,
+    },
   },
 };

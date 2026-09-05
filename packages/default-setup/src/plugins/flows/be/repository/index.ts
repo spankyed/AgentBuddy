@@ -7,6 +7,7 @@ import { getAttr, removeRelation } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears';
 import { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
+import { stepRegistry } from '@abuddy/sdk/steps';
 import type {
   FlowEntity,
   NodeEntity,
@@ -83,30 +84,22 @@ export const FLOW_QUERY_FIELDS = {
   DETAIL: ["id", "label", "description", "flowType", "status", "createdAt", "updatedAt"] as const,
 } as const;
 
-// Node relation configuration
-const RELATION_CONFIG = {
-  action: {
-    field: 'actionId',
-    targetEntity: EARS.Entity.Action,
-  },
-  llm: {
-    field: 'promptTemplateId',
-    targetEntity: EARS.Entity.Prompt,
-  }
-} as const;
+// Helper functions for node relations (driven by step registry)
+function getRelationConfig(nodeType: string) {
+  return stepRegistry.getBuild(nodeType)?.relation ?? null;
+}
 
-// Helper functions for node relations
 function extractNodeRelations(nodeType: NodeKind, input: NodeCreateInput) {
-  const config = RELATION_CONFIG[nodeType as keyof typeof RELATION_CONFIG];
-  
+  const config = getRelationConfig(nodeType);
+
   if (!config) {
     return { relations: {}, attributes: input };
   }
-  
+
   const relationId = (input as any)[config.field];
   const attributes = { ...input };
   delete (attributes as any)[config.field];
-  
+
   return {
     relations: { [config.field]: relationId },
     attributes
@@ -114,8 +107,8 @@ function extractNodeRelations(nodeType: NodeKind, input: NodeCreateInput) {
 }
 
 function createNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relations: Record<string, any>) {
-  const config = RELATION_CONFIG[nodeType as keyof typeof RELATION_CONFIG];
-  
+  const config = getRelationConfig(nodeType);
+
   if (!config) return;
   
   const relationId = relations[config.field];
@@ -125,8 +118,8 @@ function createNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relation
 }
 
 function updateNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relations: Record<string, any>) {
-  const config = RELATION_CONFIG[nodeType as keyof typeof RELATION_CONFIG];
-  
+  const config = getRelationConfig(nodeType);
+
   if (!config) return;
   
   if (config.field in relations) {
@@ -144,15 +137,15 @@ function updateNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relation
 }
 
 function getNodeRelation(node: NodeEntity): NodeEntity {
-  const config = RELATION_CONFIG[node.nodeType as keyof typeof RELATION_CONFIG];
-  
+  const config = getRelationConfig(node.nodeType);
+
   if (!config) {
     return node;
   }
-  
+
   // Get the linked entity ID via INSTANCE_OF relationship
   const linkedId = qx(node.id)
-    .links(EARS.RelKind.INSTANCE_OF, config.targetEntity)
+    .links(EARS.RelKind.INSTANCE_OF)
     .map(({ id }) => id)[0];
   
   if (linkedId) {

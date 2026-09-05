@@ -29,16 +29,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@app/api'
+import { stepRegistry } from '@abuddy/sdk/steps'
 
-// Form components
+// Shared infrastructure forms (triggers + fallback)
 import BaseForm from '../forms/BaseForm.vue'
 import ListenerForm from '../forms/ListenerForm.vue'
-import FireForm from '../forms/FireForm.vue'
-import CreateForm from '../forms/CreateForm.vue'
-import LLMForm from '../forms/LLMForm.vue'
-import ActionForm from '../forms/ActionForm.vue'
-import FlowForm from '../forms/FlowForm.vue'
-import SwitchForm from '../forms/SwitchForm.vue'
 import ScheduleForm from '../forms/ScheduleForm.vue'
 
 interface Props {
@@ -72,17 +67,9 @@ function handleReindexBranches(data: { type: 'inserted' | 'removed'; index: numb
 }
 
 function getFormComponent(nodeType: string) {
-  const formMap: Record<string, any> = {
-    'listener': ListenerForm,
-    'fire': FireForm,
-    'create': CreateForm,
-    'llm': LLMForm,
-    'action': ActionForm,
-    'flow': FlowForm,
-    'switch': SwitchForm,
-    'schedule': ScheduleForm,
-  }
-  return formMap[nodeType] || BaseForm
+  if (nodeType === 'listener') return ListenerForm;
+  if (nodeType === 'schedule') return ScheduleForm;
+  return stepRegistry.getFormComponent(nodeType) || BaseForm;
 }
 
 // Next step functionality

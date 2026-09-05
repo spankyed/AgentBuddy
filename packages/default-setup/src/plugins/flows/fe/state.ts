@@ -23,6 +23,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@abuddy/sdk/rpc'
 import { getNodeConfig, isTriggerNode } from './canvas/nodes'
+import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimensions'
 
@@ -46,12 +47,13 @@ function isHandleOccupied(
   })
 }
 
-/** Scan existing edges from a switch node and return the next branch index */
-function nextBranchIndex(edges: EdgeEntity[], sourceNodeId: string): number {
+/** Scan existing edges from a node and return the next handle index for the given prefix */
+function nextHandleIndex(edges: EdgeEntity[], sourceNodeId: string, prefix: string): number {
+  const pattern = new RegExp(`^${prefix}-(\\d+)$`)
   const indices = edges
     .filter(e => e.source === sourceNodeId && e.sourceHandle)
     .map(e => {
-      const match = e.sourceHandle!.match(/branch-(\d+)/)
+      const match = e.sourceHandle!.match(pattern)
       return match ? parseInt(match[1], 10) : -1
     })
     .filter(i => i >= 0)
@@ -80,14 +82,15 @@ function reindexEdges(
 
 const HANDLE_OCCUPIED_ERROR = 'This step already has an outbound connection'
 
-const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
-
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
-  if (nodeData.nodeType === 'switch') {
-    nodeData.conditions = [{ ...DEFAULT_ELSE_CONDITION }]
+  const step = stepRegistry.get(nodeData.nodeType);
+  if (step?.fe?.defaults) {
+    Object.assign(nodeData, structuredClone(step.fe.defaults));
+    return;
   }
-  if (nodeData.nodeType === 'schedule') {
-    nodeData.cronExpression = '0 * * * *'
+  const config = getNodeConfig(nodeData.nodeType);
+  if (config?.defaults) {
+    Object.assign(nodeData, structuredClone(config.defaults));
   }
 }
 
@@ -748,8 +751,11 @@ const flowsState = setup({
               })
             const nextIndex = existingExits.length > 0 ? Math.max(...existingExits) + 1 : 0
             sourceHandle = `exit-${nextIndex}`
-          } else if (selectedNode?.nodeType === 'switch') {
-            sourceHandle = `branch-${nextBranchIndex(context.graph.edges, context.selectedNodeId!)}`
+          } else if (selectedNode?.nodeType) {
+            const prefix = stepRegistry.get(selectedNode.nodeType)?.fe?.handlePrefix;
+            if (prefix) {
+              sourceHandle = `${prefix}-${nextHandleIndex(context.graph.edges, context.selectedNodeId!, prefix)}`;
+            }
           }
 
           // Only auto-connect if handle is not already occupied
@@ -833,8 +839,9 @@ const flowsState = setup({
       let resolvedSourceHandle = ev.sourceHandle
       if (!resolvedSourceHandle) {
         const sourceNode = context.graph.nodes.find(n => n.id === ev.sourceNodeId)
-        if (sourceNode?.nodeType === 'switch') {
-          resolvedSourceHandle = `branch-${nextBranchIndex(context.graph.edges, ev.sourceNodeId)}`
+        const handlePrefix = sourceNode?.nodeType ? stepRegistry.get(sourceNode.nodeType)?.fe?.handlePrefix : undefined;
+        if (handlePrefix) {
+          resolvedSourceHandle = `${handlePrefix}-${nextHandleIndex(context.graph.edges, ev.sourceNodeId, handlePrefix)}`;
         } else if (isTriggerNode(sourceNode?.nodeType)) {
           const existingExits = context.graph.edges
             .filter(e => e.source === ev.sourceNodeId && e.sourceHandle)

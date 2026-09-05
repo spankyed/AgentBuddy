@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '@app/api'
-import BaseForm from './BaseForm.vue'
+import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
 
 const props = defineProps<{
   node: NodeEntity
