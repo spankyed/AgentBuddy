@@ -18,7 +18,7 @@ import type {
   FlowsConnectedData
 } from '../config/types';
 import { availableModels } from '../config/available-models';
-import { createNodeDefaults, isTriggerNodeType, validateNode } from '../config/node-config';
+import { createNodeDefaults, isTriggerNodeType } from '../config/node-config';
 import { repository } from '@abuddy/sdk/ears';
 import type { CompiledRows } from '../dsl/compiler';
 import { ROOT_FLOW_ROLE } from '../dsl/types';
@@ -26,14 +26,15 @@ import { ROOT_FLOW_ROLE } from '../dsl/types';
 const logger = createLogger('flows-repository');
 
 function validatePersistableNode(node: NodeEntity): void {
-  if (node.nodeType !== 'schedule') return;
-
-  const validation = validateNode(node);
-  if (!validation.valid) {
-    throw new RepositoryError(
-      `Invalid ${node.nodeType} node: ${validation.errors.join(', ')}`,
-      RepositoryErrorCode.VALIDATION_ERROR
-    );
+  const triggerFacet = stepRegistry.getTrigger(node.nodeType);
+  if (triggerFacet?.validate) {
+    const result = triggerFacet.validate(node as unknown as Record<string, unknown>);
+    if (!result.valid) {
+      throw new RepositoryError(
+        `Invalid ${node.nodeType} node: ${result.errors.join(', ')}`,
+        RepositoryErrorCode.VALIDATION_ERROR
+      );
+    }
   }
 }
 

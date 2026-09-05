@@ -86,11 +86,6 @@ function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
   const step = stepRegistry.get(nodeData.nodeType);
   if (step?.fe?.defaults) {
     Object.assign(nodeData, structuredClone(step.fe.defaults));
-    return;
-  }
-  const config = getNodeConfig(nodeData.nodeType);
-  if (config?.defaults) {
-    Object.assign(nodeData, structuredClone(config.defaults));
   }
 }
 

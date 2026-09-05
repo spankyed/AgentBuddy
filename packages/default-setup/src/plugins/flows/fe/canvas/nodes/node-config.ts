@@ -36,7 +36,6 @@ export interface NodeConfig {
   component?: string
   isImplemented?: boolean
   isDisabled?: boolean
-  defaults?: Record<string, unknown>
 }
 
 export interface NodeStyleOptions {
@@ -197,7 +196,7 @@ const STATUS_STYLE_CLASSES = {
 // Registry-Driven Configuration
 // ===========================
 
-// Trigger configs are not step types — they're hardcoded here
+// Listener config is internal — not a registered trigger type
 const TRIGGER_CONFIGS: Record<string, NodeConfig> = {
   listener: {
     type: 'listener',
@@ -211,24 +210,10 @@ const TRIGGER_CONFIGS: Record<string, NodeConfig> = {
     component: 'TriggerNode',
     isImplemented: true
   },
-  schedule: {
-    type: 'schedule',
-    label: 'Schedule',
-    defaultLabel: 'On schedule',
-    icon: Clock,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10',
-    hoverBgColor: 'group-hover:bg-cyan-500/15',
-    connectionRules: { inputs: 0, outputs: -1 },
-    component: 'TriggerNode',
-    isImplemented: true,
-    defaults: { cronExpression: '0 * * * *' },
-  },
 }
 
 const TRIGGER_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = {
   listener: 'blue',
-  schedule: 'cyan',
   event: 'blue',
 }
 
@@ -241,6 +226,10 @@ function buildNodeConfigs(): Record<string, NodeConfig> {
       ...step.fe.nodeConfig,
       type: step.type,
       icon: resolveIcon(step.fe.nodeConfig.icon),
+      ...(step.kind === 'trigger' && {
+        connectionRules: { inputs: 0, outputs: -1 },
+        component: 'TriggerNode',
+      }),
     }
   }
 

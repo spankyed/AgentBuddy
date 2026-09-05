@@ -11,7 +11,8 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { ListenerNode, ScheduleNode, FlowEntity, FlowNode, NodeEntity } from '@/plugins/flows/be/config/types';
+import type { ListenerNode, FlowEntity, FlowNode, NodeEntity } from '@/plugins/flows/be/config/types';
+import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
@@ -85,11 +86,6 @@ function isListenerNode(node: Partial<NodeEntity>): node is ListenerNode {
   return node.nodeType === 'listener';
 }
 
-function isScheduleNode(node: Partial<NodeEntity>): node is ScheduleNode {
-  return node.nodeType === 'schedule';
-}
-
-
 // Queries
 export const brainQueries = {
   rootFlowTNode: () => 
@@ -109,16 +105,6 @@ export const brainQueries = {
         [EARS.Entity.Node]
       )
       .filter(isListenerNode);
-  },
-
-  flowScheduleNodes: (flowId: EARS.EntityId): ScheduleNode[] => {
-    return qx(flowId)
-      .linksPick(
-        EARS.RelKind.CONTAINS,
-        ["id", "nodeType", "label", "cronExpression", "trackKey"] as const,
-        [EARS.Entity.Node]
-      )
-      .filter(isScheduleNode);
   },
 
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
@@ -206,37 +192,49 @@ export const brainQueries = {
     // Get the flow blueprint this TNode is an instance of
     const flowLinks = qx(flowTNodeId)
       .links(EARS.RelKind.INSTANCE_OF, [EARS.Entity.Flow]);
-    
+
     if (flowLinks.length === 0) {
       throw new Error(
         `Flow TNode ${flowTNodeId} has no INSTANCE_OF relation to a flow blueprint. ` +
         `This usually means the TNode was not properly initialized.`
       );
     }
-    
-    const flowId = flowLinks[0].id;
-    
-    const listeners = brainQueries.flowEventNodes(flowId);
-    const schedules = brainQueries.flowScheduleNodes(flowId);
 
-    return [
-      ...listeners.map((node): EventListenerEntity => ({
-        id: `Event-${node.id}` as EARS.EntityId,
-        nodeId: node.id!,
-        eventType: node.eventType,
-        label: node.label,
-        triggerType: 'listener',
-        scope: node.scope,
-      })),
-      ...schedules.map((node): EventListenerEntity => ({
-        id: `Event-${node.id}` as EARS.EntityId,
-        nodeId: node.id!,
-        eventType: `schedule.${node.id}`,
-        label: node.label || 'Schedule',
-        triggerType: 'schedule',
-        cronExpression: node.cronExpression,
-      })),
-    ];
+    const flowId = flowLinks[0].id;
+
+    // Listeners (internal)
+    const listeners = brainQueries.flowEventNodes(flowId);
+    const events: EventListenerEntity[] = listeners.map((node): EventListenerEntity => ({
+      id: `Event-${node.id}` as EARS.EntityId,
+      nodeId: node.id!,
+      eventType: node.eventType,
+      label: node.label,
+      triggerType: 'listener',
+      scope: node.scope,
+    }));
+
+    // Registered triggers (schedule, etc.)
+    for (const def of stepRegistry.triggers()) {
+      const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
+      const triggerNodes = qx(flowId)
+        .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
+        .filter((n: any) => n.nodeType === def.type);
+      for (const n of triggerNodes as any[]) {
+        events.push({
+          id: `Event-${n.id}` as EARS.EntityId,
+          nodeId: n.id!,
+          eventType: `${def.type}.${n.id}`,
+          label: n.label || def.fe?.nodeConfig.label || def.type,
+          triggerType: def.type,
+          ...(def.trigger?.queryFields?.reduce((acc: any, field: string) => {
+            if (n[field] !== undefined) acc[field] = n[field];
+            return acc;
+          }, {}) || {}),
+        });
+      }
+    }
+
+    return events;
   },
 
   /**
@@ -296,7 +294,7 @@ export const brainQueries = {
 export const brainCommands = {
   createEventTNode: (
     eventNode: Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
-      triggerType?: 'listener' | 'schedule';
+      triggerType?: string;
       cronExpression?: string;
     },
     flowTNodeId: EARS.EntityId

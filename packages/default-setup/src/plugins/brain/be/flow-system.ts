@@ -1,6 +1,7 @@
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
-import type { ListenerNode, NodeEntity, ScheduleNode } from '@/plugins/flows/be/config/types';
+import type { ListenerNode, NodeEntity } from '@/plugins/flows/be/config/types';
 import { repository } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
 import { EARS } from '@/registries/ears';
@@ -9,7 +10,7 @@ import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { registerSchedule, unregisterByPrefix } from './services/scheduler';
+import { unregisterByPrefix } from './services/scheduler';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportBrainRuntimeError } from './runtime-errors';
@@ -186,8 +187,25 @@ export function createFlowNodeSystem(
 
   const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
 
-  // Query schedule nodes and merge them into eventNodes as trigger handlers
-  const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
+  // Query registered trigger nodes and merge them into eventNodes as trigger handlers
+  const registeredTriggerNodes: FlowTriggerNode[] = [];
+  for (const def of stepRegistry.triggers()) {
+    const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
+    const triggerNodes = qx(actualFlowId)
+      .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
+      .filter((n: any) => n.nodeType === def.type);
+    for (const n of triggerNodes as any[]) {
+      registeredTriggerNodes.push({
+        id: n.id,
+        label: n.label,
+        eventType: `${def.type}.${n.id}`,
+        triggerType: def.type,
+        trackKey: n.trackKey,
+        ...n,
+      });
+    }
+  }
+
   const rawTriggerNodes: FlowTriggerNode[] = [
     ...eventNodes.map((n: ListenerNode): FlowTriggerNode => ({
       id: n.id,
@@ -195,16 +213,9 @@ export function createFlowNodeSystem(
       eventType: n.eventType,
       scope: n.scope,
       trackKey: n.trackKey,
-      triggerType: 'listener' as const,
+      triggerType: 'listener',
     })),
-    ...scheduleNodes.map((n: ScheduleNode): FlowTriggerNode => ({
-      id: n.id,
-      label: n.label,
-      eventType: `schedule.${n.id}`,
-      triggerType: 'schedule',
-      trackKey: n.trackKey,
-      cronExpression: n.cronExpression,
-    })),
+    ...registeredTriggerNodes,
   ];
   const dedupedTriggers = dedupeTriggerNodes(
     rawTriggerNodes,
@@ -243,14 +254,13 @@ export function createFlowNodeSystem(
           flowActorRegistry.set(flowTNodeId, self);
           brainInspect(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
 
-          // Register cron jobs for schedule nodes (skip nodes with no downstream steps)
-          for (const sn of allTriggerNodes.filter((node) => node.triggerType === 'schedule')) {
-            if (!sn.cronExpression) continue;
+          // Register runtime hooks for registered trigger types (skip nodes with no downstream steps)
+          for (const sn of allTriggerNodes) {
+            const triggerFacet = stepRegistry.getTrigger(sn.triggerType);
+            if (!triggerFacet?.register) continue;
             const hasSteps = repository.brainQueries.eventAllSteps(sn.id!).length > 0;
             if (!hasSteps) continue;
-            registerSchedule(`${flowTNodeId}:${sn.id}`, sn.cronExpression, () => {
-              sendToBrainSystem({ eventType: `schedule.${sn.id}`, targetFlowId: flowTNodeId });
-            });
+            triggerFacet.register(sn as any, { flowTNodeId, sendToBrainSystem });
           }
         },
         unregisterFlowActor: () => {

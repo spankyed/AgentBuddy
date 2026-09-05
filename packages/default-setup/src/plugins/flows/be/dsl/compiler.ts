@@ -14,7 +14,7 @@ import type {
   CompilerContext,
 } from './types';
 import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './types';
-import { stepRegistry } from '@abuddy/sdk/steps';
+import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { registerStandardSteps } from '@/steps/register';
 
 /*─────────────────────────────────────────────────────────────────
@@ -392,6 +392,15 @@ function compileFlow(
   return { flowEntity, nodeEntities, flowRelations, flowRoles };
 }
 
+function resolveTriggerFromTrack(track: Track): StepDefinition | null {
+  for (const def of stepRegistry.triggers()) {
+    if (def.trigger?.trackField && (track as any)[def.trigger.trackField] !== undefined) {
+      return def;
+    }
+  }
+  return null;
+}
+
 function compileTrack(
   track: Track,
   trackIdx: number,
@@ -405,23 +414,15 @@ function compileTrack(
 } {
   const trackRoles: Array<{ entityId: string; role: string }> = [];
 
-  const isScheduleTrack = !!track.schedule;
+  const triggerDef = resolveTriggerFromTrack(track);
+  const isRegisteredTrigger = !!triggerDef;
   const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
   const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
-  // Create trigger node (listener or schedule) from track
-  const listenerEntity = isScheduleTrack
-    ? {
-        id: listenerId,
-        entityType: EARS.Entity.Node,
-        createdAt: fCtx.ts,
-        nodeType: 'schedule',
-        label: listenerLabel,
-        description: track.description,
-        trackKey,
-        cronExpression: track.schedule,
-      }
+  // Create trigger node from track — registered triggers dispatch to their facet, otherwise listener (internal)
+  const listenerEntity = triggerDef?.trigger
+    ? triggerDef.trigger.compile(track as unknown as Record<string, unknown>, listenerId, fCtx.ts, trackKey)
     : {
         id: listenerId,
         entityType: EARS.Entity.Node,
@@ -442,7 +443,7 @@ function compileTrack(
   });
 
   // Add entry role for first track's listener node (not schedule tracks)
-  if (isFirstTrack && !isScheduleTrack) {
+  if (isFirstTrack && !isRegisteredTrigger) {
     trackRoles.push({
       entityId: listenerId,
       role: 'entry_event',

@@ -1,4 +1,4 @@
-import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet } from './types';
+import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet, TriggerFacet } from './types';
 
 class StepRegistry {
   private steps = new Map<string, StepDefinition>();
@@ -64,6 +64,18 @@ class StepRegistry {
 
   has(type: string): boolean {
     return this.steps.has(type);
+  }
+
+  isTrigger(type: string): boolean {
+    return this.steps.get(type)?.kind === 'trigger';
+  }
+
+  getTrigger(type: string): TriggerFacet | undefined {
+    return this.steps.get(type)?.trigger;
+  }
+
+  triggers(): StepDefinition[] {
+    return [...this.steps.values()].filter(s => s.kind === 'trigger');
   }
 
   types(): string[] {

@@ -90,6 +90,7 @@ import { BaseNode } from '@/plugins/flows/fe/canvas/nodes';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
 import { cronToHuman } from '@/plugins/flows/fe/helpers/cron-utils';
+import { stepRegistry } from '@abuddy/sdk/steps';
 
 interface Props {
   tnodeTree?: TrackEntity[];
@@ -163,18 +164,18 @@ const clearStalePan = (event: MouseEvent) => {
 
 // Helper functions
 const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number }): VueFlowNode => {
-  const isSchedule = tnode.triggerType === 'schedule';
+  const isTrigger = tnode.triggerType ? stepRegistry.isTrigger(tnode.triggerType) : false;
   return {
     id: tnode.id,
     type: 'tnode',
     position,
     data: {
       label: tnode.label,
-      nodeType: isSchedule ? 'schedule' : tnode.stepNodeType || tnode.tNodeType,
-      tNodeType: tnode.tNodeType, // Keep for click handling logic
+      nodeType: isTrigger ? tnode.triggerType : (tnode.stepNodeType || tnode.tNodeType),
+      tNodeType: tnode.tNodeType,
       status: tnode.status,
-      eventType: tnode.eventType, // For listen/event nodes
-      subtitle: isSchedule && tnode.cronExpression ? cronToHuman(tnode.cronExpression) : tnode.eventType,
+      eventType: tnode.eventType,
+      subtitle: isTrigger && tnode.cronExpression ? cronToHuman(tnode.cronExpression) : tnode.eventType,
     },
   };
 };

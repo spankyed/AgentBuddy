@@ -1,6 +1,5 @@
 import type { NodeKind, NodeEntity } from './types';
 import { EARS } from '@/registries/ears';
-import { Cron } from 'croner';
 import { stepRegistry } from '@abuddy/sdk/steps';
 
 export interface NodeMetadata {
@@ -15,10 +14,8 @@ export interface NodeMetadata {
   defaults?: Partial<NodeEntity>;
 }
 
-const TRIGGER_TYPES = new Set(['listener', 'schedule']);
-
 export function isTriggerNodeType(nodeType: string): boolean {
-  return TRIGGER_TYPES.has(nodeType);
+  return nodeType === 'listener' || stepRegistry.isTrigger(nodeType);
 }
 
 const triggerMetadata: Record<string, NodeMetadata> = {
@@ -32,36 +29,6 @@ const triggerMetadata: Record<string, NodeMetadata> = {
     },
     defaults: {
       scope: 'global',
-    } as any,
-  },
-  schedule: {
-    nodeType: 'schedule',
-    label: 'Schedule',
-    description: 'Trigger flow on a cron schedule',
-    category: 'trigger',
-    validation: {
-      requiredFields: ['cronExpression'],
-      customValidator: (node) => {
-        const cronExpression = (node as any).cronExpression;
-        if (typeof cronExpression !== 'string' || cronExpression.trim().length === 0) {
-          return false;
-        }
-
-        const parts = cronExpression.trim().split(/\s+/);
-        if (parts.length < 5 || parts.length > 6) {
-          return false;
-        }
-
-        try {
-          new Cron(cronExpression);
-          return true;
-        } catch {
-          return false;
-        }
-      },
-    },
-    defaults: {
-      cronExpression: '0 * * * *',
     } as any,
   },
 };

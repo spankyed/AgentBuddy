@@ -58,8 +58,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { EventListenerEntity } from '@app/api';
-import { Clock, Radio } from 'lucide-vue-next';
+import { Radio } from 'lucide-vue-next';
 import { cronToHuman } from '@/plugins/flows/fe/helpers/cron-utils';
+import { stepRegistry } from '@abuddy/sdk/steps';
+import { getNodeConfig } from '@/plugins/flows/fe/canvas/nodes';
 
 interface Props {
   events: EventListenerEntity[];
@@ -72,45 +74,49 @@ defineEmits<{
   'event-click': [eventType: string];
 }>();
 
-const THEME = {
-  listener: {
-    icon: Radio,
-    glowClass: 'via-blue-500/10',
-    scanClass: 'via-blue-400',
-    rippleClass: 'bg-blue-400/30',
-    activeTextClass: 'text-blue-200',
-    activeIconClass: 'text-blue-300 animate-subtle-pulse',
-    idleIconClass: 'text-blue-400',
-    activeBgClass: 'bg-blue-500/30 scale-110',
+const COLOR_ANIMATIONS: Record<string, {
+  glowClass: string; scanClass: string; rippleClass: string;
+  activeTextClass: string; activeIconClass: string; idleIconClass: string;
+  activeBgClass: string; idleBgClass: string;
+}> = {
+  blue: {
+    glowClass: 'via-blue-500/10', scanClass: 'via-blue-400', rippleClass: 'bg-blue-400/30',
+    activeTextClass: 'text-blue-200', activeIconClass: 'text-blue-300 animate-subtle-pulse',
+    idleIconClass: 'text-blue-400', activeBgClass: 'bg-blue-500/30 scale-110',
     idleBgClass: 'bg-blue-500/10 group-hover:bg-blue-500/20',
   },
-  schedule: {
-    icon: Clock,
-    glowClass: 'via-orange-500/10',
-    scanClass: 'via-orange-400',
-    rippleClass: 'bg-orange-400/30',
-    activeTextClass: 'text-orange-200',
-    activeIconClass: 'text-orange-300 animate-subtle-pulse',
-    idleIconClass: 'text-orange-400',
-    activeBgClass: 'bg-orange-500/30 scale-110',
-    idleBgClass: 'bg-orange-500/10 group-hover:bg-orange-500/20',
+  cyan: {
+    glowClass: 'via-cyan-500/10', scanClass: 'via-cyan-400', rippleClass: 'bg-cyan-400/30',
+    activeTextClass: 'text-cyan-200', activeIconClass: 'text-cyan-300 animate-subtle-pulse',
+    idleIconClass: 'text-cyan-400', activeBgClass: 'bg-cyan-500/30 scale-110',
+    idleBgClass: 'bg-cyan-500/10 group-hover:bg-cyan-500/20',
   },
-} as const;
+};
+
+function getTriggerTheme(triggerType: string) {
+  if (triggerType === 'listener') return { ...COLOR_ANIMATIONS.blue, icon: Radio };
+  const config = getNodeConfig(triggerType);
+  const colorKey = stepRegistry.getFE(triggerType)?.colorKey || 'blue';
+  return {
+    ...(COLOR_ANIMATIONS[colorKey] || COLOR_ANIMATIONS.blue),
+    icon: config?.icon || Radio,
+  };
+}
 
 const displayEvents = computed(() =>
   props.events.map((event) => {
     const triggerType = event.triggerType || 'listener';
-    const theme = THEME[triggerType];
+    const theme = getTriggerTheme(triggerType);
     const active = props.pulsingEventType === event.eventType;
 
     return {
       ...event,
       ...theme,
       active,
-      subtitle: triggerType === 'schedule' && event.cronExpression
+      subtitle: triggerType !== 'listener' && event.cronExpression
         ? cronToHuman(event.cronExpression)
         : event.eventType,
-      kindLabel: triggerType === 'schedule' ? 'schedule' : event.scope,
+      kindLabel: triggerType !== 'listener' ? triggerType : event.scope,
       iconClass: active ? theme.activeIconClass : theme.idleIconClass,
       iconBgClass: active ? theme.activeBgClass : theme.idleBgClass,
     };

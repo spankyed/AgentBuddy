@@ -12,4 +12,7 @@ export type {
   StepValidationError,
   StepValidationContext,
   StepDecompileContext,
+  TriggerFacet,
+  TriggerRuntimeNode,
+  TriggerRuntimeContext,
 } from './types';

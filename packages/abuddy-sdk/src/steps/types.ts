@@ -124,12 +124,48 @@ export interface StepFEFacet {
 }
 
 /*─────────────────────────────────────────────────────────────────
+ * Trigger Types (registered triggers like schedule, webhook, etc.)
+ *─────────────────────────────────────────────────────────────────*/
+
+export interface TriggerFacet {
+  /** Which DSL track field this trigger type owns (e.g. 'schedule'). Used by compiler to detect trigger type from track. */
+  trackField: string;
+  /** Compile DSL track into a trigger node entity. */
+  compile(track: Record<string, unknown>, trackId: string, ts: number, trackKey: string): Record<string, unknown>;
+  /** Decompile trigger node entity back to DSL track fields (e.g. { schedule: '0 * * * *' }). */
+  decompile(node: Record<string, unknown>): Record<string, unknown>;
+  /** Whether this trigger keeps the flow alive after all tracks drain. */
+  persistent?: boolean;
+  /** Register trigger-specific runtime hooks (e.g. cron jobs). Called per-node during registerFlowActor. */
+  register?(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void;
+  /** Additional entity fields needed when querying this trigger's nodes (e.g. ['cronExpression']). */
+  queryFields?: string[];
+  /** Validate a trigger node entity on persist. */
+  validate?(node: Record<string, unknown>): { valid: boolean; errors: string[] };
+}
+
+export interface TriggerRuntimeNode {
+  id: string;
+  label?: string;
+  eventType: string;
+  trackKey?: string;
+  [key: string]: unknown;
+}
+
+export interface TriggerRuntimeContext {
+  flowTNodeId: string;
+  sendToBrainSystem: (event: { eventType: string; payload?: any; targetFlowId?: any }) => void;
+}
+
+/*─────────────────────────────────────────────────────────────────
  * Step Definition
  *─────────────────────────────────────────────────────────────────*/
 
 export interface StepDefinition {
   type: string;
+  kind?: 'step' | 'trigger';
   build?: StepBuildFacet;
   runtime?: StepRuntimeFacet;
   fe?: StepFEFacet;
+  trigger?: TriggerFacet;
 }

@@ -1,7 +1,7 @@
-export type TriggerKind = 'listener' | 'schedule';
+import { stepRegistry } from '@abuddy/sdk/steps';
 
 export type TriggerDescriptor = {
-  triggerType: TriggerKind;
+  triggerType: string;
   scope?: 'global' | 'local' | 'entry';
 };
 
@@ -12,7 +12,10 @@ type FlowCompletionContext = {
 };
 
 export function isPersistentTriggerFlow(triggerNodes: TriggerDescriptor[]): boolean {
-  return triggerNodes.some(node => node.triggerType === 'schedule');
+  return triggerNodes.some(node => {
+    const triggerFacet = stepRegistry.getTrigger(node.triggerType);
+    return triggerFacet?.persistent === true;
+  });
 }
 
 export function shouldCompleteFlow({

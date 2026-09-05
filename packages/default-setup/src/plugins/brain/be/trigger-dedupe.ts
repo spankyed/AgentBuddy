@@ -2,7 +2,7 @@ import type { ListenerNode } from '@/plugins/flows/be/config/types';
 import { EARS } from '@/registries/ears';
 
 export type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
-  triggerType: 'listener' | 'schedule';
+  triggerType: string;
   scope?: ListenerNode['scope'];
   cronExpression?: string;
   trackKey?: string;
@@ -14,7 +14,7 @@ export interface TriggerDedupeWarning {
   flowTNodeId: EARS.EntityId;
   eventType: string;
   label?: string;
-  triggerType: 'listener' | 'schedule';
+  triggerType: string;
   trackKey?: string;
   retainedNodeId?: EARS.EntityId;
   duplicateNodeIds: EARS.EntityId[];

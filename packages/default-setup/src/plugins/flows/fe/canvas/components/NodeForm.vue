@@ -34,7 +34,6 @@ import { stepRegistry } from '@abuddy/sdk/steps'
 // Shared infrastructure forms (triggers + fallback)
 import BaseForm from '../forms/BaseForm.vue'
 import ListenerForm from '../forms/ListenerForm.vue'
-import ScheduleForm from '../forms/ScheduleForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
@@ -68,7 +67,6 @@ function handleReindexBranches(data: { type: 'inserted' | 'removed'; index: numb
 
 function getFormComponent(nodeType: string) {
   if (nodeType === 'listener') return ListenerForm;
-  if (nodeType === 'schedule') return ScheduleForm;
   return stepRegistry.getFormComponent(nodeType) || BaseForm;
 }
 

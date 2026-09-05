@@ -6,6 +6,7 @@ import SwitchForm from './switch/form.vue';
 import FireForm from './fire/form.vue';
 import FlowForm from './flow/form.vue';
 import CreateForm from './create/form.vue';
+import ScheduleForm from './schedule/form.vue';
 
 export function registerStepComponents(): void {
   stepRegistry.setComponents('switch', { node: SwitchNode, form: SwitchForm });
@@ -14,4 +15,5 @@ export function registerStepComponents(): void {
   stepRegistry.setComponents('fire', { form: FireForm });
   stepRegistry.setComponents('flow', { form: FlowForm });
   stepRegistry.setComponents('create', { form: CreateForm });
+  stepRegistry.setComponents('schedule', { form: ScheduleForm });
 }

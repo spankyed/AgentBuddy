@@ -22,7 +22,6 @@ import type {
   EdgeEntity,
   FlowEntity,
   ListenerNode,
-  ScheduleNode,
 } from '../config/types';
 import type { ActionEntity } from '@/plugins/actions/be/types';
 import type { PromptEntity } from '@/plugins/prompts/be/types';
@@ -235,9 +234,9 @@ function buildTracksFromGraph(
   promptMap: Map<string, string>,
   flowMap: Map<string, string>
 ): Track[] {
-  // Find all trigger nodes (listeners and schedules)
+  // Find all trigger nodes (listeners + registered triggers like schedule)
   const listenerNodes = nodes.filter(n => n.nodeType === 'listener') as ListenerNode[];
-  const scheduleNodes = nodes.filter(n => n.nodeType === 'schedule') as ScheduleNode[];
+  const registeredTriggerNodes = nodes.filter(n => stepRegistry.isTrigger(n.nodeType));
 
   // Build edge maps once for use in chain detection and step collection
   const incomingEdges = new Map<string, string[]>();
@@ -254,7 +253,7 @@ function buildTracksFromGraph(
 
   const triggerNodeIds = new Set([
     ...listenerNodes.map(n => n.id as string),
-    ...scheduleNodes.map(n => n.id as string),
+    ...registeredTriggerNodes.map(n => n.id as string),
   ]);
 
   // Graph context for inline branch detection during decompilation
@@ -328,40 +327,45 @@ function buildTracksFromGraph(
     return unique;
   }
 
-  const triggerNodes = nodes.filter(
-    (node): node is ListenerNode | ScheduleNode =>
-      node.nodeType === 'listener' || node.nodeType === 'schedule'
-  );
+  const allTriggerNodes = [
+    ...listenerNodes,
+    ...registeredTriggerNodes,
+  ];
 
-  for (const triggerNode of triggerNodes) {
+  for (const triggerNode of allTriggerNodes) {
     if (triggerNode.nodeType === 'listener') {
+      const listenerNode = triggerNode as ListenerNode;
       const track: Track = {
-        event: triggerNode.eventType || triggerNode.label || 'unknown',
+        event: listenerNode.eventType || listenerNode.label || 'unknown',
         exits: buildExits(triggerNode.id as string),
       };
 
-      track.label = uniqueLabel(triggerNode.label || triggerNode.eventType);
+      track.label = uniqueLabel(listenerNode.label || listenerNode.eventType);
 
-      if (triggerNode.description) {
-        track.description = triggerNode.description;
+      if (listenerNode.description) {
+        track.description = listenerNode.description;
       }
 
       tracks.push(track);
       continue;
     }
 
-    const track: Track = {
-      schedule: triggerNode.cronExpression,
-      exits: buildExits(triggerNode.id as string),
-    };
+    const triggerFacet = stepRegistry.getTrigger(triggerNode.nodeType);
+    if (triggerFacet?.decompile) {
+      const trackFields = triggerFacet.decompile(triggerNode as unknown as Record<string, unknown>);
+      const track: Track = {
+        ...trackFields,
+        exits: buildExits(triggerNode.id as string),
+      } as Track;
 
-    track.label = uniqueLabel(triggerNode.label || `Schedule`);
+      track.label = uniqueLabel(triggerNode.label || triggerNode.nodeType);
 
-    if (triggerNode.description) {
-      track.description = triggerNode.description;
+      if (triggerNode.description) {
+        track.description = triggerNode.description;
+      }
+
+      tracks.push(track);
     }
-
-    tracks.push(track);
   }
 
   return tracks;

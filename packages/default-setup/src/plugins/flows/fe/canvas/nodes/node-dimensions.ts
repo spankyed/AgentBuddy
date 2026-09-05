@@ -82,13 +82,28 @@ const triggerDescriptor: NodeLayoutDescriptor = {
 
 const triggerDescriptors = new Map<string, NodeLayoutDescriptor>([
   ['listener', triggerDescriptor],
-  ['schedule', triggerDescriptor],
 ])
 
 export function getDescriptor(nodeType?: string): NodeLayoutDescriptor {
   if (!nodeType) return defaultDescriptor;
   const triggerDesc = triggerDescriptors.get(nodeType);
   if (triggerDesc) return triggerDesc;
+  if (stepRegistry.isTrigger(nodeType)) {
+    const layout = stepRegistry.getFE(nodeType)?.layout;
+    if (layout) {
+      return {
+        getHeight: layout.getHeight
+          ? (node, ctx) => layout.getHeight!(node as any, ctx)
+          : triggerDescriptor.getHeight,
+        getPorts: layout.getPorts
+          ? (node, ctx) => layout.getPorts!(node as any, ctx) as ElkPort[]
+          : triggerDescriptor.getPorts,
+        hasInput: false,
+        usesExitCount: layout.usesExitCount ?? triggerDescriptor.usesExitCount,
+      };
+    }
+    return triggerDescriptor;
+  }
   const layout = stepRegistry.getFE(nodeType)?.layout;
   if (layout) {
     return {

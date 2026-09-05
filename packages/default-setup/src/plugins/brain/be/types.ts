@@ -18,7 +18,7 @@ export interface TNodeEntity extends BaseEntity {
 
   // For event nodes pulsing
   eventType?: string;
-  triggerType?: 'listener' | 'schedule';
+  triggerType?: string;
   cronExpression?: string;
 
   // Type of the node being executed
@@ -49,7 +49,7 @@ export interface EventListenerEntity {
   nodeId: EARS.EntityId;
   eventType: string;
   label: string;
-  triggerType: 'listener' | 'schedule';
+  triggerType: string;
   scope?: 'global' | 'local' | 'entry';
   cronExpression?: string;
 }

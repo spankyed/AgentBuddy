@@ -207,8 +207,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { NodeEntity } from '@app/api'
-import BaseForm from './BaseForm.vue'
-import { validateCronExpression } from '../../helpers/cron-utils'
+import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
+import { validateCronExpression } from '@/plugins/flows/fe/helpers/cron-utils'
 
 type Frequency = 'every_second' | 'every_minute' | 'hourly' | 'daily' | 'weekly' | 'monthly'
 

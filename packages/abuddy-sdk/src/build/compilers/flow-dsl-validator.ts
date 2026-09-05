@@ -203,12 +203,8 @@ function validateStep(
     return errors;
   }
 
-  if (s.type === 'listener') {
-    errors.push({ path, message: 'Steps cannot have type "listener". Use track.event instead.' });
-    return errors;
-  }
-  if (s.type === 'schedule') {
-    errors.push({ path, message: 'Steps cannot have type "schedule". Use track.schedule instead.' });
+  if (s.type === 'listener' || stepRegistry.isTrigger(s.type as string)) {
+    errors.push({ path, message: `Steps cannot have type "${s.type}". Trigger types belong at the track level.` });
     return errors;
   }
 
