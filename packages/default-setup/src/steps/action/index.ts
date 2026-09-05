@@ -2,7 +2,7 @@ import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidat
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { EARS } from '@/registries/ears';
-import { expandFieldMappings, collapseFieldMappings } from '../shared';
+import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
 import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
 import { brainInspect } from '@/plugins/brain/be/utils/brain-inspect';
@@ -27,7 +27,7 @@ function compile(
       description: node.description,
       actionId,
       params: node.params,
-      fieldMappings: expandFieldMappings(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
       final: node.final,
     },
     relations: actionId ? [
@@ -183,7 +183,7 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
   if (node.label && node.label !== actionLabel) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
-  const map = collapseFieldMappings(node.fieldMappings as any);
+  const map = collapseRecord(node.fieldMappings as any);
   if (map) dsl.map = map;
   if (node.params && Object.keys(node.params as any).length > 0) dsl.params = node.params;
   return dsl;

@@ -1,6 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@/registries/ears';
-import { expandFieldMappings, collapseFieldMappings } from '../shared';
+import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
 
 function compile(
   node: Record<string, unknown>,
@@ -19,7 +19,7 @@ function compile(
       description: node.description,
       flowRef,
       propagateCtx: node.inherit !== false,
-      fieldMappings: expandFieldMappings(node.map as Record<string, string> | undefined),
+      fieldMappings: expandRecord(node.map as Record<string, string> | undefined),
       final: node.final,
     },
     relations: [],
@@ -50,7 +50,7 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
   if (node.propagateCtx === false) dsl.inherit = false;
-  const map = collapseFieldMappings(node.fieldMappings as any);
+  const map = collapseRecord(node.fieldMappings as any);
   if (map) dsl.map = map;
   return dsl;
 }

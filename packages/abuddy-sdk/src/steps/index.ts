@@ -1,4 +1,5 @@
 export { stepRegistry } from './registry';
+export { expandRecord, collapseRecord } from './utils';
 export type {
   StepDefinition,
   StepBuildFacet,
