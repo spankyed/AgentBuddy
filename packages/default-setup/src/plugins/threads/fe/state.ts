@@ -1055,7 +1055,7 @@ const threadsState = setup({
       if (stored) {
         for (const storedTab of stored.tabs) {
           if (storedTab.groupId) storedGroupIdMap.set(storedTab.id, storedTab.groupId);
-          if (!backendTabIds.has(storedTab.id)) {
+          if (!backendTabIds.has(storedTab.id) && startupThreadMap[storedTab.id]) {
             const label = threadLabelMap.get(storedTab.id) || storedTab.label || 'Thread';
             allTabs.push({ id: storedTab.id, label, artifacts: [], ...(storedTab.groupId && { groupId: storedTab.groupId }) });
           }

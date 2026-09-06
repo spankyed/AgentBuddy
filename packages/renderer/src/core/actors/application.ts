@@ -255,10 +255,8 @@ export const createApplicationState = () => setup({
       });
 
       const subscription = trpc.bus.sub.subscribe(
-        undefined, // sessionId is ignored now
+        undefined,
         {
-          // onConnectionStateChange(state) {
-          // },
           onError: (error: any) => {
             console.error('Error in subscription:', error);
             sendBack({ type: 'BACKEND_ERROR', error: String(error) });

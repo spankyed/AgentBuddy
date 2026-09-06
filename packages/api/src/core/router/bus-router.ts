@@ -45,18 +45,9 @@ export const systemBusRouter = router({
       rootEvents.emitIncoming(input);
     }),
   sub: procedure
-    // .input(z.object({ sessionId: z.string() }))
     .subscription(() =>
       observable<OutgoingSystemEvents>((emit) => {
-        // Subscribe to root event emitter for outgoing events
         const unsubscribe = rootEvents.onOutgoing((event) => {
-          const skipLogging = ['EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
-
-          if (!skipLogging) {
-            // logger.info(`← Outgoing: "${event.type}"`);
-            // logger.info(`← Outgoing: "${event.type}"`, { event });
-          }
-
           emit.next(event);
         });
 

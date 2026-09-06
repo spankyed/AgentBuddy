@@ -17,7 +17,12 @@ function busMod() {
 }
 
 export const rootEvents: any = new Proxy({} as any, {
-  get(_, prop: string) { return busMod().rootEvents[prop]; },
+  get(_, prop: string) {
+    const real = busMod().rootEvents;
+    const value = real[prop];
+    if (typeof value === 'function') return value.bind(real);
+    return value;
+  },
 });
 
 let _eventsMod: any;

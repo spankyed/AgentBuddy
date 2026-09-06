@@ -75,7 +75,7 @@ export const backendSystem = setup({
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
     },
-    sendConnected: (({ system }) => {
+    sendConnected: (({ system, event }) => {
       const systems = getRegisteredSystems();
       for (const id of systems.keys()) {
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
@@ -119,8 +119,7 @@ export const backendSystem = setup({
         entry: 'sendConnected',
         on: {
           CLIENT_CONNECTED: {
-            target: 'connected',
-            reenter: true,
+            actions: 'sendConnected',
           },
           INCOMING: {
             actions: 'routeIncoming'
