@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { stepRegistry } from '@abuddy/sdk/steps'
 import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/sdk/fe/components/node-dimensions'
 import type { LayoutNodeData } from '@abuddy/sdk/fe/components/node-dimensions'
 import {
@@ -7,6 +8,62 @@ import {
   partitionIntoComponents,
   buildElkGraph,
 } from '../layout-utils'
+
+const SWITCH_DIMS = NODE_DIMENSIONS.switch
+
+beforeAll(() => {
+  stepRegistry.register({
+    type: 'switch',
+    fe: {
+      nodeConfig: { label: 'Switch', connectionRules: { inputs: 1, outputs: -1 } },
+      layout: {
+        getHeight: (node) => {
+          const branchCount = (node.conditions as any[])?.length ?? 0;
+          return Math.max(50, SWITCH_DIMS.headerOffset + branchCount * SWITCH_DIMS.rowHeight + SWITCH_DIMS.bottomPadding);
+        },
+        getPorts: (node) => {
+          const branchCount = (node.conditions as any[])?.length ?? 0;
+          const ports: Array<{ id: string; layoutOptions: Record<string, string> }> = [
+            { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
+          ];
+          for (let i = 0; i < branchCount; i++) {
+            ports.push({
+              id: `${node.id}-out-branch-${i}`,
+              layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) },
+            });
+          }
+          return ports;
+        },
+        hasInput: true,
+      },
+    },
+  } as any);
+
+  stepRegistry.register({
+    type: 'fire',
+    fe: {
+      nodeConfig: { label: 'Fire', connectionRules: { inputs: 1, outputs: 0 } },
+      layout: {
+        getPorts: (node: any) => [
+          { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },
+        ],
+        hasInput: true,
+      },
+    },
+  } as any);
+
+  stepRegistry.register({
+    type: 'listener',
+    kind: 'trigger',
+    fe: {
+      nodeConfig: { label: 'Listener', connectionRules: { inputs: 0, outputs: -1 } },
+    },
+  } as any);
+});
+
+afterAll(() => {
+  stepRegistry.clear();
+});
 
 // --- parseHandleIndex ---
 

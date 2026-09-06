@@ -14,6 +14,9 @@ untracked
 # Stale tsc output in source dirs (preload has no outDir)
 packages/preload/src/**/*.js
 
+# Test output
+test-results/
+
 # Build artifacts
 native/speech/macos/SpeechHelper
 build/prod/logs/

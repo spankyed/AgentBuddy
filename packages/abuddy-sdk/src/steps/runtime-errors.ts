@@ -5,7 +5,8 @@ import { repository } from '../ears/repository';
 import type { EARS } from '../types/entities';
 import type { StepRuntimeError } from './types';
 
-const logger = createLogger('step-runtime');
+let _logger: ReturnType<typeof createLogger>;
+function logger() { return _logger ??= createLogger('step-runtime'); }
 
 type RuntimeErrorInput = Omit<StepRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp'> & {
   error: unknown;
@@ -53,7 +54,7 @@ export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeErr
       });
     } catch (err) {
       if (!(err instanceof Error && err.message.includes('"brainCommands" is not registered'))) {
-        logger.warn('Failed to persist runtime error on TNode', {
+        logger().warn('Failed to persist runtime error on TNode', {
           tNodeId: runtimeError.tNodeId,
           error: err,
         });
