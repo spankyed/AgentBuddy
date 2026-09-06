@@ -1174,7 +1174,7 @@ const threadsState = setup({
         enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
       }
     }),
-    removeStaleTab: assign(({ context, event }) => {
+    removeStaleTab: enqueueActions(({ enqueue, context, self, event }) => {
       const { threadId } = event as unknown as { type: 'THREAD_CHAT_ERROR'; threadId: string };
       const newTabs = context.tabs.filter(t => t.id !== threadId);
       let newActiveTabId = context.activeTabId;
@@ -1183,7 +1183,10 @@ const threadsState = setup({
         const nextTab = context.tabs[idx + 1] ?? context.tabs[idx - 1];
         newActiveTabId = nextTab?.id ?? '';
       }
-      return { tabs: newTabs, activeTabId: newActiveTabId };
+      enqueue(assign({ tabs: newTabs, activeTabId: newActiveTabId }));
+      if (newActiveTabId && newActiveTabId !== context.activeTabId) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
+      }
     }),
     persistTabs: ({ context }) => saveTabsToStorage(context.tabs, context.activeTabId),
     persistTabGroups: ({ context }) => saveThreadTabGroups(context.tabGroups),
