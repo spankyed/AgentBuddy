@@ -34,3 +34,15 @@ function servicesMod() { if (!_servicesMod) _servicesMod = getHostModule('servic
 export const services: any = new Proxy({} as any, {
   get(_, prop: string) { return servicesMod()[prop]; },
 });
+
+const teardowns: ((threadId: string) => void)[] = [];
+
+export function registerThreadTeardown(fn: (threadId: string) => void): void {
+  teardowns.push(fn);
+}
+
+export function runThreadTeardown(threadId: string): void {
+  for (const fn of teardowns) {
+    try { fn(threadId); } catch { /* already gone */ }
+  }
+}

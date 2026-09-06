@@ -1,12 +1,17 @@
-/** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
-
 import type { CodexTurnHandle } from './types'
 import { createLogger } from '@abuddy/sdk/logger'
-import { registerCleanup } from '@/plugins/threads/be/services/threads'
+import { registerThreadTeardown } from '@abuddy/sdk/services'
 
 const logger = createLogger('codex-handle-store')
 const activeHandles = new Map<string, CodexTurnHandle>()
-const cleanupUnsubs = new Map<string, () => void>()
+
+registerThreadTeardown((threadId: string) => {
+  const h = activeHandles.get(threadId)
+  if (h) {
+    try { h.abort()?.catch?.(() => {}) } catch { /* already gone */ }
+    activeHandles.delete(threadId)
+  }
+})
 
 export function storeHandle(key: string, handle: CodexTurnHandle): void {
   const existing = activeHandles.get(key)
@@ -18,18 +23,7 @@ export function storeHandle(key: string, handle: CodexTurnHandle): void {
     try { existing.abort()?.catch?.(() => {}) } catch { /* already gone */ }
     logger.warn('overwriting active handle — aborted previous', { key })
   }
-  cleanupUnsubs.get(key)?.()
   activeHandles.set(key, handle)
-
-  const unsub = registerCleanup(`codex-handle:${key}`, (threadId: string) => {
-    if (threadId !== key) return
-    const h = activeHandles.get(key)
-    if (h) {
-      try { h.abort()?.catch?.(() => {}) } catch { /* already gone */ }
-      activeHandles.delete(key)
-    }
-  })
-  cleanupUnsubs.set(key, unsub)
 }
 
 export function getHandle(key: string): CodexTurnHandle | undefined {
@@ -38,6 +32,4 @@ export function getHandle(key: string): CodexTurnHandle | undefined {
 
 export function clearHandle(key: string): void {
   activeHandles.delete(key)
-  cleanupUnsubs.get(key)?.()
-  cleanupUnsubs.delete(key)
 }

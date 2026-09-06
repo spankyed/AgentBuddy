@@ -13,7 +13,7 @@ import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
-import { services } from '@abuddy/sdk/services';
+import { services, runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FieldContent } from '@/registries/types';
@@ -353,7 +353,7 @@ export const threadsSystem = setup({
       const { threadId } = threadsDef.typeOf('DELETE_THREAD', event);
 
       // Stop active processes before hard-deleting the thread.
-      services.threads.runCleanup(threadId);
+      runThreadTeardown(threadId);
 
       try {
         repository.threadCommands.delete(threadId as EARS.EntityId);
@@ -801,7 +801,7 @@ export const threadsSystem = setup({
 
       // Stop active processes before soft-deleting so nothing races
       // against the deletion (e.g. a stream consumer writing to messages).
-      services.threads.runCleanup(threadId);
+      runThreadTeardown(threadId);
 
       const deletion = repository.chatCommands.softDeleteMessagesAfter({
         threadId: threadId as EARS.EntityId,
@@ -854,7 +854,7 @@ export const threadsSystem = setup({
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
       // Stop active processes before soft-deleting (same as revert).
-      services.threads.runCleanup(threadId);
+      runThreadTeardown(threadId);
 
       // Matches Claude Code's native `direction: 'from'` — the pivot and
       // everything after it disappear from the visible transcript, then a
