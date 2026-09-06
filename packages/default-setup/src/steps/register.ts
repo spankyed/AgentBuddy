@@ -1,4 +1,4 @@
-import { stepRegistry } from '@abuddy/sdk/steps';
+import type { StepDefinition } from '@abuddy/sdk/steps';
 import { actionStep } from './action';
 import { llmStep } from './llm';
 import { switchStep } from './switch';
@@ -13,7 +13,7 @@ import { killStep } from './kill';
 import { scheduleTrigger } from './schedule';
 import { listenerTrigger } from './listener';
 
-const standardSteps = [
+export const standardSteps: StepDefinition[] = [
   actionStep,
   llmStep,
   switchStep,
@@ -28,9 +28,3 @@ const standardSteps = [
   scheduleTrigger,
   listenerTrigger,
 ];
-
-export function registerStandardSteps(): void {
-  for (const step of standardSteps) {
-    stepRegistry.register(step);
-  }
-}

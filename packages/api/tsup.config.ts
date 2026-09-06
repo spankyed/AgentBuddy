@@ -29,6 +29,12 @@ export default defineConfig({
   external: ['typescript', 'esbuild'],
   esbuildPlugins: [
     {
+      name: 'externalize-vue',
+      setup(build) {
+        build.onResolve({ filter: /\.vue$/ }, () => ({ path: '__vue_stub__', external: true }));
+      },
+    },
+    {
       name: 'rewrite-pack-loader',
       setup(build) {
         build.onLoad({ filter: /pack-loader\.ts$/ }, async (args) => {

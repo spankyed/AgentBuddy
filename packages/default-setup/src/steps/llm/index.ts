@@ -13,6 +13,7 @@ export const llmStep: StepDefinition = {
     isAsync: true,
   },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     colorKey: 'indigo',
     nodeConfig: {
       label: 'LLM',

@@ -86,6 +86,7 @@ export const fireStep: StepDefinition = {
   build: { compile, validate, getLabel, decompile },
   runtime: { handler },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     colorKey: 'amber',
     nodeConfig: {
       label: 'Fire',

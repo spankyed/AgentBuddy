@@ -14,6 +14,7 @@ import { EARS } from './registries/ears';
 import { earlyBootSystem, createDefaultSettings } from './registries/boot';
 import { runBootSeed } from './registries/seed/index';
 import { migrations } from './migrations';
+import { standardSteps } from './steps/register';
 
 const eventValidation = buildEventValidationMap();
 
@@ -27,6 +28,7 @@ export const registration: PackRegistration = {
   id: 'default-setup',
   systems: systemDefs,
   services: featureServices,
+  steps: standardSteps,
   ears: {
     entities: Object.fromEntries(
       Object.entries(EARS.Entity).filter(([k, v]) => typeof v === 'string' && k !== 'Custom') as [string, string][]

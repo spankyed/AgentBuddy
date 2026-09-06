@@ -13,6 +13,7 @@ export const actionStep: StepDefinition = {
     isAsync: true,
   },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     colorKey: 'neutral',
     nodeConfig: {
       label: 'Action',

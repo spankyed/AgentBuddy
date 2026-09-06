@@ -43,6 +43,7 @@ export const createStep: StepDefinition = {
   type: 'create',
   build: { compile, validate, getLabel, decompile },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     colorKey: 'purple',
     nodeConfig: {
       label: 'Create',

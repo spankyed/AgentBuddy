@@ -12,7 +12,6 @@ import type {
 } from './types';
 import { isFlowConfig, resolveTracks } from './types';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { registerStandardSteps } from '@/steps/register';
 
 /*─────────────────────────────────────────────────────────────────
  * Validation Context
@@ -48,7 +47,6 @@ interface ValidateOptions {
  * Validate a Flow DSL document (track-based format)
  */
 export function validate(dsl: unknown, options: ValidateOptions = {}): ValidationResult {
-  registerStandardSteps();
   const errors: ValidationError[] = [];
 
   // Basic structure check - should be a non-null object

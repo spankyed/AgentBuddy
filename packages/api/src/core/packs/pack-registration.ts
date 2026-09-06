@@ -6,6 +6,7 @@
  */
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration } from '@abuddy/sdk/framework';
+import { stepRegistry } from '@abuddy/sdk/steps';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -18,6 +19,13 @@ export function registerPack(registration: PackRegistration): void {
     throw new Error(`Pack "${registration.id}" is already registered`);
   }
   registrations.set(registration.id, registration);
+
+  if (registration.steps) {
+    for (const step of registration.steps) {
+      stepRegistry.register(step);
+    }
+  }
+
   _entityTypeCache = null;
 }
 

@@ -11,7 +11,10 @@ export default {
   settings: './src/seeds/default-settings.ts',
   plugins: './src/plugins',
   async setup() {
-    const { registerStandardSteps } = await import('./src/steps/register');
-    registerStandardSteps();
+    const { standardSteps } = await import('./src/steps/register');
+    const { stepRegistry } = await import('@abuddy/sdk/steps');
+    for (const step of standardSteps) {
+      stepRegistry.register(step);
+    }
   },
 } satisfies PackConfig;

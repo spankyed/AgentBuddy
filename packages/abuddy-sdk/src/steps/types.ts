@@ -194,8 +194,10 @@ export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
   defaults?: Record<string, unknown>;
-  /** Vue component refs — set via setComponents(), never in .ts files. */
+  /** Vue component refs — populated by initComponents() from loadComponents factory. */
   components?: { node?: unknown; form?: unknown };
+  /** Lazy factory that returns Vue components. Runs in FE context only. */
+  loadComponents?: () => { node?: unknown; form?: unknown };
   /** Custom ELK layout descriptor (height/ports). Omit → default single-input single-output. */
   layout?: StepLayoutDescriptor;
   /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */

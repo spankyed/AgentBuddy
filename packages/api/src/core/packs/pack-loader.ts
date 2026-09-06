@@ -54,6 +54,8 @@ export interface LoadedPack {
   manifest: PackManifest;
   dir: string;
   systems: Map<string, { machine: any; events: Set<string> }>;
+  services?: Record<string, unknown>;
+  steps?: import('@abuddy/sdk/steps').StepDefinition[];
 }
 
 function getPacksDir(): string {
@@ -92,23 +94,9 @@ function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string 
   return results;
 }
 
-function loadSystemFromCJS(
-  entry: string,
-  packDir: string,
-): { machine: any; events: Set<string> } | null {
-  const fullPath = path.resolve(packDir, entry);
-  if (!fullPath.startsWith(packDir + path.sep)) {
-    logger.warn(`System entry escapes pack directory: ${entry}`);
-    return null;
-  }
-  if (!fs.existsSync(fullPath)) {
-    logger.warn(`System entry not found: ${fullPath}`);
-    return null;
-  }
-
+function withHostResolution<T>(fn: () => T): T {
   const originalResolve = (Module as any)._resolveFilename;
 
-  // Pre-resolve all host-provided paths BEFORE installing the override to avoid recursion
   const hostResolutions = new Map<string, string>();
   try {
     const sdkEntry = esmRequire.resolve('@abuddy/sdk');
@@ -133,19 +121,39 @@ function loadSystemFromCJS(
       return originalResolve.call(this, request, ...args);
     };
 
-    const mod = esmRequire(fullPath);
-    const machine = mod.default || mod.system || mod.machine;
-    if (!machine) {
-      logger.warn(`No machine export found in ${entry}`);
-      return null;
-    }
+    return fn();
+  } finally {
+    (Module as any)._resolveFilename = originalResolve;
+  }
+}
 
-    return { machine, events: new Set<string>(machine.events || []) };
+function loadSystemFromCJS(
+  entry: string,
+  packDir: string,
+): { machine: any; events: Set<string> } | null {
+  const fullPath = path.resolve(packDir, entry);
+  if (!fullPath.startsWith(packDir + path.sep)) {
+    logger.warn(`System entry escapes pack directory: ${entry}`);
+    return null;
+  }
+  if (!fs.existsSync(fullPath)) {
+    logger.warn(`System entry not found: ${fullPath}`);
+    return null;
+  }
+
+  try {
+    return withHostResolution(() => {
+      const mod = esmRequire(fullPath);
+      const machine = mod.default || mod.system || mod.machine;
+      if (!machine) {
+        logger.warn(`No machine export found in ${entry}`);
+        return null;
+      }
+      return { machine, events: new Set<string>(machine.events || []) };
+    });
   } catch (err) {
     logger.error(`Failed to load system from ${entry}:`, err as Error);
     return null;
-  } finally {
-    (Module as any)._resolveFilename = originalResolve;
   }
 }
 
@@ -186,7 +194,22 @@ export function loadExternalPacks(): LoadedPack[] {
       }
     }
 
-    loaded.push({ manifest, dir, systems });
+    const pack: LoadedPack = { manifest, dir, systems };
+
+    const mainEntry = path.join(dir, 'dist', 'index.js');
+    if (fs.existsSync(mainEntry)) {
+      try {
+        withHostResolution(() => {
+          const mod = esmRequire(mainEntry);
+          if (mod.services) pack.services = mod.services;
+          if (mod.steps) pack.steps = mod.steps;
+        });
+      } catch (err) {
+        logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
+      }
+    }
+
+    loaded.push(pack);
   }
 
   return loaded;
@@ -214,7 +237,12 @@ export function registerExternalPacks(packs: LoadedPack[]): void {
       machine: sys.machine,
       events: sys.events,
     }));
-    registerPack({ id: pack.manifest.id, systems });
+    registerPack({
+      id: pack.manifest.id,
+      systems,
+      services: pack.services,
+      steps: pack.steps,
+    });
     logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
   }
 }

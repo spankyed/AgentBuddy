@@ -29,6 +29,7 @@ export const listenerTrigger: StepDefinition = {
     queryFields: ['eventType', 'scope'],
   },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     nodeConfig: {
       label: 'Listener',
       defaultLabel: 'On event',

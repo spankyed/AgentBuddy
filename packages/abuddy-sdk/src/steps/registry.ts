@@ -88,6 +88,14 @@ class StepRegistry {
     return [...this.steps.values()];
   }
 
+  initComponents(): void {
+    for (const def of this.steps.values()) {
+      if (def.fe?.loadComponents && !def.fe.components) {
+        def.fe.components = def.fe.loadComponents();
+      }
+    }
+  }
+
   clear(): void {
     this.steps.clear();
   }

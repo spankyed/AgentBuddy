@@ -14,6 +14,10 @@ export const switchStep: StepDefinition = {
     },
   },
   fe: {
+    loadComponents: () => ({
+      node: require('./node.vue').default,
+      form: require('./form.vue').default,
+    }),
     colorKey: 'yellow',
     nodeConfig: {
       label: 'Switch',

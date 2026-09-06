@@ -15,7 +15,6 @@ import type {
 } from './types';
 import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './types';
 import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
-import { registerStandardSteps } from '@/steps/register';
 
 /*─────────────────────────────────────────────────────────────────
  * Types
@@ -261,7 +260,6 @@ export interface CompiledRows {
  * Compile a Flow DSL document into EARS Rows format
  */
 export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRows {
-  registerStandardSteps();
   const ts = Date.now();
 
   const entities: object[] = [];

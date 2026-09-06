@@ -61,6 +61,7 @@ export const flowStep: StepDefinition = {
   build: { compile, validate, getLabel, decompile },
   runtime: { spawnsSubflow: true },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     colorKey: 'purple',
     nodeConfig: {
       label: 'Flow',

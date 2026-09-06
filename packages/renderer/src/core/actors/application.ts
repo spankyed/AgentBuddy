@@ -6,7 +6,8 @@ import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
-import { getDesignatedPlugin } from '@abuddy/sdk/fe';
+import { getDesignatedPlugin, registerPluginDesignations } from '@abuddy/sdk/fe';
+import { stepRegistry } from '@abuddy/sdk/steps';
 
 interface BreadcrumbItem {
   label: string;
@@ -319,6 +320,8 @@ export const createApplicationState = () => setup({
       }
       const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
       if (newPlugins.length === 0) return {};
+      registerPluginDesignations(newPlugins);
+      stepRegistry.initComponents();
       const allPlugins = [...context.plugins, ...newPlugins];
       const pluginVisibility = { ...context.pluginVisibility };
       for (const p of newPlugins) pluginVisibility[p.id] = true;

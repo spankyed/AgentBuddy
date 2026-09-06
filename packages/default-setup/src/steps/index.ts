@@ -1,4 +1,4 @@
-export { registerStandardSteps } from './register';
+export { standardSteps } from './register';
 export { actionStep } from './action';
 export { llmStep } from './llm';
 export { switchStep } from './switch';

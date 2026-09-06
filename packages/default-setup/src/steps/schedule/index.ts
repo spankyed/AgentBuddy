@@ -19,6 +19,7 @@ export const scheduleTrigger: StepDefinition = {
     validate,
   },
   fe: {
+    loadComponents: () => ({ form: require('./form.vue').default }),
     nodeConfig: {
       label: 'Schedule',
       defaultLabel: 'On schedule',

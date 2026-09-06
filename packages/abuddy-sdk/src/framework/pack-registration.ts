@@ -40,4 +40,5 @@ export interface PackRegistration {
   ears?: PackEARS;
   boot?: PackBootHooks;
   migrations?: PackMigration[];
+  steps?: import('../steps/types').StepDefinition[];
 }
