@@ -86,7 +86,7 @@ import {
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@/registries/types'
-import { BaseNode } from '@/plugins/flows/fe/canvas/nodes';
+import BaseNode from '@abuddy/sdk/fe/components/BaseNode.vue';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
 import { cronToHuman } from '@abuddy/sdk/cron';

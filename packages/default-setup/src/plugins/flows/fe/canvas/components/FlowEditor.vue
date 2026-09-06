@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, computed } from 'vue'
+import { watch, computed, provide } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
@@ -118,11 +118,14 @@ import { Controls } from '@vue-flow/controls'
 import { Maximize, Pencil } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
+import AddHandle from '../nodes/AddHandle.vue'
 import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
 import type { LayoutDirection } from '@/plugins/flows/fe/canvas/layout-utils'
 import { isTriggerNode } from '../nodes/node-config'
+
+provide('BaseNodeAddHandle', AddHandle)
 
 interface Props {
   nodes: VueFlowNode[]

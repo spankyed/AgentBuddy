@@ -26,6 +26,7 @@
     "./fe/utils/json-detection": "./src/fe/utils/json-detection.ts",
     "./fe/utils/path-truncation": "./src/fe/utils/path-truncation.ts",
     "./fe/components/*": "./src/fe/components/*",
+    "./fe/components/node-styles": "./src/fe/components/node-styles.ts",
     "./fe/components/monaco-config": "./src/fe/components/monaco-config.ts",
     "./fe/components/tiptap/*": "./src/fe/components/tiptap/*",
     "./fe/components/tiptap/editor-system": "./src/fe/components/tiptap/editor-system.ts",
@@ -55,7 +56,8 @@
     "monaco-editor": "^0.55.1",
     "reka-ui": "^2.2.1",
     "tiptap-markdown": "^0.9.0",
-    "vue": "^3.0.0"
+    "vue": "^3.0.0",
+    "@vue-flow/core": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "vue": {
@@ -89,6 +91,9 @@
       "optional": true
     },
     "lucide-vue-next": {
+      "optional": true
+    },
+    "@vue-flow/core": {
       "optional": true
     }
   },
