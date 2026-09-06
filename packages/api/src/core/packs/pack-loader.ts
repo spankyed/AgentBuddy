@@ -252,7 +252,8 @@ export function registerPackSystems(
   }
 }
 
-export function registerExternalPacks(packs: LoadedPack[]): void {
+export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
+  const registered: LoadedPack[] = [];
   for (const pack of packs) {
     const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => ({
       id: `${pack.manifest.id}.${featureId}`,
@@ -272,11 +273,13 @@ export function registerExternalPacks(packs: LoadedPack[]): void {
       if (pack.boot?.shutdown) {
         registerShutdownHook(pack.boot.shutdown);
       }
+      registered.push(pack);
       logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
     } catch (err) {
       logger.error(`Failed to register pack ${pack.manifest.id}:`, err as Error);
     }
   }
+  return registered;
 }
 
 export function computePackSeedHash(distDir: string): string {

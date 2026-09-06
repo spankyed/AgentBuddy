@@ -45,6 +45,7 @@ export function runPackMigrations(packs: LoadedPack[]): void {
     if (compareVersions(currentVersion, targetVersion) >= 0) continue;
 
     const sorted = [...pack.migrations].sort((a, b) => compareVersions(a.target, b.target));
+    let failed = false;
     for (const m of sorted) {
       if (compareVersions(m.target, currentVersion) > 0 && compareVersions(m.target, targetVersion) <= 0) {
         console.log(`[migration:${pack.manifest.id}] Running ${m.target}: ${m.description}`);
@@ -52,13 +53,16 @@ export function runPackMigrations(packs: LoadedPack[]): void {
           m.up();
         } catch (error) {
           console.error(`[migration:${pack.manifest.id}] FAILED ${m.target}: ${(error as Error).message}`);
+          failed = true;
           break;
         }
       }
     }
 
-    updated[pack.manifest.id] = targetVersion;
-    anyChanged = true;
+    if (!failed) {
+      updated[pack.manifest.id] = targetVersion;
+      anyChanged = true;
+    }
   }
 
   const installedIds = new Set(packs.map(p => p.manifest.id));

@@ -35,9 +35,9 @@ export async function setupBackend(): Promise<void> {
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
   // ── Discover & register external packs (before hydration so EARS types are visible to policy)
-  const externalPacks = loadExternalPacks();
+  let externalPacks = loadExternalPacks();
   if (externalPacks.length > 0) {
-    registerExternalPacks(externalPacks);
+    externalPacks = registerExternalPacks(externalPacks);
   }
 
   // ── Hydrate (policy now sees all entity types from all packs)
