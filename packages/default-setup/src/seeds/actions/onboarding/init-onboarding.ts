@@ -20,14 +20,14 @@ export async function action(
   const existingBirthThreadId = services.database.qx().withRole(ASSISTANT_BIRTH_ROLE).first();
 
   if (existingBirthThreadId) {
-    const threadData = services.database.qx(existingBirthThreadId).pickOne();
-    if (threadData) {
+    const threadData = services.database.qx(existingBirthThreadId).pickAll()[0];
+    if (threadData && Object.keys(threadData).length > 1) {
       await services.logger.info('Birth thread already exists, skipping onboarding init', {
         threadId: existingBirthThreadId,
       });
+      services.chat.openThreadChatAndRefreshRecent(existingBirthThreadId);
       return { threadId: existingBirthThreadId, success: true, created: false };
     }
-    // Stale reference — entity ID exists but data is gone (e.g. after db reset)
     await services.logger.info('Stale birth thread reference found, cleaning up', {
       threadId: existingBirthThreadId,
     });
