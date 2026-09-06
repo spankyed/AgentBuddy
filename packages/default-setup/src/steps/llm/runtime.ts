@@ -3,8 +3,7 @@ import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { EARS } from '@abuddy/sdk';
 import { repository } from '@abuddy/sdk/ears';
 import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
-import { executeTemplate } from '@/plugins/brain/be/utils/template-executor';
-import { createPromptContext } from '@/plugins/brain/be/utils/prompt-context';
+import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
 import { generateText } from '@/plugins/brain/be/services/llm';
 import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
 
@@ -38,7 +37,7 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
 
       brainInspect(`Using resolved params for ${node.label}:`, templateParams);
 
-      const promptContext = createPromptContext(executeTemplate, (label: string) => repository.promptQueries.byLabel(label));
+      const promptContext = createTemplateResolver(executeTemplate, (label: string) => repository.promptQueries.byLabel(label));
 
       return executeTemplate(prompt.templateFn, templateParams, promptContext);
     } catch (error) {

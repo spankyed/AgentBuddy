@@ -1,5 +1,4 @@
-import { executeTemplate } from '@/plugins/brain/be/utils/template-executor';
-import { createPromptContext } from '@/plugins/brain/be/utils/prompt-context';
+import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
 import { repository } from '@abuddy/sdk/ears';
 import type { PromptEntity } from '@/plugins/prompts/be/types';
 
@@ -17,8 +16,8 @@ export class PromptService {
     templateFn: string, 
     templateParams: Record<string, any>
   ): string {
-    const context = createPromptContext(executeTemplate, (label) => this.getByLabel(label));
-    return executeTemplate(templateFn, templateParams, context);
+    const resolver = createTemplateResolver(executeTemplate, (label) => this.getByLabel(label));
+    return executeTemplate(templateFn, templateParams, resolver);
   }
 
   /**

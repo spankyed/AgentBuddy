@@ -38,6 +38,7 @@
     "./runtime": "./src/runtime/index.ts",
     "./logger": "./src/logger/index.ts",
     "./rpc": "./src/rpc/index.ts",
+    "./templates": "./src/templates.ts",
     "./utils": "./src/utils/index.ts",
     "./services": "./src/services/index.ts",
     "./backup": "./src/backup/index.ts"
