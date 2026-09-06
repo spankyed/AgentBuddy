@@ -1,4 +1,4 @@
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {

@@ -1,4 +1,4 @@
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 
 export const migration = {
   target: '0.1.0',

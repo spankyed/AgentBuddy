@@ -1,8 +1,5 @@
 import { EARS } from '../registries/ears';
-import { findAll } from '@/core/shared/repository';
-import { qx } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
-import { repository } from '@/repository';
+import { findAll, qx, tx, repository } from '@abuddy/sdk/ears';
 import type { ThreadEntity, ArtifactEntity } from '../plugins/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
 
