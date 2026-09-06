@@ -60,6 +60,7 @@
     "tiptap-markdown": "^0.9.0",
     "vue": "^3.0.0",
     "@vue-flow/core": "^1.0.0",
+    "elkjs": "^0.9.0",
     "ai": "^4.0.0",
     "@ai-sdk/anthropic": "^1.0.0",
     "@ai-sdk/google": "^2.0.0",
@@ -100,6 +101,9 @@
       "optional": true
     },
     "@vue-flow/core": {
+      "optional": true
+    },
+    "elkjs": {
       "optional": true
     },
     "ai": {
