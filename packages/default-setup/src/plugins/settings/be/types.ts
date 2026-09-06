@@ -210,6 +210,7 @@ export interface InternalSettings {
   version: string;
   seedHash: string | null;
   packSeedHashes?: Record<string, string>;
+  packVersions?: Record<string, string>;
 }
 
 export interface AssistantSettings {

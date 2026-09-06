@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
 import { registerPack } from './pack-registration';
+import { registerShutdownHook } from '@/core/shared/lifecycle';
 import { APP_VERSION } from '@/version';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
@@ -29,6 +30,8 @@ export interface PackManifest {
   seedTypes?: string[];
   plugins?: PackPluginDefinition[];
   permissions?: string[];
+  entities?: Record<string, string>;
+  relKinds?: Record<string, string>;
 }
 
 export interface PackPluginDefinition {
@@ -56,6 +59,9 @@ export interface LoadedPack {
   systems: Map<string, { machine: any; events: Set<string> }>;
   services?: Record<string, unknown>;
   steps?: import('@abuddy/sdk/steps').StepDefinition[];
+  ears?: import('@abuddy/sdk/framework').PackEARS;
+  boot?: import('@abuddy/sdk/framework').PackBootHooks;
+  migrations?: import('@abuddy/sdk/framework').PackMigration[];
 }
 
 function getPacksDir(): string {
@@ -203,10 +209,26 @@ export function loadExternalPacks(): LoadedPack[] {
           const mod = esmRequire(mainEntry);
           if (mod.services) pack.services = mod.services;
           if (mod.steps) pack.steps = mod.steps;
+          if (mod.ears) pack.ears = mod.ears;
+          if (mod.boot) pack.boot = mod.boot;
+          if (mod.migrations) pack.migrations = mod.migrations;
         });
       } catch (err) {
         logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
       }
+    }
+
+    if (!pack.ears && (manifest.entities || manifest.relKinds)) {
+      pack.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
+    }
+
+    if (pack.boot?.earlySystem) {
+      logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
+      delete pack.boot.earlySystem;
+    }
+    if (pack.ears?.partitionPolicy) {
+      logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
+      delete pack.ears.partitionPolicy;
     }
 
     loaded.push(pack);
@@ -237,13 +259,23 @@ export function registerExternalPacks(packs: LoadedPack[]): void {
       machine: sys.machine,
       events: sys.events,
     }));
-    registerPack({
-      id: pack.manifest.id,
-      systems,
-      services: pack.services,
-      steps: pack.steps,
-    });
-    logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
+    try {
+      registerPack({
+        id: pack.manifest.id,
+        systems,
+        services: pack.services,
+        steps: pack.steps,
+        ears: pack.ears,
+        boot: pack.boot,
+        migrations: pack.migrations,
+      });
+      if (pack.boot?.shutdown) {
+        registerShutdownHook(pack.boot.shutdown);
+      }
+      logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
+    } catch (err) {
+      logger.error(`Failed to register pack ${pack.manifest.id}:`, err as Error);
+    }
   }
 }
 

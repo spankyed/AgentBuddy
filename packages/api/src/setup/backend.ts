@@ -10,7 +10,7 @@ import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded'
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
-import { runMigrations } from '@/setup/migrations';
+import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { loadExternalPacks, registerExternalPacks, seedPackData } from '@/core/packs/pack-loader';
 import { setLoadedPacks } from '@/core/packs/pack-api';
@@ -34,21 +34,32 @@ export async function setupBackend(): Promise<void> {
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
+  // ── Discover & register external packs (before hydration so EARS types are visible to policy)
+  const externalPacks = loadExternalPacks();
+  if (externalPacks.length > 0) {
+    registerExternalPacks(externalPacks);
+  }
+
+  // ── Hydrate (policy now sees all entity types from all packs)
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
 
+  // ── Default settings for ALL packs (built-in + external)
   for (const hooks of getBootHooks()) {
     hooks.createDefaultSettings?.();
   }
 
+  // ── Host migrations ─────────────────────────────────────────────────
   runMigrations();
 
-  // Seed all registered packs
+  // ── Per-pack migrations ─────────────────────────────────────────────
+  if (externalPacks.length > 0) {
+    runPackMigrations(externalPacks);
+  }
+
+  // ── Seeds ───────────────────────────────────────────────────────────
   runRegisteredBootSeeds();
 
-  // ── Load external packs ──────────────────────────────────────────────
-  const externalPacks = loadExternalPacks();
   if (externalPacks.length > 0) {
-    registerExternalPacks(externalPacks);
     seedPackData(
       externalPacks,
       seedData,

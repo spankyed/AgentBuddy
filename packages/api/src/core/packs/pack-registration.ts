@@ -18,6 +18,25 @@ export function registerPack(registration: PackRegistration): void {
   if (registrations.has(registration.id)) {
     throw new Error(`Pack "${registration.id}" is already registered`);
   }
+
+  if (registration.ears) {
+    for (const [existingId, existing] of registrations) {
+      if (!existing.ears) continue;
+      const existingEntValues = Object.values(existing.ears.entities);
+      for (const val of Object.values(registration.ears.entities)) {
+        if (existingEntValues.includes(val)) {
+          throw new Error(`EARS collision: entity type "${val}" — pack "${registration.id}" vs "${existingId}"`);
+        }
+      }
+      const existingRelValues = Object.values(existing.ears.relKinds);
+      for (const val of Object.values(registration.ears.relKinds)) {
+        if (existingRelValues.includes(val)) {
+          throw new Error(`EARS collision: relation kind "${val}" — pack "${registration.id}" vs "${existingId}"`);
+        }
+      }
+    }
+  }
+
   registrations.set(registration.id, registration);
 
   if (registration.steps) {
