@@ -3,7 +3,7 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { createInspectLogger } from '@abuddy/sdk/logger';
 import { extractValueByPath } from '@abuddy/sdk/utils';
-import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
 
@@ -184,7 +184,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     });
 
     if (conditions.length === 0) {
-      const runtimeError = reportBrainRuntimeError({
+      const runtimeError = reportStepRuntimeError({
         error: new Error('Switch node has no conditions to evaluate'),
         source: 'brain-switch',
         phase: 'switch.validate',
@@ -232,7 +232,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       },
     });
   } catch (error) {
-    const runtimeError = reportBrainRuntimeError({
+    const runtimeError = reportStepRuntimeError({
       error,
       source: 'brain-switch',
       phase: 'switch.evaluate',

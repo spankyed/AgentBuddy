@@ -6,7 +6,7 @@ import { registerStandardSteps } from '@/steps/register';
 registerStandardSteps();
 import { emit, getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/registries/ears';
-import type { BrainRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
+import type { StepRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
@@ -45,7 +45,7 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
   | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
-  | { type: 'BRAIN_RUNTIME_ERROR'; error: BrainRuntimeError }
+  | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_KILLED' }
   | { type: 'BRAIN_STARTED' }

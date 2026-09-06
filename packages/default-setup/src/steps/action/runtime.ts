@@ -3,7 +3,7 @@ import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
 import { createInspectLogger } from '@abuddy/sdk/logger';
-import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const { inspect: brainInspect } = createInspectLogger('brain');
 
@@ -99,7 +99,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     a.send({ type: 'COMPLETE', result });
 
   } catch (error) {
-    const runtimeError = reportBrainRuntimeError({
+    const runtimeError = reportStepRuntimeError({
       error,
       source: 'brain-action',
       phase: 'action.execute',

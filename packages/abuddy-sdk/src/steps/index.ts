@@ -1,5 +1,6 @@
 export { stepRegistry } from './registry';
 export { expandRecord, collapseRecord } from './utils';
+export { reportStepRuntimeError, toStepRuntimeError } from './runtime-errors';
 export type {
   StepDefinition,
   StepBuildFacet,
@@ -25,4 +26,5 @@ export type {
   StepRun,
   RuntimeServices,
   ExecutionContext,
+  StepRuntimeError,
 } from './types';

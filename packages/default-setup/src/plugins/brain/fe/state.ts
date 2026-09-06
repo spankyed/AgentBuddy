@@ -7,7 +7,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type {
   OutgoingBrainEvents,
 } from '@/registries/types'
-import type { BrainRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@/registries/types';
+import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@/registries/types';
 import { trpc } from '@abuddy/sdk/rpc';
 import {
   applyTNodeSpawn,
@@ -33,8 +33,8 @@ export interface BrainContext {
   animationsEnabled: boolean;
   brainIsDead: boolean;
   brainIsPaused: boolean;
-  latestRuntimeError?: BrainRuntimeError;
-  runtimeErrors: BrainRuntimeError[];
+  latestRuntimeError?: StepRuntimeError;
+  runtimeErrors: StepRuntimeError[];
   // Settings
   settings?: any; // BrainSettings
 }
@@ -47,7 +47,7 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
-  | { type: 'BRAIN_RUNTIME_ERROR'; error: BrainRuntimeError }
+  | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }

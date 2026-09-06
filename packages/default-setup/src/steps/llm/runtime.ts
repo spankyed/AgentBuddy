@@ -5,7 +5,7 @@ import { repository } from '@abuddy/sdk/ears';
 import { createInspectLogger } from '@abuddy/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
 import { generateText } from '@abuddy/sdk/inference';
-import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
 
@@ -94,7 +94,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       }
     });
   } catch (error) {
-    const runtimeError = reportBrainRuntimeError({
+    const runtimeError = reportStepRuntimeError({
       error,
       source: 'brain-llm',
       phase: 'llm.execute',

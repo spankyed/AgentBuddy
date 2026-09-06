@@ -41,23 +41,7 @@ export interface TNodeUpdate {
   eventTNodeId?: EARS.EntityId;
 }
 
-export interface BrainRuntimeError {
-  errorId: string;
-  message: string;
-  stack?: string;
-  source: string;
-  phase: string;
-  flowTNodeId?: EARS.EntityId;
-  eventTNodeId?: EARS.EntityId;
-  tNodeId?: EARS.EntityId;
-  nodeId?: EARS.EntityId;
-  nodeLabel?: string;
-  nodeType?: string;
-  actionId?: EARS.EntityId;
-  actionLabel?: string;
-  eventType?: string;
-  timestamp: TimestampMs;
-}
+export type { StepRuntimeError } from '@abuddy/sdk/steps';
 
 /** ── Schema definition types ────────────────────────────────────────────── */
 export interface FieldSchema {

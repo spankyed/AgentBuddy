@@ -1,17 +1,17 @@
-import { rootEvents } from '@abuddy/sdk/rpc';
-import { createLogger } from '@abuddy/sdk/logger';
-import { randomId } from '@abuddy/sdk/utils';
-import type { BrainRuntimeError } from './types';
-import type { EARS } from '@/registries/ears';
-import { repository } from '@abuddy/sdk/ears';
+import { rootEvents } from '../rpc';
+import { createLogger } from '../logger';
+import { randomId } from '../utils';
+import { repository } from '../ears/repository';
+import type { EARS } from '../types/entities';
+import type { StepRuntimeError } from './types';
 
-const logger = createLogger('brain-runtime');
+const logger = createLogger('step-runtime');
 
-type RuntimeErrorInput = Omit<BrainRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp'> & {
+type RuntimeErrorInput = Omit<StepRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp'> & {
   error: unknown;
 };
 
-export function toRuntimeError(input: RuntimeErrorInput): BrainRuntimeError {
+export function toStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError {
   const err = input.error instanceof Error ? input.error : new Error(String(input.error));
   const { error, ...context } = input;
 
@@ -24,12 +24,12 @@ export function toRuntimeError(input: RuntimeErrorInput): BrainRuntimeError {
   };
 }
 
-export function reportBrainRuntimeError(input: RuntimeErrorInput): BrainRuntimeError {
-  const runtimeError = toRuntimeError(input);
+export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError {
+  const runtimeError = toStepRuntimeError(input);
 
   rootEvents.emitLog({
     level: 'error',
-    source: 'brain-runtime',
+    source: 'step-runtime',
     message: runtimeError.message,
     stack: runtimeError.stack,
     meta: {

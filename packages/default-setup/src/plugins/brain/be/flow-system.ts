@@ -13,7 +13,7 @@ import { isBrainPaused } from './utils/brain-pause';
 import { unregisterByPrefix } from './services/scheduler';
 import { sendToBrainSystem, services as appServices } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
-import { reportBrainRuntimeError } from './runtime-errors';
+import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
 
 /**
@@ -344,7 +344,7 @@ export function createFlowNodeSystem(
 
                 spawnedCount++;
               } catch (err) {
-                reportBrainRuntimeError({
+                reportStepRuntimeError({
                   error: err,
                   source: 'brain-flow',
                   phase: 'child.spawn',
@@ -503,7 +503,7 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              reportBrainRuntimeError({
+              reportStepRuntimeError({
                 error: err,
                 source: 'brain-flow',
                 phase: 'child.spawn-next',
@@ -578,7 +578,7 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              reportBrainRuntimeError({
+              reportStepRuntimeError({
                 error: err,
                 source: 'brain-flow',
                 phase: 'child.resume',

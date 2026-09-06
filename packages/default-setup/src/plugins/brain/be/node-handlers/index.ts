@@ -2,7 +2,7 @@ import type { NodeEntity } from '@/registries/types';
 import type { ExecutionContext, TNodeEntity } from '../types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
-import { reportBrainRuntimeError } from '../runtime-errors';
+import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const logger = createLogger('node-executor');
 
@@ -34,7 +34,7 @@ export function executeNode(
   if (isAsync) {
     const promise = handler(tNode, node, executionContext, actor) as Promise<void>;
     promise.catch((err) => {
-      const runtimeError = reportBrainRuntimeError({
+      const runtimeError = reportStepRuntimeError({
         error: err,
         source: `brain-${node.nodeType}`,
         phase: `${node.nodeType}.handler`,
