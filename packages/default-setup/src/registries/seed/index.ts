@@ -7,6 +7,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { fileURLToPath } from 'url';
 import { EARS } from '@/registries/ears';
 import { findById, findWhere, findAll } from '@abuddy/sdk/ears';
 import { repository } from '@abuddy/sdk/ears';
@@ -33,7 +34,9 @@ function repo() {
 export { seedData, loadJSON };
 export type { SeedCounts, SeedIncludeSet, ImportMode };
 
-export const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
+export const DEFAULT_COMPILED_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'dist',
+);
 
 // ── Seeder: actions ──────────────────────────────────────────────────
 
