@@ -290,7 +290,7 @@ export const brainCommands = {
       id: tNodeId,
       entityType: EARS.Entity.TNode,
       tNodeType: 'event',
-      label: eventNode.label,
+      label: eventNode.label || '',
       ...triggerAttrs,
       status: 'active',
       startedAt: now,

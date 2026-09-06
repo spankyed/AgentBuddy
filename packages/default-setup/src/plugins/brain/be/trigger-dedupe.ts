@@ -14,7 +14,7 @@ export interface TriggerDedupeWarning {
   kind: 'duplicate-track-key';
   flowId: EARS.EntityId;
   flowTNodeId: EARS.EntityId;
-  eventType: string;
+  eventType?: string;
   label?: string;
   triggerType: string;
   trackKey?: string;
