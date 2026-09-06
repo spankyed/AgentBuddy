@@ -11,7 +11,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { FlowEntity, FlowNode, NodeEntity } from '@/plugins/flows/be/config/types';
+import type { FlowEntity, FlowNode, NodeEntity } from '@/registries/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';

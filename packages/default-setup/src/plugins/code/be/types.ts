@@ -1,5 +1,5 @@
 import { EARS } from '@/registries/ears'
-import type { KeyboardShortcut } from '@/plugins/settings/be/types'
+import type { KeyboardShortcut } from '@/registries/types'
 
 export interface FileInfo {
   name: string

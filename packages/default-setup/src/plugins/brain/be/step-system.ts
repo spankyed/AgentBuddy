@@ -1,7 +1,7 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { EARS } from '@/registries/ears';
 import type { ExecutionContext, TNodeEntity } from './types';
-import type { NodeEntity } from '@/plugins/flows/be/config/types';
+import type { NodeEntity } from '@/registries/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@abuddy/sdk/ears';
 import { brainInspect } from './utils/brain-inspect';

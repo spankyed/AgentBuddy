@@ -3,7 +3,7 @@
  */
 
 import type { BaseEntity, EARS } from '@/registries/ears';
-import type { Category } from '@/plugins/settings/be/types';
+import type { Category } from '@/registries/types';
 
 /**
  * Defines an input parameter that a prompt template expects

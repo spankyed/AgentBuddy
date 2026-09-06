@@ -16,7 +16,7 @@ import { importThreads } from './import-threads';
 import { services } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { FieldContent } from '@/plugins/library/be/types';
+import type { FieldContent } from '@/registries/types';
 import { reportSystemError } from '@abuddy/sdk/utils';
 
 const logger = createLogger('threads');

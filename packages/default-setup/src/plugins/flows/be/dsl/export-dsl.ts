@@ -22,8 +22,7 @@ import type {
   EdgeEntity,
   FlowEntity,
 } from '../config/types';
-import type { ActionEntity } from '@/plugins/actions/be/types';
-import type { PromptEntity } from '@/plugins/prompts/be/types';
+import type { ActionEntity, PromptEntity } from '@/registries/types';
 
 // Edge kinds for flow transitions
 const FLOW_EDGE_KINDS = [EARS.RelKind.TRANSITIONS_TO] as const;

@@ -3,7 +3,7 @@ import { emit } from '@abuddy/sdk/helpers'
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { repository } from '@abuddy/sdk/ears'
 import { EARS } from '@/registries/ears'
-import type { PromptEntity } from '@/plugins/prompts/be/types'
+import type { PromptEntity } from '@/registries/types'
 
 const pluginId = 'code' as const
 

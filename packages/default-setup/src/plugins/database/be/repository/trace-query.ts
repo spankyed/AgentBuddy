@@ -1,7 +1,7 @@
 import { LmdbQuery } from '@abuddy/sdk/ears';
 import { envs } from '@abuddy/sdk/ears';
 import { EARS } from '@/registries/ears';
-import type { TNodeEntity, TrackEntity } from '@/plugins/brain/be/types';
+import type { TNodeEntity, TrackEntity } from '@/registries/types';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('database:trace');

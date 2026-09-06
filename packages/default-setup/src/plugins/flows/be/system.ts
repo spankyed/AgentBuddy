@@ -8,8 +8,7 @@ import { repository } from '@abuddy/sdk/ears';
 import type { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { ActionEntity } from '@/plugins/actions/be/types';
-import type { PromptEntity } from '@/plugins/prompts/be/types';
+import type { ActionEntity, PromptEntity } from '@/registries/types';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');

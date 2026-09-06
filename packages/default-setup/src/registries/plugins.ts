@@ -1,5 +1,5 @@
 import { registerPluginDesignations } from '@abuddy/sdk/fe';
-import type { Plugin } from '@/core/types';
+import type { Plugin } from '@abuddy/sdk/fe';
 import Threads from '../plugins/threads/fe/plugin';
 import Flows from '../plugins/flows/fe/plugin';
 import Database from '../plugins/database/fe/plugin';

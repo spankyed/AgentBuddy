@@ -1,4 +1,4 @@
-import type { Plugin } from "@/core/types";
+import type { Plugin } from "@abuddy/sdk/fe";
 import { Brain } from 'lucide-vue-next';
 import state, { id } from './state';
 import canvas from './canvas.vue';

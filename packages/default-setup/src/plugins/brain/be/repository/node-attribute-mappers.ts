@@ -1,4 +1,4 @@
-import type { NodeEntity } from '@/plugins/flows/be/config/types';
+import type { NodeEntity } from '@/registries/types';
 import type { ExecutionContext, FieldMapping, SourceResolver } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '../utils/result-truncator';

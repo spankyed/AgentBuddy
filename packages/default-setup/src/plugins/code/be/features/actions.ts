@@ -3,7 +3,7 @@ import { emit } from '@abuddy/sdk/helpers'
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { repository } from '@abuddy/sdk/ears'
 import { EARS } from '@/registries/ears'
-import type { ActionEntity } from '@/plugins/actions/be/types'
+import type { ActionEntity } from '@/registries/types'
 
 const pluginId = 'code' as const
 

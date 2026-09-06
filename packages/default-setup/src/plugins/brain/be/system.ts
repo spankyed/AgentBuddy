@@ -10,7 +10,6 @@ import type { BrainRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from 
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
-import { settings } from '@/plugins/settings/be/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';

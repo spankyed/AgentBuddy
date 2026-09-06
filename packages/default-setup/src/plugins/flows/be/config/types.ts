@@ -1,6 +1,5 @@
 import { type BaseEntity, EARS } from '@/registries/ears';
-import type { ActionEntity } from '@/plugins/actions/be/types';
-import type { PromptEntity } from '@/plugins/prompts/be/types';
+import type { ActionEntity, PromptEntity } from '@/registries/types';
 import { BinaryOperator } from '@abuddy/sdk/utils';
 
 // Re-export BinaryOperator so consumers importing from flows types get it

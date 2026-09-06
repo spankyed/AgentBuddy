@@ -7,7 +7,7 @@ import { rootEvents } from '@abuddy/sdk/rpc';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
 import { repository } from '@abuddy/sdk/ears';
-import type { LogsSettings } from '@/plugins/settings/be/types';
+import type { LogsSettings } from '@/registries/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.

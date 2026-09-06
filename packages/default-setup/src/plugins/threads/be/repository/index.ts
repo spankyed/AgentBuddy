@@ -16,10 +16,9 @@ import type {
   ThreadExtendedData,
   ThreadTypeShortCode,
   ThreadConnectedData,
-  ThreadTagOption,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
-import type { ThreadsSettings } from '@/plugins/settings/be/types';
+import type { ThreadsSettings, ThreadTagOption } from '@/registries/types';
 import { repository } from '@abuddy/sdk/ears';
 
 /**

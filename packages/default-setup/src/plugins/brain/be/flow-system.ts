@@ -1,5 +1,5 @@
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
-import type { NodeEntity } from '@/plugins/flows/be/config/types';
+import type { NodeEntity } from '@/registries/types';
 import { repository } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { stepRegistry } from '@abuddy/sdk/steps';

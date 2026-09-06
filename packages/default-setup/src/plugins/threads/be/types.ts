@@ -1,14 +1,7 @@
 import { type BaseEntity, EARS } from '@/registries/ears';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "@/plugins/code/be/services/claude-code/types";
-import type { AgentSettings, CommandItem, KeyboardShortcut, ThreadsSettings, ThreadTagOption } from '@/plugins/settings/be/types';
-
-// Re-export agent/chat types that moved to settings types
-// (they were originally defined in this file)
-export type { AgentSettings, AgentMode, AgentPhase, QuickPrompt, CommandItem } from '@/plugins/settings/be/types';
-
-// Re-export ThreadTagOption for backward compat (was re-exported from settings)
-export type { ThreadTagOption } from '@/plugins/settings/be/types';
+import type { AgentSettings, CommandItem, ThreadsSettings, ThreadTagOption } from '@/registries/types';
 
 // Block-based interaction system (composable architecture)
 export type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'thinking' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';

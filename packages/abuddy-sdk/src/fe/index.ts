@@ -1,3 +1,4 @@
+export type { Plugin, RouteComponents } from './plugin'
 export { useActorSystem } from './composables/useActorSystem'
 export { useApplicationActor } from './composables/useApplicationActor'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './composables/useMenuState'

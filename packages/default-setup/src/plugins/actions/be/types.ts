@@ -1,5 +1,5 @@
 import type { EARS } from '@/registries/ears';
-import type { Category } from '@/plugins/settings/be/types';
+import type { Category } from '@/registries/types';
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
