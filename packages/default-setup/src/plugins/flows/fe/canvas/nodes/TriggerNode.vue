@@ -47,7 +47,7 @@
  */
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import BaseNode, { type HandleConfig } from './BaseNode.vue'
+import BaseNode, { type HandleConfig } from '@abuddy/sdk/fe/components/BaseNode.vue'
 import { NODE_DIMENSIONS } from './node-dimensions'
 import { cronToHuman } from '@abuddy/sdk/cron'
 

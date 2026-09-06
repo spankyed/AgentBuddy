@@ -44,7 +44,7 @@
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { SwitchNode, Condition } from '@/registries/types'
-import BaseNode, { type HandleConfig } from '@/plugins/flows/fe/canvas/nodes/BaseNode.vue'
+import BaseNode, { type HandleConfig } from '@abuddy/sdk/fe/components/BaseNode.vue'
 import { NODE_DIMENSIONS } from '@/plugins/flows/fe/canvas/nodes/node-dimensions'
 
 interface Branch {

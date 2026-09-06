@@ -362,7 +362,7 @@ import {
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
-import DataRenderer from './data-renderer.vue';
+import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
