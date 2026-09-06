@@ -24,6 +24,7 @@ declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createApplicationState>>;
     __showErrorPage?: (title: string, detail: string) => void;
+    __disableOnboardingUI?: () => void;
     appVersion: string;
   }
 }
@@ -101,6 +102,11 @@ export const applicationState = createActor(createApplicationState(), {
 }).start();
 
 window.applicationState = applicationState;
+
+window.__disableOnboardingUI = () => {
+  applicationState.send({ type: 'ONBOARDING_COMPLETE' });
+  console.log('Onboarding UI hiding disabled');
+};
 
 registerHostModule('navigate', navigateMod);
 registerHostModule('open-in-app-browser', openBrowserMod);
