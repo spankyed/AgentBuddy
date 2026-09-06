@@ -35,7 +35,7 @@ import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import ArtifactList from '@/artifacts/artifact-list.vue';
+import ArtifactList from './artifact-list.vue';
 import TextArtifact from '@/artifacts/viewers/text-artifact.vue';
 
 const props = defineProps<{
