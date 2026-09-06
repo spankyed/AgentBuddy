@@ -1,4 +1,4 @@
-import type { EARS, EmbeddingModelId } from '@app/api'
+import type { EARS, EmbeddingModelId } from '@/registries/types'
 
 type ContentType = 'field' | 'list' | 'markdown' | 'text'
 

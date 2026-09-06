@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { CheckSquare } from 'lucide-vue-next';
-import type { ArtifactItem } from '@app/api';
+import type { ArtifactItem } from '@/registries/types';
 
 defineProps<{
   artifact: ArtifactItem;

@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Check } from 'lucide-vue-next'
-import type { ButtonConfig, ButtonGroupResponse } from '@app/api'
+import type { ButtonConfig, ButtonGroupResponse } from '@/registries/types'
 
 type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger'
 

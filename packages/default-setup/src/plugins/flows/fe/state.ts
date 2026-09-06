@@ -20,7 +20,7 @@ import type {
   TNodeEntity,
   TrackEntity,
   OutgoingBrainEvents,
-} from '@app/api'
+} from '@/registries/types'
 import { trpc } from '@abuddy/sdk/rpc'
 import { getNodeConfig, isTriggerNode } from './canvas/nodes'
 import { stepRegistry } from '@abuddy/sdk/steps'

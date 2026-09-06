@@ -1,4 +1,4 @@
-import type { ThreadsSettings } from '@app/api'
+import type { ThreadsSettings } from '@/registries/types'
 
 type ChatState = string
 type ChatStateOverride = { id: string; expiresAt: number }

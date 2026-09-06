@@ -137,8 +137,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { TrackEntity, TNodeEntity } from '@app/api';
-import type { NodeKind } from '@app/api';
+import type { TrackEntity, TNodeEntity } from '@/registries/types';
+import type { NodeKind } from '@/registries/types';
 import { getNodeConfig, nodeConfigs, DataRenderer, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '@/registries/extensions';
 
 interface Props {

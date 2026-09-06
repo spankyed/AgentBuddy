@@ -1,7 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { getDesignatedPlugin } from '@abuddy/sdk/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
-import type { SETTINGS_SCOPE } from '@app/api'
+import type { SETTINGS_SCOPE } from '@/registries/types'
 
 export function useSettingsSaveStatus() {
   const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')

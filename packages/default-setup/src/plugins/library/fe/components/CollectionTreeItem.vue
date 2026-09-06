@@ -99,7 +99,7 @@
 import { ref, reactive } from 'vue'
 import { ChevronRight, Folder, Edit2, Trash2 } from 'lucide-vue-next'
 import Button from '@abuddy/sdk/fe/design/button.vue'
-import type { CollectionDTO } from '@app/api'
+import type { CollectionDTO } from '@/registries/types'
 
 const props = defineProps<{
   collection: CollectionDTO

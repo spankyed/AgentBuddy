@@ -1,4 +1,4 @@
-import type { NodeKind } from '@app/api'
+import type { NodeKind } from '@/registries/types'
 import { default as TriggerNode } from './TriggerNode.vue'
 import { default as BaseNode } from './BaseNode.vue'
 import { nodeConfigs } from './node-config'

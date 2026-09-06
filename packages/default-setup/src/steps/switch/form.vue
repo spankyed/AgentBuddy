@@ -204,7 +204,7 @@ import { Plus, Trash2, Code } from 'lucide-vue-next'
 import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
 import TipSection from '@/plugins/flows/fe/canvas/components/TipSection.vue'
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
-import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@app/api'
+import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@/registries/types'
 
 // Type guard and accessor for object predicates (vs function predicates)
 function getPredicateObject(predicate?: Predicate): { key: string; operator: BinaryOperator; value?: any } | undefined {

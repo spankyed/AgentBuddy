@@ -14,7 +14,7 @@ import {
   Clock
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
-import type { NodeKind } from '@app/api'
+import type { NodeKind } from '@/registries/types'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
 // ===========================

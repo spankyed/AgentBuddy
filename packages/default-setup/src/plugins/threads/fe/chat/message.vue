@@ -214,7 +214,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onUpdated, watch } from 'vue'
-import type { MessageEntity } from '@app/api'
+import type { MessageEntity } from '@/registries/types'
 import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown, ChevronUp, X, RotateCcw } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'

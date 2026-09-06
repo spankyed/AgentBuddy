@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ActionEntity, EARS, Category } from '@app/api'
+import type { ActionEntity, EARS, Category } from '@/registries/types'
 import { Play, Trash2, Plus } from 'lucide-vue-next'
 import Button from '@abuddy/sdk/fe/design/button.vue'
 import CategoryFilter from '@abuddy/sdk/fe/design/CategoryFilter.vue'

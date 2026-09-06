@@ -242,7 +242,7 @@ import { id as promptsPluginId } from '@/plugins/prompts/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '@/plugins/code/fe/features/EmptyState.vue'
-import type { PromptEntity } from '@app/api'
+import type { PromptEntity } from '@/registries/types'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,

@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import type { ThreadTagOption, ThreadsSettings } from '@app/api'
+import type { ThreadTagOption, ThreadsSettings } from '@/registries/types'
 
 export interface BaseThreadData {
   id: string

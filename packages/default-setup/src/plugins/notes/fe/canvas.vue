@@ -293,7 +293,7 @@
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useActorSystem, useExternalFileDrag } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
-import type { NoteDTO } from '@app/api'
+import type { NoteDTO } from '@/registries/types'
 import { id, type NotesState } from './state'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@abuddy/sdk/fe/components/tiptap/injection-keys'

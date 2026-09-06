@@ -170,7 +170,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-vue-next'
-import type { SetupPackPreview, SetupPackType } from '@app/api'
+import type { SetupPackPreview, SetupPackType } from '@/registries/types'
 
 type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'
 

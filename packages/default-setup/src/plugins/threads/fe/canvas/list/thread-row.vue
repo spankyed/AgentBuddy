@@ -163,7 +163,7 @@ import {
   ContextMenuRoot, ContextMenuTrigger,
 } from 'reka-ui'
 import type { ThreadListItem } from '@/plugins/threads/fe/state';
-import type { ThreadTagOption, ThreadsSettings } from '@app/api';
+import type { ThreadTagOption, ThreadsSettings } from '@/registries/types';
 import BaseThreadRow from '../components/base-thread-row.vue';
 import ThreadContextMenu from '../components/thread-context-menu.vue';
 

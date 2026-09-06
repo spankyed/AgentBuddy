@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
-import type { ArtifactItem } from '@app/api';
+import type { ArtifactItem } from '@/registries/types';
 import ArtifactList from './artifacts/artifact-list.vue';
 import TextArtifact from './artifacts/types/text-artifact.vue';
 import CodeArtifact from './artifacts/types/code-artifact.vue';

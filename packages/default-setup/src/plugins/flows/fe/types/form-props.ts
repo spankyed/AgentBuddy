@@ -1,4 +1,4 @@
-import type { ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@app/api'
+import type { ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@/registries/types'
 
 export interface FormResources {
   actions?: ActionEntity[]

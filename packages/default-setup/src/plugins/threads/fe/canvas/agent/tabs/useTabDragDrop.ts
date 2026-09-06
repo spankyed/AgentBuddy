@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import type { Tab } from '@app/api'
+import type { Tab } from '@/registries/types'
 import type { ThreadTabGroup } from './types'
 
 type Context = 'pinned' | 'ungrouped' | string

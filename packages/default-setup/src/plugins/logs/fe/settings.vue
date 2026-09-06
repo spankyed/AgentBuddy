@@ -106,7 +106,7 @@
 import { ref, watch } from 'vue'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { X } from 'lucide-vue-next'
-import type { LogsSettings } from '@app/api'
+import type { LogsSettings } from '@/registries/types'
 
 interface Props {
   settings?: LogsSettings

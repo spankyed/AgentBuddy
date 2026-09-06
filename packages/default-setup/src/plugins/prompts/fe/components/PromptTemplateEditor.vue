@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
-import type { TemplateInput } from '@app/api';
+import type { TemplateInput } from '@/registries/types';
 
 defineProps<{
   value: string;

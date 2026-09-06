@@ -108,7 +108,7 @@ import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
 import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue';
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';
-import type { PromptEntity, TemplateInput, Category } from '@app/api';
+import type { PromptEntity, TemplateInput, Category } from '@/registries/types';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';

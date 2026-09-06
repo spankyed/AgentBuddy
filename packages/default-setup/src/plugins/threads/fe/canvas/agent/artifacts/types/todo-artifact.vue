@@ -101,7 +101,7 @@
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
-import type { ArtifactItem } from '@app/api';
+import type { ArtifactItem } from '@/registries/types';
 import { id as threadsId } from '@/plugins/threads/fe/state';
 
 const actorSystem = useActorSystem()

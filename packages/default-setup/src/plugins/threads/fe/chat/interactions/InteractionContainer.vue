@@ -181,7 +181,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BlockConfig } from '@app/api'
+import type { BlockConfig } from '@/registries/types'
 import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
 import MarkdownBlock from './blocks/MarkdownBlock.vue'

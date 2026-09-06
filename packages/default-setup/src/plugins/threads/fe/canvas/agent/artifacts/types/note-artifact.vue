@@ -32,7 +32,7 @@
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
-import type { ArtifactItem } from '@app/api'
+import type { ArtifactItem } from '@/registries/types'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 import { useSelector } from '@xstate/vue'

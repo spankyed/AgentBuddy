@@ -32,7 +32,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import type { TrackEntity } from '@app/api'
+import type { TrackEntity } from '@/registries/types'
 import TNodeListItem from '../../../../shared/components/TNodeListItem.vue';
 
 interface Props {

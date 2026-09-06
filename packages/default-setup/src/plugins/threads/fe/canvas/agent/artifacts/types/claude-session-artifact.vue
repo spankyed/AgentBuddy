@@ -261,7 +261,7 @@
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
-import type { ArtifactItem } from '@app/api'
+import type { ArtifactItem } from '@/registries/types'
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/plugins/threads/fe/state'
 import { trpc } from '@abuddy/sdk/rpc'

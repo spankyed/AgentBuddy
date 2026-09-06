@@ -206,7 +206,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { NodeEntity } from '@app/api'
+import type { NodeEntity } from '@/registries/types'
 import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
 import { validateCronExpression } from '@/plugins/flows/fe/helpers/cron-utils'
 

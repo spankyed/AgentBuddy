@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
-import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@app/api'
+import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@/registries/types'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
 // Shared infrastructure forms (fallback)

@@ -6,7 +6,7 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType, FAQItem } from '@app/api'
+import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType, FAQItem } from '@/registries/types'
 import { trpc } from '@abuddy/sdk/rpc'
 
 /* ─────────────────────────────────────────────────────────── */

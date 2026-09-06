@@ -85,7 +85,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/fe/state'
 import TNodeListItem from '../../../shared/components/TNodeListItem.vue'
-import type { TrackEntity } from '@app/api'
+import type { TrackEntity } from '@/registries/types'
 import { trpc } from '@abuddy/sdk/rpc'
 
 const actorSystem = useActorSystem()

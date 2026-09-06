@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
-import type { TNodeEntity } from '@app/api';
+import type { TNodeEntity } from '@/registries/types';
 import DataRenderer from '@/plugins/logs/fe/data-renderer.vue';
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 

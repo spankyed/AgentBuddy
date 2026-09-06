@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { BookText } from 'lucide-vue-next'
-import type { ArtifactItem } from '@app/api'
+import type { ArtifactItem } from '@/registries/types'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 

@@ -70,7 +70,7 @@
 
 <script setup lang="ts">
 import { Brain, Workflow, Trash2, Edit } from 'lucide-vue-next'
-import type { FlowEntity } from '@app/api'
+import type { FlowEntity } from '@/registries/types'
 import {
   ContextMenuContent,
   ContextMenuItem,

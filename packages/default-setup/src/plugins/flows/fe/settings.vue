@@ -198,7 +198,7 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import type { FlowsSettings } from '@app/api'
+import type { FlowsSettings } from '@/registries/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
 

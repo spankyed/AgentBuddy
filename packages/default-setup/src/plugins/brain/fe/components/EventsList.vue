@@ -57,7 +57,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { EventListenerEntity } from '@app/api';
+import type { EventListenerEntity } from '@/registries/types';
 import { Radio } from 'lucide-vue-next';
 import { cronToHuman } from '@/plugins/flows/fe/helpers/cron-utils';
 import { stepRegistry } from '@abuddy/sdk/steps';

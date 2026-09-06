@@ -267,8 +267,8 @@
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus, Pencil } from 'lucide-vue-next'
-import type { ThreadEntity } from '@app/api';
-import type { AgentThreadData } from '@app/api'
+import type { ThreadEntity } from '@/registries/types';
+import type { AgentThreadData } from '@/registries/types'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,

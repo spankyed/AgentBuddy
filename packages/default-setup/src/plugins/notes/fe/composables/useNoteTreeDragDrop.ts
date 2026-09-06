@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import type { NoteDTO } from '@app/api'
+import type { NoteDTO } from '@/registries/types'
 
 type DropPosition = 'before' | 'after' | 'on'
 

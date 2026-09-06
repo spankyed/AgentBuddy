@@ -242,7 +242,7 @@ import { id as actionsPluginId } from '@/plugins/actions/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '@/plugins/code/fe/features/EmptyState.vue'
-import type { ActionEntity } from '@app/api'
+import type { ActionEntity } from '@/registries/types'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,

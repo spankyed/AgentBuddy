@@ -188,7 +188,7 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';
 import GroupLabel from './group-label.vue';
-import type { Tab } from '@app/api';
+import type { Tab } from '@/registries/types';
 import type { ThreadTabGroup, TabGroupColor } from './types';
 import { categorizeThreadTabs } from './tab-utils';
 import { useTabDragDrop } from './useTabDragDrop';

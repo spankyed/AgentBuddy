@@ -56,7 +56,7 @@ import KeyboardHint from './KeyboardHint.vue';
 import QueryEditorMessages from './QueryEditorMessages.vue';
 import QueryEditorActions from './QueryEditorActions.vue';
 
-import type { KeyboardShortcut } from '@app/api';
+import type { KeyboardShortcut } from '@/registries/types';
 
 defineProps<{
   activeMode: 'query' | 'examples';

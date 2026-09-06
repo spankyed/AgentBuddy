@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from './trace-tree';
-import type { TNodeEntity, TrackEntity } from '@app/api';
+import type { TNodeEntity, TrackEntity } from '@/registries/types';
 
 function tNode(id: string, label = id): TNodeEntity {
   return {

@@ -95,7 +95,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
-import type { ListContent } from '@app/api'
+import type { ListContent } from '@/registries/types'
 
 const props = defineProps<{
   content: ListContent

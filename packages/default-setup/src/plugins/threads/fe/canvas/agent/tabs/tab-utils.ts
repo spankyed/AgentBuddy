@@ -1,4 +1,4 @@
-import type { Tab } from '@app/api'
+import type { Tab } from '@/registries/types'
 import type { ThreadTabGroup } from './types'
 
 export function categorizeThreadTabs(

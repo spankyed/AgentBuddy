@@ -82,7 +82,7 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as databaseId, type DatabaseState } from '../../state'
 import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
-import type { TNodeEntity } from '@app/api'
+import type { TNodeEntity } from '@/registries/types'
 
 const databaseActor: DatabaseState = actorSystem.get(databaseId)
 

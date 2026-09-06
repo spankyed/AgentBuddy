@@ -169,7 +169,7 @@ import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'luc
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import ColorPicker from '@abuddy/sdk/fe/design/ColorPicker.vue'
 import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
-import type { ActionsSettings, Category } from '@app/api'
+import type { ActionsSettings, Category } from '@/registries/types'
 import { useSelector } from '@xstate/vue'
 import { id, type ActionsState } from './state'
 

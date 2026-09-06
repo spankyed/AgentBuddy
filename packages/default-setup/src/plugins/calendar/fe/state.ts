@@ -3,7 +3,7 @@ import { safeEvents } from '@abuddy/sdk/fe';
 import { trpc } from '@abuddy/sdk/rpc';
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
-import type { OutgoingCalendarEvents, CalendarEventDTO } from '@app/api';
+import type { OutgoingCalendarEvents, CalendarEventDTO } from '@/registries/types';
 
 export const id = 'calendar' as const;
 

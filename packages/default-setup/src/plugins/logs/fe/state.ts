@@ -1,7 +1,7 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { trpc } from '@abuddy/sdk/rpc';
-import type { OutgoingLogsEvents } from '@app/api';
+import type { OutgoingLogsEvents } from '@/registries/types';
 
 export const id = 'logs' as const;
 

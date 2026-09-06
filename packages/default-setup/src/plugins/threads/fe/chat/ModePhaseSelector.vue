@@ -138,7 +138,7 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
-import type { AgentMode } from '@app/api'
+import type { AgentMode } from '@/registries/types'
 import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
 import { useContextMenu, type MenuItem } from '@abuddy/sdk/fe'
 

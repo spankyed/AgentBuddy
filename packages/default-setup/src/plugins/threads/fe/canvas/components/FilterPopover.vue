@@ -115,7 +115,7 @@
 import { ref } from 'vue'
 import { Archive, Network } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
-import type { ThreadStatusOption, ThreadTagOption, ChatStateConfig } from '@app/api'
+import type { ThreadStatusOption, ThreadTagOption, ChatStateConfig } from '@/registries/types'
 
 defineProps<{
   statuses: ThreadStatusOption[]

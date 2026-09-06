@@ -128,7 +128,7 @@ import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
 import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-config'
 import AddHandle from './AddHandle.vue'
-import type { NodeKind } from '@app/api'
+import type { NodeKind } from '@/registries/types'
 
 export interface HandleConfig {
   id: string

@@ -175,7 +175,7 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
-import type { SetupPackType } from '@app/api'
+import type { SetupPackType } from '@/registries/types'
 import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 

@@ -1,3 +1,6 @@
+export type { EARS } from '@abuddy/sdk';
+export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType } from '@abuddy/sdk/build';
+
 export type { OutgoingBrainEvents } from '../plugins/brain/be/system';
 export type * from '../plugins/brain/be/types';
 

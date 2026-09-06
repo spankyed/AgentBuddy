@@ -12,7 +12,7 @@
  * - /packages/renderer/src/plugins/library/config/embedding-models.ts (frontend)
  */
 
-import type { EmbeddingModelId, EmbeddingModelConfig, ModelProvider } from '@app/api'
+import type { EmbeddingModelId, EmbeddingModelConfig, ModelProvider } from '@/registries/types'
 
 // Model ID constants for type safety
 export const EMBEDDING_MODELS = {

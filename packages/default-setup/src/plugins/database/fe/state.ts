@@ -10,7 +10,7 @@ import type {
   EARS,
   TNodeEntity,
   DatabaseSettings,
-} from '@app/api'
+} from '@/registries/types'
 import { trpc } from '@abuddy/sdk/rpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'

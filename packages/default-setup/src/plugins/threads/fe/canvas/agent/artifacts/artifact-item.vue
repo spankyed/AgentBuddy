@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList, BookText, StickyNote, Bot } from 'lucide-vue-next';
-import type { ArtifactItem, ArtifactType } from '@app/api';
+import type { ArtifactItem, ArtifactType } from '@/registries/types';
 
 const props = defineProps<{
   artifact: ArtifactItem;

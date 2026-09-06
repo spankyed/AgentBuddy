@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { FilePlus2, FileMinus2, FilePenLine, ArrowRightLeft } from 'lucide-vue-next'
-import type { ArtifactItem } from '@app/api'
+import type { ArtifactItem } from '@/registries/types'
 import UnifiedMonacoEditor from '@abuddy/sdk/fe/components/UnifiedMonacoEditor.vue'
 import { getLanguageFromPath } from '@abuddy/sdk/fe/components/monaco-config'
 

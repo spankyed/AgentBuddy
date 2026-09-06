@@ -50,7 +50,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { MessageSquare } from 'lucide-vue-next';
-import type { ArtifactItem } from '@app/api';
+import type { ArtifactItem } from '@/registries/types';
 
 interface SlackChannel {
   name: string;

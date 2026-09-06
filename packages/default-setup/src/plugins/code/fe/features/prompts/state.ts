@@ -1,7 +1,7 @@
 import { setup } from 'xstate';
 import { trpc } from '@abuddy/sdk/rpc';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import type { PromptEntity } from '@app/api';
+import type { PromptEntity } from '@/registries/types';
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({

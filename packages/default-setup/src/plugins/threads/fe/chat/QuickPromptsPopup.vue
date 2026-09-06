@@ -162,7 +162,7 @@ import { Sparkle, Pencil, X, Plus, Copy, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
 import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
-import type { QuickPrompt } from '@app/api'
+import type { QuickPrompt } from '@/registries/types'
 import { terminalPool } from '@/plugins/code/fe/utils/terminal-pool'
 
 const props = defineProps<{

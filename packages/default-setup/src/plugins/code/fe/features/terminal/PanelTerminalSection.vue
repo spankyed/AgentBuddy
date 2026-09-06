@@ -216,7 +216,7 @@ import { useTerminalActions } from '@/plugins/code/fe/composables/useTerminalAct
 import RunScriptPopover from './RunScriptPopover.vue'
 import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue'
 import { useSectionVisibilityMenu } from '@/plugins/code/fe/composables/useSectionVisibilityMenu'
-import type { TerminalScript } from '@app/api'
+import type { TerminalScript } from '@/registries/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
