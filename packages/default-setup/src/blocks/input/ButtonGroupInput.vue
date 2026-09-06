@@ -29,9 +29,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Check } from 'lucide-vue-next'
-import type { ButtonConfig, ButtonGroupResponse } from '@/registries/types'
-
-type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger'
+import type { ButtonConfig, ButtonGroupResponse, ButtonVariant } from '@abuddy/sdk/blocks'
 
 interface Props {
   buttons: ButtonConfig[]

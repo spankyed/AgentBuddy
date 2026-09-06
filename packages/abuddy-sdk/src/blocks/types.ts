@@ -13,3 +13,25 @@ export interface BlockDefinition {
   fe?: BlockFEFacet;
   be?: BlockBEFacet;
 }
+
+export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger';
+
+export interface ButtonConfig {
+  id: string;
+  label: string;
+  state: string;
+  states?: Record<string, {
+    label: string;
+    variant?: ButtonVariant;
+    disabled?: boolean;
+  }>;
+  toggleStates?: {
+    on: { label: string; variant?: ButtonVariant; disabled?: boolean };
+    off: { label: string; variant?: ButtonVariant; disabled?: boolean };
+  };
+}
+
+export interface ButtonGroupResponse {
+  buttonId: string;
+  state: string;
+}

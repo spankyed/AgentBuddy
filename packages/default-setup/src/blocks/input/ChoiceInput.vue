@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check } from 'lucide-vue-next'
-import ActionButtons from '../blocks/ActionButtons.vue'
+import ActionButtons from '../display/ActionButtons.vue'
 
 interface Choice {
   id: string
