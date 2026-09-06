@@ -1,7 +1,6 @@
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '../types';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { isTriggerNodeType } from '@/plugins/flows/be/config/node-config';
 import { createLogger } from '@abuddy/sdk/logger';
 import { reportBrainRuntimeError } from '../runtime-errors';
 
@@ -13,7 +12,7 @@ export function executeNode(
   executionContext: ExecutionContext,
   actor: any
 ) {
-  if (isTriggerNodeType(node.nodeType)) {
+  if (stepRegistry.isTrigger(node.nodeType)) {
     logger.warn(`Trigger node "${node.label}" executed as step — this shouldn't happen`);
     setTimeout(() => {
       try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
