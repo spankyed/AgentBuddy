@@ -20,17 +20,21 @@ export interface InspectLogger {
   isEnabled: () => boolean;
 }
 
+const _nsEnabled = new Map<string, boolean>();
+
 export function createInspectLogger(namespace: string): InspectLogger {
   const logger = createLogger(namespace);
-  let enabled = process.env.NODE_ENV !== 'production';
+  if (!_nsEnabled.has(namespace)) {
+    _nsEnabled.set(namespace, process.env.NODE_ENV !== 'production');
+  }
 
   return {
     inspect(message: string, meta?: Record<string, any>) {
-      if (enabled) logger.debug(message, meta);
+      if (_nsEnabled.get(namespace)) logger.debug(message, meta);
     },
     logger,
-    setEnabled(value: boolean) { enabled = value; },
-    isEnabled() { return enabled; },
+    setEnabled(value: boolean) { _nsEnabled.set(namespace, value); },
+    isEnabled() { return _nsEnabled.get(namespace) ?? false; },
   };
 }
 
