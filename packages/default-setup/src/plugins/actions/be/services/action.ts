@@ -1,11 +1,7 @@
 import { repository } from '@abuddy/sdk/ears';
 import type { ActionEntity } from '@/plugins/actions/be/types';
 import { EARS } from '@/registries/ears';
-
-// Lazy services getter to avoid circular dependency
-function getServices() {
-  return require('@/services/index').default;
-}
+import { services as appServices } from '@abuddy/sdk/services';
 
 export class ActionService {
   getById(id: EARS.EntityId) {
@@ -25,7 +21,7 @@ export class ActionService {
     try {
       const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
       const fn = new AsyncFunction('params', 'services', actionFn);
-      const services = getServices();
+      const services = appServices;
       return await fn(params, services);
     } catch (error) {
       throw new Error(`Failed to execute action: ${error instanceof Error ? error.message : String(error)}`);

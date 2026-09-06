@@ -11,7 +11,7 @@ import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
 import { unregisterByPrefix } from './services/scheduler';
-import { sendToBrainSystem } from '@abuddy/sdk/services';
+import { sendToBrainSystem, services as appServices } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportBrainRuntimeError } from './runtime-errors';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
@@ -313,7 +313,7 @@ export function createFlowNodeSystem(
               lastStep: undefined,
               runtime: {
                 getFlowActor,
-                getAppServices: () => require('@/services').default,
+                getAppServices: () => appServices,
               },
             };
 

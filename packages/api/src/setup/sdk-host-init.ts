@@ -27,6 +27,7 @@ import * as systemErrorsMod from '@/core/shared/system-errors';
 import * as seedMod from '@/core/host-modules/seed';
 import * as lifecycleMod from '@/core/shared/lifecycle';
 import * as eventEmitterMod from '@/services/event-emitter';
+import servicesMod from '@/services';
 import * as versionMod from '@/version';
 
 initEARSRuntime({ qx: queryMod.qx, tx: txMod.tx, createEntity });
@@ -57,4 +58,5 @@ registerHostModule('system-errors', systemErrorsMod);
 registerHostModule('seed', seedMod);
 registerHostModule('lifecycle', lifecycleMod);
 registerHostModule('event-emitter', eventEmitterMod);
+registerHostModule('services', servicesMod);
 registerHostModule('version', versionMod);
