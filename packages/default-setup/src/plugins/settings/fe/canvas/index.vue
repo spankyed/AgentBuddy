@@ -28,13 +28,15 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import GeneralTab from './tabs/GeneralTab.vue'
 import PluginsTab from './tabs/PluginsTab.vue'
 import HelpTab from './tabs/HelpTab.vue'
 
-const actor = applicationState.system.get('settings')
+const actorSystem = useActorSystem()
+
+const actor = actorSystem.get('settings')
 
 const activeTab = useSelector(actor, (state: any) => state.context.activeTab)
 

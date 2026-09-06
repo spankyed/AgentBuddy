@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue';
 import { 
   ChevronRight, 
@@ -162,9 +163,10 @@ import {
 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
-import { applicationState } from '@/main'
 
-const actor: DatabaseState = applicationState.system.get(id)
+const actorSystem = useActorSystem()
+
+const actor: DatabaseState = actorSystem.get(id)
 const schema = useSelector(actor, (state) => state.context.schema);
 const isRefreshing = useSelector(actor, (state) => state.context.isRefreshing || false);
 

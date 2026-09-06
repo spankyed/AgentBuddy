@@ -1,4 +1,5 @@
 export { useActorSystem } from './composables/useActorSystem'
+export { useApplicationActor } from './composables/useApplicationActor'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './composables/useMenuState'
 export { useContextMenu } from './composables/useContextMenu'
 export type { MenuItem } from './composables/useContextMenu'

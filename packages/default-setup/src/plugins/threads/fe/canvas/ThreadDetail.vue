@@ -177,10 +177,10 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, nextTick } from 'vue'
 import { Plus, MessageSquare, Link } from 'lucide-vue-next'
 import Button from '@abuddy/sdk/fe/design/button.vue'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/fe/state'
 import type { ThreadEditFields } from '@app/api'
@@ -192,7 +192,9 @@ import ThreadLinkInput from '@/plugins/threads/fe/canvas/components/link-thread-
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 
-const actor: ThreadsState = applicationState.system.get(id);
+const actorSystem = useActorSystem()
+
+const actor: ThreadsState = actorSystem.get(id);
 const mediaEntityId = crypto.randomUUID();
 
 // Mode derivation from state machine

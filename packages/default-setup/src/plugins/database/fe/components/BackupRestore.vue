@@ -306,6 +306,7 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import {
@@ -331,11 +332,12 @@ import {
   Image as ImageIcon
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
-import { applicationState } from '@/main';
 import { trpc } from '@abuddy/sdk/rpc';
 import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue';
 
-const actor: DatabaseState = applicationState.system.get(id);
+const actorSystem = useActorSystem()
+
+const actor: DatabaseState = actorSystem.get(id);
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);

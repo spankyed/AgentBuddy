@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted, onUnmounted, shallowRef } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { Graph } from '@antv/g6';
@@ -58,7 +59,8 @@ import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
 import GraphToolbar from './components/GraphToolbar.vue';
 import { id } from '../../../state';
-import { applicationState } from '@/main';
+
+const actorSystem = useActorSystem()
 
 // Props & Emits
 interface Props {
@@ -70,7 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 // State Management
-const actor = applicationState.system.get(id);
+const actor = actorSystem.get(id);
 const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
 
 // Component State

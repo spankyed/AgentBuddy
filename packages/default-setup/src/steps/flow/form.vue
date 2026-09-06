@@ -123,9 +123,9 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, ExternalLink } from 'lucide-vue-next'
-import { applicationState } from '@/main'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -144,6 +144,8 @@ import TipSection from '@/plugins/flows/fe/canvas/components/TipSection.vue'
 import type { FlowEntity, NodeEntity } from '@app/api'
 import type { FormResources } from '@/plugins/flows/fe/types/form-props'
 import { flowsId } from '@/plugins/flows/fe/state'
+
+const actorSystem = useActorSystem()
 
 const props = defineProps<{
   node: NodeEntity
@@ -217,7 +219,7 @@ const updateEntryPayload = (source: string) => {
 const openFlow = () => {
   if (selectedFlow.value) {
     // Navigate to the flow in flows plugin
-    const flowsActor = applicationState.system.get(flowsId);
+    const flowsActor = actorSystem.get(flowsId);
     flowsActor.send({ type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
   }
 }

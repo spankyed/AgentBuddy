@@ -689,8 +689,7 @@ import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInput.vue'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/sdk/fe/design/ColorPicker.vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
-import { useDebounce } from '@abuddy/sdk/fe'
-import { applicationState } from '@/main'
+import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
 import type {
@@ -703,6 +702,8 @@ import type {
   AgentPhase,
   QuickPrompt,
 } from '@app/api'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: ThreadsSettings
@@ -1029,7 +1030,7 @@ const removeTag = (index: number) => {
 }
 
 // Get threads actor for import/export state
-const threadsActor = applicationState.system.get(id)
+const threadsActor = actorSystem.get(id)
 
 // Import state
 const isImporting = useSelector(threadsActor, (state: any) => state.context.threadsImport.status === 'importing')

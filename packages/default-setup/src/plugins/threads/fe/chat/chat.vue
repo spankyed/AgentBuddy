@@ -183,15 +183,16 @@ import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
 import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
 import ConfirmationDialog from '@abuddy/sdk/fe/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@abuddy/sdk/fe/design/ScrollToBottomFob.vue'
-import { applicationState } from '@/main'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
 import { trpc } from '@abuddy/sdk/rpc'
 
-const actor: ThreadsState = applicationState.system.get(id);
-const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
+const actorSystem = useActorSystem()
+const appActor = useApplicationActor()
+const actor: ThreadsState = actorSystem.get(id);
+const isOnboarding = useSelector(appActor, (s: any) => s.hasTag('onboarding'));
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
 const messagePagination = useSelector(actor, (state) => state.context.messagePagination);
@@ -281,7 +282,7 @@ function handleDashboardResize(delta: number) {
   dashboardWidth.value = newPercent
 }
 
-const canvasHeight = useSelector(applicationState, (state) => state.context.panelSizes.canvasHeight)
+const canvasHeight = useSelector(appActor, (state: any) => state.context.panelSizes.canvasHeight)
 
 watch(canvasHeight, (height) => {
   if (height >= 93) {
@@ -319,7 +320,7 @@ function handleStatuslineClick() {
   const cwd = statusLineCwd.value
   if (!cwd) return
   navigateToPlugin('code')
-  applicationState.system.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
+  actorSystem.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
 function handleSendMessage(text: string, references?: MessageReferences) {
@@ -372,9 +373,9 @@ function openLightbox(src: string) {
 }
 
 function expandChatIfCollapsed() {
-  const snapshot = applicationState.getSnapshot();
+  const snapshot = appActor.getSnapshot();
   if (snapshot.context.panelSizes.canvasHeight >= 93) {
-    applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
+    appActor.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
 }
 
@@ -418,8 +419,8 @@ function handleToggleThreadSidebar() {
 function handleViewDashboard() {
   navigateToPlugin('threads', { type: 'VIEW_DASHBOARD' });
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
-  if (applicationState.getSnapshot().context.panelSizes.canvasHeight < 20) {
-    applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
+  if (appActor.getSnapshot().context.panelSizes.canvasHeight < 20) {
+    appActor.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
 }
 

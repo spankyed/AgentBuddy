@@ -262,10 +262,11 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
-import { applicationState } from '@/main'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/plugins/threads/fe/state'
 import { trpc } from '@abuddy/sdk/rpc'
+
+const actorSystem = useActorSystem()
 
 type PermissionMode =
   | 'default'
@@ -321,7 +322,7 @@ const props = defineProps<{
   artifact: ArtifactItem & { content: SessionContent }
 }>()
 
-const threadsActor = applicationState.system.get(threadsId)
+const threadsActor = actorSystem.get(threadsId)
 const currentThread = useSelector(
   threadsActor,
   (state: any) => state.context.currentThread,
@@ -415,7 +416,7 @@ async function copySessionId() {
 }
 
 function openTerminalTab() {
-  const terminalActor = applicationState.system.get('code')?.system.get('terminal') as any
+  const terminalActor = actorSystem.get('code')?.system.get('terminal') as any
   if (!terminalActor) return
 
   terminalActor.send({

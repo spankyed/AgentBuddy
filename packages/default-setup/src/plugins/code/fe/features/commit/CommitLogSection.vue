@@ -88,20 +88,22 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import type { CommitLogEntry } from '@/plugins/code/fe/features/commit/state'
 import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy, Search, X } from 'lucide-vue-next'
 import RevertDialog from '@/plugins/code/fe/features/commit/RevertDialog.vue'
 import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
 
+const actorSystem = useActorSystem()
+
 const props = defineProps<{
   toast: { success: (title: string, message: string) => void } | undefined
 }>()
 
-const codeActor: CodeState = applicationState.system.get(codeId)
+const codeActor: CodeState = actorSystem.get(codeId)
 const commitActor = codeActor.system.get('commit')!
 
 const commitLog = useSelector(commitActor, (state: any) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>

@@ -168,11 +168,12 @@ import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import ColorPicker from '@abuddy/sdk/fe/design/ColorPicker.vue'
-import { useDebounce } from '@abuddy/sdk/fe'
+import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
 import type { PromptsSettings, Category } from '@app/api'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type PromptsState } from './state'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: PromptsSettings
@@ -227,7 +228,7 @@ const removeCategory = (index: number) => {
 }
 
 // Get prompts actor and state via selectors
-const promptsActor: PromptsState = applicationState.system.get(id)
+const promptsActor: PromptsState = actorSystem.get(id)
 
 // Import state
 const isImporting = useSelector(promptsActor, (state) => state.context.promptsImport.status === 'importing')

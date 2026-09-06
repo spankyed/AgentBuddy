@@ -140,14 +140,16 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@app/api'
 import { trpc } from '@abuddy/sdk/rpc'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/fe/state'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: BrainSettings
@@ -160,7 +162,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Get brain state from brain state machine
-const brainActor: BrainState = applicationState.system.get(brainId);
+const brainActor: BrainState = actorSystem.get(brainId);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
 
 // Compute if restart is needed by comparing root flow IDs

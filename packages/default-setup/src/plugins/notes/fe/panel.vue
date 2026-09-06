@@ -259,7 +259,6 @@
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
-import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus, ListChecks, MoreVertical, Star, ChevronRight, Trash2, ArrowLeft, Undo2, Search, X, FileText, CircleCheck } from 'lucide-vue-next'
 import {
@@ -271,9 +270,11 @@ import {
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 import type { MenuItem } from '@abuddy/sdk/fe'
-import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
+import { useActorSystem, useTrackedMenuOpen } from '@abuddy/sdk/fe'
 
-const actor: NotesState = applicationState.system.get(id)
+const actorSystem = useActorSystem()
+
+const actor: NotesState = actorSystem.get(id)
 
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)

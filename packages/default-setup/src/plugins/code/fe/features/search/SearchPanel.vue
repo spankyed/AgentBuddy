@@ -187,17 +187,19 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/fe/features/EmptyState.vue'
 
+const actorSystem = useActorSystem()
+
 // Get actors
-const codeActor: CodeState = applicationState.system.get(codeId)
+const codeActor: CodeState = actorSystem.get(codeId)
 const searchActor = codeActor.system.get('search')!
 
 // State selectors

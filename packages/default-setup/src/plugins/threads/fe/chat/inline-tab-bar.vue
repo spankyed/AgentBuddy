@@ -18,11 +18,13 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { X } from 'lucide-vue-next';
-import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
 import { id, type ThreadsState } from '@/plugins/threads/fe/state';
 import TabBar from '@/plugins/threads/fe/canvas/agent/tabs/tab-bar.vue';
+
+const actorSystem = useActorSystem()
 
 defineProps<{
   visible: boolean;
@@ -32,7 +34,7 @@ defineEmits<{
   close: [];
 }>();
 
-const actor: ThreadsState = applicationState.system.get(id);
+const actor: ThreadsState = actorSystem.get(id);
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);

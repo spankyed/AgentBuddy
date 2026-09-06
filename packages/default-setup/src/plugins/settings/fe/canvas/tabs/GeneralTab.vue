@@ -62,16 +62,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { User, Key, Settings, CheckCircle, Briefcase, FileJson } from 'lucide-vue-next'
 import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
 import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
 
-const actor = applicationState.system.get('settings')
+const actorSystem = useActorSystem()
+
+const actor = actorSystem.get('settings')
 
 const generalNavItem = useSelector(actor, (state: any) => state.context.generalNavItem)
 const settings = useSelector(actor, (state: any) => state.context.settings)

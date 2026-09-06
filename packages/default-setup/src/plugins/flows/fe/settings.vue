@@ -194,13 +194,15 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@app/api'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: FlowsSettings
@@ -224,7 +226,7 @@ const selectedRootFlowId = ref<string>(props.settings?.rootFlowId || '')
 const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
-const flowsActor: FlowsState = applicationState.system.get(id)
+const flowsActor: FlowsState = actorSystem.get(id)
 const flows = useSelector(flowsActor, (state) => state.context.flows || [])
 const isImporting = useSelector(flowsActor, (state) => state.context.dslImport.status === 'importing')
 const importStatus = useSelector(flowsActor, (state) => state.context.dslImport.status)
@@ -240,7 +242,7 @@ const exportedFilePath = useSelector(flowsActor, (state) => state.context.dslExp
 const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslExport.flowCount)
 
 // Get settings actor for navigation only
-const settingsActor = applicationState.system.get('settings')
+const settingsActor = actorSystem.get('settings')
 
 // Check if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {

@@ -168,11 +168,12 @@ import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import ColorPicker from '@abuddy/sdk/fe/design/ColorPicker.vue'
-import { useDebounce } from '@abuddy/sdk/fe'
+import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
 import type { ActionsSettings, Category } from '@app/api'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ActionsState } from './state'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: ActionsSettings
@@ -227,7 +228,7 @@ const removeCategory = (index: number) => {
 }
 
 // Get actions actor and state via selectors
-const actionsActor: ActionsState = applicationState.system.get(id)
+const actionsActor: ActionsState = actorSystem.get(id)
 
 // Import state
 const isImporting = useSelector(actionsActor, (state) => state.context.actionsImport.status === 'importing')

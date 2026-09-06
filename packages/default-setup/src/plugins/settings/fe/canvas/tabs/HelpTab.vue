@@ -56,11 +56,12 @@
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import type { FAQItem } from '@app/api'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
-import { openInAppBrowser } from '@abuddy/sdk/fe'
+import { useActorSystem, openInAppBrowser } from '@abuddy/sdk/fe'
+
+const actorSystem = useActorSystem()
 
 function openDiscordLink() {
   openInAppBrowser(DISCORD_URL)
@@ -70,7 +71,7 @@ function openMemorialLink() {
   openInAppBrowser(MEMORIAL_URL)
 }
 
-const settingsActor = applicationState.system.get('settings')
+const settingsActor = actorSystem.get('settings')
 const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])

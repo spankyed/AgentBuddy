@@ -94,8 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { applicationState } from '@/main'
-import { useExternalFileDrag } from '@abuddy/sdk/fe'
+import { useActorSystem, useExternalFileDrag } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
@@ -104,7 +103,9 @@ import FileEditor from '@/plugins/code/fe/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
 
-const actor: CodeState = applicationState.system.get(id)
+const actorSystem = useActorSystem()
+
+const actor: CodeState = actorSystem.get(id)
 const explorerActor = actor.system.get('explorer')
 const terminalActor = actor.system.get('terminal')
 

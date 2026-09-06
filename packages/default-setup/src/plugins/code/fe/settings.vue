@@ -459,10 +459,11 @@ import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInp
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import DirectorySelect from '@abuddy/sdk/fe/design/DirectorySelect.vue'
 import { X, Plus } from 'lucide-vue-next'
-import { applicationState } from '@/main'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
 import { trpc } from '@abuddy/sdk/rpc'
 import type { CodeSettings, TerminalScript } from '@app/api'
+
+const actorSystem = useActorSystem()
 
 interface Project {
   name: string
@@ -514,7 +515,7 @@ const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
 // Get projects from general settings
-const settingsActor = applicationState.system.get('settings')
+const settingsActor = actorSystem.get('settings')
 const projects = computed(() => {
   return (useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects).value || []) as Project[]
 })

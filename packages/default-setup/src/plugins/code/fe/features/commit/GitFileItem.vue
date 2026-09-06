@@ -51,15 +51,17 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import type { GitStatusFile } from '@/plugins/code/fe/features/commit/state'
 import { File, Copy } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
 import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/fe/features/explorer/constants'
+
+const actorSystem = useActorSystem()
 
 const props = defineProps<{
   file: GitStatusFile
@@ -71,7 +73,7 @@ defineEmits<{
   openFile: [file: GitStatusFile]
 }>()
 
-const codeActor: CodeState = applicationState.system.get(codeId)
+const codeActor: CodeState = actorSystem.get(codeId)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 const fileDisplay = computed(() => {

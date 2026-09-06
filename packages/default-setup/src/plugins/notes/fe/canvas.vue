@@ -291,11 +291,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
-import { useExternalFileDrag } from '@abuddy/sdk/fe'
+import { useActorSystem, useExternalFileDrag } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '@app/api'
 import { id, type NotesState } from './state'
-import { applicationState } from '@/main'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@abuddy/sdk/fe/components/tiptap/injection-keys'
 import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star, Plus } from 'lucide-vue-next'
@@ -308,7 +307,9 @@ import TaskListPanel from './components/TaskListPanel.vue'
 import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
 import TiptapSearchBar from '@abuddy/sdk/fe/components/tiptap/TiptapSearchBar.vue'
 
-const actor: NotesState = applicationState.system.get(id)
+const actorSystem = useActorSystem()
+
+const actor: NotesState = actorSystem.get(id)
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)

@@ -42,12 +42,14 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { FolderOpen } from 'lucide-vue-next'
-import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import { useProjectActions } from './explorer/composables/useProjectActions'
 
-const codeActor: CodeState = applicationState.system.get(codeId)
+const actorSystem = useActorSystem()
+
+const codeActor: CodeState = actorSystem.get(codeId)
 const explorerActor = codeActor.system.get('explorer')!
 
 const { allProjects } = useProjectActions()

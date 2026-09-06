@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { Menu, Edit, Trash2 } from 'lucide-vue-next'
 import {
@@ -55,9 +56,10 @@ import {
   DropdownMenuPortal,
   DropdownMenuSeparator,
 } from 'reka-ui'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/flows/fe/state'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   selectedFlowId?: string | null
@@ -72,7 +74,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // Get flows settings to check if this is root flow
-const flowsActor = applicationState.system.get(id)
+const flowsActor = actorSystem.get(id)
 const settings = useSelector(flowsActor, (state: any) => state.context.settings || {})
 const isRootFlow = computed(() => props.selectedFlowId === settings.value?.rootFlowId)
 

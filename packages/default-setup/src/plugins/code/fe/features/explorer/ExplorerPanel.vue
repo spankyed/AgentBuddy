@@ -87,9 +87,9 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import Dialog from '@abuddy/sdk/fe/design/dialog.vue'
 import ExplorerTreeItem from '@/plugins/code/fe/features/explorer/ExplorerTreeItem.vue'
@@ -101,8 +101,10 @@ import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
 
+const actorSystem = useActorSystem()
+
 // Get actors
-const codeActor: CodeState = applicationState.system.get(codeId)
+const codeActor: CodeState = actorSystem.get(codeId)
 const explorerActor = codeActor.system.get('explorer')!
 const terminalActor = codeActor.system.get('terminal')!
 
@@ -195,7 +197,7 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
-const settingsActor = applicationState.system.get('settings')
+const settingsActor = actorSystem.get('settings')
 const mdEditorDefault = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 

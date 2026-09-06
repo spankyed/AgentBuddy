@@ -80,15 +80,17 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch } from 'vue'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/fe/state'
 import TNodeListItem from '../../../shared/components/TNodeListItem.vue'
 import type { TrackEntity } from '@app/api'
 import { trpc } from '@abuddy/sdk/rpc'
 
-const brainActor: BrainState = applicationState.system.get(brainId);
+const actorSystem = useActorSystem()
+
+const brainActor: BrainState = actorSystem.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
 const flowTNodeId = useSelector(brainActor, (state) => state.context.flowTNodeId);

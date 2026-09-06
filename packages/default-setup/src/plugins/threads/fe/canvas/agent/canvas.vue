@@ -21,19 +21,21 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
-import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
 import { id, type ThreadsState } from '@/plugins/threads/fe/state';
 import TabBar from '@/plugins/threads/fe/canvas/agent/tabs/tab-bar.vue';
 import ContentViewer from '@/plugins/threads/fe/canvas/agent/content-viewer.vue';
 import ThreadsHeader from '@/plugins/threads/fe/canvas/components/ThreadsHeader.vue';
 
+const actorSystem = useActorSystem()
+
 defineProps<{
   inline?: boolean;
 }>();
 
-const actor: ThreadsState = applicationState.system.get(id);
+const actor: ThreadsState = actorSystem.get(id);
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);

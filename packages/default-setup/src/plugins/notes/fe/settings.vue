@@ -192,12 +192,14 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
+
+const actorSystem = useActorSystem()
 
 interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'
@@ -250,7 +252,7 @@ const updatePosition = (value: 'left' | 'right') => {
 }
 
 // Get notes actor and state via selectors
-const notesActor = applicationState.system.get(id)
+const notesActor = actorSystem.get(id)
 
 // Import state
 const isImporting = useSelector(notesActor, (state: any) => state.context.notesImport.status === 'importing')

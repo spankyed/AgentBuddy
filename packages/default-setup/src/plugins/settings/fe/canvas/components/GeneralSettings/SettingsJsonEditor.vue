@@ -38,12 +38,14 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
 
-const actor = applicationState.system.get('settings')
+const actorSystem = useActorSystem()
+
+const actor = actorSystem.get('settings')
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const jsonText = ref('')

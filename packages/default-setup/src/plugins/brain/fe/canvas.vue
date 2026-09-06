@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { applicationState } from '@/main'
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'
 import { id, type BrainState } from '@/plugins/brain/fe/state.ts';
@@ -135,7 +135,9 @@ import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
 import { trpc } from '@abuddy/sdk/rpc';
 
-const actor: BrainState = applicationState.system.get(id);
+const actorSystem = useActorSystem()
+
+const actor: BrainState = actorSystem.get(id);
 
 // Selectors for state
 const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);

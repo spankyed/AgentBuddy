@@ -201,8 +201,7 @@ import TogglesBlock from './blocks/TogglesBlock.vue'
 import ContextUsageBlock from './blocks/ContextUsageBlock.vue'
 import SessionListBlock from './blocks/SessionListBlock.vue'
 import { ref, computed } from 'vue'
-import { applicationState } from '@/main'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/plugins/threads/fe/state'
 
 interface Props {
@@ -216,7 +215,9 @@ const props = withDefaults(defineProps<Props>(), {
   isDisabled: false
 })
 
-const threadsActor = applicationState.system.get(threadsId)
+const actorSystem = useActorSystem()
+const appActor = useApplicationActor()
+const threadsActor = actorSystem.get(threadsId)
 
 const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
 
@@ -290,7 +291,7 @@ const handleNavigate = (link: Link) => {
 
   if (target === 'application') {
     // Send event to application state machine
-    applicationState.send(data)
+    appActor.send(data)
   } else if (target === 'external') {
     // Open external URL in default browser
     window.open(data.url, '_blank')

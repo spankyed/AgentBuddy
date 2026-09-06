@@ -24,10 +24,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useDebounce } from '@abuddy/sdk/fe'
+import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import CliProviderRow from './CliProviderRow.vue'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: {
@@ -46,7 +47,7 @@ const emit = defineEmits<{
   }]
 }>()
 
-const settingsActor = applicationState.system.get('settings')
+const settingsActor = actorSystem.get('settings')
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
 
 const providers = [

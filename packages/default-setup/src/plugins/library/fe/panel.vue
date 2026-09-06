@@ -242,16 +242,18 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
 // [SEARCH_INDEX_FF] import { getModelConfig } from './config/embedding-models'
 import type { ContentSection, MarkdownContent, TextContent, FieldContent, ListContent } from '@app/api'
 
+const actorSystem = useActorSystem()
+
 type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = applicationState.system.get(id) as LibraryActor
+const actor = actorSystem.get(id) as LibraryActor
 
 // Individual selectors for each context property
 const documents = useSelector(actor, (state) => state.context.documents)

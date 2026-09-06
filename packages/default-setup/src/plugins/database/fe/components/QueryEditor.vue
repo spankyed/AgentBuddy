@@ -89,15 +89,17 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
-import { applicationState } from '@/main';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 
-const actor: DatabaseState = applicationState.system.get(id);
+const actorSystem = useActorSystem()
+
+const actor: DatabaseState = actorSystem.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);

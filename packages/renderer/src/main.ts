@@ -146,6 +146,7 @@ app.config.errorHandler = (err, _instance, info) => {
 };
 
 app.provide('actorSystem', applicationState.system);
+app.provide('applicationActor', applicationState);
 app.provide(TIPTAP_PLUGINS_KEY, tiptapPlugins);
 app.mount('#app');
 

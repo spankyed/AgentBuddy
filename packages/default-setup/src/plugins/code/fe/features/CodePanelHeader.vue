@@ -78,10 +78,9 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed } from 'vue'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/fe/state'
-import { isAnyMenuOpen } from '@abuddy/sdk/fe'
+import { useActorSystem, isAnyMenuOpen } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '@/plugins/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
 import {
   FolderOpen,
@@ -91,6 +90,8 @@ import {
   Play,
   Sparkle,
 } from 'lucide-vue-next'
+
+const actorSystem = useActorSystem()
 
 defineProps<{
   icon: Component
@@ -102,7 +103,7 @@ defineEmits<{
   'title-click': []
 }>()
 
-const actor: CodeState = applicationState.system.get(id)
+const actor: CodeState = actorSystem.get(id)
 const explorerActor = actor.system.get('explorer')!
 const terminalActor = actor.system.get('terminal')!
 const commitActor = actor.system.get('commit')!

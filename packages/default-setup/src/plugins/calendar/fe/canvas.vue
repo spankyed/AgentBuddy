@@ -88,8 +88,8 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
-import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next';
 import { id, type CalendarState } from './state.ts';
@@ -97,6 +97,8 @@ import MonthGrid from './components/MonthGrid.vue';
 import DayTimeline from './components/DayTimeline.vue';
 import DatePickerPopover from './components/DatePickerPopover.vue';
 import EventEditorDialog from './components/EventEditorDialog.vue';
+
+const actorSystem = useActorSystem()
 
 interface SavePayload {
   title: string;
@@ -106,7 +108,7 @@ interface SavePayload {
   notes: string;
 }
 
-const actor: CalendarState = applicationState.system.get(id);
+const actor: CalendarState = actorSystem.get(id);
 
 const events = useSelector(actor, (state) => state.context.events);
 const viewYear = useSelector(actor, (state) => state.context.viewYear);

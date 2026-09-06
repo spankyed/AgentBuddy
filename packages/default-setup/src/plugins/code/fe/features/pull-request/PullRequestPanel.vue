@@ -246,7 +246,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
+import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
@@ -265,7 +265,9 @@ import type { GitStatusFile } from '@/plugins/code/fe/features/commit/state'
 import type { TreeNode } from './types'
 
 // Get actors
-const codeActor: CodeState = applicationState.system.get(codeId)
+const actorSystem = useActorSystem()
+const appActor = useApplicationActor()
+const codeActor: CodeState = actorSystem.get(codeId)
 const prActor = codeActor.system.get('pr')!
 const commitActor = codeActor.system.get('commit')!
 
@@ -368,7 +370,7 @@ const refreshStatus = () => {
 
 const handleOpenFile = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-  applicationState.send({ type: 'RESTORE_CHAT' })
+  appActor.send({ type: 'RESTORE_CHAT' })
   prActor?.send({
     type: 'pr.OPEN_FILE',
     file: { path: file.path, status: file.status, staged: false }
@@ -377,7 +379,7 @@ const handleOpenFile = (file: TreeNode) => {
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-  applicationState.send({ type: 'RESTORE_CHAT' })
+  appActor.send({ type: 'RESTORE_CHAT' })
   const gitFile: GitStatusFile = { path: file.path, status: file.status, staged: false }
   prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })

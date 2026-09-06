@@ -42,8 +42,8 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref } from 'vue'
-import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/fe/state'
 import ExplorerPanel from '@/plugins/code/fe/features/explorer/ExplorerPanel.vue'
@@ -55,7 +55,9 @@ import PromptsPanel from '@/plugins/code/fe/features/prompts/PromptsPanel.vue'
 import PanelTerminalSection from '@/plugins/code/fe/features/terminal/PanelTerminalSection.vue'
 import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
 
-const actor: CodeState = applicationState.system.get(id)
+const actorSystem = useActorSystem()
+
+const actor: CodeState = actorSystem.get(id)
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const panelTerminalExpanded = useSelector(actor, (state) => state.context.panelTerminalExpanded)

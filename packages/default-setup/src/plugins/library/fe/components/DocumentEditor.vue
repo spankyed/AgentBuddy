@@ -90,14 +90,16 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
 import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@abuddy/sdk/fe/design/tag-input.vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import type { DocumentDTO, CollectionDTO, ContentSection } from '@app/api'
+
+const actorSystem = useActorSystem()
 
 const props = defineProps<{
   collections: CollectionDTO[]
@@ -115,7 +117,7 @@ const isSymlink = computed(() => props.document?.id?.startsWith('symlink:') ?? f
 const mediaEntityId = crypto.randomUUID()
 
 // Get settings from state
-const actor = applicationState.system.get('library')
+const actor = actorSystem.get('library')
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const formData = reactive({

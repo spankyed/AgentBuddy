@@ -630,7 +630,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
+import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import type { GitStatusFile } from '@/plugins/code/fe/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
@@ -648,7 +648,9 @@ import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
 import { useSectionVisibilityMenu } from '@/plugins/code/fe/composables/useSectionVisibilityMenu'
 
 // Get actors
-const codeActor: CodeState = applicationState.system.get(codeId)
+const actorSystem = useActorSystem()
+const appActor = useApplicationActor()
+const codeActor: CodeState = actorSystem.get(codeId)
 const commitActor = codeActor.system.get('commit')!
 
 // Settings from code actor
@@ -844,7 +846,7 @@ const refreshStatus = () => {
 }
 
 const selectFile = (file: GitStatusFile) => {
-  applicationState.send({ type: 'RESTORE_CHAT' })
+  appActor.send({ type: 'RESTORE_CHAT' })
   commitActor?.send({ type: 'commit.SELECT_FILE', file })
   commitActor?.send({ type: 'commit.VIEW_DIFF', path: file.path, staged: file.staged })
 }
@@ -937,7 +939,7 @@ const cancelRevert = () => {
 }
 
 const openFile = (file: GitStatusFile) => {
-  applicationState.send({ type: 'RESTORE_CHAT' })
+  appActor.send({ type: 'RESTORE_CHAT' })
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
 }
 

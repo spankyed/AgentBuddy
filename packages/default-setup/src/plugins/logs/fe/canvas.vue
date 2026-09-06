@@ -363,9 +363,10 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from './data-renderer.vue';
-import { applicationState } from '@/main';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
+
+const actorSystem = useActorSystem()
 
 const logsContent = ref<HTMLElement>();
 
@@ -411,7 +412,7 @@ const contextMenu = reactive({
   source: ''
 });
 
-const actor: LogsState = applicationState.system.get(id)
+const actor: LogsState = actorSystem.get(id)
 const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
@@ -655,7 +656,7 @@ const toggleShowAppEvents = () => {
   });
 
   // Persist to settings (will round-trip back and trigger backend rebroadcast).
-  const settingsActor = applicationState.system.get('settings');
+  const settingsActor = actorSystem.get('settings');
   settingsActor.send({
     type: 'SETTINGS.UPDATE',
     entityType: 'plugin',
@@ -683,7 +684,7 @@ const excludeSource = (source: string) => {
     });
 
     // Send update to settings (this will persist it and eventually send it back)
-    const settingsActor = applicationState.system.get('settings');
+    const settingsActor = actorSystem.get('settings');
     settingsActor.send({
       type: 'SETTINGS.UPDATE',
       entityType: 'plugin',

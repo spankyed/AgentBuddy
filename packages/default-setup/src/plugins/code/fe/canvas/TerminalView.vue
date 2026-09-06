@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@abuddy/sdk/fe/design/ScrollToBottomFob.vue'
 import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
@@ -58,10 +59,11 @@ import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPAR
 import { Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw, Trash2 } from 'lucide-vue-next'
 import type { Terminal, IDisposable } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
-import { applicationState } from '@/main'
 import { id, type CodeState } from '@/plugins/code/fe/state'
 import type { TerminalInfo } from '@/plugins/code/fe/features/terminal/state'
 import { terminalPool } from '@/plugins/code/fe/utils/terminal-pool'
+
+const actorSystem = useActorSystem()
 
 /* --------------------------------------------------------------------------
  * Props & actor -------------------------------------------------------------------------- */
@@ -74,7 +76,7 @@ defineEmits<{
   'restart-terminal': []
 }>()
 
-const codeActor: CodeState = applicationState.system.get(id)
+const codeActor: CodeState = actorSystem.get(id)
 const terminalActor = codeActor.system.get('terminal')
 
 /* --------------------------------------------------------------------------

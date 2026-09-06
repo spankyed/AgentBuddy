@@ -190,6 +190,7 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -208,7 +209,6 @@ import {
 } from 'reka-ui'
 import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/fe/features/explorer/constants'
-import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/fe/state'
 import type { TerminalInfo } from './state'
 import { terminalPool } from '@/plugins/code/fe/utils/terminal-pool'
@@ -221,12 +221,14 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
 
+const actorSystem = useActorSystem()
+
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
-const codeActor: CodeState = applicationState.system.get(codeId)
+const codeActor: CodeState = actorSystem.get(codeId)
 const terminalActor = codeActor.system.get('terminal')!
-const settingsActor = applicationState.system.get('settings')
+const settingsActor = actorSystem.get('settings')
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)

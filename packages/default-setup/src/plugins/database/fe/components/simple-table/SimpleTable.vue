@@ -51,10 +51,10 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id } from '../../state';
-import { applicationState } from '@/main';
 import { useResultAnalysis } from './composables/useResultAnalysis';
 import ResultsInfoBar from './components/ResultsInfoBar.vue';
 import ResultStates from './components/ResultStates.vue';
@@ -63,8 +63,10 @@ import ObjectsTable from './components/ObjectsTable.vue';
 import JsonDisplay from './components/JsonDisplay.vue';
 import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
 
+const actorSystem = useActorSystem()
+
 // State Management
-const actor = applicationState.system.get(id);
+const actor = actorSystem.get(id);
 const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
 const isLoading = useSelector(actor, (state: any) => state.context.isLoading);
 const error = useSelector(actor, (state: any) => state.context.error);

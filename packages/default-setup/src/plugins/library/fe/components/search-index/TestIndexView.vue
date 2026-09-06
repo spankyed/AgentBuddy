@@ -207,9 +207,9 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { id, type LibraryEvents } from '../../state'
 import type { ActorRefFrom } from 'xstate'
 import { librarySystem } from '../../state'
@@ -217,8 +217,10 @@ import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@abuddy/sdk/fe/design/button.vue'
 import type { IndexSearchResult, SearchIndex } from '@app/api'
 
+const actorSystem = useActorSystem()
+
 type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = applicationState.system.get(id) as LibraryActor
+const actor = actorSystem.get(id) as LibraryActor
 
 const testingIndex = useSelector(actor, (state) => state.context.testingIndex) as Ref<SearchIndex | null>
 const testQuery = useSelector(actor, (state) => state.context.testQuery) as Ref<string>

@@ -197,10 +197,11 @@ import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/sdk/fe/design/ColorPicker.vue'
-import { useDebounce } from '@abuddy/sdk/fe'
-import { applicationState } from '@/main'
+import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
+
+const actorSystem = useActorSystem()
 
 interface LibraryTagOption {
   name: string
@@ -262,7 +263,7 @@ const removeTag = (index: number) => {
 }
 
 // Get library actor and state via selectors
-const libraryActor = applicationState.system.get(id)
+const libraryActor = actorSystem.get(id)
 
 // Import state
 const isImporting = useSelector(libraryActor, (state: any) => state.context.libraryImport.status === 'importing')

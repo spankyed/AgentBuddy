@@ -120,10 +120,11 @@ import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@abuddy/sdk/fe/components/JsonSchemaEditor.vue';
-import { applicationState } from '@/main';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/sdk/fe';
 import { id as actionsId, type ActionsState } from '@/plugins/actions/fe/state';
+
+const actorSystem = useActorSystem()
 
 const props = defineProps<{
   action?: ActionEntity;
@@ -150,7 +151,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the actions state machine actor
-const actor: ActionsState = applicationState.system.get(actionsId);
+const actor: ActionsState = actorSystem.get(actionsId);
 
 // Use the composable for managing collapsible section states
 const parametersExpanded = useCollapsibleState(actor, ['formData', 'parametersExpanded'], 'TOGGLE_PARAMETERS_SECTION');
@@ -181,7 +182,7 @@ function openInEditor() {
 
   // Child actor needs time to initialize after plugin activation
   setTimeout(() => {
-    const actionsActor = applicationState.system.get('code')?.system.get('codeActions');
+    const actionsActor = actorSystem.get('code')?.system.get('codeActions');
     if (actionsActor) {
       actionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: props.action!.id });
     }

@@ -31,12 +31,14 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
 import Dialog from '@abuddy/sdk/fe/design/dialog.vue';
 import Button from '@abuddy/sdk/fe/design/button.vue';
-import { applicationState } from '@/main';
 import { id, type DatabaseState } from '../../state';
+
+const actorSystem = useActorSystem()
 
 defineProps<{
   modelValue: boolean;
@@ -48,7 +50,7 @@ const emit = defineEmits<{
   generate: [prompt: string];
 }>();
 
-const actor: DatabaseState = applicationState.system.get(id);
+const actor: DatabaseState = actorSystem.get(id);
 const isAiQueryLoading = useSelector(actor, (state) => state.context.isAiQueryLoading);
 
 const prompt = ref('');

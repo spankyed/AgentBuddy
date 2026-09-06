@@ -141,7 +141,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
+import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState, type QuickOpenResult } from '@/plugins/code/fe/state'
 import { fuzzySearch, highlightMatches } from '@/plugins/code/fe/utils/fuzzy-search'
 import { getRecencyScore } from '@/plugins/code/fe/utils/recent-files'
@@ -161,7 +161,9 @@ interface EnhancedSearchResult {
 }
 
 // Get state
-const codeActor: CodeState = applicationState.system.get(codeId)
+const actorSystem = useActorSystem()
+const appActor = useApplicationActor()
+const codeActor: CodeState = actorSystem.get(codeId)
 
 // State selectors
 const isVisible = useSelector(codeActor, (state) => state.context.isQuickOpenVisible)
@@ -170,7 +172,7 @@ const loading = useSelector(codeActor, (state) => state.context.quickOpenLoading
 const selectedIndex = useSelector(codeActor, (state) => state.context.quickOpenSelectedIndex)
 const recentlyOpenedFiles = useSelector(codeActor, (state) => state.context.recentlyOpenedFiles)
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
-const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
+const panelSizes = useSelector(appActor, (state: any) => state.context.panelSizes)
 
 // Local state
 const searchInput = ref<HTMLInputElement>()

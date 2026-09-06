@@ -68,8 +68,9 @@ import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInp
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@app/api'
-import { applicationState } from '@/main'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: DatabaseSettings
@@ -111,7 +112,7 @@ const handleResetDatabase = () => {
   )
 
   if (confirmed) {
-    const databaseActor = applicationState.system.get('database')
+    const databaseActor = actorSystem.get('database')
     databaseActor.send({ type: 'DATABASE.RESET' })
   }
 }

@@ -171,13 +171,15 @@
 </template>
 
 <script setup lang="ts">
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import type { SetupPackType } from '@app/api'
 import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
 import Hotkeys from './Hotkeys.vue'
+
+const actorSystem = useActorSystem()
 
 interface Props {
   settings?: any
@@ -198,7 +200,7 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
   })
 }
 
-const actor = applicationState.system.get('settings')
+const actor = actorSystem.get('settings')
 
 const setupPackImport = useSelector(actor, (state: any) => state.context.setupPackImport)
 const resetting = useSelector(actor, (state: any) => state.context.resetting)
