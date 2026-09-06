@@ -17,8 +17,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList, BookText, StickyNote, Bot } from 'lucide-vue-next';
-import type { ArtifactItem, ArtifactType } from '@/registries/types';
+import { FileText } from 'lucide-vue-next';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
+import type { ArtifactItem } from '@/registries/types';
 
 const props = defineProps<{
   artifact: ArtifactItem;
@@ -46,25 +47,7 @@ const pillClasses = computed(() => {
   return 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
 });
 
-function getIcon(type: ArtifactType) {
-  const icons: Record<ArtifactType, any> = {
-    text: FileText,
-    code: Code,
-    review: CheckSquare,
-    image: Image,
-    slack: MessageSquare,
-    todo: ListTodo,
-    project: Layers,
-    json: FileText,
-    graph: Network,
-    table: Table,
-    'claude-session': Wrench,
-    'codex-session': Bot,
-    diff: GitBranch,
-    plan: ClipboardList,
-    markdown: BookText,
-    note: StickyNote,
-  };
-  return icons[type] || FileText;
+function getIcon(type: string) {
+  return artifactRegistry.getIcon(type) || FileText;
 }
 </script>

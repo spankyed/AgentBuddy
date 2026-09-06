@@ -7,6 +7,8 @@
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration } from '@abuddy/sdk/framework';
 import { stepRegistry } from '@abuddy/sdk/steps';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
+import { blockRegistry } from '@abuddy/sdk/blocks';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -42,6 +44,18 @@ export function registerPack(registration: PackRegistration): void {
   if (registration.steps) {
     for (const step of registration.steps) {
       stepRegistry.register(step);
+    }
+  }
+
+  if (registration.artifacts) {
+    for (const art of registration.artifacts) {
+      artifactRegistry.register(art);
+    }
+  }
+
+  if (registration.blocks) {
+    for (const block of registration.blocks) {
+      blockRegistry.register(block);
     }
   }
 

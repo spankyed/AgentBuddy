@@ -59,6 +59,8 @@ export interface LoadedPack {
   systems: Map<string, { machine: any; events: Set<string> }>;
   services?: Record<string, unknown>;
   steps?: import('@abuddy/sdk/steps').StepDefinition[];
+  artifacts?: import('@abuddy/sdk/artifacts').ArtifactDefinition[];
+  blocks?: import('@abuddy/sdk/blocks').BlockDefinition[];
   ears?: import('@abuddy/sdk/framework').PackEARS;
   boot?: import('@abuddy/sdk/framework').PackBootHooks;
   migrations?: import('@abuddy/sdk/framework').PackMigration[];
@@ -209,6 +211,8 @@ export function loadExternalPacks(): LoadedPack[] {
           const mod = esmRequire(mainEntry);
           if (mod.services) pack.services = mod.services;
           if (mod.steps) pack.steps = mod.steps;
+          if (mod.artifacts) pack.artifacts = mod.artifacts;
+          if (mod.blocks) pack.blocks = mod.blocks;
           if (mod.ears) pack.ears = mod.ears;
           if (mod.boot) pack.boot = mod.boot;
           if (mod.migrations) pack.migrations = mod.migrations;
@@ -266,6 +270,8 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
         systems,
         services: pack.services,
         steps: pack.steps,
+        artifacts: pack.artifacts,
+        blocks: pack.blocks,
         ears: pack.ears,
         boot: pack.boot,
         migrations: pack.migrations,

@@ -4,10 +4,10 @@ import type { PermissionMode } from "@/plugins/code/be/services/claude-code/type
 import type { AgentSettings, CommandItem, ThreadsSettings, ThreadTagOption } from '@/registries/types';
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'thinking' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
+export type BlockType = string;
 
 export interface BlockConfig {
-  type: BlockType;
+  type: string;
   props: Record<string, any>;
 }
 
@@ -375,24 +375,7 @@ export interface Tab {
   groupId?: string;
 }
 
-export type ArtifactType =
-  | 'text'
-  | 'code'
-  | 'review'
-  | 'image'
-  | 'slack'
-  | 'todo'
-  | 'project'
-  | 'json'
-  | 'graph'
-  | 'table'
-  | 'markdown'
-  // Claude Code artifacts (see packages/default-setup/src/actions/claude-code/ROADMAP.md)
-  | 'claude-session'
-  | 'codex-session'
-  | 'diff'
-  | 'plan'
-  | 'note';
+export type ArtifactType = string;
 
 // ─── Claude Code artifact content shapes ─────────────────────────────────────
 // Documentation types — `ArtifactEntity.content` is `any` at the storage

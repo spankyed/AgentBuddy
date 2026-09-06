@@ -13,8 +13,14 @@ export default {
   async setup() {
     const { standardSteps } = await import('./src/steps/register');
     const { stepRegistry } = await import('@abuddy/sdk/steps');
-    for (const step of standardSteps) {
-      stepRegistry.register(step);
-    }
+    for (const step of standardSteps) stepRegistry.register(step);
+
+    const { standardArtifacts } = await import('./src/artifacts/register');
+    const { artifactRegistry } = await import('@abuddy/sdk/artifacts');
+    for (const art of standardArtifacts) artifactRegistry.register(art);
+
+    const { standardBlocks } = await import('./src/blocks/register');
+    const { blockRegistry } = await import('@abuddy/sdk/blocks');
+    for (const block of standardBlocks) blockRegistry.register(block);
   },
 } satisfies PackConfig;

@@ -176,12 +176,20 @@
         v-else-if="block.type === 'session-list'"
         :sessions="(block.props as any).sessions"
       />
+
+      <!-- Registry fallback — renders externally-registered block types -->
+      <component
+        v-else-if="registeredBlockComponents[block.type]"
+        :is="registeredBlockComponents[block.type]"
+        v-bind="block.props"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { BlockConfig } from '@/registries/types'
+import { blockRegistry } from '@abuddy/sdk/blocks'
 import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
 import MarkdownBlock from './blocks/MarkdownBlock.vue'
@@ -220,6 +228,17 @@ const appActor = useApplicationActor()
 const threadsActor = actorSystem.get(threadsId)
 
 const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
+
+const registeredBlockComponents = computed(() => {
+  const map: Record<string, unknown> = {};
+  for (const block of props.blocks) {
+    if (!(block.type in map)) {
+      const comp = blockRegistry.getComponent(block.type);
+      if (comp) map[block.type] = comp;
+    }
+  }
+  return map;
+});
 
 // ─── Per-block response routing ───────────────────────────────────────
 // Infer which block type submitted the response from its shape, so only

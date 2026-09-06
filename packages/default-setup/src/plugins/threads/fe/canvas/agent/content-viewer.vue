@@ -34,21 +34,9 @@
 import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
 import type { ArtifactItem } from '@/registries/types';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import ArtifactList from './artifacts/artifact-list.vue';
 import TextArtifact from './artifacts/types/text-artifact.vue';
-import CodeArtifact from './artifacts/types/code-artifact.vue';
-import ReviewArtifact from './artifacts/types/review-artifact.vue';
-import ImageArtifact from './artifacts/types/image-artifact.vue';
-import SlackArtifact from './artifacts/types/slack-artifact.vue';
-import TodoArtifact from './artifacts/types/todo-artifact.vue';
-import ProjectArtifact from './artifacts/types/project-artifact.vue';
-import JsonArtifact from './artifacts/types/json-artifact.vue';
-import ClaudeSessionArtifact from './artifacts/types/claude-session-artifact.vue';
-import CodexSessionArtifact from './artifacts/types/codex-session-artifact.vue';
-import DiffArtifact from './artifacts/types/diff-artifact.vue';
-import PlanArtifact from './artifacts/types/plan-artifact.vue';
-import MarkdownArtifact from './artifacts/types/markdown-artifact.vue';
-import NoteArtifact from './artifacts/types/note-artifact.vue';
 
 const props = defineProps<{
   artifacts: ArtifactItem[];
@@ -65,22 +53,6 @@ const selectedArtifact = computed(() =>
 );
 
 function getArtifactComponent(type: string) {
-  const components = {
-    text: TextArtifact,
-    code: CodeArtifact,
-    review: ReviewArtifact,
-    image: ImageArtifact,
-    slack: SlackArtifact,
-    todo: TodoArtifact,
-    project: ProjectArtifact,
-    json: JsonArtifact,
-    'claude-session': ClaudeSessionArtifact,
-    'codex-session': CodexSessionArtifact,
-    diff: DiffArtifact,
-    plan: PlanArtifact,
-    markdown: MarkdownArtifact,
-    note: NoteArtifact,
-  };
-  return components[type as keyof typeof components] || TextArtifact;
+  return artifactRegistry.getComponent(type) || TextArtifact;
 }
 </script>

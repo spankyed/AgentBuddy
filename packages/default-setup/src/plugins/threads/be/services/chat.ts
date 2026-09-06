@@ -4,6 +4,7 @@ import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfi
 import { sendToPlugin } from '@abuddy/sdk/services';
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
+import { blockRegistry } from '@abuddy/sdk/blocks';
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -765,6 +766,12 @@ export function generateAsideText(message: MessageEntity, response: BlockRespons
 
   if (!primaryBlock) {
     return truncate(message.text, 80);
+  }
+
+  const blockDef = blockRegistry.get(primaryBlock.type);
+  if (blockDef?.be?.generateAsideText) {
+    const result = blockDef.be.generateAsideText(primaryBlock, response, context);
+    if (result !== null) return result;
   }
 
   switch (primaryBlock.type) {

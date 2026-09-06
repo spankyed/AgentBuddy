@@ -41,4 +41,6 @@ export interface PackRegistration {
   boot?: PackBootHooks;
   migrations?: PackMigration[];
   steps?: import('../steps/types').StepDefinition[];
+  artifacts?: import('../artifacts/types').ArtifactDefinition[];
+  blocks?: import('../blocks/types').BlockDefinition[];
 }
