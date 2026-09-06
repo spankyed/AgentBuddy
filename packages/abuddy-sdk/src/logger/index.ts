@@ -10,7 +10,13 @@ function mod() {
 export type { Logger };
 
 export function createLogger(source?: string): Logger {
-  return mod().createLogger(source);
+  let _inner: Logger;
+  const resolve = () => _inner ??= mod().createLogger(source);
+  return new Proxy({} as Logger, {
+    get(_, prop) {
+      return (resolve() as any)[prop];
+    },
+  });
 }
 
 export interface InspectLogger {
