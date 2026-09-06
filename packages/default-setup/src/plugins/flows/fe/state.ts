@@ -22,7 +22,7 @@ import type {
   OutgoingBrainEvents,
 } from '@/registries/types'
 import { trpc } from '@abuddy/sdk/rpc'
-import { getNodeConfig, isTriggerNode } from './canvas/nodes'
+import { getNodeConfig, isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimensions'

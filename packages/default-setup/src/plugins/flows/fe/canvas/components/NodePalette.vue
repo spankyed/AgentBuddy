@@ -53,14 +53,14 @@
 </template>
 
 <script setup lang="ts">
-import { 
+import {
   getPaletteItems,
   getPaletteItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
   getPaletteGradientClasses
-} from '../nodes'
+} from '@abuddy/sdk/fe/components/node-styles'
 
 interface PaletteItem {
   type: string

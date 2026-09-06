@@ -99,7 +99,7 @@ import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/plugins/flows/fe/canvas/layout-utils'
 import type { FlowEntity, NodeEntity, EARS } from '@/registries/types'
-import { isTriggerNode } from './nodes/node-config'
+import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'

@@ -1,6 +1,6 @@
 import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
 import { NODE_DIMENSIONS, getDescriptor, computeExitCount, type LayoutNodeData } from './nodes/node-dimensions'
-import { isTriggerNode } from './nodes/node-config'
+import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
 
 export const LAYOUT_CONFIG = {
   nodeWidth: NODE_DIMENSIONS.default.width,

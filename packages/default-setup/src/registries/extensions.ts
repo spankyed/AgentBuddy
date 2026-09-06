@@ -1,6 +1,6 @@
 import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } from '@abuddy/sdk/fe/utils/json-detection';
 import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
-import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '../plugins/flows/fe/canvas/nodes';
+import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '@abuddy/sdk/fe/components/node-styles';
 
 import { refTypes as threadRefTypes, categories as threadCategories, itemsProvider as threadItemsProvider } from '../plugins/threads/fe/references';
 import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProvider as libraryItemsProvider } from '../plugins/library/fe/references';
