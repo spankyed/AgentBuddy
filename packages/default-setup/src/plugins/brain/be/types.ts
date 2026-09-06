@@ -1,49 +1,23 @@
-import type { BaseEntity, EARS } from '@/registries/ears';
+import type { EARS } from '@/registries/ears';
 
-/** ── Shared aliases ─────────────────────────────────────────────────────── */
-export type TimestampMs = number;
-export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
-export type TNodeKind = 'flow' | 'event' | 'step';
+/** ── Re-export SDK runtime types ────────────────────────────────────────── */
+export type {
+  TimestampMs,
+  EntityStatus,
+  TNodeKind,
+  TNodeEntity,
+  TrackEntity,
+  ExecutionEvent,
+  StepRun,
+  RuntimeServices,
+  ExecutionContext,
+} from '@abuddy/sdk/steps';
+
+import type { TimestampMs, TrackEntity, TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
+
 export type JsonPath = string;
-// export type JsonPath = `$${string}`;
 
-/** ── Core entities ──────────────────────────────────────────────────────── */
-export interface TNodeEntity extends BaseEntity {
-  entityType: EARS.Entity.TNode;
-  tNodeType: TNodeKind;
-  label: string;
-  status: EntityStatus;
-  startedAt: TimestampMs;
-  completedAt?: TimestampMs;
-
-  // For event nodes pulsing
-  eventType?: string;
-  triggerType?: string;
-  cronExpression?: string;
-
-  // Type of the node being executed
-  stepNodeType?: string;
-
-  // Triggers flow completion when this step completes
-  final?: boolean;
-
-  // Instantiated blueprint node attributes (resolved runtime data)
-  nodeAttributes?: Record<string, unknown>;
-
-  // User-provided params only (direct + mapped) — used by handlers for execution
-  resolvedParams?: Record<string, unknown>;
-
-  // Reference to the blueprint node and its containing flow
-  blueprint?: {
-    nodeId: EARS.EntityId;
-    flowId: EARS.EntityId;
-  };
-}
-
-export interface TrackEntity extends TNodeEntity {
-  children: TrackEntity[];
-}
-
+/** ── Brain-local types ──────────────────────────────────────────────────── */
 export interface EventListenerEntity {
   id: EARS.EntityId;
   nodeId: EARS.EntityId;
@@ -83,34 +57,6 @@ export interface BrainRuntimeError {
   actionLabel?: string;
   eventType?: string;
   timestamp: TimestampMs;
-}
-
-/** ── Brain runner types ─────────────────────────────────────────────────── */
-export interface ExecutionEvent {
-  type: string;
-  data: Record<string, unknown>;
-  timestamp?: TimestampMs;
-  source?: string;
-}
-
-export interface StepRun {
-  id?: string;               // Trace TNode ID (for linking to execution trace)
-  label: string;
-  result: unknown;
-  timestamp: TimestampMs;
-}
-
-export interface RuntimeServices {
-  getFlowActor: (flowTNodeId: EARS.EntityId) => any | undefined;
-  getAppServices: () => any;
-}
-
-export interface ExecutionContext {
-  flowTNodeId: EARS.EntityId;     // Flow instance ID (for routing & action functions)
-  event: ExecutionEvent;
-  steps: StepRun[];
-  lastStep?: Omit<StepRun, 'timestamp'>;
-  runtime: RuntimeServices;
 }
 
 /** ── Schema definition types ────────────────────────────────────────────── */

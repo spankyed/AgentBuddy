@@ -1,5 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
-import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
+import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext, ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
 import { Zap } from 'lucide-vue-next';
@@ -46,12 +45,10 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return (step.event as string) || `Fire ${index}`;
 }
 
-function handler(tNode: unknown, _node: unknown, executionContext: unknown, actor: unknown) {
-  const tNodeData = tNode as TNodeEntity;
-  const ctx = executionContext as ExecutionContext;
+function handler(tNode: TNodeEntity, _node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send: (event: any) => void };
 
-  const fireConfig = tNodeData.nodeAttributes || {};
+  const fireConfig = tNode.nodeAttributes || {};
 
   if (!fireConfig.eventType) {
     a.send({ type: 'ERROR', error: 'Missing eventType' });

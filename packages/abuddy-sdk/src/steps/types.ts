@@ -62,14 +62,77 @@ export interface StepBuildFacet {
 }
 
 /*─────────────────────────────────────────────────────────────────
+ * Brain Runtime Types
+ *
+ * Shared types for execution context, trace nodes, and runtime
+ * services. These live in the SDK so step handlers and external
+ * packs get real types instead of `unknown` casts.
+ *─────────────────────────────────────────────────────────────────*/
+
+import type { BaseEntity, EARS } from '../types/entities';
+
+export type TimestampMs = number;
+export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
+export type TNodeKind = 'flow' | 'event' | 'step';
+
+export interface TNodeEntity extends BaseEntity {
+  entityType: EARS.Entity;
+  tNodeType: TNodeKind;
+  label: string;
+  status: EntityStatus;
+  startedAt: TimestampMs;
+  completedAt?: TimestampMs;
+  eventType?: string;
+  triggerType?: string;
+  cronExpression?: string;
+  stepNodeType?: string;
+  final?: boolean;
+  nodeAttributes?: Record<string, unknown>;
+  resolvedParams?: Record<string, unknown>;
+  blueprint?: {
+    nodeId: EARS.EntityId;
+    flowId: EARS.EntityId;
+  };
+}
+
+export interface TrackEntity extends TNodeEntity {
+  children: TrackEntity[];
+}
+
+export interface ExecutionEvent {
+  type: string;
+  data: Record<string, unknown>;
+  timestamp?: TimestampMs;
+  source?: string;
+}
+
+export interface StepRun {
+  id?: string;
+  label: string;
+  result: unknown;
+  timestamp: TimestampMs;
+}
+
+export interface RuntimeServices {
+  getFlowActor: (flowTNodeId: EARS.EntityId) => any | undefined;
+  getAppServices: () => any;
+}
+
+export interface ExecutionContext {
+  flowTNodeId: EARS.EntityId;
+  event: ExecutionEvent;
+  steps: StepRun[];
+  lastStep?: Omit<StepRun, 'timestamp'>;
+  runtime: RuntimeServices;
+}
+
+/*─────────────────────────────────────────────────────────────────
  * Runtime Types
  *─────────────────────────────────────────────────────────────────*/
 
 export interface StepRuntimeFacet {
   /**
-   * Executes the step. Params are typed as `unknown` to avoid coupling
-   * the SDK to concrete brain types — cast internally to `TNodeEntity`,
-   * `NodeEntity`, `ExecutionContext`, and the actor ref.
+   * Executes the step.
    *
    * Generic conventions the brain honours from handler results:
    * - **Branching**: `{ sourceHandle: 'branch-N' }` → routes to named branch
@@ -78,7 +141,7 @@ export interface StepRuntimeFacet {
    * - **Keep-alive**: never send COMPLETE → actor stays in executing state
    * - **Final**: set `final: true` on the compiled node → triggers flow completion
    */
-  handler?: (tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) => void | Promise<void>;
+  handler?: (tNode: TNodeEntity, node: unknown, executionContext: ExecutionContext, actor: unknown) => void | Promise<void>;
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;

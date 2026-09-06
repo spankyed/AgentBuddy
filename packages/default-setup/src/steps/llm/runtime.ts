@@ -1,4 +1,4 @@
-import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { EARS } from '@abuddy/sdk';
 import { repository } from '@abuddy/sdk/ears';
@@ -52,10 +52,8 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
   return 'No prompt specified';
 }
 
-export async function handler(tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) {
-  const t = tNode as TNodeEntity;
+export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as LLMNode;
-  const ctx = executionContext as ExecutionContext;
   const a = actor as { send: (event: any) => void };
   const nodeData = t.nodeAttributes || {};
 

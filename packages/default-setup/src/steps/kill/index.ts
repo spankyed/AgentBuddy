@@ -1,5 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
-import type { ExecutionContext } from '@/plugins/brain/be/types';
+import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { Plug } from 'lucide-vue-next';
 
@@ -26,8 +25,7 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return `Kill Flow ${index}`;
 }
 
-function handler(_tNode: unknown, _node: unknown, executionContext: unknown, actor: unknown) {
-  const ctx = executionContext as ExecutionContext;
+function handler(_tNode: TNodeEntity, _node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send: (event: any) => void };
 
   const flowActor = ctx.runtime.getFlowActor(ctx.flowTNodeId);

@@ -16,4 +16,13 @@ export type {
   TriggerFacet,
   TriggerRuntimeNode,
   TriggerRuntimeContext,
+  TimestampMs,
+  EntityStatus,
+  TNodeKind,
+  TNodeEntity,
+  TrackEntity,
+  ExecutionEvent,
+  StepRun,
+  RuntimeServices,
+  ExecutionContext,
 } from './types';

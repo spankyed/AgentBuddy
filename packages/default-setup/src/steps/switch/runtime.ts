@@ -1,5 +1,5 @@
 import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/plugins/flows/be/config/types';
-import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
 import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
@@ -165,10 +165,8 @@ function evaluateConditions(conditions: Condition[], context: ExecutionContext):
   return -1;
 }
 
-export async function handler(tNode: unknown, node: unknown, executionContext: unknown, actor: unknown) {
-  const t = tNode as TNodeEntity;
+export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const n = node as SwitchNode;
-  const ctx = executionContext as ExecutionContext;
   const a = actor as { send: (event: any) => void };
 
   try {
