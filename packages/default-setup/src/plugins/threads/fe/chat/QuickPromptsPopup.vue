@@ -163,7 +163,7 @@ import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverConte
 import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '@/registries/types'
-import { terminalPool } from '@/plugins/code/fe/utils/terminal-pool'
+import { pasteIntoElement } from '@abuddy/sdk/fe'
 
 const props = defineProps<{
   prompts: QuickPrompt[]
@@ -281,14 +281,7 @@ function selectPrompt(text: string) {
   const target = previousFocus.value
   previousFocus.value = null // consumed — skip redundant refocus in close watcher
   if (target) {
-    const termEntry = terminalPool.findByElement(target)
-    if (termEntry) {
-      target.focus()
-      termEntry.term.paste(text)
-    } else {
-      target.focus()
-      document.execCommand('insertText', false, text + ' ')
-    }
+    pasteIntoElement(target, text)
   }
   open.value = false
 }

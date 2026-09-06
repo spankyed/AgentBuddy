@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ArtifactItem } from '@/registries/types';
-import DataRenderer from '@/plugins/logs/fe/data-renderer.vue';
+import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
 import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 
 const props = defineProps<{

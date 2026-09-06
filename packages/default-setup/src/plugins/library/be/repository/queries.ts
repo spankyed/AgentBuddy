@@ -11,7 +11,7 @@ import {
   formatFileSize,
   getContentLength
 } from './helpers'
-import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents } from './symlink'
+import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink'
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {
@@ -335,6 +335,19 @@ export const libraryQueries = {
     const documents = documentIds.map((id) => this.getDocument(id))
     
     return documents.filter((doc): doc is DocumentDTO => doc !== null)
+  },
+
+  getText(id: EARS.EntityId): string | undefined {
+    const doc = this.getDocument(id)
+    if (!doc) return undefined
+    return doc.content
+      .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> | Extract<ContentSection, { type: 'code' }> => s.type === 'markdown' || s.type === 'text' || s.type === 'code')
+      .map(s => s.text)
+      .join('\n')
+  },
+
+  resolveSymlinkPath(id: string): { collectionId: string; absolutePath: string } | null {
+    return resolveSymlinkPath(id)
   },
 
   getAllDocuments(): DocumentDTO[] {

@@ -3,8 +3,6 @@ import { repository } from '@abuddy/sdk/ears';
 import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/plugins/threads/be/types';
 import { sendToPlugin } from '@abuddy/sdk/services';
 import { readMediaBuffer } from '@abuddy/sdk/utils';
-import { libraryService } from '@/plugins/library/be/services/library';
-import * as symlink from '@/plugins/library/be/repository/symlink';
 import * as threadsService from './threads';
 
 /**
@@ -724,16 +722,16 @@ function resolveThread(ref: { refId: string; label: string }): string {
 }
 
 async function resolveDocument(ref: { refId: string; label: string }): Promise<string> {
-  const resolved = symlink.resolveSymlinkPath(ref.refId);
+  const resolved = repository.libraryQueries.resolveSymlinkPath(ref.refId);
   if (resolved) return `[Library doc: ${ref.label} → ${resolved.absolutePath}]`;
 
-  const text = await libraryService.getText(ref.refId as EARS.EntityId);
+  const text = repository.libraryQueries.getText(ref.refId as EARS.EntityId);
   if (!text) return `[Library doc: ${ref.label} (not found)]`;
   return `--- Doc: ${ref.label} ---\n${text}\n---`;
 }
 
 function resolveFolder(ref: { refId: string; label: string }): string {
-  const resolved = symlink.resolveSymlinkPath(ref.refId);
+  const resolved = repository.libraryQueries.resolveSymlinkPath(ref.refId);
   if (resolved) return `[Library folder: ${ref.label} → ${resolved.absolutePath}]`;
   return `[Library folder: ${ref.label} (id: ${ref.refId})]`;
 }

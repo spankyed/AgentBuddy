@@ -307,3 +307,12 @@ class TerminalPool {
 }
 
 export const terminalPool = new TerminalPool()
+
+document.addEventListener('abuddy:paste', ((e: CustomEvent<{ text: string }>) => {
+  const el = e.target as HTMLElement
+  const entry = terminalPool.findByElement(el)
+  if (!entry) return
+  e.preventDefault()
+  el.focus()
+  entry.term.paste(e.detail.text)
+}) as EventListener)
