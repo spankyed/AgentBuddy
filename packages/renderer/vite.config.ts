@@ -36,6 +36,8 @@ export default defineConfig({
       { find: /^@\/steps\/(.+)$/, replacement: resolve(pluginsDir, '../steps/$1') },
       // Map @/blocks/... to default-setup blocks
       { find: /^@\/blocks\/(.+)$/, replacement: resolve(pluginsDir, '../blocks/$1') },
+      // Map @/artifacts/... to default-setup artifacts
+      { find: /^@\/artifacts\/(.+)$/, replacement: resolve(pluginsDir, '../artifacts/$1') },
       // Map @/plugins/... to default-setup plugins
       { find: /^@\/plugins\/(.+)$/, replacement: `${pluginsDir}/$1` },
       // Map design system components to SDK

@@ -13,6 +13,7 @@
       "@/registries/*": ["../default-setup/src/registries/*"],
       "@/steps/*": ["../default-setup/src/steps/*"],
       "@/blocks/*": ["../default-setup/src/blocks/*"],
+      "@/artifacts/*": ["../default-setup/src/artifacts/*"],
       "@/plugins/*": ["../default-setup/src/plugins/*"],
       "@/*": ["./src/*"]
     }

@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ArtifactItem } from '@/registries/types';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
 import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
 

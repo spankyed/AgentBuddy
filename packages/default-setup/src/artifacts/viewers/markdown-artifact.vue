@@ -4,24 +4,24 @@
       <!-- Header -->
       <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
         <div class="flex items-center gap-2">
-          <StickyNote :size="14" class="text-neutral-400" />
+          <BookText :size="14" class="text-neutral-400" />
           <h3 class="text-sm font-medium text-neutral-200">
-            {{ note?.title || artifact.title || 'Note' }}
+            {{ artifact.title || 'Markdown' }}
           </h3>
         </div>
-        <CopyButton :text="noteContent" />
+        <CopyButton :text="content" />
       </div>
 
-      <!-- Note body -->
+      <!-- Markdown body — rendered via TiptapEditor in viewer mode -->
       <div class="px-4 py-3 flex-1 min-h-0 overflow-y-auto">
         <TiptapEditor
-          v-if="noteContent"
+          v-if="content"
           mode="viewer"
           variant="chat"
-          :model-value="noteContent"
+          :model-value="content"
         />
         <p v-else class="text-xs text-neutral-500 italic">
-          Note not found.
+          Empty document.
         </p>
       </div>
     </div>
@@ -29,33 +29,19 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
-import { StickyNote } from 'lucide-vue-next'
-import type { ArtifactItem } from '@/registries/types'
+import { BookText } from 'lucide-vue-next'
+import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
-import { useSelector } from '@xstate/vue'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   artifact: ArtifactItem
 }>()
 
-// The artifact content is a noteId string — look up the note from the notes system
-const noteId = computed(() =>
+const content = computed(() =>
   typeof props.artifact.content === 'string'
     ? props.artifact.content
-    : props.artifact.content?.noteId ?? ''
+    : props.artifact.content?.notes ?? ''
 )
-
-const notesActor = actorSystem.get('notes')
-const allNotes = useSelector(notesActor, (s: any) => s.context.notes ?? [])
-
-const note = computed(() =>
-  allNotes.value.find((n: any) => n.id === noteId.value)
-)
-
-const noteContent = computed(() => note.value?.content ?? '')
 </script>

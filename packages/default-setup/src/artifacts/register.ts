@@ -10,56 +10,56 @@ export const standardArtifacts: ArtifactDefinition[] = [
     type: 'text',
     fe: {
       icon: FileText,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/text-artifact.vue').default,
+      loadComponent: () => require('./viewers/text-artifact.vue').default,
     },
   },
   {
     type: 'code',
     fe: {
       icon: Code,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/code-artifact.vue').default,
+      loadComponent: () => require('./viewers/code-artifact.vue').default,
     },
   },
   {
     type: 'review',
     fe: {
       icon: CheckSquare,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/review-artifact.vue').default,
+      loadComponent: () => require('./viewers/review-artifact.vue').default,
     },
   },
   {
     type: 'image',
     fe: {
       icon: Image,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/image-artifact.vue').default,
+      loadComponent: () => require('./viewers/image-artifact.vue').default,
     },
   },
   {
     type: 'slack',
     fe: {
       icon: MessageSquare,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/slack-artifact.vue').default,
+      loadComponent: () => require('./viewers/slack-artifact.vue').default,
     },
   },
   {
     type: 'todo',
     fe: {
       icon: ListTodo,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/todo-artifact.vue').default,
+      loadComponent: () => require('./viewers/todo-artifact.vue').default,
     },
   },
   {
     type: 'project',
     fe: {
       icon: Layers,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/project-artifact.vue').default,
+      loadComponent: () => require('./viewers/project-artifact.vue').default,
     },
   },
   {
     type: 'json',
     fe: {
       icon: FileText,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/json-artifact.vue').default,
+      loadComponent: () => require('./viewers/json-artifact.vue').default,
     },
   },
   {
@@ -74,42 +74,42 @@ export const standardArtifacts: ArtifactDefinition[] = [
     type: 'markdown',
     fe: {
       icon: BookText,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/markdown-artifact.vue').default,
+      loadComponent: () => require('./viewers/markdown-artifact.vue').default,
     },
   },
   {
     type: 'claude-session',
     fe: {
       icon: Wrench,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/claude-session-artifact.vue').default,
+      loadComponent: () => require('./viewers/claude-session-artifact.vue').default,
     },
   },
   {
     type: 'codex-session',
     fe: {
       icon: Bot,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/codex-session-artifact.vue').default,
+      loadComponent: () => require('./viewers/codex-session-artifact.vue').default,
     },
   },
   {
     type: 'diff',
     fe: {
       icon: GitBranch,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/diff-artifact.vue').default,
+      loadComponent: () => require('./viewers/diff-artifact.vue').default,
     },
   },
   {
     type: 'plan',
     fe: {
       icon: ClipboardList,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/plan-artifact.vue').default,
+      loadComponent: () => require('./viewers/plan-artifact.vue').default,
     },
   },
   {
     type: 'note',
     fe: {
       icon: StickyNote,
-      loadComponent: () => require('../plugins/threads/fe/canvas/agent/artifacts/types/note-artifact.vue').default,
+      loadComponent: () => require('./viewers/note-artifact.vue').default,
     },
   },
 ];

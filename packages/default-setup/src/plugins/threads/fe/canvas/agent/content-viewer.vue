@@ -33,10 +33,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
-import type { ArtifactItem } from '@/registries/types';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import ArtifactList from './artifacts/artifact-list.vue';
-import TextArtifact from './artifacts/types/text-artifact.vue';
+import ArtifactList from '@/artifacts/artifact-list.vue';
+import TextArtifact from '@/artifacts/viewers/text-artifact.vue';
 
 const props = defineProps<{
   artifacts: ArtifactItem[];

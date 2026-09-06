@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ArtifactItem } from '@/registries/types';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 defineProps<{
   artifact: ArtifactItem;

@@ -2,6 +2,7 @@ import { type BaseEntity, EARS } from '@/registries/ears';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "@/plugins/code/be/services/claude-code/types";
 import type { AgentSettings, CommandItem, ThreadsSettings, ThreadTagOption } from '@/registries/types';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 // Block-based interaction system (composable architecture)
 export type BlockType = string;
@@ -430,16 +431,5 @@ export interface PlanArtifactContent {
   }>;
 }
 
-export interface ArtifactItem {
-  id: string;
-  type: ArtifactType;
-  title: string;
-  content: any;
-  /** Optional Tailwind color token (e.g. 'blue', 'purple') for the pill background. */
-  color?: string;
-  metadata?: {
-    createdAt: number;
-    updatedAt?: number;
-    [key: string]: any;
-  };
-}
+// ArtifactItem — canonical definition lives in the SDK
+export type { ArtifactItem } from '@abuddy/sdk/artifacts';

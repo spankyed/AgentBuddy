@@ -19,7 +19,7 @@
 import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import type { ArtifactItem } from '@/registries/types';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 const props = defineProps<{
   artifact: ArtifactItem;

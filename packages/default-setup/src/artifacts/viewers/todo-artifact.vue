@@ -98,11 +98,10 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { useActorSystem, getDesignatedPlugin } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
-import type { ArtifactItem } from '@/registries/types';
-import { id as threadsId } from '@/plugins/threads/fe/state';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 const actorSystem = useActorSystem()
 
@@ -121,7 +120,7 @@ const props = defineProps<{
   artifact: ArtifactItem;
 }>();
 
-const threadsActor = actorSystem.get(threadsId);
+const threadsActor = actorSystem.get(getDesignatedPlugin('threads'));
 
 // Use reactive data to allow local edits
 const todoData = ref<TodoContent>({
