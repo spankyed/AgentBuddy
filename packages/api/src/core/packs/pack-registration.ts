@@ -15,6 +15,7 @@ export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 const registrations = new Map<string, PackRegistration>();
 
 let _entityTypeCache: Set<string> | null = null;
+let _servicesCache: Record<string, unknown> | null = null;
 
 export function registerPack(registration: PackRegistration): void {
   if (registrations.has(registration.id)) {
@@ -39,27 +40,44 @@ export function registerPack(registration: PackRegistration): void {
     }
   }
 
+  if (registration.services) {
+    for (const [existingId, existing] of registrations) {
+      if (!existing.services) continue;
+      for (const key of Object.keys(registration.services)) {
+        if (key in existing.services) {
+          throw new Error(`Service collision: key "${key}" — pack "${registration.id}" vs "${existingId}"`);
+        }
+      }
+    }
+  }
+
   registrations.set(registration.id, registration);
 
-  if (registration.steps) {
-    for (const step of registration.steps) {
-      stepRegistry.register(step);
+  try {
+    if (registration.steps) {
+      for (const step of registration.steps) {
+        stepRegistry.register(step);
+      }
     }
-  }
 
-  if (registration.artifacts) {
-    for (const art of registration.artifacts) {
-      artifactRegistry.register(art);
+    if (registration.artifacts) {
+      for (const art of registration.artifacts) {
+        artifactRegistry.register(art);
+      }
     }
-  }
 
-  if (registration.blocks) {
-    for (const block of registration.blocks) {
-      blockRegistry.register(block);
+    if (registration.blocks) {
+      for (const block of registration.blocks) {
+        blockRegistry.register(block);
+      }
     }
+  } catch (err) {
+    registrations.delete(registration.id);
+    throw err;
   }
 
   _entityTypeCache = null;
+  _servicesCache = null;
 }
 
 export function getRegisteredEntityTypes(): Set<string> {
@@ -97,13 +115,15 @@ export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
 }
 
 export function getRegisteredServices(): Record<string, unknown> {
-  const services: Record<string, unknown> = {};
-  for (const reg of registrations.values()) {
-    if (reg.services) {
-      Object.assign(services, reg.services);
+  if (!_servicesCache) {
+    _servicesCache = {};
+    for (const reg of registrations.values()) {
+      if (reg.services) {
+        Object.assign(_servicesCache, reg.services);
+      }
     }
   }
-  return services;
+  return _servicesCache;
 }
 
 export function getRegisteredEARS(): PackEARS {

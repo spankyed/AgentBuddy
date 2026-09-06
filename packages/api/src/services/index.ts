@@ -9,16 +9,11 @@ const hostServices = {
   repository: repositoryService,
 };
 
-let _services: Record<string, unknown> | null = null;
-
-function getServices() {
-  if (!_services) {
-    _services = {
-      ...hostServices,
-      ...getRegisteredServices(),
-    };
-  }
-  return _services;
+function getServices(): Record<string, unknown> {
+  return {
+    ...hostServices,
+    ...getRegisteredServices(),
+  };
 }
 
 export default new Proxy({} as Record<string, unknown>, {
