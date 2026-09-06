@@ -1,21 +1,6 @@
 import type { ElkPort } from 'elkjs/lib/elk.bundled.js'
 import { stepRegistry } from '@abuddy/sdk/steps'
-
-/** Shared between Vue components and layout engine — single source of truth */
-export const NODE_DIMENSIONS = {
-  default: { width: 200, height: 50 },
-  listener: {
-    rowHeight: 22,
-    baseHeaderOffset: 43,
-    eventTypeHeight: 29,
-    bottomPadding: 10,
-  },
-  switch: {
-    rowHeight: 26,
-    headerOffset: 43,
-    bottomPadding: 10,
-  },
-} as const
+import { NODE_DIMENSIONS } from '@abuddy/sdk/fe/components/node-dimensions'
 
 export interface LayoutNodeData {
   id: string

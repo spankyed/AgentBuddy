@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { NODE_DIMENSIONS, getDescriptor } from '../nodes/node-dimensions'
+import { NODE_DIMENSIONS } from '@abuddy/sdk/fe/components/node-dimensions'
+import { getDescriptor } from '../nodes/node-dimensions'
 import type { LayoutNodeData } from '../nodes/node-dimensions'
 import {
   parseHandleIndex,

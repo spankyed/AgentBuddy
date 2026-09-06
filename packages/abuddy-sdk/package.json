@@ -27,6 +27,7 @@
     "./fe/utils/path-truncation": "./src/fe/utils/path-truncation.ts",
     "./fe/components/*": "./src/fe/components/*",
     "./fe/components/node-styles": "./src/fe/components/node-styles.ts",
+    "./fe/components/node-dimensions": "./src/fe/components/node-dimensions.ts",
     "./fe/components/monaco-config": "./src/fe/components/monaco-config.ts",
     "./fe/components/tiptap/*": "./src/fe/components/tiptap/*",
     "./fe/components/tiptap/editor-system": "./src/fe/components/tiptap/editor-system.ts",
