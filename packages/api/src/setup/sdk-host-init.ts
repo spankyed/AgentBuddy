@@ -1,4 +1,5 @@
 import { registerHostModule } from '@abuddy/sdk/runtime';
+import { initRpc } from '@abuddy/sdk/rpc';
 import { initEARSRuntime, _flushEarlyRegistrations } from '@abuddy/sdk/ears';
 import * as queryMod from '@/core/ears/helpers/query';
 import * as txMod from '@/core/ears/helpers/transaction';
@@ -46,6 +47,7 @@ registerHostModule('hydrate-sharded', hydrateSharded);
 registerHostModule('logger', loggerMod);
 registerHostModule('trpc', trpcMod);
 registerHostModule('bus-emitter', busEmitter);
+initRpc();
 registerHostModule('router-events', routerEvents);
 registerHostModule('paths', pathsMod);
 registerHostModule('media', mediaMod);

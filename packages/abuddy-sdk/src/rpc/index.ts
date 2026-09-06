@@ -10,25 +10,15 @@ export const trpc: any = new Proxy({} as any, {
   get(_, prop: string) { return trpcMod().trpc[prop]; },
 });
 
-let _busMod: any;
-function busMod() {
-  if (!_busMod) _busMod = getHostModule('bus-emitter');
-  return _busMod;
-}
+// Assigned by initRpc() — must not be a Proxy, because a get-only Proxy
+// breaks EventEmitter's internal _eventsCount bookkeeping (writes to the
+// proxy target instead of the real instance, causing all listeners to be
+// wiped on unsubscribe). ESM live bindings ensure importers see the real
+// instance after init.
+export let rootEvents: any;
 
-export const rootEvents: any = new Proxy({} as any, {
-  get(_, prop: string) {
-    const real = busMod().rootEvents;
-    const value = real[prop];
-    if (typeof value === 'function') return value.bind(real);
-    return value;
-  },
-});
-
-let _eventsMod: any;
-function eventsMod() {
-  if (!_eventsMod) _eventsMod = getHostModule('router-events');
-  return _eventsMod;
+export function initRpc() {
+  rootEvents = getHostModule('bus-emitter').rootEvents;
 }
 
 export type IncomingSystemEvents = any;
