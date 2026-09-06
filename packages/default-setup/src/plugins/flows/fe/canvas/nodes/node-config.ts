@@ -1,18 +1,3 @@
-import {
-  Workflow,
-  Radio,
-  Zap,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  Split,
-  Shuffle,
-  Activity,
-  Sparkle,
-  Plug,
-  Clock
-} from 'lucide-vue-next'
 import type { Component } from 'vue'
 import type { NodeKind } from '@/registries/types'
 import { stepRegistry } from '@abuddy/sdk/steps'
@@ -45,33 +30,6 @@ export interface NodeStyleOptions {
 
 export type NodeStatus = 'active' | 'paused' | 'completed' | 'failed'
 export type StatusVariant = 'simple' | 'detailed'
-
-// ===========================
-// Icon Resolution
-// ===========================
-
-const ICON_MAP: Record<string, Component> = {
-  Workflow,
-  Radio,
-  Zap,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  Split,
-  Shuffle,
-  Activity,
-  Sparkle,
-  Plug,
-  Clock,
-}
-
-function resolveIcon(icon: unknown): Component {
-  if (typeof icon === 'string') {
-    return ICON_MAP[icon] || Play
-  }
-  return (icon as Component) || Play
-}
 
 // ===========================
 // Constants & Configuration
@@ -208,7 +166,7 @@ function buildNodeConfigs(): Record<string, NodeConfig> {
     configs[step.type] = {
       ...step.fe.nodeConfig,
       type: step.type,
-      icon: resolveIcon(step.fe.nodeConfig.icon),
+      icon: step.fe.nodeConfig.icon as Component,
       ...(step.kind === 'trigger' && {
         connectionRules: { inputs: 0, outputs: -1 },
         component: 'TriggerNode',

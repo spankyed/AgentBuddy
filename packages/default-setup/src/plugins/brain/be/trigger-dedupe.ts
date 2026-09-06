@@ -65,7 +65,7 @@ export function dedupeTriggerNodes(
       label: retained.label,
       triggerType: retained.triggerType,
       trackKey,
-      retainedNodeId: retained.id,
+      retainedNodeId: retained.id as EARS.EntityId,
       duplicateNodeIds: skipped.map(node => node.id).filter(Boolean) as EARS.EntityId[],
     };
   });

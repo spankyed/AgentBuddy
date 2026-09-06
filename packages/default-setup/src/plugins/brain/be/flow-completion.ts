@@ -2,7 +2,6 @@ import { stepRegistry } from '@abuddy/sdk/steps';
 
 export type TriggerDescriptor = {
   triggerType: string;
-  scope?: 'global' | 'local' | 'entry';
 };
 
 type FlowCompletionContext = {

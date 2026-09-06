@@ -1,4 +1,5 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { Clock } from 'lucide-vue-next';
 import { compile, decompile, validateTrack, validate } from './build';
 
 export const scheduleTrigger: StepDefinition = {
@@ -21,7 +22,7 @@ export const scheduleTrigger: StepDefinition = {
     nodeConfig: {
       label: 'Schedule',
       defaultLabel: 'On schedule',
-      icon: 'Clock',
+      icon: Clock,
       color: 'text-cyan-400',
       bgColor: 'bg-cyan-500/10',
       hoverBgColor: 'group-hover:bg-cyan-500/15',

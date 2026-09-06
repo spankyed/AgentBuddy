@@ -214,8 +214,8 @@ function decompileStepNode(
       promptMap: graphCtx.promptMap,
       flowMap: graphCtx.flowMap,
       resolveBranch: (sourceId, handle) =>
-        resolveBranch(sourceId, handle, graphCtx) as Record<string, unknown>[] | null,
-    }) as DSLStepNode;
+        resolveBranch(sourceId, handle, graphCtx) as unknown as Record<string, unknown>[] | null,
+    }) as unknown as DSLStepNode;
   }
   console.warn(`No decompile for node type: ${node.nodeType}`);
   return { type: node.nodeType, label: node.label } as any;

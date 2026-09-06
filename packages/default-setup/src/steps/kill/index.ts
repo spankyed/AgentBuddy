@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import type { ExecutionContext } from '@/plugins/brain/be/types';
 import { EARS } from '@abuddy/sdk';
+import { Plug } from 'lucide-vue-next';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -53,7 +54,7 @@ export const killStep: StepDefinition = {
     nodeConfig: {
       label: 'Kill',
       defaultLabel: 'Kill flow',
-      icon: 'Plug',
+      icon: Plug,
       color: 'text-red-400',
       bgColor: 'bg-red-500/10',
       hoverBgColor: 'group-hover:bg-red-500/15',

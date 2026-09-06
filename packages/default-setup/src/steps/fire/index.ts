@@ -2,7 +2,7 @@ import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidat
 import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types';
 import { EARS } from '@abuddy/sdk';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
-
+import { Zap } from 'lucide-vue-next';
 function compile(
   node: Record<string, unknown>,
   nodeId: string,
@@ -93,7 +93,7 @@ export const fireStep: StepDefinition = {
     nodeConfig: {
       label: 'Fire',
       defaultLabel: 'Fire event',
-      icon: 'Zap',
+      icon: Zap,
       color: 'text-amber-400',
       bgColor: 'bg-amber-500/10',
       hoverBgColor: 'group-hover:bg-amber-500/15',

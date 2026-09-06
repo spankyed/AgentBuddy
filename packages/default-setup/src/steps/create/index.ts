@@ -1,5 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { Plus } from 'lucide-vue-next';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -46,7 +47,7 @@ export const createStep: StepDefinition = {
     nodeConfig: {
       label: 'Create',
       defaultLabel: 'Create entity',
-      icon: 'Plus',
+      icon: Plus,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       hoverBgColor: 'group-hover:bg-purple-500/15',

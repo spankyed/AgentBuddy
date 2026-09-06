@@ -1,5 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { Shuffle } from 'lucide-vue-next';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -51,7 +52,7 @@ export const transformStep: StepDefinition = {
     nodeConfig: {
       label: 'Transform',
       defaultLabel: 'Transform output',
-      icon: 'Shuffle',
+      icon: Shuffle,
       color: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10',
       hoverBgColor: 'group-hover:bg-emerald-500/15',

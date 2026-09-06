@@ -89,7 +89,7 @@ import type { TrackEntity } from '@/registries/types'
 import { BaseNode } from '@/plugins/flows/fe/canvas/nodes';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
-import { cronToHuman } from '@/plugins/flows/fe/helpers/cron-utils';
+import { cronToHuman } from '@abuddy/sdk/cron';
 import { stepRegistry } from '@abuddy/sdk/steps';
 
 interface Props {

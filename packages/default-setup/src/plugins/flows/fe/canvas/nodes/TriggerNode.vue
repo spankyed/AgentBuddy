@@ -49,7 +49,7 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { NODE_DIMENSIONS } from './node-dimensions'
-import { cronToHuman } from '../../helpers/cron-utils'
+import { cronToHuman } from '@abuddy/sdk/cron'
 
 interface NodeData {
   label: string

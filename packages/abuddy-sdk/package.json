@@ -41,7 +41,8 @@
     "./templates": "./src/templates.ts",
     "./utils": "./src/utils/index.ts",
     "./services": "./src/services/index.ts",
-    "./backup": "./src/backup/index.ts"
+    "./backup": "./src/backup/index.ts",
+    "./cron": "./src/cron.ts"
   },
   "peerDependencies": {
     "@guolao/vue-monaco-editor": "^1.5.5",

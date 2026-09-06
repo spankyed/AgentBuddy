@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { Workflow } from 'lucide-vue-next';
 
 function compile(
   node: Record<string, unknown>,
@@ -64,7 +65,7 @@ export const flowStep: StepDefinition = {
     nodeConfig: {
       label: 'Flow',
       defaultLabel: 'Handle flow',
-      icon: 'Workflow',
+      icon: Workflow,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       hoverBgColor: 'group-hover:bg-purple-500/15',

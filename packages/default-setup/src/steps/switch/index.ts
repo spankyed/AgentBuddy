@@ -1,4 +1,5 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { Split } from 'lucide-vue-next';
 import { compile, validate, getLabel, decompile } from './build';
 
 const SWITCH_DIMS = { rowHeight: 26, headerOffset: 43, bottomPadding: 10 };
@@ -17,7 +18,7 @@ export const switchStep: StepDefinition = {
     nodeConfig: {
       label: 'Switch',
       defaultLabel: 'Choose path',
-      icon: 'Split',
+      icon: Split,
       color: 'text-yellow-400',
       bgColor: 'bg-yellow-500/10',
       hoverBgColor: 'group-hover:bg-yellow-500/15',

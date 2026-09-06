@@ -1,5 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { Search } from 'lucide-vue-next';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -48,7 +49,7 @@ export const queryStep: StepDefinition = {
     nodeConfig: {
       label: 'Query',
       defaultLabel: 'Query',
-      icon: 'Search',
+      icon: Search,
       color: 'text-cyan-400',
       bgColor: 'bg-cyan-500/10',
       hoverBgColor: 'group-hover:bg-cyan-500/15',

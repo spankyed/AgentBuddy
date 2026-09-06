@@ -1,4 +1,5 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { Play } from 'lucide-vue-next';
 import { compile, validate, getLabel, decompile } from './build';
 
 export const actionStep: StepDefinition = {
@@ -16,7 +17,7 @@ export const actionStep: StepDefinition = {
     nodeConfig: {
       label: 'Action',
       defaultLabel: 'Do action',
-      icon: 'Play',
+      icon: Play,
       color: 'text-neutral-400',
       bgColor: 'bg-neutral-700/20',
       hoverBgColor: 'group-hover:bg-neutral-700/30',

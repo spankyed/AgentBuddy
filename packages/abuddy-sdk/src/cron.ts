@@ -1,19 +1,3 @@
-/**
- * Standalone cron expression validation.
- *
- * Mirrors croner's core validation logic for 5-field and 6-field expressions.
- * 6-field format: second minute hour day month weekday
- * 5-field format: minute hour day month weekday (treated as second=0)
- *
- * This function is intentionally duplicated in:
- *   - packages/default-setup/build/cron-utils.ts
- *   - packages/renderer/src/plugins/flows/helpers/cron-utils.ts (here)
- * because these packages cannot share runtime code. The API validator
- * uses croner directly (packages/api/src/systems/flows/dsl/validator.ts).
- *
- * Keep these copies in sync when modifying validation rules.
- */
-
 const MONTH_NAMES: Record<string, number> = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 }
 const DOW_NAMES: Record<string, number> = { sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6 }
 
@@ -28,12 +12,10 @@ const FIELD_RANGES: { min: number; max: number; names?: Record<string, number> }
 
 const FIELD_LABELS = ['second', 'minute', 'hour', 'day-of-month', 'month', 'day-of-week']
 
-/** Returns an error message string, or null if the expression is valid. */
 export function validateCronExpression(expr: string): string | null {
   const raw = expr.trim().split(/\s+/)
   if (raw.length < 5 || raw.length > 6) return 'Must be a 5 or 6 field cron expression (second minute hour day month weekday)'
 
-  // Normalize 5-field to 6-field by prepending second=0
   const fields = raw.length === 5 ? ['0', ...raw] : raw
 
   for (let i = 0; i < 6; i++) {
@@ -84,7 +66,6 @@ export function validateCronExpression(expr: string): string | null {
 
 const DAY_NAMES: Record<string, string> = { '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat', '7': 'Sun' }
 
-/** Convert a cron expression to a human-readable string. */
 export function cronToHuman(expr: string): string {
   const parts = expr.trim().split(/\s+/)
   if (parts.length < 5 || parts.length > 6) return expr
@@ -97,7 +78,6 @@ export function cronToHuman(expr: string): string {
     [min, hour, dom, mon, dow] = parts
   }
 
-  // Seconds-based patterns (6-field only)
   if (sec !== undefined && sec !== '0') {
     const secStep = sec.match(/^\*\/(\d+)$/)
     if (secStep && min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${secStep[1]} sec`

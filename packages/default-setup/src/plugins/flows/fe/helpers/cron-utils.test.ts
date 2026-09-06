@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateCronExpression } from './cron-utils';
+import { validateCronExpression } from '@abuddy/sdk/cron';
 
 describe('validateCronExpression', () => {
   it('allows steps equal to 1-based field cardinality', () => {

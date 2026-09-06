@@ -1,5 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { RefreshCw } from 'lucide-vue-next';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -55,7 +56,7 @@ export const updateStep: StepDefinition = {
     nodeConfig: {
       label: 'Update',
       defaultLabel: 'Update entity',
-      icon: 'RefreshCw',
+      icon: RefreshCw,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       hoverBgColor: 'group-hover:bg-purple-500/15',

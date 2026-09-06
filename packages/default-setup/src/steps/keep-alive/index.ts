@@ -1,5 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { Activity } from 'lucide-vue-next';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -44,7 +45,7 @@ export const keepAliveStep: StepDefinition = {
     nodeConfig: {
       label: 'Keep alive',
       defaultLabel: 'Keep alive',
-      icon: 'Activity',
+      icon: Activity,
       color: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10',
       hoverBgColor: 'group-hover:bg-emerald-500/15',

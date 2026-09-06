@@ -1,5 +1,6 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
+import { Radio } from 'lucide-vue-next';
 
 export const listenerTrigger: StepDefinition = {
   type: 'listener',
@@ -31,7 +32,7 @@ export const listenerTrigger: StepDefinition = {
     nodeConfig: {
       label: 'Listener',
       defaultLabel: 'On event',
-      icon: 'Radio',
+      icon: Radio,
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10',
       hoverBgColor: 'group-hover:bg-blue-500/15',

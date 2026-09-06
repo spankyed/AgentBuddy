@@ -59,9 +59,8 @@
 import { computed } from 'vue';
 import type { EventListenerEntity } from '@/registries/types';
 import { Radio } from 'lucide-vue-next';
-import { cronToHuman } from '@/plugins/flows/fe/helpers/cron-utils';
+import { cronToHuman } from '@abuddy/sdk/cron';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { getNodeConfig } from '@/plugins/flows/fe/canvas/nodes';
 
 interface Props {
   events: EventListenerEntity[];
@@ -94,11 +93,11 @@ const COLOR_ANIMATIONS: Record<string, {
 };
 
 function getTriggerTheme(triggerType: string) {
-  const config = getNodeConfig(triggerType);
-  const colorKey = stepRegistry.getFE(triggerType)?.colorKey || 'blue';
+  const fe = stepRegistry.getFE(triggerType);
+  const colorKey = fe?.colorKey || 'blue';
   return {
     ...(COLOR_ANIMATIONS[colorKey] || COLOR_ANIMATIONS.blue),
-    icon: config?.icon || Radio,
+    icon: fe?.nodeConfig?.icon || Radio,
   };
 }
 

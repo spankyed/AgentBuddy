@@ -1,4 +1,5 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { Sparkle } from 'lucide-vue-next';
 import { compile, validate, getLabel, decompile } from './build';
 
 export const llmStep: StepDefinition = {
@@ -16,7 +17,7 @@ export const llmStep: StepDefinition = {
     nodeConfig: {
       label: 'LLM',
       defaultLabel: 'Generate text',
-      icon: 'Sparkle',
+      icon: Sparkle,
       color: 'text-indigo-400',
       bgColor: 'bg-indigo-500/10',
       hoverBgColor: 'group-hover:bg-indigo-500/15',
