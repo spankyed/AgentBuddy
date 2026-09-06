@@ -1,6 +1,5 @@
 import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
-import type { BinaryOperator } from '@/plugins/flows/be/config/types';
-import { BinaryOperator as Op } from '@abuddy/sdk/utils';
+import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { EARS } from '@abuddy/sdk';
 
 function parseExpressionToPredicate(expr: string): { key: string; operator: BinaryOperator; value?: any } | undefined {

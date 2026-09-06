@@ -82,8 +82,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '@/registries/types'
-import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
-import TipSection from '@/plugins/flows/fe/canvas/components/TipSection.vue'
+import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
+import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
 
 const props = defineProps<{
   node: NodeEntity

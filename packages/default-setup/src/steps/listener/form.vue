@@ -69,7 +69,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '@/registries/types'
-import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
+import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
 
 const props = defineProps<{
   node: NodeEntity

@@ -1,9 +1,11 @@
-import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/plugins/flows/be/config/types';
+import type { SwitchNode, Condition, Predicate } from '@/plugins/flows/be/config/types';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { BinaryOperator as Op } from '@abuddy/sdk/utils';
-import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
+import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
+import { createInspectLogger } from '@abuddy/sdk/logger';
+import { extractValueByPath } from '@abuddy/sdk/utils';
 import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
-import { extractValueByPath } from '@/plugins/brain/be/repository/node-attribute-mappers';
+
+const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
 
 function resolveValue(key: string, context: ExecutionContext): any {
   if (!key) return undefined;

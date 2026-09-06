@@ -31,8 +31,8 @@ import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@/registries/types'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
-// Shared infrastructure forms (fallback)
-import BaseForm from '../forms/BaseForm.vue'
+import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
+import NodeTypeMenu from './NodeTypeMenu.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
@@ -76,7 +76,8 @@ const hasOutputConnection = computed(() => {
   return props.edges.some(edge => edge.source === props.selectedNode!.id)
 })
 
-// Provide next-step state for BaseForm to render
+provide('BaseFormNodeTypeMenu', NodeTypeMenu)
+
 provide('nextStep', {
   show: computed(() => !hasOutputConnection.value),
   showMenu: showNextStepMenu,

@@ -201,8 +201,8 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { Plus, Trash2, Code } from 'lucide-vue-next'
-import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
-import TipSection from '@/plugins/flows/fe/canvas/components/TipSection.vue'
+import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
+import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
 import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@/registries/types'
 

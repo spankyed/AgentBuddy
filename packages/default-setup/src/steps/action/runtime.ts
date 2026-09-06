@@ -2,8 +2,10 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
-import { brainInspect } from '@/plugins/brain/be/utils/brain-inspect';
+import { createInspectLogger } from '@abuddy/sdk/logger';
 import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+
+const { inspect: brainInspect } = createInspectLogger('brain');
 
 interface ActionNodeConfig {
   mode?: 'template' | 'code';

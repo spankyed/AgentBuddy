@@ -42,6 +42,7 @@
     "./templates": "./src/templates.ts",
     "./utils": "./src/utils/index.ts",
     "./services": "./src/services/index.ts",
+    "./inference": "./src/services/inference.ts",
     "./backup": "./src/backup/index.ts",
     "./cron": "./src/cron.ts"
   },
@@ -57,7 +58,11 @@
     "reka-ui": "^2.2.1",
     "tiptap-markdown": "^0.9.0",
     "vue": "^3.0.0",
-    "@vue-flow/core": "^1.0.0"
+    "@vue-flow/core": "^1.0.0",
+    "ai": "^4.0.0",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/openai": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "vue": {
@@ -94,6 +99,18 @@
       "optional": true
     },
     "@vue-flow/core": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
+      "optional": true
+    },
+    "@ai-sdk/openai": {
       "optional": true
     }
   },

@@ -7,8 +7,9 @@
       </h2>
       <div class="flex items-center gap-1">
         <!-- Next step dropdown -->
-        <NodeTypeMenu
-          v-if="nextStep?.show.value"
+        <component
+          v-if="NodeTypeMenu && nextStep?.show.value"
+          :is="NodeTypeMenu"
           :open="nextStep.showMenu.value"
           side="bottom"
           align="end"
@@ -23,7 +24,7 @@
               <span>Next step</span>
             </button>
           </template>
-        </NodeTypeMenu>
+        </component>
 
         <button
           @click="$emit('close')"
@@ -58,9 +59,10 @@
 </template>
 
 <script setup lang="ts">
-import { inject, type Ref, type ComputedRef } from 'vue'
+import { inject, type Ref, type ComputedRef, type Component } from 'vue'
 import { X, ArrowRight } from 'lucide-vue-next'
-import NodeTypeMenu from '../components/NodeTypeMenu.vue'
+
+const NodeTypeMenu = inject<Component | null>('BaseFormNodeTypeMenu', null)
 
 interface NextStep {
   show: ComputedRef<boolean>
@@ -70,7 +72,6 @@ interface NextStep {
 
 const nextStep = inject<NextStep | null>('nextStep', null)
 
-// Accept partial node data since forms now compute their own nodeData
 defineProps<{
   node: {
     id: string

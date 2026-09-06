@@ -2,10 +2,12 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/plugins/flows/be/config/types';
 import { EARS } from '@abuddy/sdk';
 import { repository } from '@abuddy/sdk/ears';
-import { brainInspect, brainLogger } from '@/plugins/brain/be/utils/brain-inspect';
+import { createInspectLogger } from '@abuddy/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
-import { generateText } from '@/plugins/brain/be/services/llm';
+import { generateText } from '@abuddy/sdk/inference';
 import { reportBrainRuntimeError } from '@/plugins/brain/be/runtime-errors';
+
+const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
 
 interface LLMNodeConfig {
   model?: string;

@@ -219,8 +219,8 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@/plugins/flows/fe/canvas/forms/BaseForm.vue'
-import TipSection from '@/plugins/flows/fe/canvas/components/TipSection.vue'
+import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
+import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
 import type { ModelCatalogEntry, PromptEntity, NodeEntity } from '@/registries/types'
 import type { FormResources } from '@/plugins/flows/fe/types/form-props'
 

@@ -164,6 +164,30 @@ export function randomId(opt: RandomIdOptions = {}): string {
   return prefix ? prefix + core : core;
 }
 
+// ─── JSONPath-like Value Extraction (pure, no host dependency) ───────
+
+export function extractValueByPath(source: any, path: string): any {
+  if (!path || path === '$') return source;
+  const cleanPath = path.startsWith('$.') ? path.slice(2) : path;
+  const segments = cleanPath.split('.');
+
+  let current = source;
+  for (const segment of segments) {
+    if (current == null) return undefined;
+
+    const selector = segment.match(/^(\w+)\[(\w+)=([^\]]+)\]$/);
+    if (selector) {
+      const [, arrayName, field, value] = selector;
+      const arr = current[arrayName];
+      if (!Array.isArray(arr)) return undefined;
+      current = arr.find((item: any) => item?.[field] === value);
+    } else {
+      current = current[segment];
+    }
+  }
+  return current;
+}
+
 // ─── Binary Operator (pure enum, no host dependency) ─────────────────
 
 export enum BinaryOperator {
