@@ -4,7 +4,8 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import plugins, { defaultPlugin } from '@/packs/built-in';
+import '@default-setup/pack-entry-fe';
+import { getRegisteredPlugins, getRegisteredDefaultPlugin } from '@abuddy/sdk/fe';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
@@ -85,6 +86,9 @@ console.log(`AgentBuddy v${__APP_VERSION__}`);
 runFrontendMigrations();
 
 // const { inspect } = createBrowserInspector();
+
+const plugins = getRegisteredPlugins();
+const defaultPlugin = getRegisteredDefaultPlugin();
 
 export const applicationState = createActor(createApplicationState(), {
   systemId: application,
