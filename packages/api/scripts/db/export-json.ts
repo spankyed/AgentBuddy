@@ -21,6 +21,7 @@
 
 import '@/setup/sdk-host-init';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
 import { getAllEntities, getEntitiesOfType, getAllEntityTypes, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
@@ -29,6 +30,8 @@ import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded'
 import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
 import { getBootHooks, getRegisteredEntityTypes } from '@/core/packs/pack-registration';
 import * as os from 'node:os';
+
+const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 // Suppress all console output except our final JSON
 const originalLog = console.log;
@@ -44,7 +47,7 @@ process.stderr.write = () => true;
 
 async function exportJSON() {
   try {
-    await loadBuiltInPacksFromDir(path.join(process.cwd(), 'packages'));
+    await loadBuiltInPacksFromDir(packagesDir);
 
     // Initialize database first (silently)
     await hydrateSharded({

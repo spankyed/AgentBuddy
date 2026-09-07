@@ -8,13 +8,16 @@
 
 import '@/setup/sdk-host-init';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
 import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
 
+const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
 async function run() {
-  await loadBuiltInPacksFromDir(path.join(process.cwd(), 'packages'));
+  await loadBuiltInPacksFromDir(packagesDir);
 
   console.log('Initializing database...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });

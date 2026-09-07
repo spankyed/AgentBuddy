@@ -5,7 +5,10 @@ import { DatabaseCLI, type CliOptions } from './db-cli';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
+
+const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 
 async function main() {
   // Parse command line arguments
@@ -102,7 +105,7 @@ async function main() {
 
 async function initializeDatabase(verbose: boolean) {
   try {
-    await loadBuiltInPacksFromDir(path.join(process.cwd(), 'packages'));
+    await loadBuiltInPacksFromDir(packagesDir);
 
     // Hydrate from LMDB using sharded approach
     if (verbose) {

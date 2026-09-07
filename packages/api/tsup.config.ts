@@ -85,7 +85,7 @@ export default defineConfig({
           ).join('\n');
 
           contents = contents.replace(
-            /export async function loadRegisteredPacks\([^)]*\): Promise<void> \{[\s\S]*?\n\}/,
+            /\/\/ @tsup-rewrite-start loadRegisteredPacks[\s\S]*?\/\/ @tsup-rewrite-end loadRegisteredPacks/,
             `export function loadRegisteredPacks(): void {\n${requireLines}\n}`,
           );
 
