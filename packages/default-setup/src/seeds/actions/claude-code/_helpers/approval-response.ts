@@ -14,10 +14,9 @@
  * read ONE file to get it right, and one test pins the contract.
  *
  * Canonical emission site:
- *   packages/renderer/src/plugins/threads/chat/interactions/InteractionContainer.vue:156-162
- *     handleApprove → handleBlockResponse({ approved: true,  reason })
- *     handleDeny    → handleBlockResponse({ approved: false, reason })
- *     handleCancel  → handleBlockResponse({ cancelled: true })
+ *   packages/default-setup/src/features/threads/fe/chat/interactions/InteractionContainer.vue
+ *     @submit → handleBlockResponse(response)
+ *     @cancel → handleBlockResponse({ cancelled: true })
  *
  * Files without `export const meta` are auto-inlined into the consuming
  * action at compile time (see packages/default-setup/CLAUDE.md), so this

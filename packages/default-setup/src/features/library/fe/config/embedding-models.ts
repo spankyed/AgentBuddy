@@ -9,7 +9,7 @@
  * 
  * Any changes to model configurations must be made in both:
  * - /packages/api/src/systems/library/config/embedding-models.ts (backend)
- * - /packages/renderer/src/plugins/library/config/embedding-models.ts (frontend)
+ * - /packages/default-setup/src/features/library/fe/config/embedding-models.ts (frontend)
  */
 
 import type { EmbeddingModelId, EmbeddingModelConfig, ModelProvider } from '@/registries/types'

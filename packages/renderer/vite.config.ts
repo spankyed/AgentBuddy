@@ -8,8 +8,6 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
-const sdkDir = resolve(packagesRoot, 'abuddy-sdk');
-
 interface BuiltInPack { id: string; srcDir: string }
 
 function discoverBuiltInPacks(): BuiltInPack[] {
@@ -85,12 +83,6 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      // SDK component/composable redirects
-      { find: /^@\/core\/components\/design\/(.+)$/, replacement: resolve(sdkDir, 'src/fe/design/$1') },
-      { find: /^@\/core\/components\/(?!layout\/|ApiStatus)(.+)$/, replacement: resolve(sdkDir, 'src/fe/components/$1') },
-      { find: /^@\/core\/utils\/monaco-config$/, replacement: resolve(sdkDir, 'src/fe/components/monaco-config.ts') },
-      { find: /^@\/core\/composables\/(useMenuState|useContextMenu)(\.ts)?$/, replacement: resolve(sdkDir, 'src/fe/composables/$1.ts') },
-      // SDK rpc → renderer trpc shim
       { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
     ],

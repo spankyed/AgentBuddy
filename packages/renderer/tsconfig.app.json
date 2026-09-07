@@ -6,13 +6,6 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {
-      // --- SDK component/composable redirects ---
-      "@/core/components/design/*": ["../abuddy-sdk/src/fe/design/*"],
-      "@/core/components/tiptap/*": ["../abuddy-sdk/src/fe/components/tiptap/*"],
-      "@/core/composables/useMenuState": ["../abuddy-sdk/src/fe/composables/useMenuState"],
-      "@/core/composables/useContextMenu": ["../abuddy-sdk/src/fe/composables/useContextMenu"],
-
-      // --- Renderer catch-all (must be last) ---
       "@/*": ["./src/*"]
     }
   }

@@ -52,7 +52,7 @@ import {
   DialogTitle,
 } from 'reka-ui'
 import { X, Copy, Download, ExternalLink } from 'lucide-vue-next'
-import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
+import { useContextMenu, type MenuItem } from '../composables/useContextMenu'
 
 const props = defineProps<{
   modelValue: boolean
