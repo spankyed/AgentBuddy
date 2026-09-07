@@ -37,8 +37,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { resolveForService } from '@/core/host-modules/resolve-cli'
-import { query } from '@/plugins/code/be/services/claude-code/query'
-import type { PermissionHandler } from '@/plugins/code/be/services/claude-code/types'
+import { query } from '@/features/code/be/services/claude-code/query'
+import type { PermissionHandler } from '@/features/code/be/services/claude-code/types'
 
 /**
  * Precondition check. Runs at module load. If `claude` isn't resolvable or

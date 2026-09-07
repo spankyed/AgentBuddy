@@ -6,8 +6,8 @@
  * function — no spawning, no disk access.
  */
 
-import { argsFromOptions } from '@/plugins/code/be/services/claude-code/args'
-import type { QueryOptions } from '@/plugins/code/be/services/claude-code/types'
+import { argsFromOptions } from '@/features/code/be/services/claude-code/args'
+import type { QueryOptions } from '@/features/code/be/services/claude-code/types'
 
 /** Assert that `needles` appear in `haystack` in the given order (contiguous). */
 function expectContains(haystack: string[], needles: string[]): void {

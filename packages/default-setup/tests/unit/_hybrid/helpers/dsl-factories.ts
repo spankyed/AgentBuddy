@@ -1,5 +1,5 @@
-import { compile } from '@/plugins/flows/be/dsl/compiler';
-import type { FlowDSL } from '@/plugins/flows/be/dsl/types';
+import { compile } from '@/features/flows/be/dsl/compiler';
+import type { FlowDSL } from '@/features/flows/be/dsl/types';
 import { findEntity } from './compiled-result';
 
 /** Wrap steps in a minimal single-track flow DSL (flow name 'F', default event 'go') */

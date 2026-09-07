@@ -1,4 +1,4 @@
-import { isPersistentTriggerFlow, shouldCompleteFlow } from '@/plugins/brain/be/flow-completion';
+import { isPersistentTriggerFlow, shouldCompleteFlow } from '@/features/brain/be/flow-completion';
 
 describe('flow system completion semantics', () => {
   describe('isPersistentTriggerFlow', () => {

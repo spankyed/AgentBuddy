@@ -1,5 +1,5 @@
-import { validate } from '@/plugins/flows/be/dsl/validator';
-import type { FlowDSL } from '@/plugins/flows/be/dsl/types';
+import { validate } from '@/features/flows/be/dsl/validator';
+import type { FlowDSL } from '@/features/flows/be/dsl/types';
 
 describe('validate', () => {
   describe('root schedule tracks', () => {

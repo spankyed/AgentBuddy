@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeMatchingTriggerNodes, type FlowTriggerNode } from '@/plugins/brain/be/trigger-dedupe';
+import { dedupeMatchingTriggerNodes, type FlowTriggerNode } from '@/features/brain/be/trigger-dedupe';
 import { EARS } from '@/registries/ears';
 
 describe('brain trigger dedupe', () => {

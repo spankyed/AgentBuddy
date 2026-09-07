@@ -13,9 +13,9 @@
  */
 
 import { switchNodeHandler } from '@/steps/switch/runtime'
-import { BinaryOperator } from '@/plugins/flows/be/config/types'
-import type { Condition, SwitchNode } from '@/plugins/flows/be/config/types'
-import type { ExecutionContext, TNodeEntity } from '@/plugins/brain/be/types'
+import { BinaryOperator } from '@/features/flows/be/config/types'
+import type { Condition, SwitchNode } from '@/features/flows/be/config/types'
+import type { ExecutionContext, TNodeEntity } from '@/features/brain/be/types'
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 
