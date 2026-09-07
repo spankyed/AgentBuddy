@@ -16,7 +16,7 @@ export class PromptService {
     templateFn: string, 
     templateParams: Record<string, any>
   ): string {
-    const resolver = createTemplateResolver(executeTemplate, (label) => this.getByLabel(label));
+    const resolver = createTemplateResolver(executeTemplate, (label: string) => this.getByLabel(label));
     return executeTemplate(templateFn, templateParams, resolver);
   }
 

@@ -56,7 +56,7 @@ export function getSchemaStats() {
 
 // Type guard for entity checking
 export function isEntity(value: unknown): value is _EARS.Entity {
-  return Object.values(_EARS.Entity).includes(value as _EARS.Entity)
+  return (Object.values(_EARS.Entity) as string[]).includes(value as string)
 }
 
 // Re-export types for convenience
