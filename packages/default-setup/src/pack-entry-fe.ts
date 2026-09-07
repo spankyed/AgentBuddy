@@ -10,7 +10,7 @@ import { registerPackFE } from '@abuddy/sdk/fe';
 import { plugins, defaultPlugin } from './registries/plugins';
 import { tiptapPlugins } from './registries/tiptap-plugins';
 import { artifactDefinitions } from './artifacts/register-fe';
-import { standardBlocks } from './blocks/register';
+import { blockDefinitions } from './blocks/register-fe';
 import Welcome from './extensions/Welcome.vue';
 
 registerPackFE({
@@ -19,5 +19,5 @@ registerPackFE({
   tiptapPlugins,
   appExtensions: { welcome: Welcome },
   artifacts: artifactDefinitions,
-  blocks: standardBlocks.map(def => ({ ...def, fe: undefined })),
+  blocks: blockDefinitions,
 });

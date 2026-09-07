@@ -1,187 +1,13 @@
 <template>
   <div class="interaction-container mt-3 space-y-3">
     <template v-for="(block, index) in blocks" :key="index">
-      <!-- Prompt Block -->
-      <PromptBlock
-        v-if="block.type === 'prompt'"
-        :content="(block.props as any).content"
-      />
-
-      <!-- Note Block -->
-      <NoteBlock
-        v-else-if="block.type === 'note'"
-        :content="(block.props as any).content"
-        :variant="(block.props as any).variant"
-        :label="(block.props as any).label"
-      />
-
-      <!-- Markdown Block -->
-      <MarkdownBlock
-        v-else-if="block.type === 'markdown'"
-        :content="(block.props as any).content"
-        :label="(block.props as any).label"
-      />
-
-      <!-- File Picker Input -->
-      <FilePickerInput
-        v-else-if="block.type === 'file-picker'"
-        :file-type="(block.props as any).fileType"
-        :allow-multiple="(block.props as any).allowMultiple"
-        :model-value="(block.props as any).modelValue"
-        :disabled="isDisabled"
-        :response="responseForBlock('file-picker')"
-        :display-text="(block.props as any).displayText"
-        @submit="submitFilePicker"
-        @cancel="handleCancel"
-      />
-
-      <!-- Choice Input -->
-      <ChoiceInput
-        v-else-if="block.type === 'choice'"
-        :choices="(block.props as any).choices"
-        :multi-select="(block.props as any).multiSelect"
-        :allow-custom="(block.props as any).allowCustom"
-        :compact="(block.props as any).compact"
-        :model-value="(block.props as any).modelValue"
-        :skip-option="(block.props as any).skipOption"
-        :disabled="isDisabled"
-        :response="responseForBlock('choice')"
-        :display-text="(block.props as any).displayText"
-        @submit="submitChoice"
-        @cancel="handleCancel"
-      />
-
-      <!-- Question Input (single or multi-question wizard) -->
-      <QuestionInput
-        v-else-if="block.type === 'question'"
-        :questions="(block.props as any).questions"
-        :disabled="isDisabled"
-        :response="responseForBlock('question')"
-        @submit="submitQuestion"
-        @cancel="handleCancel"
-      />
-
-      <!-- Text Input -->
-      <TextInput
-        v-else-if="block.type === 'text'"
-        :placeholder="(block.props as any).placeholder"
-        :multiline="(block.props as any).multiline"
-        :required="(block.props as any).required"
-        :suggestions="(block.props as any).suggestions"
-        :model-value="(block.props as any).modelValue"
-        :disabled="isDisabled"
-        :response="responseForBlock('text')"
-        :display-text="(block.props as any).displayText"
-        @submit="submitText"
-        @cancel="handleCancel"
-      />
-
-      <!-- Approval Buttons -->
-      <ApprovalButtons
-        v-else-if="block.type === 'approval'"
-        :require-reason="(block.props as any).requireReason"
-        :allow-reason="(block.props as any).allowReason"
-        :reason-placeholder="(block.props as any).reasonPlaceholder"
-        :model-value="(block.props as any).modelValue"
-        :auto-accept-option="(block.props as any).autoAcceptOption"
-        :options="(block.props as any).options"
-        :disabled="isDisabled"
-        :response="responseForBlock('approval')"
-        @approve="handleApprove"
-        @deny="handleDeny"
-      />
-
-      <!-- Custom Action Buttons (if needed for advanced cases) -->
-      <ActionButtons
-        v-else-if="block.type === 'actions'"
-        :buttons="(block.props as any).buttons"
-        :submit-disabled="(block.props as any).submitDisabled || isDisabled"
-        :submit-variant="(block.props as any).submitVariant"
-        @submit="() => submitActions(undefined)"
-        @cancel="handleCancel"
-      />
-
-      <!-- Link Block -->
-      <LinkBlock
-        v-else-if="block.type === 'link'"
-        :links="(block.props as any).links"
-        @navigate="handleNavigate"
-      />
-
-      <!-- Button Group Input -->
-      <ButtonGroupInput
-        v-else-if="block.type === 'button-group'"
-        :buttons="(block.props as any).buttons"
-        :keep-interactive="(block.props as any).keepInteractive"
-        :disabled="isDisabled"
-        :response="responseForBlock('button-group')"
-        :display-text="(block.props as any).displayText"
-        @submit="submitButtonGroup"
-      />
-
-      <!-- Project Select Input -->
-      <ProjectSelectInput
-        v-else-if="block.type === 'project-select'"
-        :projects="(block.props as any).projects"
-        :disabled="isDisabled"
-        :response="responseForBlock('project-select')"
-        :display-text="(block.props as any).displayText"
-        @submit="submitProjectSelect"
-      />
-
-      <!-- Toggles Block -->
-      <TogglesBlock
-        v-else-if="block.type === 'toggles'"
-        ref="togglesBlockRef"
-        :toggles="(block.props as any).toggles"
-        :disabled="isDisabled"
-        :response="responseForBlock('toggles')"
-      />
-
-      <!-- Tool Input Block — structured display for tool approval context -->
-      <ToolInputBlock
-        v-else-if="block.type === 'tool-input'"
-        :tool-name="(block.props as any).toolName"
-        :input="(block.props as any).input"
-      />
-
-      <!-- Tool Activity Block — collapsible group of Claude Code tool calls -->
-      <ToolActivityBlock
-        v-else-if="block.type === 'tool-activity'"
-        :entries="(block.props as any).entries"
-        :label="(block.props as any).label"
-        :state="(block.props as any).state"
-        :default-open="(block.props as any).defaultOpen"
-        :artifact-ref="(block.props as any).artifactRef"
-        :phase="(block.props as any).phase"
-      />
-
-      <!-- Thinking Block — collapsible extended thinking content -->
-      <ThinkingBlock
-        v-else-if="block.type === 'thinking'"
-        :content="(block.props as any).content"
-        :label="(block.props as any).label"
-        :state="(block.props as any).state"
-        :default-open="(block.props as any).defaultOpen"
-      />
-
-      <!-- Context Usage Block — styled token breakdown from /cc-context -->
-      <ContextUsageBlock
-        v-else-if="block.type === 'context-usage'"
-        :data="(block.props as any).data"
-      />
-
-      <!-- Session List Block — styled session listing from /cc-sessions -->
-      <SessionListBlock
-        v-else-if="block.type === 'session-list'"
-        :sessions="(block.props as any).sessions"
-      />
-
-      <!-- Registry fallback — renders externally-registered block types -->
       <component
-        v-else-if="registeredBlockComponents[block.type]"
-        :is="registeredBlockComponents[block.type]"
-        v-bind="block.props"
+        v-if="getBlockComponent(block.type)"
+        :is="getBlockComponent(block.type)"
+        :ref="(el: any) => captureRef(block.type, el)"
+        v-bind="blockBindings(block)"
+        @submit="getSubmitHandler(block.type)"
+        @cancel="handleCancel"
       />
     </template>
   </div>
@@ -190,26 +16,8 @@
 <script setup lang="ts">
 import type { BlockConfig } from '@/registries/types'
 import { blockRegistry } from '@abuddy/sdk/blocks'
-import PromptBlock from '@/blocks/display/PromptBlock.vue'
-import NoteBlock from '@/blocks/display/NoteBlock.vue'
-import MarkdownBlock from '@/blocks/display/MarkdownBlock.vue'
-import ActionButtons from '@/blocks/display/ActionButtons.vue'
-import LinkBlock, { type Link } from '@/blocks/display/LinkBlock.vue'
-import ToolActivityBlock from '@/blocks/display/ToolActivityBlock.vue'
-import ThinkingBlock from '@/blocks/display/ThinkingBlock.vue'
-import ToolInputBlock from '@/blocks/display/ToolInputBlock.vue'
-import FilePickerInput from '@/blocks/input/FilePickerInput.vue'
-import ChoiceInput from '@/blocks/input/ChoiceInput.vue'
-import QuestionInput from '@/blocks/input/QuestionInput.vue'
-import TextInput from '@/blocks/input/TextInput.vue'
-import ApprovalButtons from '@/blocks/input/ApprovalButtons.vue'
-import ButtonGroupInput from '@/blocks/input/ButtonGroupInput.vue'
-import ProjectSelectInput from '@/blocks/input/ProjectSelectInput.vue'
-import TogglesBlock from '@/blocks/display/TogglesBlock.vue'
-import ContextUsageBlock from '@/blocks/display/ContextUsageBlock.vue'
-import SessionListBlock from '@/blocks/display/SessionListBlock.vue'
 import { ref, computed } from 'vue'
-import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/features/threads/fe/state'
 
 interface Props {
@@ -224,36 +32,36 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const actorSystem = useActorSystem()
-const appActor = useApplicationActor()
 const threadsActor = actorSystem.get(threadsId)
 
-const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
+// ─── Block component resolution ─────────────────────────────────────
+const getBlockComponent = (type: string) => blockRegistry.getComponent(type)
 
-const registeredBlockComponents = computed(() => {
-  const map: Record<string, unknown> = {};
-  for (const block of props.blocks) {
-    if (!(block.type in map)) {
-      const comp = blockRegistry.getComponent(block.type);
-      if (comp) map[block.type] = comp;
-    }
+const blockBindings = (block: BlockConfig) => {
+  const base = { ...block.props }
+  if (blockRegistry.get(block.type)?.kind === 'input') {
+    base.disabled = props.isDisabled
+    base.response = responseForBlock(block.type)
   }
-  return map;
-});
+  return base
+}
 
-// ─── Per-block response routing ───────────────────────────────────────
-// Infer which block type submitted the response from its shape, so only
-// that block renders the "responded" state — others just disable/hide.
+// ─── Toggles ref (cross-block state) ────────────────────────────────
+const togglesRef = ref<{ values?: Record<string, any> } | null>(null)
+const captureRef = (type: string, el: any) => {
+  if (type === 'toggles') togglesRef.value = el
+}
+
+// ─── Per-block response routing ─────────────────────────────────────
 const respondedBlockType = computed(() => {
   const r = props.response
   if (!r) return null
-  // Explicit source tag (set by handleSubmitFrom when toggles wrap the response)
   if (typeof r === 'object' && r._source) return r._source
-  // Fallback heuristic for legacy/untagged responses
   if (typeof r === 'string') return 'project-select'
   if (r.path) return 'file-picker'
   if (r.approved !== undefined || r.cancelled) return 'approval'
   if (Array.isArray(r)) return 'choice'
-  return null // unknown — pass response to all (backward compat)
+  return null
 })
 
 const responseForBlock = (blockType: string) => {
@@ -262,7 +70,7 @@ const responseForBlock = (blockType: string) => {
   return blockType === respondedBlockType.value ? props.response : null
 }
 
-// Internal interaction handlers
+// ─── Event handlers ─────────────────────────────────────────────────
 const handleBlockResponse = (response: any) => {
   threadsActor.send({
     type: 'RESPOND_TO_BLOCK_INTERACTION',
@@ -271,9 +79,8 @@ const handleBlockResponse = (response: any) => {
   })
 }
 
-// Event handlers — wraps toggle values and source tag into the response.
 const handleSubmitFrom = (blockType: string) => (response: any) => {
-  const toggles = togglesBlockRef.value?.values
+  const toggles = togglesRef.value?.values
   if (toggles && Object.keys(toggles).length > 0) {
     handleBlockResponse({ path: response, toggles: { ...toggles }, _source: blockType })
   } else {
@@ -281,42 +88,15 @@ const handleSubmitFrom = (blockType: string) => (response: any) => {
   }
 }
 
-// Pre-create stable handler refs so Vue event binding works across renders.
-// Inline handleSubmitFrom('...') in templates creates a new closure on every
-// render, breaking Vue 3's event delegation.
-const submitFilePicker = handleSubmitFrom('file-picker')
-const submitChoice = handleSubmitFrom('choice')
-const submitQuestion = handleSubmitFrom('question')
-const submitText = handleSubmitFrom('text')
-const submitActions = handleSubmitFrom('actions')
-const submitButtonGroup = handleSubmitFrom('button-group')
-const submitProjectSelect = handleSubmitFrom('project-select')
-
-const handleApprove = (reason?: string, flags?: Record<string, any>) => {
-  handleBlockResponse({ approved: true, reason, ...flags })
-}
-
-const handleDeny = (reason?: string) => {
-  handleBlockResponse({ approved: false, reason })
+const submitHandlerCache = new Map<string, (r: any) => void>()
+const getSubmitHandler = (type: string) => {
+  if (!submitHandlerCache.has(type)) {
+    submitHandlerCache.set(type, handleSubmitFrom(type))
+  }
+  return submitHandlerCache.get(type)!
 }
 
 const handleCancel = () => {
-  // Send cancelled response to backend
   handleBlockResponse({ cancelled: true })
-}
-
-const handleNavigate = (link: Link) => {
-  const { target, data } = link.event
-
-  if (target === 'application') {
-    // Send event to application state machine
-    appActor.send(data)
-  } else if (target === 'external') {
-    // Open external URL in default browser
-    window.open(data.url, '_blank')
-  } else {
-    // target is a plugin name - activate it and send the event
-    navigateToPlugin(target, data)
-  }
 }
 </script>

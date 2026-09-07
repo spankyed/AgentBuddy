@@ -129,8 +129,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: string): void
-  (e: 'approve', reason?: string, flags?: Record<string, any>): void
-  (e: 'deny', reason?: string): void
+  (e: 'submit', response: { approved: boolean; reason?: string; [key: string]: any }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -195,26 +194,22 @@ const handleOption = (opt: ApprovalOption) => {
   if (isDisabled.value) return
   const trimmedReason = reason.value.trim()
   const flags = opt.flags ?? {}
-  if (flags.approved === false) {
-    emit('deny', trimmedReason || undefined)
-  } else {
-    emit('approve', trimmedReason || undefined, flags)
-  }
+  emit('submit', { approved: flags.approved !== false, reason: trimmedReason || undefined, ...flags })
 }
 
 const handleApprove = () => {
   if (isDisabled.value) return
   const trimmedReason = reason.value.trim()
   emit('update:modelValue', trimmedReason)
-  const flags: Record<string, any> = {}
-  if (autoAcceptChecked.value) flags.autoAccept = true
-  emit('approve', trimmedReason || undefined, Object.keys(flags).length > 0 ? flags : undefined)
+  const response: Record<string, any> = { approved: true, reason: trimmedReason || undefined }
+  if (autoAcceptChecked.value) response.autoAccept = true
+  emit('submit', response as any)
 }
 
 const handleDeny = () => {
   if (isDisabled.value) return
   const trimmedReason = reason.value.trim()
   emit('update:modelValue', trimmedReason)
-  emit('deny', trimmedReason || undefined)
+  emit('submit', { approved: false, reason: trimmedReason || undefined })
 }
 </script>

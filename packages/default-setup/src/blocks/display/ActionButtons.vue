@@ -3,7 +3,7 @@
     <Button
       v-if="buttons.includes('submit')"
       @click="$emit('submit')"
-      :disabled="submitDisabled"
+      :disabled="submitDisabled || disabled"
       :variant="buttonVariant"
       :class="submitVariant === 'success' ? 'bg-green-600 hover:bg-green-500' : ''"
     >
@@ -27,6 +27,7 @@ import Button from '@abuddy/sdk/fe/design/button.vue'
 interface Props {
   buttons: ('submit' | 'cancel')[]
   submitDisabled?: boolean
+  disabled?: boolean
   submitVariant?: 'primary' | 'success' | 'danger'
   submitLabel?: string
   cancelLabel?: string
@@ -39,6 +40,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   submitDisabled: false,
+  disabled: false,
   submitVariant: 'primary'
 })
 

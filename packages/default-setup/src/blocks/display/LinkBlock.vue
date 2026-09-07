@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { ExternalLink, FileText, MessageSquare, Settings, Link as LinkIcon } from 'lucide-vue-next'
 import type { Component } from 'vue'
+import { useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
 
 export type SupportedLinkIcon =
   | 'external-link'
@@ -28,7 +29,7 @@ export type SupportedLinkIcon =
 export interface Link {
   label: string
   event: {
-    target: 'application' | 'external' | string // 'application', 'external', or plugin name
+    target: 'application' | 'external' | string
     data: any
   }
   icon?: SupportedLinkIcon
@@ -38,18 +39,21 @@ interface Props {
   links: Link[]
 }
 
-interface Emits {
-  (e: 'navigate', link: Link): void
-}
+defineProps<Props>()
 
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+const appActor = useApplicationActor()
 
 const handleLinkClick = (link: Link) => {
-  emit('navigate', link)
+  const { target, data } = link.event
+  if (target === 'application') {
+    appActor.send(data)
+  } else if (target === 'external') {
+    window.open(data.url, '_blank')
+  } else {
+    navigateToPlugin(target, data)
+  }
 }
 
-// Icon name to component mapping
 const iconMap: Record<SupportedLinkIcon, Component> = {
   'external-link': ExternalLink,
   'file-text': FileText,
@@ -62,7 +66,6 @@ const getLinkIcon = (link: Link): Component => {
   if (link.icon) {
     return iconMap[link.icon]
   }
-  // Default icon
   return LinkIcon
 }
 </script>
