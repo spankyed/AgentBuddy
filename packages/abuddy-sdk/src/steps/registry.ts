@@ -64,6 +64,10 @@ class StepRegistry {
     return this.steps.get(type)?.fe?.components?.form;
   }
 
+  unregister(type: string): void {
+    this.steps.delete(type);
+  }
+
   has(type: string): boolean {
     return this.steps.has(type);
   }

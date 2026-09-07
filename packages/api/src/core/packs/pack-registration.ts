@@ -51,36 +51,45 @@ export function registerPack(registration: PackRegistration): void {
     }
   }
 
-  registrations.set(registration.id, registration);
+  const registeredSteps: string[] = [];
+  const registeredArtifacts: string[] = [];
+  const registeredBlocks: string[] = [];
 
   try {
     if (registration.steps) {
       for (const step of registration.steps) {
         stepRegistry.register(step);
+        registeredSteps.push(step.type);
       }
     }
 
     if (registration.artifacts) {
       for (const art of registration.artifacts) {
         artifactRegistry.register(art);
+        registeredArtifacts.push(art.type);
       }
     }
 
     if (registration.blocks) {
       for (const block of registration.blocks) {
         blockRegistry.register(block);
+        registeredBlocks.push(block.type);
       }
     }
   } catch (err) {
-    registrations.delete(registration.id);
+    for (const type of registeredSteps) stepRegistry.unregister(type);
+    for (const type of registeredArtifacts) artifactRegistry.unregister(type);
+    for (const type of registeredBlocks) blockRegistry.unregister(type);
     throw err;
   }
+
+  registrations.set(registration.id, registration);
 
   _entityTypeCache = null;
   _servicesCache = null;
 }
 
-export function getRegisteredEntityTypes(): Set<string> {
+export function getRegisteredEntityTypes(): ReadonlySet<string> {
   if (!_entityTypeCache) {
     _entityTypeCache = new Set<string>(['Relation']);
     for (const reg of registrations.values()) {

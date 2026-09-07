@@ -114,46 +114,6 @@ export async function loadBuiltInPacksFromDir(packagesDir: string): Promise<void
   await loadRegisteredPacks(registry.filter(e => e.type === 'built-in'));
 }
 
-export function reconcileExternalPacks(registry: PackRegistryEntry[]): PackRegistryEntry[] {
-  const externalDir = getPacksDir();
-  if (!fs.existsSync(externalDir)) return registry;
-
-  const onDisk = discoverPacks(externalDir);
-  const registeredExternal = new Set(
-    registry.filter(e => e.type === 'external').map(e => e.id)
-  );
-
-  let changed = false;
-
-  for (const { manifest, dir } of onDisk) {
-    if (!registeredExternal.has(manifest.id)) {
-      registry = addToRegistry(registry, {
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version,
-        dir,
-        entry: 'dist/index.js',
-        type: 'external',
-      });
-      logger.info(`Auto-registered new external pack: ${manifest.id}`);
-      changed = true;
-    }
-  }
-
-  const onDiskIds = new Set(onDisk.map(p => p.manifest.id));
-  const stale = registry.filter(e => e.type === 'external' && !onDiskIds.has(e.id));
-  if (stale.length > 0) {
-    registry = registry.filter(e => !(e.type === 'external' && !onDiskIds.has(e.id)));
-    for (const s of stale) {
-      logger.info(`Removed stale external pack from registry: ${s.id}`);
-    }
-    changed = true;
-  }
-
-  if (changed) writePackRegistry(registry);
-  return registry;
-}
-
 // Packages provided by the host that packs can require() without bundling
 const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
 
@@ -374,21 +334,6 @@ export function loadExternalPacks(): LoadedPack[] {
   }
 
   return loaded;
-}
-
-export function registerPackSystems(
-  packs: LoadedPack[],
-  systemsMap: Record<string, any>,
-  eventValidationMap: Map<string, Set<string>>,
-) {
-  for (const pack of packs) {
-    for (const [featureId, system] of pack.systems) {
-      const systemId = `${pack.manifest.id}.${featureId}`;
-      systemsMap[systemId] = system.machine;
-      eventValidationMap.set(systemId, system.events);
-      logger.info(`Registered system: ${systemId}`);
-    }
-  }
 }
 
 export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {

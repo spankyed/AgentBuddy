@@ -19,6 +19,10 @@ class ArtifactRegistry {
     return this.artifacts.get(type)?.fe?.icon;
   }
 
+  unregister(type: string): void {
+    this.artifacts.delete(type);
+  }
+
   has(type: string): boolean {
     return this.artifacts.has(type);
   }

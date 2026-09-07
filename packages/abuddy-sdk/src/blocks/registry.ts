@@ -15,6 +15,10 @@ class BlockRegistry {
     return this.blocks.get(type)?.fe?.component;
   }
 
+  unregister(type: string): void {
+    this.blocks.delete(type);
+  }
+
   has(type: string): boolean {
     return this.blocks.has(type);
   }
