@@ -1,4 +1,4 @@
-import type { SettingsData } from '@app/api/dist/defs/action-defs'
+import type { SettingsData } from '@/plugins/settings/be/types'
 
 const settings: SettingsData = {
   general: {
