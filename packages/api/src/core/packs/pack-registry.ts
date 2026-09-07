@@ -59,16 +59,12 @@ export function writePackRegistry(entries: PackRegistryEntry[]): void {
 }
 
 export function addToRegistry(entries: PackRegistryEntry[], pack: Omit<PackRegistryEntry, 'registeredAt'>): PackRegistryEntry[] {
-  const existing = entries.findIndex(e => e.id === pack.id);
   const entry: PackRegistryEntry = { ...pack, registeredAt: new Date().toISOString() };
-
-  if (existing >= 0) {
-    entries[existing] = entry;
-  } else {
-    entries.push(entry);
+  const idx = entries.findIndex(e => e.id === pack.id);
+  if (idx >= 0) {
+    return [...entries.slice(0, idx), entry, ...entries.slice(idx + 1)];
   }
-
-  return entries;
+  return [...entries, entry];
 }
 
 export function removeFromRegistry(entries: PackRegistryEntry[], id: string): PackRegistryEntry[] {
