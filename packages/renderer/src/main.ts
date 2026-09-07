@@ -5,7 +5,7 @@ import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
 import 'virtual:built-in-packs';
-import { getRegisteredPlugins, getRegisteredDefaultPlugin } from '@abuddy/sdk/fe';
+import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
@@ -156,6 +156,7 @@ trpc.packs.registry.query().then(async (registry) => {
       `pack://${pack.id}`,
     );
     if (plugins.length > 0) {
+      registerPackFE({ plugins });
       applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
     }
   }
