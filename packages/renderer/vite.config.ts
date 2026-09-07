@@ -58,6 +58,35 @@ function resolvePackAtAliases(): Plugin {
   };
 }
 
+/**
+ * Vite plugin that generates a virtual module importing all built-in packs'
+ * FE entries. Adding a new built-in pack with pack-entry-fe.ts automatically
+ * includes it — no renderer changes needed.
+ *
+ * TypeScript sees `declare module 'virtual:built-in-packs' {}` (in env.d.ts)
+ * and never enters pack source trees.
+ */
+function injectBuiltInPacks(): Plugin {
+  const virtualModuleId = 'virtual:built-in-packs';
+  const resolvedId = '\0' + virtualModuleId;
+
+  const feEntries = builtInPacks
+    .filter(p => existsSync(resolve(p.srcDir, 'pack-entry-fe.ts')))
+    .map(p => `@${p.id}/pack-entry-fe`);
+
+  return {
+    name: 'inject-built-in-packs',
+    resolveId(id) {
+      if (id === virtualModuleId) return resolvedId;
+    },
+    load(id) {
+      if (id === resolvedId) {
+        return feEntries.map(entry => `import '${entry}';`).join('\n');
+      }
+    },
+  };
+}
+
 // Namespace aliases for each built-in pack: @<pack-id>/* → <pack-src>/*
 const packNamespaceAliases = builtInPacks.map(pack => ({
   find: new RegExp(`^@${pack.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)$`),
@@ -71,6 +100,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    injectBuiltInPacks(),
     resolvePackAtAliases(),
     vue({
       template: {
