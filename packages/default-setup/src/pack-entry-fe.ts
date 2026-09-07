@@ -1,13 +1,23 @@
 /**
  * Default-Setup FE Pack Entry
  *
- * Single entry point for everything default-setup contributes to the
- * renderer: plugins, tiptap extensions, and app extensions.
+ * Registers all FE contributions (plugins, tiptap extensions, app extensions,
+ * artifacts, blocks) into the SDK pack store as a side effect of import.
  * FE counterpart to pack-entry.ts (backend).
  */
 
+import { registerPackFE } from '@abuddy/sdk/fe';
 import { plugins, defaultPlugin } from './registries/plugins';
-import './registries/tiptap-register-fe';
-import './registries/app-extensions';
+import { tiptapPlugins } from './registries/tiptap-plugins';
+import { appExtensions } from './registries/app-extensions';
+import { artifactDefinitions } from './artifacts/register-fe';
+import { blockDefinitions } from './blocks/register-fe';
 
-export { plugins, defaultPlugin };
+registerPackFE({
+  plugins,
+  defaultPlugin,
+  tiptapPlugins,
+  appExtensions,
+  artifacts: artifactDefinitions,
+  blocks: blockDefinitions,
+});

@@ -1,4 +1,6 @@
-import { registerAppExtension } from '@abuddy/sdk/fe';
+import type { Component } from 'vue';
 import Welcome from '../extensions/Welcome.vue';
 
-registerAppExtension('welcome', Welcome);
+export const appExtensions: Record<string, Component> = {
+  welcome: Welcome,
+};

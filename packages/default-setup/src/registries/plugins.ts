@@ -1,4 +1,3 @@
-import { registerPluginDesignations } from '@abuddy/sdk/fe';
 import type { Plugin } from '@abuddy/sdk/fe';
 import Threads from '../features/threads/fe/plugin';
 import Flows from '../features/flows/fe/plugin';
@@ -29,7 +28,5 @@ export const plugins: Plugin[] = [
   Logs,
   Settings,
 ];
-
-registerPluginDesignations(plugins);
 
 export const defaultPlugin = Threads;

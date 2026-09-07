@@ -1,6 +1,7 @@
-import { blockRegistry } from '@abuddy/sdk/blocks';
+import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { standardBlocks } from './register';
 
-for (const def of standardBlocks) {
-  blockRegistry.register({ ...def, fe: undefined });
-}
+export const blockDefinitions: BlockDefinition[] = standardBlocks.map(def => ({
+  ...def,
+  fe: undefined,
+}));

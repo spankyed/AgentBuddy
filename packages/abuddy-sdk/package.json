@@ -19,6 +19,7 @@
     "./ids": "./src/ids/index.ts",
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
+    "./fe/pack-store": "./src/fe/pack-store.ts",
     "./fe/design/*": "./src/fe/design/*",
     "./fe/composables/*": "./src/fe/composables/*",
     "./fe/layout/*": "./src/fe/layout/*",

@@ -20,6 +20,8 @@ export { saveTabGroups, loadTabGroups, clearTabGroups, getNextAvailableColor, AL
 export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer'
 export { registerDesignation, registerPluginDesignations, getDesignatedPlugin, hasDesignation } from './plugin-registry'
 export { registerAppExtension, getAppExtension, hasAppExtension } from './app-extensions'
+export { registerPackFE, getRegisteredPlugins, getRegisteredDefaultPlugin } from './pack-store'
+export type { PackFERegistration } from './pack-store'
 
 export { useSettingsSaveStatus } from './composables/useSettingsSaveStatus'
 

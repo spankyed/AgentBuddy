@@ -1,7 +1,5 @@
 import type { Plugin } from "@abuddy/sdk/fe";
 import { BotMessageSquare } from 'lucide-vue-next';
-import '../../../artifacts/register-fe';
-import '../../../blocks/register-fe';
 import state, { id } from './state.ts';
 import list from './canvas/list.vue';
 import kanban from './canvas/kanban.vue';
