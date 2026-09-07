@@ -8,15 +8,14 @@ import { registerPack } from './pack-registration';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
 import { compareVersions } from '@/core/shared';
 import { APP_VERSION } from '@/version';
-import {
-  readPackRegistry, writePackRegistry, addToRegistry,
-  type PackRegistryEntry,
-} from './pack-registry';
+import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
 const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
 const logger = createLogger('pack-loader');
+
+// ── Built-in pack loading ────────────────────────────────────────────
 
 export interface BuiltInPackInfo {
   id: string;
@@ -62,62 +61,32 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
   return results;
 }
 
-export function seedBuiltInPacks(builtInDir: string): PackRegistryEntry[] {
-  let registry = readPackRegistry();
-  const discovered = discoverBuiltInPacks(builtInDir);
-
+// @tsup-rewrite-start loadBuiltInPacks
+export async function loadBuiltInPacks(packagesDir: string): Promise<void> {
+  const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
-    logger.warn('No built-in packs found in ' + builtInDir);
-    return registry;
+    logger.warn('No built-in packs found in ' + packagesDir);
+    return;
   }
-
-  let changed = false;
   for (const pack of discovered) {
-    const existing = registry.find(e => e.id === pack.id && e.type === 'built-in');
-    if (existing && existing.dir === pack.dir && existing.version === pack.version) continue;
-
-    registry = addToRegistry(registry, {
-      id: pack.id,
-      name: pack.name,
-      version: pack.version,
-      dir: pack.dir,
-      entry: pack.entry,
-      type: 'built-in',
-    });
-    changed = true;
-    logger.info(`${existing ? 'Updated' : 'Registered'} built-in pack: ${pack.id}`);
-  }
-
-  if (changed) writePackRegistry(registry);
-  return registry;
-}
-
-// @tsup-rewrite-start loadRegisteredPacks
-export async function loadRegisteredPacks(registry: PackRegistryEntry[]): Promise<void> {
-  for (const entry of registry) {
-    const entryPath = path.join(entry.dir, entry.entry);
+    const entryPath = path.join(pack.dir, pack.entry);
     try {
       const mod = await import(entryPath);
       if (!mod.registration) {
-        logger.warn(`Pack ${entry.id}: module at ${entryPath} has no 'registration' export, skipping`);
+        logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
       }
       registerPack(mod.registration);
-      logger.info(`Loaded pack: ${entry.id} (${entry.type})`);
+      logger.info(`Loaded built-in pack: ${pack.id}`);
     } catch (err) {
-      logger.error(`Failed to load pack ${entry.id} from ${entryPath}:`, err as Error);
+      logger.error(`Failed to load built-in pack ${pack.id}:`, err as Error);
     }
   }
 }
-// @tsup-rewrite-end loadRegisteredPacks
+// @tsup-rewrite-end loadBuiltInPacks
 
-export async function loadBuiltInPacksFromDir(packagesDir: string): Promise<void> {
-  seedBuiltInPacks(packagesDir);
-  const registry = readPackRegistry();
-  await loadRegisteredPacks(registry.filter(e => e.type === 'built-in'));
-}
+// ── External pack loading ────────────────────────────────────────────
 
-// Packages provided by the host that packs can require() without bundling
 const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
 
 export interface PackManifest {
@@ -200,6 +169,48 @@ function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string 
   return results;
 }
 
+function reconcileExternalRegistry(
+  discovered: { manifest: PackManifest; dir: string }[],
+): { manifest: PackManifest; dir: string }[] {
+  let registry = readPackRegistry();
+  let changed = false;
+
+  const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
+
+  for (const { manifest, dir } of discovered) {
+    const existing = registry.find(e => e.id === manifest.id);
+    if (!existing) {
+      registry = addToRegistry(registry, {
+        id: manifest.id,
+        name: manifest.name,
+        version: manifest.version,
+        dir,
+        enabled: true,
+      });
+      changed = true;
+      logger.info(`New external pack discovered: ${manifest.id}`);
+    } else if (existing.version !== manifest.version || existing.dir !== dir) {
+      registry = addToRegistry(registry, {
+        id: existing.id,
+        name: manifest.name,
+        version: manifest.version,
+        dir,
+        enabled: existing.enabled,
+      });
+      changed = true;
+    }
+  }
+
+  const before = registry.length;
+  registry = registry.filter(e => discoveredById.has(e.id));
+  if (registry.length !== before) changed = true;
+
+  if (changed) writePackRegistry(registry);
+
+  const enabledIds = new Set(registry.filter(e => e.enabled).map(e => e.id));
+  return discovered.filter(d => enabledIds.has(d.manifest.id));
+}
+
 function withHostResolution<T>(fn: () => T): T {
   const originalResolve = (Module as any)._resolveFilename;
 
@@ -266,13 +277,14 @@ function loadSystemFromCJS(
 export function loadExternalPacks(): LoadedPack[] {
   const packsDir = getPacksDir();
   const discovered = discoverPacks(packsDir);
+  const enabled = reconcileExternalRegistry(discovered);
 
-  if (discovered.length === 0) return [];
+  if (enabled.length === 0) return [];
 
-  logger.info(`Found ${discovered.length} external pack(s)`);
+  logger.info(`Loading ${enabled.length} external pack(s)`);
   const loaded: LoadedPack[] = [];
 
-  for (const { manifest, dir } of discovered) {
+  for (const { manifest, dir } of enabled) {
     if (manifest.hostVersion) {
       const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
       if (compareVersions(APP_VERSION, minVersion) < 0) {
@@ -371,6 +383,8 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
   return registered;
 }
 
+// ── Seed helpers ─────────────────────────────────────────────────────
+
 export function computePackSeedHash(distDir: string): string {
   const files = fs.readdirSync(distDir).filter(f => f.endsWith('.json')).sort();
   if (files.length === 0) return '';
@@ -415,7 +429,6 @@ export function seedPackData(
     }
   }
 
-  // Clean up hashes for packs no longer installed
   const installedIds = new Set(packs.map(p => p.manifest.id));
   for (const id of Object.keys(updatedHashes)) {
     if (!installedIds.has(id)) delete updatedHashes[id];

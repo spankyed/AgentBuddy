@@ -3,10 +3,9 @@ import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
 import {
-  seedBuiltInPacks, loadRegisteredPacks,
+  loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks, seedPackData,
 } from '@/core/packs/pack-loader';
-import { readPackRegistry } from '@/core/packs/pack-registry';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
@@ -24,16 +23,11 @@ export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
 
-  // ── Pack registry: seed built-ins on first run ──────────────────────
+  // ── Load built-in packs (discover → import directly) ───────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
   if (builtInDir) {
-    seedBuiltInPacks(builtInDir);
+    await loadBuiltInPacks(builtInDir);
   }
-
-  // ── Load built-in packs from registry ───────────────────────────────
-  const registry = readPackRegistry();
-  const builtInEntries = registry.filter(e => e.type === 'built-in');
-  await loadRegisteredPacks(builtInEntries);
 
   // Run early boot hooks (logs system must start before anything else)
   for (const hooks of getBootHooks()) {

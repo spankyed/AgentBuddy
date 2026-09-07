@@ -1,9 +1,9 @@
 /**
  * Pack Registry
  *
- * Persistent JSON-file registry of installed packs. Read on every boot
- * so packs load directly from recorded entry paths — no discovery needed.
- * The pack loader writes to this registry when packs are first installed.
+ * Persistent JSON-file registry of installed external packs.
+ * Tracks install state and enabled/disabled status.
+ * Built-in packs don't use this — they load directly from discovery.
  *
  * Lives outside LMDB because packs must register before EARS hydration.
  */
@@ -20,8 +20,7 @@ export interface PackRegistryEntry {
   name: string;
   version: string;
   dir: string;
-  entry: string;
-  type: 'built-in' | 'external';
+  enabled: boolean;
   registeredAt: string;
 }
 
@@ -40,7 +39,10 @@ export function readPackRegistry(): PackRegistryEntry[] {
 
   try {
     const data: PackRegistryFile = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
-    return data.packs ?? [];
+    return (data.packs ?? []).map(e => ({
+      ...e,
+      enabled: e.enabled ?? true,
+    }));
   } catch (err) {
     logger.warn('Failed to read pack registry, starting fresh:', err as Error);
     return [];
@@ -66,15 +68,15 @@ export function writePackRegistry(entries: PackRegistryEntry[]): void {
 }
 
 export function addToRegistry(entries: PackRegistryEntry[], pack: Omit<PackRegistryEntry, 'registeredAt'>): PackRegistryEntry[] {
-  const entry: PackRegistryEntry = { ...pack, registeredAt: new Date().toISOString() };
   const idx = entries.findIndex(e => e.id === pack.id);
   if (idx >= 0) {
+    const entry: PackRegistryEntry = { ...pack, registeredAt: entries[idx].registeredAt };
     return [...entries.slice(0, idx), entry, ...entries.slice(idx + 1)];
   }
+  const entry: PackRegistryEntry = { ...pack, registeredAt: new Date().toISOString() };
   return [...entries, entry];
 }
 
 export function removeFromRegistry(entries: PackRegistryEntry[], id: string): PackRegistryEntry[] {
   return entries.filter(e => e.id !== id);
 }
-

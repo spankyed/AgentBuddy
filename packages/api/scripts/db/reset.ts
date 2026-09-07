@@ -14,13 +14,13 @@ import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded'
 import { envs, policy, persistence, closePersistence, resetLmdbFiles } from '@/core/ears/attribute-storage';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
+import { loadBuiltInPacks } from '@/core/packs/pack-loader';
 import { getBootHooks } from '@/core/packs/pack-registration';
 
 const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 async function run() {
-  await loadBuiltInPacksFromDir(packagesDir);
+  await loadBuiltInPacks(packagesDir);
 
   console.log('Hydrating LMDB connections...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });

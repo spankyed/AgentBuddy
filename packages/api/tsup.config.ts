@@ -85,8 +85,8 @@ export default defineConfig({
           ).join('\n');
 
           contents = contents.replace(
-            /\/\/ @tsup-rewrite-start loadRegisteredPacks[\s\S]*?\/\/ @tsup-rewrite-end loadRegisteredPacks/,
-            `export function loadRegisteredPacks(): void {\n${requireLines}\n}`,
+            /\/\/ @tsup-rewrite-start loadBuiltInPacks[\s\S]*?\/\/ @tsup-rewrite-end loadBuiltInPacks/,
+            `export function loadBuiltInPacks(): void {\n${requireLines}\n}`,
           );
 
           return { contents, loader: 'ts' };
