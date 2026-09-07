@@ -50,6 +50,56 @@ The registry (`pack-registry.json` in `~/.agentbuddy/`) is external-pack-only. I
 
 External packs register **before** hydration (step 3-4) so their EARS entity types are visible to the partition policy resolver at step 5.
 
+## Pack entry contract
+
+A pack's `pack-entry.ts` (built-in) or `dist/index.js` (external) must export a `registration` object conforming to `PackRegistration` from `@abuddy/sdk/framework`:
+
+```typescript
+export const registration: PackRegistration = {
+  id: string;              // unique pack identifier
+  systems: PackSystemDef[];  // XState machines + event sets
+  services?: Record<string, unknown>;
+  steps?: StepDefinition[];
+  artifacts?: ArtifactDefinition[];
+  blocks?: BlockDefinition[];
+  ears?: PackEARS;           // entity types + relation kinds + partition policy
+  boot?: PackBootHooks;      // earlySystem, createDefaultSettings, seed, shutdown
+  migrations?: PackMigration[];
+};
+```
+
+Each `PackSystemDef` has `{ id, machine, events, designation? }`. Designations are auto-extracted during `registerPack()` — systems with a `designation` field get their designations registered automatically via `registerDesignations()`. Pack authors set designations on the system, not separately.
+
+## Collision detection
+
+`registerPack()` in `pack-registration.ts` checks for collisions before storing a registration:
+
+| What | Checked against | On collision |
+|------|----------------|--------------|
+| EARS entity type values | All registered packs' entity values | Throws (blocks registration) |
+| EARS relation kind values | All registered packs' relation values | Throws (blocks registration) |
+| Service keys | All registered packs' service keys | Throws (blocks registration) |
+| Step types | SDK `stepRegistry` | Throws — **with rollback** of any steps/artifacts/blocks already registered in this call |
+| Artifact types | SDK `artifactRegistry` | Same rollback behavior |
+| Block types | SDK `blockRegistry` | Same rollback behavior |
+
+EARS and service collisions throw before anything is stored, so no cleanup is needed. Step/artifact/block registrations happen sequentially and roll back on failure — if the third step type collides, the first two are unregistered.
+
+## Host resolution for external packs
+
+`withHostResolution()` in `pack-loader.ts` temporarily patches Node's `Module._resolveFilename` so external packs can `require('@abuddy/sdk')` and host-provided packages (`xstate`, `zod`) even though the packs live in `~/.agentbuddy/packs/`, outside the monorepo's `node_modules`. Without this shim, `require('@abuddy/sdk')` from an external pack would fail with MODULE_NOT_FOUND. The patch is scoped — it's applied only during the `require()` call and restored in a `finally` block.
+
+## Blocked features for external packs
+
+Two capabilities are stripped from external packs during loading:
+
+- **`earlySystem`** — Runs before EARS hydration (step 2 in boot). External packs register at step 3-4, after earlySystem hooks have already fired. Allowing it would either require reordering boot (risky) or silently not running the hook (confusing). Stripped with a warning log.
+- **`partitionPolicy`** (`excludedEntityTypes`, `secretEntityTypes`) — Controls which entities go to volatile/secrets stores vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped with a warning log; all external pack data routes to primary partition.
+
+## FE loading gap
+
+External packs currently only support `plugins` on the frontend side. The renderer loads external pack FE entries and calls `registerPackFE({ plugins })`, but doesn't pass `tiptapPlugins`, `appExtensions`, `artifacts`, or `blocks`. There's no FE entry point convention for external packs yet (the BE uses `dist/index.js`). Built-in packs have full FE support via `pack-entry-fe.ts` and the `virtual:built-in-packs` Vite plugin.
+
 ## tsup rewrite details
 
 The `@tsup-rewrite-start/end loadBuiltInPacks` markers in `pack-loader.ts` delimit the function body that gets replaced during production builds. The rewrite:
