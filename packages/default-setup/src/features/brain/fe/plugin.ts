@@ -14,7 +14,7 @@ const brainPlugin: Plugin = {
   settings,
   panel,
   isPinned: true,
-  designations: ['brain'],
+
 };
 
 export default brainPlugin;

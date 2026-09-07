@@ -13,7 +13,7 @@ import { computed, ref } from 'vue';
 import { ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
 import type { Plugin } from '@/core/types';
 import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue';
-import { useContextMenu, type MenuItem, useSettingsSaveStatus, navigateToPlugin, getDesignatedPlugin } from '@abuddy/sdk/fe';
+import { useContextMenu, type MenuItem, useSettingsSaveStatus, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const { updateSettings } = useSettingsSaveStatus();
@@ -23,7 +23,7 @@ const menuItems = computed<MenuItem[]>(() => {
   const plugin = selectedPlugin.value;
   if (!plugin) return [];
 
-  if (plugin.id === getDesignatedPlugin('settings')) {
+  if (plugin.id === getDesignated('settings')) {
     return [
       {
         label: 'Pop Out',
@@ -60,7 +60,7 @@ const menuItems = computed<MenuItem[]>(() => {
       icon: SettingsIcon,
       class: 'text-neutral-200',
       iconClass: 'text-neutral-500',
-      action: () => navigateToPlugin(getDesignatedPlugin('settings'), [
+      action: () => navigateToPlugin(getDesignated('settings'), [
         { type: 'TAB.SELECT', tab: 'plugins' },
         { type: 'PLUGIN.SELECT', pluginId: plugin.id },
       ]),

@@ -9,7 +9,7 @@ export default {
   notes: './src/seeds/notes',
   faqs: './src/seeds/faqs',
   settings: './src/seeds/default-settings.ts',
-  plugins: './src/features',
+  features: './src/features',
   async setup() {
     const { standardSteps } = await import('./src/steps/register');
     const { stepRegistry } = await import('@abuddy/sdk/steps');

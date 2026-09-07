@@ -9,6 +9,7 @@
 import type { PackRegistration, PackSystemDef } from '@abuddy/sdk/framework';
 
 import { systems, buildEventValidationMap } from './registries/systems';
+import { designations } from './registries/designations';
 import { featureServices } from './registries/services';
 import { EARS } from './registries/ears';
 import { earlyBootSystem, createDefaultSettings } from './registries/boot';
@@ -29,6 +30,7 @@ const systemDefs: PackSystemDef[] = Object.entries(systems).map(([id, machine]) 
 export const registration: PackRegistration = {
   id: 'default-setup',
   systems: systemDefs,
+  designations,
   services: featureServices,
   steps: standardSteps,
   artifacts: standardArtifacts,

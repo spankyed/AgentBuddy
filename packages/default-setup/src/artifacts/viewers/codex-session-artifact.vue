@@ -269,7 +269,7 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useActorSystem, navigateToPlugin, getDesignatedPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
 import { trpc } from '@abuddy/sdk/rpc'
 
 const actorSystem = useActorSystem()
@@ -303,7 +303,7 @@ defineProps<{
   artifact: ArtifactItem & { content: CodexThreadState }
 }>()
 
-const threadsActor = actorSystem.get(getDesignatedPlugin('threads'))
+const threadsActor = actorSystem.get(getDesignated('threads'))
 const currentThread = useSelector(
   threadsActor,
   (state: any) => state.context.currentThread,

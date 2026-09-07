@@ -1,5 +1,5 @@
 import { getHostModule } from '../runtime/host';
-import { getDesignatedPlugin } from './plugin-registry';
+import { getDesignated } from '../designations/index';
 
 function getApp(): any {
   return getHostModule('application');
@@ -24,11 +24,11 @@ export function navigateToPlugin(pluginId: string, event?: Record<string, any> |
 
 export function openInAppBrowser(url: string) {
   const app = getApp();
-  const settings = app.system.get(getDesignatedPlugin('settings'))?.getSnapshot();
+  const settings = app.system.get(getDesignated('settings'))?.getSnapshot();
   const openLinksInApp = settings?.context?.settings?.plugins?.browser?.openLinksInApp ?? true;
 
   if (openLinksInApp) {
-    navigateToPlugin(getDesignatedPlugin('browser'), { type: 'TAB.CREATE', url });
+    navigateToPlugin(getDesignated('browser'), { type: 'TAB.CREATE', url });
   } else {
     (window as any).electronAPI?.shell?.openExternal(url);
   }

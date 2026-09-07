@@ -89,7 +89,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, useApplicationActor, navigateToPlugin, getDesignatedPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, useApplicationActor, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 
@@ -141,7 +141,7 @@ const isPluginVisible = (pluginId: string) => {
 }
 
 // Toggle plugin visibility
-const settingsPluginId = getDesignatedPlugin('settings')
+const settingsPluginId = getDesignated('settings')
 
 const togglePluginVisibility = (pluginId: string) => {
   if (pluginId === settingsPluginId) return

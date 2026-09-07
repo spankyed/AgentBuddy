@@ -50,7 +50,7 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, 'pack.config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'actions'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'flows'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'plugins', packName, 'plugin.config.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'feature.config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'entities.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'types.ts'))).toBe(true);
 

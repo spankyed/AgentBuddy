@@ -89,7 +89,7 @@ import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
 import { navigateToPlugin } from '@abuddy/sdk/fe'
 import Router from '@/core/components/layout/router.vue'
-import { getDesignatedPlugin, hasDesignation } from '@abuddy/sdk/fe'
+import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
 import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue'
 import { registerGlobalToast } from '@/core/toast'
@@ -112,13 +112,13 @@ const chatMaximized = useSelector(applicationState, (state) => state.context.pan
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
 const allPlugins = useSelector(applicationState, (state) => state.context.plugins)
-const brainActor = applicationState.system.get(getDesignatedPlugin('brain'))
+const brainActor = applicationState.system.get(getDesignated('brain'))
 const inspectMode = useSelector(brainActor, (state: any) =>
   state.context.inspectEnabled ?? false
 )
 const fallbackPanel = computed(() => {
   if (!hasDesignation('brain')) return null
-  return allPlugins.value.find(p => p.id === getDesignatedPlugin('brain'))?.panel
+  return allPlugins.value.find(p => p.id === getDesignated('brain'))?.panel
 })
 
 const currentPluginId = computed(() =>
@@ -188,7 +188,7 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
-    navigateToPlugin(getDesignatedPlugin('settings'), [
+    navigateToPlugin(getDesignated('settings'), [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])

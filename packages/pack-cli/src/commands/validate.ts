@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { PluginConfig } from '@abuddy/sdk/build';
+import type { FeatureConfig } from '@abuddy/sdk/build';
 import { resolveDep } from './fetch-deps';
 import { findPackRoot } from '../utils';
 
@@ -54,51 +54,51 @@ function validateManifest(manifestPath: string): ManifestValidation {
   return { errors, warnings };
 }
 
-async function validatePlugins(pluginsDir: string): Promise<ManifestValidation> {
+async function validateFeatures(featuresDir: string): Promise<ManifestValidation> {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!fs.existsSync(pluginsDir)) {
-    warnings.push('No src/plugins/ directory found');
+  if (!fs.existsSync(featuresDir)) {
+    warnings.push('No src/features/ directory found');
     return { errors, warnings };
   }
 
-  const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
-  let pluginCount = 0;
+  const entries = fs.readdirSync(featuresDir, { withFileTypes: true });
+  let featureCount = 0;
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const pluginDir = path.join(pluginsDir, entry.name);
-    const configPath = path.join(pluginDir, 'plugin.config.ts');
+    const featureDir = path.join(featuresDir, entry.name);
+    const configPath = path.join(featureDir, 'feature.config.ts');
 
     if (!fs.existsSync(configPath)) {
-      warnings.push(`Plugin "${entry.name}": missing plugin.config.ts`);
+      warnings.push(`Feature "${entry.name}": missing feature.config.ts`);
       continue;
     }
 
     try {
       const mod = await import(pathToFileURL(configPath).href);
-      const config = (mod.default ?? mod) as PluginConfig;
+      const config = (mod.default ?? mod) as FeatureConfig;
 
       if (!config.name) {
-        errors.push(`Plugin "${entry.name}": plugin.config.ts missing "name"`);
+        errors.push(`Feature "${entry.name}": feature.config.ts missing "name"`);
       }
 
       if (config.settings) {
-        const settingsFile = path.resolve(pluginDir, config.settings);
+        const settingsFile = path.resolve(featureDir, config.settings);
         if (!fs.existsSync(settingsFile)) {
-          errors.push(`Plugin "${entry.name}": settings file "${config.settings}" not found`);
+          errors.push(`Feature "${entry.name}": settings file "${config.settings}" not found`);
         }
       }
 
-      pluginCount++;
+      featureCount++;
     } catch (err) {
-      errors.push(`Plugin "${entry.name}": failed to load plugin.config.ts: ${err}`);
+      errors.push(`Feature "${entry.name}": failed to load feature.config.ts: ${err}`);
     }
   }
 
-  if (pluginCount === 0) {
-    warnings.push('No plugins with plugin.config.ts found');
+  if (featureCount === 0) {
+    warnings.push('No features with feature.config.ts found');
   }
 
   return { errors, warnings };
@@ -136,11 +136,11 @@ export async function validate(_args: string[]) {
 
   const manifestPath = path.join(root, 'abuddy.json');
   const manifestResult = validateManifest(manifestPath);
-  const pluginResult = await validatePlugins(path.join(root, 'src', 'plugins'));
+  const featureResult = await validateFeatures(path.join(root, 'src', 'features'));
   const depResult = await validateDeps(root, manifestPath);
 
-  const errors = [...manifestResult.errors, ...pluginResult.errors, ...depResult.errors];
-  const warnings = [...manifestResult.warnings, ...pluginResult.warnings, ...depResult.warnings];
+  const errors = [...manifestResult.errors, ...featureResult.errors, ...depResult.errors];
+  const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depResult.warnings];
 
   if (warnings.length > 0) {
     console.log('\nWarnings:');

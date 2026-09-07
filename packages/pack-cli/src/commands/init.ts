@@ -28,12 +28,12 @@ export default {
 } satisfies PackConfig;
 `;
 
-const PLUGIN_CONFIG_TEMPLATE = (name: string) => `import type { PluginConfig } from '@abuddy/sdk/build';
+const FEATURE_CONFIG_TEMPLATE = (name: string) => `import type { FeatureConfig } from '@abuddy/sdk/build';
 
 export default {
   name: '${name}',
   settings: './settings.ts',
-} satisfies PluginConfig;
+} satisfies FeatureConfig;
 `;
 
 const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../.abuddy/generated/ears';
@@ -106,7 +106,7 @@ export async function init(args: string[]) {
 
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'src', 'plugins', name), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'features', name), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
@@ -115,8 +115,8 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
   fs.writeFileSync(path.join(dir, 'pack.config.ts'), PACK_CONFIG_TEMPLATE(name));
   fs.writeFileSync(
-    path.join(dir, 'src', 'plugins', name, 'plugin.config.ts'),
-    PLUGIN_CONFIG_TEMPLATE(name),
+    path.join(dir, 'src', 'features', name, 'feature.config.ts'),
+    FEATURE_CONFIG_TEMPLATE(name),
   );
   fs.writeFileSync(
     path.join(dir, 'src', 'entities.ts'),

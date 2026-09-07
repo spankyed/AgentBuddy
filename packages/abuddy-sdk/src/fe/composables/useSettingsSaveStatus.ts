@@ -1,13 +1,13 @@
 import { ref, onUnmounted } from 'vue'
 import { useActorSystem } from './useActorSystem'
-import { getDesignatedPlugin } from '../plugin-registry'
+import { getDesignated } from '../../designations/index'
 
 export function useSettingsSaveStatus() {
   const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
   let saveTimeout: NodeJS.Timeout | null = null
 
   const system = useActorSystem()
-  const settingsActor = system.get(getDesignatedPlugin('settings'))
+  const settingsActor = system.get(getDesignated('settings'))
 
   const setSaveStatus = (status: 'saving' | 'saved') => {
     if (saveTimeout) {

@@ -1,5 +1,5 @@
 // Types
-export type { PackConfig, PluginConfig, CompilePackOptions, CompilePackResult } from './types';
+export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types';
 
 // Seed compiler framework
 export { compilePack } from './seed-compiler';

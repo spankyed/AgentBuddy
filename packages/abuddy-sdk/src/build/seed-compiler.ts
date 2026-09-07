@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import type { PackConfig, PluginConfig, CompilePackOptions, CompilePackResult } from './types';
+import type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types';
 import {
   actionsCompiler, promptsCompiler, flowsCompiler,
   libraryCompiler, notesCompiler, faqCompiler, settingsCompiler,
@@ -80,21 +80,22 @@ interface PluginSettings {
   settingsPath: string;
 }
 
-async function discoverPluginSettings(pluginsDir: string): Promise<PluginSettings[]> {
+async function discoverFeatureSettings(featuresDir: string): Promise<PluginSettings[]> {
   const results: PluginSettings[] = [];
-  if (!fs.existsSync(pluginsDir)) return results;
+  if (!fs.existsSync(featuresDir)) return results;
 
-  const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
+  const entries = fs.readdirSync(featuresDir, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const configPath = path.join(pluginsDir, entry.name, 'plugin.config.ts');
+    const dir = path.join(featuresDir, entry.name);
+    const configPath = path.join(dir, 'feature.config.ts');
     if (!fs.existsSync(configPath)) continue;
 
     const mod = await import(pathToFileURL(configPath).href);
-    const config = (mod.default ?? mod) as PluginConfig;
+    const config = (mod.default ?? mod) as FeatureConfig;
     if (!config.settings) continue;
 
-    const settingsPath = path.resolve(path.join(pluginsDir, entry.name), config.settings);
+    const settingsPath = path.resolve(dir, config.settings);
     if (fs.existsSync(settingsPath)) {
       results.push({ name: config.name, settingsPath });
     }
@@ -134,12 +135,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     }
   }
 
-  // Resolve settings and plugins paths from config
+  // Resolve settings and features paths from config
   const baseSettingsFile = packConfig.settings
     ? path.resolve(packDir, packConfig.settings)
     : undefined;
-  const pluginsDir = packConfig.plugins
-    ? path.resolve(packDir, packConfig.plugins)
+  const featuresDir = packConfig.features
+    ? path.resolve(packDir, packConfig.features)
     : undefined;
 
   console.log(`Compiling pack: ${packConfig.name}`);
@@ -167,7 +168,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     mergedByType.set(type, merged);
   }
 
-  // 3. Compile settings — base + per-plugin settings merged
+  // 3. Compile settings — base + per-feature settings merged
   const settingsCompiler = compilers.get('settings');
   if (settingsCompiler) {
     const entries: CompileEntry<unknown>[] = [];
@@ -177,13 +178,13 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       entries.push({ data, sourcePath: baseSettingsFile, packName: '_base' });
     }
 
-    if (pluginsDir) {
-      const pluginSettings = await discoverPluginSettings(pluginsDir);
-      console.log(`Found ${pluginSettings.length} plugin(s) with settings: ${pluginSettings.map(p => p.name).join(', ')}`);
+    if (featuresDir) {
+      const featureSettings = await discoverFeatureSettings(featuresDir);
+      console.log(`Found ${featureSettings.length} feature(s) with settings: ${featureSettings.map(p => p.name).join(', ')}`);
 
-      for (const plugin of pluginSettings) {
-        const data = await settingsCompiler.compile(plugin.settingsPath);
-        entries.push({ data, sourcePath: plugin.settingsPath, packName: plugin.name });
+      for (const feature of featureSettings) {
+        const data = await settingsCompiler.compile(feature.settingsPath);
+        entries.push({ data, sourcePath: feature.settingsPath, packName: feature.name });
       }
     }
 

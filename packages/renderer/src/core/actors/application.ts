@@ -6,7 +6,7 @@ import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
-import { getDesignatedPlugin } from '@abuddy/sdk/fe';
+import { getDesignated } from '@abuddy/sdk/fe';
 import { stepRegistry } from '@abuddy/sdk/steps';
 
 interface BreadcrumbItem {
@@ -498,7 +498,7 @@ export const createApplicationState = () => setup({
 
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
-            systemId: getDesignatedPlugin('settings') as any,
+            systemId: getDesignated('settings') as any,
             type: 'UPDATE_SETTINGS',
             entityType: 'plugin',
             label: '_meta',
@@ -598,7 +598,7 @@ export const createApplicationState = () => setup({
       };
     }),
     closeDevLetter: ({ self }) => {
-      self.send({ type: 'SELECT_PLUGIN', pluginId: getDesignatedPlugin('threads') });
+      self.send({ type: 'SELECT_PLUGIN', pluginId: getDesignated('threads') });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({

@@ -12,7 +12,7 @@ export interface PackConfig {
   notes?: string;       // directory path
   faqs?: string;        // directory path
   settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
-  plugins?: string;     // directory path, e.g. './src/features' — scanned for per-plugin settings
+  features?: string;    // directory path, e.g. './src/features' — scanned for per-feature settings
   compilers?: Array<{ type: string; compiler: import('./seed-compiler').SeedCompiler }>;
   steps?: import('../steps/types').StepDefinition[];
   setup?: () => void | Promise<void>;
@@ -20,10 +20,10 @@ export interface PackConfig {
 }
 
 /**
- * Plugin configuration within a pack.
- * Each plugin can declare its own settings slice.
+ * Feature configuration within a pack.
+ * Each feature can declare its own settings slice.
  */
-export interface PluginConfig {
+export interface FeatureConfig {
   name: string;
   settings?: string;    // file path, e.g. './settings.ts'
 }

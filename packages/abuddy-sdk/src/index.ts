@@ -8,6 +8,9 @@ export type { Simplify } from './helpers/index';
 // Types
 export { EARS, type BaseEntity } from './types/index';
 
+// Designations
+export { registerDesignations, getDesignated, hasDesignation } from './designations/index';
+
 // System IDs
 export { bus } from './ids/index';
 

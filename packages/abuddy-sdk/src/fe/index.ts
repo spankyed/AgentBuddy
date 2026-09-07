@@ -18,7 +18,7 @@ export { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoFo
 export { createHotkeyProcessor, matchesHotkey, processHotkeys, type HotkeyEvent, type HotkeysMap, type KeyboardShortcut, type PluginHotkeyDefinition } from './hotkeys'
 export { saveTabGroups, loadTabGroups, clearTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroup, type TabGroupColor } from './tab-groups'
 export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer'
-export { registerDesignation, registerPluginDesignations, getDesignatedPlugin, hasDesignation } from './plugin-registry'
+export { registerDesignations, getDesignated, hasDesignation } from '../designations/index'
 export { registerAppExtension, getAppExtension, hasAppExtension } from './app-extensions'
 export { registerPackFE, getRegisteredPlugins, getRegisteredDefaultPlugin } from './pack-store'
 export type { PackFERegistration } from './pack-store'

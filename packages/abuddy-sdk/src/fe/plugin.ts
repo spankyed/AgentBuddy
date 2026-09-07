@@ -16,7 +16,6 @@ export interface Plugin {
   chat?: Component;
   settings?: Component;
   hotkeys?: PluginHotkeyDefinition[];
-  designations?: string[];
   options?: {
     headerClass?: string;
   };

@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem, getDesignatedPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import JsonHoverPopup from '@abuddy/sdk/fe/components/JsonHoverPopup.vue'
@@ -193,7 +193,7 @@ const artifactRef = computed(() => props.artifactRef)
 // Jump to the referenced artifact in the right panel when the link is clicked.
 function selectArtifact() {
   if (!props.artifactRef) return
-  const threadsActor = actorSystem.get(getDesignatedPlugin('threads'))
+  const threadsActor = actorSystem.get(getDesignated('threads'))
   threadsActor.send({ type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
 }
 

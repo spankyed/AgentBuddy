@@ -36,6 +36,7 @@ export interface PackEARS {
 export interface PackRegistration {
   id: string;
   systems: PackSystemDef[];
+  designations?: Record<string, string>;
   services?: Record<string, unknown>;
   ears?: PackEARS;
   boot?: PackBootHooks;
