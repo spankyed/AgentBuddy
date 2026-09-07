@@ -8,7 +8,7 @@ import { registerPack } from './pack-registration';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
 import { APP_VERSION } from '@/version';
 import {
-  readPackRegistry, writePackRegistry, addToRegistry, hasBuiltInPacks,
+  readPackRegistry, writePackRegistry, addToRegistry,
   type PackRegistryEntry,
 } from './pack-registry';
 
@@ -63,15 +63,18 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
 
 export function seedBuiltInPacks(builtInDir: string): PackRegistryEntry[] {
   let registry = readPackRegistry();
-  if (hasBuiltInPacks(registry)) return registry;
-
   const discovered = discoverBuiltInPacks(builtInDir);
+
   if (discovered.length === 0) {
     logger.warn('No built-in packs found in ' + builtInDir);
     return registry;
   }
 
+  let changed = false;
   for (const pack of discovered) {
+    const existing = registry.find(e => e.id === pack.id && e.type === 'built-in');
+    if (existing && existing.dir === pack.dir && existing.version === pack.version) continue;
+
     registry = addToRegistry(registry, {
       id: pack.id,
       name: pack.name,
@@ -80,10 +83,11 @@ export function seedBuiltInPacks(builtInDir: string): PackRegistryEntry[] {
       entry: pack.entry,
       type: 'built-in',
     });
-    logger.info(`Registered built-in pack: ${pack.id}`);
+    changed = true;
+    logger.info(`${existing ? 'Updated' : 'Registered'} built-in pack: ${pack.id}`);
   }
 
-  writePackRegistry(registry);
+  if (changed) writePackRegistry(registry);
   return registry;
 }
 
@@ -92,6 +96,10 @@ export async function loadRegisteredPacks(registry: PackRegistryEntry[]): Promis
     const entryPath = path.join(entry.dir, entry.entry);
     try {
       const mod = await import(entryPath);
+      if (!mod.registration) {
+        logger.warn(`Pack ${entry.id}: module at ${entryPath} has no 'registration' export, skipping`);
+        continue;
+      }
       registerPack(mod.registration);
       logger.info(`Loaded pack: ${entry.id} (${entry.type})`);
     } catch (err) {
