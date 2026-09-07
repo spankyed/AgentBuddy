@@ -83,7 +83,8 @@ function findPackRoot(dir: string): string {
 }
 
 export async function installPackFromLocal(source: string): Promise<InstallResult> {
-  const resolved = path.resolve(source);
+  const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
+  const resolved = path.resolve(expanded);
   if (!fs.existsSync(resolved)) {
     throw new Error(`Path not found: ${resolved}`);
   }
@@ -130,7 +131,7 @@ export async function installPackFromLocal(source: string): Promise<InstallResul
 export async function installPackFromUrl(url: string): Promise<InstallResult> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
   try {
-    const filename = url.split('/').pop() || 'pack.tgz';
+    const filename = new URL(url).pathname.split('/').pop() || 'pack.tgz';
     const downloadPath = path.join(tmpDir, filename);
 
     const response = await fetch(url);

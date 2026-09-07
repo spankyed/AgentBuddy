@@ -83,16 +83,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
+import { useActorSystem } from '@abuddy/sdk/fe';
 import type { PacksState } from '../state';
+import { id } from '../state';
 
-const props = defineProps<{ actor: PacksState }>();
+const actorSystem = useActorSystem();
+const actor: PacksState = actorSystem.get(id);
 
-const packs = useSelector(props.actor, s => s.context.packs);
-const installing = useSelector(props.actor, s => s.context.installing);
-const pendingChanges = useSelector(props.actor, s => s.context.pendingChanges);
-const error = useSelector(props.actor, s => s.context.error);
+const packs = useSelector(actor, s => s.context.packs);
+const installing = useSelector(actor, s => s.context.installing);
+const pendingChanges = useSelector(actor, s => s.context.pendingChanges);
+const error = useSelector(actor, s => s.context.error);
 
 const installInput = ref('');
 
@@ -101,7 +104,7 @@ function handleInstall() {
   if (!value) return;
 
   const isLocal = value.startsWith('/') || value.startsWith('~') || value.startsWith('.');
-  props.actor.send({
+  actor.send({
     type: 'UI.INSTALL',
     packSlug: value,
     source: isLocal ? 'local' : undefined,
@@ -110,11 +113,11 @@ function handleInstall() {
 }
 
 function toggleEnabled(packId: string) {
-  props.actor.send({ type: 'UI.TOGGLE_ENABLED', packId });
+  actor.send({ type: 'UI.TOGGLE_ENABLED', packId });
 }
 
 function uninstall(packId: string) {
-  props.actor.send({ type: 'UI.UNINSTALL', packId });
+  actor.send({ type: 'UI.UNINSTALL', packId });
 }
 
 function restartApp() {

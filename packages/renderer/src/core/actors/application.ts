@@ -321,7 +321,10 @@ export const createApplicationState = () => setup({
       const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
       if (newPlugins.length === 0) return {};
       stepRegistry.initComponents();
-      const allPlugins = [...context.plugins, ...newPlugins];
+      const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
+      const allPlugins = packsIdx >= 0
+        ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
+        : [...context.plugins, ...newPlugins];
       const pluginVisibility = { ...context.pluginVisibility };
       for (const p of newPlugins) pluginVisibility[p.id] = true;
       return {

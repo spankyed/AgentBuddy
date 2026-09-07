@@ -2,7 +2,7 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
-import { readPackRegistry, writePackRegistry } from './pack-registry';
+import { readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry } from './pack-registry';
 import type { PackRegistryEntry } from './pack-registry';
 import { installPack as runInstall, uninstallPack as runUninstall } from './pack-installer';
 
@@ -62,6 +62,16 @@ export const packsSystem = setup({
       system.get(bus).send(emit(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug }));
 
       runInstall(packSlug, ev.source).then(result => {
+        const entries = readPackRegistry();
+        const updated = addToRegistry(entries, {
+          id: result.id,
+          name: result.name,
+          version: result.version,
+          dir: result.dir,
+          enabled: true,
+        });
+        writePackRegistry(updated);
+
         system.get(bus).send(emit(packs, {
           type: 'PACK_INSTALL_COMPLETE' as const,
           packSlug,
@@ -87,6 +97,10 @@ export const packsSystem = setup({
       console.log(`[packs] Uninstall requested: ${packId}`);
 
       runUninstall(packId).then(() => {
+        const entries = readPackRegistry();
+        const updated = removeFromRegistry(entries, packId);
+        writePackRegistry(updated);
+
         system.get(bus).send(emit(packs, {
           type: 'PACK_UNINSTALL_COMPLETE' as const,
           packId,
