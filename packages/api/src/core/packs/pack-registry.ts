@@ -55,7 +55,14 @@ export function writePackRegistry(entries: PackRegistryEntry[]): void {
   }
 
   const data: PackRegistryFile = { packs: entries };
-  fs.writeFileSync(registryPath, JSON.stringify(data, null, 2), 'utf-8');
+  const tmpPath = registryPath + '.tmp';
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, registryPath);
+  } catch (err) {
+    logger.error('Failed to write pack registry:', err as Error);
+    try { fs.unlinkSync(tmpPath); } catch {}
+  }
 }
 
 export function addToRegistry(entries: PackRegistryEntry[], pack: Omit<PackRegistryEntry, 'registeredAt'>): PackRegistryEntry[] {
@@ -71,6 +78,3 @@ export function removeFromRegistry(entries: PackRegistryEntry[], id: string): Pa
   return entries.filter(e => e.id !== id);
 }
 
-export function hasBuiltInPacks(entries: PackRegistryEntry[]): boolean {
-  return entries.some(e => e.type === 'built-in');
-}
