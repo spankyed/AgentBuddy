@@ -33,7 +33,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/state.ts` — XState frontend state machine
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — Tiptap reference type definitions (if applicable)
-- `plugin.config.ts` — Build-time config (name + settings path)
+- `feature.config.ts` — Build-time config (name, designation, settings path)
 - `settings.ts` — Per-feature default settings
 
 The 13 features: **threads**, **code**, **notes**, **calendar**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.
@@ -42,9 +42,9 @@ Plugin registry: `src/registries/plugins.ts`. Default plugin is Threads.
 
 ## Systems
 
-Backend systems registered in `src/registries/systems.ts`. Each system is an XState machine. The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot).
+Backend systems registered in `src/registries/systems.ts` via `SystemEntry` bundles (spec + machine pairs) processed by `toPackSystemDefs()` from the SDK. Each system file exports a `SystemEntry`. The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot) and is not included in the regular systems registry.
 
-System IDs re-exported from `src/registries/system-ids.ts`.
+System IDs re-exported from `src/registries/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file; designated features pass `{ designation: config.designation }` from their `feature.config.ts`.
 
 ## Services
 
@@ -106,9 +106,9 @@ FE registration: `src/blocks/register-fe.ts`.
 
 ## Extensions
 
-- **Tiptap plugins** (`src/registries/tiptap-plugins.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Registered in `tiptap-register-fe.ts`.
-- **App extensions** (`src/registries/app-extensions.ts`) — Welcome screen component.
-- **Reference types** (`src/registries/extensions.ts`) — aggregates ref types, categories, and item providers from threads, library, and notes plugins for the tiptap reference system.
+- **Tiptap plugins** (`src/registries/tiptap-plugins.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Registered via `pack-entry-fe.ts`.
+- **App extensions** — Welcome screen component in `src/extensions/`. Registered via `pack-entry-fe.ts`.
+- **Reference types** (`src/registries/extensions.ts`) — aggregates ref types, categories, and item providers from threads, library, and notes features for the tiptap reference system.
 
 ## Migrations
 
