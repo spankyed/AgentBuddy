@@ -1,8 +1,10 @@
 import type { z } from 'zod';
-import type { EARS, ActionParameter, TemplateInput } from '@app/api/dist/defs/default-setup-defs';
-import type { Services as ImportedServices } from '@app/api/dist/defs/action-defs';
+import { EARS } from '@abuddy/sdk';
+import type { ActionParameter } from '@/plugins/actions/be/types';
+import type { TemplateInput } from '@/plugins/prompts/be/types';
+import type { featureServices } from '@/registries/services';
 
-export type Services = ImportedServices;
+export type Services = typeof featureServices;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 export type { ActionParameter, TemplateInput };
@@ -23,7 +25,7 @@ export type {
   DSLCreateNode,
   DSLUpdateNode,
   DSLKeepAliveNode,
-} from '@app/api/dist/defs/default-setup-defs';
+} from '@/plugins/flows/be/dsl/types';
 
 export interface ActionMeta {
   label: string;
