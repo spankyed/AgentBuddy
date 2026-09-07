@@ -6,16 +6,24 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {
-      "@default-setup/*": ["../default-setup/src/*"],
+      // --- SDK component/composable redirects ---
       "@/core/components/design/*": ["../abuddy-sdk/src/fe/design/*"],
       "@/core/components/tiptap/*": ["../abuddy-sdk/src/fe/components/tiptap/*"],
       "@/core/composables/useMenuState": ["../abuddy-sdk/src/fe/composables/useMenuState"],
       "@/core/composables/useContextMenu": ["../abuddy-sdk/src/fe/composables/useContextMenu"],
+
+      // --- Built-in pack paths (convention: any workspace package with abuddy.json builtIn:true) ---
+      // Vite resolves these dynamically via the resolve-pack-at-aliases plugin;
+      // tsconfig can't do dynamic resolution, so they're listed explicitly here.
+      // When adding a new built-in pack, add its namespace and @/ directory mappings below.
+      "@default-setup/*": ["../default-setup/src/*"],
       "@/registries/*": ["../default-setup/src/registries/*"],
       "@/plugins/*": ["../default-setup/src/plugins/*"],
       "@/steps/*": ["../default-setup/src/steps/*"],
       "@/blocks/*": ["../default-setup/src/blocks/*"],
       "@/artifacts/*": ["../default-setup/src/artifacts/*"],
+
+      // --- Renderer catch-all (must be last) ---
       "@/*": ["./src/*"]
     }
   }

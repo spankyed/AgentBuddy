@@ -1,15 +1,68 @@
 import { fileURLToPath, URL } from 'node:url'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-// import tailwindcss from 'tailwindcss'
-// import autoprefixer from 'autoprefixer'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
-const defaultSetupDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../default-setup/src');
-const sdkDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../abuddy-sdk');
+const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
+const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
+const sdkDir = resolve(packagesRoot, 'abuddy-sdk');
+
+// ---------------------------------------------------------------------------
+// Convention-based built-in pack discovery (mirrors packages/api/tsup.config.ts)
+// ---------------------------------------------------------------------------
+
+interface BuiltInPack { id: string; srcDir: string }
+
+function discoverBuiltInPacks(): BuiltInPack[] {
+  const packs: BuiltInPack[] = [];
+  for (const entry of readdirSync(packagesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = resolve(packagesRoot, entry.name, 'abuddy.json');
+    if (!existsSync(manifestPath)) continue;
+    try {
+      const m = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+      if (m.builtIn && m.id) packs.push({ id: m.id, srcDir: resolve(packagesRoot, entry.name, 'src') });
+    } catch {}
+  }
+  return packs;
+}
+
+const builtInPacks = discoverBuiltInPacks();
+
+/**
+ * Vite plugin that resolves @/ imports based on the importer's location.
+ *
+ * When a file inside a built-in pack's src/ imports @/foo, the path resolves
+ * within that pack's own src/ directory.  For all other importers (the
+ * renderer itself), it resolves within renderer/src/.
+ *
+ * This replaces the previous approach of hardcoding per-directory aliases
+ * (@/registries/*, @/plugins/*, etc.) that coupled the renderer's build
+ * config to a specific pack's internal directory structure.
+ */
+function resolvePackAtAliases(): Plugin {
+  return {
+    name: 'resolve-pack-at-aliases',
+    enforce: 'pre',
+    async resolveId(source, importer) {
+      if (!source.startsWith('@/') || !importer) return null;
+      const subpath = source.slice(2);
+
+      const pack = builtInPacks.find(p => importer.startsWith(p.srcDir + '/'));
+      const rootDir = pack ? pack.srcDir : rendererSrcDir;
+      return this.resolve(resolve(rootDir, subpath), importer, { skipSelf: true });
+    },
+  };
+}
+
+// Namespace aliases for each built-in pack: @<pack-id>/* → <pack-src>/*
+const packNamespaceAliases = builtInPacks.map(pack => ({
+  find: new RegExp(`^@${pack.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)$`),
+  replacement: resolve(pack.srcDir, '$1'),
+}));
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -18,6 +71,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    resolvePackAtAliases(),
     vue({
       template: {
         compilerOptions: {
@@ -30,12 +84,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      { find: /^@default-setup\/(.+)$/, replacement: resolve(defaultSetupDir, '$1') },
-      { find: /^@\/registries\/(.+)$/, replacement: resolve(defaultSetupDir, 'registries/$1') },
-      { find: /^@\/plugins\/(.+)$/, replacement: resolve(defaultSetupDir, 'plugins/$1') },
-      { find: /^@\/steps\/(.+)$/, replacement: resolve(defaultSetupDir, 'steps/$1') },
-      { find: /^@\/blocks\/(.+)$/, replacement: resolve(defaultSetupDir, 'blocks/$1') },
-      { find: /^@\/artifacts\/(.+)$/, replacement: resolve(defaultSetupDir, 'artifacts/$1') },
+      ...packNamespaceAliases,
       // Map design system components to SDK
       { find: /^@\/core\/components\/design\/(.+)$/, replacement: resolve(sdkDir, 'src/fe/design/$1') },
       // Map shared components (tiptap, monaco, etc.) to SDK — layout/ stays in renderer
@@ -44,8 +93,6 @@ export default defineConfig({
       { find: /^@\/core\/composables\/(useMenuState|useContextMenu)(\.ts)?$/, replacement: resolve(sdkDir, 'src/fe/composables/$1.ts') },
       // SDK rpc module delegates to backend host modules — on the frontend, redirect to renderer's trpc
       { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
-      // Catch-all @/ alias for renderer internals
-      { find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
     ],
   },
