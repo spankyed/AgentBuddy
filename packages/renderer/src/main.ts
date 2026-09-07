@@ -4,7 +4,7 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import plugins, { defaultPlugin, settingsSaveStatusMod } from '@/packs/built-in';
+import plugins, { defaultPlugin } from '@/packs/built-in';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
@@ -109,7 +109,6 @@ window.__disableOnboardingUI = () => {
 
 registerHostModule('navigate', navigateMod);
 registerHostModule('open-in-app-browser', openBrowserMod);
-registerHostModule('settings-save-status', settingsSaveStatusMod);
 registerHostModule('plugins', pluginsMod);
 
 applicationState.subscribe({

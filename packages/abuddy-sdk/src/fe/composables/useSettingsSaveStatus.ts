@@ -1,7 +1,6 @@
 import { ref, onUnmounted } from 'vue'
-import { getDesignatedPlugin } from '@abuddy/sdk/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
-import type { SETTINGS_SCOPE } from '@/registries/types'
+import { useActorSystem } from './useActorSystem'
+import { getDesignatedPlugin } from '../plugin-registry'
 
 export function useSettingsSaveStatus() {
   const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
@@ -25,7 +24,7 @@ export function useSettingsSaveStatus() {
   }
 
   const updateSettings = (params: {
-    entityType: SETTINGS_SCOPE
+    entityType: string
     label: string
     path: string[]
     value: any

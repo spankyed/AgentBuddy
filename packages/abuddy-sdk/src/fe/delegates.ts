@@ -20,15 +20,6 @@ function openBrowserMod() {
 
 export function openInAppBrowser(url: string): void { return openBrowserMod().openInAppBrowser(url); }
 
-// --- Settings Save Status ---
-let _settingsSaveStatusMod: any;
-function settingsSaveStatusMod() {
-  if (!_settingsSaveStatusMod) _settingsSaveStatusMod = getHostModule('settings-save-status');
-  return _settingsSaveStatusMod;
-}
-
-export function useSettingsSaveStatus(...args: any[]): any { return settingsSaveStatusMod().useSettingsSaveStatus(...args); }
-
 // --- Plugins ---
 let _pluginsMod: any;
 function pluginsMod() {

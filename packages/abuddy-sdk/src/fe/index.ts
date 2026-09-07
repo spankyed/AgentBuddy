@@ -21,9 +21,10 @@ export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer'
 export { registerDesignation, registerPluginDesignations, getDesignatedPlugin, hasDesignation } from './plugin-registry'
 export { registerAppExtension, getAppExtension, hasAppExtension } from './app-extensions'
 
+export { useSettingsSaveStatus } from './composables/useSettingsSaveStatus'
+
 export {
   navigateToPlugin,
   openInAppBrowser,
-  useSettingsSaveStatus,
   useState,
 } from './delegates'
