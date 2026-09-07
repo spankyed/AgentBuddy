@@ -8,6 +8,7 @@ export type RouteComponents = Record<RouteName, Component>;
 export interface Plugin {
   id: string;
   label: string;
+  designation?: string;
   isPinned?: boolean;
   state: AnyStateMachine;
   icon?: Component;

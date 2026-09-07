@@ -1,4 +1,5 @@
 import type { Plugin } from "@abuddy/sdk/fe";
+import config from '../feature.config';
 import { BotMessageSquare } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import list from './canvas/list.vue';
@@ -11,6 +12,7 @@ import settings from './settings.vue';
 const threadsPlugin: Plugin = {
   id,
   label: 'Threads',
+  designation: config.designation,
   icon: BotMessageSquare,
   state,
 

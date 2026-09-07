@@ -14,19 +14,8 @@ import Browser from '../features/browser/fe/plugin';
 import Calendar from '../features/calendar/fe/plugin';
 
 export const plugins: Plugin[] = [
-  Threads,
-  Code,
-  Notes,
-  Calendar,
-  Browser,
-  Library,
-  Flows,
-  Actions,
-  Prompts,
-  Brain,
-  Database,
-  Logs,
-  Settings,
+  Threads, Code, Notes, Calendar, Browser, Library,
+  Flows, Actions, Prompts, Brain, Database, Logs, Settings,
 ];
 
-export const defaultPlugin = Threads;
+export const defaultPlugin = plugins[0];

@@ -10,6 +10,7 @@ export { EARS, type BaseEntity } from './types/index';
 
 // Designations
 export { registerDesignations, getDesignated, hasDesignation } from './designations/index';
+export type { Designations } from './designations/index';
 
 // System IDs
 export { bus } from './ids/index';

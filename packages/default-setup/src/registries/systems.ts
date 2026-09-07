@@ -1,3 +1,4 @@
+import type { PackSystemDef } from '@abuddy/sdk/framework';
 import { brain, brainSystem, brainDef } from '../features/brain/be/system';
 import { threads, threadsSystem, threadsDef } from '../features/threads/be/system';
 import { flows, flowsSystem, flowsDef } from '../features/flows/be/system';
@@ -12,7 +13,7 @@ import { notes, notesSystem, notesDef } from '../features/notes/be/system';
 import { browser, browserSystem, browserDef } from '../features/browser/be/system';
 import { calendar, calendarSystem, calendarDef } from '../features/calendar/be/system';
 
-export const systems = {
+const systems = {
   [settings]: settingsSystem,
   [brain]: brainSystem,
   [threads]: threadsSystem,
@@ -34,10 +35,22 @@ export const allDefs = [
   calendarDef,
 ] as const;
 
+const defsByName = new Map(allDefs.map(d => [d.id, d]));
+
 export function buildEventValidationMap(): Map<string, Set<string>> {
-  const map: Map<string, Set<string>> = new Map(
+  const map = new Map<string, Set<string>>(
     Object.entries(systems).map(([id, machine]) => [id, new Set(machine.events)])
   );
   map.set(logs, new Set(logsSystem.events));
   return map;
+}
+
+export function buildSystemDefs(): PackSystemDef[] {
+  const eventValidation = buildEventValidationMap();
+  return Object.entries(systems).map(([id, machine]) => ({
+    id,
+    machine,
+    events: eventValidation.get(id) ?? new Set(),
+    designation: defsByName.get(id)?.designation,
+  }));
 }

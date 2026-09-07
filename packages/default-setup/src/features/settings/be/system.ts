@@ -1,5 +1,6 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
+import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/registries/system-ids';
 import { emit } from '@abuddy/sdk/helpers';
@@ -78,7 +79,7 @@ export type OutgoingSettingsEvents =
   | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
-export const settingsDef = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
+export const settingsDef = defineSystem('settings', { designation: config.designation })<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsDef.id;
 
 export const settingsSystem = setup({

@@ -12,7 +12,6 @@ import { blockRegistry } from '../blocks/registry';
 export interface PackFERegistration {
   plugins: Plugin[];
   defaultPlugin?: Plugin;
-  designations?: Record<string, string>;
   tiptapPlugins?: TiptapPlugin[];
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
@@ -29,8 +28,9 @@ export function registerPackFE(registration: PackFERegistration): void {
     defaultPlugin = registration.defaultPlugin;
   }
 
-  if (registration.designations) {
-    registerDesignations(registration.designations);
+  const designated = registration.plugins.filter(p => p.designation);
+  if (designated.length) {
+    registerDesignations(designated.map(p => p.designation!));
   }
 
   if (registration.tiptapPlugins) {

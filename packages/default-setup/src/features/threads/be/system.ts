@@ -1,5 +1,6 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
+import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/registries/system-ids';
 import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
@@ -92,7 +93,7 @@ export type OutgoingThreadsEvents =
 
 export interface ThreadsContext {}
 
-export const threadsDef = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
+export const threadsDef = defineSystem('threads', { designation: config.designation })<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsDef.id;
 
 function reportThreadOperationError(

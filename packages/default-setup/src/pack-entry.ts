@@ -6,10 +6,9 @@
  * Replaces the 6 separate registry imports the API used to consume.
  */
 
-import type { PackRegistration, PackSystemDef } from '@abuddy/sdk/framework';
+import type { PackRegistration } from '@abuddy/sdk/framework';
 
-import { systems, buildEventValidationMap } from './registries/systems';
-import { designations } from './registries/designations';
+import { buildSystemDefs } from './registries/systems';
 import { featureServices } from './registries/services';
 import { EARS } from './registries/ears';
 import { earlyBootSystem, createDefaultSettings } from './registries/boot';
@@ -19,18 +18,9 @@ import { standardSteps } from './steps/register';
 import { standardArtifacts } from './artifacts/register';
 import { standardBlocks } from './blocks/register';
 
-const eventValidation = buildEventValidationMap();
-
-const systemDefs: PackSystemDef[] = Object.entries(systems).map(([id, machine]) => ({
-  id,
-  machine,
-  events: eventValidation.get(id) ?? new Set(),
-}));
-
 export const registration: PackRegistration = {
   id: 'default-setup',
-  systems: systemDefs,
-  designations,
+  systems: buildSystemDefs(),
   services: featureServices,
   steps: standardSteps,
   artifacts: standardArtifacts,

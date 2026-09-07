@@ -25,6 +25,7 @@ export interface PackConfig {
  */
 export interface FeatureConfig {
   name: string;
+  designation?: string;
   settings?: string;    // file path, e.g. './settings.ts'
 }
 

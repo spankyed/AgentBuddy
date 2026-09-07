@@ -84,8 +84,9 @@ export function registerPack(registration: PackRegistration): void {
     throw err;
   }
 
-  if (registration.designations) {
-    registerDesignations(registration.designations);
+  const designated = registration.systems.filter(s => s.designation);
+  if (designated.length) {
+    registerDesignations(designated.map(s => s.designation!));
   }
 
   registrations.set(registration.id, registration);

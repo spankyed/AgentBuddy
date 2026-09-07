@@ -9,6 +9,7 @@ export interface PackSystemDef {
   id: string;
   machine: any;
   events: Set<string>;
+  designation?: string;
 }
 
 export interface PackMigration {
@@ -36,7 +37,6 @@ export interface PackEARS {
 export interface PackRegistration {
   id: string;
   systems: PackSystemDef[];
-  designations?: Record<string, string>;
   services?: Record<string, unknown>;
   ears?: PackEARS;
   boot?: PackBootHooks;
