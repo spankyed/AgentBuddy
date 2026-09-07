@@ -11,7 +11,7 @@
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts"],
       "@/registries/*": ["../default-setup/src/registries/*"],
-      "@/plugins/*": ["../default-setup/src/plugins/*"],
+      "@/features/*": ["../default-setup/src/features/*"],
       "@/*": ["src/*"]
     }
   },

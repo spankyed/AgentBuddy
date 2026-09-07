@@ -56,14 +56,38 @@ function validateInstallSource(dir: string): { id: string; name: string; version
   return manifest;
 }
 
-const BUILTIN_PACKS = new Set(['default-setup']);
+// Built-in packs ship with the app and are always loaded at boot, so dependencies
+// on them are always satisfied. We discover their IDs by scanning the monorepo's
+// packages/ dir (4 levels up: commands/ → src/ → pack-cli/ → packages/) for
+// abuddy.json manifests with builtIn: true. Silently returns empty if the
+// workspace isn't reachable (e.g. pack-cli installed standalone).
+function discoverBuiltInPackIds(): Set<string> {
+  const ids = new Set<string>();
+  const packagesDir = path.resolve(
+    path.dirname(new URL(import.meta.url).pathname),
+    '..', '..', '..', '..',
+  );
+  try {
+    for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const manifestPath = path.join(packagesDir, entry.name, 'abuddy.json');
+      if (!fs.existsSync(manifestPath)) continue;
+      try {
+        const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        if (m.builtIn && m.id) ids.add(m.id);
+      } catch {}
+    }
+  } catch {}
+  return ids;
+}
 
 function checkDependencies(manifest: { dependencies?: Record<string, string> }, packsDir: string): string[] {
   const deps = manifest.dependencies ?? {};
   const missing: string[] = [];
+  const builtInIds = discoverBuiltInPackIds();
 
   for (const depId of Object.keys(deps)) {
-    if (BUILTIN_PACKS.has(depId)) continue;
+    if (builtInIds.has(depId)) continue;
     const depManifest = path.join(packsDir, depId, 'abuddy.json');
     if (!fs.existsSync(depManifest)) {
       missing.push(depId);
