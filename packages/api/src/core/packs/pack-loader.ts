@@ -12,6 +12,15 @@ import {
   type PackRegistryEntry,
 } from './pack-registry';
 
+function compareVersions(a: string, b: string): number {
+  const [ax, bx] = [a, b].map(v => v.split('.').map(Number));
+  for (let i = 0; i < Math.max(ax.length, bx.length); i++) {
+    const diff = (ax[i] ?? 0) - (bx[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
 const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
@@ -91,6 +100,7 @@ export function seedBuiltInPacks(builtInDir: string): PackRegistryEntry[] {
   return registry;
 }
 
+// @tsup-rewrite-start loadRegisteredPacks
 export async function loadRegisteredPacks(registry: PackRegistryEntry[]): Promise<void> {
   for (const entry of registry) {
     const entryPath = path.join(entry.dir, entry.entry);
@@ -107,6 +117,7 @@ export async function loadRegisteredPacks(registry: PackRegistryEntry[]): Promis
     }
   }
 }
+// @tsup-rewrite-end loadRegisteredPacks
 
 export async function loadBuiltInPacksFromDir(packagesDir: string): Promise<void> {
   seedBuiltInPacks(packagesDir);
@@ -272,7 +283,7 @@ export function loadExternalPacks(): LoadedPack[] {
   for (const { manifest, dir } of discovered) {
     if (manifest.hostVersion) {
       const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
-      if (APP_VERSION.localeCompare(minVersion, undefined, { numeric: true }) < 0) {
+      if (compareVersions(APP_VERSION, minVersion) < 0) {
         logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
         continue;
       }
