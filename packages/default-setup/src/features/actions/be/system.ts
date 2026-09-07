@@ -1,5 +1,5 @@
 import { assign, createMachine, setup } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { flows } from '@/registries/system-ids';
 import { emit } from '@abuddy/sdk/helpers';
@@ -323,3 +323,5 @@ export const actionsSystem = setup({
     },
   }
 );
+
+export const actionsEntry: SystemEntry = { spec: actionsSpec, machine: actionsSystem };

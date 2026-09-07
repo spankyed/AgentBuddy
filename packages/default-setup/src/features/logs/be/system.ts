@@ -1,5 +1,5 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { emit, getActor } from '@abuddy/sdk/helpers';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
@@ -197,4 +197,6 @@ export const logsSystem = setup({
       },
     },
   },
-}); 
+});
+
+export const logsEntry: SystemEntry = { spec: logsSpec, machine: logsSystem }; 

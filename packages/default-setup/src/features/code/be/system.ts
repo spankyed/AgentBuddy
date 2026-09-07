@@ -18,7 +18,7 @@ import { setup, enqueueActions, assign } from 'xstate'
 import { emit } from '@abuddy/sdk/helpers'
 import { rootEvents } from '@abuddy/sdk/rpc'
 import './repository' // side-effect: registers terminalQueries/terminalCommands
-import { defineSystem } from '@abuddy/sdk/framework'
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@abuddy/sdk/ears'
@@ -374,3 +374,5 @@ export const systemMachine = setup({
     }
   }
 })
+
+export const codeEntry: SystemEntry = { spec: codeSpec, machine: systemMachine };

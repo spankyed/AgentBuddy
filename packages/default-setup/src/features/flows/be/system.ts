@@ -1,5 +1,5 @@
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit, getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
@@ -489,3 +489,5 @@ export const flowsSystem = setup({
     },
   }
 });
+
+export const flowsEntry: SystemEntry = { spec: flowsSpec, machine: flowsSystem };

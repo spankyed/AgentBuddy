@@ -1,5 +1,5 @@
 import { setup } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
 import { EARS } from '@/registries/ears';
@@ -643,3 +643,5 @@ export const notesSystem = setup({
     },
   },
 });
+
+export const notesEntry: SystemEntry = { spec: notesSpec, machine: notesSystem };

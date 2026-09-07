@@ -1,5 +1,5 @@
 import { setup } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
 import { EARS } from '@/registries/ears';
@@ -116,3 +116,5 @@ export const calendarSystem = setup({
     },
   },
 });
+
+export const calendarEntry: SystemEntry = { spec: calendarSpec, machine: calendarSystem };

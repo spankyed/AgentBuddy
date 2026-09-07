@@ -1,5 +1,5 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/registries/system-ids';
@@ -1065,3 +1065,5 @@ export const threadsSystem = setup({
     },
   }
 );
+
+export const threadsEntry: SystemEntry = { spec: threadsSpec, machine: threadsSystem };

@@ -1,5 +1,5 @@
 import { assign, setup, enqueueActions, raise } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
@@ -583,3 +583,5 @@ export const brainSystem = setup({
     },
   }
 );
+
+export const brainEntry: SystemEntry = { spec: brainSpec, machine: brainSystem };

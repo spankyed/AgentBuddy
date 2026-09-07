@@ -1,5 +1,5 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/registries/system-ids';
@@ -464,3 +464,5 @@ export const settingsSystem = setup({
     },
   },
 });
+
+export const settingsEntry: SystemEntry = { spec: settingsSpec, machine: settingsSystem };

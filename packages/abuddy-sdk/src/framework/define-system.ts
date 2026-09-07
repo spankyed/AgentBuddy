@@ -34,7 +34,7 @@ export interface SystemSpec<
  * Define a backend system's identity and event types.
  *
  * ```ts
- * export const logsDef = defineSystem('logs')<
+ * export const logsSpec = defineSystem('logs')<
  *   IncomingLogEvents | LogsInternalEvents,
  *   OutgoingLogsEvents,
  *   LogsContext

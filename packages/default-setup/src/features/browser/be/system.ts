@@ -1,5 +1,5 @@
 import { setup, fromCallback, spawnChild } from 'xstate';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import config from '../feature.config';
 import { emit } from '@abuddy/sdk/helpers';
 import { rootEvents } from '@abuddy/sdk/rpc';
@@ -100,3 +100,5 @@ export const browserSystem = setup({
     active: {},
   },
 });
+
+export const browserEntry: SystemEntry = { spec: browserSpec, machine: browserSystem };

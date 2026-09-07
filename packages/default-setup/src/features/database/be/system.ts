@@ -1,6 +1,6 @@
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
-import { defineSystem } from '@abuddy/sdk/framework';
+import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { emit, getActor } from '@abuddy/sdk/helpers';
 import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/registries/system-ids';
@@ -367,4 +367,6 @@ GENERATE_AI_QUERY: {
       },
     },
   },
-}); 
+});
+
+export const databaseEntry: SystemEntry = { spec: databaseSpec, machine: databaseSystem };
