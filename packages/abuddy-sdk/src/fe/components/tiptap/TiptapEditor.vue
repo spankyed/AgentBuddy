@@ -24,12 +24,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, inject } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import { getEditorConfig } from './editor-config'
-import { TIPTAP_PLUGINS_KEY } from './injection-keys'
+import { tiptapPluginRegistry } from './registry'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
@@ -43,7 +43,7 @@ import './tiptap-theme.css'
 
 setEditorSystem(useActorSystem())
 
-const tiptapPlugins = inject(TIPTAP_PLUGINS_KEY, [])
+const tiptapPlugins = tiptapPluginRegistry.getAll()
 const injectedExtensions = tiptapPlugins.flatMap(p => p.extensions ?? [])
 const pluginPopups = tiptapPlugins.flatMap(p => p.popups ?? [])
 const isSuggestionActive = (view: import('@tiptap/pm/view').EditorView) =>

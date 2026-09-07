@@ -32,6 +32,7 @@
     "./fe/components/tiptap/*": "./src/fe/components/tiptap/*",
     "./fe/components/tiptap/editor-system": "./src/fe/components/tiptap/editor-system.ts",
     "./fe/components/tiptap/injection-keys": "./src/fe/components/tiptap/injection-keys.ts",
+    "./fe/components/tiptap/registry": "./src/fe/components/tiptap/registry.ts",
     "./fe/components/tiptap/composables/*": "./src/fe/components/tiptap/composables/*",
     "./fe/components/tiptap/composables/createEditorKeyboard": "./src/fe/components/tiptap/composables/createEditorKeyboard.ts",
     "./fe/constants": "./src/fe/constants.ts",

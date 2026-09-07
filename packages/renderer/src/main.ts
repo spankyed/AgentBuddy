@@ -4,14 +4,13 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import plugins, { defaultPlugin, tiptapPlugins, settingsSaveStatusMod } from '@/packs/built-in';
+import plugins, { defaultPlugin, settingsSaveStatusMod } from '@/packs/built-in';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
 import { loadPackPlugins } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
-import { TIPTAP_PLUGINS_KEY } from '@/core/components/tiptap/injection-keys';
 import './setup/dsl-types';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import * as navigateMod from '@/core/utils/navigate';
@@ -147,7 +146,6 @@ app.config.errorHandler = (err, _instance, info) => {
 
 app.provide('actorSystem', applicationState.system);
 app.provide('applicationActor', applicationState);
-app.provide(TIPTAP_PLUGINS_KEY, tiptapPlugins);
 app.mount('#app');
 
 // Load external pack plugins after boot
