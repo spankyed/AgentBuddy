@@ -14,7 +14,7 @@ type WithPlugin<Id extends string, E extends { type: string }> =
   E extends any ? Simplify<E & { pluginId: Id }> : never;
 
 /** The definition object returned by `defineSystem()`. */
-export interface SystemDefinition<
+export interface SystemSpec<
   Id extends string,
   TEvents extends { type: string },
   TOutgoing extends { type: string },
@@ -46,7 +46,7 @@ export function defineSystem<Id extends string>(id: Id, opts?: { designation?: s
     TEvents extends { type: string },
     TOutgoing extends { type: string },
     TContext = {},
-  >(): SystemDefinition<Id, TEvents, TOutgoing, TContext> => ({
+  >(): SystemSpec<Id, TEvents, TOutgoing, TContext> => ({
     id,
     designation: opts?.designation,
     types: {

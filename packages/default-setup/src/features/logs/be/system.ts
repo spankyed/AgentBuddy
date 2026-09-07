@@ -40,11 +40,11 @@ export interface LogsContext {
   logs: LogEntry[];
 }
 
-export const logsDef = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
-export const logs = logsDef.id;
+export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
+export const logs = logsSpec.id;
 
 export const logsSystem = setup({
-  types: logsDef.types,
+  types: logsSpec.types,
   actors: {
     setupEventListeners: fromCallback(({ sendBack }) => {
       const logHandler = (event: LogEvent) => {
@@ -81,7 +81,7 @@ export const logsSystem = setup({
     clearLogs: assign({ logs: () => [] }),
     addLog: assign({
       logs: ({ context, event }) => {
-        const { log } = logsDef.typeOf('ADD_LOG', event);
+        const { log } = logsSpec.typeOf('ADD_LOG', event);
         
         const newLog: LogEntry = {
           ...log,

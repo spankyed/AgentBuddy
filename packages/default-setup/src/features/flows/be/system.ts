@@ -95,11 +95,11 @@ export type OutgoingFlowsEvents =
   | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
-export const flowsDef = defineSystem('flows')<IncomingFlowsEvents | FlowsInternalEvents, OutgoingFlowsEvents>();
-export const flows = flowsDef.id;
+export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents | FlowsInternalEvents, OutgoingFlowsEvents>();
+export const flows = flowsSpec.id;
 
 export const flowsSystem = setup({
-  types: flowsDef.types,
+  types: flowsSpec.types,
   actors: {},
   actions: {
     handleClientConnection: ({ system }) => {
@@ -118,7 +118,7 @@ export const flowsSystem = setup({
     },
 
     selectFlow: ({ system, event }) => {
-      const { flowId } = flowsDef.typeOf('FLOW_SELECT', event);
+      const { flowId } = flowsSpec.typeOf('FLOW_SELECT', event);
       const pluginId = flows;
       
       logger.info('Selecting flow', { flowId });
@@ -150,7 +150,7 @@ export const flowsSystem = setup({
     },
     
     updateFlowLabel: ({ system, event }) => {
-      const { flowId, label } = flowsDef.typeOf('UPDATE_FLOW_LABEL', event);
+      const { flowId, label } = flowsSpec.typeOf('UPDATE_FLOW_LABEL', event);
 
       logger.info('Updating flow label', { flowId, label });
 
@@ -158,7 +158,7 @@ export const flowsSystem = setup({
     },
 
     deleteFlow: ({ system, event }) => {
-      const { flowId } = flowsDef.typeOf('DELETE_FLOW', event);
+      const { flowId } = flowsSpec.typeOf('DELETE_FLOW', event);
       const pluginId = flows;
 
       logger.info('Deleting flow', { flowId });
@@ -179,7 +179,7 @@ export const flowsSystem = setup({
     },
     
     createNode: ({ system, event }) => {
-      const { flowId, tempId, nodeData } = flowsDef.typeOf('CREATE_NODE', event);
+      const { flowId, tempId, nodeData } = flowsSpec.typeOf('CREATE_NODE', event);
       const pluginId = flows;
       
       logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
@@ -195,7 +195,7 @@ export const flowsSystem = setup({
     },
     
     updateNode: ({ system, event }) => {
-      const { flowId, nodeId, nodeData } = flowsDef.typeOf('UPDATE_NODE', event);
+      const { flowId, nodeId, nodeData } = flowsSpec.typeOf('UPDATE_NODE', event);
       const pluginId = flows;
       
       logger.info('Updating node', { flowId, nodeId, updates: nodeData });
@@ -212,7 +212,7 @@ export const flowsSystem = setup({
     },
     
     deleteNode: ({ system, event }) => {
-      const { flowId, nodeId } = flowsDef.typeOf('DELETE_NODE', event);
+      const { flowId, nodeId } = flowsSpec.typeOf('DELETE_NODE', event);
       const pluginId = flows;
       
       logger.info('Deleting node', { flowId, nodeId });
@@ -227,7 +227,7 @@ export const flowsSystem = setup({
     },
     
     createEdge: ({ system, event }) => {
-      const { flowId, sourceId, targetId, sourceHandle, targetHandle } = flowsDef.typeOf('CREATE_EDGE', event);
+      const { flowId, sourceId, targetId, sourceHandle, targetHandle } = flowsSpec.typeOf('CREATE_EDGE', event);
       const pluginId = flows;
 
       logger.info('Creating edge', { flowId, sourceId, targetId, sourceHandle, targetHandle });
@@ -259,7 +259,7 @@ export const flowsSystem = setup({
     },
     
     deleteEdge: ({ system, event }) => {
-      const { flowId, edgeId } = flowsDef.typeOf('DELETE_EDGE', event);
+      const { flowId, edgeId } = flowsSpec.typeOf('DELETE_EDGE', event);
       const pluginId = flows;
       
       logger.info('Deleting edge', { flowId, edgeId });
@@ -273,7 +273,7 @@ export const flowsSystem = setup({
     },
     
     updateEdge: ({ system, event }) => {
-      const { flowId, edgeId, oldSource, oldTarget, newSource, newTarget } = flowsDef.typeOf('UPDATE_EDGE', event);
+      const { flowId, edgeId, oldSource, oldTarget, newSource, newTarget } = flowsSpec.typeOf('UPDATE_EDGE', event);
       const pluginId = flows;
       
       logger.info('Updating edge', { flowId, edgeId, oldSource, oldTarget, newSource, newTarget });
@@ -296,7 +296,7 @@ export const flowsSystem = setup({
     },
     
     handleSettingsUpdate: ({ system, event }) => {
-      const { settings, changes } = flowsDef.typeOf('FLOWS_SETTINGS_UPDATED', event);
+      const { settings, changes } = flowsSpec.typeOf('FLOWS_SETTINGS_UPDATED', event);
       const pluginId = flows;
 
       // Get the current root flow (the one with the root_flow role)
@@ -336,7 +336,7 @@ export const flowsSystem = setup({
     },
 
     importDSL: ({ system, event }) => {
-      const { dsl } = flowsDef.typeOf('IMPORT_DSL', event);
+      const { dsl } = flowsSpec.typeOf('IMPORT_DSL', event);
       const pluginId = flows;
 
       logger.info('Importing DSL flows', { flowCount: Object.keys(dsl || {}).length });
@@ -400,12 +400,12 @@ export const flowsSystem = setup({
     },
 
     reindexHandles: ({ event }) => {
-      const { nodeId, prefix, index, direction } = flowsDef.typeOf('REINDEX_HANDLES', event);
+      const { nodeId, prefix, index, direction } = flowsSpec.typeOf('REINDEX_HANDLES', event);
       repository.flowsCommands.reindexHandles(nodeId as EARS.EntityId, prefix, index, direction);
     },
 
     exportDSL: ({ system, event }) => {
-      const { directory } = flowsDef.typeOf('EXPORT_DSL', event);
+      const { directory } = flowsSpec.typeOf('EXPORT_DSL', event);
       const pluginId = flows;
 
       logger.info('Exporting flows to DSL', { directory });

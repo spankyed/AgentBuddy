@@ -39,8 +39,8 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
-export const actionsDef = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
-export const actions = actionsDef.id;
+export const actionsSpec = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
+export const actions = actionsSpec.id;
 
 // Helper to broadcast action events to both actions and flows plugins
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
@@ -50,7 +50,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 };
 
 export const actionsSystem = setup({
-  types: actionsDef.types,
+  types: actionsSpec.types,
   actions: {
     sendActionsStartupData: ({ system }) => {
       const connectedData = repository.actionQueries.connectedData();
@@ -65,7 +65,7 @@ export const actionsSystem = setup({
       }));
     },
     fetchActionsPage: ({ system, event }) => {
-      const ev = actionsDef.typeOf('FETCH_ACTIONS_PAGE', event);
+      const ev = actionsSpec.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
       system.get(bus).send(emit(actions, {
@@ -85,7 +85,7 @@ export const actionsSystem = setup({
       }));
     },
     sendActionData: ({ system, event }) => {
-      const ev = actionsDef.typeOf('ACTION_SELECT', event);
+      const ev = actionsSpec.typeOf('ACTION_SELECT', event);
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
@@ -97,7 +97,7 @@ export const actionsSystem = setup({
       }
     },
     createAction: ({ system, event }) => {
-      const ev = actionsDef.typeOf('CREATE_ACTION', event);
+      const ev = actionsSpec.typeOf('CREATE_ACTION', event);
       const action = repository.actionCommands.create({
         label: ev.label,
         input: ev.input,
@@ -114,7 +114,7 @@ export const actionsSystem = setup({
       });
     },
     updateAction: ({ system, event }) => {
-      const ev = actionsDef.typeOf('UPDATE_ACTION', event);
+      const ev = actionsSpec.typeOf('UPDATE_ACTION', event);
       repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
         input: ev.input,
@@ -134,7 +134,7 @@ export const actionsSystem = setup({
       }
     },
     deleteAction: ({ system, event }) => {
-      const ev = actionsDef.typeOf('DELETE_ACTION', event);
+      const ev = actionsSpec.typeOf('DELETE_ACTION', event);
       repository.actionCommands.delete(ev.actionId as EARS.EntityId);
 
       broadcastActionEvent(system, {
@@ -143,7 +143,7 @@ export const actionsSystem = setup({
       });
     },
     importActions: ({ system, event }) => {
-      const { actions: importData } = actionsDef.typeOf('IMPORT_ACTIONS', event);
+      const { actions: importData } = actionsSpec.typeOf('IMPORT_ACTIONS', event);
       const pluginId = actions;
 
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
@@ -218,7 +218,7 @@ export const actionsSystem = setup({
     },
 
     exportActionsToFile: ({ system, event }) => {
-      const { directory } = actionsDef.typeOf('EXPORT_ACTIONS', event);
+      const { directory } = actionsSpec.typeOf('EXPORT_ACTIONS', event);
       const pluginId = actions;
 
       logger.info('Exporting actions', { directory });
@@ -245,7 +245,7 @@ export const actionsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = actionsDef.typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      const { changes } = actionsSpec.typeOf('ACTIONS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
       

@@ -1,5 +1,5 @@
 // Framework
-export { defineSystem, type SystemDefinition, type SystemEvents } from './framework/index';
+export { defineSystem, type SystemSpec, type SystemEvents } from './framework/index';
 
 // Helpers
 export { safeEvents, emit } from './helpers/index';

@@ -60,8 +60,8 @@ import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
 type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-export const codeDef = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
-export const code = codeDef.id;
+export const codeSpec = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
+export const code = codeSpec.id;
 const id = code;
 
 export interface Context {
@@ -99,7 +99,7 @@ function resolveInitialDirectory(
 }
 
 export const systemMachine = setup({
-  types: codeDef.types,
+  types: codeSpec.types,
   actors: {
     explorerSystem,
     searchSystem,
@@ -163,7 +163,7 @@ export const systemMachine = setup({
 
     updateBaseDirectory: assign({
       baseDirectory: ({ event }) => {
-        const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
+        const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
@@ -172,7 +172,7 @@ export const systemMachine = setup({
         return ev.path
       },
       gitRepository: ({ event, context }) => {
-        const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
+        const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
         // Clear the old repository's cache before creating new one
         if (context.gitRepository) {
           context.gitRepository.clearCache()
@@ -186,7 +186,7 @@ export const systemMachine = setup({
         return repo
       },
       gitWatcher: ({ event, context }) => {
-        const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
+        const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
         // Stop the old watcher before creating new one
         if (context.gitWatcher) {
           context.gitWatcher.stopWatching()
@@ -196,7 +196,7 @@ export const systemMachine = setup({
     }),
 
     notifyChildSystemsOfBaseChange: ({ event, system, context }) => {
-      const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
+      const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
       const newPath = ev.path
 
       // Update child systems

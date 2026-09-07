@@ -79,11 +79,11 @@ export type OutgoingSettingsEvents =
   | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
-export const settingsDef = defineSystem('settings', { designation: config.designation })<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
-export const settings = settingsDef.id;
+export const settingsSpec = defineSystem('settings', { designation: config.designation })<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
+export const settings = settingsSpec.id;
 
 export const settingsSystem = setup({
-  types: settingsDef.types,
+  types: settingsSpec.types,
   actors: {
     secretsActor,
     resetAppActor: fromPromise(async () => {
@@ -144,7 +144,7 @@ export const settingsSystem = setup({
     },
     
     handleSecretsOperation: ({ system, event }) => {
-      const ev = settingsDef.typeOf('UPDATE_SETTINGS', event);
+      const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       const operation = ev.value;
       
       // Forward secrets operations to the secrets system
@@ -170,7 +170,7 @@ export const settingsSystem = setup({
     },
     
     updateSettings: ({ system, event }) => {
-      const ev = settingsDef.typeOf('UPDATE_SETTINGS', event);
+      const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       
       // Get previous settings for comparison
       const previousSettings = ev.entityType === 'plugin' 
@@ -228,7 +228,7 @@ export const settingsSystem = setup({
     },
     
     replaceSettings: ({ system, event }) => {
-      const ev = settingsDef.typeOf('REPLACE_SETTINGS', event);
+      const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       settingsCommands.replaceSettings(ev.data);
 
       const data = settingsQueries.getSettings();
@@ -313,7 +313,7 @@ export const settingsSystem = setup({
       });
     }),
     testCliProvider: ({ system, event }) => {
-      const ev = settingsDef.typeOf('TEST_CLI_PROVIDER', event);
+      const ev = settingsSpec.typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
 
       if (!isCliName(provider)) {
@@ -348,7 +348,7 @@ export const settingsSystem = setup({
     },
 
     previewSetupPack: ({ system, event }) => {
-      const ev = settingsDef.typeOf('PREVIEW_SETUP_PACK', event);
+      const ev = settingsSpec.typeOf('PREVIEW_SETUP_PACK', event);
       try {
         const preview = readSetupPackPreview(ev.directory);
         system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW', preview }));
@@ -359,7 +359,7 @@ export const settingsSystem = setup({
     },
 
     importSetupPack: ({ system, event }) => {
-      const ev = settingsDef.typeOf('IMPORT_SETUP_PACK', event);
+      const ev = settingsSpec.typeOf('IMPORT_SETUP_PACK', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
@@ -386,7 +386,7 @@ export const settingsSystem = setup({
     },
 
     installPack: ({ system, event }) => {
-      const ev = settingsDef.typeOf('INSTALL_PACK', event);
+      const ev = settingsSpec.typeOf('INSTALL_PACK', event);
       console.log(`[settings] Pack install requested: ${ev.packSlug} (source: ${ev.source ?? 'unknown'})`);
       system.get(bus).send(emit(settings, { type: 'PACK_INSTALL_STARTED', packSlug: ev.packSlug }));
     },

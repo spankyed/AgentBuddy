@@ -38,11 +38,11 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
-export const promptsDef = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
-export const prompts = promptsDef.id;
+export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
+export const prompts = promptsSpec.id;
 
 export const promptsSystem = setup({
-  types: promptsDef.types,
+  types: promptsSpec.types,
   actions: {
     sendPromptsConnectedData: ({ system }) => {
       const connectedData = repository.promptQueries.connectedData();
@@ -57,7 +57,7 @@ export const promptsSystem = setup({
       }));
     },
     sendPromptData: ({ system, event }) => {
-      const ev = promptsDef.typeOf('PROMPT_SELECT', event);
+      const ev = promptsSpec.typeOf('PROMPT_SELECT', event);
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
@@ -69,7 +69,7 @@ export const promptsSystem = setup({
       }
     },
     createPrompt: ({ system, event }) => {
-      const ev = promptsDef.typeOf('CREATE_PROMPT', event);
+      const ev = promptsSpec.typeOf('CREATE_PROMPT', event);
       const prompt = repository.promptCommands.create({
         label: ev.label,
         inputs: ev.inputs,
@@ -85,7 +85,7 @@ export const promptsSystem = setup({
       }));
     },
     updatePrompt: ({ system, event }) => {
-      const ev = promptsDef.typeOf('UPDATE_PROMPT', event);
+      const ev = promptsSpec.typeOf('UPDATE_PROMPT', event);
       const updates: Record<string, any> = {};
       
       if (ev.label !== undefined) updates.label = ev.label;
@@ -106,7 +106,7 @@ export const promptsSystem = setup({
       }
     },
     deletePrompt: ({ system, event }) => {
-      const ev = promptsDef.typeOf('DELETE_PROMPT', event);
+      const ev = promptsSpec.typeOf('DELETE_PROMPT', event);
       repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
       system.get(bus).send(emit(prompts, {
@@ -115,7 +115,7 @@ export const promptsSystem = setup({
       }));
     },
     fetchPromptsPage: ({ system, event }) => {
-      const ev = promptsDef.typeOf('FETCH_PROMPTS_PAGE', event);
+      const ev = promptsSpec.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
 
       system.get(bus).send(emit(prompts, {
@@ -135,7 +135,7 @@ export const promptsSystem = setup({
       }));
     },
     importPrompts: ({ system, event }) => {
-      const { prompts: importData } = promptsDef.typeOf('IMPORT_PROMPTS', event);
+      const { prompts: importData } = promptsSpec.typeOf('IMPORT_PROMPTS', event);
       const pluginId = prompts;
 
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
@@ -210,7 +210,7 @@ export const promptsSystem = setup({
     },
 
     exportPromptsToFile: ({ system, event }) => {
-      const { directory } = promptsDef.typeOf('EXPORT_PROMPTS', event);
+      const { directory } = promptsSpec.typeOf('EXPORT_PROMPTS', event);
       const pluginId = prompts;
 
       logger.info('Exporting prompts', { directory });
@@ -237,7 +237,7 @@ export const promptsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = promptsDef.typeOf('PROMPTS_SETTINGS_UPDATED', event);
+      const { changes } = promptsSpec.typeOf('PROMPTS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
       

@@ -78,8 +78,8 @@ export type OutgoingLibraryEvents =
 type LibraryInternalEvents =
   | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
 
-export const libraryDef = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
-export const library = libraryDef.id;
+export const librarySpec = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
+export const library = librarySpec.id;
 
 function resolveHomePath(inputPath: string): string {
   const trimmed = inputPath.trim()
@@ -89,7 +89,7 @@ function resolveHomePath(inputPath: string): string {
 }
 
 export const librarySystem = setup({
-  types: libraryDef.types,
+  types: librarySpec.types,
   actions: {
     loadDocuments: async ({ system, event }) => {
       const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
@@ -587,7 +587,7 @@ export const librarySystem = setup({
       }
     },
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = libraryDef.typeOf('LIBRARY_SETTINGS_UPDATED', event)
+      const { changes } = librarySpec.typeOf('LIBRARY_SETTINGS_UPDATED', event)
       // Handle nested changes format from detectAllArrayChanges
       const tagChanges = changes?.tags || changes
       

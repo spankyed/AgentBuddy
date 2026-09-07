@@ -19,11 +19,11 @@ export type OutgoingCalendarEvents =
   | { type: 'CALENDAR_EVENT_UPDATED'; calendarEvent: CalendarEventDTO }
   | { type: 'CALENDAR_EVENT_DELETED'; calendarEventId: string };
 
-export const calendarDef = defineSystem('calendar')<IncomingCalendarEvents, OutgoingCalendarEvents>();
-export const calendar = calendarDef.id;
+export const calendarSpec = defineSystem('calendar')<IncomingCalendarEvents, OutgoingCalendarEvents>();
+export const calendar = calendarSpec.id;
 
 export const calendarSystem = setup({
-  types: calendarDef.types,
+  types: calendarSpec.types,
   actions: {
     sendCalendarConnectedData: ({ system }) => {
       const data = repository.calendarQueries.connectedData();
@@ -34,7 +34,7 @@ export const calendarSystem = setup({
     },
 
     createEvent: ({ system, event }) => {
-      const ev = calendarDef.typeOf('CREATE_CALENDAR_EVENT', event);
+      const ev = calendarSpec.typeOf('CREATE_CALENDAR_EVENT', event);
       const created = repository.calendarCommands.create({
         title: ev.title,
         startsAt: ev.startsAt,
@@ -50,7 +50,7 @@ export const calendarSystem = setup({
     },
 
     updateEvent: ({ system, event }) => {
-      const ev = calendarDef.typeOf('UPDATE_CALENDAR_EVENT', event);
+      const ev = calendarSpec.typeOf('UPDATE_CALENDAR_EVENT', event);
       const id = ev.id as EARS.EntityId;
       if (!repository.calendarQueries.byId(id)) {
         // Entity is gone — tell clients to drop it so they converge
@@ -79,7 +79,7 @@ export const calendarSystem = setup({
     },
 
     deleteEvent: ({ system, event }) => {
-      const ev = calendarDef.typeOf('DELETE_CALENDAR_EVENT', event);
+      const ev = calendarSpec.typeOf('DELETE_CALENDAR_EVENT', event);
       try {
         repository.calendarCommands.delete(ev.id as EARS.EntityId);
       } catch {

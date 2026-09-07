@@ -24,15 +24,15 @@ export type OutgoingBrowserEvents =
 
 export interface BrowserContext {}
 
-export const browserDef = defineSystem('browser', { designation: config.designation })<
+export const browserSpec = defineSystem('browser', { designation: config.designation })<
   IncomingBrowserEvents | BrowserInternalEvents,
   OutgoingBrowserEvents,
   BrowserContext
 >();
-export const browser = browserDef.id;
+export const browser = browserSpec.id;
 
 export const browserSystem = setup({
-  types: browserDef.types,
+  types: browserSpec.types,
   actors: {
     setupEventListeners: fromCallback(({ sendBack }) => {
       const connectedHandler = () => {
@@ -72,11 +72,11 @@ export const browserSystem = setup({
       rootEvents.emitOutgoing(wrapped.event);
     },
     syncTabs: ({ event }) => {
-      const ev = browserDef.typeOf('SYNC_TABS', event);
+      const ev = browserSpec.typeOf('SYNC_TABS', event);
       browserCommands.syncTabs(ev.tabs);
     },
     syncBookmarks: ({ event }) => {
-      const ev = browserDef.typeOf('SYNC_BOOKMARKS', event);
+      const ev = browserSpec.typeOf('SYNC_BOOKMARKS', event);
       browserCommands.syncBookmarks(ev.bookmarks);
     },
   },
