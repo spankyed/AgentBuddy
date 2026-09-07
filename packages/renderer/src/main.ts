@@ -6,6 +6,7 @@ import App from './App.vue'
 import './style.css'
 import 'virtual:built-in-packs';
 import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe';
+import { packsPlugin } from '@/core/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
@@ -87,7 +88,7 @@ runFrontendMigrations();
 
 // const { inspect } = createBrowserInspector();
 
-const plugins = getRegisteredPlugins();
+const plugins = [...getRegisteredPlugins(), packsPlugin];
 const defaultPlugin = getRegisteredDefaultPlugin();
 
 export const applicationState = createActor(createApplicationState(), {

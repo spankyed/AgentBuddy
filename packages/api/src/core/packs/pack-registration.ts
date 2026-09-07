@@ -14,9 +14,21 @@ import { blockRegistry } from '@abuddy/sdk/blocks';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
 const registrations = new Map<string, PackRegistration>();
+const hostSystems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
 
 let _entityTypeCache: Set<string> | null = null;
 let _servicesCache: Record<string, unknown> | null = null;
+
+export function registerHostSystem(
+  id: string,
+  machine: import('xstate').AnyStateMachine,
+  events: Set<string>,
+): void {
+  if (hostSystems.has(id)) {
+    throw new Error(`Host system "${id}" is already registered`);
+  }
+  hostSystems.set(id, { machine, events });
+}
 
 export function registerPack(registration: PackRegistration): void {
   if (registrations.has(registration.id)) {
@@ -111,6 +123,9 @@ export function getRegisteredEntityTypes(): ReadonlySet<string> {
 
 export function getRegisteredSystems(): Map<string, import('xstate').AnyStateMachine> {
   const systems = new Map<string, import('xstate').AnyStateMachine>();
+  for (const [id, entry] of hostSystems) {
+    systems.set(id, entry.machine);
+  }
   for (const reg of registrations.values()) {
     for (const sys of reg.systems) {
       systems.set(sys.id, sys.machine);
@@ -121,6 +136,9 @@ export function getRegisteredSystems(): Map<string, import('xstate').AnyStateMac
 
 export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
+  for (const [id, entry] of hostSystems) {
+    map.set(id, entry.events);
+  }
   for (const reg of registrations.values()) {
     for (const sys of reg.systems) {
       map.set(sys.id, sys.events);

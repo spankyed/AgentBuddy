@@ -57,7 +57,6 @@ type IncomingSettingsEvents =
   | { type: 'PREVIEW_SETUP_PACK'; directory: string }
   | { type: 'IMPORT_SETUP_PACK'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: SettingsData }
-  | { type: 'INSTALL_PACK'; packSlug: string; source?: string }
   | { type: 'RESET_APP' }
 
 type SettingsInternalEvents =
@@ -75,8 +74,6 @@ export type OutgoingSettingsEvents =
   | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
-  | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
-  | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
 export const settingsSpec = defineSystem('settings', { designation: config.designation })<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
@@ -385,12 +382,6 @@ export const settingsSystem = setup({
       system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 
-    installPack: ({ system, event }) => {
-      const ev = settingsSpec.typeOf('INSTALL_PACK', event);
-      console.log(`[settings] Pack install requested: ${ev.packSlug} (source: ${ev.source ?? 'unknown'})`);
-      system.get(bus).send(emit(settings, { type: 'PACK_INSTALL_STARTED', packSlug: ev.packSlug }));
-    },
-
   },
 }).createMachine({
   id: settings,
@@ -429,9 +420,6 @@ export const settingsSystem = setup({
         },
         IMPORT_SETUP_PACK: {
           actions: 'importSetupPack',
-        },
-        INSTALL_PACK: {
-          actions: 'installPack',
         },
         RESET_APP: {
           target: 'resetting',

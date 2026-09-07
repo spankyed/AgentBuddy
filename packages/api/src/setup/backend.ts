@@ -1,8 +1,9 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
+import { getBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@/core/packs/pack-registration';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
+import { packsSystem, packsEvents } from '@/core/packs/packs-system';
 import {
   loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks, seedPackData,
@@ -23,6 +24,9 @@ export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
 
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
+
+  // ── Register host-level systems (before any pack loading) ──────────
+  registerHostSystem('packs', packsSystem, packsEvents);
 
   // ── Load built-in packs (discover → import directly) ───────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
