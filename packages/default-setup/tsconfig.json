@@ -15,9 +15,7 @@
       "@/plugins/*": ["./src/plugins/*"],
       "@/steps/*": ["./src/steps/*"],
       "@/blocks/*": ["./src/blocks/*"],
-      "@/artifacts/*": ["./src/artifacts/*"],
-      "@/*": ["../api/src/*"],
-      "@app/api/dist/*": ["../api/dist/*"]
+      "@/artifacts/*": ["./src/artifacts/*"]
     }
   },
   "include": [
