@@ -1,30 +1,43 @@
 import { getHostModule } from '../runtime/host';
+import { getDesignatedPlugin } from './plugin-registry';
 
-// --- Navigate ---
-let _navigateMod: any;
-function navigateMod() {
-  if (!_navigateMod) _navigateMod = getHostModule('navigate');
-  return _navigateMod;
+function getApp(): any {
+  return getHostModule('application');
 }
 
-export function navigateToPlugin(...args: any[]): void {
-  return navigateMod().navigateToPlugin(...args);
+export function navigateToPlugin(pluginId: string, event?: Record<string, any> | Record<string, any>[]) {
+  const app = getApp();
+  const snapshot = app.getSnapshot();
+  if (snapshot.context.activePlugin.id !== pluginId) {
+    app.send({ type: 'SELECT_PLUGIN', pluginId });
+  }
+  if (snapshot.context.defaultToggles.canvas) {
+    app.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
+  }
+  if (event) {
+    const events = Array.isArray(event) ? event : [event];
+    for (const e of events) {
+      app.system.get(pluginId)?.send(e);
+    }
+  }
 }
 
-// --- Open in App Browser ---
-let _openBrowserMod: any;
-function openBrowserMod() {
-  if (!_openBrowserMod) _openBrowserMod = getHostModule('open-in-app-browser');
-  return _openBrowserMod;
+export function openInAppBrowser(url: string) {
+  const app = getApp();
+  const settings = app.system.get(getDesignatedPlugin('settings'))?.getSnapshot();
+  const openLinksInApp = settings?.context?.settings?.plugins?.browser?.openLinksInApp ?? true;
+
+  if (openLinksInApp) {
+    navigateToPlugin(getDesignatedPlugin('browser'), { type: 'TAB.CREATE', url });
+  } else {
+    (window as any).electronAPI?.shell?.openExternal(url);
+  }
 }
 
-export function openInAppBrowser(url: string): void { return openBrowserMod().openInAppBrowser(url); }
-
-// --- Plugins ---
-let _pluginsMod: any;
-function pluginsMod() {
-  if (!_pluginsMod) _pluginsMod = getHostModule('plugins');
-  return _pluginsMod;
+export function useState<T = any>(pluginId: string): T {
+  const actor = getApp().system.get(pluginId) as T;
+  if (!actor) {
+    throw new Error(`Plugin actor not found: ${pluginId}`);
+  }
+  return actor;
 }
-
-export function useState(...args: any[]): any { return pluginsMod().useState(...args); }
