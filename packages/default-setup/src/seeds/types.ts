@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import { EARS } from '@abuddy/sdk';
-import type { ActionParameter } from '@/plugins/actions/be/types';
-import type { TemplateInput } from '@/plugins/prompts/be/types';
+import type { ActionParameter } from '@/features/actions/be/types';
+import type { TemplateInput } from '@/features/prompts/be/types';
 import type { featureServices } from '@/registries/services';
 
 export type Services = typeof featureServices;
@@ -25,7 +25,7 @@ export type {
   DSLCreateNode,
   DSLUpdateNode,
   DSLKeepAliveNode,
-} from '@/plugins/flows/be/dsl/types';
+} from '@/features/flows/be/dsl/types';
 
 export interface ActionMeta {
   label: string;

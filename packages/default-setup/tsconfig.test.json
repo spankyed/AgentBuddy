@@ -5,7 +5,7 @@
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/registries/*": ["./src/registries/*"],
-      "@/plugins/*": ["./src/plugins/*"],
+      "@/features/*": ["./src/features/*"],
       "@/steps/*": ["./src/steps/*"],
       "@/blocks/*": ["./src/blocks/*"],
       "@/artifacts/*": ["./src/artifacts/*"],

@@ -202,7 +202,7 @@ import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
 import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
 import type { ActionEntity, NodeEntity } from '@/registries/types'
-import type { FormResources } from '@/plugins/flows/fe/types/form-props'
+import type { FormResources } from '@/features/flows/fe/types/form-props'
 
 const actorSystem = useActorSystem()
 

@@ -18,7 +18,7 @@
       // When adding a new built-in pack, add its namespace and @/ directory mappings below.
       "@default-setup/*": ["../default-setup/src/*"],
       "@/registries/*": ["../default-setup/src/registries/*"],
-      "@/plugins/*": ["../default-setup/src/plugins/*"],
+      "@/features/*": ["../default-setup/src/features/*"],
       "@/steps/*": ["../default-setup/src/steps/*"],
       "@/blocks/*": ["../default-setup/src/blocks/*"],
       "@/artifacts/*": ["../default-setup/src/artifacts/*"],

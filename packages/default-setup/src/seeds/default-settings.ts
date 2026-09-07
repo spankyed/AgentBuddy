@@ -1,4 +1,4 @@
-import type { SettingsData } from '@/plugins/settings/be/types'
+import type { SettingsData } from '@/features/settings/be/types'
 
 const settings: SettingsData = {
   general: {

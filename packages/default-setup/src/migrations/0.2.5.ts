@@ -1,6 +1,6 @@
 import { EARS } from '../registries/ears';
 import { findAll, qx, tx, repository } from '@abuddy/sdk/ears';
-import type { ThreadEntity, ArtifactEntity } from '../plugins/threads/be/types';
+import type { ThreadEntity, ArtifactEntity } from '../features/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {

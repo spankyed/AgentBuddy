@@ -1,16 +1,16 @@
-import { brain, brainSystem, brainDef } from '../plugins/brain/be/system';
-import { threads, threadsSystem, threadsDef } from '../plugins/threads/be/system';
-import { flows, flowsSystem, flowsDef } from '../plugins/flows/be/system';
-import { database, databaseSystem, databaseDef } from '../plugins/database/be/system';
-import { logs, logsSystem, logsDef } from '../plugins/logs/be/system';
-import { prompts, promptsSystem, promptsDef } from '../plugins/prompts/be/system';
-import { settings, settingsSystem, settingsDef } from '../plugins/settings/be/system';
-import { actions, actionsSystem, actionsDef } from '../plugins/actions/be/system';
-import { library, librarySystem, libraryDef } from '../plugins/library/be/system';
-import { code, codeDef, systemMachine as codeSystem } from '../plugins/code/be/system';
-import { notes, notesSystem, notesDef } from '../plugins/notes/be/system';
-import { browser, browserSystem, browserDef } from '../plugins/browser/be/system';
-import { calendar, calendarSystem, calendarDef } from '../plugins/calendar/be/system';
+import { brain, brainSystem, brainDef } from '../features/brain/be/system';
+import { threads, threadsSystem, threadsDef } from '../features/threads/be/system';
+import { flows, flowsSystem, flowsDef } from '../features/flows/be/system';
+import { database, databaseSystem, databaseDef } from '../features/database/be/system';
+import { logs, logsSystem, logsDef } from '../features/logs/be/system';
+import { prompts, promptsSystem, promptsDef } from '../features/prompts/be/system';
+import { settings, settingsSystem, settingsDef } from '../features/settings/be/system';
+import { actions, actionsSystem, actionsDef } from '../features/actions/be/system';
+import { library, librarySystem, libraryDef } from '../features/library/be/system';
+import { code, codeDef, systemMachine as codeSystem } from '../features/code/be/system';
+import { notes, notesSystem, notesDef } from '../features/notes/be/system';
+import { browser, browserSystem, browserDef } from '../features/browser/be/system';
+import { calendar, calendarSystem, calendarDef } from '../features/calendar/be/system';
 
 export const systems = {
   [settings]: settingsSystem,

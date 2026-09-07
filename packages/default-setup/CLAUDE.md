@@ -1,6 +1,6 @@
 # Default Setup
 
-The built-in pack for AgentBuddy. Ships everything the app needs out of the box: 13 plugins (each with a backend system and frontend UI), services, seed data, flow steps, artifact viewers, message blocks, tiptap extensions, and migrations.
+The built-in pack for AgentBuddy. Ships everything the app needs out of the box: 13 features (each with a backend system and frontend plugin), services, seed data, flow steps, artifact viewers, message blocks, tiptap extensions, and migrations.
 
 Declared as a pack via `abuddy.json` (`"builtIn": true`). Registered through `pack-entry.ts` (backend) and `pack-entry-fe.ts` (frontend).
 
@@ -11,7 +11,7 @@ src/
   pack-entry.ts          # BE entry — exports PackRegistration (systems, services, EARS, boot, migrations, steps, artifacts, blocks)
   pack-entry-fe.ts       # FE entry — exports plugins, registers tiptap + app extensions
   default-settings.ts    # Full default SettingsData object
-  plugins/               # 13 feature plugins (each has be/ and fe/ dirs)
+  features/              # 13 features (each has be/ and fe/ dirs)
   registries/            # Cross-cutting registrations (EARS, systems, services, boot, extensions, tiptap, etc.)
   seeds/                 # DSL source for actions, prompts, flows, library, notes, faqs
   steps/                 # Flow step definitions (action, llm, switch, fire, query, create, etc.)
@@ -21,9 +21,9 @@ src/
   migrations/            # Version-targeted data migrations
 ```
 
-## Plugins
+## Features
 
-Each plugin lives in `src/plugins/<name>/` with this layout:
+Each feature lives in `src/features/<name>/` with this layout:
 
 - `be/system.ts` — XState backend system machine + event types
 - `be/repository/` — EARS read/write layer (registered via side-effect import)
@@ -34,9 +34,9 @@ Each plugin lives in `src/plugins/<name>/` with this layout:
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — Tiptap reference type definitions (if applicable)
 - `plugin.config.ts` — Build-time config (name + settings path)
-- `settings.ts` — Per-plugin default settings
+- `settings.ts` — Per-feature default settings
 
-The 13 plugins: **threads**, **code**, **notes**, **calendar**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.
+The 13 features: **threads**, **code**, **notes**, **calendar**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.
 
 Plugin registry: `src/registries/plugins.ts`. Default plugin is Threads.
 

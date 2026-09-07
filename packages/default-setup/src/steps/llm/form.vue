@@ -222,7 +222,7 @@ import {
 import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
 import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
 import type { ModelCatalogEntry, PromptEntity, NodeEntity } from '@/registries/types'
-import type { FormResources } from '@/plugins/flows/fe/types/form-props'
+import type { FormResources } from '@/features/flows/fe/types/form-props'
 
 const props = defineProps<{
   node: NodeEntity

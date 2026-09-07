@@ -15,16 +15,16 @@ import {
   type SeedCounts, type SeedIncludeSet, type ImportMode, type SeederContext,
 } from '@abuddy/sdk/utils';
 import { seedPath } from '@abuddy/sdk/build';
-import { validate, compile, isFlowConfig } from '../../plugins/flows/be/dsl';
-import { importNotesFromData } from '../../plugins/notes/be/import-notes';
-import type { ActionEntity } from '../../plugins/actions/be/types';
-import type { PromptEntity } from '../../plugins/prompts/be/types';
-import type { FlowDSL } from '../../plugins/flows/be/dsl';
-import type { FlowEntity } from '../../plugins/flows/be/config/types';
-import type { ContentSection, Document, Collection } from '../../plugins/library/be/types';
-import type { ExportedLibrary, ExportedItem } from '../../plugins/library/be/export-types';
+import { validate, compile, isFlowConfig } from '../../features/flows/be/dsl';
+import { importNotesFromData } from '../../features/notes/be/import-notes';
+import type { ActionEntity } from '../../features/actions/be/types';
+import type { PromptEntity } from '../../features/prompts/be/types';
+import type { FlowDSL } from '../../features/flows/be/dsl';
+import type { FlowEntity } from '../../features/flows/be/config/types';
+import type { ContentSection, Document, Collection } from '../../features/library/be/types';
+import type { ExportedLibrary, ExportedItem } from '../../features/library/be/export-types';
 import { getMediaPath } from '@abuddy/sdk/utils';
-import type { ExportedNotes } from '../../plugins/notes/be/export-types';
+import type { ExportedNotes } from '../../features/notes/be/export-types';
 
 function repo() {
   return repository;

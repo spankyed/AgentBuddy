@@ -2,9 +2,9 @@ import { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue } 
 import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
 import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from '@abuddy/sdk/fe/components/node-styles';
 
-import { refTypes as threadRefTypes, categories as threadCategories, itemsProvider as threadItemsProvider } from '../plugins/threads/fe/references';
-import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProvider as libraryItemsProvider } from '../plugins/library/fe/references';
-import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../plugins/notes/fe/references';
+import { refTypes as threadRefTypes, categories as threadCategories, itemsProvider as threadItemsProvider } from '../features/threads/fe/references';
+import { refTypes as libraryRefTypes, categories as libraryCategories, itemsProvider as libraryItemsProvider } from '../features/library/fe/references';
+import { refTypes as notesRefTypes, categories as notesCategories, itemsProvider as notesItemsProvider, NOTE_TYPE_TO_REF_TYPE } from '../features/notes/fe/references';
 import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from './reference-types';
 
 export { isJsonLike, isJsonString, isJsonObject, isJsonArray, formatJsonValue };
