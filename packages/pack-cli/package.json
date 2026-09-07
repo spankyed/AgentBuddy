@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@abuddy/sdk": "*"
+    "@abuddy/sdk": "*",
+    "esbuild": "^0.25.12"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

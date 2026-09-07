@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { compilePack, type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
 import { generate } from './generate';
 import { findPackRoot, readManifest } from '../utils';
+import { findFEEntry, bundlePackFE } from '../fe-bundler';
 
 async function loadPackConfig(root: string): Promise<PackConfig | null> {
   const configPath = path.join(root, 'compile.config.ts');
@@ -65,6 +66,17 @@ export async function build(args: string[]) {
     console.log(`\nWarnings:`);
     for (const w of result.warnings) {
       console.log(`  ! ${w}`);
+    }
+  }
+
+  // ── FE bundling ──────────────────────────────────────────────────────
+  const feEntry = findFEEntry(root);
+  if (feEntry) {
+    const feResult = await bundlePackFE({ packDir: root, outputDir, entryPoint: feEntry });
+    if (feResult.success) {
+      console.log(`  fe: dist/fe.js`);
+    } else {
+      console.error(`\nFE bundle failed: ${feResult.error}`);
     }
   }
 

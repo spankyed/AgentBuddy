@@ -13,6 +13,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     entities: { [pascalName]: pascalName },
     relKinds: {},
     seedTypes: ['actions', 'flows'],
+    fe: { entry: 'dist/fe.js' },
     plugins: [],
     dependencies: {},
     permissions: [],
@@ -54,7 +55,7 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
     noEmit: true,
     types: ['node'],
   },
-  include: ['src/**/*.ts', '.abuddy/generated/**/*.ts', '.abuddy/deps/**/*.d.ts'],
+  include: ['src/**/*.ts', 'tests/**/*.ts', '.abuddy/generated/**/*.ts', '.abuddy/deps/**/*.d.ts'],
 }, null, 2);
 
 const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
@@ -67,13 +68,45 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     build: 'abuddy build',
     validate: 'abuddy validate',
     dev: 'abuddy dev',
+    test: 'vitest run',
     typecheck: 'tsc --noEmit',
   },
   devDependencies: {
     '@abuddy/sdk': '*',
     typescript: '^5.8.3',
+    vitest: '^3.2.1',
   },
 }, null, 2);
+
+const FE_ENTRY_TEMPLATE = (_name: string) => `import type { PackFERegistration } from '@abuddy/sdk/fe';
+
+const registration: PackFERegistration = {
+  plugins: [],
+  // artifacts: [],
+  // blocks: [],
+};
+
+export default registration;
+`;
+
+const VITEST_CONFIG_TEMPLATE = `import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+  },
+});
+`;
+
+const EXAMPLE_TEST_TEMPLATE = (name: string) => `import { describe, it, expect } from 'vitest';
+
+describe('${name}', () => {
+  it('should have a valid manifest', async () => {
+    const manifest = await import('../../abuddy.json', { with: { type: 'json' } });
+    expect(manifest.default.id).toBe('${name}');
+  });
+});
+`;
 
 const GITIGNORE_TEMPLATE = `node_modules/
 dist/
@@ -107,6 +140,7 @@ export async function init(args: string[]) {
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'features', name), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'tests', 'unit'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
@@ -125,6 +159,18 @@ export async function init(args: string[]) {
   fs.writeFileSync(
     path.join(dir, 'src', 'types.ts'),
     TYPES_TEMPLATE,
+  );
+  fs.writeFileSync(
+    path.join(dir, 'src', 'pack-entry-fe.ts'),
+    FE_ENTRY_TEMPLATE(name),
+  );
+  fs.writeFileSync(
+    path.join(dir, 'vitest.config.ts'),
+    VITEST_CONFIG_TEMPLATE,
+  );
+  fs.writeFileSync(
+    path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
+    EXAMPLE_TEST_TEMPLATE(name),
   );
 
   await generate([], dir);

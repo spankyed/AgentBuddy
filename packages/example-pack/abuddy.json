@@ -8,6 +8,7 @@
   },
   "relKinds": {},
   "seedTypes": ["actions", "flows"],
+  "fe": { "entry": "dist/fe.js" },
   "dependencies": {
     "default-setup": ">=0.1.0"
   },
