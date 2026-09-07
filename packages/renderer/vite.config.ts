@@ -1,4 +1,4 @@
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
@@ -9,10 +9,6 @@ const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.ur
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
 const sdkDir = resolve(packagesRoot, 'abuddy-sdk');
-
-// ---------------------------------------------------------------------------
-// Convention-based built-in pack discovery (mirrors packages/api/tsup.config.ts)
-// ---------------------------------------------------------------------------
 
 interface BuiltInPack { id: string; srcDir: string }
 
@@ -30,82 +26,57 @@ function discoverBuiltInPacks(): BuiltInPack[] {
   return packs;
 }
 
-const builtInPacks = discoverBuiltInPacks();
+const packs = discoverBuiltInPacks();
 
 /**
- * Vite plugin that resolves @/ imports based on the importer's location.
- *
- * When a file inside a built-in pack's src/ imports @/foo, the path resolves
- * within that pack's own src/ directory.  For all other importers (the
- * renderer itself), it resolves within renderer/src/.
- *
- * This replaces the previous approach of hardcoding per-directory aliases
- * (@/registries/*, @/plugins/*, etc.) that coupled the renderer's build
- * config to a specific pack's internal directory structure.
+ * Single plugin for all built-in pack resolution:
+ * - virtual:built-in-packs — auto-imports each pack's FE entry
+ * - @<pack-id>/* — namespace alias into each pack's src/
+ * - @/ — scoped to the importer's pack (or renderer/src/ for renderer files)
  */
-function resolvePackAtAliases(): Plugin {
+function builtInPacksPlugin(): Plugin {
+  const VIRTUAL_ID = 'virtual:built-in-packs';
+  const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
+
+  const feImports = packs
+    .filter(p => existsSync(resolve(p.srcDir, 'pack-entry-fe.ts')))
+    .map(p => `import '@${p.id}/pack-entry-fe';`)
+    .join('\n');
+
   return {
-    name: 'resolve-pack-at-aliases',
+    name: 'built-in-packs',
     enforce: 'pre',
     async resolveId(source, importer) {
-      if (!source.startsWith('@/') || !importer) return null;
-      const subpath = source.slice(2);
+      if (source === VIRTUAL_ID) return RESOLVED_VIRTUAL;
 
-      const pack = builtInPacks.find(p => importer.startsWith(p.srcDir + '/'));
-      const rootDir = pack ? pack.srcDir : rendererSrcDir;
-      return this.resolve(resolve(rootDir, subpath), importer, { skipSelf: true });
-    },
-  };
-}
+      for (const pack of packs) {
+        const prefix = `@${pack.id}/`;
+        if (source.startsWith(prefix)) {
+          return this.resolve(resolve(pack.srcDir, source.slice(prefix.length)), importer, { skipSelf: true });
+        }
+      }
 
-/**
- * Vite plugin that generates a virtual module importing all built-in packs'
- * FE entries. Adding a new built-in pack with pack-entry-fe.ts automatically
- * includes it — no renderer changes needed.
- *
- * TypeScript sees `declare module 'virtual:built-in-packs' {}` (in env.d.ts)
- * and never enters pack source trees.
- */
-function injectBuiltInPacks(): Plugin {
-  const virtualModuleId = 'virtual:built-in-packs';
-  const resolvedId = '\0' + virtualModuleId;
-
-  const feEntries = builtInPacks
-    .filter(p => existsSync(resolve(p.srcDir, 'pack-entry-fe.ts')))
-    .map(p => `@${p.id}/pack-entry-fe`);
-
-  return {
-    name: 'inject-built-in-packs',
-    resolveId(id) {
-      if (id === virtualModuleId) return resolvedId;
-    },
-    load(id) {
-      if (id === resolvedId) {
-        return feEntries.map(entry => `import '${entry}';`).join('\n');
+      if (source.startsWith('@/') && importer) {
+        const pack = packs.find(p => importer.startsWith(p.srcDir + '/'));
+        return this.resolve(resolve(pack ? pack.srcDir : rendererSrcDir, source.slice(2)), importer, { skipSelf: true });
       }
     },
+    load(id) {
+      if (id === RESOLVED_VIRTUAL) return feImports;
+    },
   };
 }
 
-// Namespace aliases for each built-in pack: @<pack-id>/* → <pack-src>/*
-const packNamespaceAliases = builtInPacks.map(pack => ({
-  find: new RegExp(`^@${pack.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)$`),
-  replacement: resolve(pack.srcDir, '$1'),
-}));
-
-// https://vite.dev/config/
 export default defineConfig({
-  base: './', // Use relative paths for Electron compatibility
+  base: './',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
-    injectBuiltInPacks(),
-    resolvePackAtAliases(),
+    builtInPacksPlugin(),
     vue({
       template: {
         compilerOptions: {
-          // Vidstack player web components
           isCustomElement: (tag) => tag.startsWith('media-'),
         },
       },
@@ -114,14 +85,12 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      ...packNamespaceAliases,
-      // Map design system components to SDK
+      // SDK component/composable redirects
       { find: /^@\/core\/components\/design\/(.+)$/, replacement: resolve(sdkDir, 'src/fe/design/$1') },
-      // Map shared components (tiptap, monaco, etc.) to SDK — layout/ stays in renderer
       { find: /^@\/core\/components\/(?!layout\/|ApiStatus)(.+)$/, replacement: resolve(sdkDir, 'src/fe/components/$1') },
       { find: /^@\/core\/utils\/monaco-config$/, replacement: resolve(sdkDir, 'src/fe/components/monaco-config.ts') },
       { find: /^@\/core\/composables\/(useMenuState|useContextMenu)(\.ts)?$/, replacement: resolve(sdkDir, 'src/fe/composables/$1.ts') },
-      // SDK rpc module delegates to backend host modules — on the frontend, redirect to renderer's trpc
+      // SDK rpc → renderer trpc shim
       { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
     ],
@@ -137,5 +106,4 @@ export default defineConfig({
       'lucide-vue-next'
     ]
   },
-  // Removed hardcoded VITE_API_WS - port is now injected dynamically at runtime
 })
