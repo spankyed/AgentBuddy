@@ -11,7 +11,7 @@ import type { PackRegistration } from '@abuddy/sdk/framework';
 import { buildSystemDefs } from './registries/systems';
 import { featureServices } from './registries/services';
 import { EARS } from './registries/ears';
-import { earlyBootSystem, createDefaultSettings } from './registries/boot';
+import { earlyBootSystem, createDefaultSettings, shutdownHook } from './registries/boot';
 import { runBootSeed } from './registries/seed/index';
 import { migrations } from './migrations';
 import { standardSteps } from './steps/register';
@@ -41,6 +41,7 @@ export const registration: PackRegistration = {
     earlySystem: earlyBootSystem,
     createDefaultSettings,
     seed: runBootSeed,
+    shutdown: shutdownHook,
   },
   migrations,
 };

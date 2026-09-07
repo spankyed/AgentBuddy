@@ -1,7 +1,7 @@
 /**
  * Pack seed declaration.
  * A pack declares what seed types it provides.
- * Paths are relative to the pack.config.ts file location.
+ * Paths are relative to the compile.config.ts file location.
  */
 export interface PackConfig {
   name: string;

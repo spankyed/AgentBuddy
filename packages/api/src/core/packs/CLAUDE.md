@@ -27,7 +27,9 @@ The registry (`pack-registry.json` in `~/.agentbuddy/`) is external-pack-only. I
 
 | File | Purpose |
 |------|---------|
-| `pack-loader.ts` | Discovery, loading, registration orchestration, seed hashing |
+| `pack-discovery.ts` | Filesystem scanning for built-in and external packs, registry reconciliation |
+| `pack-loader.ts` | Loading and registration orchestration (imports from discovery, re-exports for compat) |
+| `pack-seed.ts` | Seed hash computation and data seeding for external packs |
 | `pack-registration.ts` | In-memory mutable registry. Collision detection (EARS, services, steps, artifacts, blocks) with rollback. Queried by API core instead of importing registries directly |
 | `pack-registry.ts` | JSON file CRUD for external pack install state (`~/.agentbuddy/pack-registry.json`) |
 | `pack-api.ts` | tRPC router exposing loaded external packs to the frontend |

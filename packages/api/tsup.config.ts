@@ -80,16 +80,24 @@ export default defineConfig({
           contents = contents.replace(/esmRequire\.resolve\(/g, 'require.resolve(');
 
           const packs = discoverBuiltInPackEntries();
+          if (packs.length === 0) {
+            throw new Error('[rewrite-pack-loader] No built-in packs discovered — production bundle would have nothing to load');
+          }
+
           const requireLines = packs.map(
             p => `    { const mod = require('${p.relPath}'); registerPack(mod.registration); }`
           ).join('\n');
 
-          contents = contents.replace(
+          const rewritten = contents.replace(
             /\/\/ @tsup-rewrite-start loadBuiltInPacks[\s\S]*?\/\/ @tsup-rewrite-end loadBuiltInPacks/,
             `export function loadBuiltInPacks(): void {\n${requireLines}\n}`,
           );
 
-          return { contents, loader: 'ts' };
+          if (rewritten === contents) {
+            throw new Error('[rewrite-pack-loader] @tsup-rewrite markers not found in pack-loader.ts — production bundle would use dev-time discovery');
+          }
+
+          return { contents: rewritten, loader: 'ts' };
         });
       },
     },

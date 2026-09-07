@@ -109,8 +109,8 @@ export function getRegisteredEntityTypes(): ReadonlySet<string> {
   return _entityTypeCache;
 }
 
-export function getRegisteredSystems(): Map<string, any> {
-  const systems = new Map<string, any>();
+export function getRegisteredSystems(): Map<string, import('xstate').AnyStateMachine> {
+  const systems = new Map<string, import('xstate').AnyStateMachine>();
   for (const reg of registrations.values()) {
     for (const sys of reg.systems) {
       systems.set(sys.id, sys.machine);

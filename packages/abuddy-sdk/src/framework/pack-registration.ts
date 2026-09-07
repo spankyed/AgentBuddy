@@ -5,9 +5,11 @@
  * The host (API) owns the mutable registry; packs only reference these types.
  */
 
+import type { AnyStateMachine } from 'xstate';
+
 export interface PackSystemDef {
   id: string;
-  machine: any;
+  machine: AnyStateMachine;
   events: Set<string>;
   designation?: string;
 }
@@ -19,7 +21,7 @@ export interface PackMigration {
 }
 
 export interface PackBootHooks {
-  earlySystem?: any;
+  earlySystem?: AnyStateMachine;
   createDefaultSettings?: () => void;
   shutdown?: () => void;
   seed?: () => void;

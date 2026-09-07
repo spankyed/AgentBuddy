@@ -2,6 +2,7 @@ import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
+import { registerShutdownHook } from '@/core/shared/lifecycle';
 import {
   loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks, seedPackData,
@@ -43,6 +44,11 @@ export async function setupBackend(): Promise<void> {
   let externalPacks = loadExternalPacks();
   if (externalPacks.length > 0) {
     externalPacks = registerExternalPacks(externalPacks);
+  }
+
+  // ── Wire shutdown hooks for ALL registered packs ────────────────────
+  for (const hooks of getBootHooks()) {
+    if (hooks.shutdown) registerShutdownHook(hooks.shutdown);
   }
 
   // ── Hydrate (policy now sees all entity types from all packs)

@@ -116,9 +116,9 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   if (options.packConfig) {
     packConfig = options.packConfig;
   } else {
-    const packConfigPath = path.join(packDir, 'pack.config.ts');
+    const packConfigPath = path.join(packDir, 'compile.config.ts');
     if (!fs.existsSync(packConfigPath)) {
-      throw new Error(`No pack.config.ts found in ${packDir}`);
+      throw new Error(`No compile.config.ts found in ${packDir}`);
     }
     const mod = await import(pathToFileURL(packConfigPath).href);
     packConfig = (mod.default ?? mod) as PackConfig;

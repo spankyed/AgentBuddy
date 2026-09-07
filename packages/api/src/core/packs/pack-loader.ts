@@ -1,65 +1,28 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
-import * as crypto from 'crypto';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
 import { registerPack } from './pack-registration';
-import { registerShutdownHook } from '@/core/shared/lifecycle';
 import { compareVersions } from '@/core/shared';
 import { APP_VERSION } from '@/version';
-import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
+import {
+  discoverBuiltInPacks,
+  getPacksDir,
+  discoverPacks,
+  reconcileExternalRegistry,
+} from './pack-discovery';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
 const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
 const logger = createLogger('pack-loader');
 
+// Re-export discovery types and seed helpers for backward-compatible imports
+export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from './pack-discovery';
+export { discoverBuiltInPacks } from './pack-discovery';
+export { computePackSeedHash, seedPackData } from './pack-seed';
+
 // ── Built-in pack loading ────────────────────────────────────────────
-
-export interface BuiltInPackInfo {
-  id: string;
-  name: string;
-  version: string;
-  dir: string;
-  entry: string;
-}
-
-export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
-  if (!fs.existsSync(packagesDir)) return [];
-
-  const results: BuiltInPackInfo[] = [];
-  const entries = fs.readdirSync(packagesDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const dir = path.join(packagesDir, entry.name);
-    const manifestPath = path.join(dir, 'abuddy.json');
-    if (!fs.existsSync(manifestPath)) continue;
-
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      if (!manifest.builtIn || !manifest.id || !manifest.name) continue;
-
-      const entryFile = path.join(dir, 'src', 'pack-entry');
-      const hasEntry = fs.existsSync(entryFile + '.ts') || fs.existsSync(entryFile + '.js');
-      if (!hasEntry) {
-        logger.warn(`Built-in pack ${manifest.id}: no src/pack-entry found, skipping`);
-        continue;
-      }
-
-      results.push({
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version ?? '0.0.0',
-        dir,
-        entry: 'src/pack-entry',
-      });
-    } catch {}
-  }
-
-  return results;
-}
 
 // @tsup-rewrite-start loadBuiltInPacks
 export async function loadBuiltInPacks(packagesDir: string): Promise<void> {
@@ -89,42 +52,10 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<void> {
 
 const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
 
-export interface PackManifest {
-  id: string;
-  name: string;
-  version: string;
-  hostVersion?: string;
-  seedTypes?: string[];
-  plugins?: PackPluginDefinition[];
-  fe?: { entry: string };
-  permissions?: string[];
-  entities?: Record<string, string>;
-  relKinds?: Record<string, string>;
-}
-
-export interface PackPluginDefinition {
-  id: string;
-  priority?: number;
-  system?: {
-    entry: string;
-    events?: {
-      incoming?: string[];
-      outgoing?: string[];
-    };
-  };
-  plugin?: {
-    entry: string;
-    label: string;
-    icon: string;
-  };
-  entities?: string[];
-  settings?: Record<string, unknown>;
-}
-
 export interface LoadedPack {
-  manifest: PackManifest;
+  manifest: import('./pack-discovery').PackManifest;
   dir: string;
-  systems: Map<string, { machine: any; events: Set<string> }>;
+  systems: Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>;
   services?: Record<string, unknown>;
   steps?: import('@abuddy/sdk/steps').StepDefinition[];
   artifacts?: import('@abuddy/sdk/artifacts').ArtifactDefinition[];
@@ -132,84 +63,6 @@ export interface LoadedPack {
   ears?: import('@abuddy/sdk/framework').PackEARS;
   boot?: import('@abuddy/sdk/framework').PackBootHooks;
   migrations?: import('@abuddy/sdk/framework').PackMigration[];
-}
-
-function getPacksDir(): string {
-  const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
-  return path.join(userDataPath, 'packs');
-}
-
-function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {
-  if (!fs.existsSync(packsDir)) return [];
-
-  const results: { manifest: PackManifest; dir: string }[] = [];
-  const entries = fs.readdirSync(packsDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const packDir = path.join(packsDir, entry.name);
-    const manifestPath = path.join(packDir, 'abuddy.json');
-
-    if (!fs.existsSync(manifestPath)) {
-      logger.warn(`Skipping ${entry.name}: no abuddy.json`);
-      continue;
-    }
-
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as PackManifest;
-      if (!manifest.id || !manifest.name) {
-        logger.warn(`Skipping ${entry.name}: invalid manifest (missing id or name)`);
-        continue;
-      }
-      results.push({ manifest, dir: packDir });
-    } catch (err) {
-      logger.warn(`Skipping ${entry.name}: failed to parse abuddy.json`);
-    }
-  }
-
-  return results;
-}
-
-function reconcileExternalRegistry(
-  discovered: { manifest: PackManifest; dir: string }[],
-): { manifest: PackManifest; dir: string }[] {
-  let registry = readPackRegistry();
-  let changed = false;
-
-  const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
-
-  for (const { manifest, dir } of discovered) {
-    const existing = registry.find(e => e.id === manifest.id);
-    if (!existing) {
-      registry = addToRegistry(registry, {
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version,
-        dir,
-        enabled: true,
-      });
-      changed = true;
-      logger.info(`New external pack discovered: ${manifest.id}`);
-    } else if (existing.version !== manifest.version || existing.dir !== dir) {
-      registry = addToRegistry(registry, {
-        id: existing.id,
-        name: manifest.name,
-        version: manifest.version,
-        dir,
-        enabled: existing.enabled,
-      });
-      changed = true;
-    }
-  }
-
-  const before = registry.length;
-  registry = registry.filter(e => discoveredById.has(e.id));
-  if (registry.length !== before) changed = true;
-
-  if (changed) writePackRegistry(registry);
-
-  const enabledIds = new Set(registry.filter(e => e.enabled).map(e => e.id));
-  return discovered.filter(d => enabledIds.has(d.manifest.id));
 }
 
 function withHostResolution<T>(fn: () => T): T {
@@ -248,7 +101,7 @@ function withHostResolution<T>(fn: () => T): T {
 function loadSystemFromCJS(
   entry: string,
   packDir: string,
-): { machine: any; events: Set<string> } | null {
+): { machine: import('xstate').AnyStateMachine; events: Set<string> } | null {
   const fullPath = path.resolve(packDir, entry);
   if (!fullPath.startsWith(packDir + path.sep)) {
     logger.warn(`System entry escapes pack directory: ${entry}`);
@@ -294,7 +147,7 @@ export function loadExternalPacks(): LoadedPack[] {
       }
     }
 
-    const systems = new Map<string, { machine: any; events: Set<string> }>();
+    const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
 
     if (manifest.plugins) {
       for (const plugin of manifest.plugins) {
@@ -372,9 +225,6 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
         boot: pack.boot,
         migrations: pack.migrations,
       });
-      if (pack.boot?.shutdown) {
-        registerShutdownHook(pack.boot.shutdown);
-      }
       registered.push(pack);
       logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
     } catch (err) {
@@ -382,60 +232,4 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
     }
   }
   return registered;
-}
-
-// ── Seed helpers ─────────────────────────────────────────────────────
-
-export function computePackSeedHash(distDir: string): string {
-  const files = fs.readdirSync(distDir).filter(f => f.endsWith('.json')).sort();
-  if (files.length === 0) return '';
-  const hash = crypto.createHash('sha256');
-  for (const file of files) {
-    hash.update(file);
-    hash.update(fs.readFileSync(path.join(distDir, file)));
-  }
-  return hash.digest('hex').slice(0, 16);
-}
-
-export function seedPackData(
-  packs: LoadedPack[],
-  seedFn: (options: { compiledDir: string; mode?: any; verbose?: boolean }) => Record<string, any>,
-  getStoredHashes: () => Record<string, string>,
-  setStoredHashes: (hashes: Record<string, string>) => void,
-): void {
-  const storedHashes = getStoredHashes();
-  const updatedHashes = { ...storedHashes };
-  let anySeeded = false;
-
-  for (const pack of packs) {
-    const distDir = path.join(pack.dir, 'dist');
-    if (!fs.existsSync(distDir)) continue;
-
-    const currentHash = computePackSeedHash(distDir);
-    if (!currentHash) continue;
-
-    if (storedHashes[pack.manifest.id] === currentHash) {
-      logger.info(`Pack seed skipped (unchanged): ${pack.manifest.id}`);
-      continue;
-    }
-
-    logger.info(`Seeding data artifacts for pack: ${pack.manifest.id}`);
-    try {
-      seedFn({ compiledDir: distDir, mode: 'replace-on-collision' });
-      updatedHashes[pack.manifest.id] = currentHash;
-      anySeeded = true;
-      logger.info(`Pack seeded: ${pack.manifest.id}`);
-    } catch (err) {
-      logger.error(`Failed to seed pack ${pack.manifest.id}:`, err as Error);
-    }
-  }
-
-  const installedIds = new Set(packs.map(p => p.manifest.id));
-  for (const id of Object.keys(updatedHashes)) {
-    if (!installedIds.has(id)) delete updatedHashes[id];
-  }
-
-  if (anySeeded || Object.keys(updatedHashes).length !== Object.keys(storedHashes).length) {
-    setStoredHashes(updatedHashes);
-  }
 }

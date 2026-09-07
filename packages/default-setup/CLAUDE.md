@@ -74,7 +74,7 @@ DSL source files compiled to JSON at build time. Located in `src/seeds/`:
 - `faqs/` — markdown FAQ files
 - `default-settings.ts` — full default settings object
 
-Build config: `pack.config.ts` points the compiler at each seed directory.
+Build config: `compile.config.ts` points the compiler at each seed directory.
 
 Seed registration: `src/registries/seed/index.ts` registers seeders for actions, prompts, flows, library, notes, and settings with the core seed framework. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged.
 
@@ -124,7 +124,7 @@ The pack registers these boot hooks via `src/registries/boot.ts`:
 
 ## Build
 
-- `pack.config.ts` — points DSL compiler at seed source directories
+- `compile.config.ts` — points DSL compiler at seed source directories
 - `npm run compile` from repo root compiles all DSLs to `dist/`
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`

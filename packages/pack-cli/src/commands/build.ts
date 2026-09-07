@@ -5,7 +5,7 @@ import { generate } from './generate';
 import { findPackRoot, readManifest } from '../utils';
 
 async function loadPackConfig(root: string): Promise<PackConfig | null> {
-  const configPath = path.join(root, 'pack.config.ts');
+  const configPath = path.join(root, 'compile.config.ts');
   if (!fs.existsSync(configPath)) return null;
 
   const { tsImport } = await import('tsx/esm/api');
@@ -25,7 +25,7 @@ export async function build(args: string[]) {
 
   const packConfig = await loadPackConfig(root);
   if (!packConfig) {
-    console.log('No pack.config.ts found. Nothing to compile.');
+    console.log('No compile.config.ts found. Nothing to compile.');
     return;
   }
 

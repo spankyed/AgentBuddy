@@ -113,7 +113,7 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
-  fs.writeFileSync(path.join(dir, 'pack.config.ts'), PACK_CONFIG_TEMPLATE(name));
+  fs.writeFileSync(path.join(dir, 'compile.config.ts'), PACK_CONFIG_TEMPLATE(name));
   fs.writeFileSync(
     path.join(dir, 'src', 'features', name, 'feature.config.ts'),
     FEATURE_CONFIG_TEMPLATE(name),
