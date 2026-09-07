@@ -10,7 +10,7 @@ import { artifactRegistry } from '../artifacts/registry';
 import { blockRegistry } from '../blocks/registry';
 
 export interface PackFERegistration {
-  plugins: Plugin[];
+  plugins?: Plugin[];
   defaultPlugin?: Plugin;
   tiptapPlugins?: TiptapPlugin[];
   appExtensions?: Record<string, Component>;
@@ -22,13 +22,14 @@ const allPlugins: Plugin[] = [];
 let defaultPlugin: Plugin | undefined;
 
 export function registerPackFE(registration: PackFERegistration): void {
-  allPlugins.push(...registration.plugins);
+  const plugins = registration.plugins ?? [];
+  allPlugins.push(...plugins);
 
   if (registration.defaultPlugin && !defaultPlugin) {
     defaultPlugin = registration.defaultPlugin;
   }
 
-  const designated = registration.plugins.filter(p => p.designation);
+  const designated = plugins.filter(p => p.designation);
   if (designated.length) {
     registerDesignations(designated.map(p => p.designation!));
   }

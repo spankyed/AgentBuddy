@@ -1,4 +1,5 @@
 import type { Plugin } from '@/core/types';
+import type { PackFERegistration } from '@abuddy/sdk/fe';
 
 export interface PackPluginManifest {
   id: string;
@@ -12,6 +13,25 @@ async function resolveLucideIcon(iconName: string): Promise<any> {
     const lucide = await import('lucide-vue-next');
     return (lucide as any)[iconName] || null;
   } catch {
+    return null;
+  }
+}
+
+export async function loadPackFEEntry(
+  entry: string,
+  packBaseUrl: string,
+): Promise<PackFERegistration | null> {
+  try {
+    const url = `${packBaseUrl}/${entry}`;
+    const mod = await import(/* @vite-ignore */ url);
+    const registration = mod.default || mod;
+    if (!registration || typeof registration !== 'object') {
+      console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
+      return null;
+    }
+    return registration as PackFERegistration;
+  } catch (err) {
+    console.error(`[pack-loader] Failed to load FE entry ${entry}:`, err);
     return null;
   }
 }

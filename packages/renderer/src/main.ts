@@ -10,7 +10,7 @@ import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
-import { loadPackPlugins } from '@/core/packs/pack-loader';
+import { loadPackPlugins, loadPackFEEntry } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
 import './setup/dsl-types';
 import { registerHostModule } from '@abuddy/sdk/runtime';
@@ -146,14 +146,28 @@ app.provide('actorSystem', applicationState.system);
 app.provide('applicationActor', applicationState);
 app.mount('#app');
 
-// Load external pack plugins after boot
+// Load external pack FE contributions after boot
 trpc.packs.registry.query().then(async (registry) => {
   if (!registry.length) return;
   for (const pack of registry) {
+    const packBaseUrl = `pack://${pack.id}`;
+
+    if (pack.feEntry) {
+      const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
+      if (registration) {
+        registerPackFE(registration);
+        const plugins = registration.plugins ?? [];
+        if (plugins.length > 0) {
+          applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+        }
+      }
+      continue;
+    }
+
     if (!pack.plugins.length) continue;
     const plugins = await loadPackPlugins(
       pack.plugins.map(p => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon })),
-      `pack://${pack.id}`,
+      packBaseUrl,
     );
     if (plugins.length > 0) {
       registerPackFE({ plugins });

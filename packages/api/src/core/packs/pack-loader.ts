@@ -96,6 +96,7 @@ export interface PackManifest {
   hostVersion?: string;
   seedTypes?: string[];
   plugins?: PackPluginDefinition[];
+  fe?: { entry: string };
   permissions?: string[];
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;

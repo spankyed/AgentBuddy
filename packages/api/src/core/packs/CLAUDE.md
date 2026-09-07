@@ -96,9 +96,21 @@ Two capabilities are stripped from external packs during loading:
 - **`earlySystem`** — Runs before EARS hydration (step 2 in boot). External packs register at step 3-4, after earlySystem hooks have already fired. Allowing it would either require reordering boot (risky) or silently not running the hook (confusing). Stripped with a warning log.
 - **`partitionPolicy`** (`excludedEntityTypes`, `secretEntityTypes`) — Controls which entities go to volatile/secrets stores vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped with a warning log; all external pack data routes to primary partition.
 
-## FE loading gap
+## External pack FE entry convention
 
-External packs currently only support `plugins` on the frontend side. The renderer loads external pack FE entries and calls `registerPackFE({ plugins })`, but doesn't pass `tiptapPlugins`, `appExtensions`, `artifacts`, or `blocks`. There's no FE entry point convention for external packs yet (the BE uses `dist/index.js`). Built-in packs have full FE support via `pack-entry-fe.ts` and the `virtual:built-in-packs` Vite plugin.
+External packs declare a FE entry point in their manifest:
+
+```json
+{
+  "fe": { "entry": "dist/fe.js" }
+}
+```
+
+The renderer loads `pack://{packId}/{fe.entry}` via dynamic import. The module must export a `PackFERegistration`-shaped object (or a subset): `{ plugins?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it. If plugins are present, they're also merged into the application actor via `PACK_PLUGINS_LOADED`.
+
+Packs without `fe.entry` fall back to per-plugin loading from `plugins[].plugin.entry` in the manifest (the legacy path — plugins only).
+
+External pack FE modules cannot call `registerPackFE()` themselves — they don't share the host's SDK module instance (they'd register into a separate copy of the registries). The host always mediates.
 
 ## tsup rewrite details
 
