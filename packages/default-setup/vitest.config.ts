@@ -4,7 +4,7 @@ export default defineConfig(async () => {
   const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
   return {
     plugins: [
-      tsconfigPaths({ projects: ['./tsconfig.json', '../api/tsconfig.test.json'] }),
+      tsconfigPaths({ projects: ['./tsconfig.test.json', '../api/tsconfig.test.json'] }),
     ],
 
     test: {
