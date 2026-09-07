@@ -26,11 +26,11 @@
         </button>
         <button
           @click="togglePluginVisibility(plugin.id)"
-          :disabled="plugin.id === 'settings'"
-          :title="plugin.id === 'settings' ? 'Settings must remain visible' : (isPluginVisible(plugin.id) ? 'Hide from toolbar' : 'Show in toolbar')"
+          :disabled="plugin.id === settingsPluginId"
+          :title="plugin.id === settingsPluginId ? 'Settings must remain visible' : (isPluginVisible(plugin.id) ? 'Hide from toolbar' : 'Show in toolbar')"
           :class="[
             'p-2 rounded-md transition-colors',
-            plugin.id === 'settings' 
+            plugin.id === settingsPluginId 
               ? 'text-neutral-600 cursor-not-allowed' 
               : isPluginVisible(plugin.id)
                 ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
@@ -89,14 +89,15 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, useApplicationActor, navigateToPlugin, getDesignatedPlugin } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
-import plugins from '@/plugins'
 
 const actorSystem = useActorSystem()
+const applicationActor = useApplicationActor()
 
 const actor = actorSystem.get('settings')
+const allPlugins = useSelector(applicationActor, (state: any) => state.context.plugins)
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
 const settings = useSelector(actor, (state: any) => state.context.settings)
@@ -117,14 +118,13 @@ const currentPluginSettings = computed(() => {
   return settings.value.plugins[selectedPluginId.value]
 })
 
-// Get plugins that have settings defined
 const pluginsWithSettings = computed(() => {
-  return plugins.filter(plugin => plugin.settings)
+  return allPlugins.value.filter((plugin: any) => plugin.settings)
 })
 
 const selectedPlugin = computed(() => {
   if (!selectedPluginId.value) return null
-  return pluginsWithSettings.value.find(p => p.id === selectedPluginId.value)
+  return pluginsWithSettings.value.find((p: any) => p.id === selectedPluginId.value)
 })
 
 const selectPlugin = (pluginId: string) => {
@@ -141,8 +141,10 @@ const isPluginVisible = (pluginId: string) => {
 }
 
 // Toggle plugin visibility
+const settingsPluginId = getDesignatedPlugin('settings')
+
 const togglePluginVisibility = (pluginId: string) => {
-  if (pluginId === 'settings') return // Prevent hiding settings
+  if (pluginId === settingsPluginId) return
   
   const currentVisibility = isPluginVisible(pluginId)
   
@@ -166,107 +168,3 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
   })
 }
 </script>
-
-.plugins-tab {
-  display: flex;
-  height: 100%;
-  background: #0a0a0a;
-}
-
-.sidebar {
-  width: 250px;
-  padding: 1rem 0.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.sidebar h3 {
-  margin: 0 0 1rem 0;
-  padding: 0.5rem 0.75rem;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.no-plugins {
-  padding: 1.5rem 1rem;
-  text-align: center;
-}
-
-.no-plugins p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 13px;
-}
-
-.plugin-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.15s;
-  margin-bottom: 2px;
-  text-align: left;
-  font-size: 13px;
-}
-
-.plugin-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.plugin-item.active {
-  background: rgba(0, 122, 255, 0.15);
-  color: #007AFF;
-}
-
-.plugin-icon {
-  width: 16px;
-  height: 16px;
-  opacity: 0.8;
-}
-
-.content {
-  flex: 1;
-  padding: 2.5rem 3rem;
-  overflow: auto;
-  background: #0a0a0a;
-}
-
-.plugin-settings h2 {
-  margin: 0 0 2rem 0;
-  color: white;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 1rem;
-  color: rgba(255, 255, 255, 0.15);
-  opacity: 1;
-}
-
-.empty-state p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 14px;
-}
