@@ -1,16 +1,8 @@
 import { repository } from '@/repository';
 import { APP_VERSION } from '@/version';
+import { compareVersions } from '@/core/shared';
 import { getRegisteredMigrations } from '@/core/packs/pack-registration';
 import type { LoadedPack } from '@/core/packs/pack-loader';
-
-export function compareVersions(a: string, b: string): number {
-  const [ax, bx] = [a, b].map(v => v.split('.').map(Number));
-  for (let i = 0; i < Math.max(ax.length, bx.length); i++) {
-    const diff = (ax[i] ?? 0) - (bx[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
 
 export function runMigrations(): void {
   const current = repository.settingsQueries.getInternalSettings().version || '0.0.0';

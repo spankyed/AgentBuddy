@@ -6,20 +6,12 @@ import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
 import { registerPack } from './pack-registration';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
+import { compareVersions } from '@/core/shared';
 import { APP_VERSION } from '@/version';
 import {
   readPackRegistry, writePackRegistry, addToRegistry,
   type PackRegistryEntry,
 } from './pack-registry';
-
-function compareVersions(a: string, b: string): number {
-  const [ax, bx] = [a, b].map(v => v.split('.').map(Number));
-  for (let i = 0; i < Math.max(ax.length, bx.length); i++) {
-    const diff = (ax[i] ?? 0) - (bx[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
