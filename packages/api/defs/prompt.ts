@@ -8,9 +8,6 @@
 export { PromptService } from '@/features/prompts/be/services/prompt';
 export type { PromptEntity } from '@/features/prompts/be/types';
 
-// Import and export prompt context for type reference
-export type { PromptContext } from '@/features/brain/be/utils/prompt-context';
-
 // Type definitions for prompt context
 export interface PromptParams {
   [key: string]: any;
