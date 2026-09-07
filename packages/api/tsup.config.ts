@@ -4,8 +4,45 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const defaultSetupSrc = path.resolve(__dirname, '..', 'default-setup', 'src');
+const packagesRoot = path.resolve(__dirname, '..');
 const apiSrc = path.resolve(__dirname, 'src');
+
+function discoverBuiltInPackSrcDirs(): string[] {
+  const dirs: string[] = [];
+  for (const entry of fs.readdirSync(packagesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = path.join(packagesRoot, entry.name, 'abuddy.json');
+    if (!fs.existsSync(manifestPath)) continue;
+    try {
+      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      if (m.builtIn) dirs.push(path.resolve(packagesRoot, entry.name, 'src'));
+    } catch {}
+  }
+  return dirs;
+}
+
+const packLoaderDir = path.resolve(__dirname, 'src', 'core', 'packs');
+
+function discoverBuiltInPackEntries(): { id: string; relPath: string }[] {
+  const entries: { id: string; relPath: string }[] = [];
+  for (const entry of fs.readdirSync(packagesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = path.join(packagesRoot, entry.name, 'abuddy.json');
+    if (!fs.existsSync(manifestPath)) continue;
+    try {
+      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      if (!m.builtIn || !m.id) continue;
+      const packEntry = path.join(packagesRoot, entry.name, 'src', 'pack-entry');
+      if (fs.existsSync(packEntry + '.ts') || fs.existsSync(packEntry + '.js')) {
+        const relPath = path.relative(packLoaderDir, packEntry).replace(/\\/g, '/');
+        entries.push({ id: m.id, relPath });
+      }
+    } catch {}
+  }
+  return entries;
+}
+
+const builtInPackSrcDirs = discoverBuiltInPackSrcDirs();
 
 function tryResolve(base: string, subpath: string): string | null {
   const candidates = [
@@ -41,10 +78,17 @@ export default defineConfig({
           let contents = await fs.promises.readFile(args.path, 'utf8');
           contents = contents.replace(/esmRequire\(/g, 'require(');
           contents = contents.replace(/esmRequire\.resolve\(/g, 'require.resolve(');
+
+          const packs = discoverBuiltInPackEntries();
+          const requireLines = packs.map(
+            p => `    { const mod = require('${p.relPath}'); registerPack(mod.registration); }`
+          ).join('\n');
+
           contents = contents.replace(
-            /const PACK_ENTRY = '([^']+)';\nexport async function loadBuiltInPack\(\): Promise<void> \{\n\s+const mod = await import\(PACK_ENTRY\);/,
-            "export function loadBuiltInPack(): void {\n  const mod = require('$1');",
+            /export async function loadRegisteredPacks\([^)]*\): Promise<void> \{[\s\S]*?\n\}/,
+            `export function loadRegisteredPacks(): void {\n${requireLines}\n}`,
           );
+
           return { contents, loader: 'ts' };
         });
       },
@@ -54,15 +98,11 @@ export default defineConfig({
       setup(build) {
         build.onResolve({ filter: /^@\// }, (args) => {
           const subpath = args.path.slice(2);
-          const isDefaultSetup = args.importer.includes('default-setup');
 
-          if (isDefaultSetup) {
-            for (const prefix of ['registries/', 'plugins/', 'steps/']) {
-              if (subpath.startsWith(prefix)) {
-                const resolved = tryResolve(defaultSetupSrc, subpath);
-                if (resolved) return { path: resolved };
-              }
-            }
+          const packSrc = builtInPackSrcDirs.find(d => args.importer.startsWith(d));
+          if (packSrc) {
+            const resolved = tryResolve(packSrc, subpath);
+            if (resolved) return { path: resolved };
           }
 
           const resolved = tryResolve(apiSrc, subpath);

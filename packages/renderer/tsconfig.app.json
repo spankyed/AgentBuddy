@@ -6,15 +6,16 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {
+      "@default-setup/*": ["../default-setup/src/*"],
       "@/core/components/design/*": ["../abuddy-sdk/src/fe/design/*"],
       "@/core/components/tiptap/*": ["../abuddy-sdk/src/fe/components/tiptap/*"],
       "@/core/composables/useMenuState": ["../abuddy-sdk/src/fe/composables/useMenuState"],
       "@/core/composables/useContextMenu": ["../abuddy-sdk/src/fe/composables/useContextMenu"],
       "@/registries/*": ["../default-setup/src/registries/*"],
+      "@/plugins/*": ["../default-setup/src/plugins/*"],
       "@/steps/*": ["../default-setup/src/steps/*"],
       "@/blocks/*": ["../default-setup/src/blocks/*"],
       "@/artifacts/*": ["../default-setup/src/artifacts/*"],
-      "@/plugins/*": ["../default-setup/src/plugins/*"],
       "@/*": ["./src/*"]
     }
   }

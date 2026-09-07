@@ -20,14 +20,14 @@
  */
 
 import '@/setup/sdk-host-init';
+import * as path from 'path';
 import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
 import { getAllEntities, getEntitiesOfType, getAllEntityTypes, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/shared/paths';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { loadBuiltInPack } from '@/core/packs/pack-loader';
-import { getBootHooks } from '@/core/packs/pack-registration';
-import { getRegisteredEntityTypes } from '@/core/packs/pack-registration';
+import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
+import { getBootHooks, getRegisteredEntityTypes } from '@/core/packs/pack-registration';
 import * as os from 'node:os';
 
 // Suppress all console output except our final JSON
@@ -44,7 +44,7 @@ process.stderr.write = () => true;
 
 async function exportJSON() {
   try {
-    await loadBuiltInPack();
+    await loadBuiltInPacksFromDir(path.join(process.cwd(), 'packages'));
 
     // Initialize database first (silently)
     await hydrateSharded({

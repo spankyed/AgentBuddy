@@ -8,7 +8,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 // import autoprefixer from 'autoprefixer'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
-const pluginsDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../default-setup/src/plugins');
+const defaultSetupDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../default-setup/src');
 const sdkDir = resolve(fileURLToPath(new URL('.', import.meta.url)), '../abuddy-sdk');
 
 // https://vite.dev/config/
@@ -30,16 +30,12 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      // Map @/registries/... to default-setup registries
-      { find: /^@\/registries\/(.+)$/, replacement: resolve(pluginsDir, '../registries/$1') },
-      // Map @/steps/... to default-setup steps
-      { find: /^@\/steps\/(.+)$/, replacement: resolve(pluginsDir, '../steps/$1') },
-      // Map @/blocks/... to default-setup blocks
-      { find: /^@\/blocks\/(.+)$/, replacement: resolve(pluginsDir, '../blocks/$1') },
-      // Map @/artifacts/... to default-setup artifacts
-      { find: /^@\/artifacts\/(.+)$/, replacement: resolve(pluginsDir, '../artifacts/$1') },
-      // Map @/plugins/... to default-setup plugins
-      { find: /^@\/plugins\/(.+)$/, replacement: `${pluginsDir}/$1` },
+      { find: /^@default-setup\/(.+)$/, replacement: resolve(defaultSetupDir, '$1') },
+      { find: /^@\/registries\/(.+)$/, replacement: resolve(defaultSetupDir, 'registries/$1') },
+      { find: /^@\/plugins\/(.+)$/, replacement: resolve(defaultSetupDir, 'plugins/$1') },
+      { find: /^@\/steps\/(.+)$/, replacement: resolve(defaultSetupDir, 'steps/$1') },
+      { find: /^@\/blocks\/(.+)$/, replacement: resolve(defaultSetupDir, 'blocks/$1') },
+      { find: /^@\/artifacts\/(.+)$/, replacement: resolve(defaultSetupDir, 'artifacts/$1') },
       // Map design system components to SDK
       { find: /^@\/core\/components\/design\/(.+)$/, replacement: resolve(sdkDir, 'src/fe/design/$1') },
       // Map shared components (tiptap, monaco, etc.) to SDK — layout/ stays in renderer

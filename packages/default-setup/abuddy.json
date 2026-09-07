@@ -2,9 +2,10 @@
   "id": "default-setup",
   "name": "Default Setup",
   "version": "0.1.0",
-  "description": "The official AgentBuddy starter pack — actions, prompts, flows, library docs, and default settings.",
+  "builtIn": true,
+  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, seed data, message blocks, and default settings.",
   "hostVersion": ">=0.3.0",
-  "artifactTypes": ["actions", "prompts", "flows", "library", "notes", "settings", "systems", "plugins"],
+  "features": ["seeds", "artifacts", "plugins", "services", "message-blocks", "extensions"],
   "entities": {
     "Relation": "Relation",
     "Agent": "Agent",
@@ -46,20 +47,5 @@
     "SPAWNED": "spawned",
     "TRACKED": "tracked"
   },
-  "features": [
-    { "id": "settings", "priority": -100 },
-    { "id": "logs", "priority": -50 },
-    { "id": "threads" },
-    { "id": "code" },
-    { "id": "notes" },
-    { "id": "calendar" },
-    { "id": "browser" },
-    { "id": "library" },
-    { "id": "flows" },
-    { "id": "actions" },
-    { "id": "prompts" },
-    { "id": "brain" },
-    { "id": "database" }
-  ],
   "license": "MIT"
 }

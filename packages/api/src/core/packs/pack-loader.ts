@@ -7,16 +7,143 @@ import { createLogger } from '@/core/shared/debug/logger';
 import { registerPack } from './pack-registration';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
 import { APP_VERSION } from '@/version';
+import {
+  readPackRegistry, writePackRegistry, addToRegistry, hasBuiltInPacks,
+  type PackRegistryEntry,
+} from './pack-registry';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
 const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
 const logger = createLogger('pack-loader');
 
-const PACK_ENTRY = '../../../../default-setup/src/pack-entry';
-export async function loadBuiltInPack(): Promise<void> {
-  const mod = await import(PACK_ENTRY);
-  registerPack(mod.registration);
+export interface BuiltInPackInfo {
+  id: string;
+  name: string;
+  version: string;
+  dir: string;
+  entry: string;
+}
+
+export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
+  if (!fs.existsSync(packagesDir)) return [];
+
+  const results: BuiltInPackInfo[] = [];
+  const entries = fs.readdirSync(packagesDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(packagesDir, entry.name);
+    const manifestPath = path.join(dir, 'abuddy.json');
+    if (!fs.existsSync(manifestPath)) continue;
+
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      if (!manifest.builtIn || !manifest.id || !manifest.name) continue;
+
+      const entryFile = path.join(dir, 'src', 'pack-entry');
+      const hasEntry = fs.existsSync(entryFile + '.ts') || fs.existsSync(entryFile + '.js');
+      if (!hasEntry) {
+        logger.warn(`Built-in pack ${manifest.id}: no src/pack-entry found, skipping`);
+        continue;
+      }
+
+      results.push({
+        id: manifest.id,
+        name: manifest.name,
+        version: manifest.version ?? '0.0.0',
+        dir,
+        entry: 'src/pack-entry',
+      });
+    } catch {}
+  }
+
+  return results;
+}
+
+export function seedBuiltInPacks(builtInDir: string): PackRegistryEntry[] {
+  let registry = readPackRegistry();
+  if (hasBuiltInPacks(registry)) return registry;
+
+  const discovered = discoverBuiltInPacks(builtInDir);
+  if (discovered.length === 0) {
+    logger.warn('No built-in packs found in ' + builtInDir);
+    return registry;
+  }
+
+  for (const pack of discovered) {
+    registry = addToRegistry(registry, {
+      id: pack.id,
+      name: pack.name,
+      version: pack.version,
+      dir: pack.dir,
+      entry: pack.entry,
+      type: 'built-in',
+    });
+    logger.info(`Registered built-in pack: ${pack.id}`);
+  }
+
+  writePackRegistry(registry);
+  return registry;
+}
+
+export async function loadRegisteredPacks(registry: PackRegistryEntry[]): Promise<void> {
+  for (const entry of registry) {
+    const entryPath = path.join(entry.dir, entry.entry);
+    try {
+      const mod = await import(entryPath);
+      registerPack(mod.registration);
+      logger.info(`Loaded pack: ${entry.id} (${entry.type})`);
+    } catch (err) {
+      logger.error(`Failed to load pack ${entry.id} from ${entryPath}:`, err as Error);
+    }
+  }
+}
+
+export async function loadBuiltInPacksFromDir(packagesDir: string): Promise<void> {
+  seedBuiltInPacks(packagesDir);
+  const registry = readPackRegistry();
+  await loadRegisteredPacks(registry.filter(e => e.type === 'built-in'));
+}
+
+export function reconcileExternalPacks(registry: PackRegistryEntry[]): PackRegistryEntry[] {
+  const externalDir = getPacksDir();
+  if (!fs.existsSync(externalDir)) return registry;
+
+  const onDisk = discoverPacks(externalDir);
+  const registeredExternal = new Set(
+    registry.filter(e => e.type === 'external').map(e => e.id)
+  );
+
+  let changed = false;
+
+  for (const { manifest, dir } of onDisk) {
+    if (!registeredExternal.has(manifest.id)) {
+      registry = addToRegistry(registry, {
+        id: manifest.id,
+        name: manifest.name,
+        version: manifest.version,
+        dir,
+        entry: 'dist/index.js',
+        type: 'external',
+      });
+      logger.info(`Auto-registered new external pack: ${manifest.id}`);
+      changed = true;
+    }
+  }
+
+  const onDiskIds = new Set(onDisk.map(p => p.manifest.id));
+  const stale = registry.filter(e => e.type === 'external' && !onDiskIds.has(e.id));
+  if (stale.length > 0) {
+    registry = registry.filter(e => !(e.type === 'external' && !onDiskIds.has(e.id)));
+    for (const s of stale) {
+      logger.info(`Removed stale external pack from registry: ${s.id}`);
+    }
+    changed = true;
+  }
+
+  if (changed) writePackRegistry(registry);
+  return registry;
 }
 
 // Packages provided by the host that packs can require() without bundling

@@ -2,7 +2,11 @@ import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
-import { loadBuiltInPack } from '@/core/packs/pack-loader';
+import {
+  seedBuiltInPacks, loadRegisteredPacks,
+  loadExternalPacks, registerExternalPacks, seedPackData,
+} from '@/core/packs/pack-loader';
+import { readPackRegistry } from '@/core/packs/pack-registry';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
@@ -12,7 +16,6 @@ import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
 import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
-import { loadExternalPacks, registerExternalPacks, seedPackData } from '@/core/packs/pack-loader';
 import { setLoadedPacks } from '@/core/packs/pack-api';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -21,8 +24,16 @@ export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
 
-  // ── Register built-in pack ──────────────────────────────────────────
-  await loadBuiltInPack();
+  // ── Pack registry: seed built-ins on first run ──────────────────────
+  const builtInDir = process.env.BUILT_IN_PACKS_DIR;
+  if (builtInDir) {
+    seedBuiltInPacks(builtInDir);
+  }
+
+  // ── Load built-in packs from registry ───────────────────────────────
+  const registry = readPackRegistry();
+  const builtInEntries = registry.filter(e => e.type === 'built-in');
+  await loadRegisteredPacks(builtInEntries);
 
   // Run early boot hooks (logs system must start before anything else)
   for (const hooks of getBootHooks()) {

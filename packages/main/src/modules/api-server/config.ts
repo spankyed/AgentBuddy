@@ -99,6 +99,9 @@ export const getEnvironment = (port: number, options?: { startupId?: string; log
     AGENTBUDDY_LOG_DIR: options?.logDir,
     DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
     USER_DATA_PATH: app.isPackaged ? app.getPath('userData') : undefined,
+    BUILT_IN_PACKS_DIR: app.isPackaged
+      ? path.join(process.resourcesPath, 'app', 'packages')
+      : path.join(app.getAppPath(), 'packages'),
     ELECTRON_RUN_AS_NODE: '1',
   };
 };

@@ -12,11 +12,12 @@
 import '@/setup/sdk-host-init';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence, resetLmdbFiles } from '@/core/ears/attribute-storage';
-import { loadBuiltInPack } from '@/core/packs/pack-loader';
+import * as path from 'path';
+import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
 import { getBootHooks } from '@/core/packs/pack-registration';
 
 async function run() {
-  await loadBuiltInPack();
+  await loadBuiltInPacksFromDir(path.join(process.cwd(), 'packages'));
 
   console.log('Hydrating LMDB connections...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });

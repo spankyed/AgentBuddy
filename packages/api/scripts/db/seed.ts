@@ -10,12 +10,12 @@ import '@/setup/sdk-host-init';
 import * as path from 'path';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { loadBuiltInPack } from '@/core/packs/pack-loader';
+import { loadBuiltInPacksFromDir } from '@/core/packs/pack-loader';
 import { getBootHooks } from '@/core/packs/pack-registration';
 import { seedData } from '@/core/shared/seed';
 
 async function run() {
-  await loadBuiltInPack();
+  await loadBuiltInPacksFromDir(path.join(process.cwd(), 'packages'));
 
   console.log('Initializing database...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
