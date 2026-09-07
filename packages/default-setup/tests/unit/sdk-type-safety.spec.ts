@@ -12,7 +12,7 @@
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import {
   qx, tx, createEntity,
-  findById, findAll, findWhere,
+  findById, findAll, findWhere, findFirst,
   createEntityWithDefaults,
   filterSystemFields,
   clearMemory,
@@ -30,7 +30,13 @@ import {
   breadcrumb, breadcrumbWithParams, breadcrumbList,
   contextMenuFn,
 } from '@abuddy/sdk/fe';
+import { services } from '@abuddy/sdk/services';
+import type { ServiceRegistry } from '@abuddy/sdk/types';
 import { EARS } from '../../src/registries/ears';
+
+// Activate augmentations — external packs get these via their tsconfig includes
+import '@/registries/entity-shapes';
+import '@/registries/service-types';
 
 // ─── Compile-time type assertions ──────────────────────────────────────
 // These verify that generic functions return typed results, not `any`.
@@ -194,6 +200,69 @@ describe('Type inference — FE delegate generics', () => {
     type Ctx = { selectedAction: string };
     expectTypeOf(contextMenuFn<Ctx>).parameter(0).toBeFunction();
     expectTypeOf(contextMenuFn<Ctx>).returns.toHaveProperty('contextMenu');
+  });
+});
+
+// ─── Registry-augmented inference (no explicit generics) ─────────────
+// These verify that pack authors get types automatically when using
+// EntityShapeRegistry / ServiceRegistry augmentation, WITHOUT needing
+// explicit generic parameters like findAll<MyType>(...).
+
+describe('Registry-based inference — services', () => {
+  it('services proxy is not any', () => {
+    type S = typeof services;
+    expectTypeOf<S>().not.toBeAny();
+  });
+
+  it('services.prompt has usePrompt method', () => {
+    expectTypeOf(services.prompt).toHaveProperty('usePrompt');
+  });
+
+  it('services.settings has getSettings method', () => {
+    expectTypeOf(services.settings).toHaveProperty('getSettings');
+  });
+
+  it('services.llm has streamText', () => {
+    expectTypeOf(services.llm).toHaveProperty('streamText');
+  });
+
+  it('ServiceRegistry keyof includes all registered services', () => {
+    type Keys = keyof ServiceRegistry;
+    expectTypeOf<'llm'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'prompt'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'database'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'brain'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
+  });
+});
+
+describe('Registry-based inference — entity queries', () => {
+  it('findAll with registered entity key infers shape without generic', () => {
+    // Cast needed to match the overload's E extends keyof EntityShapeRegistry & string
+    const actions = findAll('Action' as 'Action' & EARS.Entity);
+    expectTypeOf(actions).items.toHaveProperty('label');
+    expectTypeOf(actions).items.toHaveProperty('actionFn');
+    expectTypeOf(actions).items.toHaveProperty('id');
+  });
+
+  it('findFirst with registered entity key infers shape without generic', () => {
+    const thread = findFirst('Thread' as 'Thread' & EARS.Entity, 'status', 'active');
+    expectTypeOf(thread).exclude<undefined>().toHaveProperty('topic');
+    expectTypeOf(thread).exclude<undefined>().toHaveProperty('status');
+  });
+
+  it('findById with branded EntityId infers shape without generic', () => {
+    const id = 'test-123' as EARS.EntityId<'Action'>;
+    const result = findById(id);
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('label');
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('actionFn');
+  });
+
+  it('fallback generic overload still works for custom entities', () => {
+    type CustomEntity = { foo: string };
+    const items = findAll<CustomEntity>('CustomEntity' as EARS.Entity);
+    expectTypeOf(items).items.toHaveProperty('foo');
   });
 });
 

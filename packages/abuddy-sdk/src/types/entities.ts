@@ -143,3 +143,22 @@ export type EntityShape<E extends string> =
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface PluginEventRegistry {}
+
+/**
+ * Maps service names to their types.
+ *
+ * Empty by default — packs augment via declaration merging:
+ * ```ts
+ * declare module '@abuddy/sdk/types' {
+ *   interface ServiceRegistry {
+ *     llm: typeof import('./services/llm');
+ *     prompt: PromptService;
+ *   }
+ * }
+ * ```
+ *
+ * When augmented, `services.llm.streamChat(...)` gets full
+ * autocomplete and type checking.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ServiceRegistry {}

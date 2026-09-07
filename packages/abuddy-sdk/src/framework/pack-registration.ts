@@ -39,7 +39,7 @@ export interface PackEARS {
 export interface PackRegistration {
   id: string;
   systems: PackSystemDef[];
-  services?: Record<string, unknown>;
+  services?: Record<string, unknown> & Partial<import('../types/entities').ServiceRegistry>;
   ears?: PackEARS;
   boot?: PackBootHooks;
   migrations?: PackMigration[];
