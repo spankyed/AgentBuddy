@@ -59,6 +59,7 @@
       "designation": "threads",
       "system": { "entry": "src/features/threads/be/system.ts", "exportName": "threadsEntry" },
       "plugin": { "entry": "src/features/threads/fe/plugin.ts", "label": "Threads", "icon": "BotMessageSquare" },
+      "references": "src/features/threads/fe/references",
       "services": {
         "chat": "src/features/threads/be/services/chat",
         "artifact": "src/features/threads/be/services/artifact",
@@ -78,6 +79,7 @@
       "id": "notes",
       "system": { "entry": "src/features/notes/be/system.ts", "exportName": "notesEntry" },
       "plugin": { "entry": "src/features/notes/fe/plugin.ts", "label": "Notes", "icon": "NotebookText" },
+      "references": "src/features/notes/fe/references",
       "services": {}
     },
     {
@@ -99,6 +101,7 @@
       "id": "library",
       "system": { "entry": "src/features/library/be/system.ts", "exportName": "libraryEntry" },
       "plugin": { "entry": "src/features/library/fe/plugin.ts", "label": "Library", "icon": "Library", "isPinned": true },
+      "references": "src/features/library/fe/references",
       "services": {
         "library": "src/features/library/be/services/library"
       }

@@ -298,6 +298,49 @@ ${entries.join('\n')}
 `;
 }
 
+function generateReferenceExtensions() {
+  const features = manifest.features ?? [];
+  const refFeatures = features.filter(f => f.references);
+
+  const imports = refFeatures.map((f, i) => {
+    const path = toImportPath(f.references);
+    return `import { refTypes as refTypes${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${path}';`;
+  }).join('\n');
+
+  const refTypesSpread = refFeatures.map((_, i) => `  ...refTypes${i},`).join('\n');
+  const categoriesSpread = refFeatures.map((_, i) => `  ...categories${i},`).join('\n');
+  const providersEntries = refFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
+
+  return `${HEADER}
+import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from '../registries/reference-types';
+${imports}
+
+export const REF_TYPES: Record<string, RefTypeConfig> = {
+${refTypesSpread}
+};
+
+export const CATEGORIES: CategoryConfig[] = [
+${categoriesSpread}
+];
+
+export const ITEMS_PROVIDERS: CategoryItemsProvider[] = [
+${providersEntries}
+];
+
+export const PROTOCOL_TO_TYPE: Record<string, string> = Object.fromEntries(
+  Object.entries(REF_TYPES).map(([type, cfg]) => [cfg.protocol, type])
+);
+
+export const ALL_PROTOCOLS: string[] = Object.values(REF_TYPES).map((cfg) => cfg.protocol);
+
+export function categoryOfType(type: string): string {
+  return REF_TYPES[type]?.category ?? '';
+}
+
+export type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from '../registries/reference-types';
+`;
+}
+
 function generateServiceTypes() {
   return `${HEADER}
 import type { featureServices } from './services';
@@ -325,6 +368,7 @@ const files = [
   ['src/__generated__/types.ts', generateTypes()],
   ['src/__generated__/services.ts', generateServices()],
   ['src/__generated__/service-types.ts', generateServiceTypes()],
+  ['src/__generated__/extensions.ts', generateReferenceExtensions()],
 ];
 
 for (const [path, content] of files) {

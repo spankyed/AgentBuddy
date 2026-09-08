@@ -4,8 +4,8 @@ export {
   PROTOCOL_TO_TYPE,
   ALL_PROTOCOLS,
   categoryOfType,
-  NOTE_TYPE_TO_REF_TYPE,
-} from '@/registries/extensions'
+} from '@/__generated__/extensions'
+export { NOTE_TYPE_TO_REF_TYPE } from '../../features/notes/fe/references'
 export type { RefTypeConfig, CategoryConfig } from '@/registries/reference-types'
 
 export type ReferenceRefType = string

@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
-import { CATEGORIES, ITEMS_PROVIDERS } from '@/registries/extensions'
+import { CATEGORIES, ITEMS_PROVIDERS } from '@/__generated__/extensions'
 import type { ReferenceItem, CategoryItemsProvider } from '@/registries/reference-types'
 
 export type ReferenceCategory = string
