@@ -1,5 +1,5 @@
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, subflow } from '../../__generated__/flow-helpers';
+import { entry, on, keepAlive, subflow } from '@/__generated__/flow-helpers';
 
 export default {
   "Root Flow": {

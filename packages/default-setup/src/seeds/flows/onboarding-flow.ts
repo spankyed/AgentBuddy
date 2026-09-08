@@ -1,5 +1,5 @@
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, action, branch, killFlow } from '../../__generated__/flow-helpers';
+import { entry, on, keepAlive, action, branch, killFlow } from '@/__generated__/flow-helpers';
 
 export default {
   "Onboarding Flow": [

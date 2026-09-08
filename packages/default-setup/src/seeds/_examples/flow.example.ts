@@ -5,7 +5,7 @@
  * Uses helper functions from _patterns.ts for concise DSL authoring.
  */
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, branch, action, fire, subflow } from '../../__generated__/flow-helpers';
+import { entry, on, keepAlive, branch, action, fire, subflow } from '@/__generated__/flow-helpers';
 
 export default {
   /** Linear: entry → action → fire */
