@@ -19,7 +19,27 @@ Actions, prompts, flows, library, notes, and faqs compiled to JSON for runtime e
 ## Flows
 
 - Default export a `FlowDSL` object (`export default { ... } satisfies FlowDSL`)
-- Files prefixed with `_` (e.g., `_patterns.ts`) are helpers, not compiled
+- Import helpers from `#generated/flow-helpers` (auto-generated from step definitions in `abuddy.json`)
+- Files prefixed with `_` are helpers, not compiled
+
+## Settings
+
+Each feature has a `settings.ts` (`src/features/<name>/settings.ts`) that declares its slice of the default settings. The compiler deep-merges the base settings (`src/seeds/default-settings.ts`) with all 13 per-feature files into a single compiled object.
+
+Every feature settings file follows this shape:
+
+```ts
+export default {
+  plugins: {
+    _meta: { visibility: { <pluginId>: true | false } },  // sidebar tab visibility
+    <pluginId>: { ... }  // feature-specific defaults (optional)
+  }
+}
+```
+
+- `_meta.visibility` controls whether the plugin's sidebar tab is shown by default
+- Feature-specific defaults (hotkeys, modes, display preferences) go under the plugin id key
+- Features with no settings beyond visibility still need the file (e.g., `settings/settings.ts` just sets `visibility: { settings: true }`)
 
 ## Commands
 
