@@ -54,27 +54,32 @@
         </div>
       </section>
 
-      <!-- Metadata -->
-      <section class="grid grid-cols-2 gap-x-6 gap-y-3">
-        <div v-if="pack.hostVersion">
-          <dt class="text-xs text-neutral-500 mb-0.5">Host version</dt>
-          <dd class="text-sm text-neutral-300">{{ pack.hostVersion }}</dd>
+      <!-- Summary stats -->
+      <section class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
+        <span v-if="pack.systems.length">{{ pack.systems.length }} systems</span>
+        <span v-if="pack.services.length">{{ pack.services.length }} services</span>
+        <span v-if="pack.plugins.length">{{ pack.plugins.length }} plugins</span>
+        <span v-if="entityEntries.length">{{ entityEntries.length }} entities</span>
+        <span v-if="relKindEntries.length">{{ relKindEntries.length }} relations</span>
+        <span v-if="pack.steps.length">{{ pack.steps.length }} steps</span>
+        <span v-if="pack.artifacts.length">{{ pack.artifacts.length }} artifacts</span>
+        <span v-if="pack.blocks.length">{{ pack.blocks.length }} blocks</span>
+        <span v-if="pack.migrationCount">{{ pack.migrationCount }} migrations</span>
+      </section>
+
+      <!-- Extra metadata for external packs -->
+      <section v-if="pack.hostVersion || pack.registeredAt || pack.dir" class="space-y-1 text-xs">
+        <div v-if="pack.hostVersion" class="flex gap-2">
+          <span class="text-neutral-500">Requires host</span>
+          <span class="text-neutral-400">{{ pack.hostVersion }}</span>
         </div>
-        <div>
-          <dt class="text-xs text-neutral-500 mb-0.5">Frontend</dt>
-          <dd class="text-sm text-neutral-300">{{ pack.hasFeEntry ? 'Yes' : 'No' }}</dd>
+        <div v-if="pack.registeredAt" class="flex gap-2">
+          <span class="text-neutral-500">Installed</span>
+          <span class="text-neutral-400">{{ formatDate(pack.registeredAt) }}</span>
         </div>
-        <div v-if="pack.registeredAt">
-          <dt class="text-xs text-neutral-500 mb-0.5">Installed</dt>
-          <dd class="text-sm text-neutral-300">{{ formatDate(pack.registeredAt) }}</dd>
-        </div>
-        <div v-if="pack.dir">
-          <dt class="text-xs text-neutral-500 mb-0.5">Directory</dt>
-          <dd class="text-sm text-neutral-300 truncate" :title="pack.dir">{{ pack.dir }}</dd>
-        </div>
-        <div v-if="pack.migrationCount > 0">
-          <dt class="text-xs text-neutral-500 mb-0.5">Migrations</dt>
-          <dd class="text-sm text-neutral-300">{{ pack.migrationCount }}</dd>
+        <div v-if="pack.dir" class="flex gap-2 min-w-0">
+          <span class="text-neutral-500 flex-shrink-0">Directory</span>
+          <span class="text-neutral-400 truncate" :title="pack.dir">{{ pack.dir }}</span>
         </div>
       </section>
 
