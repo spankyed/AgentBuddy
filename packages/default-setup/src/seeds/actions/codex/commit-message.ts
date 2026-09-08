@@ -5,7 +5,8 @@
  * mode is set to Codex. Mirrors CC: Commit Message but uses `codex exec`.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 import { formatProviderError } from '../_helpers/format-provider-error';
 
 export const meta: ActionMeta = {

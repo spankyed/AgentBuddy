@@ -4,7 +4,8 @@
  * switching to bypass mode.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context';
 import { DONT_BYPASS } from './_helpers/auto-approve';
 

@@ -1,6 +1,7 @@
 /** CDX: Handle Summarize — roll back and trigger Codex app-server compaction. */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { createStreamWriter } from '../claude-code/_helpers/stream-writer';
 import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer';
 import { createThinkingWriter } from '../claude-code/_helpers/thinking-writer';

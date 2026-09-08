@@ -12,7 +12,7 @@
  * helper adds zero runtime dependencies.
  */
 
-import type { Services } from '../../../types';
+import type { Services } from '@/__generated__/services';
 
 export interface AwaitMessageResponseOptions {
   /** How long to wait before giving up. Default: 10 minutes. */

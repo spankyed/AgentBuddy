@@ -9,7 +9,8 @@
  * (critical for resume), while this action handles the UI-facing card.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { updateClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

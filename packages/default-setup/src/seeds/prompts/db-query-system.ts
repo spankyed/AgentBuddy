@@ -1,4 +1,4 @@
-import type { PromptMeta } from '../types';
+import type { PromptMeta } from '@abuddy/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'DB Query System',

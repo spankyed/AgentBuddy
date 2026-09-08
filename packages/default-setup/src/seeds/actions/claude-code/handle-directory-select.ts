@@ -4,7 +4,8 @@
  * original chat query that was blocked by the missing CWD.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { persistClaudeState, setProjectDirectory, updateClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

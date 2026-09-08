@@ -1,6 +1,7 @@
 /** CDX: Route Response — classifies interactive block responses for the flow's branch node. */
 
-import type { ActionMeta, Services } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services } from '@/__generated__/services';
 import { getCodexState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

@@ -330,11 +330,17 @@ ${perFeature}
     }
 
     return `${HEADER}
+import type { z } from 'zod';
+import type { EARS } from '@abuddy/sdk';
 ${imports.join('\n')}
 
 export const featureServices = {
 ${entries.join('\n')}
 };
+
+export type Services = typeof featureServices;
+export type Z = typeof z;
+export type EntityId = EARS.EntityId;
 `;
   }
 

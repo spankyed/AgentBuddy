@@ -10,7 +10,8 @@
  * Queue drain stays in the consumer (ordering-critical).
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { getClaudeState, updateClaudeState, updateChatState, endGoal } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 

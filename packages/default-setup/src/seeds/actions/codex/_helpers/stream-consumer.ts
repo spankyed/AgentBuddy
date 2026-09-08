@@ -7,7 +7,7 @@
  * requests, driving the writers and emitting brain events.
  */
 
-import type { Services, EntityId } from '../../../types';
+import type { Services, EntityId } from '@/__generated__/services';
 import type { StreamWriter } from '../../claude-code/_helpers/stream-writer';
 import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activity-writer';
 import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer';

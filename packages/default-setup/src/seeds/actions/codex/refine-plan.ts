@@ -1,6 +1,7 @@
 /** CDX: Refine Plan — clears pending plan approval and starts a new plan turn with user feedback. */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

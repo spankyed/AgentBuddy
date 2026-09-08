@@ -27,7 +27,8 @@
  * Claude-Code-specific feature and goes straight to its action.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { persistClaudeState, getClaudeState, killTurn, updateChatState, setRunning } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

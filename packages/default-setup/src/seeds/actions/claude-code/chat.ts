@@ -14,7 +14,8 @@
  * `mode === 'Claude Code'`.
  */
 
-import type { ActionMeta, Services, Z, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z, EntityId } from '@/__generated__/services';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { createThinkingWriter } from './_helpers/thinking-writer';

@@ -1,6 +1,7 @@
 /** CDX: Handle Fork — create an app-server fork for a newly forked app thread. */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { ensureSessionMarker, getCodexState, persistCodexState, dequeueMessage, updateChatState } from './_helpers/thread-context';
 import { replayQueuedMessage } from './_helpers/stream-consumer';
 

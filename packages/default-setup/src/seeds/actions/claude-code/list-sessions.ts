@@ -7,7 +7,8 @@
  * wrapper).
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 
 export const meta: ActionMeta = {
   label: 'Claude Code List Sessions',

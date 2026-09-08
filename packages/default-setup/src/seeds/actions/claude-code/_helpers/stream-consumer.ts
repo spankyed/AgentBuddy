@@ -19,7 +19,7 @@
  * emits cc.stream.completed so the flow's Turn Completed action can clean up.
  */
 
-import type { Services, EntityId } from '../../../types';
+import type { Services, EntityId } from '@/__generated__/services';
 import { isPlanFileWrite, DONT_BYPASS } from './auto-approve';
 import { createStreamWriter } from './stream-writer';
 import { createToolActivityWriter } from './tool-activity-writer';

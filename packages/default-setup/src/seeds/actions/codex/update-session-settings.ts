@@ -3,7 +3,8 @@
  * and auto-approves pending tool requests when switching to auto_review.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

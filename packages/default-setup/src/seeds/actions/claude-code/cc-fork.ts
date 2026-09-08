@@ -2,7 +2,8 @@
  * CC: Fork — forks the current thread from the last assistant message.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 
 export const meta: ActionMeta = {
   label: 'CC: Fork',

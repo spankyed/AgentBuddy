@@ -2,7 +2,8 @@
  * CC: Update Worktree — persists the user's worktree toggle to thread context.
  */
 
-import type { ActionMeta, Services } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services } from '@/__generated__/services';
 import { persistClaudeState, getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

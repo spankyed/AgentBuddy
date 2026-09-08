@@ -4,7 +4,7 @@
  * Demonstrates: linear, branching, long-running, parallel exits, and sub-flow patterns.
  * Uses helper functions from _patterns.ts for concise DSL authoring.
  */
-import type { FlowDSL } from '../types';
+import type { FlowDSL } from '@abuddy/sdk/build';
 import { entry, on, keepAlive, branch, action, fire, subflow } from '#generated/flow-helpers';
 
 export default {

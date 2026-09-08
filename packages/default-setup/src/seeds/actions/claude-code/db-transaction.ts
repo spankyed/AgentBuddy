@@ -4,7 +4,8 @@
  * Triggered by the `db.query` brain event when mode is 'transaction'.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 import { formatProviderError } from '../_helpers/format-provider-error';
 
 export const meta: ActionMeta = {

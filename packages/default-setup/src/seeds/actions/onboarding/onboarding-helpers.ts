@@ -1,4 +1,4 @@
-import type { EntityId, Services } from '../../types';
+import type { EntityId, Services } from '@/__generated__/services';
 
 export interface OnboardingState {
   step: 'welcome' | 'projects' | 'import-threads' | 'pick-thread' | 'choose-mode' | 'complete';

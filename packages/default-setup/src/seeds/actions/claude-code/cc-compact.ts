@@ -2,7 +2,8 @@
  * CC: Compact — compacts a Claude Code session's context and creates a marker message.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 import { getClaudeState, persistClaudeState, updateChatState, dequeueMessage } from './_helpers/thread-context';
 import { replayQueuedMessage } from './_helpers/stream-consumer';
 

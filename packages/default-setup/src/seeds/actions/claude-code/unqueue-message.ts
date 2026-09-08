@@ -3,7 +3,8 @@
  * running turn. The user clicked "Cancel" on the amber "Queued" indicator.
  */
 
-import type { ActionMeta, Services } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services } from '@/__generated__/services';
 import { dequeueMessage, getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

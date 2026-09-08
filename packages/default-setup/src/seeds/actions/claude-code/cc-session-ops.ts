@@ -5,7 +5,8 @@
  * parsing, message import, and session artifact setup plumbing.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 import { getClaudeState, persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

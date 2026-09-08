@@ -8,7 +8,8 @@
  * initialMessage in a new session.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 import { resolvePlanDraft, type PlanArtifactContent } from './_helpers/plan-artifact';
 

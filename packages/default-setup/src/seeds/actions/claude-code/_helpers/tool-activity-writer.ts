@@ -33,7 +33,7 @@
  * Phase A.
  */
 
-import type { Services, EntityId } from '../../../types';
+import type { Services, EntityId } from '@/__generated__/services';
 import { computeLabel } from './tool-activity-label';
 import type { ToolActivityEntry, ToolActivityBlockProps } from './tool-activity-types';
 

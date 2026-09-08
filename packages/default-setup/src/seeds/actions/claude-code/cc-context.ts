@@ -2,7 +2,8 @@
  * CC: Context — shows context window usage breakdown for the current session.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseContextMarkdown } from './_helpers/context-parser';
 

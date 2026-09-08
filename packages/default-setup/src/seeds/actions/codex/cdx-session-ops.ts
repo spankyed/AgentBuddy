@@ -2,7 +2,8 @@
  * CDX: Session Ops - handles session-heavy cdx- commands.
  */
 
-import type { ActionMeta, EntityId, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { EntityId, Services, Z } from '@/__generated__/services';
 import { ensureSessionMarker, getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

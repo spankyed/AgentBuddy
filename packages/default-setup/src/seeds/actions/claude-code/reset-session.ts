@@ -7,7 +7,8 @@
  * deleted — it's still recoverable via `claudeCode.sessions.list()`.
  */
 
-import type { ActionMeta, Services, Z, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z, EntityId } from '@/__generated__/services';
 import { clearClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

@@ -9,7 +9,8 @@
  * Runs on flow entry before CDX: Start Server.
  */
 
-import type { ActionMeta, Services } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services } from '@/__generated__/services';
 
 export const meta: ActionMeta = {
   label: 'CDX: Reconcile State',

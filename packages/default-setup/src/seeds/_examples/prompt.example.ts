@@ -4,7 +4,7 @@
  * Demonstrates: meta with typed inputs, output schema, and template function.
  * The template function is synchronous and returns a string.
  */
-import type { PromptMeta } from '../types';
+import type { PromptMeta } from '@abuddy/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Summarize Text',

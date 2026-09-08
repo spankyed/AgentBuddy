@@ -6,7 +6,8 @@
  * until the model signals GOAL_MET or the 20-iteration cap is hit.
  */
 
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 import {
   getClaudeState,
   persistClaudeState,

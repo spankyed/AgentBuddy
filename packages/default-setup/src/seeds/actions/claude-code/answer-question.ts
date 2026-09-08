@@ -3,7 +3,8 @@
  * back to the CLI and resumes streaming.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { persistClaudeState, setRunning, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

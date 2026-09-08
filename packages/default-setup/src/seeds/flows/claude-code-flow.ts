@@ -1,4 +1,4 @@
-import type { FlowDSL } from '../types';
+import type { FlowDSL } from '@abuddy/sdk/build';
 import { entry, on, keepAlive, action, branch } from '#generated/flow-helpers';
 
 /**

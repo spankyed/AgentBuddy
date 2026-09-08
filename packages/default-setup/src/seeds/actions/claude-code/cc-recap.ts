@@ -5,7 +5,8 @@
  * prompt never pollutes the active session's JSONL history.
  */
 
-import type { ActionMeta, Services, Z, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z, EntityId } from '@/__generated__/services';
 
 export const meta: ActionMeta = {
   label: 'CC: Recap',

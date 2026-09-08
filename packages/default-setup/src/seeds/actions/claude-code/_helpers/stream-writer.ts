@@ -16,7 +16,7 @@
  * The writer owns no external state — one instance per streaming message.
  */
 
-import type { Services, EntityId } from '../../../types';
+import type { Services, EntityId } from '@/__generated__/services';
 
 export interface StreamWriterOptions {
   /** Minimum ms between `updateMessageState` calls. Default 80ms. */

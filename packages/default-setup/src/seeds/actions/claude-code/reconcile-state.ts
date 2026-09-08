@@ -14,7 +14,8 @@
  * Runs on flow entry before keepAlive.
  */
 
-import type { ActionMeta, Services } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services } from '@/__generated__/services';
 
 export const meta: ActionMeta = {
   label: 'CC: Reconcile State',

@@ -1,6 +1,7 @@
 /** CDX: Handle Revert — roll back Codex app-server history after an app revert. */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, EntityId } from '@/__generated__/services';
 import { getCodexState, killTurn, persistCodexState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {

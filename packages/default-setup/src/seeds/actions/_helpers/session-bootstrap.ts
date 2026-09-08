@@ -1,4 +1,4 @@
-import type { EntityId, Services } from '../../types';
+import type { EntityId, Services } from '@/__generated__/services';
 
 type ThreadMessage = {
   id?: string;

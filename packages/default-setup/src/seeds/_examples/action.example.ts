@@ -4,7 +4,8 @@
  * Demonstrates: meta definition, LLM calls (generateText + generateObject),
  * prompt templates, zod schemas, service usage, and error handling.
  */
-import type { ActionMeta, Services, Z } from '../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
+import type { Services, Z } from '@/__generated__/services';
 
 export const meta: ActionMeta = {
   label: 'Analyze Text',
