@@ -31,7 +31,7 @@ async function uploadAndInsertImage(file: File, editor: Editor | undefined, enti
 
   try {
     const base64 = await fileToBase64(file)
-    const url = await window.electronAPI?.media.upload(entityId, base64, file.type)
+    const url = await (window as any).electronAPI?.media.upload(entityId, base64, file.type)
     URL.revokeObjectURL(previewUrl)
     removeUploadPlaceholder(editor.view, id)
 

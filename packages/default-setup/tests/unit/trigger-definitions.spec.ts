@@ -1,6 +1,6 @@
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { listenerTrigger } from '../../src/steps/listener';
-import { scheduleTrigger } from '../../src/steps/schedule';
+import { listenerTrigger } from '../../src/extensions/steps/listener';
+import { scheduleTrigger } from '../../src/extensions/steps/schedule';
 
 beforeEach(() => {
   stepRegistry.clear();
