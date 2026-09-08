@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import { loadJSON } from '../utils/index';
 import { seedPath } from '../build/manifest';
-import type { SetupPackPreview, SetupPackPreviewItem, SetupPackItemKind } from '../build/preview';
+import type { PackSeedsPreview, PackSeedPreviewItem, PackSeedItemKind } from '../build/preview';
 
-export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType, SetupPackItemKind } from '../build/preview';
+export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from '../build/preview';
 
 const KEY_FIELDS = ['label', 'name', 'title', 'question', 'id'] as const;
 
@@ -24,23 +24,23 @@ function unwrapArray(data: any): any[] | null {
   return null;
 }
 
-function previewTreeItem(item: any): SetupPackPreviewItem {
+function previewTreeItem(item: any): PackSeedPreviewItem {
   if (item.type === 'collection') {
     return {
       key: item.name,
-      kind: 'collection' as SetupPackItemKind,
+      kind: 'collection' as PackSeedItemKind,
       description: item.description,
       childCount: item.children?.length ?? 0,
     };
   }
   return {
     key: item.name ?? item.title ?? item.id,
-    kind: item.type === 'document' ? 'document' as SetupPackItemKind : item.type,
+    kind: item.type === 'document' ? 'document' as PackSeedItemKind : item.type,
     childCount: item.children?.length,
   };
 }
 
-function previewSeedType(directory: string, key: string): SetupPackPreviewItem[] | null {
+function previewSeedType(directory: string, key: string): PackSeedPreviewItem[] | null {
   const filePath = seedPath(directory, key);
   if (key === 'settings') {
     return fs.existsSync(filePath)
@@ -94,9 +94,9 @@ function previewSeedType(directory: string, key: string): SetupPackPreviewItem[]
   return null;
 }
 
-export function previewPackSeeds(directory: string, seedKeys?: string[]): SetupPackPreview {
+export function previewPackSeeds(directory: string, seedKeys?: string[]): PackSeedsPreview {
   const keys = seedKeys ?? ['actions', 'prompts', 'flows', 'library', 'notes', 'settings'];
-  const preview: SetupPackPreview = {
+  const preview: PackSeedsPreview = {
     directory,
     seeds: {},
     missing: [],

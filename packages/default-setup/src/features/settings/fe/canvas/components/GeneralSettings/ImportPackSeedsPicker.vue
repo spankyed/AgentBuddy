@@ -170,23 +170,23 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-vue-next'
-import type { SetupPackPreview, SetupPackType } from '@/__generated__/types'
+import type { PackSeedsPreview, PackSeedType } from '@/__generated__/types'
 
 type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'
 
 const props = defineProps<{
-  preview: SetupPackPreview
-  selection: Record<SetupPackType, string[]>
-  expanded: Record<SetupPackType, boolean>
+  preview: PackSeedsPreview
+  selection: Record<PackSeedType, string[]>
+  expanded: Record<PackSeedType, boolean>
   importMode: ImportMode
   restartBrain: boolean
   importing: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'toggle-expand', key: SetupPackType): void
-  (e: 'toggle-type-all', key: SetupPackType): void
-  (e: 'toggle-item', payload: { key: SetupPackType; item: string }): void
+  (e: 'toggle-expand', key: PackSeedType): void
+  (e: 'toggle-type-all', key: PackSeedType): void
+  (e: 'toggle-item', payload: { key: PackSeedType; item: string }): void
   (e: 'set-mode', mode: ImportMode): void
   (e: 'toggle-restart-brain'): void
   (e: 'confirm'): void
@@ -200,7 +200,7 @@ const importModes: { value: ImportMode; label: string; description: string }[] =
 ]
 
 interface Row {
-  key: SetupPackType
+  key: PackSeedType
   label: string
   icon: any
   hint?: string
@@ -212,7 +212,7 @@ interface Row {
   missing: boolean
 }
 
-const TYPE_META: { key: SetupPackType; label: string; icon: any; hint?: string }[] = [
+const TYPE_META: { key: PackSeedType; label: string; icon: any; hint?: string }[] = [
   { key: 'actions', label: 'Actions', icon: Zap },
   { key: 'prompts', label: 'Prompts', icon: MessageSquare },
   {

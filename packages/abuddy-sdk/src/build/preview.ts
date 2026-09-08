@@ -1,17 +1,16 @@
-export type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
+export type PackSeedItemKind = 'collection' | 'document' | 'tasklist' | 'task';
 
-export interface SetupPackPreviewItem {
+export interface PackSeedPreviewItem {
   key: string;
   description?: string;
-  kind?: SetupPackItemKind;
+  kind?: PackSeedItemKind;
   childCount?: number;
 }
 
-export interface SetupPackPreview {
+export interface PackSeedsPreview {
   directory: string;
-  seeds: Record<string, SetupPackPreviewItem[]>;
+  seeds: Record<string, PackSeedPreviewItem[]>;
   missing: string[];
 }
 
-/** @deprecated Use SetupPackPreview['seeds'] indexing instead */
-export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
+export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';

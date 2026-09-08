@@ -34,7 +34,7 @@ export type {
 export { validateCronExpression } from './cron-utils';
 
 // Pack preview types
-export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType, SetupPackItemKind } from './preview';
+export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview';
 
 // Manifest bridge
 export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge';

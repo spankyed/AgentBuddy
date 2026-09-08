@@ -13,7 +13,7 @@ import { detectAllArrayChanges } from './change-detection';
 import * as path from 'path';
 // TODO: move seedData orchestration out of settings — belongs in core API (packs system)
 import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
-import { previewPackSeeds as readSetupPackPreview, type SetupPackPreview } from '@abuddy/sdk/seed';
+import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
 import { resetLmdbFiles } from '@abuddy/sdk/ears';
 import { createDefaultSettings } from './repository';
@@ -55,8 +55,8 @@ type IncomingSettingsEvents =
   | { type: 'SECRETS.CMD.DELETE_API_KEY'; id: string }
   | { type: 'SECRETS.CMD.GET_API_KEYS' }
   | { type: 'TEST_CLI_PROVIDER'; provider: string }
-  | { type: 'PREVIEW_SETUP_PACK'; directory: string }
-  | { type: 'IMPORT_SETUP_PACK'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
+  | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
+  | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: SettingsData }
   | { type: 'RESET_APP' }
 
@@ -69,10 +69,10 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
-  | { type: 'SETUP_PACK_IMPORTED'; result: Record<string, SeedCounts> }
-  | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
-  | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
-  | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
+  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, SeedCounts> }
+  | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
+  | { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview }
+  | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
@@ -345,29 +345,29 @@ export const settingsSystem = setup({
       });
     },
 
-    previewSetupPack: ({ system, event }) => {
-      const ev = settingsSpec.typeOf('PREVIEW_SETUP_PACK', event);
+    previewPackSeeds: ({ system, event }) => {
+      const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
       try {
-        const preview = readSetupPackPreview(ev.directory);
-        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW', preview }));
+        const preview = previewPackSeeds(ev.directory);
+        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_PREVIEW', preview }));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW_FAILED', error: message }));
+        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message }));
       }
     },
 
-    importSetupPack: ({ system, event }) => {
-      const ev = settingsSpec.typeOf('IMPORT_SETUP_PACK', event);
+    importPackSeeds: ({ system, event }) => {
+      const ev = settingsSpec.typeOf('IMPORT_PACK_SEEDS', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
-        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORTED', result }));
+        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result }));
         if (ev.restartBrain) {
           system.get('brain').send({ type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORT_FAILED', error: message }));
+        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORT_FAILED', error: message }));
       }
     },
 
@@ -416,11 +416,11 @@ export const settingsSystem = setup({
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',
         },
-        PREVIEW_SETUP_PACK: {
-          actions: 'previewSetupPack',
+        PREVIEW_PACK_SEEDS: {
+          actions: 'previewPackSeeds',
         },
-        IMPORT_SETUP_PACK: {
-          actions: 'importSetupPack',
+        IMPORT_PACK_SEEDS: {
+          actions: 'importPackSeeds',
         },
         RESET_APP: {
           target: 'resetting',

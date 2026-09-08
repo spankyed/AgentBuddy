@@ -43,7 +43,7 @@ export async function action(
     if (!systemPrompt) {
       services.emitter.sendToPlugin('database', {
         type: 'QUERY_ERROR',
-        error: 'DB Query prompt template not found. Import the setup pack.',
+        error: 'DB Query prompt template not found. Run seed import.',
       });
       return { success: false, error: 'Prompt not found' };
     }

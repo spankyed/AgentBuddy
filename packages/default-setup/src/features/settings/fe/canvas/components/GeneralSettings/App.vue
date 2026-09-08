@@ -4,7 +4,7 @@
     <div class="mb-8">
       <h2 class="text-xl font-semibold text-white mb-2">Application</h2>
       <p class="text-sm text-neutral-500">
-        Import setup packs, configure hotkeys, and manage app data.
+        Import pack seeds, configure hotkeys, and manage app data.
       </p>
     </div>
 
@@ -63,11 +63,11 @@
       <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
         <div class="flex items-center gap-2 mb-4">
           <PackageOpen class="w-4 h-4 text-neutral-400" />
-          <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Import Setup Pack</h3>
+          <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Import Pack Seeds</h3>
         </div>
 
         <p class="text-sm text-neutral-500 mb-4">
-          Import compiled actions, prompts, flows, library docs, and notes from a setup pack directory.
+          Import compiled actions, prompts, flows, library docs, and notes from a pack's compiled seed directory.
         </p>
 
         <!-- Idle / previewing: show the select-directory button -->
@@ -86,7 +86,7 @@
         </button>
 
         <!-- Selecting: show the picker -->
-        <ImportSetupPackPicker
+        <ImportPackSeedsPicker
           v-else-if="status === 'selecting' || status === 'importing'"
           :preview="preview!"
           :selection="selection"
@@ -175,8 +175,8 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
-import type { SetupPackType } from '@/__generated__/types'
-import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
+import type { PackSeedType } from '@/__generated__/types'
+import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 
 const actorSystem = useActorSystem()
@@ -202,17 +202,17 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
 
 const actor = actorSystem.get('settings')
 
-const setupPackImport = useSelector(actor, (state: any) => state.context.setupPackImport)
+const packSeedsImport = useSelector(actor, (state: any) => state.context.packSeedsImport)
 const resetting = useSelector(actor, (state: any) => state.context.resetting)
 
-const status = computed(() => setupPackImport.value?.status ?? 'idle')
-const preview = computed(() => setupPackImport.value?.preview ?? null)
-const selection = computed(() => setupPackImport.value?.selection)
-const expanded = computed(() => setupPackImport.value?.expanded)
-const importMode = computed(() => setupPackImport.value?.importMode ?? 'replace-on-collision')
-const restartBrainFlag = computed(() => setupPackImport.value?.restartBrain ?? false)
-const importResult = computed(() => setupPackImport.value?.result)
-const importError = computed(() => setupPackImport.value?.error)
+const status = computed(() => packSeedsImport.value?.status ?? 'idle')
+const preview = computed(() => packSeedsImport.value?.preview ?? null)
+const selection = computed(() => packSeedsImport.value?.selection)
+const expanded = computed(() => packSeedsImport.value?.expanded)
+const importMode = computed(() => packSeedsImport.value?.importMode ?? 'replace-on-collision')
+const restartBrainFlag = computed(() => packSeedsImport.value?.restartBrain ?? false)
+const importResult = computed(() => packSeedsImport.value?.result)
+const importError = computed(() => packSeedsImport.value?.error)
 
 const confirmingClearAppCache = ref(false)
 const appCacheStatus = ref<{ kind: 'success' | 'error'; message: string } | null>(null)
@@ -234,39 +234,39 @@ function onClearAppCache() {
 async function selectDirectory() {
   const result = await (window as any).electronAPI?.fileUtils?.selectPath?.({ type: 'directory' })
   if (!result) return
-  actor.send({ type: 'SETUP_PACK.PREVIEW', directory: result })
+  actor.send({ type: 'PACK_SEEDS.PREVIEW', directory: result })
 }
 
-function onToggleExpand(key: SetupPackType) {
-  actor.send({ type: 'SETUP_PACK.TOGGLE_EXPAND', key })
+function onToggleExpand(key: PackSeedType) {
+  actor.send({ type: 'PACK_SEEDS.TOGGLE_EXPAND', key })
 }
 
-function onToggleTypeAll(key: SetupPackType) {
-  actor.send({ type: 'SETUP_PACK.TOGGLE_TYPE_ALL', key })
+function onToggleTypeAll(key: PackSeedType) {
+  actor.send({ type: 'PACK_SEEDS.TOGGLE_TYPE_ALL', key })
 }
 
-function onToggleItem(payload: { key: SetupPackType; item: string }) {
-  actor.send({ type: 'SETUP_PACK.TOGGLE_ITEM', key: payload.key, item: payload.item })
+function onToggleItem(payload: { key: PackSeedType; item: string }) {
+  actor.send({ type: 'PACK_SEEDS.TOGGLE_ITEM', key: payload.key, item: payload.item })
 }
 
 function onSetMode(mode: string) {
-  actor.send({ type: 'SETUP_PACK.SET_MODE', mode } as any)
+  actor.send({ type: 'PACK_SEEDS.SET_MODE', mode } as any)
 }
 
 function onToggleRestartBrain() {
-  actor.send({ type: 'SETUP_PACK.TOGGLE_RESTART_BRAIN' })
+  actor.send({ type: 'PACK_SEEDS.TOGGLE_RESTART_BRAIN' })
 }
 
 function onConfirm() {
-  actor.send({ type: 'SETUP_PACK.CONFIRM_IMPORT' })
+  actor.send({ type: 'PACK_SEEDS.CONFIRM_IMPORT' })
 }
 
 function onCancel() {
-  actor.send({ type: 'SETUP_PACK.CANCEL' })
+  actor.send({ type: 'PACK_SEEDS.CANCEL' })
 }
 
 function onReset() {
-  actor.send({ type: 'SETUP_PACK.RESET_STATUS' })
+  actor.send({ type: 'PACK_SEEDS.RESET_STATUS' })
 }
 
 // Reset App

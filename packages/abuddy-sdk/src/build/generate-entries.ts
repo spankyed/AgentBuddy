@@ -272,7 +272,7 @@ export {};
 
     return `${HEADER}
 export type { EARS } from '@abuddy/sdk';
-export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType } from '@abuddy/sdk/build';
+export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType } from '@abuddy/sdk/build';
 
 ${perFeature}
 `;
