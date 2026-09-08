@@ -13,10 +13,25 @@ export interface PackInfo {
   entityCount: number;
   hasFeEntry: boolean;
   hostVersion?: string;
+  description?: string;
+  entities: Record<string, string>;
+  relKinds: Record<string, string>;
+  plugins: string[];
+  permissions: string[];
+  systems: string[];
+  services: string[];
+  steps: string[];
+  artifacts: string[];
+  blocks: string[];
+  migrationCount: number;
+  bootHooks: string[];
+  dir?: string;
+  registeredAt?: string;
 }
 
 export interface PacksContext {
   packs: PackInfo[];
+  selectedPackId: string | null;
   installing: string | null;
   confirmingUninstall: string | null;
   pendingChanges: boolean;
@@ -37,6 +52,8 @@ type PacksEvent =
   | { type: 'UI.CONFIRM_UNINSTALL'; packId: string }
   | { type: 'UI.CANCEL_UNINSTALL' }
   | { type: 'UI.TOGGLE_ENABLED'; packId: string }
+  | { type: 'UI.SELECT_PACK'; packId: string }
+  | { type: 'UI.BACK' }
   | { type: 'UI.DISMISS_ERROR' }
   | { type: 'UI.REFRESH' }
 
@@ -113,6 +130,14 @@ const packsState = setup({
       trpc.bus.send.mutate({ systemId: 'packs', type: 'TOGGLE_PACK_ENABLED', packId: ev.packId });
     },
 
+    selectPack: assign({
+      selectedPackId: ({ event }) => typeOf('UI.SELECT_PACK', event).packId,
+    }),
+
+    clearSelection: assign({
+      selectedPackId: () => null,
+    }),
+
     dismissError: assign({
       error: () => null,
     }),
@@ -126,6 +151,7 @@ const packsState = setup({
   initial: 'idle',
   context: {
     packs: [],
+    selectedPackId: null,
     installing: null,
     confirmingUninstall: null,
     pendingChanges: false,
@@ -147,6 +173,8 @@ const packsState = setup({
         'UI.CANCEL_UNINSTALL': { actions: 'cancelUninstall' },
         'UI.UNINSTALL': { actions: 'sendUninstall' },
         'UI.TOGGLE_ENABLED': { actions: 'sendToggleEnabled' },
+        'UI.SELECT_PACK': { actions: 'selectPack' },
+        'UI.BACK': { actions: 'clearSelection' },
         'UI.DISMISS_ERROR': { actions: 'dismissError' },
         'UI.REFRESH': { actions: 'sendRefresh' },
       },

@@ -7,6 +7,7 @@ import { emit } from '@abuddy/sdk/helpers';
 import { readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry } from './pack-registry';
 import type { PackRegistryEntry } from './pack-registry';
 import { installPack as runInstall, uninstallPack as runUninstall } from './pack-installer';
+import { getPackContributions, type PackContributions } from './pack-registration';
 
 export interface PackInfo {
   id: string;
@@ -17,6 +18,20 @@ export interface PackInfo {
   entityCount: number;
   hasFeEntry: boolean;
   hostVersion?: string;
+  description?: string;
+  entities: Record<string, string>;
+  relKinds: Record<string, string>;
+  plugins: string[];
+  permissions: string[];
+  systems: string[];
+  services: string[];
+  steps: string[];
+  artifacts: string[];
+  blocks: string[];
+  migrationCount: number;
+  bootHooks: string[];
+  dir?: string;
+  registeredAt?: string;
 }
 
 interface BuiltInPackEntry {
@@ -60,34 +75,62 @@ function readManifest(dir: string): Record<string, any> | null {
   return null;
 }
 
+function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contrib: PackContributions | null): PackInfo {
+  return {
+    ...base,
+    systems: contrib?.systems ?? [],
+    services: contrib?.services ?? [],
+    steps: contrib?.steps ?? [],
+    artifacts: contrib?.artifacts ?? [],
+    blocks: contrib?.blocks ?? [],
+    relKinds: contrib?.relKinds ?? {},
+    migrationCount: contrib?.migrationCount ?? 0,
+    bootHooks: contrib?.bootHooks ?? [],
+  };
+}
+
 function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
   return entries.map(e => {
     const manifest = readManifest(e.dir);
-    return {
+    const entities = manifest?.entities ?? {};
+    const contrib = getPackContributions(e.id);
+    return mergeContributions({
       id: e.id,
       name: e.name,
       version: e.version,
       enabled: e.enabled,
       builtIn: false,
-      entityCount: Object.keys(manifest?.entities ?? {}).length,
-      hasFeEntry: !!manifest?.fe?.entry,
+      entityCount: Object.keys(entities).length,
+      hasFeEntry: !!manifest?.fe?.entry || (contrib?.systems ?? []).length > 0,
       hostVersion: manifest?.hostVersion,
-    };
+      description: manifest?.description,
+      entities,
+      plugins: (manifest?.plugins ?? []).map((p: any) => p.id),
+      permissions: manifest?.permissions ?? [],
+      dir: e.dir,
+      registeredAt: e.registeredAt,
+    }, contrib);
   });
 }
 
 function toBuiltInPackInfoList(): PackInfo[] {
   return _builtInPacks.map(p => {
     const manifest = readManifest(p.dir);
-    return {
+    const entities = manifest?.entities ?? {};
+    const contrib = getPackContributions(p.id);
+    return mergeContributions({
       id: p.id,
       name: p.name,
       version: p.version,
       enabled: true,
       builtIn: true,
-      entityCount: Object.keys(manifest?.entities ?? {}).length,
-      hasFeEntry: !!manifest?.fe?.entry,
-    };
+      entityCount: Object.keys(entities).length,
+      hasFeEntry: !!manifest?.fe?.entry || (contrib?.systems ?? []).length > 0,
+      description: manifest?.description,
+      entities,
+      plugins: (manifest?.plugins ?? []).map((pp: any) => pp.id),
+      permissions: manifest?.permissions ?? [],
+    }, contrib);
   });
 }
 

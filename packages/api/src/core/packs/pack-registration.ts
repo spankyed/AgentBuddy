@@ -206,3 +206,36 @@ export function getRegisteredMigrations(): PackMigration[] {
   }
   return migrations;
 }
+
+export interface PackContributions {
+  systems: string[];
+  services: string[];
+  steps: string[];
+  artifacts: string[];
+  blocks: string[];
+  relKinds: Record<string, string>;
+  migrationCount: number;
+  bootHooks: string[];
+}
+
+export function getPackContributions(packId: string): PackContributions | null {
+  const reg = registrations.get(packId);
+  if (!reg) return null;
+
+  const bootHooks: string[] = [];
+  if (reg.boot?.earlySystem) bootHooks.push('earlySystem');
+  if (reg.boot?.createDefaultSettings) bootHooks.push('createDefaultSettings');
+  if (reg.boot?.seed) bootHooks.push('seed');
+  if (reg.boot?.shutdown) bootHooks.push('shutdown');
+
+  return {
+    systems: reg.systems.map(s => s.id),
+    services: reg.services ? Object.keys(reg.services) : [],
+    steps: (reg.steps ?? []).map(s => s.type),
+    artifacts: (reg.artifacts ?? []).map(a => a.type),
+    blocks: (reg.blocks ?? []).map(b => b.type),
+    relKinds: reg.ears?.relKinds ?? {},
+    migrationCount: reg.migrations?.length ?? 0,
+    bootHooks,
+  };
+}
