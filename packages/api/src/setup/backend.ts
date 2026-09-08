@@ -3,11 +3,12 @@ import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { getBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@/core/packs/pack-registration';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
-import { packsSystem, packsEvents } from '@/core/packs/packs-system';
+import { packsSystem, packsEvents, setBuiltInPacks } from '@/core/packs/packs-system';
 import {
   loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks, seedPackData,
 } from '@/core/packs/pack-loader';
+import { discoverBuiltInPacks } from '@/core/packs/pack-discovery';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
@@ -32,6 +33,7 @@ export async function setupBackend(): Promise<void> {
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
   if (builtInDir) {
     await loadBuiltInPacks(builtInDir);
+    setBuiltInPacks(discoverBuiltInPacks(builtInDir));
   }
 
   // Run early boot hooks (logs system must start before anything else)

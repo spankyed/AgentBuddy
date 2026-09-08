@@ -45,14 +45,14 @@
       </div>
     </div>
 
-    <!-- Pack list -->
-    <div>
+    <!-- External packs -->
+    <div class="mb-6">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-medium text-neutral-400">Installed Packs</h3>
-        <span v-if="packs.length > 0" class="text-xs text-neutral-600">{{ packs.length }} {{ packs.length === 1 ? 'pack' : 'packs' }}</span>
+        <h3 class="text-sm font-medium text-neutral-400">External</h3>
+        <span v-if="externalPacks.length > 0" class="text-xs text-neutral-600">{{ externalPacks.length }} {{ externalPacks.length === 1 ? 'pack' : 'packs' }}</span>
       </div>
 
-      <div v-if="packs.length === 0" class="py-12 text-center border border-dashed border-neutral-700/50 rounded-lg">
+      <div v-if="externalPacks.length === 0" class="py-12 text-center border border-dashed border-neutral-700/50 rounded-lg">
         <PackageIcon class="w-10 h-10 text-neutral-700 mx-auto mb-3" />
         <p class="text-neutral-500 text-sm mb-1">No external packs installed</p>
         <p class="text-neutral-600 text-xs">Install a pack from GitHub or a local directory</p>
@@ -60,7 +60,7 @@
 
       <div v-else class="space-y-2">
         <div
-          v-for="pack in packs"
+          v-for="pack in externalPacks"
           :key="pack.id"
           class="px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg"
         >
@@ -130,11 +130,42 @@
         </div>
       </div>
     </div>
+
+    <!-- Built-in packs -->
+    <div v-if="builtInPacks.length > 0">
+      <h3 class="text-sm font-medium text-neutral-400 mb-3">Built-in</h3>
+      <div class="space-y-2">
+        <div
+          v-for="pack in builtInPacks"
+          :key="pack.id"
+          class="flex items-center justify-between px-4 py-3 bg-neutral-800/30 border border-neutral-700/30 rounded-lg"
+        >
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-neutral-200">{{ pack.name }}</span>
+              <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-1">
+              <span class="text-xs text-neutral-500">{{ pack.id }}</span>
+              <template v-if="pack.entityCount > 0">
+                <span class="text-neutral-700">&middot;</span>
+                <span class="text-xs text-neutral-500">{{ pack.entityCount }} {{ pack.entityCount === 1 ? 'entity' : 'entities' }}</span>
+              </template>
+              <template v-if="pack.hasFeEntry">
+                <span class="text-neutral-700">&middot;</span>
+                <span class="text-xs text-neutral-500">UI</span>
+              </template>
+            </div>
+          </div>
+          <span class="text-xs text-neutral-600 flex-shrink-0">Always active</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { useActorSystem } from '@abuddy/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
@@ -145,6 +176,8 @@ const actorSystem = useActorSystem();
 const actor: PacksState = actorSystem.get(id);
 
 const packs = useSelector(actor, s => s.context.packs);
+const builtInPacks = computed(() => packs.value.filter(p => p.builtIn));
+const externalPacks = computed(() => packs.value.filter(p => !p.builtIn));
 const installing = useSelector(actor, s => s.context.installing);
 const confirmingUninstall = useSelector(actor, s => s.context.confirmingUninstall);
 const pendingChanges = useSelector(actor, s => s.context.pendingChanges);

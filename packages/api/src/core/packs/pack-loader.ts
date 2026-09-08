@@ -7,6 +7,7 @@ import { compareVersions } from '@/core/shared';
 import { APP_VERSION } from '@/version';
 import {
   discoverBuiltInPacks,
+  type BuiltInPackInfo,
   getPacksDir,
   discoverPacks,
   reconcileExternalRegistry,
@@ -25,12 +26,13 @@ export { computePackSeedHash, seedPackData } from './pack-seed';
 // ── Built-in pack loading ────────────────────────────────────────────
 
 // @tsup-rewrite-start loadBuiltInPacks
-export async function loadBuiltInPacks(packagesDir: string): Promise<void> {
+export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPackInfo[]> {
   const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
     logger.warn('No built-in packs found in ' + packagesDir);
-    return;
+    return [];
   }
+  const loaded: BuiltInPackInfo[] = [];
   for (const pack of discovered) {
     const entryPath = path.join(pack.dir, pack.entry);
     try {
@@ -40,11 +42,13 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<void> {
         continue;
       }
       registerPack(mod.registration);
+      loaded.push(pack);
       logger.info(`Loaded built-in pack: ${pack.id}`);
     } catch (err) {
       logger.error(`Failed to load built-in pack ${pack.id}:`, err as Error);
     }
   }
+  return loaded;
 }
 // @tsup-rewrite-end loadBuiltInPacks
 

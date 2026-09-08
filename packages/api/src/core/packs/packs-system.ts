@@ -13,10 +13,23 @@ export interface PackInfo {
   name: string;
   version: string;
   enabled: boolean;
-  registeredAt: string;
+  builtIn: boolean;
   entityCount: number;
   hasFeEntry: boolean;
   hostVersion?: string;
+}
+
+interface BuiltInPackEntry {
+  id: string;
+  name: string;
+  version: string;
+  dir: string;
+}
+
+let _builtInPacks: BuiltInPackEntry[] = [];
+
+export function setBuiltInPacks(packs: BuiltInPackEntry[] | undefined): void {
+  _builtInPacks = packs ?? [];
 }
 
 type IncomingPacksEvents =
@@ -47,7 +60,7 @@ function readManifest(dir: string): Record<string, any> | null {
   return null;
 }
 
-function toPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
+function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
   return entries.map(e => {
     const manifest = readManifest(e.dir);
     return {
@@ -55,7 +68,7 @@ function toPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
       name: e.name,
       version: e.version,
       enabled: e.enabled,
-      registeredAt: e.registeredAt,
+      builtIn: false,
       entityCount: Object.keys(manifest?.entities ?? {}).length,
       hasFeEntry: !!manifest?.fe?.entry,
       hostVersion: manifest?.hostVersion,
@@ -63,9 +76,25 @@ function toPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
   });
 }
 
+function toBuiltInPackInfoList(): PackInfo[] {
+  return _builtInPacks.map(p => {
+    const manifest = readManifest(p.dir);
+    return {
+      id: p.id,
+      name: p.name,
+      version: p.version,
+      enabled: true,
+      builtIn: true,
+      entityCount: Object.keys(manifest?.entities ?? {}).length,
+      hasFeEntry: !!manifest?.fe?.entry,
+    };
+  });
+}
+
 function emitPacksList(system: any) {
-  const entries = readPackRegistry();
-  system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: toPackInfoList(entries) }));
+  const external = toExternalPackInfoList(readPackRegistry());
+  const builtIn = toBuiltInPackInfoList();
+  system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] }));
 }
 
 export const packsSystem = setup({

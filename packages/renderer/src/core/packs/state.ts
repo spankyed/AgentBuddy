@@ -9,7 +9,7 @@ export interface PackInfo {
   name: string;
   version: string;
   enabled: boolean;
-  registeredAt: string;
+  builtIn: boolean;
   entityCount: number;
   hasFeEntry: boolean;
   hostVersion?: string;
