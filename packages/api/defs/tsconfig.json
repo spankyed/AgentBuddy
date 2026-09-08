@@ -14,6 +14,7 @@
       "@/__generated__/*": ["../default-setup/src/__generated__/*"],
       "@/registries/*": ["../default-setup/src/registries/*"],
       "@/features/*": ["../default-setup/src/features/*"],
+      "@/extensions/*": ["../default-setup/src/extensions/*"],
       "@/*": ["src/*"]
     }
   },

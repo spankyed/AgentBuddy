@@ -1,6 +1,9 @@
-import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { NodeBase } from '@abuddy/sdk/build';
+import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
+
+declare module '@abuddy/sdk/types' {
+  interface NodeEntityRegistry { create: CreateNode }
+}
 
 export interface DSLCreateNode extends DSLNodeBase {
   type: 'create';

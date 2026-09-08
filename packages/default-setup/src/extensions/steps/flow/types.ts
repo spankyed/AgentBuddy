@@ -1,5 +1,8 @@
-import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { NodeBase } from '@abuddy/sdk/build';
+import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
+
+declare module '@abuddy/sdk/types' {
+  interface NodeEntityRegistry { flow: FlowNode }
+}
 
 export interface DSLFlowNode extends DSLNodeBase {
   type: 'flow';

@@ -1,5 +1,8 @@
-import type { DSLNodeBase, DSLStepNode } from '@abuddy/sdk/build';
-import type { NodeBase } from '@abuddy/sdk/build';
+import type { DSLNodeBase, DSLStepNode, NodeBase } from '@abuddy/sdk/build';
+
+declare module '@abuddy/sdk/types' {
+  interface NodeEntityRegistry { switch: SwitchNode }
+}
 import { BinaryOperator } from '@abuddy/sdk/utils';
 
 export { BinaryOperator } from '@abuddy/sdk/utils';

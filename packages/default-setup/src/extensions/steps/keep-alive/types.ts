@@ -1,5 +1,8 @@
-import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { NodeBase } from '@abuddy/sdk/build';
+import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
+
+declare module '@abuddy/sdk/types' {
+  interface NodeEntityRegistry { keep_alive: KeepAliveNode }
+}
 
 export interface DSLKeepAliveNode extends DSLNodeBase {
   type: 'keep_alive';

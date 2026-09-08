@@ -20,6 +20,7 @@ export type { DSLFlowNode } from '@/extensions/steps/flow/types';
 export type { DSLCreateNode } from '@/extensions/steps/create/types';
 export type { DSLUpdateNode } from '@/extensions/steps/update/types';
 export type { DSLKeepAliveNode } from '@/extensions/steps/keep-alive/types';
+export type { DSLKillNode } from '@/extensions/steps/kill/types';
 
 export interface ActionMeta {
   label: string;

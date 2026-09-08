@@ -43,7 +43,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import type { SwitchNode, Condition } from '@/__generated__/types'
+import type { SwitchNode, Condition } from '@/extensions/steps/switch/types'
 import BaseNode, { type HandleConfig } from '@abuddy/sdk/fe/components/BaseNode.vue'
 import { NODE_DIMENSIONS } from '@abuddy/sdk/fe/components/node-dimensions'
 

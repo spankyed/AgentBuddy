@@ -162,3 +162,24 @@ export interface PluginEventRegistry {}
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ServiceRegistry {}
+
+/**
+ * Maps step `nodeType` strings to their runtime entity interfaces.
+ *
+ * Empty by default — packs augment via declaration merging:
+ * ```ts
+ * declare module '@abuddy/sdk/types' {
+ *   interface NodeEntityRegistry {
+ *     'action': ActionNode;
+ *     'llm': LLMNode;
+ *   }
+ * }
+ * ```
+ *
+ * When augmented, `NodeEntity` becomes a discriminated union of
+ * all registered step node types.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface NodeEntityRegistry {}
+
+export type NodeEntity = NodeEntityRegistry[keyof NodeEntityRegistry];

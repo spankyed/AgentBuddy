@@ -79,8 +79,7 @@ export function subflow(flow: string, opts?: { label?: string; map?: Record<stri
  * job is done (e.g. after onboarding completes).
  */
 export function killFlow(label: string = 'Kill Flow'): DSLStepNode {
-  // Cast needed until defs/ is regenerated with DSLKillNode via `npm run build:be`
-  return { type: 'kill', label } as unknown as DSLStepNode;
+  return { type: 'kill', label };
 }
 
 /** Schedule track: fires downstream steps on a cron schedule */
