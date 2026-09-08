@@ -5,7 +5,7 @@ import { switchStep } from './switch';
 import { fireStep } from './fire';
 import { transformStep } from './transform';
 import { queryStep } from './query';
-import { flowStep } from './flow';
+import { flowStep } from './subflow';
 import { createStep } from './create';
 import { updateStep } from './update';
 import { keepAliveStep } from './keep-alive';

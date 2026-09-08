@@ -12,7 +12,7 @@ import type {
   ExecutionContext
 } from '../types';
 import type { FlowEntity, NodeEntity } from '@/__generated__/types';
-import type { FlowNode } from '@/extensions/steps/flow/types';
+import type { FlowNode } from '@/extensions/steps/subflow/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
@@ -310,9 +310,9 @@ export const brainCommands = {
     const flowStepNode = qx(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
 
-    if (!flowStepNode || flowStepNode.nodeType !== 'flow') {
+    if (!flowStepNode || flowStepNode.nodeType !== 'subflow') {
       throw new Error(
-        `Cannot create flow TNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'flow' type`
+        `Cannot create flow TNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'subflow' type`
       );
     }
 
@@ -355,7 +355,7 @@ export const brainCommands = {
       label: flowStepNode.label || flow.label!,
       status: 'active',
       startedAt: now,
-      stepNodeType: 'flow',
+      stepNodeType: 'subflow',
       nodeAttributes: {
         ...(flowPrepared?.nodeAttributes || {}),
         ...(executionContext?.flowTNodeId && { _parentFlowTNodeId: executionContext.flowTNodeId })

@@ -302,7 +302,7 @@ describe('round-trip', () => {
       const exported = rt.roundTrip(flows.parentChild);
       const step = exported['Parent'][0].exits[0][0];
 
-      expect(step.type).toBe('flow');
+      expect(step.type).toBe('subflow');
       expect(step.flow).toBe('Child');
       expect(step.inherit).toBe(false);
       expect(step.map).toEqual({ userId: '$.data.id' });

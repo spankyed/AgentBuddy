@@ -88,7 +88,7 @@ export const steps = {
 
   // flow ref
   flowRef: {
-    type: 'flow' as const,
+    type: 'subflow' as const,
     flow: 'Child',
     inherit: false,
     map: { userId: '$.data.id' },

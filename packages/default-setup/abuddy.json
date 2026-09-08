@@ -222,7 +222,7 @@
       { "type": "action",     "path": "src/extensions/steps/action",     "dsl": { "primaryField": "action" } },
       { "type": "llm",        "path": "src/extensions/steps/llm",        "dsl": { "primaryField": "prompt" } },
       { "type": "fire",       "path": "src/extensions/steps/fire",       "dsl": { "primaryField": "event" } },
-      { "type": "flow",       "path": "src/extensions/steps/flow",       "dsl": { "primaryField": "flow" } },
+      { "type": "subflow",    "path": "src/extensions/steps/subflow",    "dsl": { "primaryField": "flow" } },
       { "type": "query",      "path": "src/extensions/steps/query",      "dsl": { "primaryField": "prompt" } },
       { "type": "create",     "path": "src/extensions/steps/create",     "dsl": { "primaryField": "entity" } },
       { "type": "update",     "path": "src/extensions/steps/update",     "dsl": { "primaryField": "target" } },

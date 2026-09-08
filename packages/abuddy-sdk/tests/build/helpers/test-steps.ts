@@ -221,12 +221,12 @@ export const queryStep: StepDefinition = {
 };
 
 export const flowStep: StepDefinition = {
-  type: 'flow',
+  type: 'subflow',
   build: {
     compile(node, nodeId, ts, ctx) {
       const flowRef = ctx.flows.get(node.flow as string);
       return {
-        entity: nodeEntity(nodeId, ts, 'flow', {
+        entity: nodeEntity(nodeId, ts, 'subflow', {
           label: (node.label as string) || (node.flow as string) || 'Flow',
           flowRef,
           propagateCtx: node.inherit !== false,
@@ -238,7 +238,7 @@ export const flowStep: StepDefinition = {
     validate: () => [],
     decompile(node, ctx) {
       const flowLabel = node.flowRef ? ctx.flowMap.get(node.flowRef as string) || node.flowRef : node.label || 'Unknown Flow';
-      const dsl: Record<string, unknown> = { type: 'flow', flow: flowLabel };
+      const dsl: Record<string, unknown> = { type: 'subflow', flow: flowLabel };
       if (node.label && node.label !== flowLabel) dsl.label = node.label;
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;

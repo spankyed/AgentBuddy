@@ -10,7 +10,7 @@ import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../.
 
 const FALLBACK_STEP_TYPES = [
   'action', 'llm', 'switch', 'fire', 'transform',
-  'query', 'flow', 'create', 'update', 'keep_alive', 'kill',
+  'query', 'subflow', 'create', 'update', 'keep_alive', 'kill',
 ] as const;
 
 interface ValidationContext {
@@ -343,7 +343,7 @@ function getStepLabel(step: Record<string, unknown>, index: number, resolved: Re
     case 'action': return step.action as string || `Action ${index}`;
     case 'llm': return step.prompt as string || `LLM ${index}`;
     case 'fire': return step.event as string || `Fire ${index}`;
-    case 'flow': return step.flow as string || `Flow ${index}`;
+    case 'subflow': return step.flow as string || `Flow ${index}`;
     case 'switch': return `Switch ${index}`;
     case 'transform': return `Transform ${index}`;
     case 'query': return `Query ${index}`;

@@ -3,7 +3,7 @@ import { defineAsyncComponent } from 'vue';
 import { Workflow } from 'lucide-vue-next';
 
 export const flowStepFE: StepDefinition = {
-  type: 'flow',
+  type: 'subflow',
   fe: {
     loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'purple',

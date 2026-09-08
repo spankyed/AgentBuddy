@@ -15,7 +15,7 @@ function compile(
       id: nodeId,
       entityType: EARS.Entity.Node,
       createdAt: ts,
-      nodeType: 'flow',
+      nodeType: 'subflow',
       label: (node.label as string) || (node.flow as string),
       description: node.description,
       flowRef,
@@ -46,7 +46,7 @@ function getLabel(step: Record<string, unknown>, index: number): string {
 
 function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
   const flowLabel = ctx.flowMap.get(node.flowRef as string) || node.flowRef;
-  const dsl: Record<string, unknown> = { type: 'flow', flow: flowLabel };
+  const dsl: Record<string, unknown> = { type: 'subflow', flow: flowLabel };
   if (node.label && node.label !== flowLabel) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
@@ -57,7 +57,7 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
 }
 
 export const flowStep: StepDefinition = {
-  type: 'flow',
+  type: 'subflow',
   build: { compile, validate, getLabel, decompile },
   runtime: { spawnsSubflow: true },
   fe: flowStepFE.fe,

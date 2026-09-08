@@ -143,7 +143,7 @@ describe('compile', () => {
     it('flow: entity has flowRef resolved from context, propagateCtx, fieldMappings', () => {
       const dsl = flows.parentChild;
       const result = c(dsl);
-      const flowNode = findEntity(result.entity, (e: any) => e.nodeType === 'flow');
+      const flowNode = findEntity(result.entity, (e: any) => e.nodeType === 'subflow');
       const childFlow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow && e.label === 'Child');
 
       expect(flowNode.flowRef).toBe(childFlow.id);

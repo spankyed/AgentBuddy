@@ -5,7 +5,7 @@
  * Uses helper functions from _patterns.ts for concise DSL authoring.
  */
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, branch, action, fire, flow } from '#generated/flow-helpers';
+import { entry, on, keepAlive, branch, action, fire, subflow } from '#generated/flow-helpers';
 
 export default {
   /** Linear: entry → action → fire */
@@ -82,7 +82,7 @@ export default {
   /** Sub-flow: delegate to another flow */
   'Orchestrator Flow': [
     entry([
-      flow('Analysis Flow', { label: 'run analysis' }),
+      subflow('Analysis Flow', { label: 'run analysis' }),
       fire('orchestration.complete'),
     ]),
   ],
