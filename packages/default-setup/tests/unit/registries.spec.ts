@@ -138,8 +138,8 @@ describe('core/seed — seeder registry', () => {
   });
 
   it('exports preview function', async () => {
-    const { previewSetupPack } = await import('../../src/registries/seed/preview');
+    const { previewPackSeeds } = await import('@abuddy/sdk/seed');
 
-    expect(typeof previewSetupPack).toBe('function');
+    expect(typeof previewPackSeeds).toBe('function');
   });
 });
