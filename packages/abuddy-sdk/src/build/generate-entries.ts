@@ -523,7 +523,7 @@ export {};
       if (!step.dsl) continue;
 
       const dsl = step.dsl;
-      const name = dsl.as ?? toCamelCase(step.type);
+      const name = toCamelCase(step.type);
 
       if (dsl.custom) {
         customReExports.push(`export * from '${toImportPath(step.path + '/helpers')}';`);

@@ -1,5 +1,5 @@
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, action, branch, killFlow } from '#generated/flow-helpers';
+import { entry, on, keepAlive, action, branch, kill } from '#generated/flow-helpers';
 
 export default {
   "Onboarding Flow": [
@@ -75,13 +75,13 @@ export default {
                 response: "$.steps[label=route-response].result.response",
               },
             }),
-            killFlow(),
+            kill(),
           ],
         },
         {
           if: "$.lastStep.result.step == 'complete'",
           steps: [
-            killFlow('Onboarding Complete'),
+            kill('Onboarding Complete'),
           ],
         },
       ]),
