@@ -30,17 +30,16 @@ describe('core/lifecycle — shutdown hooks', () => {
   });
 });
 
-describe('registries/boot — early boot exports', () => {
-  it('exports earlyBootSystem (logs system machine)', async () => {
-    const { earlyBootSystem } = await import('../../src/registries/boot');
+describe('boot exports — source modules', () => {
+  it('exports logsEntry (early boot system)', async () => {
+    const { logsEntry } = await import('../../src/features/logs/be/system');
 
-    expect(earlyBootSystem).toBeDefined();
-    // XState machines have an id and events property
-    expect(typeof earlyBootSystem.id).toBe('string');
+    expect(logsEntry).toBeDefined();
+    expect(typeof logsEntry.machine.id).toBe('string');
   });
 
   it('exports createDefaultSettings as a function', async () => {
-    const { createDefaultSettings } = await import('../../src/registries/boot');
+    const { createDefaultSettings } = await import('../../src/features/settings/be/repository');
 
     expect(typeof createDefaultSettings).toBe('function');
   });

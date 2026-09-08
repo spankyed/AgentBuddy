@@ -1,6 +1,11 @@
 node_modules/
 dist/
 src/__generated__/
+src/registries/ears.ts
+src/registries/system-ids.ts
+src/registries/event-channels.ts
+src/registries/types.ts
+src/registries/service-types.ts
 .abuddy/
 .env
 .DS_Store

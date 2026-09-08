@@ -20,7 +20,8 @@ import { logsEntry } from '../features/logs/be/system';
 
 import { featureServices } from '../registries/services';
 import { EARS } from '../registries/ears';
-import { createDefaultSettings, shutdownHook } from '../registries/boot';
+import { createDefaultSettings } from '../features/settings/be/repository';
+import { terminalService } from '../features/code/be/services/terminal';
 import { runBootSeed } from '../registries/seed/index';
 import { migrations } from '../migrations';
 import { standardSteps } from '../steps/register';
@@ -50,7 +51,7 @@ export const registration: PackRegistration = {
     earlySystem: logsEntry.machine,
     createDefaultSettings,
     seed: runBootSeed,
-    shutdown: shutdownHook,
+    shutdown: () => terminalService.killAll(),
   },
   migrations,
   features: [

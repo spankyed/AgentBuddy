@@ -94,19 +94,20 @@
     },
     {
       "id": "flows",
+      "typesEntry": "src/features/flows/be/config/types",
       "system": { "entry": "src/features/flows/be/system.ts", "exportName": "flowsEntry" },
       "plugin": { "entry": "src/features/flows/fe/plugin.ts", "label": "Flows", "icon": "Network", "isPinned": true },
       "services": []
     },
     {
       "id": "actions",
-      "system": { "entry": "src/features/actions/be/system.ts", "exportName": "actionsEntry" },
+      "system": { "entry": "src/features/actions/be/system.ts", "exportName": "actionsEntry", "outgoingEventsType": "OutgoingActionEvents" },
       "plugin": { "entry": "src/features/actions/fe/plugin.ts", "label": "Actions", "icon": "Play", "isPinned": true },
       "services": ["action"]
     },
     {
       "id": "prompts",
-      "system": { "entry": "src/features/prompts/be/system.ts", "exportName": "promptsEntry" },
+      "system": { "entry": "src/features/prompts/be/system.ts", "exportName": "promptsEntry", "outgoingEventsType": "OutgoingPromptEvents" },
       "plugin": { "entry": "src/features/prompts/fe/plugin.ts", "label": "Prompts", "icon": "Sparkle", "isPinned": true },
       "services": ["prompt"]
     },
