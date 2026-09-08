@@ -15,10 +15,10 @@ import Brain from '../features/brain/fe/plugin';
 import Database from '../features/database/fe/plugin';
 import Logs from '../features/logs/fe/plugin';
 import Settings from '../features/settings/fe/plugin';
-import { tiptapPlugins } from '../registries/tiptap-plugins';
-import { artifactDefinitions } from '../artifacts/register-fe';
-import { blockDefinitions } from '../blocks/register-fe';
-import { standardStepsFE } from '../steps/register-fe';
+import { tiptapPlugins } from '../extensions/tiptap-plugins';
+import { artifactDefinitions } from '../extensions/artifacts/register-fe';
+import { blockDefinitions } from '../extensions/blocks/register-fe';
+import { standardStepsFE } from '../extensions/steps/register-fe';
 import Welcome from '../extensions/Welcome.vue';
 
 registerPackFE({

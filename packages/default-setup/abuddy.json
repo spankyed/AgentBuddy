@@ -163,10 +163,10 @@
   ],
 
   "packServices": {
-    "textStream": "src/registries/services/text-stream",
-    "filesystem": "src/registries/services/filesystem",
-    "modelClient": "src/registries/services/model-client",
-    "openaiAuth": "src/registries/services/openai-auth"
+    "textStream": "src/extensions/services/text-stream",
+    "filesystem": "src/extensions/services/filesystem",
+    "modelClient": "src/extensions/services/model-client",
+    "openaiAuth": "src/extensions/services/openai-auth"
   },
 
   "defaultPlugin": "threads",
@@ -177,8 +177,8 @@
     "seed": "src/registries/seed/index.ts",
     "shutdown": "src/features/code/be/services/terminal.ts"
   },
-  "steps": "src/steps/register.ts",
-  "artifacts": "src/artifacts/register.ts",
-  "blocks": "src/blocks/register.ts",
+  "steps": "src/extensions/steps/register.ts",
+  "artifacts": "src/extensions/artifacts/register.ts",
+  "blocks": "src/extensions/blocks/register.ts",
   "migrations": "src/migrations/index.ts"
 }

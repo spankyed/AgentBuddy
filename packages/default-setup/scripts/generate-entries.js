@@ -118,9 +118,9 @@ import { EARS } from './ears';
 ${bootImports}
 import { runBootSeed } from '../registries/seed/index';
 import { migrations } from '../migrations';
-import { standardSteps } from '../steps/register';
-import { standardArtifacts } from '../artifacts/register';
-import { standardBlocks } from '../blocks/register';
+import { standardSteps } from '../extensions/steps/register';
+import { standardArtifacts } from '../extensions/artifacts/register';
+import { standardBlocks } from '../extensions/blocks/register';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -173,10 +173,10 @@ function generateFrontendEntry() {
   return `${HEADER}
 import { registerPackFE } from '@abuddy/sdk/fe';
 ${pluginImports}
-import { tiptapPlugins } from '../registries/tiptap-plugins';
-import { artifactDefinitions } from '../artifacts/register-fe';
-import { blockDefinitions } from '../blocks/register-fe';
-import { standardStepsFE } from '../steps/register-fe';
+import { tiptapPlugins } from '../extensions/tiptap-plugins';
+import { artifactDefinitions } from '../extensions/artifacts/register-fe';
+import { blockDefinitions } from '../extensions/blocks/register-fe';
+import { standardStepsFE } from '../extensions/steps/register-fe';
 import Welcome from '../extensions/Welcome.vue';
 
 registerPackFE({

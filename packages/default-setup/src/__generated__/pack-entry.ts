@@ -24,9 +24,9 @@ import { createDefaultSettings } from '../features/settings/be/repository';
 import { terminalService } from '../features/code/be/services/terminal';
 import { runBootSeed } from '../registries/seed/index';
 import { migrations } from '../migrations';
-import { standardSteps } from '../steps/register';
-import { standardArtifacts } from '../artifacts/register';
-import { standardBlocks } from '../blocks/register';
+import { standardSteps } from '../extensions/steps/register';
+import { standardArtifacts } from '../extensions/artifacts/register';
+import { standardBlocks } from '../extensions/blocks/register';
 
 export const registration: PackRegistration = {
   id: 'default-setup',

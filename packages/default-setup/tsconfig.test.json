@@ -7,9 +7,7 @@
       "@/__generated__/*": ["./src/__generated__/*"],
       "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
-      "@/steps/*": ["./src/steps/*"],
-      "@/blocks/*": ["./src/blocks/*"],
-      "@/artifacts/*": ["./src/artifacts/*"],
+      "@/extensions/*": ["./src/extensions/*"],
       "@/*": ["../api/src/*"]
     }
   },
