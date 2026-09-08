@@ -160,6 +160,7 @@
     },
     {
       "id": "logs",
+      "designation": "logs",
       "settings": "src/features/logs/settings.ts",
       "system": { "entry": "src/features/logs/be/system.ts", "exportName": "logsEntry" },
       "plugin": { "entry": "src/features/logs/fe/plugin.ts", "label": "Logs", "icon": "ScrollText", "isPinned": true },

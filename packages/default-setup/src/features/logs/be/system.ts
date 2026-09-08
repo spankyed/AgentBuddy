@@ -1,5 +1,6 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import config from '../feature.config';
 import { emit, getActor } from '@abuddy/sdk/helpers';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
@@ -40,7 +41,7 @@ export interface LogsContext {
   logs: LogEntry[];
 }
 
-export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
+export const logsSpec = defineSystem('logs', { designation: config.designation })<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
 export const logs = logsSpec.id;
 
 export const logsSystem = setup({

@@ -1,6 +1,7 @@
 import { rootEvents } from '@/core/router/bus-emitter';
 import type { OutgoingSystemEvents, IncomingSystemEvents } from '@/core/router/events';
 import type { EARS } from '@/core/types';
+import { getDesignated } from '@abuddy/sdk';
 
 type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
@@ -59,7 +60,7 @@ export function sendToBrainSystem(event: {
   rootEvents.emitIncoming({
     ...event,
     type: 'TRIGGER_BRAIN_EVENT',
-    systemId: 'brain'
+    systemId: getDesignated('brain')
   } as any);
 }
 

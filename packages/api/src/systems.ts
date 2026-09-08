@@ -6,6 +6,7 @@ import { safeEvents } from '@/core/shared/actor-helpers';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { repository } from '@/repository';
 import { bus } from '@/core/system-ids';
+import { getDesignated, hasDesignation } from '@abuddy/sdk';
 
 // ─── Type aggregation ────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export const backendSystem = setup({
   actors: {
     setupEventListeners: fromCallback(({ sendBack }) => {
       const incomingHandler = (event: any) => {
-        if (event.systemId !== 'logs') {
+        if (!hasDesignation('logs') || event.systemId !== getDesignated('logs')) {
           sendBack({
             type: 'INCOMING',
             event,
