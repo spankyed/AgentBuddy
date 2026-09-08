@@ -41,7 +41,7 @@
           @mousedown.prevent="insertReference(item)"
           @mouseenter="selectedIndex = index"
         >
-          <component :is="REF_TYPES[item.type].icon" class="reference-suggestion-icon" :size="16" />
+          <component :is="CONTRIBUTION_TYPES[item.type].icon" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
           <span class="reference-suggestion-code" :title="item.shortCode">{{ item.shortCode.length > 12 ? item.shortCode.slice(0, 12) + '…' : item.shortCode }}</span>
         </div>
@@ -57,8 +57,8 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { referenceSuggestionPluginKey } from './reference-suggestion-plugin'
-import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
-import { REF_TYPES } from './reference-config'
+import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ContributionItem } from './useReferenceItems'
+import { CONTRIBUTION_TYPES } from './reference-config'
 
 const props = defineProps<{
   editor: Editor
@@ -314,7 +314,7 @@ function goBackToCategories() {
   selectedIndex.value = 0
 }
 
-function insertReference(item: ReferenceItem) {
+function insertReference(item: ContributionItem) {
   const state = pluginState.value
   if (!state) return
 

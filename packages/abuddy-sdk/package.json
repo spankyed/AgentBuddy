@@ -21,6 +21,7 @@
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
     "./fe/pack-store": "./src/fe/pack-store.ts",
+    "./fe/contributions": "./src/fe/contribution-types.ts",
     "./fe/design/ToastNotification.vue": "./src/fe/design/ToastNotification.vue",
     "./fe/design/ContextMenuPopup.vue": "./src/fe/design/ContextMenuPopup.vue",
     "./fe/design/*": "./src/fe/design/*",

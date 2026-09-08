@@ -1,7 +1,7 @@
 import { Library, Folder } from 'lucide-vue-next'
 import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as library } from './state'
-import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@/registries/reference-types'
+import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider, ContributionItem } from '@abuddy/sdk/fe/contributions'
 
 function flattenCollections(colls: any[]): any[] {
   const result: any[] = []
@@ -14,7 +14,7 @@ function flattenCollections(colls: any[]): any[] {
   return result
 }
 
-export const refTypes: Record<string, RefTypeConfig> = {
+export const contributionTypes: Record<string, ContributionTypeConfig> = {
   document: {
     protocol: 'doc',
     category: 'documents',
@@ -51,18 +51,18 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'documents',
   pluginId: library,
-  buildItems: (actorState: any): ReferenceItem[] => {
+  buildItems: (actorState: any): ContributionItem[] => {
     const documents = actorState?.context?.documents || []
     const collections = actorState?.context?.collections || []
 
-    const docItems: ReferenceItem[] = documents.map((d: any) => ({
+    const docItems: ContributionItem[] = documents.map((d: any) => ({
       id: d.id,
       shortCode: d.shortCode || d.id,
       label: d.name || d.shortCode || d.id,
       type: 'document' as const,
     }))
 
-    const folderItems: ReferenceItem[] = flattenCollections(collections).map((c: any) => ({
+    const folderItems: ContributionItem[] = flattenCollections(collections).map((c: any) => ({
       id: c.id,
       shortCode: c.id,
       label: c.name || c.id,

@@ -1,11 +1,11 @@
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
-import { CATEGORIES, ITEMS_PROVIDERS } from '@/__generated__/extensions'
-import type { ReferenceItem, CategoryItemsProvider } from '@/registries/reference-types'
+import { CATEGORIES, ITEMS_PROVIDERS } from '@/__generated__/contributions'
+import type { ContributionItem, CategoryItemsProvider } from '@abuddy/sdk/fe/contributions'
 
 export type ReferenceCategory = string
-export type { ReferenceItem }
+export type { ContributionItem }
 export { CATEGORIES }
 
 const providerMap = new Map<string, CategoryItemsProvider>(
@@ -20,7 +20,7 @@ export function useReferenceItems(category: Ref<string | null>, query: Ref<strin
     actorStates.set(provider.category, state)
   }
 
-  const items = computed<ReferenceItem[]>(() => {
+  const items = computed<ContributionItem[]>(() => {
     if (!category.value) return []
     const provider = providerMap.get(category.value)
     if (!provider) return []

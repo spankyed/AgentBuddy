@@ -1,9 +1,9 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin } from './reference-suggestion-plugin'
 import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
-import { REF_TYPES, ALL_PROTOCOLS, type ReferenceRefType } from './reference-config'
+import { CONTRIBUTION_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config'
 
-function createIconSvg(type: ReferenceRefType): SVGSVGElement {
+function createIconSvg(type: ReferenceType): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
   const svg = document.createElementNS(ns, 'svg')
   svg.setAttribute('width', '14')
@@ -15,7 +15,7 @@ function createIconSvg(type: ReferenceRefType): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
 
-  for (const [tag, attrs] of REF_TYPES[type]?.svgElements || REF_TYPES.thread.svgElements) {
+  for (const [tag, attrs] of CONTRIBUTION_TYPES[type]?.svgElements || CONTRIBUTION_TYPES.thread.svgElements) {
     const el = document.createElementNS(ns, tag)
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -42,7 +42,7 @@ export const ReferenceNode = Node.create({
   },
 
   parseHTML() {
-    return Object.entries(REF_TYPES).map(([refType, cfg]) => ({
+    return Object.entries(CONTRIBUTION_TYPES).map(([refType, cfg]) => ({
       tag: `a[href^="${cfg.protocol}://"]`,
       priority: 60,
       getAttrs(node: HTMLElement) {
@@ -54,7 +54,7 @@ export const ReferenceNode = Node.create({
   },
 
   renderHTML({ node }) {
-    const cfg = REF_TYPES[node.attrs.refType as ReferenceRefType]
+    const cfg = CONTRIBUTION_TYPES[node.attrs.refType as ReferenceType]
     const protocol = cfg?.protocol || 'thread'
     return [
       'a',
@@ -76,7 +76,7 @@ export const ReferenceNode = Node.create({
 
       const icon = document.createElement('span')
       icon.classList.add('reference-pill-icon')
-      icon.appendChild(createIconSvg(node.attrs.refType as ReferenceRefType))
+      icon.appendChild(createIconSvg(node.attrs.refType as ReferenceType))
 
       const label = document.createElement('span')
       label.classList.add('reference-pill-label')
@@ -88,9 +88,9 @@ export const ReferenceNode = Node.create({
       dom.addEventListener('click', (event) => {
         if (editor.isEditable && !event.metaKey && !event.ctrlKey) return
 
-        const refType = node.attrs.refType as ReferenceRefType
+        const refType = node.attrs.refType as ReferenceType
         const refId = node.attrs.refId as string
-        const cfg = REF_TYPES[refType]
+        const cfg = CONTRIBUTION_TYPES[refType]
 
         cfg.navigate(getEditorSystem(), refId)
       })
@@ -100,7 +100,7 @@ export const ReferenceNode = Node.create({
         update(updatedNode) {
           if (updatedNode.type.name !== 'reference') return false
           dom.dataset.refType = updatedNode.attrs.refType
-          icon.replaceChildren(createIconSvg(updatedNode.attrs.refType as ReferenceRefType))
+          icon.replaceChildren(createIconSvg(updatedNode.attrs.refType as ReferenceType))
           label.textContent = updatedNode.attrs.label
           return true
         },
@@ -136,7 +136,7 @@ export const ReferenceNode = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          const cfg = REF_TYPES[node.attrs.refType as ReferenceRefType]
+          const cfg = CONTRIBUTION_TYPES[node.attrs.refType as ReferenceType]
           const protocol = cfg?.protocol || 'thread'
           state.write(`[${node.attrs.label}](${protocol}://${node.attrs.shortCode})`)
         },

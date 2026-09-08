@@ -1,12 +1,12 @@
 export {
-  REF_TYPES,
+  CONTRIBUTION_TYPES,
   CATEGORIES,
   PROTOCOL_TO_TYPE,
   ALL_PROTOCOLS,
   categoryOfType,
-} from '@/__generated__/extensions'
-export { NOTE_TYPE_TO_REF_TYPE } from '../../features/notes/fe/references'
-export type { RefTypeConfig, CategoryConfig } from '@/registries/reference-types'
+} from '@/__generated__/contributions'
+export { NOTE_TYPE_TO_CONTRIBUTION_TYPE } from '../../features/notes/fe/contributions'
+export type { ContributionTypeConfig, CategoryConfig } from '@abuddy/sdk/fe/contributions'
 
-export type ReferenceRefType = string
+export type ReferenceType = string
 export type ReferenceCategory = string

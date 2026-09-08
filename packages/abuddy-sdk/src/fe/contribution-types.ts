@@ -2,7 +2,8 @@ import type { Component } from 'vue'
 
 type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
 
-export interface RefTypeConfig {
+/** Defines how an entity type appears and navigates when contributed to the UI. */
+export interface ContributionTypeConfig {
   protocol: string
   category: string
   plugin: string
@@ -17,15 +18,16 @@ export interface CategoryConfig {
   primaryIcon: Component
 }
 
-export interface ReferenceItem {
+export interface ContributionItem {
   id: string
   shortCode: string
   label: string
   type: string
 }
 
+/** Provides items for a contribution category by querying feature actor state. */
 export interface CategoryItemsProvider {
   category: string
   pluginId: string
-  buildItems: (actorState: any) => ReferenceItem[]
+  buildItems: (actorState: any) => ContributionItem[]
 }

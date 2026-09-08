@@ -171,7 +171,7 @@ function generateFrontendEntry() {
   const defaultPluginId = defaultFeature ? toPascalCase(defaultFeature.id) : 'undefined';
 
   return `${HEADER}
-import { registerPackFE } from '@abuddy/sdk/fe';
+import { registerPackFE } from '@abuddy/sdk/fe/contributions';
 ${pluginImports}
 import { tiptapPlugins } from '../extensions/tiptap-plugins';
 import { artifactDefinitions } from '../extensions/artifacts/register-fe';
@@ -298,25 +298,25 @@ ${entries.join('\n')}
 `;
 }
 
-function generateReferenceExtensions() {
+function generateContributions() {
   const features = manifest.features ?? [];
-  const refFeatures = features.filter(f => f.references);
+  const contribFeatures = features.filter(f => f.contributions);
 
-  const imports = refFeatures.map((f, i) => {
-    const path = toImportPath(f.references);
-    return `import { refTypes as refTypes${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${path}';`;
+  const imports = contribFeatures.map((f, i) => {
+    const path = toImportPath(f.contributions);
+    return `import { contributionTypes as types${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${path}';`;
   }).join('\n');
 
-  const refTypesSpread = refFeatures.map((_, i) => `  ...refTypes${i},`).join('\n');
-  const categoriesSpread = refFeatures.map((_, i) => `  ...categories${i},`).join('\n');
-  const providersEntries = refFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
+  const typesSpread = contribFeatures.map((_, i) => `  ...types${i},`).join('\n');
+  const categoriesSpread = contribFeatures.map((_, i) => `  ...categories${i},`).join('\n');
+  const providersEntries = contribFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
 
   return `${HEADER}
-import type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from '../registries/reference-types';
+import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/contributions';
 ${imports}
 
-export const REF_TYPES: Record<string, RefTypeConfig> = {
-${refTypesSpread}
+export const CONTRIBUTION_TYPES: Record<string, ContributionTypeConfig> = {
+${typesSpread}
 };
 
 export const CATEGORIES: CategoryConfig[] = [
@@ -328,16 +328,16 @@ ${providersEntries}
 ];
 
 export const PROTOCOL_TO_TYPE: Record<string, string> = Object.fromEntries(
-  Object.entries(REF_TYPES).map(([type, cfg]) => [cfg.protocol, type])
+  Object.entries(CONTRIBUTION_TYPES).map(([type, cfg]) => [cfg.protocol, type])
 );
 
-export const ALL_PROTOCOLS: string[] = Object.values(REF_TYPES).map((cfg) => cfg.protocol);
+export const ALL_PROTOCOLS: string[] = Object.values(CONTRIBUTION_TYPES).map((cfg) => cfg.protocol);
 
 export function categoryOfType(type: string): string {
-  return REF_TYPES[type]?.category ?? '';
+  return CONTRIBUTION_TYPES[type]?.category ?? '';
 }
 
-export type { RefTypeConfig, CategoryConfig, CategoryItemsProvider } from '../registries/reference-types';
+export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/contributions';
 `;
 }
 
@@ -368,7 +368,7 @@ const files = [
   ['src/__generated__/types.ts', generateTypes()],
   ['src/__generated__/services.ts', generateServices()],
   ['src/__generated__/service-types.ts', generateServiceTypes()],
-  ['src/__generated__/extensions.ts', generateReferenceExtensions()],
+  ['src/__generated__/contributions.ts', generateContributions()],
 ];
 
 for (const [path, content] of files) {
