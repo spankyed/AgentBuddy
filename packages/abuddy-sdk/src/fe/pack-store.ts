@@ -3,15 +3,18 @@ import type { Plugin } from './plugin';
 import type { TiptapPlugin } from './components/tiptap/injection-keys';
 import type { ArtifactDefinition } from '../artifacts/types';
 import type { BlockDefinition } from '../blocks/types';
+import type { StepDefinition } from '../steps/types';
 import { registerDesignations } from '../designations/index';
 import { registerAppExtension } from './app-extensions';
 import { tiptapPluginRegistry } from './components/tiptap/registry';
 import { artifactRegistry } from '../artifacts/registry';
 import { blockRegistry } from '../blocks/registry';
+import { stepRegistry } from '../steps/registry';
 
 export interface PackFERegistration {
   plugins?: Plugin[];
   defaultPlugin?: Plugin;
+  steps?: StepDefinition[];
   tiptapPlugins?: TiptapPlugin[];
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
@@ -56,6 +59,13 @@ export function registerPackFE(registration: PackFERegistration): void {
     for (const def of registration.blocks) {
       blockRegistry.register(def);
     }
+  }
+
+  if (registration.steps) {
+    for (const step of registration.steps) {
+      stepRegistry.register(step);
+    }
+    stepRegistry.initComponents();
   }
 }
 

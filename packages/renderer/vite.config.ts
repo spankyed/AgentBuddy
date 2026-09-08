@@ -37,8 +37,8 @@ function builtInPacksPlugin(): Plugin {
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
 
   const feImports = packs
-    .filter(p => existsSync(resolve(p.srcDir, 'pack-entry-fe.ts')))
-    .map(p => `import '@${p.id}/pack-entry-fe';`)
+    .filter(p => existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')))
+    .map(p => `import '@${p.id}/__generated__/pack-entry-fe';`)
     .join('\n');
 
   return {

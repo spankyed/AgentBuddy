@@ -19,7 +19,7 @@ const root = join(__dirname, '..');
 const manifest = JSON.parse(readFileSync(join(root, 'abuddy.json'), 'utf-8'));
 
 function toImportPath(manifestPath) {
-  return './' + manifestPath.replace(/^src\//, '').replace(/\.ts$/, '');
+  return '../' + manifestPath.replace(/^src\//, '').replace(/\.ts$/, '');
 }
 
 function toPascalCase(id) {
@@ -76,14 +76,14 @@ import { toPackSystemDefs } from '@abuddy/sdk/framework';
 
 ${systemImports}
 ${earlyImport}
-import { featureServices } from './registries/services';
-import { EARS } from './registries/ears';
-import { createDefaultSettings, shutdownHook } from './registries/boot';
-import { runBootSeed } from './registries/seed/index';
-import { migrations } from './migrations';
-import { standardSteps } from './steps/register';
-import { standardArtifacts } from './artifacts/register';
-import { standardBlocks } from './blocks/register';
+import { featureServices } from '../registries/services';
+import { EARS } from '../registries/ears';
+import { createDefaultSettings, shutdownHook } from '../registries/boot';
+import { runBootSeed } from '../registries/seed/index';
+import { migrations } from '../migrations';
+import { standardSteps } from '../steps/register';
+import { standardArtifacts } from '../artifacts/register';
+import { standardBlocks } from '../blocks/register';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -136,17 +136,18 @@ function generateFrontendEntry() {
   return `// @generated from abuddy.json — do not edit by hand
 // Regenerate: node scripts/generate-entries.js
 
-import './steps/register-fe';
 import { registerPackFE } from '@abuddy/sdk/fe';
 ${pluginImports}
-import { tiptapPlugins } from './registries/tiptap-plugins';
-import { artifactDefinitions } from './artifacts/register-fe';
-import { blockDefinitions } from './blocks/register-fe';
-import Welcome from './extensions/Welcome.vue';
+import { tiptapPlugins } from '../registries/tiptap-plugins';
+import { artifactDefinitions } from '../artifacts/register-fe';
+import { blockDefinitions } from '../blocks/register-fe';
+import { standardSteps } from '../steps/register';
+import Welcome from '../extensions/Welcome.vue';
 
 registerPackFE({
   plugins: [${pluginList}],
   defaultPlugin: ${defaultPluginId},
+  steps: standardSteps,
   tiptapPlugins,
   appExtensions: { welcome: Welcome },
   artifacts: artifactDefinitions,
@@ -160,9 +161,12 @@ registerPackFE({
 const beContent = generateBackendEntry();
 const feContent = generateFrontendEntry();
 
-writeFileSync(join(root, 'src/pack-entry.ts'), beContent);
-writeFileSync(join(root, 'src/pack-entry-fe.ts'), feContent);
+import { mkdirSync } from 'fs';
+mkdirSync(join(root, 'src/__generated__'), { recursive: true });
+
+writeFileSync(join(root, 'src/__generated__/pack-entry.ts'), beContent);
+writeFileSync(join(root, 'src/__generated__/pack-entry-fe.ts'), feContent);
 
 console.log('Generated:');
-console.log('  src/pack-entry.ts');
-console.log('  src/pack-entry-fe.ts');
+console.log('  src/__generated__/pack-entry.ts');
+console.log('  src/__generated__/pack-entry-fe.ts');

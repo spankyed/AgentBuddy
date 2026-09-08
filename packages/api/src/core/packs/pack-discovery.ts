@@ -32,10 +32,10 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
       if (!manifest.builtIn || !manifest.id || !manifest.name) continue;
 
-      const entryFile = path.join(dir, 'src', 'pack-entry');
+      const entryFile = path.join(dir, 'src', '__generated__', 'pack-entry');
       const hasEntry = fs.existsSync(entryFile + '.ts') || fs.existsSync(entryFile + '.js');
       if (!hasEntry) {
-        logger.warn(`Built-in pack ${manifest.id}: no src/pack-entry found, skipping`);
+        logger.warn(`Built-in pack ${manifest.id}: no src/__generated__/pack-entry found, skipping`);
         continue;
       }
 
@@ -44,7 +44,7 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
         name: manifest.name,
         version: manifest.version ?? '0.0.0',
         dir,
-        entry: 'src/pack-entry',
+        entry: 'src/__generated__/pack-entry',
       });
     } catch {}
   }

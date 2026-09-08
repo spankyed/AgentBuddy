@@ -32,7 +32,7 @@ function discoverBuiltInPackEntries(): { id: string; relPath: string }[] {
     try {
       const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
       if (!m.builtIn || !m.id) continue;
-      const packEntry = path.join(packagesRoot, entry.name, 'src', 'pack-entry');
+      const packEntry = path.join(packagesRoot, entry.name, 'src', '__generated__', 'pack-entry');
       if (fs.existsSync(packEntry + '.ts') || fs.existsSync(packEntry + '.js')) {
         const relPath = path.relative(packLoaderDir, packEntry).replace(/\\/g, '/');
         entries.push({ id: m.id, relPath });

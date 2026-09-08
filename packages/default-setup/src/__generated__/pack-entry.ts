@@ -4,28 +4,28 @@
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { toPackSystemDefs } from '@abuddy/sdk/framework';
 
-import { settingsEntry } from './features/settings/be/system';
-import { threadsEntry } from './features/threads/be/system';
-import { codeEntry } from './features/code/be/system';
-import { notesEntry } from './features/notes/be/system';
-import { calendarEntry } from './features/calendar/be/system';
-import { browserEntry } from './features/browser/be/system';
-import { libraryEntry } from './features/library/be/system';
-import { flowsEntry } from './features/flows/be/system';
-import { actionsEntry } from './features/actions/be/system';
-import { promptsEntry } from './features/prompts/be/system';
-import { brainEntry } from './features/brain/be/system';
-import { databaseEntry } from './features/database/be/system';
-import { logsEntry } from './features/logs/be/system';
+import { settingsEntry } from '../features/settings/be/system';
+import { threadsEntry } from '../features/threads/be/system';
+import { codeEntry } from '../features/code/be/system';
+import { notesEntry } from '../features/notes/be/system';
+import { calendarEntry } from '../features/calendar/be/system';
+import { browserEntry } from '../features/browser/be/system';
+import { libraryEntry } from '../features/library/be/system';
+import { flowsEntry } from '../features/flows/be/system';
+import { actionsEntry } from '../features/actions/be/system';
+import { promptsEntry } from '../features/prompts/be/system';
+import { brainEntry } from '../features/brain/be/system';
+import { databaseEntry } from '../features/database/be/system';
+import { logsEntry } from '../features/logs/be/system';
 
-import { featureServices } from './registries/services';
-import { EARS } from './registries/ears';
-import { createDefaultSettings, shutdownHook } from './registries/boot';
-import { runBootSeed } from './registries/seed/index';
-import { migrations } from './migrations';
-import { standardSteps } from './steps/register';
-import { standardArtifacts } from './artifacts/register';
-import { standardBlocks } from './blocks/register';
+import { featureServices } from '../registries/services';
+import { EARS } from '../registries/ears';
+import { createDefaultSettings, shutdownHook } from '../registries/boot';
+import { runBootSeed } from '../registries/seed/index';
+import { migrations } from '../migrations';
+import { standardSteps } from '../steps/register';
+import { standardArtifacts } from '../artifacts/register';
+import { standardBlocks } from '../blocks/register';
 
 export const registration: PackRegistration = {
   id: 'default-setup',
