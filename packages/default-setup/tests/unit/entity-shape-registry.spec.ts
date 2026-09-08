@@ -34,9 +34,9 @@ describe('EntityShapeRegistry — augmented types', () => {
     expectTypeOf<EntityShapeRegistry['Prompt']>().toHaveProperty('templateFn');
   });
 
-  it('registry has Message with role and content', () => {
-    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('role');
-    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('content');
+  it('registry has Message with sender and text', () => {
+    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('sender');
+    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('text');
   });
 });
 
