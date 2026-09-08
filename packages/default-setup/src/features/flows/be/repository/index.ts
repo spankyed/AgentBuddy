@@ -16,7 +16,7 @@ import type {
   NodeCreateInput,
   NodeKind,
   FlowsConnectedData
-} from '../config/types';
+} from '../types';
 import { availableModels } from '@abuddy/sdk/inference';
 import { repository } from '@abuddy/sdk/ears';
 import type { CompiledRows } from '@abuddy/sdk/build';

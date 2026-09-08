@@ -5,7 +5,7 @@ import { emit, getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@abuddy/sdk/ears';
-import type { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
+import type { FlowsConnectedData, FlowEntity, NodeEntity } from './types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';

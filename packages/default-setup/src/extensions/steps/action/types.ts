@@ -1,5 +1,5 @@
 import type { DSLNodeBase } from '@abuddy/sdk/build';
-import type { NodeBase } from '@/features/flows/be/config/types';
+import type { NodeBase } from '@abuddy/sdk/build';
 
 export interface DSLActionNode extends DSLNodeBase {
   type: 'action';

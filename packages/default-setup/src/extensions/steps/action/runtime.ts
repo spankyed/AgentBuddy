@@ -1,5 +1,5 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import type { NodeEntity } from '@/features/flows/be/config/types';
+import type { NodeEntity } from '@/__generated__/types';
 import { repository } from '@abuddy/sdk/ears';
 import { z } from 'zod';
 import { createInspectLogger } from '@abuddy/sdk/logger';

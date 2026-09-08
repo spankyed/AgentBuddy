@@ -1,4 +1,4 @@
-import type { NodeBase } from '@/features/flows/be/config/types';
+import type { NodeBase } from '@abuddy/sdk/build';
 
 export interface ListenerNode extends NodeBase {
   nodeType: 'listener';

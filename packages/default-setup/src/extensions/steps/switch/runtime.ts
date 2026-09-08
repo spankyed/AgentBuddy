@@ -1,4 +1,4 @@
-import type { SwitchNode, Condition, Predicate } from '@/features/flows/be/config/types';
+import type { SwitchNode, Condition, Predicate } from '@/extensions/steps/switch/types';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { createInspectLogger } from '@abuddy/sdk/logger';

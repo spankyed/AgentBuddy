@@ -13,8 +13,8 @@
  */
 
 import { switchNodeHandler } from '@/extensions/steps/switch/runtime'
-import { BinaryOperator } from '@/features/flows/be/config/types'
-import type { Condition, SwitchNode } from '@/features/flows/be/config/types'
+import { BinaryOperator } from '@abuddy/sdk/utils'
+import type { Condition, SwitchNode } from '@/extensions/steps/switch/types'
 import type { ExecutionContext, TNodeEntity } from '@/features/brain/be/types'
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────

@@ -2,11 +2,11 @@ import { type BaseEntity, EARS } from '@/__generated__/ears';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';
 import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 
-// Re-export BinaryOperator so consumers importing from flows types get it
 export { BinaryOperator } from '@abuddy/sdk/utils';
+export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 
 /*─────────────────────────────────────────────────────────────────
- * Flow & Edge entities (infrastructure types)
+ * Flow & Edge entities
  *─────────────────────────────────────────────────────────────────*/
 
 export interface FlowEntity extends BaseEntity {
@@ -17,15 +17,6 @@ export interface FlowEntity extends BaseEntity {
   flowType: 'workflow' | 'integration';
   createdAt: number;
   sourceHash?: string;
-}
-
-export interface NodeBase extends BaseEntity {
-  entityType: EARS.Entity.Node;
-  nodeType: string;
-  label: string;
-  description?: string;
-  color?: string;
-  final?: boolean;
 }
 
 export type EdgeEntity = {
@@ -39,7 +30,7 @@ export type EdgeEntity = {
 };
 
 /*─────────────────────────────────────────────────────────────────
- * Per-step entity types (owned by each step definition)
+ * Per-step entity types (re-exported from each step definition)
  *─────────────────────────────────────────────────────────────────*/
 
 export type { ActionNode } from '@/extensions/steps/action/types';
@@ -69,7 +60,7 @@ import type { KeepAliveNode } from '@/extensions/steps/keep-alive/types';
 import type { KillNode } from '@/extensions/steps/kill/types';
 
 /*─────────────────────────────────────────────────────────────────
- * Union & helpers
+ * Node union & helpers
  *─────────────────────────────────────────────────────────────────*/
 
 export type NodeEntity =
@@ -87,14 +78,6 @@ export type NodeEntity =
   | LLMNode;
 
 export type NodeKind = NodeEntity['nodeType'] | (string & {});
-
-export const isNodeKind = <K extends NodeKind>(k: K) =>
-  (n: NodeEntity): n is Extract<NodeEntity, { nodeType: K }> =>
-    n.nodeType === k;
-
-export function assertNever(x: never): never {
-  throw new Error('Unexpected node type: ' + x);
-}
 
 export type NodeCreateInput = Partial<NodeEntity> & {
   actionId?: string;
@@ -119,7 +102,6 @@ export interface FlowsConnectedData {
   settings?: any;
 }
 
-export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 export interface FlowExtendedData {
   nodes: NodeEntity[];
   edges: EdgeEntity[];
