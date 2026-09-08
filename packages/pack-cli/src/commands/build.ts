@@ -7,6 +7,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '@abuddy/sdk/build';
 import { generate } from './generate';
+import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, bundlePackFE } from '../fe-bundler';
 
@@ -26,6 +27,7 @@ export async function build(args: string[]) {
 
   if (!args.includes('--skip-generate')) {
     await generate([]);
+    await generateEntries([]);
   }
 
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);

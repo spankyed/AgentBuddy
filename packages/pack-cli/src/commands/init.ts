@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { generate } from './generate';
+import { generateEntries } from './generate-entries';
 
 const MANIFEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
@@ -20,6 +21,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
       seed: {
         actions: 'src/seeds/actions',
         flows: 'src/seeds/flows',
+        steps: `src/extensions/steps/register.ts`,
       },
     },
   }, null, 2);
@@ -63,6 +65,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     '#generated/*': './src/__generated__/*',
   },
   scripts: {
+    prepare: 'abuddy generate-entries',
     generate: 'abuddy generate',
     build: 'abuddy build',
     validate: 'abuddy validate',
@@ -70,8 +73,10 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     test: 'vitest run',
     typecheck: 'tsc --noEmit',
   },
-  devDependencies: {
+  dependencies: {
     '@abuddy/sdk': '*',
+  },
+  devDependencies: {
     typescript: '^5.8.3',
     vitest: '^3.2.1',
   },
@@ -96,6 +101,23 @@ export default defineConfig({
     globals: true,
   },
 });
+`;
+
+const STEPS_REGISTER_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
+
+export const steps: StepDefinition[] = [
+  // Add your step definitions here
+];
+`;
+
+const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '../types';
+import { entry, on, keepAlive } from '#generated/flow-helpers';
+
+export default {
+  "Example Flow": [
+    entry([keepAlive()]),
+  ],
+} satisfies FlowDSL;
 `;
 
 const EXAMPLE_TEST_TEMPLATE = (name: string) => `import { describe, it, expect } from 'vitest';
@@ -140,6 +162,7 @@ export async function init(args: string[]) {
 
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'features', name), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests', 'unit'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
@@ -169,11 +192,20 @@ export async function init(args: string[]) {
     VITEST_CONFIG_TEMPLATE,
   );
   fs.writeFileSync(
+    path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
+    STEPS_REGISTER_TEMPLATE,
+  );
+  fs.writeFileSync(
+    path.join(dir, 'src', 'seeds', 'flows', 'example-flow.ts'),
+    EXAMPLE_FLOW_TEMPLATE,
+  );
+  fs.writeFileSync(
     path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
     EXAMPLE_TEST_TEMPLATE(name),
   );
 
   await generate([], dir);
+  await generateEntries([], dir);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your seed code:`);
