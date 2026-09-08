@@ -183,7 +183,7 @@ type UIEvent =
   | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
   | { type: 'DSL.RESET_STATUS' }
   // DSL Export events
-  | { type: 'DSL.EXPORT'; directory: string }
+  | { type: 'DSL.EXPORT'; directory: string; flowId?: string }
   | { type: 'DSL.RESET_EXPORT_STATUS' }
   // Context menu dialog bridge events
   | { type: 'FLOW.REQUEST_EDIT_LABEL' }
@@ -1170,6 +1170,7 @@ const flowsState = setup({
         systemId: id,
         type: 'EXPORT_DSL',
         directory: ev.directory,
+        ...(ev.flowId && { flowId: ev.flowId }),
       } as any);
     },
 

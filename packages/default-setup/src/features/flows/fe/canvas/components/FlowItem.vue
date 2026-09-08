@@ -53,6 +53,14 @@
           <Edit :size="14" class="text-primary-400" />
           Edit Label
         </ContextMenuItem>
+        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+        <ContextMenuItem
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          @select="handleExportDSL"
+        >
+          <FileCode :size="14" class="text-blue-400" />
+          Export as DSL
+        </ContextMenuItem>
         <template v-if="!isRoot">
           <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
           <ContextMenuItem
@@ -69,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { Brain, Workflow, Trash2, Edit } from 'lucide-vue-next'
+import { Brain, Workflow, Trash2, Edit, FileCode } from 'lucide-vue-next'
 import type { FlowEntity } from '@/__generated__/types'
 import {
   ContextMenuContent,
@@ -95,6 +103,7 @@ const emit = defineEmits<{
   dblclick: []
   'request-delete': [flow: Partial<FlowEntity>]
   'request-edit-label': [flow: Partial<FlowEntity>]
+  'export-dsl': [flow: Partial<FlowEntity>]
 }>()
 
 const handleRequestDelete = () => {
@@ -103,5 +112,9 @@ const handleRequestDelete = () => {
 
 const handleRequestEditLabel = () => {
   emit('request-edit-label', props.flow)
+}
+
+const handleExportDSL = () => {
+  emit('export-dsl', props.flow)
 }
 </script>

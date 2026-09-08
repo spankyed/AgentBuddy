@@ -68,6 +68,7 @@
             @dblclick="$emit('flow-dblclick', flow)"
             @request-delete="$emit('request-delete', $event)"
             @request-edit-label="$emit('request-edit-label', $event)"
+            @export-dsl="$emit('export-dsl', $event)"
           />
       </div>
 
@@ -115,6 +116,7 @@ const emit = defineEmits<{
   'create-flow': []
   'request-delete': [flow: Partial<FlowEntity>]
   'request-edit-label': [flow: Partial<FlowEntity>]
+  'export-dsl': [flow: Partial<FlowEntity>]
 }>()
 
 // Search state

@@ -14,6 +14,7 @@
         @create-flow="handleCreateFlow"
         @request-delete="openDeleteDialog"
         @request-edit-label="openEditDialog"
+        @export-dsl="handleExportFlowDSL"
       />
 
       <!-- Steps palette view -->
@@ -487,6 +488,14 @@ const handleConfirmDelete = () => {
 }
 
 const handleCancelDelete = () => targetFlow.value = null
+
+async function handleExportFlowDSL(flow: Partial<FlowEntity>) {
+  if (!flow.id) return
+  const dir = await window.electronAPI?.fileUtils.selectPath({ type: 'directory' })
+  if (!dir || typeof dir !== 'string') return
+  actor.send({ type: 'DSL.RESET_EXPORT_STATUS' })
+  actor.send({ type: 'DSL.EXPORT', directory: dir, flowId: flow.id })
+}
 
 function handleOverlayClick() {
   if (selectedFlowId.value) actor.send({ type: 'FLOW.SELECT', flowId: selectedFlowId.value })

@@ -26,6 +26,20 @@
           </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator
+          v-if="selectedFlowId"
+          class="h-px bg-neutral-700 my-1"
+        />
+        <DropdownMenuItem
+          v-if="selectedFlowId"
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors"
+          @select="handleExportDSL"
+        >
+          <div class="flex items-center gap-2 flex-1">
+            <FileCode :size="16" class="text-blue-400" />
+            Export as DSL
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator
           v-if="selectedFlowId && !isRootFlow"
           class="h-px bg-neutral-700 my-1"
         />
@@ -47,7 +61,7 @@
 <script setup lang="ts">
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
-import { Menu, Edit, Trash2 } from 'lucide-vue-next'
+import { Menu, Edit, Trash2, FileCode } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -68,6 +82,7 @@ interface Props {
 interface Emits {
   (e: 'edit-label'): void
   (e: 'request-delete'): void
+  (e: 'export-dsl'): void
 }
 
 const props = defineProps<Props>()
@@ -84,5 +99,9 @@ const handleEditLabel = () => {
 
 const handleRequestDelete = () => {
   emit('request-delete')
+}
+
+const handleExportDSL = () => {
+  emit('export-dsl')
 }
 </script> 

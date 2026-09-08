@@ -19,6 +19,7 @@ interface DecompileGraphCtx {
 export interface ExportFlowsOptions {
   ears: FlowEARS;
   rootFlowRole: string;
+  flowIds?: string[];
 }
 
 function getFlowNodes(flowId: string, ears: FlowEARS): any[] {
@@ -324,7 +325,7 @@ export function exportFlowsToDSL(
   options: ExportFlowsOptions,
   versioned = true,
 ): { filePath: string; flowCount: number } {
-  const { ears, rootFlowRole } = options;
+  const { ears, rootFlowRole, flowIds } = options;
 
   const actions = qx(ears.Entity.Action).pickAll() as any[];
   const prompts = qx(ears.Entity.Prompt).pickAll() as any[];
@@ -335,7 +336,11 @@ export function exportFlowsToDSL(
   const promptMap = new Map<string, string>();
   for (const prompt of prompts) promptMap.set(prompt.id, prompt.label);
 
-  const flows = qx(ears.Entity.Flow).pickAll() as any[];
+  let flows = qx(ears.Entity.Flow).pickAll() as any[];
+  if (flowIds) {
+    const idSet = new Set(flowIds);
+    flows = flows.filter((f: any) => idSet.has(f.id));
+  }
 
   const flowMap = new Map<string, string>();
   for (const flow of flows) flowMap.set(flow.id, flow.label);

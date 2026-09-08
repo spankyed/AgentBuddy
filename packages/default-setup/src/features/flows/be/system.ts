@@ -69,7 +69,7 @@ type IncomingFlowsEvents =
   | { type: 'DELETE_EDGE'; flowId: string; edgeId: string }
   | { type: 'UPDATE_EDGE'; flowId: string; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
   | { type: 'IMPORT_DSL'; dsl: any }
-  | { type: 'EXPORT_DSL'; directory: string }
+  | { type: 'EXPORT_DSL'; directory: string; flowId?: string }
   | { type: 'REINDEX_HANDLES'; flowId: string; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
 
 type FlowsInternalEvents =
@@ -405,15 +405,16 @@ export const flowsSystem = setup({
     },
 
     exportDSL: ({ system, event }) => {
-      const { directory } = flowsSpec.typeOf('EXPORT_DSL', event);
+      const { directory, flowId } = flowsSpec.typeOf('EXPORT_DSL', event);
       const pluginId = flows;
 
-      logger.info('Exporting flows to DSL', { directory });
+      logger.info('Exporting flows to DSL', { directory, flowId });
 
       try {
         const { filePath, flowCount } = exportFlowsToDSL(directory, {
           ears: { Entity: EARS.Entity, RelKind: EARS.RelKind },
           rootFlowRole: FLOW_ROLES.ROOT_FLOW,
+          flowIds: flowId ? [flowId] : undefined,
         });
 
         system.get(bus).send(emit(pluginId, {
