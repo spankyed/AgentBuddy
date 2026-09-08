@@ -281,12 +281,19 @@ export {};
     const systemFeatures = features.filter(f => f.system);
 
     const perFeature = systemFeatures.map(f => {
-      const eventsLine = `export type { ${outgoingEventsType(f)} } from '${toImportPath(f.system!.entry)}';`;
+      const lines: string[] = [];
+      lines.push(`export type { ${outgoingEventsType(f)} } from '${toImportPath(f.system!.entry)}';`);
       const tPath = typesEntry(f);
       const fullTypesPath = join(root, tPath) + (tPath.endsWith('.ts') ? '' : '.ts');
-      const hasTypes = existsSync(fullTypesPath);
-      const typesLine = hasTypes ? `export type * from '${toImportPath(tPath)}';` : '';
-      return typesLine ? `${eventsLine}\n${typesLine}` : eventsLine;
+      if (existsSync(fullTypesPath)) {
+        lines.push(`export type * from '${toImportPath(tPath)}';`);
+      }
+      const exportTypesPath = tPath.replace(/types$/, 'export-types');
+      const fullExportTypesPath = join(root, exportTypesPath) + '.ts';
+      if (existsSync(fullExportTypesPath)) {
+        lines.push(`export type * from '${toImportPath(exportTypesPath)}';`);
+      }
+      return lines.join('\n');
     }).join('\n\n');
 
     return `${HEADER}

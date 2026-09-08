@@ -1,7 +1,8 @@
 /**
  * Action DSL Export Module
- * This module exports all types and functions needed for the Action DSL
- * Used to generate type definitions for Monaco Editor
+ *
+ * Type definitions for Monaco Editor action DSL intellisense.
+ * All pack-specific types flow through generated barrels.
  */
 
 import { featureServices } from '@/__generated__/services';
@@ -22,11 +23,7 @@ export const services = {
 export type Services = typeof services;
 export const params: ActionParams = undefined as any;
 
-export { ActionService } from '@/features/actions/be/services/action';
-export { PromptService } from '@/features/prompts/be/services/prompt';
-export { LibraryService } from '@/features/library/be/services/library';
-export type { ActionEntity } from '@/features/actions/be/types';
-export type { SettingsData } from '@/features/settings/be/types';
+export type { ActionEntity, SettingsData } from '@/__generated__/types';
 
 export { z } from 'zod';
 

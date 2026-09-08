@@ -115,7 +115,7 @@
     {
       "id": "flows",
       "settings": "src/features/flows/settings.ts",
-      "typesEntry": "src/features/flows/be/config/types",
+      "typesEntry": "src/features/flows/be/types",
       "system": { "entry": "src/features/flows/be/system.ts", "exportName": "flowsEntry" },
       "plugin": { "entry": "src/features/flows/fe/plugin.ts", "label": "Flows", "icon": "Network", "isPinned": true },
       "services": {}
