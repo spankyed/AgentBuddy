@@ -25,7 +25,7 @@ export type { DSLSwitchNode, DSLSwitchCondition } from '@/extensions/steps/switc
 export type { DSLFireNode } from '@/extensions/steps/fire/types';
 export type { DSLTransformNode } from '@/extensions/steps/transform/types';
 export type { DSLQueryNode } from '@/extensions/steps/query/types';
-export type { DSLFlowNode } from '@/extensions/steps/flow/types';
+export type { DSLFlowNode } from '@/extensions/steps/subflow/types';
 export type { DSLCreateNode } from '@/extensions/steps/create/types';
 export type { DSLUpdateNode } from '@/extensions/steps/update/types';
 export type { DSLKeepAliveNode } from '@/extensions/steps/keep-alive/types';
@@ -43,26 +43,5 @@ export type { ButtonConfig, LinkConfig, LinkEvent, LinkIcon } from '@/features/t
 // Notes export types (for compiler)
 export type { ExportedNote, ExportedNotes } from '@/features/notes/be/export-types';
 
-// Action/prompt authoring types
-export type { ActionParameter } from '@/features/actions/be/types';
-export type { TemplateInput } from '@/features/prompts/be/types';
-
-// Convenience meta interfaces for DSL authoring
-import type { ActionParameter as _ActionParameter } from '@/features/actions/be/types';
-import type { TemplateInput as _TemplateInput } from '@/features/prompts/be/types';
-
-export interface ActionMeta {
-  label: string;
-  description?: string;
-  category?: string;
-  input: Record<string, _ActionParameter>;
-  output?: any;
-}
-
-export interface PromptMeta {
-  label: string;
-  description?: string;
-  category?: string;
-  inputs: Record<string, _TemplateInput>;
-  outputSchema?: any;
-}
+// Action/prompt authoring types (from SDK)
+export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from '@abuddy/sdk/build';
