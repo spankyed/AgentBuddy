@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import type { SearchIndexConfig, EmbeddingResult, Occurrence, SearchIndex, EmbeddingModel } from './types/search-index'
 import type { ContentSection } from '../types'
-import type { EARS } from '@/registries/ears'
+import type { EARS } from '@/__generated__/ears'
 import { getModelConfig, getModelDimensions } from './config/embedding-models'
 import { getFastEmbedModel } from './config/fastembed-mapping'
 import { 

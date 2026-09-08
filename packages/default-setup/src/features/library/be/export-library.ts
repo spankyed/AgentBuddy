@@ -6,7 +6,7 @@
  */
 
 import { qx } from '@abuddy/sdk/ears'
-import { EARS } from '@/registries/ears'
+import { EARS } from '@/__generated__/ears'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'

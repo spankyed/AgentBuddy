@@ -1,4 +1,4 @@
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { findById, findAll } from '@abuddy/sdk/ears';
 import type { CalendarEventEntity, CalendarEventDTO } from '../types';
 

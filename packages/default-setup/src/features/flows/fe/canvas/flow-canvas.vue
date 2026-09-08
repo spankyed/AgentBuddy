@@ -98,7 +98,7 @@ import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/features/flows/fe/canvas/layout-utils'
-import type { FlowEntity, NodeEntity, EARS } from '@/registries/types'
+import type { FlowEntity, NodeEntity, EARS } from '@/__generated__/types'
 import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
 
 import '@vue-flow/core/dist/style.css'

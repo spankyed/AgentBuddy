@@ -1,7 +1,7 @@
 import { qx } from '@abuddy/sdk/ears'
 import { tx } from '@abuddy/sdk/ears'
 import { edgeStore } from '@abuddy/sdk/ears'
-import { EARS } from '@/registries/ears'
+import { EARS } from '@/__generated__/ears'
 import type { ContentSection } from '../types'
 
 // ================ Helper Functions ================

@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import { Undo2, FileCode2, Sparkles, ChevronRight } from 'lucide-vue-next'
-import type { MessageEntity } from '@/registries/types'
+import type { MessageEntity } from '@/__generated__/types'
 
 // The threads state machine types `currentThread.messages` as
 // `Partial<MessageEntity>[]` — mirror that here so we don't force callers

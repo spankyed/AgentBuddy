@@ -9,7 +9,7 @@ import { createExportDir, ensureDirectoryExists } from '@abuddy/sdk/utils';
 import { writeExportJson } from '@abuddy/sdk/utils';
 import { qx } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { FLOW_ROLES } from '../repository/index';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import type {
@@ -22,7 +22,7 @@ import type {
   EdgeEntity,
   FlowEntity,
 } from '../config/types';
-import type { ActionEntity, PromptEntity } from '@/registries/types';
+import type { ActionEntity, PromptEntity } from '@/__generated__/types';
 
 // Edge kinds for flow transitions
 const FLOW_EDGE_KINDS = [EARS.RelKind.TRANSITIONS_TO] as const;

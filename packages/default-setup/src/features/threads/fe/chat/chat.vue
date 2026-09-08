@@ -186,7 +186,7 @@ import ScrollToBottomFob from '@abuddy/sdk/fe/design/ScrollToBottomFob.vue'
 import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
-import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/registries/types'
+import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
 
 const actorSystem = useActorSystem()

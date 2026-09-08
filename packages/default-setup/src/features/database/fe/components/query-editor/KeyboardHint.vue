@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Keyboard } from 'lucide-vue-next';
-import type { KeyboardShortcut } from '@/registries/types';
+import type { KeyboardShortcut } from '@/__generated__/types';
 
 interface Props {
   executeQuery?: KeyboardShortcut;

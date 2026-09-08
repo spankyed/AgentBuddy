@@ -6,7 +6,7 @@
  */
 
 import { qx } from '@abuddy/sdk/ears'
-import { EARS } from '@/registries/ears'
+import { EARS } from '@/__generated__/ears'
 import { createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
 import { writeExportJson } from '@abuddy/sdk/utils'

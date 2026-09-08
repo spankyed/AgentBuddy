@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { FileReference, ImageReference, MessageReferences } from '@/registries/types'
+import type { FileReference, ImageReference, MessageReferences } from '@/__generated__/types'
 
 export interface PendingImage {
   dataUrl: string

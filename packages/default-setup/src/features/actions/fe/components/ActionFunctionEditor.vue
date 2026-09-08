@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
-import type { ActionParameter } from '@/registries/types';
+import type { ActionParameter } from '@/__generated__/types';
 
 defineProps<{
   value: string;

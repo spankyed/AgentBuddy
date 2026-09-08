@@ -1,4 +1,4 @@
-import type { EARS } from '@/registries/ears';
+import type { EARS } from '@/__generated__/ears';
 
 /** ── Re-export SDK runtime types ────────────────────────────────────────── */
 export type {

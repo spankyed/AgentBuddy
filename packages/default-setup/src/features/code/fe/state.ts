@@ -7,7 +7,7 @@ import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
-import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@/registries/types';
+import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@/__generated__/types';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';

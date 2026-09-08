@@ -1,4 +1,4 @@
-import { EARS } from '../registries/ears';
+import { EARS } from '../__generated__/ears';
 import { findAll, qx, tx } from '@abuddy/sdk/ears';
 import type { ArtifactEntity, ThreadEntity } from '../features/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';

@@ -1,4 +1,4 @@
-import type { GhPRComment } from '@/registries/types'
+import type { GhPRComment } from '@/__generated__/types'
 
 /**
  * Extract the numeric GitHub "database id" from an issue comment by parsing its URL.

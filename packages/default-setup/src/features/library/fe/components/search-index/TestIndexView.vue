@@ -215,7 +215,7 @@ import type { ActorRefFrom } from 'xstate'
 import { librarySystem } from '../../state'
 import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@abuddy/sdk/fe/design/button.vue'
-import type { IndexSearchResult, SearchIndex } from '@/registries/types'
+import type { IndexSearchResult, SearchIndex } from '@/__generated__/types'
 
 const actorSystem = useActorSystem()
 

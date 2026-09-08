@@ -206,7 +206,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { NodeEntity } from '@/registries/types'
+import type { NodeEntity } from '@/__generated__/types'
 import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
 import { validateCronExpression } from '@abuddy/sdk/cron'
 

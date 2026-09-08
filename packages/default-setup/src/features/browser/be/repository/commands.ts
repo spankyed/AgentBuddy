@@ -1,6 +1,6 @@
 import { tx } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';
 import { createLogger } from '@abuddy/sdk/logger';

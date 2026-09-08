@@ -171,7 +171,7 @@ import { ref, computed, watch } from 'vue'
 import { Play, Pencil, X, Plus, Copy, Check, SquarePlus, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
-import type { TerminalScript } from '@/registries/types'
+import type { TerminalScript } from '@/__generated__/types'
 
 const props = defineProps<{
   scripts: TerminalScript[]

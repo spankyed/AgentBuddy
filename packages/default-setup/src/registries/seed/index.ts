@@ -7,7 +7,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { findById, findWhere, findAll } from '@abuddy/sdk/ears';
 import { repository } from '@abuddy/sdk/ears';
 import {

@@ -38,11 +38,11 @@ export {
 } from '@abuddy/sdk/ears';
 
 // Re-export EARS types for convenience
-export { EARS } from '@/registries/ears';
+export { EARS } from '@/__generated__/ears';
 
 // ─── Query context for AI prompt generation ─────────────────────────────
 
-import { EARS as EARSTypes } from '@/registries/ears';
+import { EARS as EARSTypes } from '@/__generated__/ears';
 import { getEntitiesOfType, getAll, getAllEntityTypes } from '@abuddy/sdk/ears';
 import { relationIndex } from '@abuddy/sdk/ears';
 

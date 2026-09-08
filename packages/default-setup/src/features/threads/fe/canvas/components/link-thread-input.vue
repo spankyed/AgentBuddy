@@ -158,7 +158,7 @@ import {
   ComboboxViewport,
 } from 'reka-ui'
 import { X, Plus, MessageCircleMore, Link2 } from 'lucide-vue-next'
-import type { ThreadLinkItem, ThreadLinkRelation, ThreadEntity, ThreadTagOption, ThreadsSettings } from '@/registries/types'
+import type { ThreadLinkItem, ThreadLinkRelation, ThreadEntity, ThreadTagOption, ThreadsSettings } from '@/__generated__/types'
 import { useThreadDragDrop } from '@/features/threads/fe/composables/useThreadDragDrop'
 import BaseThreadRow from './base-thread-row.vue'
 import type { BaseThreadData } from './base-thread-row.vue'

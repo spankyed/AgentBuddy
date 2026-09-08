@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import type { MarkdownContent } from '@/registries/types'
+import type { MarkdownContent } from '@/__generated__/types'
 import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
 
 defineProps<{

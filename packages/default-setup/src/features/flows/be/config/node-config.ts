@@ -1,5 +1,5 @@
 import type { NodeKind, NodeEntity } from './types';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { stepRegistry } from '@abuddy/sdk/steps';
 
 export interface NodeMetadata {

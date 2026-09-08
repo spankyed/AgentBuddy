@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { MessageCircleMore } from 'lucide-vue-next'
 import type { ThreadListItem } from '@/features/threads/fe/state';
-import type { ThreadEntity, ThreadTagOption, ThreadsSettings } from '@/registries/types';
+import type { ThreadEntity, ThreadTagOption, ThreadsSettings } from '@/__generated__/types';
 
 const props = defineProps<{
   lite?: boolean;

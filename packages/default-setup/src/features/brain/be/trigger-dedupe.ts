@@ -1,4 +1,4 @@
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 
 export type FlowTriggerNode = {
   id?: string;

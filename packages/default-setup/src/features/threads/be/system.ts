@@ -2,10 +2,10 @@ import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActor
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
-import { brain } from '@/registries/system-ids';
+import { brain } from '@/__generated__/system-ids';
 import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
 import { emit, getActor, sendParentSafe } from '@abuddy/sdk/helpers';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { repository } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
@@ -17,7 +17,7 @@ import { importThreads } from './import-threads';
 import { services, runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { FieldContent } from '@/registries/types';
+import type { FieldContent } from '@/__generated__/types';
 import { reportSystemError } from '@abuddy/sdk/utils';
 
 const logger = createLogger('threads');

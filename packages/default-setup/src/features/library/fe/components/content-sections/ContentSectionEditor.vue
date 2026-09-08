@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { X, ChevronRight } from 'lucide-vue-next'
-import type { ContentSection, ContentType, CodeContent } from '@/registries/types'
+import type { ContentSection, ContentType, CodeContent } from '@/__generated__/types'
 import FieldEditor from './FieldEditor.vue'
 import ListEditor from './ListEditor.vue'
 import MarkdownEditor from './MarkdownEditor.vue'

@@ -1,5 +1,5 @@
-import type { EARS } from '@/registries/ears';
-import type { Category } from '@/registries/types';
+import type { EARS } from '@/__generated__/ears';
+import type { Category } from '@/__generated__/types';
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';

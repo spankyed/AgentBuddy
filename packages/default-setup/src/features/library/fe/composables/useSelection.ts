@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { LibraryItem } from '@/registries/types'
+import type { LibraryItem } from '@/__generated__/types'
 
 export function useSelection(
   items: () => LibraryItem[],

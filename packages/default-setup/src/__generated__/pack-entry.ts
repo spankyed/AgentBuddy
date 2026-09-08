@@ -19,7 +19,7 @@ import { databaseEntry } from '../features/database/be/system';
 import { logsEntry } from '../features/logs/be/system';
 
 import { featureServices } from '../registries/services';
-import { EARS } from '../registries/ears';
+import { EARS } from './ears';
 import { createDefaultSettings } from '../features/settings/be/repository';
 import { terminalService } from '../features/code/be/services/terminal';
 import { runBootSeed } from '../registries/seed/index';

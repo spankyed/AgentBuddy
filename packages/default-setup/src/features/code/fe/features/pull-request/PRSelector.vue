@@ -60,7 +60,7 @@
 import { ref, useTemplateRef } from 'vue'
 import { GitPullRequest } from 'lucide-vue-next'
 import { useClickOutside } from '@abuddy/sdk/fe'
-import type { GhPullRequest } from '@/registries/types'
+import type { GhPullRequest } from '@/__generated__/types'
 
 defineProps<{
   openPRs: GhPullRequest[]

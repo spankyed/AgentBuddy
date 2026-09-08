@@ -1,4 +1,4 @@
-import type { EARS, EmbeddingModelId } from '@/registries/types'
+import type { EARS, EmbeddingModelId } from '@/__generated__/types'
 
 type ContentType = 'field' | 'list' | 'markdown' | 'text'
 

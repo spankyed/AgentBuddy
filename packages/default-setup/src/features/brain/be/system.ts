@@ -4,7 +4,7 @@ import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
 import { emit, getActor } from '@abuddy/sdk/helpers';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { StepRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { createLogger } from '@abuddy/sdk/logger';

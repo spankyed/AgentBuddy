@@ -6,4 +6,4 @@
  * need a direct import path into default-setup.
  */
 
-export type * from '@/registries/types';
+export type * from '@/__generated__/types';

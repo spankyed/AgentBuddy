@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BlockConfig } from '@/registries/types'
+import type { BlockConfig } from '@/__generated__/types'
 import { blockRegistry } from '@abuddy/sdk/blocks'
 import { ref, computed } from 'vue'
 import { useActorSystem } from '@abuddy/sdk/fe'

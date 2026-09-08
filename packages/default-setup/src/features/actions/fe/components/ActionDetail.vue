@@ -112,7 +112,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ActionEntity, ActionParameter, Category } from '@/registries/types';
+import type { ActionEntity, ActionParameter, Category } from '@/__generated__/types';
 import { ExternalLink } from 'lucide-vue-next';
 import NameSaveHeader from '@abuddy/sdk/fe/design/NameSaveHeader.vue';
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue';

@@ -1,4 +1,4 @@
-import type { NodeKind } from '@/registries/types'
+import type { NodeKind } from '@/__generated__/types'
 import { default as TriggerNode } from './TriggerNode.vue'
 import { default as BaseNode } from '@abuddy/sdk/fe/components/BaseNode.vue'
 import { nodeConfigs } from '@abuddy/sdk/fe/components/node-styles'

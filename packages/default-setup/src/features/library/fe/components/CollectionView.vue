@@ -113,7 +113,7 @@
 import { ref, computed, reactive } from 'vue'
 import { Plus, Folder } from 'lucide-vue-next'
 import Button from '@abuddy/sdk/fe/design/button.vue'
-import type { CollectionDTO } from '@/registries/types'
+import type { CollectionDTO } from '@/__generated__/types'
 import CollectionTreeItem from './CollectionTreeItem.vue'
 
 const props = defineProps<{

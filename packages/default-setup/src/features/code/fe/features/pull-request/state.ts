@@ -1,7 +1,7 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@abuddy/sdk/rpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
-import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/registries/types';
+import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { navigateToPlugin } from '@abuddy/sdk/fe';
 import { getCommentDatabaseId } from './comment-id';

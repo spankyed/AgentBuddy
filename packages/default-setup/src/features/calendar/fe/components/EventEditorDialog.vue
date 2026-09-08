@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { CalendarEventDTO } from '@/registries/types';
+import type { CalendarEventDTO } from '@/__generated__/types';
 import Dialog from '@abuddy/sdk/fe/design/dialog.vue';
 
 const props = defineProps<{

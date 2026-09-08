@@ -701,7 +701,7 @@ import type {
   AgentMode,
   AgentPhase,
   QuickPrompt,
-} from '@/registries/types'
+} from '@/__generated__/types'
 
 const actorSystem = useActorSystem()
 

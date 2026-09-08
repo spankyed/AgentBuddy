@@ -2,7 +2,7 @@ import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { PluginEventRegistry } from '@abuddy/sdk/types';
 import { emit } from '@abuddy/sdk/helpers';
-import '@/registries/event-channels';
+import '@/__generated__/event-channels';
 
 // ─── PluginEventRegistry augmentation ──────────────────────────────────
 

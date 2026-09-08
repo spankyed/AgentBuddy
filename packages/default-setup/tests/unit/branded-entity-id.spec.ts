@@ -4,7 +4,7 @@ import type { EntityShape, EntityShapeRegistry } from '@abuddy/sdk/types';
 import type { QueryBuilder } from '@abuddy/sdk/ears';
 import { createEntity } from '@abuddy/sdk/ears';
 import { findById } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import '@/registries/entity-shapes';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { registerRepository } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import {
   findById,
   findByIdRaw,

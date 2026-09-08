@@ -1,6 +1,6 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import type { ServiceRegistry } from '@abuddy/sdk/types';
-import '@/registries/service-types';
+import '@/__generated__/service-types';
 
 describe('ServiceRegistry — augmented types', () => {
   it('registry has llm service', () => {

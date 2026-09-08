@@ -1,5 +1,5 @@
-import { type BaseEntity, EARS } from '@/registries/ears';
-import type { NotesSettings } from '@/registries/types';
+import { type BaseEntity, EARS } from '@/__generated__/ears';
+import type { NotesSettings } from '@/__generated__/types';
 
 export const REFERENCES = EARS.RelKind.Custom('references');
 

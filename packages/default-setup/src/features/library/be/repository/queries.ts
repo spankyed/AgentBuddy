@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises'
 import { qx } from '@abuddy/sdk/ears'
-import { EARS } from '@/registries/ears'
+import { EARS } from '@/__generated__/ears'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 import {
   findParentCollection,

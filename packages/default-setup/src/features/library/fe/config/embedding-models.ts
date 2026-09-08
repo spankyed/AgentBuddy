@@ -12,7 +12,7 @@
  * - /packages/default-setup/src/features/library/fe/config/embedding-models.ts (frontend)
  */
 
-import type { EmbeddingModelId, EmbeddingModelConfig, ModelProvider } from '@/registries/types'
+import type { EmbeddingModelId, EmbeddingModelConfig, ModelProvider } from '@/__generated__/types'
 
 // Model ID constants for type safety
 export const EMBEDDING_MODELS = {

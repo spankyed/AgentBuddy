@@ -95,7 +95,7 @@
 import type { ComponentPublicInstance } from 'vue'
 import { ref, computed, nextTick, watch } from 'vue'
 import { Workflow, Search, X } from 'lucide-vue-next'
-import type { FlowEntity } from '@/registries/types'
+import type { FlowEntity } from '@/__generated__/types'
 import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
 import Button from '@abuddy/sdk/fe/design/button.vue'

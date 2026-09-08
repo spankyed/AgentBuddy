@@ -1,7 +1,7 @@
-import { type BaseEntity, EARS } from '@/registries/ears';
+import { type BaseEntity, EARS } from '@/__generated__/ears';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 import type { PermissionMode } from "@/features/code/be/services/claude-code/types";
-import type { AgentSettings, CommandItem, ThreadsSettings, ThreadTagOption } from '@/registries/types';
+import type { AgentSettings, CommandItem, ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 // Block-based interaction system (composable architecture)

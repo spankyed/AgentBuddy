@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@abuddy/sdk/ears'
-import { EARS } from '@/registries/ears'
+import { EARS } from '@/__generated__/ears'
 import { hasIdCollision, findWhere } from '@abuddy/sdk/ears'
 import { qx } from '@abuddy/sdk/ears'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'

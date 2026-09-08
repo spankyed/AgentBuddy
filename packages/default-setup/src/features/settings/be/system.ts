@@ -2,7 +2,7 @@ import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorAc
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import config from '../feature.config';
 import { bus } from '@abuddy/sdk/ids';
-import { threads } from '@/registries/system-ids';
+import { threads } from '@/__generated__/system-ids';
 import { emit } from '@abuddy/sdk/helpers';
 import type { SettingsData, FAQItem } from './types';
 import { loadFaqs } from './faqs';

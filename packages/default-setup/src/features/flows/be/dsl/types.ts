@@ -7,7 +7,7 @@
  * Format: Track-based DSL where each track is an event + parallel exit chains.
  */
 
-import type { EARS } from '@/registries/ears';
+import type { EARS } from '@/__generated__/ears';
 
 /*─────────────────────────────────────────────────────────────────
  * DSL Document Structure

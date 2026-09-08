@@ -12,7 +12,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@abuddy/sdk/ears'
-import type { EARS } from '@/registries/ears'
+import type { EARS } from '@/__generated__/ears'
 import { hasIdCollision } from '@abuddy/sdk/ears'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
 import type { ContentSection } from './types'

@@ -5,7 +5,7 @@
  * frontend notification, following the same pattern as artifact service.
  */
 
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { sendToPlugin } from '@abuddy/sdk/services';
 import { repository } from '@abuddy/sdk/ears';
 

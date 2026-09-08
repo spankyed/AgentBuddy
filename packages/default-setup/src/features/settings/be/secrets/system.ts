@@ -1,5 +1,5 @@
 import { setup } from 'xstate';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { secretsQueries, secretsCommands } from './repository';
 import type { SecretProvider, CreateSecretParams, SecretData } from './types';
 

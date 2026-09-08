@@ -148,7 +148,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { NoteDTO } from '@/registries/types'
+import type { NoteDTO } from '@/__generated__/types'
 import { Copy, Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,

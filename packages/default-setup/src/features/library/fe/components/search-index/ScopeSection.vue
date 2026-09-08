@@ -158,7 +158,7 @@ import { Folder, FileText, X, Plus, ChevronRight } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
 import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
-import type { EARS } from '@/registries/types'
+import type { EARS } from '@/__generated__/types'
 
 const props = defineProps<{
   modelValue: SearchIndexFormData

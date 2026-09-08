@@ -91,7 +91,7 @@ import { toPackSystemDefs } from '@abuddy/sdk/framework';
 ${systemImports}
 ${earlyImport}
 import { featureServices } from '../registries/services';
-import { EARS } from '../registries/ears';
+import { EARS } from './ears';
 ${bootImports}
 import { runBootSeed } from '../registries/seed/index';
 import { migrations } from '../migrations';
@@ -237,7 +237,7 @@ ${perFeature}
 
 function generateServiceTypes() {
   return `${HEADER}
-import type { featureServices } from './services';
+import type { featureServices } from '../registries/services';
 
 type FeatureServices = typeof featureServices;
 
@@ -256,11 +256,11 @@ mkdirSync(join(root, 'src/__generated__'), { recursive: true });
 const files = [
   ['src/__generated__/pack-entry.ts', generateBackendEntry()],
   ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
-  ['src/registries/ears.ts', generateEars()],
-  ['src/registries/system-ids.ts', generateSystemIds()],
-  ['src/registries/event-channels.ts', generateEventChannels()],
-  ['src/registries/types.ts', generateTypes()],
-  ['src/registries/service-types.ts', generateServiceTypes()],
+  ['src/__generated__/ears.ts', generateEars()],
+  ['src/__generated__/system-ids.ts', generateSystemIds()],
+  ['src/__generated__/event-channels.ts', generateEventChannels()],
+  ['src/__generated__/types.ts', generateTypes()],
+  ['src/__generated__/service-types.ts', generateServiceTypes()],
 ];
 
 for (const [path, content] of files) {

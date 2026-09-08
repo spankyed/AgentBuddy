@@ -1,7 +1,7 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext, TNodeEntity } from './types';
-import type { NodeEntity } from '@/registries/types';
+import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@abuddy/sdk/ears';
 import { brainInspect } from './utils/brain-inspect';

@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import type { TextContent } from '@/registries/types'
+import type { TextContent } from '@/__generated__/types'
 
 defineProps<{
   content: TextContent

@@ -1,7 +1,7 @@
 // TODO: [SEARCH_INDEX_FF] Reinstall deps: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
-import type { EARS } from '@/registries/ears'
+import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent, ContentSection } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'

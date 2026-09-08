@@ -121,7 +121,7 @@ import { useSelector } from '@xstate/vue'
 import Button from '@abuddy/sdk/fe/design/button.vue'
 import FilterPopover from './FilterPopover.vue'
 import { id, type ThreadsState } from '@/features/threads/fe/state'
-import type { ThreadTagOption } from '@/registries/types'
+import type { ThreadTagOption } from '@/__generated__/types'
 
 const actorSystem = useActorSystem()
 

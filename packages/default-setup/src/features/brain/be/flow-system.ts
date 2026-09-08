@@ -1,10 +1,10 @@
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
-import type { NodeEntity } from '@/registries/types';
+import type { NodeEntity } from '@/__generated__/types';
 import { repository } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext } from './types';
 import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';

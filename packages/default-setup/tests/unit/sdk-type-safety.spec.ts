@@ -32,11 +32,11 @@ import {
 } from '@abuddy/sdk/fe';
 import { services } from '@abuddy/sdk/services';
 import type { ServiceRegistry } from '@abuddy/sdk/types';
-import { EARS } from '../../src/registries/ears';
+import { EARS } from '../../src/__generated__/ears';
 
 // Activate augmentations — external packs get these via their tsconfig includes
 import '@/registries/entity-shapes';
-import '@/registries/service-types';
+import '@/__generated__/service-types';
 
 // ─── Compile-time type assertions ──────────────────────────────────────
 // These verify that generic functions return typed results, not `any`.

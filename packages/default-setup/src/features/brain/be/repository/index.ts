@@ -1,5 +1,5 @@
 import { registerRepository } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears';
@@ -11,7 +11,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { FlowEntity, FlowNode, NodeEntity } from '@/registries/types';
+import type { FlowEntity, FlowNode, NodeEntity } from '@/__generated__/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';

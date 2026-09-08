@@ -141,7 +141,7 @@ import {
 } from 'reka-ui'
 import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
 import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
-import type { FlowEntity, NodeEntity } from '@/registries/types'
+import type { FlowEntity, NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
 import { flowsId } from '@/features/flows/fe/state'
 

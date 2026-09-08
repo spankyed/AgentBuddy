@@ -1,5 +1,5 @@
 import { registerRepository } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import {
   findById,
   findAll,
@@ -18,7 +18,7 @@ import type {
   ThreadConnectedData,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
-import type { ThreadsSettings, ThreadTagOption } from '@/registries/types';
+import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
 import { repository } from '@abuddy/sdk/ears';
 
 /**

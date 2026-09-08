@@ -1,4 +1,4 @@
-import type { NodeEntity } from '@/registries/types';
+import type { NodeEntity } from '@/__generated__/types';
 import type { ExecutionContext, FieldMapping, SourceResolver } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '../utils/result-truncator';

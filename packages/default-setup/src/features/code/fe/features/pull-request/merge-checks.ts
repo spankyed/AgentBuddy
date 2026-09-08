@@ -1,4 +1,4 @@
-import type { GhPullRequest } from '@/registries/types'
+import type { GhPullRequest } from '@/__generated__/types'
 
 export type StatusCheck = NonNullable<GhPullRequest['statusCheckRollup']>[number]
 

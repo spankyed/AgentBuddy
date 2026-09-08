@@ -3,12 +3,12 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit, getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { repository } from '@abuddy/sdk/ears';
 import type { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { ActionEntity, PromptEntity } from '@/registries/types';
+import type { ActionEntity, PromptEntity } from '@/__generated__/types';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');

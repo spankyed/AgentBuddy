@@ -1,4 +1,4 @@
-import type { EARS } from '@/registries/ears'
+import type { EARS } from '@/__generated__/ears'
 import type { ContentSection } from '../../types'
 import type { EmbeddingModelId } from './embedding-models'
 

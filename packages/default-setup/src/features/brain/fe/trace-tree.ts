@@ -1,4 +1,4 @@
-import type { TNodeEntity, TrackEntity } from '@/registries/types';
+import type { TNodeEntity, TrackEntity } from '@/__generated__/types';
 
 export interface NormalizedTNodeTree {
   byId: Record<string, TNodeEntity>;

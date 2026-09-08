@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { CalendarEventDTO } from '@/registries/types';
+import type { CalendarEventDTO } from '@/__generated__/types';
 
 const props = defineProps<{
   event: CalendarEventDTO;

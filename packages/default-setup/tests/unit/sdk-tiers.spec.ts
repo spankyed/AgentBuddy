@@ -13,7 +13,7 @@ import {
   getAttr, clearMemory,
   edgeStore, relationIndex,
 } from '@abuddy/sdk/ears';
-import { EARS } from '../../src/registries/ears';
+import { EARS } from '../../src/__generated__/ears';
 
 describe('SDK runtime — host module registry', () => {
   it('registerHostModule stores and getHostModule retrieves', () => {

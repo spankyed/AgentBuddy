@@ -9,7 +9,7 @@
  */
 
 import { repository } from '@abuddy/sdk/ears'
-import { EARS } from '@/registries/ears'
+import { EARS } from '@/__generated__/ears'
 import { getValidCredentials } from './openai-auth/refresh'
 
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere'

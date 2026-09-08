@@ -20,7 +20,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import type { editor, IDisposable } from 'monaco-editor'
 import UnifiedMonacoEditor from '@abuddy/sdk/fe/components/UnifiedMonacoEditor.vue'
 import { getLanguageFromPath } from '@abuddy/sdk/fe/components/monaco-config'
-import type { CodeContent } from '@/registries/types'
+import type { CodeContent } from '@/__generated__/types'
 
 const MIN_HEIGHT = 320 // 20rem
 

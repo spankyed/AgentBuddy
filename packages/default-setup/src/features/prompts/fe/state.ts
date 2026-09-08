@@ -13,7 +13,7 @@ import type {
   TemplateInput,
   Category,
   PromptsSettings,
-} from '@/registries/types'
+} from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'

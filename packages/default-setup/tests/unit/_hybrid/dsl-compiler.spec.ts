@@ -1,6 +1,6 @@
 import { compile } from '@/features/flows/be/dsl/compiler';
 import type { FlowDSL } from '@/features/flows/be/dsl/types';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { BinaryOperator } from '@/features/flows/be/config/types';
 import { findEntity, filterEntities, filterRelations } from './helpers/compiled-result';
 import { wrapInFlow, makeSwitchDSL, parsedPredicate } from './helpers/dsl-factories';

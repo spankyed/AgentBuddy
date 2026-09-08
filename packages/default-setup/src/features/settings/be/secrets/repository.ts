@@ -1,5 +1,5 @@
 import { registerRepository } from '@abuddy/sdk/ears';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import { tx } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
 import type { SecretEntity, SecretProvider, CreateSecretParams, SecretData } from './types';

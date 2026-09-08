@@ -2,7 +2,7 @@ import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { CalendarConnectedData, CalendarEventDTO } from './types';
 import { repository } from '@abuddy/sdk/ears';
 import { toDTO } from './repository/queries';

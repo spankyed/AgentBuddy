@@ -5,7 +5,7 @@ import { compile } from '@/features/flows/be/dsl/compiler';
 import { exportFlowsDSL } from '@/features/flows/be/dsl/export-dsl';
 import { clearMemory } from '@/core/ears/attribute-storage';
 import { tx } from '@/core/ears/helpers/transaction';
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { FlowDSL } from '@/features/flows/be/dsl/types';
 import { loadCompiledRows } from './load-compiled';
 

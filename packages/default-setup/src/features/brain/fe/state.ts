@@ -6,8 +6,8 @@ import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle, Pause } from 'l
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type {
   OutgoingBrainEvents,
-} from '@/registries/types'
-import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@/registries/types';
+} from '@/__generated__/types'
+import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@/__generated__/types';
 import { trpc } from '@abuddy/sdk/rpc';
 import {
   applyTNodeSpawn,

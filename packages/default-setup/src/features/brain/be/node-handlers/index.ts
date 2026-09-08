@@ -1,4 +1,4 @@
-import type { NodeEntity } from '@/registries/types';
+import type { NodeEntity } from '@/__generated__/types';
 import type { ExecutionContext, TNodeEntity } from '../types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';

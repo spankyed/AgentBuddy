@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import type { LibraryItem } from '@/registries/types'
+import type { LibraryItem } from '@/__generated__/types'
 
 const MAX_PROXIMITY = 25
 

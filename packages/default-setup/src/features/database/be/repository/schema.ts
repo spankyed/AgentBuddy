@@ -1,4 +1,4 @@
-import { EARS } from '@/registries/ears';
+import { EARS } from '@/__generated__/ears';
 import type { DatabaseSchemaInfo } from '../types';
 import { getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getEntitiesOfType, getAttributeStats } from '@abuddy/sdk/ears';
 import { relationIndex } from '@abuddy/sdk/ears';

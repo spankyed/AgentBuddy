@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
-import type { CalendarEventDTO } from '@/registries/types';
+import type { CalendarEventDTO } from '@/__generated__/types';
 import EventChip from './EventChip.vue';
 
 const props = defineProps<{

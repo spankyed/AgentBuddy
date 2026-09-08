@@ -1,5 +1,5 @@
-import { EARS } from '@/registries/ears'
-import type { KeyboardShortcut } from '@/registries/types'
+import { EARS } from '@/__generated__/ears'
+import type { KeyboardShortcut } from '@/__generated__/types'
 
 export interface FileInfo {
   name: string
