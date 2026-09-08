@@ -5,20 +5,7 @@
 import type { BaseEntity, EARS } from '@/__generated__/ears';
 import type { Category } from '@/__generated__/types';
 
-/**
- * Defines an input parameter that a prompt template expects
- */
-export interface TemplateInput {
-  name: string;                    // Input name (e.g., "userMessage")
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-  description?: string;            // What this input is for
-  required?: boolean;              // Default true
-  defaultValue?: any;              // Default if not provided
-
-  // Hints for UI/mapping system
-  commonSources?: string[];        // Common paths this might come from
-  example?: any;                   // Example value
-}
+import type { TemplateInput } from '@abuddy/sdk/build';
 
 
 /**

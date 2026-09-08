@@ -56,6 +56,9 @@ export { seedFile, seedPath } from './manifest';
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers';
 
+// Seed authoring types
+export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './seed-types';
+
 // Entry codegen
 export { generatePackFiles } from './generate-entries';
 export type { GenerateEntriesOptions } from './generate-entries';

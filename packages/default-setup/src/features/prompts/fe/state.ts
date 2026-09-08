@@ -10,10 +10,10 @@ import type {
   PromptEntity,
   OutgoingPromptEvents,
   EARS,
-  TemplateInput,
   Category,
   PromptsSettings,
 } from '@/__generated__/types'
+import type { TemplateInput } from '@abuddy/sdk/build'
 import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'

@@ -1,13 +1,6 @@
 import type { EARS } from '@/__generated__/ears';
 import type { Category } from '@/__generated__/types';
-
-export interface ActionParameter {
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-  description?: string;
-  required?: boolean;
-  default?: any;
-  placeholder?: string;
-}
+import type { ActionParameter } from '@abuddy/sdk/build';
 
 export interface ActionEntity {
   id: EARS.EntityId;
