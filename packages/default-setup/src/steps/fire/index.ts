@@ -1,6 +1,5 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext, ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { sendToBrainSystem } from '@abuddy/sdk/services';
 import { Zap } from 'lucide-vue-next';
 function compile(
   node: Record<string, unknown>,
@@ -45,32 +44,6 @@ function getLabel(step: Record<string, unknown>, index: number): string {
   return (step.event as string) || `Fire ${index}`;
 }
 
-function handler(tNode: TNodeEntity, _node: unknown, ctx: ExecutionContext, actor: unknown) {
-  const a = actor as { send: (event: any) => void };
-
-  const fireConfig = tNode.nodeAttributes || {};
-
-  if (!fireConfig.eventType) {
-    a.send({ type: 'ERROR', error: 'Missing eventType' });
-    return;
-  }
-
-  const scope = fireConfig.scope || 'local';
-  const eventType = fireConfig.eventType as string;
-  const payload = fireConfig.payload;
-  const targetFlowId = scope === 'local' ? ctx.flowTNodeId : undefined;
-
-  try {
-    sendToBrainSystem({ eventType, payload, targetFlowId });
-    a.send({
-      type: 'COMPLETE',
-      result: { eventFired: eventType, eventScope: scope, targetFlowId, payload },
-    });
-  } catch {
-    a.send({ type: 'ERROR', error: 'Failed to fire event' });
-  }
-}
-
 function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
   const dsl: Record<string, unknown> = { type: 'fire', event: node.eventType };
   if (node.label && node.label !== node.eventType) dsl.label = node.label;
@@ -84,7 +57,12 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
 export const fireStep: StepDefinition = {
   type: 'fire',
   build: { compile, validate, getLabel, decompile },
-  runtime: { handler },
+  runtime: {
+    handler: async (tNode, node, ctx, actor) => {
+      const { handler } = await import('./runtime');
+      return handler(tNode, node, ctx, actor);
+    },
+  },
   fe: {
     loadComponents: () => ({ form: require('./form.vue').default }),
     colorKey: 'amber',
