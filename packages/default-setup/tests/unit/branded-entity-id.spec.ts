@@ -5,7 +5,7 @@ import type { QueryBuilder } from '@abuddy/sdk/ears';
 import { createEntity } from '@abuddy/sdk/ears';
 import { findById } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import '@/registries/entity-shapes';
+import '@/__generated__/entity-shapes';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 

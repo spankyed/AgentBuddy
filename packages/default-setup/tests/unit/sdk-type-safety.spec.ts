@@ -35,7 +35,7 @@ import type { ServiceRegistry } from '@abuddy/sdk/types';
 import { EARS } from '../../src/__generated__/ears';
 
 // Activate augmentations — external packs get these via their tsconfig includes
-import '@/registries/entity-shapes';
+import '@/__generated__/entity-shapes';
 import '@/__generated__/service-types';
 
 // ─── Compile-time type assertions ──────────────────────────────────────

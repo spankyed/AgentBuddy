@@ -3,7 +3,7 @@ import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import '@/registries/entity-shapes';
+import '@/__generated__/entity-shapes';
 
 // ─── qx() overloads ────────────────────────────────────────────────────
 

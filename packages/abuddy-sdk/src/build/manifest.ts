@@ -24,6 +24,7 @@ export interface PackManifest {
   defaultPlugin?: string;
   partitionPolicy?: { excludedEntityTypes?: string[]; secretEntityTypes?: string[] };
   fe?: { tiptapPlugins?: string; appExtensions?: Record<string, string> };
+  entityShapes?: Record<string, { source: string; type: string }>;
 }
 
 export interface PackFeatureEntry {

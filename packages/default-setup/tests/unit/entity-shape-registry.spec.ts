@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { EntityShapeRegistry, EntityShape, BaseEntity } from '@abuddy/sdk/types';
-import '@/registries/entity-shapes';
+import '@/__generated__/entity-shapes';
 
 // ─── EntityShapeRegistry augmentation ────────────────────────────────
 // These tests verify that the declaration merging in entity-shapes.ts

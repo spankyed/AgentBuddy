@@ -205,6 +205,17 @@
       "skipAfterOnboarding": ["notes"]
     }
   },
+  "entityShapes": {
+    "Action": { "source": "src/features/actions/be/types.ts", "type": "ActionEntity" },
+    "Prompt": { "source": "src/features/prompts/be/types.ts", "type": "PromptEntity" },
+    "Thread": { "source": "src/features/threads/be/types.ts", "type": "ThreadEntity" },
+    "Message": { "source": "src/features/threads/be/types.ts", "type": "MessageEntity" },
+    "Flow": { "source": "src/features/flows/be/types.ts", "type": "FlowEntity" },
+    "Document": { "source": "src/features/library/be/types.ts", "type": "Document" },
+    "CalendarEvent": { "source": "src/features/calendar/be/types.ts", "type": "CalendarEventEntity" },
+    "Note": { "source": "src/features/notes/be/types.ts", "type": "NoteEntity" }
+  },
+
   "steps": "src/extensions/steps/register.ts",
   "artifacts": "src/extensions/artifacts/register.ts",
   "blocks": "src/extensions/blocks/register.ts",

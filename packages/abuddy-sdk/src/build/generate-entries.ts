@@ -447,6 +447,42 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 `;
   }
 
+  function generateEntityShapes(): string {
+    const shapes = manifest.entityShapes;
+    if (!shapes || Object.keys(shapes).length === 0) return '';
+
+    const sourceGroups = new Map<string, { entity: string; typeName: string }[]>();
+    for (const [entity, { source, type: typeName }] of Object.entries(shapes)) {
+      const importPath = toImportPath(source);
+      if (!sourceGroups.has(importPath)) sourceGroups.set(importPath, []);
+      sourceGroups.get(importPath)!.push({ entity, typeName });
+    }
+
+    const imports = Array.from(sourceGroups.entries()).map(([importPath, types]) => {
+      const names = [...new Set(types.map(t => t.typeName))].join(', ');
+      return `import type { ${names} } from '${importPath}';`;
+    }).join('\n');
+
+    const entries = Object.entries(shapes).map(([entity, { type: typeName }]) =>
+      `    '${entity}': Attrs<${typeName}>;`
+    ).join('\n');
+
+    return `${HEADER}
+import type { BaseEntity } from '@abuddy/sdk/types';
+${imports}
+
+type Attrs<T> = Omit<T, keyof BaseEntity>;
+
+declare module '@abuddy/sdk/types' {
+  interface EntityShapeRegistry {
+${entries}
+  }
+}
+
+export {};
+`;
+  }
+
   function generateServiceTypes(): string {
     return `${HEADER}
 import type { featureServices } from './services';
@@ -471,6 +507,7 @@ export {};
     ['src/__generated__/event-channels.ts', generateEventChannels()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],
+    ['src/__generated__/entity-shapes.ts', generateEntityShapes()],
     ['src/__generated__/service-types.ts', generateServiceTypes()],
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
