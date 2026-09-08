@@ -17,8 +17,7 @@ import type {
   NodeKind,
   FlowsConnectedData
 } from '../config/types';
-import { availableModels } from '../config/available-models';
-import { createNodeDefaults, isTriggerNodeType } from '../config/node-config';
+import { availableModels } from '@abuddy/sdk/inference';
 import { repository } from '@abuddy/sdk/ears';
 import type { CompiledRows } from '@abuddy/sdk/build';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/build';
@@ -337,7 +336,7 @@ export const flowsCommands = {
     const nodeType = nodeData.nodeType || NODE_DEFAULTS.TYPE;
 
     // Get default values for this node type
-    const defaults = createNodeDefaults(nodeType);
+    const defaults = stepRegistry.createNodeDefaults(nodeType);
 
     // Extract relations and attributes based on node type
     const { relations, attributes } = extractNodeRelations(nodeType, nodeData);
@@ -382,7 +381,7 @@ export const flowsCommands = {
   ): { relId: EARS.EntityId } => {
     // Validate: target node must accept inputs (trigger nodes don't)
     const targetAttrs = qx(targetId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
-    const isTargetTrigger = targetAttrs?.nodeType && isTriggerNodeType(targetAttrs.nodeType);
+    const isTargetTrigger = targetAttrs?.nodeType && stepRegistry.isTrigger(targetAttrs.nodeType);
     if (isTargetTrigger) {
       throw new RepositoryError(
         'Trigger nodes cannot receive incoming connections',
@@ -404,7 +403,7 @@ export const flowsCommands = {
 
     // Validate: source handle must not already have an outgoing edge (except trigger nodes)
     const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
-    const isTrigger = sourceAttrs?.nodeType && isTriggerNodeType(sourceAttrs.nodeType);
+    const isTrigger = sourceAttrs?.nodeType && stepRegistry.isTrigger(sourceAttrs.nodeType);
     if (!isTrigger) {
       const handleOccupied = existingEdges.some((rel: any) => {
         const relHandle = (rel.info as any)?.sourceHandle;

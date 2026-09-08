@@ -100,6 +100,18 @@ class StepRegistry {
     }
   }
 
+  createNodeDefaults(nodeType: string): Record<string, unknown> {
+    const stepDef = this.steps.get(nodeType);
+    if (stepDef?.fe) {
+      return {
+        nodeType,
+        label: stepDef.fe.nodeConfig.label,
+        ...stepDef.fe.defaults,
+      };
+    }
+    return { nodeType };
+  }
+
   clear(): void {
     this.steps.clear();
   }

@@ -1,5 +1,6 @@
 import { type BaseEntity, EARS } from '@/__generated__/ears';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';
+import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 
 // Re-export BinaryOperator so consumers importing from flows types get it
 export { BinaryOperator } from '@abuddy/sdk/utils';
@@ -118,18 +119,7 @@ export interface FlowsConnectedData {
   settings?: any;
 }
 
-export interface ModelCatalogEntry {
-  id: string;
-  name: string;
-  provider: string;
-  description?: string;
-  contextWindow: number;
-  maxOutput?: number;
-  costPer1kInput?: number;
-  costPer1kOutput?: number;
-  capabilities?: string[];
-}
-
+export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 export interface FlowExtendedData {
   nodes: NodeEntity[];
   edges: EdgeEntity[];
