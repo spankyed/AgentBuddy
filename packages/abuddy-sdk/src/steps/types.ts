@@ -253,12 +253,8 @@ export interface TriggerRuntimeContext {
  * Step Definition
  *─────────────────────────────────────────────────────────────────*/
 
-export interface StepDSLMeta {
-  helperName?: string;
-  primaryField?: string;
-  defaultLabel?: string;
-  custom?: true;
-}
+export type { StepDSLMeta } from '../build/manifest';
+import type { StepDSLMeta } from '../build/manifest';
 
 export interface StepDefinition {
   type: string;

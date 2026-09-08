@@ -523,14 +523,14 @@ export {};
       if (!step.dsl) continue;
 
       const dsl = step.dsl;
-      const helperName = dsl.helperName ?? toCamelCase(step.type);
-      const importPath = toImportPath(step.path + '/types');
+      const name = dsl.as ?? toCamelCase(step.type);
 
       if (dsl.custom) {
-        const helperPath = toImportPath(step.path + '/helpers');
-        customReExports.push(`export { ${helperName} } from '${helperPath}';`);
+        customReExports.push(`export * from '${toImportPath(step.path + '/helpers')}';`);
         continue;
       }
+
+      const importPath = toImportPath(step.path + '/types');
 
       if (dsl.primaryField) {
         const typesFile = join(root, step.path, 'types.ts');
@@ -542,19 +542,19 @@ export {};
         const dslTypeName = dslMatch[1];
         imports.push(`import type { ${dslTypeName} } from '${importPath}';`);
         helpers.push(
-`export function ${helperName}(${dsl.primaryField}: string, opts?: Omit<${dslTypeName}, 'type' | '${dsl.primaryField}'>): DSLStepNode {
+`export function ${name}(${dsl.primaryField}: string, opts?: Omit<${dslTypeName}, 'type' | '${dsl.primaryField}'>): DSLStepNode {
   return { type: '${step.type}', ${dsl.primaryField}, ...opts };
 }`
         );
       } else if (dsl.defaultLabel) {
         helpers.push(
-`export function ${helperName}(label: string = '${dsl.defaultLabel}'): DSLStepNode {
+`export function ${name}(label: string = '${dsl.defaultLabel}'): DSLStepNode {
   return { type: '${step.type}', label };
 }`
         );
       } else {
         helpers.push(
-`export function ${helperName}(label?: string): DSLStepNode {
+`export function ${name}(label?: string): DSLStepNode {
   return { type: '${step.type}', ...(label && { label }) };
 }`
         );
@@ -571,9 +571,8 @@ export {};
       if (!match) continue;
       const trackField = match[1];
       if (trackField === 'event') continue;
-      const helperName = toCamelCase(trackField);
       helpers.push(
-`export function ${helperName}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {
+`export function ${toCamelCase(trackField)}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {
   return { ${trackField}, label: label ?? \`${toPascalCase(trackField)} (\${${trackField}})\`, exits };
 }`
       );

@@ -86,7 +86,7 @@ export function seedPath(compiledDir: string, name: string): string {
 }
 
 export interface StepDSLMeta {
-  helperName?: string;
+  as?: string;
   primaryField?: string;
   defaultLabel?: string;
   custom?: true;
