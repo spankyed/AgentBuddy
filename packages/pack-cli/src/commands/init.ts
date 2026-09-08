@@ -59,6 +59,9 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   version: '0.1.0',
   private: true,
   type: 'module',
+  imports: {
+    '#generated/*': './src/__generated__/*',
+  },
   scripts: {
     generate: 'abuddy generate',
     build: 'abuddy build',
@@ -108,6 +111,7 @@ describe('${name}', () => {
 const GITIGNORE_TEMPLATE = `node_modules/
 dist/
 .abuddy/
+src/__generated__/
 *.tgz
 `;
 
