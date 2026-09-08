@@ -4,6 +4,14 @@ import { trpc } from '@abuddy/sdk/rpc';
 
 export const id = 'packs';
 
+export interface PackFeatureInfo {
+  id: string;
+  designation?: string;
+  hasSystem: boolean;
+  plugin?: { label: string; icon: string; isPinned?: boolean };
+  services: string[];
+}
+
 export interface PackInfo {
   id: string;
   name: string;
@@ -25,6 +33,7 @@ export interface PackInfo {
   blocks: string[];
   migrationCount: number;
   bootHooks: string[];
+  features: PackFeatureInfo[];
   dir?: string;
   registeredAt?: string;
 }

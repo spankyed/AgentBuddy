@@ -5,7 +5,7 @@
  * API core reads from this instead of importing from registries directly.
  */
 
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration } from '@abuddy/sdk/framework';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef } from '@abuddy/sdk/framework';
 import { registerDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
@@ -216,6 +216,7 @@ export interface PackContributions {
   relKinds: Record<string, string>;
   migrationCount: number;
   bootHooks: string[];
+  features: PackFeatureDef[];
 }
 
 export function getPackContributions(packId: string): PackContributions | null {
@@ -237,5 +238,6 @@ export function getPackContributions(packId: string): PackContributions | null {
     relKinds: reg.ears?.relKinds ?? {},
     migrationCount: reg.migrations?.length ?? 0,
     bootHooks,
+    features: reg.features ?? [],
   };
 }

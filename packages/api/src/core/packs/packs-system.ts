@@ -8,6 +8,7 @@ import { readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry 
 import type { PackRegistryEntry } from './pack-registry';
 import { installPack as runInstall, uninstallPack as runUninstall } from './pack-installer';
 import { getPackContributions, type PackContributions } from './pack-registration';
+import type { PackFeatureDef } from '@abuddy/sdk/framework';
 
 export interface PackInfo {
   id: string;
@@ -30,6 +31,7 @@ export interface PackInfo {
   blocks: string[];
   migrationCount: number;
   bootHooks: string[];
+  features: PackFeatureDef[];
   dir?: string;
   registeredAt?: string;
 }
@@ -75,6 +77,19 @@ function readManifest(dir: string): Record<string, any> | null {
   return null;
 }
 
+function extractPluginNames(manifest: Record<string, any> | null): string[] {
+  if (!manifest) return [];
+  if (manifest.features) {
+    return manifest.features
+      .filter((f: any) => f.plugin)
+      .map((f: any) => f.plugin.label ?? f.id);
+  }
+  if (manifest.plugins) {
+    return manifest.plugins.map((p: any) => p.id ?? p.label ?? 'unknown');
+  }
+  return [];
+}
+
 function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contrib: PackContributions | null): PackInfo {
   return {
     ...base,
@@ -86,6 +101,7 @@ function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contr
     relKinds: contrib?.relKinds ?? {},
     migrationCount: contrib?.migrationCount ?? 0,
     bootHooks: contrib?.bootHooks ?? [],
+    features: contrib?.features ?? [],
   };
 }
 
@@ -101,11 +117,11 @@ function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
       enabled: e.enabled,
       builtIn: false,
       entityCount: Object.keys(entities).length,
-      hasFeEntry: !!manifest?.fe?.entry || (contrib?.systems ?? []).length > 0,
+      hasFeEntry: !!manifest?.fe?.entry || extractPluginNames(manifest).length > 0 || (contrib?.systems ?? []).length > 0,
       hostVersion: manifest?.hostVersion,
       description: manifest?.description,
       entities,
-      plugins: (manifest?.plugins ?? []).map((p: any) => p.id),
+      plugins: extractPluginNames(manifest),
       permissions: manifest?.permissions ?? [],
       dir: e.dir,
       registeredAt: e.registeredAt,
@@ -125,10 +141,10 @@ function toBuiltInPackInfoList(): PackInfo[] {
       enabled: true,
       builtIn: true,
       entityCount: Object.keys(entities).length,
-      hasFeEntry: !!manifest?.fe?.entry || (contrib?.systems ?? []).length > 0,
+      hasFeEntry: !!manifest?.fe?.entry || extractPluginNames(manifest).length > 0 || (contrib?.systems ?? []).length > 0,
       description: manifest?.description,
       entities,
-      plugins: (manifest?.plugins ?? []).map((pp: any) => pp.id),
+      plugins: extractPluginNames(manifest),
       permissions: manifest?.permissions ?? [],
     }, contrib);
   });

@@ -36,6 +36,14 @@ export interface PackEARS {
   };
 }
 
+export interface PackFeatureDef {
+  id: string;
+  designation?: string;
+  hasSystem: boolean;
+  plugin?: { label: string; icon: string; isPinned?: boolean };
+  services: string[];
+}
+
 export interface PackRegistration {
   id: string;
   systems: PackSystemDef[];
@@ -46,4 +54,5 @@ export interface PackRegistration {
   steps?: import('../steps/types').StepDefinition[];
   artifacts?: import('../artifacts/types').ArtifactDefinition[];
   blocks?: import('../blocks/types').BlockDefinition[];
+  features?: PackFeatureDef[];
 }

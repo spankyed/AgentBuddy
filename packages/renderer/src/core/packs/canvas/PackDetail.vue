@@ -56,15 +56,14 @@
 
       <!-- Summary stats -->
       <section class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
-        <span v-if="pack.systems.length">{{ pack.systems.length }} systems</span>
-        <span v-if="pack.services.length">{{ pack.services.length }} services</span>
-        <span v-if="pack.plugins.length">{{ pack.plugins.length }} plugins</span>
+        <span v-if="pack.features.length">{{ pack.features.length }} features</span>
         <span v-if="entityEntries.length">{{ entityEntries.length }} entities</span>
         <span v-if="relKindEntries.length">{{ relKindEntries.length }} relations</span>
         <span v-if="pack.steps.length">{{ pack.steps.length }} steps</span>
         <span v-if="pack.artifacts.length">{{ pack.artifacts.length }} artifacts</span>
         <span v-if="pack.blocks.length">{{ pack.blocks.length }} blocks</span>
         <span v-if="pack.migrationCount">{{ pack.migrationCount }} migrations</span>
+        <span v-if="packServiceNames.length">{{ packServiceNames.length }} pack services</span>
       </section>
 
       <!-- Extra metadata for external packs -->
@@ -83,117 +82,157 @@
         </div>
       </section>
 
-      <!-- Boot Hooks -->
-      <section v-if="pack.bootHooks.length > 0">
-        <SectionHeader :label="'Boot Hooks'" :count="pack.bootHooks.length" />
-        <div class="flex flex-wrap gap-1.5">
-          <span
-            v-for="hook in pack.bootHooks"
-            :key="hook"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
-          >{{ hook }}</span>
+      <!-- Features -->
+      <section v-if="pack.features.length > 0">
+        <SectionHeader label="Features" :count="pack.features.length" />
+        <div class="space-y-2">
+          <div
+            v-for="feature in pack.features"
+            :key="feature.id"
+            class="px-3 py-2 bg-neutral-800/40 border border-neutral-700/30 rounded-lg"
+          >
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm text-neutral-200 font-medium">{{ feature.plugin?.label ?? feature.id }}</span>
+              <span
+                v-if="feature.designation"
+                class="px-1 py-0.5 text-[9px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded"
+              >{{ feature.designation }}</span>
+            </div>
+            <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
+              <span v-if="feature.hasSystem">system</span>
+              <span v-if="feature.plugin">plugin<template v-if="feature.plugin.isPinned"> (pinned)</template></span>
+              <span v-if="feature.services.length">services: {{ feature.services.join(', ') }}</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- Systems -->
-      <section v-if="pack.systems.length > 0">
-        <SectionHeader :label="'Systems'" :count="pack.systems.length" />
-        <div class="flex flex-wrap gap-1.5">
-          <span
-            v-for="sys in pack.systems"
-            :key="sys"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
-          >{{ sys }}</span>
-        </div>
-      </section>
+      <!-- Fallback: flat lists when no features (external packs without features manifest) -->
+      <template v-if="!pack.features.length">
+        <!-- Systems -->
+        <section v-if="pack.systems.length > 0">
+          <SectionHeader label="Systems" :count="pack.systems.length" />
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="sys in pack.systems"
+              :key="sys"
+              class="chip"
+            >{{ sys }}</span>
+          </div>
+        </section>
 
-      <!-- Services -->
-      <section v-if="pack.services.length > 0">
-        <SectionHeader :label="'Services'" :count="pack.services.length" />
+        <!-- Services -->
+        <section v-if="pack.services.length > 0">
+          <SectionHeader label="Services" :count="pack.services.length" />
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="svc in pack.services"
+              :key="svc"
+              class="chip"
+            >{{ svc }}</span>
+          </div>
+        </section>
+
+        <!-- Plugins -->
+        <section v-if="pack.plugins.length > 0">
+          <SectionHeader label="Plugins" :count="pack.plugins.length" />
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="pluginId in pack.plugins"
+              :key="pluginId"
+              class="chip"
+            >{{ pluginId }}</span>
+          </div>
+        </section>
+      </template>
+
+      <!-- Pack-level services (not owned by any feature) -->
+      <section v-if="packServiceNames.length > 0">
+        <SectionHeader label="Pack Services" :count="packServiceNames.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
-            v-for="svc in pack.services"
+            v-for="svc in packServiceNames"
             :key="svc"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
+            class="chip"
           >{{ svc }}</span>
         </div>
       </section>
 
-      <!-- Plugins -->
-      <section v-if="pack.plugins.length > 0">
-        <SectionHeader :label="'Plugins'" :count="pack.plugins.length" />
+      <!-- Boot Hooks -->
+      <section v-if="pack.bootHooks.length > 0">
+        <SectionHeader label="Boot Hooks" :count="pack.bootHooks.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
-            v-for="pluginId in pack.plugins"
-            :key="pluginId"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
-          >{{ pluginId }}</span>
+            v-for="hook in pack.bootHooks"
+            :key="hook"
+            class="chip"
+          >{{ hook }}</span>
         </div>
       </section>
 
       <!-- Entities -->
       <section v-if="entityEntries.length > 0">
-        <SectionHeader :label="'Entities'" :count="entityEntries.length" />
+        <SectionHeader label="Entities" :count="entityEntries.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
-            v-for="[key, type] in entityEntries"
+            v-for="[key] in entityEntries"
             :key="key"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
+            class="chip"
           >{{ key }}</span>
         </div>
       </section>
 
       <!-- Relation Kinds -->
       <section v-if="relKindEntries.length > 0">
-        <SectionHeader :label="'Relation Kinds'" :count="relKindEntries.length" />
+        <SectionHeader label="Relation Kinds" :count="relKindEntries.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
             v-for="[, value] in relKindEntries"
             :key="value"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
+            class="chip"
           >{{ value }}</span>
         </div>
       </section>
 
       <!-- Steps -->
       <section v-if="pack.steps.length > 0">
-        <SectionHeader :label="'Steps'" :count="pack.steps.length" />
+        <SectionHeader label="Steps" :count="pack.steps.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
             v-for="step in pack.steps"
             :key="step"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
+            class="chip"
           >{{ step }}</span>
         </div>
       </section>
 
       <!-- Artifacts -->
       <section v-if="pack.artifacts.length > 0">
-        <SectionHeader :label="'Artifacts'" :count="pack.artifacts.length" />
+        <SectionHeader label="Artifacts" :count="pack.artifacts.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
             v-for="art in pack.artifacts"
             :key="art"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
+            class="chip"
           >{{ art }}</span>
         </div>
       </section>
 
       <!-- Blocks -->
       <section v-if="pack.blocks.length > 0">
-        <SectionHeader :label="'Blocks'" :count="pack.blocks.length" />
+        <SectionHeader label="Blocks" :count="pack.blocks.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
             v-for="block in pack.blocks"
             :key="block"
-            class="px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono"
+            class="chip"
           >{{ block }}</span>
         </div>
       </section>
 
       <!-- Permissions -->
       <section v-if="pack.permissions.length > 0">
-        <SectionHeader :label="'Permissions'" :count="pack.permissions.length" />
+        <SectionHeader label="Permissions" :count="pack.permissions.length" />
         <div class="space-y-1">
           <div
             v-for="perm in pack.permissions"
@@ -226,6 +265,18 @@ defineEmits<{
 const entityEntries = computed(() => Object.entries(props.pack.entities));
 const relKindEntries = computed(() => Object.entries(props.pack.relKinds));
 
+const featureServiceNames = computed(() => {
+  const names = new Set<string>();
+  for (const f of props.pack.features) {
+    for (const s of f.services) names.add(s);
+  }
+  return names;
+});
+
+const packServiceNames = computed(() =>
+  props.pack.services.filter(s => !featureServiceNames.value.has(s))
+);
+
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString(undefined, {
@@ -236,3 +287,9 @@ function formatDate(iso: string): string {
   }
 }
 </script>
+
+<style scoped>
+.chip {
+  @apply px-2 py-1 text-xs text-neutral-300 bg-neutral-800/50 border border-neutral-700/40 rounded font-mono;
+}
+</style>

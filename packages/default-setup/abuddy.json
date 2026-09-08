@@ -5,7 +5,8 @@
   "builtIn": true,
   "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, seed data, message blocks, and default settings.",
   "hostVersion": ">=0.3.0",
-  "features": ["seeds", "artifacts", "plugins", "services", "message-blocks", "extensions"],
+  "license": "MIT",
+
   "entities": {
     "Relation": "Relation",
     "Agent": "Agent",
@@ -47,5 +48,108 @@
     "SPAWNED": "spawned",
     "TRACKED": "tracked"
   },
-  "license": "MIT"
+  "partitionPolicy": {
+    "excludedEntityTypes": ["TNode"],
+    "secretEntityTypes": ["Secret"]
+  },
+
+  "features": [
+    {
+      "id": "threads",
+      "designation": "threads",
+      "system": { "entry": "src/features/threads/be/system.ts", "exportName": "threadsEntry" },
+      "plugin": { "entry": "src/features/threads/fe/plugin.ts", "label": "Threads", "icon": "BotMessageSquare" },
+      "services": ["chat", "artifact", "threads"]
+    },
+    {
+      "id": "code",
+      "system": { "entry": "src/features/code/be/system.ts", "exportName": "codeEntry" },
+      "plugin": { "entry": "src/features/code/fe/plugin.ts", "label": "Code", "icon": "Code2" },
+      "services": ["cli", "codex"]
+    },
+    {
+      "id": "notes",
+      "system": { "entry": "src/features/notes/be/system.ts", "exportName": "notesEntry" },
+      "plugin": { "entry": "src/features/notes/fe/plugin.ts", "label": "Notes", "icon": "NotebookText" },
+      "services": []
+    },
+    {
+      "id": "calendar",
+      "system": { "entry": "src/features/calendar/be/system.ts", "exportName": "calendarEntry" },
+      "plugin": { "entry": "src/features/calendar/fe/plugin.ts", "label": "Calendar", "icon": "Calendar" },
+      "services": []
+    },
+    {
+      "id": "browser",
+      "designation": "browser",
+      "system": { "entry": "src/features/browser/be/system.ts", "exportName": "browserEntry" },
+      "plugin": { "entry": "src/features/browser/fe/plugin.ts", "label": "Browser", "icon": "Globe" },
+      "services": ["browser"]
+    },
+    {
+      "id": "library",
+      "system": { "entry": "src/features/library/be/system.ts", "exportName": "libraryEntry" },
+      "plugin": { "entry": "src/features/library/fe/plugin.ts", "label": "Library", "icon": "Library", "isPinned": true },
+      "services": ["library"]
+    },
+    {
+      "id": "flows",
+      "system": { "entry": "src/features/flows/be/system.ts", "exportName": "flowsEntry" },
+      "plugin": { "entry": "src/features/flows/fe/plugin.ts", "label": "Flows", "icon": "Network", "isPinned": true },
+      "services": []
+    },
+    {
+      "id": "actions",
+      "system": { "entry": "src/features/actions/be/system.ts", "exportName": "actionsEntry" },
+      "plugin": { "entry": "src/features/actions/fe/plugin.ts", "label": "Actions", "icon": "Play", "isPinned": true },
+      "services": ["action"]
+    },
+    {
+      "id": "prompts",
+      "system": { "entry": "src/features/prompts/be/system.ts", "exportName": "promptsEntry" },
+      "plugin": { "entry": "src/features/prompts/fe/plugin.ts", "label": "Prompts", "icon": "Sparkle", "isPinned": true },
+      "services": ["prompt"]
+    },
+    {
+      "id": "brain",
+      "designation": "brain",
+      "system": { "entry": "src/features/brain/be/system.ts", "exportName": "brainEntry" },
+      "plugin": { "entry": "src/features/brain/fe/plugin.ts", "label": "Brain", "icon": "Brain", "isPinned": true },
+      "services": ["llm", "brain"]
+    },
+    {
+      "id": "database",
+      "system": { "entry": "src/features/database/be/system.ts", "exportName": "databaseEntry" },
+      "plugin": { "entry": "src/features/database/fe/plugin.ts", "label": "Database", "icon": "Database", "isPinned": true },
+      "services": ["database"]
+    },
+    {
+      "id": "logs",
+      "system": { "entry": "src/features/logs/be/system.ts", "exportName": "logsEntry" },
+      "plugin": { "entry": "src/features/logs/fe/plugin.ts", "label": "Logs", "icon": "ScrollText", "isPinned": true },
+      "services": [],
+      "earlySystem": true
+    },
+    {
+      "id": "settings",
+      "designation": "settings",
+      "system": { "entry": "src/features/settings/be/system.ts", "exportName": "settingsEntry" },
+      "plugin": { "entry": "src/features/settings/fe/plugin.ts", "label": "Settings", "icon": "Settings" },
+      "services": ["settings"]
+    }
+  ],
+
+  "defaultPlugin": "threads",
+  "packServices": ["textStream", "filesystem", "modelClient", "openaiAuth"],
+
+  "boot": {
+    "earlySystem": "src/features/logs/be/system.ts",
+    "createDefaultSettings": "src/features/settings/be/repository",
+    "seed": "src/registries/seed/index.ts",
+    "shutdown": "src/features/code/be/services/terminal.ts"
+  },
+  "steps": "src/steps/register.ts",
+  "artifacts": "src/artifacts/register.ts",
+  "blocks": "src/blocks/register.ts",
+  "migrations": "src/migrations/index.ts"
 }

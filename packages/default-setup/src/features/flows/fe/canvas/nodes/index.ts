@@ -8,7 +8,8 @@ export { BaseNode }
 export type { HandleConfig } from '@abuddy/sdk/fe/components/BaseNode.vue'
 
 export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
-  get(_target, type: string) {
+  get(_target, type: string | symbol) {
+    if (typeof type !== 'string') return undefined;
     if (stepRegistry.isTrigger(type)) return TriggerNode;
     return stepRegistry.getComponent(type) || BaseNode;
   },

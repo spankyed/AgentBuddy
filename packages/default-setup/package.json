@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:entries": "node scripts/generate-entries.js"
   },
   "dependencies": {
     "@abuddy/sdk": "*"
