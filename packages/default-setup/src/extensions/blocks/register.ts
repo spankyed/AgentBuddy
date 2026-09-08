@@ -1,6 +1,6 @@
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 
-export const standardBlocks: BlockDefinition[] = [
+export const blocks: BlockDefinition[] = [
   { type: 'prompt' },
   { type: 'note' },
   { type: 'markdown' },

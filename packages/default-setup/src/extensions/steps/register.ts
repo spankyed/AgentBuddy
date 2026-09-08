@@ -13,7 +13,7 @@ import { killStep } from './kill';
 import { scheduleTrigger } from './schedule';
 import { listenerTrigger } from './listener';
 
-export const standardSteps: StepDefinition[] = [
+export const steps: StepDefinition[] = [
   actionStep,
   llmStep,
   switchStep,

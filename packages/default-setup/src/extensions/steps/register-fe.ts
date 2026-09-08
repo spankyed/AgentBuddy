@@ -13,7 +13,7 @@ import { killStepFE } from './kill/fe';
 import { scheduleTriggerFE } from './schedule/fe';
 import { listenerTriggerFE } from './listener/fe';
 
-export const standardStepsFE: StepDefinition[] = [
+export const stepsFE: StepDefinition[] = [
   actionStepFE,
   llmStepFE,
   switchStepFE,

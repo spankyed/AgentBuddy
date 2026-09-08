@@ -43,5 +43,10 @@ export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from 
 export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackPermission,
   PackPluginDefinition, PackSystemEntry, PackPluginEntry,
+  PackFeatureEntry, PackBootConfig,
 } from './manifest';
 export { seedFile, seedPath } from './manifest';
+
+// Entry codegen
+export { generatePackFiles } from './generate-entries';
+export type { GenerateEntriesOptions } from './generate-entries';

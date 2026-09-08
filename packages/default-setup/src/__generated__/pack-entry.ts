@@ -1,5 +1,5 @@
 // @generated from abuddy.json — do not edit by hand
-// Regenerate: node scripts/generate-entries.js
+// Regenerate: abuddy generate-entries
 
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { toPackSystemDefs } from '@abuddy/sdk/framework';
@@ -23,18 +23,18 @@ import { EARS } from './ears';
 import { createDefaultSettings } from '../features/settings/be/repository';
 import { terminalService } from '../features/code/be/services/terminal';
 import { runBootSeed } from './seeders';
-import { migrations } from '../migrations';
-import { standardSteps } from '../extensions/steps/register';
-import { standardArtifacts } from '../extensions/artifacts/register';
-import { standardBlocks } from '../extensions/blocks/register';
+import { migrations } from '../migrations/index';
+import { steps } from '../extensions/steps/register';
+import { artifacts } from '../extensions/artifacts/register';
+import { blocks } from '../extensions/blocks/register';
 
 export const registration: PackRegistration = {
   id: 'default-setup',
   systems: toPackSystemDefs([settingsEntry, threadsEntry, codeEntry, notesEntry, calendarEntry, browserEntry, libraryEntry, flowsEntry, actionsEntry, promptsEntry, brainEntry, databaseEntry]),
   services: featureServices,
-  steps: standardSteps,
-  artifacts: standardArtifacts,
-  blocks: standardBlocks,
+  steps,
+  artifacts,
+  blocks,
   ears: {
     entities: Object.fromEntries(
       Object.entries(EARS.Entity).filter(([k, v]) => typeof v === 'string' && k !== 'Custom') as [string, string][]

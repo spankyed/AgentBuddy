@@ -1,5 +1,5 @@
 // @generated from abuddy.json — do not edit by hand
-// Regenerate: node scripts/generate-entries.js
+// Regenerate: abuddy generate-entries
 
 import { registerPackFE } from '@abuddy/sdk/fe/contributions';
 import Threads from '../features/threads/fe/plugin';
@@ -16,17 +16,17 @@ import Database from '../features/database/fe/plugin';
 import Logs from '../features/logs/fe/plugin';
 import Settings from '../features/settings/fe/plugin';
 import { tiptapPlugins } from '../extensions/tiptap-plugins';
-import { artifactDefinitions } from '../extensions/artifacts/register-fe';
-import { blockDefinitions } from '../extensions/blocks/register-fe';
-import { standardStepsFE } from '../extensions/steps/register-fe';
+import { artifactsFE } from '../extensions/artifacts/register-fe';
+import { blocksFE } from '../extensions/blocks/register-fe';
+import { stepsFE } from '../extensions/steps/register-fe';
 import Welcome from '../extensions/Welcome.vue';
 
 registerPackFE({
   plugins: [Threads, Code, Notes, Calendar, Browser, Library, Flows, Actions, Prompts, Brain, Database, Logs, Settings],
   defaultPlugin: Threads,
-  steps: standardStepsFE,
+  steps: stepsFE,
   tiptapPlugins,
   appExtensions: { welcome: Welcome },
-  artifacts: artifactDefinitions,
-  blocks: blockDefinitions,
+  artifacts: artifactsFE,
+  blocks: blocksFE,
 });

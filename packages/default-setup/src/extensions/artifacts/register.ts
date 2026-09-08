@@ -5,7 +5,7 @@ import {
   BookText, StickyNote, Bot,
 } from 'lucide-vue-next';
 
-export const standardArtifacts: ArtifactDefinition[] = [
+export const artifacts: ArtifactDefinition[] = [
   {
     type: 'text',
     fe: {

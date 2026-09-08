@@ -6,8 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepare": "node scripts/generate-entries.js",
-    "generate:entries": "node scripts/generate-entries.js"
+    "prepare": "abuddy generate-entries",
+    "generate:entries": "abuddy generate-entries"
   },
   "dependencies": {
     "@abuddy/sdk": "*"

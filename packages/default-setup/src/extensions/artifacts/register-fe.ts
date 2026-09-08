@@ -1,5 +1,5 @@
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
-import { standardArtifacts } from './register';
+import { artifacts } from './register';
 
 import TextArtifact from './viewers/text-artifact.vue';
 import CodeArtifact from './viewers/code-artifact.vue';
@@ -33,7 +33,7 @@ const componentMap: Record<string, unknown> = {
   note: NoteArtifact,
 };
 
-export const artifactDefinitions: ArtifactDefinition[] = standardArtifacts.map(def => ({
+export const artifactsFE: ArtifactDefinition[] = artifacts.map(def => ({
   ...def,
   fe: def.fe
     ? { ...def.fe, component: componentMap[def.type], loadComponent: undefined }

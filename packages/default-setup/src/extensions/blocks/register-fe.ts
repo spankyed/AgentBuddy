@@ -1,5 +1,5 @@
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { standardBlocks } from './register';
+import { blocks } from './register';
 
 import PromptBlock from './display/PromptBlock.vue';
 import NoteBlock from './display/NoteBlock.vue';
@@ -41,7 +41,7 @@ const componentMap: Record<string, unknown> = {
   'project-select': ProjectSelectInput,
 };
 
-export const blockDefinitions: BlockDefinition[] = standardBlocks.map(def => ({
+export const blocksFE: BlockDefinition[] = blocks.map(def => ({
   ...def,
   fe: componentMap[def.type] ? { component: componentMap[def.type] } : undefined,
 }));

@@ -204,5 +204,11 @@
   "steps": "src/extensions/steps/register.ts",
   "artifacts": "src/extensions/artifacts/register.ts",
   "blocks": "src/extensions/blocks/register.ts",
+  "fe": {
+    "tiptapPlugins": "src/extensions/tiptap-plugins.ts",
+    "appExtensions": {
+      "welcome": "src/extensions/Welcome.vue"
+    }
+  },
   "migrations": "src/migrations/index.ts"
 }

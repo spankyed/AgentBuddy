@@ -4,6 +4,7 @@ export interface PackManifest {
   id: string;
   name: string;
   version: string;
+  builtIn?: boolean;
   description?: string;
   hostVersion?: string;
   seedTypes?: string[];
@@ -13,11 +14,46 @@ export interface PackManifest {
   dependencies?: Record<string, string>;
   permissions?: PackPermission[];
   license?: string;
-  boot?: { seed?: Record<string, string>; [key: string]: unknown };
+  boot?: PackBootConfig;
   steps?: string;
   artifacts?: string;
   blocks?: string;
-  features?: Array<{ id: string; settings?: string; [key: string]: unknown }>;
+  migrations?: string;
+  features?: PackFeatureEntry[];
+  packServices?: Record<string, string>;
+  defaultPlugin?: string;
+  partitionPolicy?: { excludedEntityTypes?: string[]; secretEntityTypes?: string[] };
+  fe?: { tiptapPlugins?: string; appExtensions?: Record<string, string> };
+}
+
+export interface PackFeatureEntry {
+  id: string;
+  designation?: string;
+  settings?: string;
+  typesEntry?: string;
+  earlySystem?: boolean;
+  system?: {
+    entry: string;
+    exportName: string;
+    outgoingEventsType?: string;
+  };
+  plugin?: {
+    entry: string;
+    label: string;
+    icon: string;
+    isPinned?: boolean;
+  };
+  services: Record<string, string>;
+  contributions?: string;
+  [key: string]: unknown;
+}
+
+export interface PackBootConfig {
+  earlySystem?: string;
+  createDefaultSettings?: string;
+  seed?: Record<string, string | { seeder?: string; entityType?: string; lookupField?: string }>;
+  shutdown?: string;
+  [key: string]: unknown;
 }
 
 export interface PackTypeManifest {
