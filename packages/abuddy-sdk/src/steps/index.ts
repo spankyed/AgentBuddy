@@ -3,6 +3,7 @@ export { expandRecord, collapseRecord } from './utils';
 export { reportStepRuntimeError, toStepRuntimeError } from './runtime-errors';
 export type {
   StepDefinition,
+  StepDSLMeta,
   StepBranch,
   StepBuildFacet,
   StepRuntimeFacet,

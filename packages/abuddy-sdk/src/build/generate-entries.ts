@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { PackManifest, PackFeatureEntry, SeedEntryConfig } from './manifest';
+import type { PackManifest, PackFeatureEntry, SeedEntryConfig, StepEntry } from './manifest';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -53,6 +53,14 @@ export function generatePackFiles(
   function typesEntry(feature: PackFeatureEntry): string {
     return feature.typesEntry ?? `src/features/${feature.id}/be/types`;
   }
+
+  const stepsRegister = typeof manifest.steps === 'string'
+    ? manifest.steps
+    : manifest.steps?.register;
+
+  const stepDefinitions: StepEntry[] = (typeof manifest.steps === 'object' && manifest.steps !== null)
+    ? manifest.steps.definitions
+    : [];
 
   // ── Backend entry ──────────────────────────────────────────────
 
@@ -117,7 +125,7 @@ import { EARS } from './ears';
 ${bootImports}
 import './seeders';
 import { migrations } from '${toImportPath(manifest.migrations!)}';
-import { steps } from '${toImportPath(manifest.steps!)}';
+import { steps } from '${toImportPath(stepsRegister!)}';
 import { artifacts } from '${toImportPath(manifest.artifacts!)}';
 import { blocks } from '${toImportPath(manifest.blocks!)}';
 
@@ -180,7 +188,8 @@ ${featuresLiteral},
     for (const field of ['steps', 'artifacts', 'blocks'] as const) {
       const manifestField = manifest[field];
       if (!manifestField) continue;
-      const fePath = manifestField.replace(/\.ts$/, '-fe.ts');
+      const pathStr = typeof manifestField === 'string' ? manifestField : manifestField.register;
+      const fePath = pathStr.replace(/\.ts$/, '-fe.ts');
       if (!existsSync(join(root, fePath))) continue;
       feExts[field] = toImportPath(fePath);
     }
@@ -497,6 +506,89 @@ export {};
 `;
   }
 
+  // ── Flow helpers ───────────────────────────────────────────────
+
+  function toCamelCase(s: string): string {
+    return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+  }
+
+  function generateFlowHelpers(): string {
+    if (stepDefinitions.length === 0) return '';
+
+    const imports: string[] = [];
+    const helpers: string[] = [];
+    const customReExports: string[] = [];
+
+    for (const step of stepDefinitions) {
+      if (!step.dsl) continue;
+
+      const dsl = step.dsl;
+      const helperName = dsl.helperName ?? toCamelCase(step.type);
+      const importPath = toImportPath(step.path + '/types');
+
+      if (dsl.custom) {
+        const helperPath = toImportPath(step.path + '/helpers');
+        customReExports.push(`export { ${helperName} } from '${helperPath}';`);
+        continue;
+      }
+
+      if (dsl.primaryField) {
+        const typesFile = join(root, step.path, 'types.ts');
+        const content = existsSync(typesFile) ? readFileSync(typesFile, 'utf-8') : '';
+        const dslMatch = content.match(/export\s+interface\s+(DSL\w+Node)\b/);
+        if (!dslMatch) {
+          throw new Error(`Step "${step.type}": no DSL*Node interface found in ${step.path}/types.ts`);
+        }
+        const dslTypeName = dslMatch[1];
+        imports.push(`import type { ${dslTypeName} } from '${importPath}';`);
+        helpers.push(
+`export function ${helperName}(${dsl.primaryField}: string, opts?: Omit<${dslTypeName}, 'type' | '${dsl.primaryField}'>): DSLStepNode {
+  return { type: '${step.type}', ${dsl.primaryField}, ...opts };
+}`
+        );
+      } else if (dsl.defaultLabel) {
+        helpers.push(
+`export function ${helperName}(label: string = '${dsl.defaultLabel}'): DSLStepNode {
+  return { type: '${step.type}', label };
+}`
+        );
+      } else {
+        helpers.push(
+`export function ${helperName}(label?: string): DSLStepNode {
+  return { type: '${step.type}', ...(label && { label }) };
+}`
+        );
+      }
+    }
+
+    // Trigger track builders
+    for (const step of stepDefinitions) {
+      if (step.kind !== 'trigger') continue;
+      const defFile = join(root, step.path, 'index.ts');
+      if (!existsSync(defFile)) continue;
+      const content = readFileSync(defFile, 'utf-8');
+      const match = content.match(/trackField:\s*['"](\w+)['"]/);
+      if (!match) continue;
+      const trackField = match[1];
+      if (trackField === 'event') continue;
+      const helperName = toCamelCase(trackField);
+      helpers.push(
+`export function ${helperName}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {
+  return { ${trackField}, label: label ?? \`${toPascalCase(trackField)} (\${${trackField}})\`, exits };
+}`
+      );
+    }
+
+    return `${HEADER}
+import type { DSLStepNode, Track } from '@abuddy/sdk/build';
+export { entry, on } from '@abuddy/sdk/build';
+${imports.join('\n')}
+
+${helpers.join('\n\n')}
+${customReExports.length ? '\n' + customReExports.join('\n') : ''}
+`;
+  }
+
   // ── Assemble ────────────────────────────────────────────────────
 
   const files: [string, string][] = ([
@@ -511,6 +603,7 @@ export {};
     ['src/__generated__/service-types.ts', generateServiceTypes()],
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
+    ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
   ] as [string, string][]).filter(([, content]) => content);
 
   return Object.fromEntries(files);

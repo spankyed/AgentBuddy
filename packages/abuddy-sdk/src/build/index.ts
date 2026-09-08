@@ -49,8 +49,12 @@ export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackPermission,
   PackPluginDefinition, PackSystemEntry, PackPluginEntry,
   PackFeatureEntry, PackBootConfig, SeedEntryConfig,
+  StepEntry, StepDSLMeta,
 } from './manifest';
 export { seedFile, seedPath } from './manifest';
+
+// Flow DSL helpers (track builders)
+export { entry, on } from './flow-helpers';
 
 // Entry codegen
 export { generatePackFiles } from './generate-entries';

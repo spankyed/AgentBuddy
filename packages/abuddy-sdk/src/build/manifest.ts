@@ -15,7 +15,7 @@ export interface PackManifest {
   permissions?: PackPermission[];
   license?: string;
   boot?: PackBootConfig;
-  steps?: string;
+  steps?: string | { register: string; definitions: StepEntry[] };
   artifacts?: string;
   blocks?: string;
   migrations?: string;
@@ -83,6 +83,20 @@ export function seedFile(name: string): string {
 
 export function seedPath(compiledDir: string, name: string): string {
   return path.join(compiledDir, seedFile(name));
+}
+
+export interface StepDSLMeta {
+  helperName?: string;
+  primaryField?: string;
+  defaultLabel?: string;
+  custom?: true;
+}
+
+export interface StepEntry {
+  type: string;
+  path: string;
+  kind?: 'step' | 'trigger';
+  dsl?: StepDSLMeta;
 }
 
 export type PackPermission =

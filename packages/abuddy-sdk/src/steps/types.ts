@@ -253,6 +253,13 @@ export interface TriggerRuntimeContext {
  * Step Definition
  *─────────────────────────────────────────────────────────────────*/
 
+export interface StepDSLMeta {
+  helperName?: string;
+  primaryField?: string;
+  defaultLabel?: string;
+  custom?: true;
+}
+
 export interface StepDefinition {
   type: string;
   kind?: 'step' | 'trigger';
@@ -260,4 +267,5 @@ export interface StepDefinition {
   runtime?: StepRuntimeFacet;
   fe?: StepFEFacet;
   trigger?: TriggerFacet;
+  dsl?: StepDSLMeta;
 }

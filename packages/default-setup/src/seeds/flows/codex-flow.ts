@@ -1,5 +1,5 @@
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, action, branch } from './_patterns';
+import { entry, on, keepAlive, action, branch } from '../../__generated__/flow-helpers';
 
 /**
  * Codex mode flow.

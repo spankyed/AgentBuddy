@@ -216,7 +216,24 @@
     "Note": { "source": "src/features/notes/be/types.ts", "type": "NoteEntity" }
   },
 
-  "steps": "src/extensions/steps/register.ts",
+  "steps": {
+    "register": "src/extensions/steps/register.ts",
+    "definitions": [
+      { "type": "action",     "path": "src/extensions/steps/action",     "dsl": { "primaryField": "action" } },
+      { "type": "llm",        "path": "src/extensions/steps/llm",        "dsl": { "primaryField": "prompt" } },
+      { "type": "fire",       "path": "src/extensions/steps/fire",       "dsl": { "primaryField": "event" } },
+      { "type": "flow",       "path": "src/extensions/steps/flow",       "dsl": { "helperName": "subflow", "primaryField": "flow" } },
+      { "type": "query",      "path": "src/extensions/steps/query",      "dsl": { "primaryField": "prompt" } },
+      { "type": "create",     "path": "src/extensions/steps/create",     "dsl": { "primaryField": "entity" } },
+      { "type": "update",     "path": "src/extensions/steps/update",     "dsl": { "primaryField": "target" } },
+      { "type": "transform",  "path": "src/extensions/steps/transform",  "dsl": { "primaryField": "script" } },
+      { "type": "keep_alive", "path": "src/extensions/steps/keep-alive", "dsl": {} },
+      { "type": "kill",       "path": "src/extensions/steps/kill",       "dsl": { "helperName": "killFlow", "defaultLabel": "Kill Flow" } },
+      { "type": "switch",     "path": "src/extensions/steps/switch",     "dsl": { "helperName": "branch", "custom": true } },
+      { "type": "schedule",   "path": "src/extensions/steps/schedule",   "kind": "trigger" },
+      { "type": "listener",   "path": "src/extensions/steps/listener",   "kind": "trigger" }
+    ]
+  },
   "artifacts": "src/extensions/artifacts/register.ts",
   "blocks": "src/extensions/blocks/register.ts",
   "fe": {

@@ -27,7 +27,7 @@ export async function buildPackConfigFromManifest(
         register: (item: any) => void;
         label: string;
       }> = [
-        { path: manifest.steps, register: (s) => stepRegistry.register(s), label: 'steps' },
+        { path: typeof manifest.steps === 'string' ? manifest.steps : manifest.steps?.register, register: (s) => stepRegistry.register(s), label: 'steps' },
         { path: manifest.artifacts, register: (a) => artifactRegistry.register(a), label: 'artifacts' },
         { path: manifest.blocks, register: (b) => blockRegistry.register(b), label: 'blocks' },
       ];
