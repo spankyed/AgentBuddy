@@ -1,11 +1,12 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Clock } from 'lucide-vue-next';
 
 export const scheduleTriggerFE: StepDefinition = {
   type: 'schedule',
   kind: 'trigger',
   fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     nodeConfig: {
       label: 'Schedule',
       defaultLabel: 'On schedule',

@@ -1,10 +1,11 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Plus } from 'lucide-vue-next';
 
 export const createStepFE: StepDefinition = {
   type: 'create',
   fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'purple',
     nodeConfig: {
       label: 'Create',

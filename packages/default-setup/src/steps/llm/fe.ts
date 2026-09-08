@@ -1,10 +1,11 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Sparkle } from 'lucide-vue-next';
 
 export const llmStepFE: StepDefinition = {
   type: 'llm',
   fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'indigo',
     nodeConfig: {
       label: 'LLM',

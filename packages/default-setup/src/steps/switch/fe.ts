@@ -1,4 +1,5 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Split } from 'lucide-vue-next';
 
 const SWITCH_DIMS = { rowHeight: 26, headerOffset: 43, bottomPadding: 10 };
@@ -7,8 +8,8 @@ export const switchStepFE: StepDefinition = {
   type: 'switch',
   fe: {
     loadComponents: () => ({
-      node: require('./node.vue').default,
-      form: require('./form.vue').default,
+      node: defineAsyncComponent(() => import('./node.vue')),
+      form: defineAsyncComponent(() => import('./form.vue')),
     }),
     colorKey: 'yellow',
     nodeConfig: {

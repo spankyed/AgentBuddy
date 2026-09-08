@@ -1,10 +1,11 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Play } from 'lucide-vue-next';
 
 export const actionStepFE: StepDefinition = {
   type: 'action',
   fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'neutral',
     nodeConfig: {
       label: 'Action',

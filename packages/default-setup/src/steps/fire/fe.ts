@@ -1,10 +1,11 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Zap } from 'lucide-vue-next';
 
 export const fireStepFE: StepDefinition = {
   type: 'fire',
   fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'amber',
     nodeConfig: {
       label: 'Fire',
