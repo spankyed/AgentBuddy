@@ -49,6 +49,9 @@ unset NODE_ENV
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
+# Generate pack entries (safety net — prepare hook covers this during npm install)
+npm run generate:entries -w @app/default-setup
+
 # Step 3: Compile default-setup
 if [ -z "$SKIP_COMPILE" ]; then
   echo -e "${BLUE}[3/7]${NC} Compiling default-setup..."
