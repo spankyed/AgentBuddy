@@ -218,7 +218,7 @@ ${featuresLiteral},
     if (feExts.blocks) regProps.push(`  blocks: blocksFE,`);
 
     return `${HEADER}
-import { registerPackFE } from '@abuddy/sdk/fe/contributions';
+import { registerPackFE } from '@abuddy/sdk/fe';
 ${pluginImports}
 ${extraImports.join('\n')}
 

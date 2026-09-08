@@ -1,7 +1,7 @@
 // @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries
 
-import { registerPackFE } from '@abuddy/sdk/fe/contributions';
+import { registerPackFE } from '@abuddy/sdk/fe';
 import Threads from '../features/threads/fe/plugin';
 import Code from '../features/code/fe/plugin';
 import Notes from '../features/notes/fe/plugin';
