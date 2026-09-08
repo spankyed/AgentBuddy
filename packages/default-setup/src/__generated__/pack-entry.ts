@@ -27,8 +27,7 @@ import { migrations } from '../migrations/index';
 import { steps } from '../extensions/steps/register';
 import { artifacts } from '../extensions/artifacts/register';
 import { blocks } from '../extensions/blocks/register';
-
-const COMPILED_DIR = new URL('../../dist', import.meta.url).pathname;
+import { DEFAULT_COMPILED_DIR } from './seeders';
 
 export const registration: PackRegistration = {
   id: 'default-setup',
@@ -54,7 +53,7 @@ export const registration: PackRegistration = {
     createDefaultSettings,
     seedManifest: {
       artifacts: ['actions', 'prompts', 'flows', 'library', 'notes'],
-      compiledDir: COMPILED_DIR,
+      compiledDir: DEFAULT_COMPILED_DIR,
       seedPolicy: {"skipAtBoot":["settings"],"skipAfterOnboarding":["notes"]},
     },
     shutdown: () => terminalService.killAll(),

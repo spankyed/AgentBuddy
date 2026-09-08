@@ -18,18 +18,8 @@ export {
   isFlowConfig, resolveTracks, ROOT_FLOW_ROLE,
 } from '@abuddy/sdk/build';
 
-// Per-step DSL node types (pack-specific)
-export type { DSLActionNode } from '@/extensions/steps/action/types';
-export type { DSLLLMNode } from '@/extensions/steps/llm/types';
-export type { DSLSwitchNode, DSLSwitchCondition } from '@/extensions/steps/switch/types';
-export type { DSLFireNode } from '@/extensions/steps/fire/types';
-export type { DSLTransformNode } from '@/extensions/steps/transform/types';
-export type { DSLQueryNode } from '@/extensions/steps/query/types';
-export type { DSLFlowNode } from '@/extensions/steps/subflow/types';
-export type { DSLCreateNode } from '@/extensions/steps/create/types';
-export type { DSLUpdateNode } from '@/extensions/steps/update/types';
-export type { DSLKeepAliveNode } from '@/extensions/steps/keep-alive/types';
-export type { DSLKillNode } from '@/extensions/steps/kill/types';
+// Per-step DSL node types (auto-generated from abuddy.json)
+export type * from '@/__generated__/step-types';
 
 // Library content types (for DSL authors — also in action-defs but not exported there)
 export type { ContentSection, ContentType, FieldContent, ListContent, MarkdownContent, TextContent, CodeContent } from '@/features/library/be/types';

@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import type { PackManifest, PackFeatureEntry, SeedEntryConfig, StepEntry } from './manifest';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
@@ -128,8 +128,7 @@ import { migrations } from '${toImportPath(manifest.migrations!)}';
 import { steps } from '${toImportPath(stepsRegister!)}';
 import { artifacts } from '${toImportPath(manifest.artifacts!)}';
 import { blocks } from '${toImportPath(manifest.blocks!)}';
-
-const COMPILED_DIR = new URL('../../dist', import.meta.url).pathname;
+import { DEFAULT_COMPILED_DIR } from './seeders';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -155,7 +154,7 @@ ${earlySystemLine}
     createDefaultSettings,
     seedManifest: {
       artifacts: [${artifactsList}],
-      compiledDir: COMPILED_DIR,${seedPolicyLine}
+      compiledDir: DEFAULT_COMPILED_DIR,${seedPolicyLine}
     },
     shutdown: () => terminalService.killAll(),
   },
@@ -449,10 +448,13 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
     }
 
     return `${HEADER}
+import path from 'path';
 import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
 import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { EARS } from './ears';
 ${packImports.join('\n')}
+
+export const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', '${basename(root)}', 'dist');
 
 ${registrations.join('\n')}
 
