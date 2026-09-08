@@ -26,10 +26,3 @@ export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
     return prop in nodeConfigs;
   },
 })
-
-export const nodeConnectionRules = Object.entries(nodeConfigs).reduce((acc, [nodeType, config]) => {
-  if (config) {
-    acc[nodeType as NodeKind] = config.connectionRules
-  }
-  return acc
-}, {} as Record<NodeKind, { inputs: number; outputs: number }>)

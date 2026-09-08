@@ -8,7 +8,7 @@ Backend pack infrastructure. Four modules handle discovery, loading, registratio
 
 Discovered from `packages/` by scanning for `abuddy.json` with `builtIn: true`. Loaded every boot — no enable/disable mechanism (they ship with the app).
 
-- **Dev**: `loadBuiltInPacks()` in `pack-loader.ts` calls `discoverBuiltInPacks()` at runtime, then `await import()`s each pack's `src/pack-entry` directly.
+- **Dev**: `loadBuiltInPacks()` in `pack-loader.ts` calls `discoverBuiltInPacks()` at runtime, then `await import()`s each pack's `src/__generated__/pack-entry` directly.
 - **Prod**: The tsup build (`packages/api/tsup.config.ts`) rewrites `loadBuiltInPacks()` at bundle time. The `rewrite-pack-loader` esbuild plugin scans `packages/` for `abuddy.json` during the build, then replaces the function body (between `@tsup-rewrite-start/end` markers) with hardcoded `require()` calls. The resulting bundle has no runtime discovery — packs are baked in. The function signature also changes (drops params, becomes sync), but JS silently handles the mismatch since callers pass unused args and `await` a non-promise.
 
 ### External packs
@@ -54,7 +54,7 @@ External packs register **before** hydration (step 3-4) so their EARS entity typ
 
 ## Pack entry contract
 
-A pack's `pack-entry.ts` (built-in) or `dist/index.js` (external) must export a `registration` object conforming to `PackRegistration` from `@abuddy/sdk/framework`:
+A pack's `__generated__/pack-entry.ts` (built-in) or `dist/index.js` (external) must export a `registration` object conforming to `PackRegistration` from `@abuddy/sdk/framework`:
 
 ```typescript
 export const registration: PackRegistration = {
@@ -108,7 +108,7 @@ External packs declare a FE entry point in their manifest:
 }
 ```
 
-The renderer loads `pack://{packId}/{fe.entry}` via dynamic import. The module must export a `PackFERegistration`-shaped object (or a subset): `{ plugins?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it. If plugins are present, they're also merged into the application actor via `PACK_PLUGINS_LOADED`.
+The renderer loads `pack://{packId}/{fe.entry}` via dynamic import. The module must export a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it. If plugins are present, they're also merged into the application actor via `PACK_PLUGINS_LOADED`.
 
 Packs without `fe.entry` fall back to per-plugin loading from `plugins[].plugin.entry` in the manifest (the legacy path — plugins only).
 

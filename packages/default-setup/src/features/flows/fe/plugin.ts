@@ -3,10 +3,6 @@ import { Network } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas/flow-canvas.vue';
 import settings from './settings.vue';
-import { stepRegistry } from '@abuddy/sdk/steps';
-
-stepRegistry.initComponents();
-
 const flowsPlugin: Plugin = {
   id,
   label: 'Flows',

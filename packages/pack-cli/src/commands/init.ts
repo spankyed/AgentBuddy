@@ -82,6 +82,7 @@ const FE_ENTRY_TEMPLATE = (_name: string) => `import type { PackFERegistration }
 
 const registration: PackFERegistration = {
   plugins: [],
+  // steps: [],
   // artifacts: [],
   // blocks: [],
 };
