@@ -596,6 +596,15 @@ ${customReExports.length ? '\n' + customReExports.join('\n') : ''}
 `;
   }
 
+  function generateStepTypes(): string {
+    if (!stepDefinitions.length) return '';
+    const reExports = stepDefinitions
+      .filter(step => existsSync(join(root, step.path, 'types.ts')))
+      .map(step => `export type * from '${toImportPath(step.path + '/types')}';`);
+    if (!reExports.length) return '';
+    return `${HEADER}\n${reExports.join('\n')}\n`;
+  }
+
   // ── Assemble ────────────────────────────────────────────────────
 
   const files: [string, string][] = ([
@@ -611,6 +620,7 @@ ${customReExports.length ? '\n' + customReExports.join('\n') : ''}
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
+    ['src/__generated__/step-types.ts', generateStepTypes()],
   ] as [string, string][]).filter(([, content]) => content);
 
   return Object.fromEntries(files);
