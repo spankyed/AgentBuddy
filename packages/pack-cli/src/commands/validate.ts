@@ -51,6 +51,12 @@ function validateManifest(manifestPath: string): ManifestValidation {
     }
   }
 
+  if (manifest.seeds) {
+    if (typeof manifest.seeds !== 'object' || Array.isArray(manifest.seeds)) {
+      errors.push('abuddy.json: "seeds" must be an object mapping seed types to paths');
+    }
+  }
+
   return { errors, warnings };
 }
 

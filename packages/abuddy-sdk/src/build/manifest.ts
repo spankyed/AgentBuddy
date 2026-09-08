@@ -13,6 +13,11 @@ export interface PackManifest {
   dependencies?: Record<string, string>;
   permissions?: PackPermission[];
   license?: string;
+  seeds?: Record<string, string>;
+  steps?: string;
+  artifacts?: string;
+  blocks?: string;
+  features?: Array<{ id: string; [key: string]: unknown }>;
 }
 
 export interface PackTypeManifest {

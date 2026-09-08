@@ -33,6 +33,7 @@ export interface CompilePackOptions {
   packDir: string;
   outputDir: string;
   packConfig?: PackConfig;
+  featureSettingsPaths?: Array<{ name: string; settingsPath: string }>;
 }
 
 export interface CompilePackResult {

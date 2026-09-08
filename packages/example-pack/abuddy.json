@@ -13,5 +13,10 @@
     "default-setup": ">=0.1.0"
   },
   "plugins": [],
-  "permissions": []
+  "permissions": [],
+  "steps": "src/steps/register.ts",
+  "seeds": {
+    "actions": "src/seeds/actions",
+    "flows": "src/seeds/flows"
+  }
 }

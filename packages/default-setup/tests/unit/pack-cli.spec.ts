@@ -47,7 +47,6 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, 'package.json'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'tsconfig.json'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'compile.config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'actions'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'flows'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'feature.config.ts'))).toBe(true);
@@ -62,6 +61,9 @@ describe('pack CLI: init', () => {
     expect(manifest.id).toBe('test-pack');
     expect(manifest.name).toBe('Test Pack');
     expect(manifest.version).toBe('0.1.0');
+    expect(manifest.seeds).toBeDefined();
+    expect(manifest.seeds.actions).toBe('src/seeds/actions');
+    expect(manifest.seeds.flows).toBe('src/seeds/flows');
   });
 
   it('rejects invalid pack names', async () => {

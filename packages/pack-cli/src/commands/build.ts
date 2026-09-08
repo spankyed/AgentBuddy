@@ -1,6 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { compilePack, type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
+import {
+  compilePack,
+  buildPackConfigFromManifest,
+  resolveFeatureSettingsFromManifest,
+  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
+} from '@abuddy/sdk/build';
 import { generate } from './generate';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, bundlePackFE } from '../fe-bundler';
@@ -9,6 +14,7 @@ async function loadPackConfig(root: string): Promise<PackConfig | null> {
   const configPath = path.join(root, 'compile.config.ts');
   if (!fs.existsSync(configPath)) return null;
 
+  console.warn('Warning: compile.config.ts is deprecated. Move seed paths to the "seeds" section in abuddy.json.');
   const { tsImport } = await import('tsx/esm/api');
   const mod = await tsImport(configPath, import.meta.url);
   return (mod.default ?? mod) as PackConfig;
@@ -24,22 +30,37 @@ export async function build(args: string[]) {
 
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
 
-  const packConfig = await loadPackConfig(root);
+  let packConfig: PackConfig | null = null;
+  let featureSettingsPaths: Array<{ name: string; settingsPath: string }> | undefined;
+
+  if (manifest.seeds && Object.keys(manifest.seeds).length > 0) {
+    packConfig = await buildPackConfigFromManifest(manifest, root);
+    featureSettingsPaths = resolveFeatureSettingsFromManifest(manifest, root);
+  } else {
+    packConfig = await loadPackConfig(root);
+  }
+
   if (!packConfig) {
-    console.log('No compile.config.ts found. Nothing to compile.');
-    return;
+    console.log('No seeds in manifest and no compile.config.ts found. Skipping seed compilation.');
   }
 
   const packDir = root;
   const outputDir = path.join(root, 'dist');
 
-  const options: CompilePackOptions = {
-    packDir,
-    outputDir,
-    packConfig,
-  };
+  let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 
-  const result = await compilePack(options);
+  if (packConfig) {
+    const options: CompilePackOptions = {
+      packDir,
+      outputDir,
+      packConfig,
+      featureSettingsPaths,
+    };
+
+    result = await compilePack(options);
+  } else {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
   const types: PackTypeManifest = {
     entities: manifest.entities ?? {},
@@ -58,14 +79,16 @@ export async function build(args: string[]) {
   fs.writeFileSync(path.join(outputDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
   console.log(`\nBuild complete:`);
-  for (const [type, count] of Object.entries(result.seeds)) {
-    if (count > 0) console.log(`  ${type}: ${count}`);
-  }
+  if (result) {
+    for (const [type, count] of Object.entries(result.seeds)) {
+      if (count > 0) console.log(`  ${type}: ${count}`);
+    }
 
-  if (result.warnings.length > 0) {
-    console.log(`\nWarnings:`);
-    for (const w of result.warnings) {
-      console.log(`  ! ${w}`);
+    if (result.warnings.length > 0) {
+      console.log(`\nWarnings:`);
+      for (const w of result.warnings) {
+        console.log(`  ! ${w}`);
+      }
     }
   }
 

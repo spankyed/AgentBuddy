@@ -12,22 +12,16 @@ const MANIFEST_TEMPLATE = (name: string) => {
     hostVersion: '>=0.3.0',
     entities: { [pascalName]: pascalName },
     relKinds: {},
-    seedTypes: ['actions', 'flows'],
     fe: { entry: 'dist/fe.js' },
     plugins: [],
     dependencies: {},
     permissions: [],
+    seeds: {
+      actions: 'src/seeds/actions',
+      flows: 'src/seeds/flows',
+    },
   }, null, 2);
 };
-
-const PACK_CONFIG_TEMPLATE = (name: string) => `import type { PackConfig } from '@abuddy/sdk/build';
-
-export default {
-  name: '${name}',
-  actions: './src/seeds/actions',
-  flows: './src/seeds/flows',
-} satisfies PackConfig;
-`;
 
 const FEATURE_CONFIG_TEMPLATE = (name: string) => `import type { FeatureConfig } from '@abuddy/sdk/build';
 
@@ -148,7 +142,6 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
-  fs.writeFileSync(path.join(dir, 'compile.config.ts'), PACK_CONFIG_TEMPLATE(name));
   fs.writeFileSync(
     path.join(dir, 'src', 'features', name, 'feature.config.ts'),
     FEATURE_CONFIG_TEMPLATE(name),

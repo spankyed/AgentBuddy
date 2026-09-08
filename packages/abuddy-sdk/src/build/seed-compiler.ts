@@ -7,6 +7,7 @@ import {
   libraryCompiler, notesCompiler, faqCompiler, settingsCompiler,
 } from './compilers/standard';
 import { stepRegistry } from '../steps/registry';
+import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge';
 
 // ============================================================================
 // Compiler Interface
@@ -116,12 +117,24 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   if (options.packConfig) {
     packConfig = options.packConfig;
   } else {
-    const packConfigPath = path.join(packDir, 'compile.config.ts');
-    if (!fs.existsSync(packConfigPath)) {
-      throw new Error(`No compile.config.ts found in ${packDir}`);
+    const manifestPath = path.join(packDir, 'abuddy.json');
+    const manifest = fs.existsSync(manifestPath)
+      ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+      : null;
+
+    if (manifest?.seeds) {
+      packConfig = await buildPackConfigFromManifest(manifest, packDir);
+      if (!options.featureSettingsPaths && manifest.features) {
+        options = { ...options, featureSettingsPaths: resolveFeatureSettingsFromManifest(manifest, packDir) };
+      }
+    } else {
+      const packConfigPath = path.join(packDir, 'compile.config.ts');
+      if (!fs.existsSync(packConfigPath)) {
+        throw new Error(`No seeds in abuddy.json and no compile.config.ts found in ${packDir}`);
+      }
+      const mod = await import(pathToFileURL(packConfigPath).href);
+      packConfig = (mod.default ?? mod) as PackConfig;
     }
-    const mod = await import(pathToFileURL(packConfigPath).href);
-    packConfig = (mod.default ?? mod) as PackConfig;
   }
 
   const compilers = buildCompilerMap(packConfig);
@@ -178,8 +191,10 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       entries.push({ data, sourcePath: baseSettingsFile, packName: '_base' });
     }
 
-    if (featuresDir) {
-      const featureSettings = await discoverFeatureSettings(featuresDir);
+    const featureSettings = options.featureSettingsPaths
+      ?? (featuresDir ? await discoverFeatureSettings(featuresDir) : []);
+
+    if (featureSettings.length > 0) {
       console.log(`Found ${featureSettings.length} feature(s) with settings: ${featureSettings.map(p => p.name).join(', ')}`);
 
       for (const feature of featureSettings) {
