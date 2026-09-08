@@ -1,6 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { Search } from 'lucide-vue-next';
+import { queryStepFE } from './fe';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -44,19 +44,5 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
 export const queryStep: StepDefinition = {
   type: 'query',
   build: { compile, validate, getLabel, decompile },
-  fe: {
-    colorKey: 'cyan',
-    nodeConfig: {
-      label: 'Query',
-      defaultLabel: 'Query',
-      icon: Search,
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-500/10',
-      hoverBgColor: 'group-hover:bg-cyan-500/15',
-      connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
-      category: 'data',
-      isImplemented: false,
-    },
-  },
+  fe: queryStepFE.fe,
 };

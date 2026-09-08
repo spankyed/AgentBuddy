@@ -141,13 +141,13 @@ ${pluginImports}
 import { tiptapPlugins } from '../registries/tiptap-plugins';
 import { artifactDefinitions } from '../artifacts/register-fe';
 import { blockDefinitions } from '../blocks/register-fe';
-import { standardSteps } from '../steps/register';
+import { standardStepsFE } from '../steps/register-fe';
 import Welcome from '../extensions/Welcome.vue';
 
 registerPackFE({
   plugins: [${pluginList}],
   defaultPlugin: ${defaultPluginId},
-  steps: standardSteps,
+  steps: standardStepsFE,
   tiptapPlugins,
   appExtensions: { welcome: Welcome },
   artifacts: artifactDefinitions,

@@ -1,6 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { Shuffle } from 'lucide-vue-next';
+import { transformStepFE } from './fe';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -47,20 +47,5 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
 export const transformStep: StepDefinition = {
   type: 'transform',
   build: { compile, validate, getLabel, decompile },
-  fe: {
-    colorKey: 'emerald',
-    nodeConfig: {
-      label: 'Transform',
-      defaultLabel: 'Transform output',
-      icon: Shuffle,
-      color: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10',
-      hoverBgColor: 'group-hover:bg-emerald-500/15',
-      connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
-      category: 'data',
-      isImplemented: false,
-    },
-    defaults: { outputType: 'json' },
-  },
+  fe: transformStepFE.fe,
 };

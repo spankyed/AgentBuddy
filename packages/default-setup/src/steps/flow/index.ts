@@ -1,7 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
-import { Workflow } from 'lucide-vue-next';
+import { flowStepFE } from './fe';
 
 function compile(
   node: Record<string, unknown>,
@@ -60,21 +60,5 @@ export const flowStep: StepDefinition = {
   type: 'flow',
   build: { compile, validate, getLabel, decompile },
   runtime: { spawnsSubflow: true },
-  fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
-    colorKey: 'purple',
-    nodeConfig: {
-      label: 'Flow',
-      defaultLabel: 'Handle flow',
-      icon: Workflow,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      hoverBgColor: 'group-hover:bg-purple-500/15',
-      connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
-      category: 'logic',
-      isImplemented: true,
-    },
-    defaults: { propagateCtx: true },
-  },
+  fe: flowStepFE.fe,
 };

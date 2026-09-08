@@ -1,6 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { Plus } from 'lucide-vue-next';
+import { createStepFE } from './fe';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -42,21 +42,5 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
 export const createStep: StepDefinition = {
   type: 'create',
   build: { compile, validate, getLabel, decompile },
-  fe: {
-    loadComponents: () => ({ form: require('./form.vue').default }),
-    colorKey: 'purple',
-    nodeConfig: {
-      label: 'Create',
-      defaultLabel: 'Create entity',
-      icon: Plus,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      hoverBgColor: 'group-hover:bg-purple-500/15',
-      connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
-      category: 'data',
-      isImplemented: false,
-    },
-    defaults: { inferLabel: true },
-  },
+  fe: createStepFE.fe,
 };

@@ -1,6 +1,6 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import { RefreshCw } from 'lucide-vue-next';
+import { updateStepFE } from './fe';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -51,20 +51,5 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
 export const updateStep: StepDefinition = {
   type: 'update',
   build: { compile, validate, getLabel, decompile },
-  fe: {
-    colorKey: 'purple',
-    nodeConfig: {
-      label: 'Update',
-      defaultLabel: 'Update entity',
-      icon: RefreshCw,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      hoverBgColor: 'group-hover:bg-purple-500/15',
-      connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
-      category: 'data',
-      isImplemented: false,
-    },
-    defaults: { onMissing: 'fail' },
-  },
+  fe: updateStepFE.fe,
 };

@@ -18,13 +18,13 @@ import Settings from '../features/settings/fe/plugin';
 import { tiptapPlugins } from '../registries/tiptap-plugins';
 import { artifactDefinitions } from '../artifacts/register-fe';
 import { blockDefinitions } from '../blocks/register-fe';
-import { standardSteps } from '../steps/register';
+import { standardStepsFE } from '../steps/register-fe';
 import Welcome from '../extensions/Welcome.vue';
 
 registerPackFE({
   plugins: [Threads, Code, Notes, Calendar, Browser, Library, Flows, Actions, Prompts, Brain, Database, Logs, Settings],
   defaultPlugin: Threads,
-  steps: standardSteps,
+  steps: standardStepsFE,
   tiptapPlugins,
   appExtensions: { welcome: Welcome },
   artifacts: artifactDefinitions,
