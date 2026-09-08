@@ -15,8 +15,10 @@
   "plugins": [],
   "permissions": [],
   "steps": "src/steps/register.ts",
-  "seeds": {
-    "actions": "src/seeds/actions",
-    "flows": "src/seeds/flows"
+  "boot": {
+    "seed": {
+      "actions": "src/seeds/actions",
+      "flows": "src/seeds/flows"
+    }
   }
 }

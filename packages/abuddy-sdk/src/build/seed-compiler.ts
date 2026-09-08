@@ -122,7 +122,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
       : null;
 
-    if (manifest?.seeds) {
+    if (manifest?.boot?.seed) {
       packConfig = await buildPackConfigFromManifest(manifest, packDir);
       if (!options.featureSettingsPaths && manifest.features) {
         options = { ...options, featureSettingsPaths: resolveFeatureSettingsFromManifest(manifest, packDir) };
@@ -130,7 +130,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     } else {
       const packConfigPath = path.join(packDir, 'compile.config.ts');
       if (!fs.existsSync(packConfigPath)) {
-        throw new Error(`No seeds in abuddy.json and no compile.config.ts found in ${packDir}`);
+        throw new Error(`No boot.seed in abuddy.json and no compile.config.ts found in ${packDir}`);
       }
       const mod = await import(pathToFileURL(packConfigPath).href);
       packConfig = (mod.default ?? mod) as PackConfig;

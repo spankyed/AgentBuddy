@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
 import { getAppVersion } from '@abuddy/sdk/utils';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
-import { DEFAULT_COMPILED_DIR } from '../../../registries/seed/index';
+import { DEFAULT_COMPILED_DIR } from '@/__generated__/seeders';
 
 const SETTINGS_PATH = seedPath(DEFAULT_COMPILED_DIR, 'settings');
 

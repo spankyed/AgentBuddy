@@ -22,7 +22,7 @@ import { featureServices } from './services';
 import { EARS } from './ears';
 import { createDefaultSettings } from '../features/settings/be/repository';
 import { terminalService } from '../features/code/be/services/terminal';
-import { runBootSeed } from '../registries/seed/index';
+import { runBootSeed } from './seeders';
 import { migrations } from '../migrations';
 import { standardSteps } from '../extensions/steps/register';
 import { standardArtifacts } from '../extensions/artifacts/register';

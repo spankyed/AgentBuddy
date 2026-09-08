@@ -190,21 +190,19 @@
   "boot": {
     "earlySystem": "src/features/logs/be/system.ts",
     "createDefaultSettings": "src/features/settings/be/repository",
-    "seed": "src/registries/seed/index.ts",
+    "seed": {
+      "actions": "src/seeds/actions",
+      "prompts": "src/seeds/prompts",
+      "flows": "src/seeds/flows",
+      "library": "src/seeds/library",
+      "notes": "src/seeds/notes",
+      "faqs": "src/seeds/faqs",
+      "settings": "src/seeds/default-settings.ts"
+    },
     "shutdown": "src/features/code/be/services/terminal.ts"
   },
   "steps": "src/extensions/steps/register.ts",
   "artifacts": "src/extensions/artifacts/register.ts",
   "blocks": "src/extensions/blocks/register.ts",
-  "migrations": "src/migrations/index.ts",
-
-  "seeds": {
-    "actions": "src/seeds/actions",
-    "prompts": "src/seeds/prompts",
-    "flows": "src/seeds/flows",
-    "library": "src/seeds/library",
-    "notes": "src/seeds/notes",
-    "faqs": "src/seeds/faqs",
-    "settings": "src/seeds/default-settings.ts"
-  }
+  "migrations": "src/migrations/index.ts"
 }

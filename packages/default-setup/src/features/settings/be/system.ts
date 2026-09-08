@@ -11,7 +11,8 @@ import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import * as path from 'path';
-import { seedData, type SeedCounts, type SeedIncludeSet } from '../../../registries/seed/index';
+// TODO: move seedData orchestration out of settings — belongs in core API (packs system)
+import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '../../../registries/seed/preview';
 import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
 import { resetLmdbFiles } from '@abuddy/sdk/ears';

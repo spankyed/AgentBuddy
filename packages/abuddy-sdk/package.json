@@ -53,7 +53,8 @@
     "./services": "./src/services/index.ts",
     "./inference": "./src/services/inference.ts",
     "./backup": "./src/backup/index.ts",
-    "./cron": "./src/cron.ts"
+    "./cron": "./src/cron.ts",
+    "./seed": "./src/seed/index.ts"
   },
   "peerDependencies": {
     "@guolao/vue-monaco-editor": "^1.5.5",

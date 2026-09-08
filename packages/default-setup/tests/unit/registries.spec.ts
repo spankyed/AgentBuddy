@@ -121,7 +121,7 @@ describe('core/seed — seeder registry', () => {
   });
 
   it('default-setup registers all built-in seeders', async () => {
-    await import('../../src/registries/seed');
+    await import('../../src/__generated__/seeders');
     const { seedData } = await import('@abuddy/sdk/utils');
     const os = await import('os');
     const path = await import('path');

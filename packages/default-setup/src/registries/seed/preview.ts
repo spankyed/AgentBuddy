@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import type { FlowDSL } from '../../features/flows/be/dsl';
 import type { ExportedLibrary, ExportedItem } from '../../features/library/be/export-types';
 import type { ExportedNotes } from '../../features/notes/be/export-types';
-import { loadJSON } from './index';
+import { loadJSON } from '@abuddy/sdk/utils';
 import { seedPath, type SetupPackPreview, type SetupPackType } from '@abuddy/sdk/build';
 
 export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType, SetupPackItemKind } from '@abuddy/sdk/build';

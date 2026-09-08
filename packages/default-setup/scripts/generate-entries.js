@@ -116,7 +116,7 @@ ${earlyImport}
 import { featureServices } from './services';
 import { EARS } from './ears';
 ${bootImports}
-import { runBootSeed } from '../registries/seed/index';
+import { runBootSeed } from './seeders';
 import { migrations } from '../migrations';
 import { standardSteps } from '../extensions/steps/register';
 import { standardArtifacts } from '../extensions/artifacts/register';
@@ -341,6 +341,113 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
 `;
 }
 
+function generateSeeders() {
+  const seed = manifest.boot?.seed;
+  if (!seed || typeof seed !== 'object') return '';
+
+  const seedImports = new Set();
+  const packImports = [];
+  const registrations = [];
+
+  const COLLECTION_DEFAULTS = {
+    actions: { entityType: 'Action', lookupField: 'label' },
+    prompts: { entityType: 'Prompt', lookupField: 'label' },
+  };
+
+  for (const [key, value] of Object.entries(seed)) {
+    const config = typeof value === 'string' ? {} : value;
+    const customSeeder = config.seeder;
+
+    if (customSeeder) {
+      const importName = `${key}Seeder`;
+      packImports.push(`import { seed as ${importName} } from '${toImportPath(customSeeder)}';`);
+      registrations.push(`registerSeeder({ key: '${key}', seed: ${importName} });`);
+      continue;
+    }
+
+    if (key in COLLECTION_DEFAULTS || config.entityType) {
+      const defaults = COLLECTION_DEFAULTS[key] ?? {};
+      const entityType = config.entityType ?? defaults.entityType;
+      const lookupField = config.lookupField ?? defaults.lookupField;
+      if (!entityType || !lookupField) {
+        throw new Error(`Seed "${key}": collection seeder requires entityType and lookupField`);
+      }
+      seedImports.add('createCollectionSeeder');
+      registrations.push(
+        `registerSeeder(createCollectionSeeder({ key: '${key}', entityType: EARS.Entity.${entityType}, lookupField: '${lookupField}' }));`
+      );
+      continue;
+    }
+
+    if (key === 'flows') {
+      seedImports.add('createFlowSeeder');
+      packImports.push(`import { validate, compile, isFlowConfig } from '${toImportPath('src/features/flows/be/dsl')}';`);
+      registrations.push(
+        `registerSeeder(createFlowSeeder({ ears: EARS, validate, compile, isFlowConfig }));`
+      );
+      continue;
+    }
+
+    if (key === 'library') {
+      seedImports.add('createLibrarySeeder');
+      registrations.push(`registerSeeder(createLibrarySeeder(EARS));`);
+      continue;
+    }
+
+    if (key === 'notes') {
+      seedImports.add('createNotesSeeder');
+      packImports.push(`import { importNotesFromData } from '${toImportPath('src/features/notes/be/import-notes')}';`);
+      registrations.push(
+        `registerSeeder(createNotesSeeder({ ears: EARS, importNotesFromData }));`
+      );
+      continue;
+    }
+
+    if (key === 'settings') {
+      seedImports.add('createSettingsSeeder');
+      registrations.push(`registerSeeder(createSettingsSeeder());`);
+      continue;
+    }
+
+    if (key === 'faqs') continue;
+
+    throw new Error(`Seed "${key}": unknown standard seed type and no "seeder" path provided`);
+  }
+
+  const seedKeys = Object.keys(seed).filter(k => k !== 'settings' && k !== 'faqs');
+  const artifactsList = seedKeys.map(k => `'${k}'`).join(', ');
+
+  seedImports.add('createBootSeed');
+
+  return `${HEADER}
+import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
+import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { repository } from '@abuddy/sdk/ears';
+import { EARS } from './ears';
+${packImports.join('\n')}
+
+${registrations.join('\n')}
+
+const DEFAULT_COMPILED_DIR = new URL('../../dist', import.meta.url).pathname;
+
+export const runBootSeed = createBootSeed({
+  artifacts: [${artifactsList}],
+  compiledDir: DEFAULT_COMPILED_DIR,
+  getIncludeOverrides: () => {
+    const repo = repository as any;
+    const hasOnboarded = repo.settingsQueries.getInternalSettings().hasOnboarded;
+    const include: Record<string, SeedIncludeSet> = { settings: new Set() };
+    if (hasOnboarded) include.notes = new Set();
+    return include;
+  },
+});
+
+export { seedData, DEFAULT_COMPILED_DIR };
+export type { SeedCounts, SeedIncludeSet };
+export type { ImportMode } from '@abuddy/sdk/utils';
+`;
+}
+
 function generateServiceTypes() {
   return `${HEADER}
 import type { featureServices } from './services';
@@ -369,7 +476,8 @@ const files = [
   ['src/__generated__/services.ts', generateServices()],
   ['src/__generated__/service-types.ts', generateServiceTypes()],
   ['src/__generated__/contributions.ts', generateContributions()],
-];
+  ['src/__generated__/seeders.ts', generateSeeders()],
+].filter(([, content]) => content);
 
 for (const [path, content] of files) {
   writeFileSync(join(root, path), content);

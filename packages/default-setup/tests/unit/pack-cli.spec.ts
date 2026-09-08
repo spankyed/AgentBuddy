@@ -61,9 +61,9 @@ describe('pack CLI: init', () => {
     expect(manifest.id).toBe('test-pack');
     expect(manifest.name).toBe('Test Pack');
     expect(manifest.version).toBe('0.1.0');
-    expect(manifest.seeds).toBeDefined();
-    expect(manifest.seeds.actions).toBe('src/seeds/actions');
-    expect(manifest.seeds.flows).toBe('src/seeds/flows');
+    expect(manifest.boot?.seed).toBeDefined();
+    expect(manifest.boot.seed.actions).toBe('src/seeds/actions');
+    expect(manifest.boot.seed.flows).toBe('src/seeds/flows');
   });
 
   it('rejects invalid pack names', async () => {

@@ -16,9 +16,11 @@ const MANIFEST_TEMPLATE = (name: string) => {
     plugins: [],
     dependencies: {},
     permissions: [],
-    seeds: {
-      actions: 'src/seeds/actions',
-      flows: 'src/seeds/flows',
+    boot: {
+      seed: {
+        actions: 'src/seeds/actions',
+        flows: 'src/seeds/flows',
+      },
     },
   }, null, 2);
 };

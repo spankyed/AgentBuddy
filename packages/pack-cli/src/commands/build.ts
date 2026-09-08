@@ -33,7 +33,8 @@ export async function build(args: string[]) {
   let packConfig: PackConfig | null = null;
   let featureSettingsPaths: Array<{ name: string; settingsPath: string }> | undefined;
 
-  if (manifest.seeds && Object.keys(manifest.seeds).length > 0) {
+  const seeds = manifest.boot?.seed;
+  if (seeds && Object.keys(seeds).length > 0) {
     packConfig = await buildPackConfigFromManifest(manifest, root);
     featureSettingsPaths = resolveFeatureSettingsFromManifest(manifest, root);
   } else {
@@ -41,7 +42,7 @@ export async function build(args: string[]) {
   }
 
   if (!packConfig) {
-    console.log('No seeds in manifest and no compile.config.ts found. Skipping seed compilation.');
+    console.log('No boot.seed in manifest and no compile.config.ts found. Skipping seed compilation.');
   }
 
   const packDir = root;

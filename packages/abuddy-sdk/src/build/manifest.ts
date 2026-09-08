@@ -13,7 +13,7 @@ export interface PackManifest {
   dependencies?: Record<string, string>;
   permissions?: PackPermission[];
   license?: string;
-  seeds?: Record<string, string>;
+  boot?: { seed?: Record<string, string>; [key: string]: unknown };
   steps?: string;
   artifacts?: string;
   blocks?: string;

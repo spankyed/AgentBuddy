@@ -20,7 +20,7 @@ export async function buildPackConfigFromManifest(
 ): Promise<PackConfig> {
   const config: PackConfig = {
     name: manifest.id,
-    ...manifest.seeds,
+    ...(manifest.boot?.seed as Record<string, string> | undefined),
     async setup() {
       const registrations: Array<{
         path: string | undefined;
