@@ -8,18 +8,24 @@ Declared as a pack via `abuddy.json` (`"builtIn": true`). Registered through `__
 
 ```
 src/
-  __generated__/
-    pack-entry.ts        # BE entry — exports PackRegistration (systems, services, EARS, boot, migrations, steps, artifacts, blocks)
-    pack-entry-fe.ts     # FE entry — registers plugins, steps, tiptap + app extensions
-  default-settings.ts    # Full default SettingsData object
-  features/              # 13 features (each has be/ and fe/ dirs)
-  registries/            # Cross-cutting registrations (EARS, systems, services, boot, extensions, tiptap, etc.)
-  seeds/                 # DSL source for actions, prompts, flows, library, notes, faqs
-  steps/                 # Flow step definitions (action, llm, switch, fire, query, create, etc.)
-  artifacts/             # Artifact viewer definitions + Vue components
-  blocks/                # Message block definitions (display + input)
-  extensions/            # App-level extensions (Welcome screen)
-  migrations/            # Version-targeted data migrations
+  __generated__/           # All generated from abuddy.json — do not edit
+    pack-entry.ts          # BE entry — exports PackRegistration
+    pack-entry-fe.ts       # FE entry — registers plugins, steps, tiptap + app extensions
+    ears.ts                # EARS re-export from .abuddy/generated/ears
+    system-ids.ts          # System ID re-exports from each system
+    event-channels.ts      # PluginEventRegistry module augmentation
+    types.ts               # Type barrel (outgoing events + per-feature types)
+    services.ts            # Service aggregation (featureServices object)
+    service-types.ts       # ServiceRegistry module augmentation
+  default-settings.ts      # Full default SettingsData object
+  features/                # 13 features (each has be/ and fe/ dirs)
+  registries/              # Hand-authored cross-cutting code (entity-shapes, tiptap, extensions, seed, service implementations)
+  seeds/                   # DSL source for actions, prompts, flows, library, notes, faqs
+  steps/                   # Flow step definitions (action, llm, switch, fire, query, create, etc.)
+  artifacts/               # Artifact viewer definitions + Vue components
+  blocks/                  # Message block definitions (display + input)
+  extensions/              # App-level extensions (Welcome screen)
+  migrations/              # Version-targeted data migrations
 ```
 
 ## Features
@@ -39,29 +45,29 @@ Each feature lives in `src/features/<name>/` with this layout:
 
 The 13 features: **threads**, **code**, **notes**, **calendar**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.
 
-Plugin registry: `src/registries/plugins.ts`. Default plugin is Threads.
+Default plugin is Threads.
 
 ## Systems
 
-Backend systems registered in `src/registries/systems.ts` via `SystemEntry` bundles (spec + machine pairs) processed by `toPackSystemDefs()` from the SDK. Each system file exports a `SystemEntry`. The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot) and is not included in the regular systems registry.
+Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file exports a `SystemEntry`. The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot).
 
-System IDs re-exported from `src/registries/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file; designated features pass `{ designation: config.designation }` from their `feature.config.ts`.
+System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file; designated features pass `{ designation: config.designation }` from their `feature.config.ts`.
 
 ## Services
 
-Shared services in `src/registries/services/index.ts`. These are stateless modules that systems and actions can call:
+Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/registries/services/` (pack-level services). These are stateless modules that systems and actions can call:
 
 `llm`, `database`, `prompt`, `action`, `library`, `browser`, `settings`, `textStream`, `chat`, `artifact`, `brain`, `cli`, `filesystem`, `threads`, `codex`, `modelClient`, `openaiAuth`
 
-The model client (`services/model-client/`) handles LLM streaming, tool calling, conversation management, and context compaction.
+The model client (`registries/services/model-client/`) handles LLM streaming, tool calling, conversation management, and context compaction.
 
 ## EARS (Entity types + Relations)
 
-Entity types and relation kinds declared in `src/registries/ears.ts` (re-exports from generated `.abuddy/generated/ears`). The pack-entry registers all entity types and relation kinds, plus partition policy (TNode excluded from persistence, Secret routed to secrets store).
+Entity types and relation kinds re-exported from `__generated__/ears.ts` (which re-exports from `.abuddy/generated/ears`). The pack-entry registers all entity types and relation kinds, plus partition policy (TNode excluded from persistence, Secret routed to secrets store).
 
 Type augmentations:
 - `src/registries/entity-shapes.ts` — maps entity type strings to attribute interfaces (`EntityShapeRegistry`)
-- `src/registries/event-channels.ts` — maps plugin IDs to outgoing event types (`PluginEventRegistry`)
+- `__generated__/event-channels.ts` — maps plugin IDs to outgoing event types (`PluginEventRegistry`)
 
 ## Seeds
 
@@ -117,7 +123,7 @@ Version-targeted migrations in `src/migrations/`. Registered in `src/migrations/
 
 ## Boot sequence contributions
 
-The pack registers these boot hooks via `src/registries/boot.ts`:
+The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `earlySystem` — logs system (starts before hydration)
 - `createDefaultSettings` — ensures Settings entity exists
 - `seed` — runs `runBootSeed` (hash-checked seeding)
@@ -129,3 +135,4 @@ The pack registers these boot hooks via `src/registries/boot.ts`:
 - `npm run compile` from repo root compiles all DSLs to `dist/`
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
+- `prepare` script runs codegen after `npm install`
