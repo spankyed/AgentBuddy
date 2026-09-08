@@ -10,11 +10,15 @@ export interface PackInfo {
   version: string;
   enabled: boolean;
   registeredAt: string;
+  entityCount: number;
+  hasFeEntry: boolean;
+  hostVersion?: string;
 }
 
 export interface PacksContext {
   packs: PackInfo[];
   installing: string | null;
+  confirmingUninstall: string | null;
   pendingChanges: boolean;
   error: string | null;
 }
@@ -30,7 +34,10 @@ type PacksEvent =
   | { type: 'PACK_ENABLED_CHANGED'; packId: string; enabled: boolean }
   | { type: 'UI.INSTALL'; packSlug: string; source?: string }
   | { type: 'UI.UNINSTALL'; packId: string }
+  | { type: 'UI.CONFIRM_UNINSTALL'; packId: string }
+  | { type: 'UI.CANCEL_UNINSTALL' }
   | { type: 'UI.TOGGLE_ENABLED'; packId: string }
+  | { type: 'UI.DISMISS_ERROR' }
   | { type: 'UI.REFRESH' }
 
 const typeOf = safeEvents<PacksEvent>();
@@ -84,15 +91,31 @@ const packsState = setup({
       trpc.bus.send.mutate({ systemId: 'packs', type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
     },
 
+    promptUninstall: assign({
+      confirmingUninstall: ({ event }) => typeOf('UI.CONFIRM_UNINSTALL', event).packId,
+    }),
+
+    cancelUninstall: assign({
+      confirmingUninstall: () => null,
+    }),
+
     sendUninstall: ({ event }) => {
       const ev = typeOf('UI.UNINSTALL', event);
       trpc.bus.send.mutate({ systemId: 'packs', type: 'UNINSTALL_PACK', packId: ev.packId });
     },
 
+    clearUninstallPrompt: assign({
+      confirmingUninstall: () => null,
+    }),
+
     sendToggleEnabled: ({ event }) => {
       const ev = typeOf('UI.TOGGLE_ENABLED', event);
       trpc.bus.send.mutate({ systemId: 'packs', type: 'TOGGLE_PACK_ENABLED', packId: ev.packId });
     },
+
+    dismissError: assign({
+      error: () => null,
+    }),
 
     sendRefresh: () => {
       trpc.bus.send.mutate({ systemId: 'packs', type: 'GET_INSTALLED_PACKS' });
@@ -104,6 +127,7 @@ const packsState = setup({
   context: {
     packs: [],
     installing: null,
+    confirmingUninstall: null,
     pendingChanges: false,
     error: null,
   },
@@ -115,12 +139,15 @@ const packsState = setup({
         PACK_INSTALL_STARTED: { actions: 'setInstalling' },
         PACK_INSTALL_COMPLETE: { actions: 'onInstallComplete' },
         PACK_INSTALL_FAILED: { actions: 'onInstallFailed' },
-        PACK_UNINSTALL_COMPLETE: { actions: 'onUninstallComplete' },
-        PACK_UNINSTALL_FAILED: { actions: 'onUninstallFailed' },
+        PACK_UNINSTALL_COMPLETE: { actions: ['clearUninstallPrompt', 'onUninstallComplete'] },
+        PACK_UNINSTALL_FAILED: { actions: ['clearUninstallPrompt', 'onUninstallFailed'] },
         PACK_ENABLED_CHANGED: { actions: 'onEnabledChanged' },
         'UI.INSTALL': { actions: 'sendInstall' },
+        'UI.CONFIRM_UNINSTALL': { actions: 'promptUninstall' },
+        'UI.CANCEL_UNINSTALL': { actions: 'cancelUninstall' },
         'UI.UNINSTALL': { actions: 'sendUninstall' },
         'UI.TOGGLE_ENABLED': { actions: 'sendToggleEnabled' },
+        'UI.DISMISS_ERROR': { actions: 'dismissError' },
         'UI.REFRESH': { actions: 'sendRefresh' },
       },
     },

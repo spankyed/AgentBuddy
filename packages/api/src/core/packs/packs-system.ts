@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
@@ -12,6 +14,9 @@ export interface PackInfo {
   version: string;
   enabled: boolean;
   registeredAt: string;
+  entityCount: number;
+  hasFeEntry: boolean;
+  hostVersion?: string;
 }
 
 type IncomingPacksEvents =
@@ -32,14 +37,30 @@ type OutgoingPacksEvents =
 export const packsSpec = defineSystem('packs')<IncomingPacksEvents, OutgoingPacksEvents>();
 export const packs = packsSpec.id;
 
+function readManifest(dir: string): Record<string, any> | null {
+  try {
+    const manifestPath = path.join(dir, 'abuddy.json');
+    if (fs.existsSync(manifestPath)) {
+      return JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    }
+  } catch {}
+  return null;
+}
+
 function toPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
-  return entries.map(e => ({
-    id: e.id,
-    name: e.name,
-    version: e.version,
-    enabled: e.enabled,
-    registeredAt: e.registeredAt,
-  }));
+  return entries.map(e => {
+    const manifest = readManifest(e.dir);
+    return {
+      id: e.id,
+      name: e.name,
+      version: e.version,
+      enabled: e.enabled,
+      registeredAt: e.registeredAt,
+      entityCount: Object.keys(manifest?.entities ?? {}).length,
+      hasFeEntry: !!manifest?.fe?.entry,
+      hostVersion: manifest?.hostVersion,
+    };
+  });
 }
 
 function emitPacksList(system: any) {
@@ -125,12 +146,15 @@ export const packsSystem = setup({
         console.warn(`[packs] Pack not found: ${ev.packId}`);
         return;
       }
-      entry.enabled = !entry.enabled;
-      writePackRegistry(entries);
+      const newEnabled = !entry.enabled;
+      const updated = entries.map(e =>
+        e.id === ev.packId ? { ...e, enabled: newEnabled } : e,
+      );
+      writePackRegistry(updated);
       system.get(bus).send(emit(packs, {
         type: 'PACK_ENABLED_CHANGED' as const,
         packId: ev.packId,
-        enabled: entry.enabled,
+        enabled: newEnabled,
       }));
     },
   },
