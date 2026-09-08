@@ -57,6 +57,7 @@
     {
       "id": "threads",
       "designation": "threads",
+      "settings": "src/features/threads/settings.ts",
       "system": { "entry": "src/features/threads/be/system.ts", "exportName": "threadsEntry" },
       "plugin": { "entry": "src/features/threads/fe/plugin.ts", "label": "Threads", "icon": "BotMessageSquare" },
       "contributions": "src/features/threads/fe/contributions",
@@ -68,6 +69,7 @@
     },
     {
       "id": "code",
+      "settings": "src/features/code/settings.ts",
       "system": { "entry": "src/features/code/be/system.ts", "exportName": "codeEntry" },
       "plugin": { "entry": "src/features/code/fe/plugin.ts", "label": "Code", "icon": "Code2" },
       "services": {
@@ -77,6 +79,7 @@
     },
     {
       "id": "notes",
+      "settings": "src/features/notes/settings.ts",
       "system": { "entry": "src/features/notes/be/system.ts", "exportName": "notesEntry" },
       "plugin": { "entry": "src/features/notes/fe/plugin.ts", "label": "Notes", "icon": "NotebookText" },
       "contributions": "src/features/notes/fe/contributions",
@@ -84,6 +87,7 @@
     },
     {
       "id": "calendar",
+      "settings": "src/features/calendar/settings.ts",
       "system": { "entry": "src/features/calendar/be/system.ts", "exportName": "calendarEntry" },
       "plugin": { "entry": "src/features/calendar/fe/plugin.ts", "label": "Calendar", "icon": "Calendar" },
       "services": {}
@@ -91,6 +95,7 @@
     {
       "id": "browser",
       "designation": "browser",
+      "settings": "src/features/browser/settings.ts",
       "system": { "entry": "src/features/browser/be/system.ts", "exportName": "browserEntry" },
       "plugin": { "entry": "src/features/browser/fe/plugin.ts", "label": "Browser", "icon": "Globe" },
       "services": {
@@ -99,6 +104,7 @@
     },
     {
       "id": "library",
+      "settings": "src/features/library/settings.ts",
       "system": { "entry": "src/features/library/be/system.ts", "exportName": "libraryEntry" },
       "plugin": { "entry": "src/features/library/fe/plugin.ts", "label": "Library", "icon": "Library", "isPinned": true },
       "contributions": "src/features/library/fe/contributions",
@@ -108,6 +114,7 @@
     },
     {
       "id": "flows",
+      "settings": "src/features/flows/settings.ts",
       "typesEntry": "src/features/flows/be/config/types",
       "system": { "entry": "src/features/flows/be/system.ts", "exportName": "flowsEntry" },
       "plugin": { "entry": "src/features/flows/fe/plugin.ts", "label": "Flows", "icon": "Network", "isPinned": true },
@@ -115,6 +122,7 @@
     },
     {
       "id": "actions",
+      "settings": "src/features/actions/settings.ts",
       "system": { "entry": "src/features/actions/be/system.ts", "exportName": "actionsEntry", "outgoingEventsType": "OutgoingActionEvents" },
       "plugin": { "entry": "src/features/actions/fe/plugin.ts", "label": "Actions", "icon": "Play", "isPinned": true },
       "services": {
@@ -123,6 +131,7 @@
     },
     {
       "id": "prompts",
+      "settings": "src/features/prompts/settings.ts",
       "system": { "entry": "src/features/prompts/be/system.ts", "exportName": "promptsEntry", "outgoingEventsType": "OutgoingPromptEvents" },
       "plugin": { "entry": "src/features/prompts/fe/plugin.ts", "label": "Prompts", "icon": "Sparkle", "isPinned": true },
       "services": {
@@ -132,6 +141,7 @@
     {
       "id": "brain",
       "designation": "brain",
+      "settings": "src/features/brain/settings.ts",
       "system": { "entry": "src/features/brain/be/system.ts", "exportName": "brainEntry" },
       "plugin": { "entry": "src/features/brain/fe/plugin.ts", "label": "Brain", "icon": "Brain", "isPinned": true },
       "services": {
@@ -141,6 +151,7 @@
     },
     {
       "id": "database",
+      "settings": "src/features/database/settings.ts",
       "system": { "entry": "src/features/database/be/system.ts", "exportName": "databaseEntry" },
       "plugin": { "entry": "src/features/database/fe/plugin.ts", "label": "Database", "icon": "Database", "isPinned": true },
       "services": {
@@ -149,6 +160,7 @@
     },
     {
       "id": "logs",
+      "settings": "src/features/logs/settings.ts",
       "system": { "entry": "src/features/logs/be/system.ts", "exportName": "logsEntry" },
       "plugin": { "entry": "src/features/logs/fe/plugin.ts", "label": "Logs", "icon": "ScrollText", "isPinned": true },
       "services": {},
@@ -157,6 +169,7 @@
     {
       "id": "settings",
       "designation": "settings",
+      "settings": "src/features/settings/settings.ts",
       "system": { "entry": "src/features/settings/be/system.ts", "exportName": "settingsEntry" },
       "plugin": { "entry": "src/features/settings/fe/plugin.ts", "label": "Settings", "icon": "Settings" },
       "services": {

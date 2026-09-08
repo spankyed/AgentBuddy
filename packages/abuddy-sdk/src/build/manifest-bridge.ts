@@ -59,7 +59,8 @@ export function resolveFeatureSettingsFromManifest(
 
   const results: Array<{ name: string; settingsPath: string }> = [];
   for (const feature of manifest.features) {
-    const settingsPath = path.resolve(packDir, 'src', 'features', feature.id, 'settings.ts');
+    if (!feature.settings) continue;
+    const settingsPath = path.resolve(packDir, feature.settings);
     if (fs.existsSync(settingsPath)) {
       results.push({ name: feature.id, settingsPath });
     }

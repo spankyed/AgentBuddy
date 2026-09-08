@@ -17,7 +17,7 @@ export interface PackManifest {
   steps?: string;
   artifacts?: string;
   blocks?: string;
-  features?: Array<{ id: string; [key: string]: unknown }>;
+  features?: Array<{ id: string; settings?: string; [key: string]: unknown }>;
 }
 
 export interface PackTypeManifest {
