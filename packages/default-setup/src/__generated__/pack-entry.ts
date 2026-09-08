@@ -18,7 +18,7 @@ import { brainEntry } from '../features/brain/be/system';
 import { databaseEntry } from '../features/database/be/system';
 import { logsEntry } from '../features/logs/be/system';
 
-import { featureServices } from '../registries/services';
+import { featureServices } from './services';
 import { EARS } from './ears';
 import { createDefaultSettings } from '../features/settings/be/repository';
 import { terminalService } from '../features/code/be/services/terminal';

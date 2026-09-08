@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import { EARS } from '@abuddy/sdk';
 import type { ActionParameter } from '@/features/actions/be/types';
 import type { TemplateInput } from '@/features/prompts/be/types';
-import type { featureServices } from '@/registries/services';
+import type { featureServices } from '@/__generated__/services';
 
 export type Services = typeof featureServices;
 export type Z = typeof z;

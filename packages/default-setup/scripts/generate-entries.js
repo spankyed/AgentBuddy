@@ -29,6 +29,25 @@ function toPascalCase(id) {
   return id.replace(/(^|-)(\w)/g, (_, _sep, c) => c.toUpperCase());
 }
 
+function resolveServiceImport(key, manifestPath) {
+  const base = join(root, manifestPath);
+  const fullPath = existsSync(base + '.ts') ? base + '.ts'
+    : existsSync(join(base, 'index.ts')) ? join(base, 'index.ts')
+    : base;
+  const content = readFileSync(fullPath, 'utf-8');
+  const pascal = toPascalCase(key);
+  const factoryName = `create${pascal}Service`;
+  const namedName = `${key}Service`;
+
+  if (content.includes(`export const ${factoryName}`) || content.includes(`export function ${factoryName}`)) {
+    return { style: 'factory', exportName: factoryName };
+  }
+  if (content.includes(`export const ${namedName}`) || content.includes(`export function ${namedName}`)) {
+    return { style: 'named', exportName: namedName };
+  }
+  return { style: 'namespace' };
+}
+
 function outgoingEventsType(feature) {
   return feature.system?.outgoingEventsType ?? `Outgoing${toPascalCase(feature.id)}Events`;
 }
@@ -71,7 +90,7 @@ function generateBackendEntry() {
       if (f.plugin.isPinned) pluginParts.push(`isPinned: true`);
       parts.push(`    plugin: { ${pluginParts.join(', ')} }`);
     }
-    parts.push(`    services: [${f.services.map(s => `'${s}'`).join(', ')}]`);
+    parts.push(`    services: [${Object.keys(f.services).map(s => `'${s}'`).join(', ')}]`);
     return `  {\n${parts.join(',\n')},\n  }`;
   }).join(',\n');
 
@@ -90,7 +109,7 @@ import { toPackSystemDefs } from '@abuddy/sdk/framework';
 
 ${systemImports}
 ${earlyImport}
-import { featureServices } from '../registries/services';
+import { featureServices } from './services';
 import { EARS } from './ears';
 ${bootImports}
 import { runBootSeed } from '../registries/seed/index';
@@ -235,9 +254,49 @@ ${perFeature}
 `;
 }
 
+function generateServices() {
+  const features = manifest.features ?? [];
+  const packServices = manifest.packServices ?? {};
+  const imports = [];
+  const entries = [];
+
+  function addService(key, manifestPath) {
+    const { style, exportName } = resolveServiceImport(key, manifestPath);
+    const path = toImportPath(manifestPath);
+    if (style === 'factory') {
+      imports.push(`import { ${exportName} } from '${path}';`);
+      entries.push(`  ${key}: ${exportName}(),`);
+    } else if (style === 'named') {
+      imports.push(`import { ${exportName} } from '${path}';`);
+      entries.push(`  ${key}: ${exportName},`);
+    } else {
+      imports.push(`import * as ${key} from '${path}';`);
+      entries.push(`  ${key},`);
+    }
+  }
+
+  for (const f of features) {
+    for (const [key, path] of Object.entries(f.services)) {
+      addService(key, path);
+    }
+  }
+
+  for (const [key, path] of Object.entries(packServices)) {
+    addService(key, path);
+  }
+
+  return `${HEADER}
+${imports.join('\n')}
+
+export const featureServices = {
+${entries.join('\n')}
+};
+`;
+}
+
 function generateServiceTypes() {
   return `${HEADER}
-import type { featureServices } from '../registries/services';
+import type { featureServices } from './services';
 
 type FeatureServices = typeof featureServices;
 
@@ -260,6 +319,7 @@ const files = [
   ['src/__generated__/system-ids.ts', generateSystemIds()],
   ['src/__generated__/event-channels.ts', generateEventChannels()],
   ['src/__generated__/types.ts', generateTypes()],
+  ['src/__generated__/services.ts', generateServices()],
   ['src/__generated__/service-types.ts', generateServiceTypes()],
 ];
 

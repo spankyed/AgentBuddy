@@ -47,7 +47,7 @@ describe('boot exports — source modules', () => {
 
 describe('registries/services — feature services assembly', () => {
   it('exports featureServices with all expected service keys', async () => {
-    const { featureServices } = await import('../../src/registries/services');
+    const { featureServices } = await import('../../src/__generated__/services');
 
     const expectedKeys = [
       'llm', 'database', 'prompt', 'action', 'library', 'browser',
@@ -61,7 +61,7 @@ describe('registries/services — feature services assembly', () => {
   });
 
   it('does not include core services (logger, emitter, repository)', async () => {
-    const { featureServices } = await import('../../src/registries/services');
+    const { featureServices } = await import('../../src/__generated__/services');
 
     expect(featureServices).not.toHaveProperty('logger');
     expect(featureServices).not.toHaveProperty('emitter');
