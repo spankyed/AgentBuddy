@@ -106,25 +106,37 @@ describe('Type inference — EARS runtime', () => {
 });
 
 describe('Type inference — EARS repository generics', () => {
-  it('findById<T> infers T on the result', () => {
-    type Action = { label: string; actionFn: string };
-    const typedFind: (id: EARS.EntityId) => Action | undefined = findById;
-    expectTypeOf(typedFind).returns.toMatchTypeOf<Action | undefined>();
+  it('findById with branded EntityId infers shape from registry', () => {
+    const id = 'test-123' as EARS.EntityId<'Action'>;
+    const result = findById(id);
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('label');
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('actionFn');
   });
 
-  it('findAll<T> infers T[] on the result', () => {
-    type Prompt = { label: string; templateFn: string };
-    expectTypeOf(findAll<Prompt>).returns.toMatchTypeOf<Prompt[]>();
+  it('findAll with registered entity infers shape from registry', () => {
+    const prompts = findAll('Prompt' as 'Prompt' & EARS.Entity);
+    expectTypeOf(prompts).items.toHaveProperty('label');
+    expectTypeOf(prompts).items.toHaveProperty('templateFn');
   });
 
-  it('findWhere<T> infers T[] on the result', () => {
-    type Thread = { title: string; status: string };
-    expectTypeOf(findWhere<Thread>).returns.toMatchTypeOf<Thread[]>();
+  it('findWhere with registered entity infers shape from registry', () => {
+    const threads = findWhere('Thread' as 'Thread' & EARS.Entity, 'status', 'active');
+    expectTypeOf(threads).items.toHaveProperty('topic');
+    expectTypeOf(threads).items.toHaveProperty('status');
   });
 
-  it('createEntityWithDefaults<T> returns T & { id, entityType }', () => {
-    type Action = { label: string; actionFn: string };
-    const result = {} as ReturnType<typeof createEntityWithDefaults<Action>>;
+  it('explicit generic still works for custom entities', () => {
+    type CustomItem = { foo: string; bar: number };
+    const items = findAll<CustomItem>('CustomItem' as EARS.Entity);
+    expectTypeOf(items).items.toHaveProperty('foo');
+    expectTypeOf(items).items.toHaveProperty('bar');
+  });
+
+  it('createEntityWithDefaults with registered entity validates shape', () => {
+    const result = createEntityWithDefaults(
+      'Action' as 'Action' & EARS.Entity,
+      { label: 'test', actionFn: 'fn()' },
+    );
     expectTypeOf(result).toHaveProperty('id');
     expectTypeOf(result).toHaveProperty('entityType');
     expectTypeOf(result).toHaveProperty('label');
@@ -218,8 +230,8 @@ describe('Registry-based inference — services', () => {
     expectTypeOf(services.prompt).toHaveProperty('usePrompt');
   });
 
-  it('services.settings has getSettings method', () => {
-    expectTypeOf(services.settings).toHaveProperty('getSettings');
+  it('services.settings has getAll method', () => {
+    expectTypeOf(services.settings).toHaveProperty('getAll');
   });
 
   it('services.llm has streamText', () => {
