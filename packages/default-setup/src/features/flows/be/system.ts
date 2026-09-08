@@ -9,7 +9,7 @@ import type { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types'
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';
-import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
+import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
 
 const logger = createLogger('flows');
 
@@ -346,7 +346,7 @@ export const flowsSystem = setup({
       const prompts = repository.promptQueries.all();
 
       // Validate DSL
-      const validation = validate(dsl, {
+      const validation = validateFlowDSL(dsl, {
         actions: actions.map((a: ActionEntity) => a.label),
         prompts: prompts.map((p: PromptEntity) => p.label),
       });
@@ -370,7 +370,7 @@ export const flowsSystem = setup({
       const promptMap = new Map<string, string>(prompts.map((p: PromptEntity) => [p.label, p.id]));
 
       // Compile DSL
-      const compiled = compile(dsl as FlowDSL, {
+      const compiled = compileFlowDSL(dsl as FlowDSL, { Entity: EARS.Entity, RelKind: EARS.RelKind }, {
         actions: actionMap,
         prompts: promptMap,
       });
@@ -411,7 +411,10 @@ export const flowsSystem = setup({
       logger.info('Exporting flows to DSL', { directory });
 
       try {
-        const { filePath, flowCount } = exportFlowsDSL(directory);
+        const { filePath, flowCount } = exportFlowsToDSL(directory, {
+          ears: { Entity: EARS.Entity, RelKind: EARS.RelKind },
+          rootFlowRole: FLOW_ROLES.ROOT_FLOW,
+        });
 
         system.get(bus).send(emit(pluginId, {
           type: 'DSL_EXPORTED',

@@ -1,20 +1,28 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { compile } from '../../src/build/compilers/flow-compiler';
+import type { FlowEARS } from '../../src/build/compilers/flow-compiler';
+import { ROOT_FLOW_ROLE } from '../../src/build/compilers/flow-types';
+import { stepRegistry } from '../../src/steps/registry';
 import { createRoundTrip } from './helpers/round-trip';
 import { wrapInFlow } from './helpers/dsl-factories';
 import { steps, ctx, flows } from './helpers/fixtures';
-import { compile } from '@/features/flows/be/dsl/compiler';
+import { ALL_TEST_STEPS } from './helpers/test-steps';
 
-/*─────────────────────────────────────────────────────────────────
- * Setup
- *─────────────────────────────────────────────────────────────────*/
+const EARS: FlowEARS = {
+  Entity: { Flow: 'Flow', Node: 'Node', Action: 'Action', Prompt: 'Prompt' },
+  RelKind: { CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to', INSTANCE_OF: 'instance_of' },
+};
 
-const rt = createRoundTrip();
+const rt = createRoundTrip(EARS, ROOT_FLOW_ROLE);
 
-beforeEach(() => rt.beforeEach());
-afterEach(() => rt.afterEach());
-
-/*─────────────────────────────────────────────────────────────────
- * Tests
- *─────────────────────────────────────────────────────────────────*/
+beforeEach(() => {
+  for (const step of ALL_TEST_STEPS) stepRegistry.register(step);
+  rt.beforeEach();
+});
+afterEach(() => {
+  rt.afterEach();
+  stepRegistry.clear();
+});
 
 describe('round-trip', () => {
   describe('simple flows', () => {
@@ -59,7 +67,7 @@ describe('round-trip', () => {
       const exported = rt.roundTrip(flows.rootFlow);
       const entry = exported['RootFlow'] as any;
 
-      expect(Array.isArray(entry)).toBe(false); // FlowConfig, not Track[]
+      expect(Array.isArray(entry)).toBe(false);
       expect(entry.root).toBe(true);
       expect(entry.tracks).toHaveLength(1);
       expect(entry.tracks[0].event).toBe('start');
@@ -198,7 +206,6 @@ describe('round-trip', () => {
       }]);
       const exported = rt.roundTrip(dsl);
 
-      // Should have exactly 1 step (the switch)
       expect(exported['F'][0].exits[0]).toHaveLength(1);
       expect(exported['F'][0].exits[0][0].type).toBe('switch');
     });
@@ -244,18 +251,12 @@ describe('round-trip', () => {
         { type: 'action', action: 'after' },
       ]);
       const exported = rt.roundTrip(dsl);
-      const steps = exported['F'][0].exits[0];
+      const exportedSteps = exported['F'][0].exits[0];
 
-      // Switch should be first, with its branch inlined
-      expect(steps[0].type).toBe('switch');
-      expect(steps[0].conditions[0].steps[0].action).toBe('branchA');
+      expect(exportedSteps[0].type).toBe('switch');
+      expect(exportedSteps[0].conditions[0].steps[0].action).toBe('branchA');
 
-      // Continuation step should appear after the switch
-      // (with single branch, after gets absorbed into the exclusive chain)
-      const afterSteps = steps.filter((s: any) => s.type === 'action' && s.action === 'after');
-      // The continuation is inlined into the branch chain (exclusive chain absorbs it)
-      // or appears as a separate step — either way, it should be reachable
-      const allActions = steps.flatMap((s: any) =>
+      const allActions = exportedSteps.flatMap((s: any) =>
         s.type === 'switch'
           ? s.conditions.flatMap((c: any) => c.steps || [])
           : [s]
@@ -317,8 +318,6 @@ describe('round-trip', () => {
     });
 
     it('update with onMissing', () => {
-      // Note: the compiler doesn't currently map DSL `target` to entity `entityId`,
-      // so only onMissing round-trips. target is lost in compilation.
       const dsl = wrapInFlow([steps.update]);
       const exported = rt.roundTrip(dsl);
       const step = exported['F'][0].exits[0][0];
@@ -428,7 +427,7 @@ describe('round-trip', () => {
       expect(entry.tracks[0].schedule).toBe('*/15 * * * *');
       expect(entry.tracks[1].event).toBe('manual.start');
 
-      const recompiled = compile(exported);
+      const recompiled = compile(exported, EARS);
       expect(recompiled.role.find(role => role.role === 'entry_event')).toBeUndefined();
     });
   });

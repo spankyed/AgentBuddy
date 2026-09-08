@@ -6,7 +6,7 @@ import type {
 } from './flow-types';
 import { isFlowConfig, resolveTracks } from './flow-types';
 import { stepRegistry } from '../../steps/registry';
-import type { StepDefinition, StepBuildFacet, StepValidationContext, TriggerFacet } from '../../steps/types';
+import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types';
 
 const FALLBACK_STEP_TYPES = [
   'action', 'llm', 'switch', 'fire', 'transform',
@@ -280,21 +280,11 @@ function validateStep(
     errors.push(...buildFacet.validate(s, path, stepCtx));
   }
 
-  if (stepType === 'switch') {
-    if (Array.isArray(s.conditions)) {
-      for (let i = 0; i < (s.conditions as any[]).length; i++) {
-        const cond = (s.conditions as any[])[i] as Record<string, unknown>;
-        if (cond && Array.isArray(cond.steps)) {
-          const condPath = `${path}.conditions[${i}]`;
-          for (let si = 0; si < (cond.steps as any[]).length; si++) {
-            errors.push(...validateStep((cond.steps as any[])[si], `${condPath}.steps[${si}]`, ctx, options, resolved));
-          }
-        }
-      }
-      if (Array.isArray(s.else)) {
-        for (let si = 0; si < (s.else as any[]).length; si++) {
-          errors.push(...validateStep((s.else as any[])[si], `${path}.else[${si}]`, ctx, options, resolved));
-        }
+  const branchList = buildFacet?.branches?.(s);
+  if (branchList?.length) {
+    for (const branch of branchList) {
+      for (let si = 0; si < branch.steps.length; si++) {
+        errors.push(...validateStep(branch.steps[si], `${path}.${branch.key}[${si}]`, ctx, options, resolved));
       }
     }
   }
@@ -319,15 +309,11 @@ function collectStepLabels(
     }
     nodeLabels.add(stepLabel);
 
-    if (step.type === 'switch' && Array.isArray(step.conditions)) {
-      for (let ci = 0; ci < (step.conditions as any[]).length; ci++) {
-        const cond = (step.conditions as any[])[ci];
-        if (cond && Array.isArray(cond.steps)) {
-          collectStepLabels(cond.steps, nodeLabels, errors, `${basePath}[${stepIdx}].conditions[${ci}].steps`, resolved);
-        }
-      }
-      if (Array.isArray(step.else)) {
-        collectStepLabels(step.else as unknown[], nodeLabels, errors, `${basePath}[${stepIdx}].else`, resolved);
+    const buildFacet = resolved.getBuild(step.type as string);
+    const branchList = buildFacet?.branches?.(step);
+    if (branchList?.length) {
+      for (const branch of branchList) {
+        collectStepLabels(branch.steps as unknown[], nodeLabels, errors, `${basePath}[${stepIdx}].${branch.key}`, resolved);
       }
     }
   }

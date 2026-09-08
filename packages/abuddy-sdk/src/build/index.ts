@@ -21,9 +21,14 @@ export {
   countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections,
   isFlowConfig, resolveTracks, ROOT_FLOW_ROLE,
   validateFlowDSL,
+  compileFlowDSL,
+  exportFlowsToDSL,
 } from './compilers';
 export type {
-  FlowDSL, FlowConfig, Track, DSLStepNode,
+  FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
+  FlowEntity, NodeBase, EdgeEntity,
+  CompilerContext, CompiledFlow, CompiledEntity, CompiledRelation, CompiledRole,
+  FlowEARS, CompiledRows, ExportFlowsOptions,
   ContentSection, ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
   ExportedLibrary,
   ExportedNote, ExportedNotes,
@@ -43,7 +48,7 @@ export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from 
 export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackPermission,
   PackPluginDefinition, PackSystemEntry, PackPluginEntry,
-  PackFeatureEntry, PackBootConfig,
+  PackFeatureEntry, PackBootConfig, SeedEntryConfig,
 } from './manifest';
 export { seedFile, seedPath } from './manifest';
 

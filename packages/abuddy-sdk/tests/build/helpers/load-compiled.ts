@@ -1,8 +1,7 @@
-import { tx } from '@/core/ears/helpers/transaction';
-import { EARS } from '@/__generated__/ears';
-import type { CompiledRows } from '@/features/flows/be/dsl/compiler';
+import { tx } from '../../../src/ears/runtime';
+import type { EARS } from '../../../src/types/entities';
+import type { CompiledRows } from '../../../src/build/compilers/flow-compiler';
 
-/** Load compiled rows into EARS in-memory store (mirrors importFromDSL) */
 export function loadCompiledRows(compiled: CompiledRows) {
   for (const entity of compiled.entity) {
     const { id, ...attributes } = entity as { id: string; [key: string]: any };

@@ -199,7 +199,11 @@
       "faqs": "src/seeds/faqs",
       "settings": "src/seeds/default-settings.ts"
     },
-    "shutdown": "src/features/code/be/services/terminal.ts"
+    "shutdown": "src/features/code/be/services/terminal.ts",
+    "seedPolicy": {
+      "skipAtBoot": ["settings"],
+      "skipAfterOnboarding": ["notes"]
+    }
   },
   "steps": "src/extensions/steps/register.ts",
   "artifacts": "src/extensions/artifacts/register.ts",

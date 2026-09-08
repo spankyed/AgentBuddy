@@ -51,9 +51,17 @@ export interface PackFeatureEntry {
 export interface PackBootConfig {
   earlySystem?: string;
   createDefaultSettings?: string;
-  seed?: Record<string, string | { seeder?: string; entityType?: string; lookupField?: string }>;
+  seed?: Record<string, string | SeedEntryConfig>;
+  seedPolicy?: { skipAtBoot?: string[]; skipAfterOnboarding?: string[] };
   shutdown?: string;
   [key: string]: unknown;
+}
+
+export interface SeedEntryConfig {
+  path?: string;
+  seeder?: string;
+  entityType?: string;
+  lookupField?: string;
 }
 
 export interface PackTypeManifest {

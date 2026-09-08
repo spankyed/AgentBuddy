@@ -3,6 +3,10 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { LoadedPack } from './pack-loader';
+import type { PackSeedManifest } from '@abuddy/sdk/framework';
+import { seedPath } from '@abuddy/sdk/build';
+import { repository } from '@abuddy/sdk/ears';
+import { seedData, type SeedIncludeSet } from '@abuddy/sdk/utils';
 
 const logger = createLogger('pack-seed');
 
@@ -58,4 +62,52 @@ export function seedPackData(
   if (anySeeded || Object.keys(updatedHashes).length !== Object.keys(storedHashes).length) {
     setStoredHashes(updatedHashes);
   }
+}
+
+function computeManifestSeedHash(compiledDir: string, artifacts: string[]): string {
+  const hash = crypto.createHash('sha256');
+  for (const name of artifacts) {
+    const filePath = seedPath(compiledDir, name);
+    if (fs.existsSync(filePath)) hash.update(fs.readFileSync(filePath));
+  }
+  return hash.digest('hex').slice(0, 16);
+}
+
+function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<string, SeedIncludeSet> {
+  if (!policy) return {};
+  const include: Record<string, SeedIncludeSet> = {};
+  const repo = repository as any;
+
+  for (const key of policy.skipAtBoot ?? []) {
+    include[key] = new Set();
+  }
+
+  if (policy.skipAfterOnboarding?.length) {
+    const hasOnboarded = repo.settingsQueries.getInternalSettings().hasOnboarded;
+    if (hasOnboarded) {
+      for (const key of policy.skipAfterOnboarding) {
+        include[key] = new Set();
+      }
+    }
+  }
+
+  return include;
+}
+
+export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
+  const { artifacts, compiledDir, seedPolicy } = manifest;
+  const repo = repository as any;
+
+  const currentHash = computeManifestSeedHash(compiledDir, artifacts);
+  const storedHash = repo.settingsQueries.getInternalSettings().seedHash;
+
+  if (storedHash === currentHash) {
+    logger.info('Boot seed skipped: data unchanged');
+    return;
+  }
+
+  const include = evaluateSeedPolicy(seedPolicy);
+  seedData({ compiledDir, include });
+  repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
+  logger.info('Boot seed completed');
 }

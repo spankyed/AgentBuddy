@@ -1,5 +1,6 @@
-import { compile } from '@/features/flows/be/dsl/compiler';
-import type { FlowDSL } from '@/features/flows/be/dsl/types';
+import type { FlowDSL } from '../../../src/build/compilers/flow-types';
+import type { FlowEARS } from '../../../src/build/compilers/flow-compiler';
+import { compile } from '../../../src/build/compilers/flow-compiler';
 import { findEntity } from './compiled-result';
 
 /** Wrap steps in a minimal single-track flow DSL (flow name 'F', default event 'go') */
@@ -25,12 +26,12 @@ export function makeSwitchDSL(
 }
 
 /** Compile a switch with a single condition and return its parsed predicate */
-export function parsedPredicate(expr: string) {
+export function parsedPredicate(expr: string, ears: FlowEARS) {
   const dsl = wrapInFlow([{
     type: 'switch',
     conditions: [{ if: expr, steps: [{ type: 'action', action: 'x' }] }],
   }]);
-  const result = compile(dsl);
+  const result = compile(dsl, ears);
   const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
   return switchNode.conditions[0].predicate;
 }

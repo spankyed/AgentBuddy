@@ -2,39 +2,48 @@
  * Flow DSL Compiler
  *
  * Transforms track-based DSL format into EARS database format.
- * Each track creates a listener node + sequential step nodes.
+ * Each track creates a trigger node + sequential step nodes.
+ * Branching is handled generically via StepBuildFacet.branches().
  */
 
-import { EARS } from '@/__generated__/ears';
-import type {
-  FlowDSL,
-  Track,
-  DSLStepNode,
-  DSLSwitchNode,
-  CompilerContext,
-} from './types';
-import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './types';
-import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
+import type { FlowDSL, Track, DSLStepNode } from './flow-types';
+import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types';
+import type { CompilerContext } from './flow-entities';
+import { stepRegistry, type StepDefinition } from '../../steps';
 
-/*─────────────────────────────────────────────────────────────────
- * Types
- *─────────────────────────────────────────────────────────────────*/
+export type { CompilerContext };
 
-type Relation = { source: string; kind: EARS.RelKind; target: string; info?: object };
+export interface FlowEARS {
+  Entity: Record<string, any>;
+  RelKind: Record<string, any>;
+}
+
+type Relation = { source: string; kind: string; target: string; info?: object };
 
 interface StepResult {
   entity: object;
   relations: Relation[];
 }
 
-/** Bundled context threaded through compilation functions */
 interface FlowCompileCtx {
   flowId: string;
   flowName: string;
   ts: number;
   ctx: CompilerContext;
+  ears: FlowEARS;
   globalLabelMap: Map<string, string>;
   inlineStepIds: Map<string, string>;
+}
+
+export interface CompiledRows {
+  entity: object[];
+  relation: Relation[];
+  role: Array<{ entityId: string; role: string }>;
+}
+
+interface CompileOptions {
+  actions?: Map<string, string>;
+  prompts?: Map<string, string>;
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -63,13 +72,9 @@ function simpleHash(str: string): number {
 }
 
 /*─────────────────────────────────────────────────────────────────
- * Inline Branch Helpers
+ * Inline Branch Helpers (generic via StepBuildFacet.branches)
  *─────────────────────────────────────────────────────────────────*/
 
-/**
- * Register inline step IDs for a list of steps at a given path prefix.
- * Generates IDs, stores in inlineStepIds, and registers labels in globalLabelMap.
- */
 function registerInlineSteps(
   steps: DSLStepNode[],
   flowName: string,
@@ -88,33 +93,23 @@ function registerInlineSteps(
       globalLabelMap.set(step.label, id);
     }
 
-    if (step.type === 'switch') {
-      registerInlineSwitchStepIds(step, flowName, key, globalLabelMap, inlineStepIds);
-    }
+    registerBranchStepIds(step, flowName, key, globalLabelMap, inlineStepIds);
   }
 }
 
-/**
- * First-pass helper: generate IDs for inline steps inside switch conditions.
- * Stores IDs in `inlineStepIds` keyed by path (e.g., "t0-s2-c0-i0").
- * Only registers explicit labels in `globalLabelMap` (for cross-references via `next`).
- */
-function registerInlineSwitchStepIds(
-  switchStep: DSLSwitchNode,
+function registerBranchStepIds(
+  step: DSLStepNode,
   flowName: string,
   pathPrefix: string,
   globalLabelMap: Map<string, string>,
   inlineStepIds: Map<string, string>,
 ): void {
-  for (let ci = 0; ci < switchStep.conditions.length; ci++) {
-    const condition = switchStep.conditions[ci];
-    if (condition.steps) {
-      registerInlineSteps(condition.steps, flowName, `${pathPrefix}-c${ci}`, globalLabelMap, inlineStepIds);
-    }
-  }
+  const build = stepRegistry.getBuild(step.type);
+  const branchList = build?.branches?.(step as Record<string, unknown>);
+  if (!branchList?.length) return;
 
-  if (Array.isArray(switchStep.else) && switchStep.else.length > 0) {
-    registerInlineSteps(switchStep.else, flowName, `${pathPrefix}-else`, globalLabelMap, inlineStepIds);
+  for (const branch of branchList) {
+    registerInlineSteps(branch.steps as DSLStepNode[], flowName, `${pathPrefix}-${branch.key}`, globalLabelMap, inlineStepIds);
   }
 }
 
@@ -122,13 +117,6 @@ function registerInlineSwitchStepIds(
  * Unified Step List Compiler
  *─────────────────────────────────────────────────────────────────*/
 
-/**
- * Compile a list of steps into entities and relations, wiring sequential edges.
- * Used by both top-level tracks and inline switch branches.
- *
- * @param stepKeys - parallel to stepIds, each entry is the path key for that step
- *                   (e.g., "t0-s2" for top-level, "t0-s2-c0-i1" for inline)
- */
 function compileStepList(
   steps: DSLStepNode[],
   stepIds: string[],
@@ -137,7 +125,6 @@ function compileStepList(
   out: { entities: object[]; relations: Relation[] },
   continuationId?: string,
 ): void {
-  // Compile each step
   for (let si = 0; si < steps.length; si++) {
     const step = steps[si];
     const stepId = stepIds[si];
@@ -148,28 +135,29 @@ function compileStepList(
 
     out.relations.push({
       source: fCtx.flowId,
-      kind: EARS.RelKind.CONTAINS,
+      kind: fCtx.ears.RelKind.CONTAINS,
       target: stepId,
     });
   }
 
-  // Wire edges
   for (let si = 0; si < steps.length; si++) {
     const step = steps[si];
     const stepId = stepIds[si];
 
-    if (step.type === 'switch') {
+    const build = stepRegistry.getBuild(step.type);
+    const branchList = build?.branches?.(step as Record<string, unknown>);
+    if (branchList?.length) {
       const switchContinuation = si < stepIds.length - 1 ? stepIds[si + 1] : continuationId;
-      wireSwitchEdges(step, stepId, stepKeys[si], fCtx, out, switchContinuation);
+      wireBranchEdges(step, branchList, stepId, stepKeys[si], fCtx, out, switchContinuation);
       continue;
     }
 
     if (step.next) {
-      const targetId = fCtx.globalLabelMap.get(step.next);
+      const targetId = fCtx.globalLabelMap.get(step.next as string);
       if (targetId) {
         out.relations.push({
           source: stepId,
-          kind: EARS.RelKind.TRANSITIONS_TO,
+          kind: fCtx.ears.RelKind.TRANSITIONS_TO,
           target: targetId,
         });
       }
@@ -179,65 +167,45 @@ function compileStepList(
     if (si < stepIds.length - 1) {
       out.relations.push({
         source: stepId,
-        kind: EARS.RelKind.TRANSITIONS_TO,
+        kind: fCtx.ears.RelKind.TRANSITIONS_TO,
         target: stepIds[si + 1],
       });
     } else if (continuationId) {
       out.relations.push({
         source: stepId,
-        kind: EARS.RelKind.TRANSITIONS_TO,
+        kind: fCtx.ears.RelKind.TRANSITIONS_TO,
         target: continuationId,
       });
     }
   }
 }
 
-/**
- * Wire TRANSITIONS_TO edges from a switch node to its inline branch targets.
- * Each branch's last step wires to the continuationId (implicit convergence).
- */
-function wireSwitchEdges(
-  step: DSLSwitchNode,
+function wireBranchEdges(
+  _step: DSLStepNode,
+  branchList: { key: string; steps: Record<string, unknown>[] }[],
   stepId: string,
-  switchKey: string,
+  stepKey: string,
   fCtx: FlowCompileCtx,
   out: { entities: object[]; relations: Relation[] },
   continuationId?: string,
 ): void {
-  for (let ci = 0; ci < step.conditions.length; ci++) {
-    const condition = step.conditions[ci];
+  for (let bi = 0; bi < branchList.length; bi++) {
+    const branch = branchList[bi];
+    if (!branch.steps.length) continue;
 
-    if (condition.steps && condition.steps.length > 0) {
-      const branchPrefix = `${switchKey}-c${ci}`;
-      const firstInlineId = fCtx.inlineStepIds.get(`${branchPrefix}-i0`)!;
-
-      out.relations.push({
-        source: stepId,
-        kind: EARS.RelKind.TRANSITIONS_TO,
-        target: firstInlineId,
-        info: { sourceHandle: `branch-${ci}` },
-      });
-
-      const inlineIds = condition.steps.map((_, si) => fCtx.inlineStepIds.get(`${branchPrefix}-i${si}`)!);
-      const inlineKeys = condition.steps.map((_, si) => `${branchPrefix}-i${si}`);
-      compileStepList(condition.steps, inlineIds, inlineKeys, fCtx, out, continuationId);
-    }
-  }
-
-  if (step.else && step.else.length > 0) {
-    const elsePrefix = `${switchKey}-else`;
-    const firstElseId = fCtx.inlineStepIds.get(`${elsePrefix}-i0`)!;
+    const branchPrefix = `${stepKey}-${branch.key}`;
+    const firstInlineId = fCtx.inlineStepIds.get(`${branchPrefix}-i0`)!;
 
     out.relations.push({
       source: stepId,
-      kind: EARS.RelKind.TRANSITIONS_TO,
-      target: firstElseId,
-      info: { sourceHandle: `branch-${step.conditions.length}`, condition: 'else' },
+      kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+      target: firstInlineId,
+      info: { sourceHandle: `branch-${bi}` },
     });
 
-    const elseIds = step.else.map((_, si) => fCtx.inlineStepIds.get(`${elsePrefix}-i${si}`)!);
-    const elseKeys = step.else.map((_, si) => `${elsePrefix}-i${si}`);
-    compileStepList(step.else, elseIds, elseKeys, fCtx, out, continuationId);
+    const inlineIds = branch.steps.map((_, si) => fCtx.inlineStepIds.get(`${branchPrefix}-i${si}`)!);
+    const inlineKeys = branch.steps.map((_, si) => `${branchPrefix}-i${si}`);
+    compileStepList(branch.steps as DSLStepNode[], inlineIds, inlineKeys, fCtx, out, continuationId);
   }
 }
 
@@ -245,21 +213,7 @@ function wireSwitchEdges(
  * Main Compiler
  *─────────────────────────────────────────────────────────────────*/
 
-interface CompileOptions {
-  actions?: Map<string, string>;
-  prompts?: Map<string, string>;
-}
-
-export interface CompiledRows {
-  entity: object[];
-  relation: Relation[];
-  role: Array<{ entityId: string; role: string }>;
-}
-
-/**
- * Compile a Flow DSL document into EARS Rows format
- */
-export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRows {
+export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = {}): CompiledRows {
   const ts = Date.now();
 
   const entities: object[] = [];
@@ -272,13 +226,11 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
     flows: new Map(),
   };
 
-  // First pass: generate flow IDs
   for (const flowName of Object.keys(dsl)) {
     const flowId = generateId('Flow', flowName);
     ctx.flows.set(flowName, flowId);
   }
 
-  // Second pass: compile each flow
   for (const [flowName, entry] of Object.entries(dsl)) {
     const tracks = resolveTracks(entry);
     const flowId = ctx.flows.get(flowName)!;
@@ -287,27 +239,22 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
       tracks,
       flowId,
       ts,
-      ctx
+      ctx,
+      ears
     );
 
-    // Attach sourceHash from compiled FlowConfig if present
     const sourceHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
     entities.push(sourceHash ? { ...flowEntity, sourceHash } : flowEntity);
     entities.push(...nodeEntities);
     relations.push(...flowRelations);
     roles.push(...flowRoles);
 
-    // Emit root_flow role if flagged
     if (isFlowConfig(entry) && entry.root) {
       roles.push({ entityId: flowId, role: ROOT_FLOW_ROLE });
     }
   }
 
-  return {
-    entity: entities,
-    relation: relations,
-    role: roles,
-  };
+  return { entity: entities, relation: relations, role: roles };
 }
 
 function compileFlow(
@@ -315,7 +262,8 @@ function compileFlow(
   tracks: Track[],
   flowId: string,
   ts: number,
-  ctx: CompilerContext
+  ctx: CompilerContext,
+  ears: FlowEARS,
 ): {
   flowEntity: object;
   nodeEntities: object[];
@@ -326,7 +274,7 @@ function compileFlow(
 
   const flowEntity = {
     id: flowId,
-    entityType: EARS.Entity.Flow,
+    entityType: ears.Entity.Flow,
     shortCode,
     label: flowName,
     flowType: 'workflow',
@@ -337,11 +285,9 @@ function compileFlow(
   const flowRelations: Relation[] = [];
   const flowRoles: Array<{ entityId: string; role: string }> = [];
 
-  // Build global label -> nodeId map for cross-track references
   const globalLabelMap = new Map<string, string>();
   const inlineStepIds = new Map<string, string>();
 
-  // First pass: generate all node IDs
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
     const listenerLabel = resolveTrackLabel(track, trackIdx);
@@ -359,17 +305,13 @@ function compileFlow(
         }
         globalLabelMap.set(stepLabel, stepId);
 
-        // Register inline step IDs for switch nodes with inline branches
-        if (step.type === 'switch') {
-          registerInlineSwitchStepIds(step, flowName, `t${trackIdx}-e${exitIdx}-s${stepIdx}`, globalLabelMap, inlineStepIds);
-        }
+        registerBranchStepIds(step, flowName, `t${trackIdx}-e${exitIdx}-s${stepIdx}`, globalLabelMap, inlineStepIds);
       }
     }
   }
 
-  const fCtx: FlowCompileCtx = { flowId, flowName, ts, ctx, globalLabelMap, inlineStepIds };
+  const fCtx: FlowCompileCtx = { flowId, flowName, ts, ctx, ears, globalLabelMap, inlineStepIds };
 
-  // Second pass: compile tracks
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
     const isFirstTrack = trackIdx === 0;
@@ -429,26 +371,19 @@ function compileTrack(
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
   const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
-  // Create trigger node from track — all triggers dispatch to their registered facet
   const trackData = { ...track, isFirstTrack } as unknown as Record<string, unknown>;
   const listenerEntity = triggerDef.trigger.compile(trackData, listenerId, fCtx.ts, trackKey);
 
-  // Add CONTAINS for trigger node
   trackRelations.push({
     source: fCtx.flowId,
-    kind: EARS.RelKind.CONTAINS,
+    kind: fCtx.ears.RelKind.CONTAINS,
     target: listenerId,
   });
 
-  // Add entry role for first track's listener node (not other trigger tracks)
   if (isFirstTrack && triggerDef?.type === 'listener') {
-    trackRoles.push({
-      entityId: listenerId,
-      role: 'entry_event',
-    });
+    trackRoles.push({ entityId: listenerId, role: 'entry_event' });
   }
 
-  // For each exit path, compile its steps and wire listener → first step
   const out = { entities: nodeEntities, relations: trackRelations };
   for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
     const exitSteps = track.exits[exitIdx];
@@ -466,7 +401,7 @@ function compileTrack(
 
     trackRelations.push({
       source: listenerId,
-      kind: EARS.RelKind.TRANSITIONS_TO,
+      kind: fCtx.ears.RelKind.TRANSITIONS_TO,
       target: exitStepIds[0],
       info: { sourceHandle: `exit-${exitIdx}` },
     });

@@ -1,14 +1,9 @@
 import { findAll, repository } from '../ears/index';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index';
 import { seedPath } from '../build/manifest';
+import { importNotesFromData, type NotesEARS } from './import-notes';
 
-export interface NotesSeederDeps {
-  ears: any;
-  importNotesFromData: (data: any) => { created: number; updated: number; skipped: number; errors: string[] };
-}
-
-export function createNotesSeeder(deps: NotesSeederDeps): Seeder {
-  const { ears, importNotesFromData } = deps;
+export function createNotesSeeder(ears: NotesEARS): Seeder {
   const repo = repository as any;
 
   return {
@@ -32,7 +27,7 @@ export function createNotesSeeder(deps: NotesSeederDeps): Seeder {
         for (const n of findAll(ears.Entity.Note)) repo.noteCommands.delete((n as any).id);
         ctx.log('  notes wiped');
       }
-      const importResult = importNotesFromData(filteredNotes);
+      const importResult = importNotesFromData(filteredNotes, ears);
       counts.created = importResult.created;
       counts.updated = importResult.updated;
       counts.skipped = importResult.skipped;

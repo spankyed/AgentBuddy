@@ -1,4 +1,4 @@
-import type { FlowDSL } from '@/features/flows/be/dsl/types';
+import type { FlowDSL } from '../../../src/build/compilers/flow-types';
 
 /* ── Context maps ──────────────────────────────────────────────── */
 

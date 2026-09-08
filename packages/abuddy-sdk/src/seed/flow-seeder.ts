@@ -1,20 +1,16 @@
 import { findAll, repository } from '../ears/index';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index';
 import { seedPath } from '../build/manifest';
+import { compile as compileFlowDSL } from '../build/compilers/flow-compiler';
+import { validate } from '../build/compilers/flow-dsl-validator';
+import { isFlowConfig } from '../build/compilers/flow-types';
+import type { FlowEARS } from '../build/compilers/flow-compiler';
 
 function buildLabelMap(entities: any[]): Map<string, string> {
   return new Map(entities.map((e: any) => [e.label, e.id]));
 }
 
-export interface FlowSeederDeps {
-  ears: any;
-  validate: (dsl: any, options: any) => { valid: boolean; errors: any[] };
-  compile: (dsl: any, ctx: any) => any;
-  isFlowConfig: (entry: any) => boolean;
-}
-
-export function createFlowSeeder(deps: FlowSeederDeps): Seeder {
-  const { ears, validate, compile, isFlowConfig } = deps;
+export function createFlowSeeder(ears: FlowEARS): Seeder {
   const repo = repository as any;
 
   return {
@@ -100,7 +96,9 @@ export function createFlowSeeder(deps: FlowSeederDeps): Seeder {
         return counts;
       }
 
-      repo.flowsCommands.importFromDSL(compile(validFlowDSL, { actions: actionMap, prompts: promptMap }));
+      repo.flowsCommands.importFromDSL(
+        compileFlowDSL(validFlowDSL, ears, { actions: actionMap, prompts: promptMap })
+      );
       for (const name of flowNames) {
         if (replacedLabels.has(name)) {
           counts.updated++;

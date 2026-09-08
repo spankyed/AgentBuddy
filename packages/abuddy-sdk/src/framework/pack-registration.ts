@@ -20,11 +20,18 @@ export interface PackMigration {
   up: () => void;
 }
 
+export interface PackSeedManifest {
+  artifacts: string[];
+  compiledDir: string;
+  seedPolicy?: { skipAtBoot?: string[]; skipAfterOnboarding?: string[] };
+}
+
 export interface PackBootHooks {
   earlySystem?: AnyStateMachine;
   createDefaultSettings?: () => void;
   shutdown?: () => void;
   seed?: () => void;
+  seedManifest?: PackSeedManifest;
 }
 
 export interface PackEARS {

@@ -1,9 +1,12 @@
 import { type BaseEntity, EARS } from '@/__generated__/ears';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';
-import { BinaryOperator } from '@abuddy/sdk/utils';
 
 // Re-export BinaryOperator so consumers importing from flows types get it
 export { BinaryOperator } from '@abuddy/sdk/utils';
+
+/*─────────────────────────────────────────────────────────────────
+ * Flow & Edge entities (infrastructure types)
+ *─────────────────────────────────────────────────────────────────*/
 
 export interface FlowEntity extends BaseEntity {
   entityType: EARS.Entity.Flow;
@@ -12,147 +15,62 @@ export interface FlowEntity extends BaseEntity {
   description?: string;
   flowType: 'workflow' | 'integration';
   createdAt: number;
-  /** SHA256 hash of the DSL source at last seed. Absent on user-created flows. */
   sourceHash?: string;
 }
 
-/*─────────────────────────────────────────────────────────────────
- * 1 ▸ Common base shared by every node
- *─────────────────────────────────────────────────────────────────*/
-interface NodeBase extends BaseEntity {
+export interface NodeBase extends BaseEntity {
   entityType: EARS.Entity.Node;
-  /** discriminator */
-  nodeType: NodeKind;                 // defined below
+  nodeType: string;
   label: string;
   description?: string;
   color?: string;
-  /** When true, completing this node will trigger parent flow completion */
   final?: boolean;
 }
 
-/*─────────────────────────────────────────────────────────────────
- * 2 ▸ Per‑kind specializations
- *─────────────────────────────────────────────────────────────────*/
-export interface QueryNode extends NodeBase {
-  nodeType: 'query';
-  prompt: string;
-  resultKey?: string;
-}
-
-export interface CreateNode extends NodeBase {
-  nodeType: 'create';
-  entityTypeTarget: EARS.Entity;      // what kind of entity to mint
-  entityId?: string;                  // optional explicit id
-  inferLabel?: boolean;               // default true
-}
-
-export interface UpdateNode extends NodeBase {
-  nodeType: 'update';
-  entityId: string;                   // must exist
-  onMissing?: 'fail' | 'ignore' | 'create';
-}
-
-
-/*─────────────────────────────────────────────────────────────────
- * Switch Node Types
- *─────────────────────────────────────────────────────────────────*/
-
-export type Predicate = {
-  key: string;
-  operator: BinaryOperator;
-  value?: any;
-} | ((context: any) => boolean);
-
-export type Condition = {
-  predicate?: Predicate;
-  label?: string;
-  mode?: 'expression' | 'code';
-  code?: string;
+export type EdgeEntity = {
+  id: EARS.EntityId;
+  kind: EARS.RelKind;
+  source: EARS.EntityId;
+  target: EARS.EntityId;
+  sourceHandle?: string;
+  targetHandle?: string;
+  info?: { [key: string]: any; }
 };
 
-export interface SwitchNode extends NodeBase {
-  nodeType: 'switch';
-  conditions: Array<Condition>;
-  elseLabel?: string;
-}
+/*─────────────────────────────────────────────────────────────────
+ * Per-step entity types (owned by each step definition)
+ *─────────────────────────────────────────────────────────────────*/
 
-export interface FireNode extends NodeBase {
-  nodeType: 'fire';
-  eventType: string;                   // '#THREAD.CREATE'
-  payload?: unknown;
-  scope?: 'local' | 'global';         // default 'local'
-}
+export type { ActionNode } from '@/extensions/steps/action/types';
+export type { LLMNode } from '@/extensions/steps/llm/types';
+export type { SwitchNode, Condition, Predicate } from '@/extensions/steps/switch/types';
+export type { FireNode } from '@/extensions/steps/fire/types';
+export type { ListenerNode } from '@/extensions/steps/listener/types';
+export type { TransformNode } from '@/extensions/steps/transform/types';
+export type { FlowNode } from '@/extensions/steps/flow/types';
+export type { QueryNode } from '@/extensions/steps/query/types';
+export type { CreateNode } from '@/extensions/steps/create/types';
+export type { UpdateNode } from '@/extensions/steps/update/types';
+export type { KeepAliveNode } from '@/extensions/steps/keep-alive/types';
+export type { KillNode } from '@/extensions/steps/kill/types';
 
-export interface ListenerNode extends NodeBase {
-  nodeType: 'listener';
-  scope: 'global' | 'local' | 'entry'; // global=anywhere, local=current flow, entry=flow entry point
-  eventType: string;
-  /** Stable identity for the compiled/source track that produced this trigger. */
-  trackKey?: string;
-  debounceMs?: number;                // optional debounce for global and local scopes
-}
-
-export interface TransformNode extends NodeBase {
-  nodeType: 'transform';
-  script: string;                     // NL or code
-  outputType?: 'json' | 'text' | 'custom';
-}
-
-export interface FlowNode extends NodeBase {
-  nodeType: 'flow';
-  flowRef: string;                    // id / slug of child flow
-  propagateCtx?: boolean;             // default true
-  fieldMappings?: Array<{             // Map entry parameter
-    target: string;
-    source: string;
-    default?: any;
-  }>;
-}
-
-export interface KeepAliveNode extends NodeBase {
-  nodeType: 'keep_alive';
-}
-
-export interface KillNode extends NodeBase {
-  nodeType: 'kill';
-}
-
-export interface LLMNode extends NodeBase {
-  nodeType: 'llm';
-
-  // Prompt configuration
-  prompt?: string;                    // Direct prompt string
-  promptTemplateId?: string;          // Or use a registered template ID
-  fieldMappings?: Array<{
-    target: string;                   // Target field name in template
-    source: string;                   // Path to extract value (e.g., '$.event.data.message')
-    default?: any;                    // Default if source is undefined
-  }>;
-
-  // LLM configuration
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  systemPrompt?: string;
-}
-
-export interface ActionNode extends NodeBase {
-  nodeType: 'action';
-  mode?: 'template' | 'code';            // default 'template' (select existing action)
-  actionId?: string;                      // Reference to Action entity (template mode)
-  actionFn?: string;                      // Inline code (code mode)
-  params?: Record<string, any>;           // Direct parameters
-  fieldMappings?: Array<{                 // Or map from context
-    target: string;
-    source: string;
-    default?: any;
-  }>;
-}
-
+import type { ActionNode } from '@/extensions/steps/action/types';
+import type { LLMNode } from '@/extensions/steps/llm/types';
+import type { SwitchNode } from '@/extensions/steps/switch/types';
+import type { FireNode } from '@/extensions/steps/fire/types';
+import type { ListenerNode } from '@/extensions/steps/listener/types';
+import type { TransformNode } from '@/extensions/steps/transform/types';
+import type { FlowNode } from '@/extensions/steps/flow/types';
+import type { QueryNode } from '@/extensions/steps/query/types';
+import type { CreateNode } from '@/extensions/steps/create/types';
+import type { UpdateNode } from '@/extensions/steps/update/types';
+import type { KeepAliveNode } from '@/extensions/steps/keep-alive/types';
+import type { KillNode } from '@/extensions/steps/kill/types';
 
 /*─────────────────────────────────────────────────────────────────
- * 3 ▸ Union & helpers
+ * Union & helpers
  *─────────────────────────────────────────────────────────────────*/
+
 export type NodeEntity =
   | QueryNode
   | CreateNode
@@ -167,35 +85,25 @@ export type NodeEntity =
   | KillNode
   | LLMNode;
 
-/** Literal union of all nodeType strings, open for custom step types */
 export type NodeKind = NodeEntity['nodeType'] | (string & {});
 
-/* Optional—handy type guard generator */
 export const isNodeKind = <K extends NodeKind>(k: K) =>
   (n: NodeEntity): n is Extract<NodeEntity, { nodeType: K }> =>
     n.nodeType === k;
 
-// Type utility to ensure exhaustive node type handling
 export function assertNever(x: never): never {
   throw new Error('Unexpected node type: ' + x);
 }
 
-
-// Input type for create/update operations that may include relational data
 export type NodeCreateInput = Partial<NodeEntity> & {
-  actionId?: string;  // Will be converted to INSTANCE_OF relationship
-  promptTemplateId?: string;  // Will be converted to relationship
+  actionId?: string;
+  promptTemplateId?: string;
 };
 
-export type EdgeEntity = {
-  id: EARS.EntityId;
-  kind: EARS.RelKind;
-  source: EARS.EntityId;
-  target: EARS.EntityId;
-  sourceHandle?: string;  // For switch nodes with multiple outputs
-  targetHandle?: string;  // For nodes with multiple inputs
-  info?: { [key: string]: any; }
-};
+/*─────────────────────────────────────────────────────────────────
+ * Connected data / UI types
+ *─────────────────────────────────────────────────────────────────*/
+
 export interface FlowsConnectedData {
   selectedFlowId: EARS.EntityId;
   graph: {
@@ -207,7 +115,7 @@ export interface FlowsConnectedData {
   models: ModelCatalogEntry[];
   prompts: PromptEntity[];
   actions: ActionEntity[];
-  settings?: any; // FlowsSettings from backend
+  settings?: any;
 }
 
 export interface ModelCatalogEntry {
@@ -221,7 +129,6 @@ export interface ModelCatalogEntry {
   costPer1kOutput?: number;
   capabilities?: string[];
 }
-
 
 export interface FlowExtendedData {
   nodes: NodeEntity[];

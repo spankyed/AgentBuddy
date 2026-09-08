@@ -51,6 +51,11 @@ export interface StepDecompileContext {
   resolveBranch?: (sourceNodeId: string, sourceHandle: string) => Record<string, unknown>[] | null;
 }
 
+export interface StepBranch {
+  key: string;
+  steps: Record<string, unknown>[];
+}
+
 export interface StepBuildFacet {
   compile(node: Record<string, unknown>, nodeId: string, ts: number, ctx: StepCompileContext): StepCompileResult;
   validate(step: Record<string, unknown>, path: string, ctx: StepValidationContext): StepValidationError[];
@@ -59,6 +64,8 @@ export interface StepBuildFacet {
   decompile?: (node: Record<string, unknown>, ctx: StepDecompileContext) => Record<string, unknown>;
   /** EARS relation config for this step type. Omit for steps with no entity relations. */
   relation?: { field: string; targetEntity: string };
+  /** Return inline branch paths for steps that contain nested step lists. Omit for steps with no branching. */
+  branches?: (dslNode: Record<string, unknown>) => StepBranch[];
 }
 
 /*─────────────────────────────────────────────────────────────────

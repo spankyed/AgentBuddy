@@ -20,8 +20,8 @@ import type {
 import { availableModels } from '../config/available-models';
 import { createNodeDefaults, isTriggerNodeType } from '../config/node-config';
 import { repository } from '@abuddy/sdk/ears';
-import type { CompiledRows } from '../dsl/compiler';
-import { ROOT_FLOW_ROLE } from '../dsl/types';
+import type { CompiledRows } from '@abuddy/sdk/build';
+import { ROOT_FLOW_ROLE } from '@abuddy/sdk/build';
 
 const logger = createLogger('flows-repository');
 

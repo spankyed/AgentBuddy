@@ -1,7 +1,8 @@
 export { createCollectionSeeder } from './collection-seeder';
-export { createFlowSeeder, type FlowSeederDeps } from './flow-seeder';
+export { createFlowSeeder } from './flow-seeder';
 export { createLibrarySeeder } from './library-seeder';
-export { createNotesSeeder, type NotesSeederDeps } from './notes-seeder';
+export { createNotesSeeder } from './notes-seeder';
+export { importNotesFromData, type NotesEARS, type NotesImportResult } from './import-notes';
 export { createSettingsSeeder } from './settings-seeder';
 export { createBootSeed, type BootSeedConfig } from './boot-seed';
 export { previewPackSeeds } from './preview';

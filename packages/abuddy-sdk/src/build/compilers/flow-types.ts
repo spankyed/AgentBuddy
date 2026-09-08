@@ -1,11 +1,15 @@
 export type { ValidationError, ValidationResult } from '../seed-compiler';
 
-export interface DSLStepNode {
-  type: string;
+export interface DSLNodeBase {
   label?: string;
   description?: string;
   final?: boolean;
   next?: string;
+  [key: string]: unknown;
+}
+
+export interface DSLStepNode extends DSLNodeBase {
+  type: string;
   [key: string]: unknown;
 }
 

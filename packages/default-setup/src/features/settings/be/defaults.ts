@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
 import { getAppVersion } from '@abuddy/sdk/utils';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
-import { DEFAULT_COMPILED_DIR } from '@/__generated__/seeders';
 
-const SETTINGS_PATH = seedPath(DEFAULT_COMPILED_DIR, 'settings');
+const COMPILED_DIR = new URL('../../../../dist', import.meta.url).pathname;
+const SETTINGS_PATH = seedPath(COMPILED_DIR, 'settings');
 
 const loadJson = (): SettingsData => {
   try {

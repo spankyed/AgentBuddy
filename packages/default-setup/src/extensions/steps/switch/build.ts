@@ -1,4 +1,4 @@
-import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
+import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@abuddy/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { EARS } from '@abuddy/sdk';
 
@@ -161,4 +161,18 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   if (elseSteps && elseSteps.length > 0) dsl.else = elseSteps;
 
   return dsl;
+}
+
+export function branches(node: Record<string, unknown>): StepBranch[] {
+  const result: StepBranch[] = [];
+  const conditions = (node.conditions as any[]) ?? [];
+  for (let i = 0; i < conditions.length; i++) {
+    if (Array.isArray(conditions[i].steps)) {
+      result.push({ key: `c${i}`, steps: conditions[i].steps });
+    }
+  }
+  if (Array.isArray(node.else) && (node.else as any[]).length > 0) {
+    result.push({ key: 'else', steps: node.else as any[] });
+  }
+  return result;
 }

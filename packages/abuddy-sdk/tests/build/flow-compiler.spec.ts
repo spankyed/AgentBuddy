@@ -1,22 +1,35 @@
-import { compile } from '@/features/flows/be/dsl/compiler';
-import type { FlowDSL } from '@/features/flows/be/dsl/types';
-import { EARS } from '@/__generated__/ears';
-import { BinaryOperator } from '@/features/flows/be/config/types';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { compile } from '../../src/build/compilers/flow-compiler';
+import type { FlowEARS } from '../../src/build/compilers/flow-compiler';
+import type { FlowDSL } from '../../src/build/compilers/flow-types';
+import { BinaryOperator } from '../../src/utils/index';
+import { stepRegistry } from '../../src/steps/registry';
 import { findEntity, filterEntities, filterRelations } from './helpers/compiled-result';
 import { wrapInFlow, makeSwitchDSL, parsedPredicate } from './helpers/dsl-factories';
 import { steps, ctx, flows } from './helpers/fixtures';
+import { ALL_TEST_STEPS } from './helpers/test-steps';
 
-/*─────────────────────────────────────────────────────────────────
- * Tests
- *─────────────────────────────────────────────────────────────────*/
+const EARS: FlowEARS = {
+  Entity: { Flow: 'Flow', Node: 'Node', Action: 'Action', Prompt: 'Prompt' },
+  RelKind: { CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to', INSTANCE_OF: 'instance_of' },
+};
+
+function c(dsl: FlowDSL, options?: { actions?: Map<string, string>; prompts?: Map<string, string> }) {
+  return compile(dsl, EARS, options);
+}
 
 describe('compile', () => {
+  beforeEach(() => {
+    for (const step of ALL_TEST_STEPS) stepRegistry.register(step);
+  });
+  afterEach(() => stepRegistry.clear());
+
   describe('flow structure', () => {
     it('creates flow entity with correct label, entityType, flowType', () => {
       const dsl: FlowDSL = {
         'My Flow': [{ event: 'start', exits: [[]] }],
       };
-      const result = compile(dsl);
+      const result = c(dsl);
       const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
 
       expect(flow).toBeDefined();
@@ -32,7 +45,7 @@ describe('compile', () => {
           { event: 'user.updated', exits: [[]] },
         ],
       };
-      const result = compile(dsl);
+      const result = c(dsl);
       const listenerNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listener');
 
       expect(listenerNodes).toHaveLength(2);
@@ -49,7 +62,7 @@ describe('compile', () => {
           { event: 'second', exits: [[]] },
         ],
       };
-      const result = compile(dsl);
+      const result = c(dsl);
       const listenerNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listener');
 
       expect(result.role).toHaveLength(1);
@@ -66,7 +79,7 @@ describe('compile', () => {
           },
         ],
       };
-      const result = compile(dsl);
+      const result = c(dsl);
       const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
       const containsRels = filterRelations(result.relation, (r) => r.kind === EARS.RelKind.CONTAINS && r.source === flow.id);
 
@@ -78,7 +91,7 @@ describe('compile', () => {
   describe('node compilation - all types', () => {
     it('action: entity has nodeType, actionId, params, fieldMappings', () => {
       const dsl = wrapInFlow([steps.action]);
-      const result = compile(dsl, { actions: ctx.actions });
+      const result = c(dsl, { actions: ctx.actions });
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'action');
 
       expect(node.actionId).toBe('Action-send-123');
@@ -88,7 +101,7 @@ describe('compile', () => {
 
     it('llm: entity has promptTemplateId, model, temperature, maxTokens, systemPrompt, fieldMappings', () => {
       const dsl = wrapInFlow([steps.llm]);
-      const result = compile(dsl, { prompts: ctx.prompts });
+      const result = c(dsl, { prompts: ctx.prompts });
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'llm');
 
       expect(node.promptTemplateId).toBe('Prompt-cls-456');
@@ -101,7 +114,7 @@ describe('compile', () => {
 
     it('fire: entity has eventType, scope, payload', () => {
       const dsl = wrapInFlow([steps.fire]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'fire');
 
       expect(node.eventType).toBe('notify.sent');
@@ -111,7 +124,7 @@ describe('compile', () => {
 
     it('transform: entity has script, outputType', () => {
       const dsl = wrapInFlow([steps.transform]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'transform');
 
       expect(node.script).toBe('return x + 1');
@@ -120,7 +133,7 @@ describe('compile', () => {
 
     it('query: entity has prompt, resultKey (as)', () => {
       const dsl = wrapInFlow([steps.query]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'query');
 
       expect(node.prompt).toBe('Find user by name');
@@ -129,7 +142,7 @@ describe('compile', () => {
 
     it('flow: entity has flowRef resolved from context, propagateCtx, fieldMappings', () => {
       const dsl = flows.parentChild;
-      const result = compile(dsl);
+      const result = c(dsl);
       const flowNode = findEntity(result.entity, (e: any) => e.nodeType === 'flow');
       const childFlow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow && e.label === 'Child');
 
@@ -140,7 +153,7 @@ describe('compile', () => {
 
     it('create: entity has entityTypeTarget', () => {
       const dsl = wrapInFlow([steps.create]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'create');
 
       expect(node.entityTypeTarget).toBe('Thread');
@@ -148,7 +161,7 @@ describe('compile', () => {
 
     it('update: entity has onMissing', () => {
       const dsl = wrapInFlow([steps.update]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'update');
 
       expect(node.onMissing).toBe('ignore');
@@ -156,7 +169,7 @@ describe('compile', () => {
 
     it('keep_alive: entity has nodeType keep_alive', () => {
       const dsl = wrapInFlow([steps.keepAlive]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const node = findEntity(result.entity, (e: any) => e.nodeType === 'keep_alive');
 
       expect(node).toBeDefined();
@@ -171,7 +184,7 @@ describe('compile', () => {
         { type: 'action', action: 'b' },
         { type: 'action', action: 'c' },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const nodes = filterEntities(result.entity, (e: any) => e.nodeType === 'action');
       const transitions = filterRelations(result.relation, (r) => r.kind === EARS.RelKind.TRANSITIONS_TO);
 
@@ -185,7 +198,7 @@ describe('compile', () => {
 
     it('listener -> first step: TRANSITIONS_TO edge', () => {
       const dsl = wrapInFlow([{ type: 'action', action: 'first' }]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const listener = findEntity(result.entity, (e: any) => e.nodeType === 'listener');
       const action = findEntity(result.entity, (e: any) => e.nodeType === 'action');
       const edge = filterRelations(result.relation, (r) =>
@@ -197,7 +210,7 @@ describe('compile', () => {
 
     it('no edge after last step', () => {
       const dsl = wrapInFlow([{ type: 'action', action: 'only' }]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const action = findEntity(result.entity, (e: any) => e.nodeType === 'action');
       const outgoing = filterRelations(result.relation, (r) =>
         r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === action.id
@@ -212,7 +225,7 @@ describe('compile', () => {
         { type: 'action', action: 'b' },
         { type: 'action', action: 'c', label: 'target' },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const nodeA = findEntity(result.entity, (e: any) => e.nodeType === 'action' && e.label === 'a');
       const nodeB = findEntity(result.entity, (e: any) => e.nodeType === 'action' && e.label === 'b');
       const nodeC = findEntity(result.entity, (e: any) => e.label === 'target');
@@ -238,7 +251,7 @@ describe('compile', () => {
       const dsl = makeSwitchDSL([
         { if: '$.status == active', steps: [{ type: 'action', action: 'a' }] },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
 
       expect(switchNode.conditions).toHaveLength(1);
@@ -254,7 +267,7 @@ describe('compile', () => {
         [{ if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] }],
         [{ type: 'action', action: 'fallback' }],
       );
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
 
       // 1 real condition + 1 else = 2
@@ -266,28 +279,22 @@ describe('compile', () => {
       const dsl = makeSwitchDSL([
         { if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
 
       expect(switchNode.conditions).toHaveLength(1);
     });
 
     it('empty condition steps -> no TRANSITIONS_TO edge for that branch', () => {
-      // Empty `steps: []` is a valid no-op branch. The compiler should
-      // still record the condition, but emit no outgoing edge for it —
-      // at runtime `nextNodeForBranch('branch-0')` returns undefined and
-      // the chain ends cleanly.
       const dsl = makeSwitchDSL([
         { if: '$.x == 1', steps: [] },
         { if: '$.x == 2', steps: [{ type: 'action', action: 'real' }] },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
 
-      // Both conditions are recorded on the switch entity.
       expect(switchNode.conditions).toHaveLength(2);
 
-      // Only the non-empty branch has an outgoing TRANSITIONS_TO edge.
       const branchEdges = filterRelations(result.relation, (r) =>
         r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id,
       );
@@ -296,16 +303,13 @@ describe('compile', () => {
     });
 
     it('empty else -> no TRANSITIONS_TO edge for the else branch', () => {
-      // `else: []` means "no condition matched, do nothing". The compiler
-      // should not emit an else edge at all.
       const dsl = makeSwitchDSL(
         [{ if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] }],
         [],
       );
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
 
-      // The only outgoing edge is branch-0. No branch-1 / no else edge.
       const branchEdges = filterRelations(result.relation, (r) =>
         r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id,
       );
@@ -317,7 +321,7 @@ describe('compile', () => {
       const dsl = makeSwitchDSL([
         { if: '$.x == 1', steps: [{ type: 'action', action: 'branchA' }] },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
       const branchEdge = filterRelations(result.relation, (r) =>
         r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id
@@ -334,7 +338,7 @@ describe('compile', () => {
         ],
         [{ type: 'action', action: 'fallback' }],
       );
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
       const elseEdge = filterRelations(result.relation, (r) =>
         r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id
@@ -347,7 +351,7 @@ describe('compile', () => {
       const dsl = makeSwitchDSL([
         { if: '$.x == 1', steps: [{ type: 'action', action: 'inline1' }] },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
       const inlineNode = findEntity(result.entity, (e: any) =>
         e.nodeType === 'action' && e.label === 'inline1'
@@ -369,7 +373,7 @@ describe('compile', () => {
           ],
         },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const step1 = findEntity(result.entity, (e: any) => e.label === 'step1');
       const step2 = findEntity(result.entity, (e: any) => e.label === 'step2');
       const edge = filterRelations(result.relation, (r) =>
@@ -385,7 +389,7 @@ describe('compile', () => {
         undefined,
         { type: 'action', action: 'afterSwitch' },
       );
-      const result = compile(dsl);
+      const result = c(dsl);
       const branchStep = findEntity(result.entity, (e: any) => e.label === 'branchStep');
       const afterSwitch = findEntity(result.entity, (e: any) => e.label === 'afterSwitch');
       const convergeEdge = filterRelations(result.relation, (r) =>
@@ -401,7 +405,7 @@ describe('compile', () => {
         { if: '$.a == 2', steps: [{ type: 'action', action: 'b1' }] },
         { if: '$.a == 3', steps: [{ type: 'action', action: 'b2' }] },
       ]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
       const switchEdges = filterRelations(result.relation, (r) =>
         r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id
@@ -414,7 +418,7 @@ describe('compile', () => {
 
   describe('schedule tracks', () => {
     it('creates schedule node with cronExpression', () => {
-      const result = compile(flows.scheduleFlow);
+      const result = c(flows.scheduleFlow);
       const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
 
       expect(scheduleNode).toBeDefined();
@@ -423,7 +427,7 @@ describe('compile', () => {
     });
 
     it('does not assign entry_event role to schedule track', () => {
-      const result = compile(flows.scheduleFlow);
+      const result = c(flows.scheduleFlow);
       const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
 
       const entryRole = result.role.find(r => r.entityId === scheduleNode.id && r.role === 'entry_event');
@@ -431,7 +435,7 @@ describe('compile', () => {
     });
 
     it('wires schedule node to first exit step via TRANSITIONS_TO', () => {
-      const result = compile(flows.scheduleFlow);
+      const result = c(flows.scheduleFlow);
       const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
       const actionNode = findEntity(result.entity, (e: any) => e.nodeType === 'action');
       const edge = filterRelations(result.relation, (r) =>
@@ -442,7 +446,7 @@ describe('compile', () => {
     });
 
     it('mixed flow: entry_event role goes to listener, not schedule', () => {
-      const result = compile(flows.mixedFlow);
+      const result = c(flows.mixedFlow);
       const listenerNode = findEntity(result.entity, (e: any) => e.nodeType === 'listener');
       const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
 
@@ -455,7 +459,7 @@ describe('compile', () => {
     });
 
     it('root schedule-only flow compiles with root role and no entry_event role', () => {
-      const result = compile({
+      const result = c({
         'Scheduled Root': {
           root: true,
           tracks: [
@@ -472,7 +476,7 @@ describe('compile', () => {
     });
 
     it('root schedule-first flow does not promote later event track to entry_event', () => {
-      const result = compile({
+      const result = c({
         'Schedule First Root': {
           root: true,
           tracks: [
@@ -488,90 +492,88 @@ describe('compile', () => {
 
   describe('expression parsing (via switch conditions)', () => {
     it('"$.key == value" -> operator EQUALS', () => {
-      const pred = parsedPredicate('$.key == value');
+      const pred = parsedPredicate('$.key == value', EARS);
       expect(pred.key).toBe('$.key');
       expect(pred.operator).toBe(BinaryOperator.EQUALS);
       expect(pred.value).toBe('value');
     });
 
     it('"$.key != value" -> NOT_EQUALS', () => {
-      const pred = parsedPredicate('$.key != value');
+      const pred = parsedPredicate('$.key != value', EARS);
       expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
     });
 
     it('"$.key > 5" -> GREATER_THAN, value: 5 (number)', () => {
-      const pred = parsedPredicate('$.key > 5');
+      const pred = parsedPredicate('$.key > 5', EARS);
       expect(pred.operator).toBe(BinaryOperator.GREATER_THAN);
       expect(pred.value).toBe(5);
     });
 
     it('"$.key >= 5" -> GREATER_THAN_OR_EQUALS', () => {
-      const pred = parsedPredicate('$.key >= 5');
+      const pred = parsedPredicate('$.key >= 5', EARS);
       expect(pred.operator).toBe(BinaryOperator.GREATER_THAN_OR_EQUALS);
       expect(pred.value).toBe(5);
     });
 
     it('>= parsed before > (longest match first)', () => {
-      const predGte = parsedPredicate('$.key >= 10');
-      const predGt = parsedPredicate('$.key > 10');
+      const predGte = parsedPredicate('$.key >= 10', EARS);
+      const predGt = parsedPredicate('$.key > 10', EARS);
       expect(predGte.operator).toBe(BinaryOperator.GREATER_THAN_OR_EQUALS);
       expect(predGt.operator).toBe(BinaryOperator.GREATER_THAN);
     });
 
     it('"$.key contains foo" -> CONTAINS', () => {
-      const pred = parsedPredicate('$.key contains foo');
+      const pred = parsedPredicate('$.key contains foo', EARS);
       expect(pred.operator).toBe(BinaryOperator.CONTAINS);
       expect(pred.value).toBe('foo');
     });
 
     it('"$.key is_empty" -> IS_EMPTY, no value', () => {
-      const pred = parsedPredicate('$.key is_empty');
+      const pred = parsedPredicate('$.key is_empty', EARS);
       expect(pred.operator).toBe(BinaryOperator.IS_EMPTY);
       expect(pred.value).toBeUndefined();
     });
 
     it('"$.key is_null" -> IS_NULL, no value', () => {
-      const pred = parsedPredicate('$.key is_null');
+      const pred = parsedPredicate('$.key is_null', EARS);
       expect(pred.operator).toBe(BinaryOperator.IS_NULL);
       expect(pred.value).toBeUndefined();
     });
 
     it('boolean values: "true" -> true, "false" -> false', () => {
-      const predTrue = parsedPredicate('$.flag == true');
+      const predTrue = parsedPredicate('$.flag == true', EARS);
       expect(predTrue.value).toBe(true);
 
-      const predFalse = parsedPredicate('$.flag == false');
+      const predFalse = parsedPredicate('$.flag == false', EARS);
       expect(predFalse.value).toBe(false);
     });
 
     it('quoted strings: "\'hello\'" -> "hello"', () => {
-      const pred = parsedPredicate("$.name == 'hello'");
+      const pred = parsedPredicate("$.name == 'hello'", EARS);
       expect(pred.value).toBe('hello');
     });
 
     it('"$.key === \'value\'" -> EQUALS, value: "value" (strict equality)', () => {
-      const pred = parsedPredicate("$.key === 'value'");
+      const pred = parsedPredicate("$.key === 'value'", EARS);
       expect(pred.key).toBe('$.key');
       expect(pred.operator).toBe(BinaryOperator.EQUALS);
       expect(pred.value).toBe('value');
     });
 
     it('"$.key !== \'value\'" -> NOT_EQUALS, value: "value"', () => {
-      const pred = parsedPredicate("$.key !== 'value'");
+      const pred = parsedPredicate("$.key !== 'value'", EARS);
       expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
       expect(pred.value).toBe('value');
     });
 
     it('=== parsed before == (longest match first, regression for stray `= \'…\'`)', () => {
-      // Regression guard: the old parser split at the first `==` inside `===`,
-      // leaving `= 'claude-code'` as the value and silently breaking mode routing.
-      const pred = parsedPredicate("$.event.data.payload.mode === 'claude-code'");
+      const pred = parsedPredicate("$.event.data.payload.mode === 'claude-code'", EARS);
       expect(pred.value).toBe('claude-code');
       expect(pred.value).not.toContain('=');
     });
 
     it('path references: "$.a == $.b" -> value kept as "$.b"', () => {
-      const pred = parsedPredicate('$.a == $.b');
+      const pred = parsedPredicate('$.a == $.b', EARS);
       expect(pred.value).toBe('$.b');
     });
 
@@ -580,7 +582,7 @@ describe('compile', () => {
         type: 'switch',
         conditions: [{ if: '', steps: [{ type: 'action', action: 'x' }] }],
       }]);
-      const result = compile(dsl);
+      const result = c(dsl);
       const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
       expect(switchNode.conditions[0].predicate).toBeUndefined();
     });

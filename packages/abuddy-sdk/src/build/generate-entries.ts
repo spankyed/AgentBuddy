@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { PackManifest, PackFeatureEntry } from './manifest';
+import type { PackManifest, PackFeatureEntry, SeedEntryConfig } from './manifest';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -100,6 +100,12 @@ export function generatePackFiles(
       `import { terminalService } from '${toImportPath(manifest.boot!.shutdown!)}';`,
     ].join('\n');
 
+    const seed = manifest.boot?.seed ?? {};
+    const seedKeys = Object.keys(seed).filter(k => k !== 'settings' && k !== 'faqs');
+    const artifactsList = seedKeys.map(k => `'${k}'`).join(', ');
+    const seedPolicy = manifest.boot?.seedPolicy;
+    const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
+
     return `${HEADER}
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { toPackSystemDefs } from '@abuddy/sdk/framework';
@@ -109,11 +115,13 @@ ${earlyImport}
 import { featureServices } from './services';
 import { EARS } from './ears';
 ${bootImports}
-import { runBootSeed } from './seeders';
+import './seeders';
 import { migrations } from '${toImportPath(manifest.migrations!)}';
 import { steps } from '${toImportPath(manifest.steps!)}';
 import { artifacts } from '${toImportPath(manifest.artifacts!)}';
 import { blocks } from '${toImportPath(manifest.blocks!)}';
+
+const COMPILED_DIR = new URL('../../dist', import.meta.url).pathname;
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -137,7 +145,10 @@ export const registration: PackRegistration = {
   boot: {
 ${earlySystemLine}
     createDefaultSettings,
-    seed: runBootSeed,
+    seedManifest: {
+      artifacts: [${artifactsList}],
+      compiledDir: COMPILED_DIR,${seedPolicyLine}
+    },
     shutdown: () => terminalService.killAll(),
   },
   migrations,
@@ -375,7 +386,7 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
     };
 
     for (const [key, value] of Object.entries(seed)) {
-      const config = typeof value === 'string' ? {} : value;
+      const config: SeedEntryConfig = typeof value === 'string' ? {} : value;
       const customSeeder = config.seeder;
 
       if (customSeeder) {
@@ -386,7 +397,7 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       }
 
       if (key in COLLECTION_DEFAULTS || config.entityType) {
-        const defaults = COLLECTION_DEFAULTS[key] ?? {};
+        const defaults = COLLECTION_DEFAULTS[key] ?? {} as Partial<{ entityType: string; lookupField: string }>;
         const entityType = config.entityType ?? defaults.entityType;
         const lookupField = config.lookupField ?? defaults.lookupField;
         if (!entityType || !lookupField) {
@@ -399,33 +410,21 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
         continue;
       }
 
-      if (key === 'flows') {
-        seedImports.add('createFlowSeeder');
-        packImports.push(`import { validate, compile, isFlowConfig } from '${toImportPath('src/features/flows/be/dsl')}';`);
-        registrations.push(
-          `registerSeeder(createFlowSeeder({ ears: EARS, validate, compile, isFlowConfig }));`
-        );
-        continue;
-      }
+      const SEEDER_FACTORIES: Record<string, string> = {
+        flows: 'createFlowSeeder',
+        library: 'createLibrarySeeder',
+        notes: 'createNotesSeeder',
+        settings: 'createSettingsSeeder',
+      };
 
-      if (key === 'library') {
-        seedImports.add('createLibrarySeeder');
-        registrations.push(`registerSeeder(createLibrarySeeder(EARS));`);
-        continue;
-      }
-
-      if (key === 'notes') {
-        seedImports.add('createNotesSeeder');
-        packImports.push(`import { importNotesFromData } from '${toImportPath('src/features/notes/be/import-notes')}';`);
-        registrations.push(
-          `registerSeeder(createNotesSeeder({ ears: EARS, importNotesFromData }));`
-        );
-        continue;
-      }
-
-      if (key === 'settings') {
-        seedImports.add('createSettingsSeeder');
-        registrations.push(`registerSeeder(createSettingsSeeder());`);
+      const factory = SEEDER_FACTORIES[key];
+      if (factory) {
+        seedImports.add(factory);
+        if (key === 'settings') {
+          registrations.push(`registerSeeder(${factory}());`);
+        } else {
+          registrations.push(`registerSeeder(${factory}(EARS));`);
+        }
         continue;
       }
 
@@ -434,35 +433,15 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       throw new Error(`Seed "${key}": unknown standard seed type and no "seeder" path provided`);
     }
 
-    const seedKeys = Object.keys(seed).filter(k => k !== 'settings' && k !== 'faqs');
-    const artifactsList = seedKeys.map(k => `'${k}'`).join(', ');
-
-    seedImports.add('createBootSeed');
-
     return `${HEADER}
 import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
 import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
-import { repository } from '@abuddy/sdk/ears';
 import { EARS } from './ears';
 ${packImports.join('\n')}
 
 ${registrations.join('\n')}
 
-const DEFAULT_COMPILED_DIR = new URL('../../dist', import.meta.url).pathname;
-
-export const runBootSeed = createBootSeed({
-  artifacts: [${artifactsList}],
-  compiledDir: DEFAULT_COMPILED_DIR,
-  getIncludeOverrides: () => {
-    const repo = repository as any;
-    const hasOnboarded = repo.settingsQueries.getInternalSettings().hasOnboarded;
-    const include: Record<string, SeedIncludeSet> = { settings: new Set() };
-    if (hasOnboarded) include.notes = new Set();
-    return include;
-  },
-});
-
-export { seedData, DEFAULT_COMPILED_DIR };
+export { seedData };
 export type { SeedCounts, SeedIncludeSet };
 export type { ImportMode } from '@abuddy/sdk/utils';
 `;

@@ -10,6 +10,7 @@ import { registerDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
+import { orchestrateDeclarativeSeed } from './pack-seed';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -181,7 +182,11 @@ export function getBootHooks(): PackBootHooks[] {
 
 export function runRegisteredBootSeeds(): void {
   for (const reg of registrations.values()) {
-    reg.boot?.seed?.();
+    if (reg.boot?.seedManifest) {
+      orchestrateDeclarativeSeed(reg.boot.seedManifest);
+    } else {
+      reg.boot?.seed?.();
+    }
   }
 }
 
@@ -226,7 +231,8 @@ export function getPackContributions(packId: string): PackContributions | null {
   const bootHooks: string[] = [];
   if (reg.boot?.earlySystem) bootHooks.push('earlySystem');
   if (reg.boot?.createDefaultSettings) bootHooks.push('createDefaultSettings');
-  if (reg.boot?.seed) bootHooks.push('seed');
+  if (reg.boot?.seedManifest) bootHooks.push('seedManifest');
+  else if (reg.boot?.seed) bootHooks.push('seed');
   if (reg.boot?.shutdown) bootHooks.push('shutdown');
 
   return {

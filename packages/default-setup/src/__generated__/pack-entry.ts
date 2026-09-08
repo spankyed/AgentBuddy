@@ -22,11 +22,13 @@ import { featureServices } from './services';
 import { EARS } from './ears';
 import { createDefaultSettings } from '../features/settings/be/repository';
 import { terminalService } from '../features/code/be/services/terminal';
-import { runBootSeed } from './seeders';
+import './seeders';
 import { migrations } from '../migrations/index';
 import { steps } from '../extensions/steps/register';
 import { artifacts } from '../extensions/artifacts/register';
 import { blocks } from '../extensions/blocks/register';
+
+const COMPILED_DIR = new URL('../../dist', import.meta.url).pathname;
 
 export const registration: PackRegistration = {
   id: 'default-setup',
@@ -50,7 +52,11 @@ export const registration: PackRegistration = {
   boot: {
     earlySystem: logsEntry.machine,
     createDefaultSettings,
-    seed: runBootSeed,
+    seedManifest: {
+      artifacts: ['actions', 'prompts', 'flows', 'library', 'notes'],
+      compiledDir: COMPILED_DIR,
+      seedPolicy: {"skipAtBoot":["settings"],"skipAfterOnboarding":["notes"]},
+    },
     shutdown: () => terminalService.killAll(),
   },
   migrations,
