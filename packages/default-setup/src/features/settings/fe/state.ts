@@ -258,12 +258,12 @@ const settingsState = setup({
     setSetupPackPreview: assign(({ context, event }) => {
       const ev = event as { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview };
       const selection: Record<SetupPackType, string[]> = {
-        actions: ev.preview.actions.map(i => i.key),
-        prompts: ev.preview.prompts.map(i => i.key),
-        flows: ev.preview.flows.map(i => i.key),
-        library: ev.preview.library.map(i => i.key),
-        notes: ev.preview.notes.map(i => i.key),
-        settings: ev.preview.settings.map(i => i.key),
+        actions: (ev.preview.seeds.actions ?? []).map(i => i.key),
+        prompts: (ev.preview.seeds.prompts ?? []).map(i => i.key),
+        flows: (ev.preview.seeds.flows ?? []).map(i => i.key),
+        library: (ev.preview.seeds.library ?? []).map(i => i.key),
+        notes: (ev.preview.seeds.notes ?? []).map(i => i.key),
+        settings: (ev.preview.seeds.settings ?? []).map(i => i.key),
       };
       return {
         setupPackImport: {
@@ -309,7 +309,7 @@ const settingsState = setup({
       const preview = context.setupPackImport.preview;
       if (!preview) return {};
       const currentlySelected = context.setupPackImport.selection[ev.key];
-      const allKeys = preview[ev.key].map(i => i.key);
+      const allKeys = (preview.seeds[ev.key] ?? []).map(i => i.key);
       const nextSelection = currentlySelected.length === allKeys.length ? [] : allKeys;
       return {
         setupPackImport: {
@@ -348,7 +348,7 @@ const settingsState = setup({
       // skipped — not treated as "import everything".
       const toIncludeField = (key: SetupPackType): string[] | null => {
         const selected = selection[key];
-        const total = preview[key].length;
+        const total = (preview.seeds[key] ?? []).length;
         if (total === 0) return [];
         return selected.length === total ? null : selected;
       };

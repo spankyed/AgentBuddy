@@ -62,7 +62,7 @@
           class="px-3 pb-3 pl-11 space-y-1 bg-neutral-900/40"
         >
           <label
-            v-for="item in preview[row.key]"
+            v-for="item in (preview.seeds[row.key] ?? [])"
             :key="item.key"
             :class="[
               'flex items-start gap-2 py-1 text-xs rounded',
@@ -228,7 +228,7 @@ const TYPE_META: { key: SetupPackType; label: string; icon: any; hint?: string }
 
 const rows = computed<Row[]>(() =>
   TYPE_META.map(meta => {
-    const items = props.preview[meta.key]
+    const items = props.preview.seeds[meta.key] ?? []
     const missing = props.preview.missing?.includes(meta.key) ?? false
     const totalCount = items.length
     const selectedCount = props.selection[meta.key].length

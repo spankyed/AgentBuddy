@@ -1,5 +1,3 @@
-export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
-
 export type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
 
 export interface SetupPackPreviewItem {
@@ -11,11 +9,9 @@ export interface SetupPackPreviewItem {
 
 export interface SetupPackPreview {
   directory: string;
-  actions: SetupPackPreviewItem[];
-  prompts: SetupPackPreviewItem[];
-  flows: SetupPackPreviewItem[];
-  library: SetupPackPreviewItem[];
-  notes: SetupPackPreviewItem[];
-  settings: SetupPackPreviewItem[];
-  missing: SetupPackType[];
+  seeds: Record<string, SetupPackPreviewItem[]>;
+  missing: string[];
 }
+
+/** @deprecated Use SetupPackPreview['seeds'] indexing instead */
+export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
