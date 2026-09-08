@@ -10,6 +10,7 @@
     "paths": {
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
+      "@/__generated__/*": ["../default-setup/src/__generated__/*"],
       "@/registries/*": ["../default-setup/src/registries/*"],
       "@/features/*": ["../default-setup/src/features/*"],
       "@/*": ["src/*"]

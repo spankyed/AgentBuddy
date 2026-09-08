@@ -33,16 +33,20 @@ function resolveServiceImport(key, manifestPath) {
   const base = join(root, manifestPath);
   const fullPath = existsSync(base + '.ts') ? base + '.ts'
     : existsSync(join(base, 'index.ts')) ? join(base, 'index.ts')
-    : base;
+    : null;
+  if (!fullPath) {
+    throw new Error(`Service "${key}": no file found at ${manifestPath} (.ts or /index.ts)`);
+  }
   const content = readFileSync(fullPath, 'utf-8');
   const pascal = toPascalCase(key);
   const factoryName = `create${pascal}Service`;
   const namedName = `${key}Service`;
+  const exportPattern = (name) => new RegExp(`export\\s+(const|function)\\s+${name}\\b`);
 
-  if (content.includes(`export const ${factoryName}`) || content.includes(`export function ${factoryName}`)) {
+  if (exportPattern(factoryName).test(content)) {
     return { style: 'factory', exportName: factoryName };
   }
-  if (content.includes(`export const ${namedName}`) || content.includes(`export function ${namedName}`)) {
+  if (exportPattern(namedName).test(content)) {
     return { style: 'named', exportName: namedName };
   }
   return { style: 'namespace' };
