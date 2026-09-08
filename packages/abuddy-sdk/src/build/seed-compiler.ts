@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import { registerHooks } from 'node:module';
 import type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types';
 import {
   actionsCompiler, promptsCompiler, flowsCompiler,
@@ -9,32 +8,6 @@ import {
 } from './compilers/standard';
 import { stepRegistry } from '../steps/registry';
 import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge';
-
-// ============================================================================
-// Pack Path Alias Resolution
-// ============================================================================
-// Packs use @/ path aliases in tsconfig for type-checking. These don't resolve
-// at runtime when tsx loads pack files via dynamic import(). This hook intercepts
-// @/ specifiers and resolves them to absolute paths so tsx can process them.
-
-let packSrcPrefix: string | null = null;
-let resolverRegistered = false;
-
-function activatePackPathResolver(packDir: string) {
-  packSrcPrefix = path.join(packDir, 'src') + '/';
-
-  if (resolverRegistered) return;
-  resolverRegistered = true;
-
-  registerHooks({
-    resolve(specifier, context, nextResolve) {
-      if (specifier.startsWith('@/') && packSrcPrefix) {
-        return nextResolve(specifier.replace(/^@\//, packSrcPrefix), context);
-      }
-      return nextResolve(specifier, context);
-    },
-  });
-}
 
 // ============================================================================
 // Compiler Interface
@@ -138,8 +111,6 @@ async function discoverFeatureSettings(featuresDir: string): Promise<PluginSetti
 
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
-
-  activatePackPathResolver(packDir);
 
   // 1. Load parent pack config
   let packConfig: PackConfig;
