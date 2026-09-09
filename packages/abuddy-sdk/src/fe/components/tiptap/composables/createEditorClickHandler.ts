@@ -1,4 +1,4 @@
-import { openInAppBrowser } from '@abuddy/sdk/fe'
+import { openInAppBrowser } from '../../../../fe'
 
 type ClickEmit = {
   noteLinkClick: (noteId: string) => void

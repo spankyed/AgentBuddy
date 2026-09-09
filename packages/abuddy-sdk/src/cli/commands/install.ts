@@ -58,9 +58,9 @@ function validateInstallSource(dir: string): { id: string; name: string; version
 
 // Built-in packs ship with the app and are always loaded at boot, so dependencies
 // on them are always satisfied. We discover their IDs by scanning the monorepo's
-// packages/ dir (4 levels up: commands/ → src/ → pack-cli/ → packages/) for
-// abuddy.json manifests with builtIn: true. Silently returns empty if the
-// workspace isn't reachable (e.g. pack-cli installed standalone).
+// packages/ dir (4 levels up: commands/ → cli/ → src/ → abuddy-sdk/ → packages/)
+// for abuddy.json manifests with builtIn: true. Silently returns empty if the
+// workspace isn't reachable (e.g. SDK installed standalone).
 function discoverBuiltInPackIds(): Set<string> {
   const ids = new Set<string>();
   const packagesDir = path.resolve(

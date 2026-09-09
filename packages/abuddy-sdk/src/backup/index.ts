@@ -1,8 +1,8 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { createLogger } from '@abuddy/sdk/logger';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
-import { closePersistence, reinitializeLmdb } from '@abuddy/sdk/ears';
+import { createLogger } from '../logger';
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '../utils';
+import { closePersistence, reinitializeLmdb } from '../ears';
 
 const logger = createLogger('database:backup');
 

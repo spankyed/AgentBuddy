@@ -60,7 +60,7 @@ export { entry, on } from './flow-helpers';
 export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './seed-types';
 
 // Entry codegen
-export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, parseExportedTypeNames } from './generate-entries';
+export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes } from './generate-entries';
 export type { GenerateEntriesOptions } from './generate-entries';
 
 // Pack validation
