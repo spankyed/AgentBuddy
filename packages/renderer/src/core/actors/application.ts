@@ -2,7 +2,7 @@ import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type A
 import type { Plugin } from '@/core/types';
 import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
-import type { ApplicationHotkeys } from '@app/api';
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import { trpc } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';

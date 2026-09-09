@@ -22,7 +22,7 @@
     "module": "commonjs",
     "allowImportingTsExtensions": false
   },
-  "include": ["src", ".abuddy/generated/**/*.d.ts"],
+  "include": ["src"],
   // [SEARCH_INDEX_FF] search-index excluded because its deps (fastembed, usearch, openai) are uninstalled.
   // To re-enable: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
   // then remove "src/systems/library/search-index/**/*" from the exclude array below.

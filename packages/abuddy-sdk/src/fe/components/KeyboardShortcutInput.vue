@@ -62,7 +62,7 @@ import { Keyboard, Eraser } from 'lucide-vue-next'
 import { useActorSystem } from '../composables/useActorSystem'
 
 const actorSystem = useActorSystem()
-import type { KeyboardShortcut } from '@app/api'
+import type { KeyboardShortcut } from '@abuddy/sdk/types'
 
 interface Props {
   modelValue?: KeyboardShortcut | null

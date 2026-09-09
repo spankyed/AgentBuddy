@@ -73,24 +73,8 @@ export interface Secrets {
   cliPaths?: Record<string, string>; // e.g., { 'claude-code': '/usr/local/bin/claude' }
 }
 
-// Base keyboard shortcut configuration
-export interface KeyboardShortcut {
-  key: string;
-  modifiers: string[];
-  global?: boolean;
-}
-
-export interface CustomHotkey extends KeyboardShortcut {
-  id: string;
-  eventName: string;
-}
-
-export interface ApplicationHotkeys {
-  switchPluginUp?: KeyboardShortcut;
-  switchPluginDown?: KeyboardShortcut;
-  toggleInspectionPanel?: KeyboardShortcut;
-  custom?: CustomHotkey[];
-}
+export type { KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from '@abuddy/sdk/types';
+import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
 
 export interface AppSettings {
   hotkeys: ApplicationHotkeys;
