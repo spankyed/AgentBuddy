@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
+    "abuddy": "./src/cli/index.ts",
     "abuddy-compile": "./src/build/cli.ts"
   },
   "scripts": {

@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tar from 'tar';
 import { satisfies, rcompare, clean } from 'semver';
-import type { PackSnapshot } from '@abuddy/sdk/build';
+import type { PackSnapshot } from '../../build';
 import { findPackRoot, readManifest } from '../utils';
 
 // ── Dependency value parsing ──

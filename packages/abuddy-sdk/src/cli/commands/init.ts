@@ -35,7 +35,7 @@ export default {
 } satisfies FeatureConfig;
 `;
 
-const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../.abuddy/generated/ears';
+const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../__generated__/ears';
 `;
 
 const TYPES_TEMPLATE = `export { EARS } from '../.abuddy/generated/types';

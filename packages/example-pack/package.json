@@ -11,7 +11,6 @@
   },
   "devDependencies": {
     "@abuddy/sdk": "*",
-    "@abuddy/cli": "*",
     "typescript": "^5.8.3",
     "zod": "^3.24.0"
   }

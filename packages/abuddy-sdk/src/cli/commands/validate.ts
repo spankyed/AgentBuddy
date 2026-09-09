@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { FeatureConfig } from '@abuddy/sdk/build';
+import type { FeatureConfig } from '../../build';
 import { resolveDep } from './fetch-deps';
 import { findPackRoot } from '../utils';
 
