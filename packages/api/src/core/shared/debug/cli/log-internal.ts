@@ -1,4 +1,4 @@
-import { isPlainObject } from "@/core/shared";
+import { isPlainObject } from "@abuddy/sdk/utils";
 import { getStyles, type internals } from "./styles";
 
 function formatTimestamp(date: Date) {

@@ -1,5 +1,5 @@
 import type { ActorSystem, ActorRefFromLogic, AnyStateMachine } from 'xstate';
-import type { Simplify } from '@/core/shared/type-helpers';
+import type { Simplify } from '@abuddy/sdk';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from '@/core/router/events';
 import { bus } from '@/core/system-ids';

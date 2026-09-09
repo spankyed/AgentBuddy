@@ -2,7 +2,7 @@ import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { getBootHooks, runRegisteredBootSeeds, registerHostSystem, discoverBuiltInPacks } from '@abuddy/sdk/packs';
-import { registerShutdownHook } from '@/core/shared/lifecycle';
+import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/core/packs/packs-system';
 import {
   loadBuiltInPacks,

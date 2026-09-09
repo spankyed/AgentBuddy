@@ -1,6 +1,6 @@
 import { repository } from '@abuddy/sdk/ears';
 import { APP_VERSION } from '@/version';
-import { compareVersions } from '@/core/shared';
+import { compareVersions } from '@abuddy/sdk/utils';
 import { getRegisteredMigrations } from '@abuddy/sdk/packs';
 import type { LoadedPack } from '@/core/packs/pack-loader';
 

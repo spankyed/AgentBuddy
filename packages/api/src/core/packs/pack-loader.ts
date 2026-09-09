@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
-import { compareVersions } from '@/core/shared';
+import { compareVersions } from '@abuddy/sdk/utils';
 import { APP_VERSION } from '@/version';
 import {
   registerPack,
