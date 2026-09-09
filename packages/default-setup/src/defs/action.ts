@@ -6,18 +6,18 @@
  */
 
 import { featureServices } from '@/__generated__/services';
-import { loggerService } from '@/services/logger';
-import * as emitter from '@/services/event-emitter';
-import { repositoryService } from '@/services/repository';
+import { createLogger } from '@abuddy/sdk/logger';
+import * as emitter from '@abuddy/sdk/services';
+import { repository } from '@abuddy/sdk/ears';
 
 export interface ActionParams {
   [key: string]: any;
 }
 
 export const services = {
-  logger: loggerService,
+  logger: createLogger('action-dsl'),
   emitter,
-  repository: repositoryService,
+  repository,
   ...featureServices,
 };
 export type Services = typeof services;

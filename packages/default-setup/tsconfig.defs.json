@@ -17,8 +17,6 @@
       "@abuddy/sdk/inference": ["../abuddy-sdk/src/services/inference.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/__generated__/*": ["./src/__generated__/*"],
-      "@/core/*": ["../api/src/core/*"],
-      "@/services/*": ["../api/src/services/*"],
       "@/features/*": ["./src/features/*"],
       "@/extensions/*": ["./src/extensions/*"]
     }

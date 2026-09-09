@@ -25,3 +25,8 @@ export {
   wouldCreateCycle, getTimestamp, generateShortCode, generateLabelWithCount,
   filterSystemFields, b64Encode, b64Decode, LmdbQuery, hydrateSharded,
 } from './helpers';
+export { bp, spawn, type Blueprint, type BlueprintBuilder } from './blueprint';
+export {
+  descendants, ancestors, rootParent, linkSymmetric,
+  topoSort, shortestPath, leaves, lowestCommonAncestor,
+} from './graph';
