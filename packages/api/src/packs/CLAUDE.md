@@ -6,10 +6,10 @@ Backend pack infrastructure. Four modules handle discovery, loading, registratio
 
 ### Built-in packs
 
-Discovered from `packages/` by scanning for `abuddy.json` with `builtIn: true`. Loaded every boot — no enable/disable mechanism (they ship with the app).
+Discovered from `packages/` by scanning for `abuddy.json` with `builtIn: true`. Loaded every boot. Built-in packs are pre-bundled in prod but designed to be disableable at runtime (architectural groundwork — no UI yet).
 
-- **Dev**: `loadBuiltInPacks()` in `pack-loader.ts` calls `discoverBuiltInPacks()` at runtime, then `await import()`s each pack's `src/__generated__/pack-entry` directly.
-- **Prod**: The tsup build (`packages/api/tsup.config.ts`) rewrites `loadBuiltInPacks()` at bundle time. The `rewrite-pack-loader` esbuild plugin scans `packages/` for `abuddy.json` during the build, then replaces the function body (between `@tsup-rewrite-start/end` markers) with hardcoded `require()` calls. The resulting bundle has no runtime discovery — packs are baked in. The function signature also changes (drops params, becomes sync), but JS silently handles the mismatch since callers pass unused args and `await` a non-promise.
+- **Dev**: `loadBuiltInPacks()` in `pack-loader.ts` calls `discoverBuiltInPacks()` at runtime, then `await import()`s each pack's `src/__generated__/pack-entry` directly. Returns `BuiltInPackInfo[]`.
+- **Prod**: The tsup build (`packages/api/tsup.config.ts`) rewrites `loadBuiltInPacks()` at bundle time. The `rewrite-pack-loader` esbuild plugin scans `packages/` for `abuddy.json` during the build, then replaces the function body (between `@tsup-rewrite-start/end` markers) with hardcoded `require()` calls and a baked-in `BuiltInPackInfo[]` return value. The resulting bundle has no runtime discovery — packs are baked in. Both dev and prod versions take `packagesDir` and return `BuiltInPackInfo[]`, so callers use the return value directly.
 
 ### External packs
 
@@ -32,22 +32,24 @@ The registry (`pack-registry.json` in `~/.agentbuddy/`) is external-pack-only. I
 | `pack-seed.ts` | Seed hash computation and data seeding for external packs |
 | `pack-registration.ts` | In-memory mutable registry. Collision detection (EARS, services, steps, artifacts, blocks) with rollback. Queried by API core instead of importing registries directly |
 | `pack-registry.ts` | JSON file CRUD for external pack install state (`~/.agentbuddy/pack-registry.json`) |
-| `pack-api.ts` | tRPC router exposing loaded external packs to the frontend |
+| `pack-api.ts` | tRPC router exposing the pack registry (built-in + external) to the frontend. Built-in entries have `builtIn: true` so the renderer can distinguish them from dynamically-loaded external packs |
 
 ## Boot sequence (in `setup/backend.ts`)
 
 ```
-1. loadBuiltInPacks()        — discover + import → registerPack() each
-2. earlySystem hooks         — logs system starts before anything else
-3. loadExternalPacks()       — discover + reconcile registry + load enabled
-4. registerExternalPacks()   — registerPack() each, wire shutdown hooks
-5. hydrateSharded()          — EARS policy now sees all entity types
-6. createDefaultSettings     — all packs (built-in + external)
-7. runMigrations()           — host version migrations
-8. runPackMigrations()       — per-pack version migrations
-9. runRegisteredBootSeeds()  — all packs
-10. seedPackData()           — external pack JSON seeds (hash-checked)
-11. start backend actor
+1. loadBuiltInPacks()        — discover + import → registerPack() each, returns BuiltInPackInfo[]
+2. setBuiltInPacks()         — feed pack info to packs XState system (UI)
+3. setBuiltInPacksForRegistry() — feed pack info to tRPC registry (FE queries this)
+4. earlySystem hooks         — logs system starts before anything else
+5. loadExternalPacks()       — discover + reconcile registry + load enabled
+6. registerExternalPacks()   — registerPack() each, wire shutdown hooks
+7. hydrateSharded()          — EARS policy now sees all entity types
+8. createDefaultSettings     — all packs (built-in + external)
+9. runMigrations()           — host version migrations
+10. runPackMigrations()       — per-pack version migrations
+11. runRegisteredBootSeeds()  — all packs
+12. seedPackData()            — external pack JSON seeds (hash-checked)
+13. start backend actor
 ```
 
 External packs register **before** hydration (step 3-4) so their EARS entity types are visible to the partition policy resolver at step 5.
@@ -119,6 +121,9 @@ External pack FE modules cannot call `registerPackFE()` themselves — they don'
 The `@tsup-rewrite-start/end loadBuiltInPacks` markers in `pack-loader.ts` delimit the function body that gets replaced during production builds. The rewrite:
 - Runs `discoverBuiltInPackEntries()` in tsup.config.ts at build time (not runtime)
 - Generates one `require()` + `registerPack()` call per discovered built-in pack
+- Bakes a `BuiltInPackInfo[]` return value with `id`, `name`, `version`, `dir`, and `entry` from each pack's `abuddy.json` — the `dir` is computed at runtime from the `packagesDir` argument (set by `BUILT_IN_PACKS_DIR` env var)
 - Also replaces `esmRequire(` → `require(` globally in the file (CJS compat)
+
+Both dev and prod versions of `loadBuiltInPacks()` accept `packagesDir: string` and return `BuiltInPackInfo[]`. Callers use the return value directly — no separate `discoverBuiltInPacks()` call needed.
 
 If you add a new built-in pack, it's picked up automatically by both paths — dev via runtime filesystem scan, prod via the build-time scan in tsup.config.ts.

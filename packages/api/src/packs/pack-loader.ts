@@ -24,6 +24,10 @@ export { discoverBuiltInPacks } from '@abuddy/sdk/packs';
 export { computePackSeedHash, seedPackData } from './pack-seed';
 
 // ── Built-in pack loading ────────────────────────────────────────────
+// Dev: scans packagesDir for abuddy.json, dynamically imports each pack.
+// Prod: tsup replaces this function body (between the @tsup-rewrite markers)
+// with hardcoded require() calls and a baked-in BuiltInPackInfo[] return value.
+// Both versions take packagesDir and return BuiltInPackInfo[].
 
 // @tsup-rewrite-start loadBuiltInPacks
 export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPackInfo[]> {

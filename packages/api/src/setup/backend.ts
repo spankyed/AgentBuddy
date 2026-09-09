@@ -1,7 +1,7 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, runRegisteredBootSeeds, registerHostSystem, discoverBuiltInPacks } from '@abuddy/sdk/packs';
+import { getBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@abuddy/sdk/packs';
 import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
@@ -32,8 +32,7 @@ export async function setupBackend(): Promise<void> {
   // ── Load built-in packs (discover → import directly) ───────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
   if (builtInDir) {
-    await loadBuiltInPacks(builtInDir);
-    const builtInPackInfos = discoverBuiltInPacks(builtInDir);
+    const builtInPackInfos = await loadBuiltInPacks(builtInDir);
     setBuiltInPacks(builtInPackInfos);
     setBuiltInPacksForRegistry(builtInPackInfos);
   }

@@ -23,8 +23,19 @@ function discoverBuiltInPackSrcDirs(): string[] {
 
 const packLoaderDir = path.resolve(__dirname, 'src', 'packs');
 
-function discoverBuiltInPackEntries(): { id: string; relPath: string }[] {
-  const entries: { id: string; relPath: string }[] = [];
+interface BuiltInPackEntry {
+  id: string;
+  name: string;
+  version: string;
+  dirName: string;
+  relPath: string;
+}
+
+// Scans packages/ at build time for abuddy.json manifests with builtIn: true.
+// The results are baked into the prod bundle by rewrite-pack-loader — no
+// runtime filesystem discovery in production.
+function discoverBuiltInPackEntries(): BuiltInPackEntry[] {
+  const entries: BuiltInPackEntry[] = [];
   for (const entry of fs.readdirSync(packagesRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const manifestPath = path.join(packagesRoot, entry.name, 'abuddy.json');
@@ -35,7 +46,13 @@ function discoverBuiltInPackEntries(): { id: string; relPath: string }[] {
       const packEntry = path.join(packagesRoot, entry.name, 'src', '__generated__', 'pack-entry');
       if (fs.existsSync(packEntry + '.ts') || fs.existsSync(packEntry + '.js')) {
         const relPath = path.relative(packLoaderDir, packEntry).replace(/\\/g, '/');
-        entries.push({ id: m.id, relPath });
+        entries.push({
+          id: m.id,
+          name: m.name ?? m.id,
+          version: m.version ?? '0.0.0',
+          dirName: entry.name,
+          relPath,
+        });
       }
     } catch {}
   }
@@ -72,6 +89,14 @@ export default defineConfig({
       },
     },
     {
+      // Replaces loadBuiltInPacks() at bundle time so production has no runtime
+      // filesystem discovery. The dev version (in pack-loader.ts between the
+      // @tsup-rewrite markers) scans for abuddy.json and dynamically imports
+      // each pack. This rewrite replaces that with hardcoded require() calls
+      // and a static return value, both derived from the build-time scan above.
+      //
+      // The rewritten function returns BuiltInPackInfo[] (same as the dev
+      // version) so callers can use the return value in both environments.
       name: 'rewrite-pack-loader',
       setup(build) {
         build.onLoad({ filter: /pack-loader\.ts$/ }, async (args) => {
@@ -88,9 +113,16 @@ export default defineConfig({
             p => `    { const mod = require('${p.relPath}'); registerPack(mod.registration); }`
           ).join('\n');
 
+          // packagesDir is passed by the caller (BUILT_IN_PACKS_DIR env var).
+          // We use it to reconstruct the full dir path for each pack at runtime
+          // so the returned BuiltInPackInfo[] matches the dev version's shape.
+          const infoLines = packs.map(
+            p => `    { id: ${JSON.stringify(p.id)}, name: ${JSON.stringify(p.name)}, version: ${JSON.stringify(p.version)}, dir: path.join(packagesDir, ${JSON.stringify(p.dirName)}), entry: 'src/__generated__/pack-entry' },`
+          ).join('\n');
+
           const rewritten = contents.replace(
             /\/\/ @tsup-rewrite-start loadBuiltInPacks[\s\S]*?\/\/ @tsup-rewrite-end loadBuiltInPacks/,
-            `export function loadBuiltInPacks(): void {\n${requireLines}\n}`,
+            `export function loadBuiltInPacks(packagesDir: string) {\n${requireLines}\n  return [\n${infoLines}\n  ];\n}`,
           );
 
           if (rewritten === contents) {
