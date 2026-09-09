@@ -3,7 +3,7 @@ import { validateName, toLabel, writeIfNotExists, logCreated, parseFlag } from '
 import { readManifest } from './manifest';
 
 const ACTION_TEMPLATE = (label: string, category: string) => `import type { ActionMeta } from '@abuddy/sdk/build';
-import type { Services, Z } from '../../types';
+import type { Services, Z } from '#generated/services';
 
 export const meta: ActionMeta = {
   label: '${label}',

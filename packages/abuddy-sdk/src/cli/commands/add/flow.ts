@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { validateName, toLabel, writeIfNotExists, logCreated } from './templates';
 
-const FLOW_TEMPLATE = (label: string) => `import type { FlowDSL } from '../../types';
+const FLOW_TEMPLATE = (label: string) => `import type { FlowDSL } from '@abuddy/sdk/build';
 import { entry, on, keepAlive } from '#generated/flow-helpers';
 
 export default {

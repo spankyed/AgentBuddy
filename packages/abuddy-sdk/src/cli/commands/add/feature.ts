@@ -86,9 +86,7 @@ const ${camel}Plugin: Plugin = {
 export default ${camel}Plugin;
 `;
 
-const STATE = (name: string) => `import { assign, setup, type ActorRefFrom } from 'xstate';
-import breadcrumb from '@abuddy/sdk/fe';
-import { safeEvents } from '@abuddy/sdk/fe';
+const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
 
 export const id = '${name}';
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
