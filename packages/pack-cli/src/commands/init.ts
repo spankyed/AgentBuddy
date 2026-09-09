@@ -17,11 +17,11 @@ const MANIFEST_TEMPLATE = (name: string) => {
     plugins: [],
     dependencies: {},
     permissions: [],
+    steps: 'src/extensions/steps/register.ts',
     boot: {
       seed: {
         actions: 'src/seeds/actions',
         flows: 'src/seeds/flows',
-        steps: `src/extensions/steps/register.ts`,
       },
     },
   }, null, 2);

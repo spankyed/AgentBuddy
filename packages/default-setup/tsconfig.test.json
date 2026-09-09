@@ -8,7 +8,9 @@
       "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
       "@/extensions/*": ["./src/extensions/*"],
-      "@/*": ["../api/src/*"]
+      "@/core/*": ["../api/src/core/*"],
+      "@/setup/*": ["../api/src/setup/*"],
+      "@/repository": ["../api/src/repository"]
     }
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"]

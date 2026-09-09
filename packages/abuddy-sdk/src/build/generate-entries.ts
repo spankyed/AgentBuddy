@@ -103,10 +103,13 @@ export function generatePackFiles(
       ? `    earlySystem: ${earlyFeature.system.exportName}.machine,`
       : '';
 
-    const bootImports = [
-      `import { createDefaultSettings } from '${toImportPath(manifest.boot!.createDefaultSettings!)}';`,
-      `import { terminalService } from '${toImportPath(manifest.boot!.shutdown!)}';`,
-    ].join('\n');
+    const bootImports: string[] = [];
+    if (manifest.boot?.createDefaultSettings) {
+      bootImports.push(`import { createDefaultSettings } from '${toImportPath(manifest.boot.createDefaultSettings)}';`);
+    }
+    if (manifest.boot?.shutdown) {
+      bootImports.push(`import { terminalService } from '${toImportPath(manifest.boot.shutdown)}';`);
+    }
 
     const seed = manifest.boot?.seed ?? {};
     const seedKeys = Object.keys(seed).filter(k => k !== 'settings' && k !== 'faqs');
@@ -122,21 +125,21 @@ ${systemImports}
 ${earlyImport}
 import { featureServices } from './services';
 import { EARS } from './ears';
-${bootImports}
+${bootImports.join('\n')}
 import './seeders';
-import { migrations } from '${toImportPath(manifest.migrations!)}';
-import { steps } from '${toImportPath(stepsRegister!)}';
-import { artifacts } from '${toImportPath(manifest.artifacts!)}';
-import { blocks } from '${toImportPath(manifest.blocks!)}';
+${manifest.migrations ? `import { migrations } from '${toImportPath(manifest.migrations)}';` : ''}
+${stepsRegister ? `import { steps } from '${toImportPath(stepsRegister)}';` : ''}
+${manifest.artifacts ? `import { artifacts } from '${toImportPath(manifest.artifacts)}';` : ''}
+${manifest.blocks ? `import { blocks } from '${toImportPath(manifest.blocks)}';` : ''}
 import { DEFAULT_COMPILED_DIR } from './seeders';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
   systems: toPackSystemDefs([${systemEntries}]),
   services: featureServices,
-  steps,
-  artifacts,
-  blocks,
+${stepsRegister ? '  steps,' : ''}
+${manifest.artifacts ? '  artifacts,' : ''}
+${manifest.blocks ? '  blocks,' : ''}
   ears: {
     entities: Object.fromEntries(
       Object.entries(EARS.Entity).filter(([k, v]) => typeof v === 'string' && k !== 'Custom') as [string, string][]
@@ -151,14 +154,14 @@ export const registration: PackRegistration = {
   },
   boot: {
 ${earlySystemLine}
-    createDefaultSettings,
+${manifest.boot?.createDefaultSettings ? '    createDefaultSettings,' : ''}
     seedManifest: {
       artifacts: [${artifactsList}],
       compiledDir: DEFAULT_COMPILED_DIR,${seedPolicyLine}
     },
-    shutdown: () => terminalService.killAll(),
+${manifest.boot?.shutdown ? '    shutdown: () => terminalService.killAll(),' : ''}
   },
-  migrations,
+${manifest.migrations ? '  migrations,' : ''}
   features: [
 ${featuresLiteral},
   ],
@@ -479,21 +482,20 @@ export type { ImportMode } from '@abuddy/sdk/utils';
     const shapes = manifest.entityShapes;
     if (!shapes || Object.keys(shapes).length === 0) return '';
 
-    const sourceGroups = new Map<string, { entity: string; typeName: string }[]>();
-    for (const [entity, { source, type: typeName }] of Object.entries(shapes)) {
-      const importPath = toImportPath(source);
-      if (!sourceGroups.has(importPath)) sourceGroups.set(importPath, []);
-      sourceGroups.get(importPath)!.push({ entity, typeName });
+    const byPath = new Map<string, Set<string>>();
+    for (const { source, type: typeName } of Object.values(shapes)) {
+      const p = toImportPath(source);
+      if (!byPath.has(p)) byPath.set(p, new Set());
+      byPath.get(p)!.add(typeName);
     }
 
-    const imports = Array.from(sourceGroups.entries()).map(([importPath, types]) => {
-      const names = [...new Set(types.map(t => t.typeName))].join(', ');
-      return `import type { ${names} } from '${importPath}';`;
-    }).join('\n');
+    const imports = Array.from(byPath.entries())
+      .map(([p, names]) => `import type { ${[...names].join(', ')} } from '${p}';`)
+      .join('\n');
 
-    const entries = Object.entries(shapes).map(([entity, { type: typeName }]) =>
-      `    '${entity}': Attrs<${typeName}>;`
-    ).join('\n');
+    const entries = Object.entries(shapes)
+      .map(([entity, { type: typeName }]) => `    '${entity}': Attrs<${typeName}>;`)
+      .join('\n');
 
     return `${HEADER}
 import type { BaseEntity } from '@abuddy/sdk/types';
