@@ -4,7 +4,7 @@ import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 import type { SystemEvents } from '@abuddy/sdk/framework';
 import { safeEvents } from '@/core/shared/actor-helpers';
 import { rootEvents } from '@/core/router/bus-emitter';
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import { bus } from '@/core/system-ids';
 import { getDesignated, hasDesignation } from '@abuddy/sdk';
 

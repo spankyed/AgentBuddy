@@ -1,4 +1,4 @@
-import { repository } from '@/repository';
+import { repository } from '@abuddy/sdk/ears';
 import { APP_VERSION } from '@/version';
 import { compareVersions } from '@/core/shared';
 import { getRegisteredMigrations } from '@/core/packs/pack-registration';

@@ -7,7 +7,7 @@ export { qx, b64Encode, b64Decode } from './query';
 export { tx } from './transaction';
 export { createEntity } from './attribute-storage';
 export {
-  repository, registerRepository, _flushEarlyRegistrations,
+  repository, registerRepository, _flushEarlyRegistrations, type Repository,
   findById, findByIdRaw, findAll, findWhere, hasIdCollision,
   createEntityWithDefaults, updateEntity, exists,
   repoCreateRelation as createRelation,

@@ -1,37 +1,35 @@
-import { getHostModule } from '../runtime/host';
 import * as qh from './query-helpers';
 import * as th from './transaction-helpers';
 
-// --- Repository registry (stays as host delegate — API owns the registry) ---
+// --- Repository registry (real implementation) ---
 
-let _repositoryMod: any;
-function repoMod() {
-  if (!_repositoryMod) _repositoryMod = getHostModule('repository');
-  return _repositoryMod;
-}
+const entries: Record<string, any> = {};
 
-export const repository: any = new Proxy({} as any, {
-  get(_, prop: string) {
-    return repoMod().repository[prop];
-  },
-});
-
-const _earlyRegistrations: any[][] = [];
-let _repoReady = false;
-
-export function registerRepository(...args: any[]): void {
-  if (_repoReady) {
-    return repoMod().registerRepository(...args);
+export function registerRepository(name: string, value: any): void {
+  if (entries[name]) {
+    console.warn(`[repository] "${name}" registered twice — overwriting`);
   }
-  _earlyRegistrations.push(args);
+  entries[name] = value;
 }
+
+export const repository = new Proxy({} as Record<string, any>, {
+  get(_, prop) {
+    if (typeof prop === 'symbol') return undefined;
+    const value = entries[prop];
+    if (value === undefined) {
+      throw new Error(
+        `[repository] "${prop}" is not registered. Ensure the owning system's repository module is imported before access.`
+      );
+    }
+    return value;
+  },
+}) as any;
+
+export type Repository = typeof repository;
 
 export function _flushEarlyRegistrations(): void {
-  _repoReady = true;
-  for (const args of _earlyRegistrations) {
-    repoMod().registerRepository(...args);
-  }
-  _earlyRegistrations.length = 0;
+  // No-op — kept for backward compat. Early registrations are no longer
+  // needed since the registry now lives directly in the SDK.
 }
 
 // --- Real implementations (moved from API shared-repository) ---

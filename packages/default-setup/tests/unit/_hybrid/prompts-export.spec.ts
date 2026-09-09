@@ -1,8 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { clearMemory } from '@/core/ears/attribute-storage';
-import { repository } from '@/repository';
+import { clearMemory, repository } from '@abuddy/sdk/ears';
 import '@/features/prompts/be/repository';
 import { exportPrompts } from '@/features/prompts/be/repository/export-prompts';
 import { promptFixtures } from './helpers/prompt-fixtures';
