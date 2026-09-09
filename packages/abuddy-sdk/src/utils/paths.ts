@@ -1,8 +1,17 @@
 import * as path from 'path'
 import * as fs from 'fs'
 
-const userDataPath = process.env.USER_DATA_PATH || process.cwd()
-const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH
+let _userDataPath: string | undefined
+let _isProd: boolean | undefined
+
+function userDataPath() {
+  if (_userDataPath === undefined) _userDataPath = process.env.USER_DATA_PATH || process.cwd()
+  return _userDataPath
+}
+function isProd() {
+  if (_isProd === undefined) _isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH
+  return _isProd
+}
 
 const DATA_DIRS = {
   modelsCache:  'models-cache',
@@ -15,7 +24,7 @@ const DATA_DIRS = {
 
 // === Public API ===
 
-export const getUserDataPath = (): string => userDataPath
+export const getUserDataPath = (): string => userDataPath()
 export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
 export const getModelsCachePath = (): string => resolvePath('modelsCache')
 export const getLmdbPath = (): string => resolvePath('lmdb')
@@ -43,7 +52,7 @@ export const getIndexMappingsPath = (indexId: string): string =>
 
 export function resolvePath(key: keyof typeof DATA_DIRS): string {
   const name = DATA_DIRS[key]
-  return isProd ? path.join(userDataPath, name) : path.join(userDataPath, '.data', name)
+  return isProd() ? path.join(userDataPath(), name) : path.join(userDataPath(), '.data', name)
 }
 
 export function createExportDir(parentDir: string, systemName: string): string {

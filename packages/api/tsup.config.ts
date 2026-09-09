@@ -21,7 +21,7 @@ function discoverBuiltInPackSrcDirs(): string[] {
   return dirs;
 }
 
-const packLoaderDir = path.resolve(__dirname, 'src', 'core', 'packs');
+const packLoaderDir = path.resolve(__dirname, 'src', 'packs');
 
 function discoverBuiltInPackEntries(): { id: string; relPath: string }[] {
   const entries: { id: string; relPath: string }[] = [];
