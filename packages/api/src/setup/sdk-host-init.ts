@@ -18,6 +18,7 @@ import * as lifecycleMod from '@/core/shared/lifecycle';
 import * as eventEmitterMod from '@/services/event-emitter';
 import servicesMod from '@/services';
 import * as versionMod from '@/version';
+import * as migrationsMod from '@/setup/migrations';
 import { getRegisteredEntityTypes } from '@/core/packs/pack-registration';
 
 // EARS engine lives in SDK; inject persistence (done at attribute-storage import)
@@ -45,3 +46,4 @@ registerHostModule('lifecycle', lifecycleMod);
 registerHostModule('event-emitter', eventEmitterMod);
 registerHostModule('services', servicesMod);
 registerHostModule('version', versionMod);
+registerHostModule('migrations', migrationsMod);
