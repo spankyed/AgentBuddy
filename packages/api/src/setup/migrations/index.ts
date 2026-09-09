@@ -2,7 +2,7 @@ import { repository } from '@abuddy/sdk/ears';
 import { APP_VERSION } from '@/version';
 import { compareVersions } from '@abuddy/sdk/utils';
 import { getRegisteredMigrations } from '@abuddy/sdk/packs';
-import type { LoadedPack } from '@/core/packs/pack-loader';
+import type { LoadedPack } from '@/packs/pack-loader';
 
 export function runMigrations(): void {
   const current = repository.settingsQueries.getInternalSettings().version || '0.0.0';

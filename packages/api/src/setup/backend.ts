@@ -3,12 +3,12 @@ import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
 import { getBootHooks, runRegisteredBootSeeds, registerHostSystem, discoverBuiltInPacks } from '@abuddy/sdk/packs';
 import { registerShutdownHook } from '@abuddy/sdk/utils';
-import { packsSystem, packsEvents, setBuiltInPacks } from '@/core/packs/packs-system';
+import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
   loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks, seedPackData,
-} from '@/core/packs/pack-loader';
-import { orchestrateDeclarativeSeed } from '@/core/packs/pack-seed';
+} from '@/packs/pack-loader';
+import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
@@ -18,7 +18,7 @@ import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
 import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
-import { setLoadedPacks } from '@/core/packs/pack-api';
+import { setLoadedPacks } from '@/packs/pack-api';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
 export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
