@@ -5,12 +5,11 @@
  * API core reads from this instead of importing from registries directly.
  */
 
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef } from '@abuddy/sdk/framework';
-import { registerDesignations } from '@abuddy/sdk/designations';
-import { stepRegistry } from '@abuddy/sdk/steps';
-import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import { blockRegistry } from '@abuddy/sdk/blocks';
-import { orchestrateDeclarativeSeed } from './pack-seed';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '../framework';
+import { registerDesignations } from '../designations';
+import { stepRegistry } from '../steps';
+import { artifactRegistry } from '../artifacts';
+import { blockRegistry } from '../blocks';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -180,10 +179,12 @@ export function getBootHooks(): PackBootHooks[] {
   return hooks;
 }
 
-export function runRegisteredBootSeeds(): void {
+export function runRegisteredBootSeeds(
+  orchestrateSeed?: (manifest: PackSeedManifest) => void,
+): void {
   for (const reg of registrations.values()) {
-    if (reg.boot?.seedManifest) {
-      orchestrateDeclarativeSeed(reg.boot.seedManifest);
+    if (reg.boot?.seedManifest && orchestrateSeed) {
+      orchestrateSeed(reg.boot.seedManifest);
     } else {
       reg.boot?.seed?.();
     }

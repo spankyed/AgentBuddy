@@ -19,7 +19,7 @@ import * as eventEmitterMod from '@/services/event-emitter';
 import servicesMod from '@/services';
 import * as versionMod from '@/version';
 import * as migrationsMod from '@/setup/migrations';
-import { getRegisteredEntityTypes } from '@/core/packs/pack-registration';
+import { getRegisteredEntityTypes } from '@abuddy/sdk/packs';
 
 // EARS engine lives in SDK; inject persistence (done at attribute-storage import)
 // and entity type checker

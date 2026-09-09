@@ -1,5 +1,5 @@
 import { setup, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { getRegisteredSystems, buildRegisteredEventValidationMap } from '@/core/packs/pack-registration';
+import { getRegisteredSystems, buildRegisteredEventValidationMap } from '@abuddy/sdk/packs';
 import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 import type { SystemEvents } from '@abuddy/sdk/framework';
 import { safeEvents } from '@/core/shared/actor-helpers';

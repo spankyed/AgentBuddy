@@ -4,7 +4,7 @@ import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
 import { makePolicy, type PartitionPolicy } from "@/core/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
-import { getRegisteredEARSPolicy } from "@/core/packs/pack-registration";
+import { getRegisteredEARSPolicy } from "@abuddy/sdk/packs";
 
 const HARD_DELETE_MODE = true;
 

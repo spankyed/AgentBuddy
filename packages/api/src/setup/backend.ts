@@ -1,14 +1,14 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@/core/packs/pack-registration';
+import { getBootHooks, runRegisteredBootSeeds, registerHostSystem, discoverBuiltInPacks } from '@abuddy/sdk/packs';
 import { registerShutdownHook } from '@/core/shared/lifecycle';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/core/packs/packs-system';
 import {
   loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks, seedPackData,
 } from '@/core/packs/pack-loader';
-import { discoverBuiltInPacks } from '@/core/packs/pack-discovery';
+import { orchestrateDeclarativeSeed } from '@/core/packs/pack-seed';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
@@ -74,7 +74,7 @@ export async function setupBackend(): Promise<void> {
   }
 
   // ── Seeds ───────────────────────────────────────────────────────────
-  runRegisteredBootSeeds();
+  runRegisteredBootSeeds(orchestrateDeclarativeSeed);
 
   if (externalPacks.length > 0) {
     seedPackData(

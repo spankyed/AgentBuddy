@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '../logger';
 
 const logger = createLogger('pack-registry');
 

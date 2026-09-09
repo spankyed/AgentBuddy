@@ -1,7 +1,7 @@
 import { loggerService } from './logger';
 import * as emitter from './event-emitter';
 import { repositoryService } from './repository';
-import { getRegisteredServices } from '@/core/packs/pack-registration';
+import { getRegisteredServices } from '@abuddy/sdk/packs';
 
 const hostServices = {
   logger: loggerService,

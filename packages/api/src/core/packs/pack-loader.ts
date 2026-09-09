@@ -2,16 +2,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
-import { registerPack } from './pack-registration';
 import { compareVersions } from '@/core/shared';
 import { APP_VERSION } from '@/version';
 import {
+  registerPack,
   discoverBuiltInPacks,
   type BuiltInPackInfo,
   getPacksDir,
   discoverPacks,
   reconcileExternalRegistry,
-} from './pack-discovery';
+} from '@abuddy/sdk/packs';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
@@ -19,8 +19,8 @@ const esmRequire = typeof require === 'function' ? require : Module.createRequir
 const logger = createLogger('pack-loader');
 
 // Re-export discovery types and seed helpers for backward-compatible imports
-export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from './pack-discovery';
-export { discoverBuiltInPacks } from './pack-discovery';
+export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from '@abuddy/sdk/packs';
+export { discoverBuiltInPacks } from '@abuddy/sdk/packs';
 export { computePackSeedHash, seedPackData } from './pack-seed';
 
 // ── Built-in pack loading ────────────────────────────────────────────
@@ -57,7 +57,7 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
 const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
 
 export interface LoadedPack {
-  manifest: import('./pack-discovery').PackManifest;
+  manifest: import('@abuddy/sdk/packs').PackManifest;
   dir: string;
   systems: Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>;
   services?: Record<string, unknown>;

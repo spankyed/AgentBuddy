@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '../logger';
 
 const logger = createLogger('pack-installer');
 

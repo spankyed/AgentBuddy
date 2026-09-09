@@ -4,10 +4,12 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
-import { readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry } from './pack-registry';
-import type { PackRegistryEntry } from './pack-registry';
-import { installPack as runInstall, uninstallPack as runUninstall } from './pack-installer';
-import { getPackContributions, type PackContributions } from './pack-registration';
+import {
+  readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry,
+  type PackRegistryEntry,
+  installPack as runInstall, uninstallPack as runUninstall,
+  getPackContributions, type PackContributions,
+} from '@abuddy/sdk/packs';
 import type { PackFeatureDef } from '@abuddy/sdk/framework';
 
 export interface PackInfo {
