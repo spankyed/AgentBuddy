@@ -86,7 +86,7 @@ function getBuiltInPackIds(): Set<string> {
     for (const pack of discoverBuiltInPacks(builtInDir)) ids.add(pack.id);
     return ids;
   }
-  const packagesDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
+  const packagesDir = path.resolve(__dirname, '..', '..', '..');
   try {
     for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
