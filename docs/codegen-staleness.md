@@ -12,18 +12,18 @@ Generated `__generated__/` files are a disconnected node in the build graph. The
 | **Generator template** (`generate-entries.ts`) | Codegen pattern changes | `registerPackFE()` -> `export default` |
 | **Source files** (existence + content) | FE extension files, service modules, step types | Renaming a service export |
 
-### What triggers regeneration today
+### What triggers regeneration
 
 | Trigger | Runs `generate-entries`? |
 |---|---|
 | `npm install` | Yes (via `prepare` script) |
 | `abuddy generate-entries` (manual) | Yes |
-| `npm start` | No |
-| `npm run start:gen` | No (`generate:defs` only, not `generate:entries`) |
-| `npm run build:be` | No |
-| `npm run build` | No |
-| Branch switch (`git checkout`) | No |
-| Vite dev server restart | No |
+| `npm start` | Yes (via `prebuild:be`) |
+| `npm run start:gen` | Yes (via `prebuild:be` + explicit call) |
+| `npm run build:be` | Yes (via `prebuild:be`) |
+| `npm run build` | Yes (via `prebuild:be`) |
+| Branch switch (`git checkout`) | No (picked up on next `npm start`) |
+| Vite dev server restart | No (picked up on next `npm start`) |
 
 ### Staleness scenarios
 
@@ -45,31 +45,42 @@ Generated `__generated__/` files are a disconnected node in the build graph. The
 
 ---
 
+## Current state: pack loading is already virtual
+
+The **loading mechanism** for built-in packs now uses virtual modules on both sides:
+
+- **BE**: `virtual:built-in-pack-loaders` (tsup esbuild plugin in `tsup.config.ts`) — scans `packages/` for `abuddy.json` at build time, generates a loader map of `import()` expressions. esbuild traces these and bundles the pack code as a separate chunk. Pack-loader.ts imports this module and calls loaders at boot.
+- **FE**: `virtual:built-in-packs` (Vite plugin in `renderer/vite.config.ts`) — same discovery pattern, generates a lazy-loader map. `main.ts` imports this and calls `registerPackFE()` for each pack.
+
+These virtual modules handle **how** packs are loaded (dynamically, disableably). They import FROM the on-disk `__generated__/pack-entry.ts` and `pack-entry-fe.ts`. The staleness problem is about how those on-disk files are **generated**, which is a separate layer.
+
+### Two layers
+
+```
+Loading layer (virtual — done):
+  virtual:built-in-pack-loaders  →  import('pack-entry.ts')
+  virtual:built-in-packs         →  import('pack-entry-fe.ts')
+
+Generation layer (on-disk — staleness lives here):
+  pack-entry.ts, pack-entry-fe.ts    ← complex aggregation (systems, plugins, EARS, boot hooks)
+  ears.ts, system-ids.ts, services.ts, types.ts, ...  ← simple re-export barrels
+```
+
+---
+
 ## Plan
 
 Three changes, layered from immediate to structural.
 
-### Phase 1: Wire generation into the dev loop
+### Phase 1: Wire generation into the dev loop — DONE
 
-Add `generate-entries` to the `prebuild:be` script so it runs on every `npm start` and `npm run build:be`:
+`generate-entries` now runs as part of `prebuild:be` (before `compile`), so every `npm start`, `npm run build:be`, and `npm run build` regenerates pack barrels. `start:gen` also runs it explicitly after `generate:defs`.
 
-```diff
-- "prebuild:be": "npm run compile",
-+ "prebuild:be": "npm run generate:entries -w @app/default-setup && npm run compile",
-```
-
-Fix `start:gen` -- the name implies "start with generation" but it only runs `generate:defs` (Monaco schemas), not `generate:entries` (pack barrels):
-
-```diff
-- "start:gen": "npm run build:be && npm run generate:defs -w @app/default-setup && node packages/dev-mode.js",
-+ "start:gen": "npm run build:be && npm run generate:defs -w @app/default-setup && npm run generate:entries -w @app/default-setup && node packages/dev-mode.js",
-```
-
-**Cost**: 0.8s added to every start. Negligible next to `build:be`.
+**Cost**: ~0.8s added to every start. Negligible next to `build:be`.
 
 **Covers**: Template changes, manifest changes, branch switches (on next `npm start`).
 
-**Doesn't cover**: Mid-session branch switches without restart.
+**Doesn't cover**: Mid-session branch switches without restart (Phase 2 hash check would make adding more trigger points cheap).
 
 ### Phase 2: Content-hash freshness check
 
@@ -87,13 +98,34 @@ This drops the 0.8s cost to ~5ms when nothing changed, making it safe to add to 
 
 Also provides a diagnostic: if someone reports a staleness bug, check whether `.inputs-hash` matches current inputs.
 
-### Phase 3: Virtual modules (long-term)
+### Phase 3: Virtualize simple barrels
 
-The codebase already uses the virtual module pattern (`virtual:built-in-packs`). The generated barrel files are static -- their content is fully determined by the manifest at build time. They could be produced by a Vite/esbuild plugin on demand rather than written to disk.
+The 15 generated files split into two categories with different virtualization tradeoffs:
 
-This eliminates the staleness category entirely: no files to go stale. The "generated" code exists only in the build pipeline's memory. Branch switches, template changes, manifest edits -- all picked up immediately because the plugin reads inputs fresh on every build.
+**Simple re-export barrels** (strong candidates for virtual modules):
+- `ears.ts` — re-exports EARS enums from `.abuddy/generated/ears`
+- `system-ids.ts` — re-exports system IDs from each feature's system file
+- `services.ts` — aggregates service exports from feature service modules
+- `types.ts` — type barrel from each feature's types file
+- `event-channels.ts` — PluginEventRegistry module augmentation
+- `service-types.ts` — ServiceRegistry module augmentation
+- `entity-shapes.ts` — entity shape registry
+- `step-types.ts` — step type registry
+- `contributions.ts` — pack contributions barrel
+- `seeders.ts` — seeder aggregation
 
-This is a bigger refactor (needs plugins for both Vite and tsup) but is the architecturally clean end state. The generated files become a build concern, not a source concern.
+These are pure barrels: scan `abuddy.json`, generate `export { x } from '../features/y'`. A Vite/esbuild plugin can produce them on the fly from the manifest. Eliminates staleness for these files entirely.
+
+**Complex pack entries** (keep as generated files):
+- `pack-entry.ts` — aggregates 13 systems, services, EARS config, boot hooks, seed manifest, migrations, features list into a `PackRegistration` object
+- `pack-entry-fe.ts` — aggregates 13 plugins, step FE definitions, tiptap plugins, app extensions, artifacts, blocks into a `PackFERegistration` object
+- `dsl-register-fe.ts` — Monaco DSL type registration with rollup-plugin-dts output
+- `defs.config.mjs` — rollup config for DSL def generation
+- `flow-helpers.ts` — flow step helper generation
+
+The aggregation logic for pack entries (~200 lines in `generate-entries.ts`) is non-trivial. Moving it into build plugins means duplicating it for Vite and tsup (or abstracting into a shared function — which is the codegen called from a different place). Phases 1+2 keep these files fresh with minimal friction.
+
+**End state**: Simple barrels are virtual (zero staleness). Pack entries remain generated files kept fresh by Phase 1+2. The loading layer is already virtual.
 
 ---
 
