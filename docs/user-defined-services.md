@@ -193,7 +193,7 @@ function generateUserServicesDeclaration(registry: Record<string, ServiceDefinit
 
   return `
     ${blocks.join('\n')}
-    declare const services: typeof import('@app/defs/action').services & {
+    declare const services: typeof _dsl.services & {
       ${fields.join('\n')}
     };
   `;
@@ -216,7 +216,7 @@ export function updateUserServicesType(monaco: Monaco, declaration: string): voi
 
 ### Built-in service types
 
-Continue using the existing pipeline (tsc → rollup → `action-defs.d.ts`). The user services declaration **extends** the built-in type via intersection (`& { ... }`), so both coexist without conflict.
+Continue using the existing pipeline (rollup-plugin-dts → Monaco `.d.ts`). The user services declaration **extends** the built-in type via intersection (`& { ... }`), so both coexist without conflict.
 
 ---
 

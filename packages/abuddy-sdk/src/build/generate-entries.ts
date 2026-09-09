@@ -217,11 +217,15 @@ ${featuresLiteral},
     if (feExts.artifacts) regProps.push(`  artifacts: artifactsFE,`);
     if (feExts.blocks) regProps.push(`  blocks: blocksFE,`);
 
+    const dslImport = manifest.dsl && Object.values(manifest.dsl).some(d => d.targets.includes('monaco') && d.globals)
+      ? `import './dsl-register-fe';\n`
+      : '';
+
     return `${HEADER}
 import { registerPackFE } from '@abuddy/sdk/fe';
 ${pluginImports}
 ${extraImports.join('\n')}
-
+${dslImport}
 registerPackFE({
   plugins: [${pluginList}],
   defaultPlugin: ${defaultPluginId},
@@ -612,6 +616,47 @@ ${customReExports.length ? '\n' + customReExports.join('\n') : ''}
     return `${HEADER}\n${reExports.join('\n')}\n`;
   }
 
+  // ── DSL defs ───────────────────────────────────────────────────
+
+  function generateDefsConfig(): string {
+    const dsl = manifest.dsl;
+    if (!dsl || Object.keys(dsl).length === 0) return '';
+
+    const entries = Object.entries(dsl).map(([name, def]) => {
+      return `  { name: '${name}', entry: '${def.entry}', targets: ${JSON.stringify(def.targets)} },`;
+    });
+
+    return `// @generated from abuddy.json — do not edit by hand\nexport default [\n${entries.join('\n')}\n];\n`;
+  }
+
+  function generateDslRegisterFe(): string {
+    const dsl = manifest.dsl;
+    if (!dsl) return '';
+
+    const monacoEntries = Object.entries(dsl).filter(([, def]) =>
+      def.targets.includes('monaco') && def.globals
+    );
+    if (monacoEntries.length === 0) return '';
+
+    const imports = monacoEntries.map(([name]) =>
+      `import ${name}Schema from '../../dist/defs/monaco/${name}-defs.d.ts?raw';`
+    );
+
+    const registrations = monacoEntries.map(([name, def]) => {
+      const globalsObj = Object.entries(def.globals!)
+        .map(([k, v]) => `    ${k}: '${v}',`)
+        .join('\n');
+      return `registerDslType('${name}', {\n  prefix: '${def.prefix}',\n  schema: ${name}Schema,\n  globals: {\n${globalsObj}\n  },\n});`;
+    });
+
+    return `${HEADER}
+import { registerDslType } from '@abuddy/sdk/fe/components/monaco-config';
+${imports.join('\n')}
+
+${registrations.join('\n\n')}
+`;
+  }
+
   // ── Assemble ────────────────────────────────────────────────────
 
   const files: [string, string][] = ([
@@ -628,6 +673,8 @@ ${customReExports.length ? '\n' + customReExports.join('\n') : ''}
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
+    ['src/__generated__/defs.config.mjs', generateDefsConfig()],
+    ['src/__generated__/dsl-register-fe.ts', generateDslRegisterFe()],
   ] as [string, string][]).filter(([, content]) => content);
 
   return Object.fromEntries(files);

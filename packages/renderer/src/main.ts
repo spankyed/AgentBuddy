@@ -13,7 +13,6 @@ import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
 import { loadPackPlugins, loadPackFEEntry } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
-import './setup/dsl-types';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 
 declare const __APP_VERSION__: string;

@@ -25,6 +25,14 @@ export interface PackManifest {
   partitionPolicy?: { excludedEntityTypes?: string[]; secretEntityTypes?: string[] };
   fe?: { tiptapPlugins?: string; appExtensions?: Record<string, string> };
   entityShapes?: Record<string, { source: string; type: string }>;
+  dsl?: Record<string, DslEntry>;
+}
+
+export interface DslEntry {
+  entry: string;
+  targets: ('monaco')[];
+  prefix?: string;
+  globals?: Record<string, string>;
 }
 
 export interface PackFeatureEntry {

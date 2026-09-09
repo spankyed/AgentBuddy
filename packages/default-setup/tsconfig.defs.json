@@ -7,22 +7,23 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node", "vitest/globals"],
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "composite": false,
+    "baseUrl": ".",
     "paths": {
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
+      "@abuddy/sdk/inference": ["../abuddy-sdk/src/services/inference.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/__generated__/*": ["./src/__generated__/*"],
-      "@/registries/*": ["./src/registries/*"],
+      "@/core/*": ["../api/src/core/*"],
+      "@/services/*": ["../api/src/services/*"],
       "@/features/*": ["./src/features/*"],
       "@/extensions/*": ["./src/extensions/*"]
     }
   },
   "include": [
-    "src/**/*.ts", "tests/**/*.ts"
-  ],
-  "exclude": [
-    "src/**/*.example.ts",
-    "src/_examples/**",
-    "src/defs/**"
+    "src/defs/**/*.ts"
   ]
 }

@@ -243,5 +243,40 @@
       "welcome": "src/extensions/Welcome.vue"
     }
   },
-  "migrations": "src/migrations/index.ts"
+  "migrations": "src/migrations/index.ts",
+
+  "dsl": {
+    "action": {
+      "entry": "src/defs/action.ts",
+      "targets": ["monaco"],
+      "prefix": "action:",
+      "globals": {
+        "services": "typeof _dsl.services",
+        "z": "typeof _dsl.z",
+        "flowId": "string"
+      }
+    },
+    "prompt": {
+      "entry": "src/defs/prompt.ts",
+      "targets": ["monaco"],
+      "prefix": "prompt:",
+      "globals": {
+        "usePrompt": "typeof _dsl.usePrompt"
+      }
+    },
+    "database": {
+      "entry": "src/defs/database.ts",
+      "targets": ["monaco"],
+      "prefix": "database:",
+      "globals": {
+        "EARS": "typeof _dsl.EARS",
+        "qx": "typeof _dsl.qx",
+        "tx": "typeof _dsl.tx",
+        "bp": "typeof _dsl.bp",
+        "spawn": "typeof _dsl.spawn",
+        "getSchemaStats": "typeof _dsl.getSchemaStats",
+        "isEntity": "typeof _dsl.isEntity"
+      }
+    }
+  }
 }
