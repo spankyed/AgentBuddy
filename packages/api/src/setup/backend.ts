@@ -18,7 +18,7 @@ import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
 import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
-import { setLoadedPacks } from '@/packs/pack-api';
+import { setLoadedPacks, setBuiltInPacksForRegistry } from '@/packs/pack-api';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
 export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
@@ -33,7 +33,9 @@ export async function setupBackend(): Promise<void> {
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
   if (builtInDir) {
     await loadBuiltInPacks(builtInDir);
-    setBuiltInPacks(discoverBuiltInPacks(builtInDir));
+    const builtInPackInfos = discoverBuiltInPacks(builtInDir);
+    setBuiltInPacks(builtInPackInfos);
+    setBuiltInPacksForRegistry(builtInPackInfos);
   }
 
   // Run early boot hooks (logs system must start before anything else)

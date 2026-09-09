@@ -4,7 +4,7 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import 'virtual:built-in-packs';
+import builtInPacks from 'virtual:built-in-packs';
 import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe';
 import { packsPlugin } from '@/core/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
@@ -85,6 +85,15 @@ window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
 runFrontendMigrations();
 
+for (const [packId, loader] of Object.entries(builtInPacks)) {
+  try {
+    const mod = await loader();
+    if (mod.default) registerPackFE(mod.default);
+  } catch (err) {
+    console.error(`[boot] Failed to load built-in pack ${packId}:`, err);
+  }
+}
+
 // const { inspect } = createBrowserInspector();
 
 const plugins = [...getRegisteredPlugins(), packsPlugin];
@@ -148,8 +157,9 @@ app.mount('#app');
 
 // Load external pack FE contributions after boot
 trpc.packs.registry.query().then(async (registry) => {
-  if (!registry.length) return;
-  for (const pack of registry) {
+  const externalPacks = registry.filter(p => !p.builtIn);
+  if (!externalPacks.length) return;
+  for (const pack of externalPacks) {
     const packBaseUrl = `pack://${pack.id}`;
 
     if (pack.feStyles) {

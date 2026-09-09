@@ -36,10 +36,11 @@ function builtInPacksPlugin(): Plugin {
   const VIRTUAL_ID = 'virtual:built-in-packs';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
 
-  const feImports = packs
+  const feEntries = packs
     .filter(p => existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')))
-    .map(p => `import '@${p.id}/__generated__/pack-entry-fe';`)
+    .map(p => `  '${p.id}': () => import('@${p.id}/__generated__/pack-entry-fe'),`)
     .join('\n');
+  const virtualContent = `export default {\n${feEntries}\n};\n`;
 
   return {
     name: 'built-in-packs',
@@ -60,7 +61,7 @@ function builtInPacksPlugin(): Plugin {
       }
     },
     load(id) {
-      if (id === RESOLVED_VIRTUAL) return feImports;
+      if (id === RESOLVED_VIRTUAL) return virtualContent;
     },
   };
 }

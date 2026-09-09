@@ -1,16 +1,23 @@
 import { router, procedure } from '@/core/router/trpc';
 import type { LoadedPack } from './pack-loader';
+import type { BuiltInPackInfo } from './pack-loader';
 
 let _loadedPacks: LoadedPack[] = [];
+let _builtInPacks: BuiltInPackInfo[] = [];
 
 export function setLoadedPacks(packs: LoadedPack[]) {
   _loadedPacks = packs;
+}
+
+export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {
+  _builtInPacks = packs;
 }
 
 export interface PackBundleEntry {
   id: string;
   name: string;
   version: string;
+  builtIn?: boolean;
   feEntry?: string;
   feStyles?: string;
   plugins: {
@@ -41,8 +48,21 @@ function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
     }));
 }
 
+function toBuiltInRegistryEntries(packs: BuiltInPackInfo[]): PackBundleEntry[] {
+  return packs.map(p => ({
+    id: p.id,
+    name: p.name,
+    version: p.version,
+    builtIn: true,
+    plugins: [],
+  }));
+}
+
 export const packsRouter = router({
   registry: procedure.query(() => {
-    return toRegistryEntries(_loadedPacks);
+    return [
+      ...toBuiltInRegistryEntries(_builtInPacks),
+      ...toRegistryEntries(_loadedPacks),
+    ];
   }),
 });

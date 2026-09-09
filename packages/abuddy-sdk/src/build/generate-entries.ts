@@ -420,15 +420,15 @@ ${featuresLiteral},
       : '';
 
     return `${HEADER}
-import { registerPackFE } from '@abuddy/sdk/fe';
+import type { PackFERegistration } from '@abuddy/sdk/fe';
 ${pluginImports}
 ${extraImports.join('\n')}
 ${dslImport}
-registerPackFE({
+export default {
   plugins: [${pluginList}],
   defaultPlugin: ${defaultPluginId},
 ${regProps.join('\n')}
-});
+} satisfies PackFERegistration;
 `;
   }
 
