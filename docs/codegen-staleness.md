@@ -82,9 +82,9 @@ Three changes, layered from immediate to structural.
 
 **Doesn't cover**: Mid-session branch switches without restart (Phase 2 hash check would make adding more trigger points cheap).
 
-### Phase 2: Content-hash freshness check
+### Phase 2: Content-hash freshness check — DONE
 
-Inside the generator, hash the inputs (manifest content + template version) and write a `.inputs-hash` to `__generated__/`. On next run, skip regeneration if hash matches.
+The generator now hashes its inputs (`abuddy.json` content + `generate-entries.ts` template source) with SHA-256 and writes `.inputs-hash` to `__generated__/`. On subsequent runs, if the hash matches, generation is skipped entirely.
 
 ```
 __generated__/
@@ -94,7 +94,7 @@ __generated__/
   ...
 ```
 
-This drops the 0.8s cost to ~5ms when nothing changed, making it safe to add to more trigger points without friction.
+When inputs are unchanged, `generate-entries` exits in ~5ms instead of ~0.8s. Use `--force` to bypass the check.
 
 Also provides a diagnostic: if someone reports a staleness bug, check whether `.inputs-hash` matches current inputs.
 
