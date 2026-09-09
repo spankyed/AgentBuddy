@@ -1,36 +1,57 @@
 /**
- * EARS runtime delegates.
+ * EARS runtime configuration and type definitions.
  *
- * These are singleton functions initialized by the host (api) at boot.
- * Features import these from @abuddy/sdk/ears and they delegate
- * to the real LMDB-backed implementation.
+ * Holds injectable state (persistence sink, entity type checker) that the
+ * host (api) provides at boot via initEARSRuntime(). The in-memory engine
+ * and helpers import getters from here to access host-provided services.
  */
-import type { EARS, EntityShapeRegistry } from '../types/entities';
+import type { EARS } from '../types/entities';
 
-type AnyFn = (...args: any[]) => any;
+// ─── PersistenceSink interface ─────────────────────────────────────────
 
-let _qx: AnyFn | null = null;
-let _tx: AnyFn | null = null;
-let _createEntity: AnyFn | null = null;
+export interface PersistenceSink {
+  onCreateEntity(entityId: string, entityType?: string): void;
+  onDestroyEntity(entityId: string): void;
+  onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]): void;
+  onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
+  onPutAttrArray?(kind: string, entityId: string, values: unknown[]): void;
+  onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
+  onUpdateRelation(relId: string, patch: { src?: string; tgt?: string; info?: unknown }): void;
+  onRemoveRelation(relId: string): void;
+  close?(): void;
+  getErrorStats?(): { errorCount: number; lastError: any };
+}
+
+const noopSink: PersistenceSink = {
+  onCreateEntity() {},
+  onDestroyEntity() {},
+  onPutAttr() {},
+  onDropAttr() {},
+  onAddRelation() {},
+  onUpdateRelation() {},
+  onRemoveRelation() {},
+};
+
+// ─── Injectable state ──────────────────────────────────────────────────
+
+let _persistence: PersistenceSink = noopSink;
+let _isEntityType: (v: string) => boolean = () => false;
 
 export interface EARSRuntimeDeps {
-  qx: AnyFn;
-  tx: AnyFn;
-  createEntity: AnyFn;
+  persistence?: PersistenceSink;
+  isEntityType: (v: string) => boolean;
 }
 
 export function initEARSRuntime(deps: EARSRuntimeDeps) {
-  _qx = deps.qx;
-  _tx = deps.tx;
-  _createEntity = deps.createEntity;
+  _isEntityType = deps.isEntityType;
+  if (deps.persistence) _persistence = deps.persistence;
 }
 
-function ensureInit(name: string, fn: AnyFn | null): AnyFn {
-  if (!fn) throw new Error(`EARS runtime not initialized. Call initEARSRuntime() before using ${name}().`);
-  return fn;
-}
+export function getPersistence(): PersistenceSink { return _persistence; }
+export function setPersistence(sink: PersistenceSink) { _persistence = sink; }
+export function getEntityTypeChecker(): (v: string) => boolean { return _isEntityType; }
 
-// ─── QueryBuilder fluent interface ──────────────────────────────────────
+// ─── QueryBuilder fluent interface ─────────────────────────────────────
 
 export interface QueryBuilder<E extends string = string> {
   ofType<T extends string>(t: T): QueryBuilder<T>;
@@ -63,7 +84,7 @@ export interface QueryBuilder<E extends string = string> {
   reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
 }
 
-// ─── TransactionBuilder fluent interface ────────────────────────────────
+// ─── TransactionBuilder fluent interface ───────────────────────────────
 
 export interface SafeLinkOptions {
   info?: unknown;
@@ -96,29 +117,11 @@ export interface TransactionBuilder {
   id(): EARS.EntityId;
 }
 
-// ─── Logger interface ───────────────────────────────────────────────────
+// ─── Logger interface ──────────────────────────────────────────────────
 
 export interface Logger {
   info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   error(...args: unknown[]): void;
   debug(...args: unknown[]): void;
-}
-
-// ─── Runtime delegates ──────────────────────────────────────────────────
-
-export function qx<E extends keyof EntityShapeRegistry & string>(seed: E): QueryBuilder<E>;
-export function qx(seed?: EARS.Entity | EARS.EntityId | EARS.EntityId[]): QueryBuilder;
-export function qx(seed?: any): QueryBuilder {
-  return ensureInit('qx', _qx)(seed);
-}
-
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder {
-  return ensureInit('tx', _tx)(typeOrId, useProvidedId);
-}
-
-export function createEntity<E extends keyof EntityShapeRegistry & string>(entityType: E): EARS.EntityId<E>;
-export function createEntity(entityType: EARS.Entity): EARS.EntityId;
-export function createEntity(entityType: EARS.Entity): EARS.EntityId {
-  return ensureInit('createEntity', _createEntity)(entityType);
 }

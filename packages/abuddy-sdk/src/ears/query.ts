@@ -1,25 +1,24 @@
-/*─────────────────────────────────────────────────────────────
- * qx.ts – fluent *query* wrapper around attribute‑store (v5)
- *─────────────────────────────────────────────────────────────*/
 import {
-  /* entity scopes */ getAllEntities, getEntitiesOfType,
-  /* attrs / roles */ getAttr, getAttrs, getRoles,
-  /* look‑ups      */ queryEntitiesByAttribute,
+  getAllEntities, getEntitiesOfType,
+  getAttr, getAttrs, getRoles,
+  queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   queryEntitiesByRelationTo,
   getAll,
-} from "@/core/ears/attribute-storage";
+} from './attribute-storage';
 
-import { relationIndex } from "@/core/ears/relation-index";
-import { EARS } from "@/core/types";
-import { asArr, MaybeArr } from "@/core/shared";
-import { getRegisteredEntityTypes } from "@/core/packs/pack-registration";
+import { relationIndex } from './relation-index';
+import { EARS } from '../types/entities';
+import { getEntityTypeChecker } from './runtime';
 
-/*──────── helpers ────────*/
+type MaybeArr<T> = T | readonly T[];
+function asArr<T>(v: MaybeArr<T>): readonly T[] {
+  return (Array.isArray(v) ? v : [v]) as readonly T[];
+}
+
 const isEntity = (v: unknown): v is EARS.Entity =>
-  typeof v === 'string' && getRegisteredEntityTypes().has(v);
+  typeof v === 'string' && getEntityTypeChecker()(v);
 
-// memoised prefix checker – avoids re‑allocating closures
 const prefixCache = new Map<EARS.Entity, (id: EARS.EntityId) => boolean>();
 const hasPrefix = (t: EARS.Entity) => {
   let fn = prefixCache.get(t);
@@ -29,10 +28,11 @@ const hasPrefix = (t: EARS.Entity) => {
   }
   return fn;
 };
-export const b64Encode = (n: number) => Buffer.from(String(n)).toString('base64');
+
+export const b64Encode = (n: number) => btoa(String(n));
 export const b64Decode = (s: string) => {
   try {
-    const decoded = Buffer.from(s, 'base64').toString();
+    const decoded = atob(s);
     const num = parseInt(decoded, 10);
     return isNaN(num) ? 0 : num;
   } catch {
@@ -43,7 +43,6 @@ export const b64Decode = (s: string) => {
 const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
 
-/*──────── entry ────────*/
 export const qx = (
   seed?:
     | EARS.EntityId
@@ -51,14 +50,12 @@ export const qx = (
     | readonly EARS.Entity[]
     | readonly EARS.EntityId[],
 ) => {
-  // always clone to keep chains isolated
   const resolveSeed = (): EARS.EntityId[] => {
     if (seed === undefined) return [...getAllEntities()];
     if (Array.isArray(seed)) {
       if ((seed as readonly unknown[]).every(isEntity)) {
         return (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t));
       }
-      // Filter entity IDs to only include those that actually exist
       const allEntities = new Set(getAllEntities());
       return (seed as readonly EARS.EntityId[]).filter(id => allEntities.has(id));
     }
@@ -71,11 +68,9 @@ export const qx = (
 
   let ids: EARS.EntityId[] = resolveSeed();
 
-  /*–––– internal util to return a fresh cursor ––––*/
   const setIds = (next: EARS.EntityId[]) => qx(next);
 
   const self = {
-    /*─ filters ─*/
     ofType: (t: EARS.Entity) => setIds(ids.filter(hasPrefix(t))),
 
     inIds: (sub: readonly EARS.EntityId[]) => {
@@ -89,7 +84,6 @@ export const qx = (
         const next = ids.filter(i => getAttrs(i, kind).length);
         return setIds(next);
       }
-      // Use Set for O(1) lookups instead of includes() which is O(n)
       const matchingEntities = new Set(queryEntitiesByAttribute(kind, v));
       const next = ids.filter(i => matchingEntities.has(i));
       return setIds(next);
@@ -105,7 +99,6 @@ export const qx = (
     related: (kind: string, other: EARS.EntityId, asSrc = false) =>
       setIds(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
 
-    /*─ graph traversal retains isolation ─*/
     linksTo: (
       relKinds: MaybeArr<string>,
       tgtType?: MaybeArr<EARS.Entity>,
@@ -120,13 +113,12 @@ export const qx = (
         queryEntitiesByRelationTo(k, src, asSrc)
           .filter(matches)
           .forEach(i => {
-            if (i !== src) out.add(i);            // guard reflexive links
+            if (i !== src) out.add(i);
           });
       }
       return qx([...out]);
     },
 
-    /*─ low‑level links array ─*/
     links: <K extends string>(
       relKinds: K | readonly K[],
       tgtType?: MaybeArr<EARS.Entity>,
@@ -145,22 +137,20 @@ export const qx = (
       return out;
     },
 
-    /*─ relation detail helpers ─*/
     edgeIds: (
       kinds?: string | readonly string[],
       asSrc = true,
     ): EARS.EntityId[] => {
       const ksInput = kinds ? asArr(kinds) : (Object.keys(relationIndex) as readonly string[]);
-      const ks = ksInput.filter(k => relationIndex[k] !== undefined); /* ➊ validate once */
+      const ks = ksInput.filter(k => relationIndex[k] !== undefined);
       const out = new Set<EARS.EntityId>();
       for (const i of ids) for (const k of ks) {
-        const dir = relationIndex[k]!;           // safe: ks filtered above
+        const dir = relationIndex[k]!;
         (asSrc ? dir.bySource[i] : dir.byTarget[i])?.forEach(r => out.add(r));
       }
       return [...out];
     },
 
-    /*─ projections ─*/
     pick: <A extends readonly string[]>(fields: A) =>
       ids.map(i => {
         const o: Record<string, unknown> = { id: i };
@@ -182,7 +172,6 @@ export const qx = (
       });
     },
 
-    /*─ traverse + project in one call ─*/
     linksPick: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
       fields: A,
@@ -201,7 +190,6 @@ export const qx = (
         .filter(Boolean);
     },
 
-    /*─ list shaping helpers ─*/
     orderBy: (
       field: string,
       dir: "asc" | "desc" = "asc",
@@ -225,8 +213,6 @@ export const qx = (
 
     limit: (n: number) => setIds(ids.slice(0, n)),
 
-    /*─ paging, distinct, grouping ─*/
-    
     page: (size: number, cursor?: string | null) => {
       const start       = cursor ? b64Decode(cursor) : 0;
       const end         = start + size;
@@ -263,13 +249,11 @@ export const qx = (
           groups.set(key, [id]);
         }
       });
-      // Convert to qx instances only at the end
       const result = new Map<unknown, ReturnType<typeof qx>>();
       groups.forEach((ids, key) => result.set(key, qx(ids)));
       return result;
     },
 
-    /*─ misc extractors ─*/
     ids: () => [...ids],
     id: () => self.first(),
     count: () => ids.length,
@@ -277,7 +261,6 @@ export const qx = (
     last: () => (ids.length ? ids[ids.length - 1] : null),
     exists: () => ids.length > 0,
 
-    /*─ functional helpers ─*/
     map: <T>(fn: (i: EARS.EntityId) => T) => ids.map(fn),
     forEach: (fn: (i: EARS.EntityId) => void) => (ids.forEach(fn), self),
     reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => ids.reduce(fn, init),

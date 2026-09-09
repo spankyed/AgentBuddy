@@ -1,19 +1,11 @@
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import { initRpc } from '@abuddy/sdk/rpc';
 import { initEARSRuntime, _flushEarlyRegistrations } from '@abuddy/sdk/ears';
-import * as queryMod from '@/core/ears/helpers/query';
-import * as txMod from '@/core/ears/helpers/transaction';
-import { createEntity } from '@/core/ears/attribute-storage';
 import * as repositoryMod from '@/repository';
 import * as sharedRepository from '@/core/shared/repository';
 import * as queryHelpers from '@/core/shared/repository/query-helpers';
 import * as transactionHelpers from '@/core/shared/repository/transaction-helpers';
 import * as attributeStorage from '@/core/ears/attribute-storage';
-import * as edgeStore from '@/core/ears/helpers/edge-store';
-import * as relationIndex from '@/core/ears/relation-index';
-import * as earsGraph from '@/core/ears/helpers/graph';
-import * as earsBlueprint from '@/core/ears/helpers/blueprint';
-import * as entityUtils from '@/core/ears/helpers/entity-utils';
 import * as lmdbQuery from '@/core/persistence/lmdb/query';
 import * as hydrateSharded from '@/core/persistence/partitioning/hydrate-sharded';
 import * as loggerMod from '@/core/shared/debug/logger';
@@ -30,8 +22,14 @@ import * as lifecycleMod from '@/core/shared/lifecycle';
 import * as eventEmitterMod from '@/services/event-emitter';
 import servicesMod from '@/services';
 import * as versionMod from '@/version';
+import { getRegisteredEntityTypes } from '@/core/packs/pack-registration';
 
-initEARSRuntime({ qx: queryMod.qx, tx: txMod.tx, createEntity });
+// EARS engine lives in SDK; inject persistence (done at attribute-storage import)
+// and entity type checker
+initEARSRuntime({
+  isEntityType: (v: string) => getRegisteredEntityTypes().has(v),
+  // persistence already injected by attribute-storage module load (setPersistence call)
+});
 
 registerHostModule('repository', repositoryMod);
 _flushEarlyRegistrations();
@@ -39,12 +37,6 @@ registerHostModule('shared-repository', sharedRepository);
 registerHostModule('query-helpers', queryHelpers);
 registerHostModule('transaction-helpers', transactionHelpers);
 registerHostModule('attribute-storage', attributeStorage);
-registerHostModule('edge-store', edgeStore);
-registerHostModule('relation-index', relationIndex);
-registerHostModule('ears-graph', earsGraph);
-registerHostModule('ears-blueprint', earsBlueprint);
-registerHostModule('entity-utils', entityUtils);
-registerHostModule('ears-query', queryMod);
 registerHostModule('lmdb-query', lmdbQuery);
 registerHostModule('hydrate-sharded', hydrateSharded);
 registerHostModule('logger', loggerMod);

@@ -1,6 +1,5 @@
 #!/usr/bin/env tsx
-import { qx } from '@/core/ears/helpers/query';
-import { tx } from '@/core/ears/helpers/transaction';
+import { qx, tx } from '@abuddy/sdk/ears';
 import { EARS } from '@/core/types';
 // ! broken
 console.log('🗑️  Settings Destroyer');

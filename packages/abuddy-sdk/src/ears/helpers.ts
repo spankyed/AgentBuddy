@@ -1,37 +1,22 @@
 import { getHostModule } from '../runtime/host';
-import type { EARS } from '../types/entities';
 
-let _graphMod: any;
-function graphMod() {
-  if (!_graphMod) _graphMod = getHostModule('ears-graph');
-  return _graphMod;
+export { wouldCreateCycle } from './graph';
+export { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from './entity-utils';
+export { b64Encode, b64Decode } from './query';
+
+// LMDB lifecycle delegates — host-provided, stay in API
+let _attrStorageMod: any;
+function attrStorageMod() {
+  if (!_attrStorageMod) _attrStorageMod = getHostModule('attribute-storage');
+  return _attrStorageMod;
 }
 
-export function wouldCreateCycle(sourceId: EARS.EntityId, targetId: EARS.EntityId, relKinds: readonly string[]): boolean {
-  return graphMod().wouldCreateCycle(sourceId, targetId, relKinds);
-}
-
-let _entityUtilsMod: any;
-function entityUtilsMod() {
-  if (!_entityUtilsMod) _entityUtilsMod = getHostModule('entity-utils');
-  return _entityUtilsMod;
-}
-
-export function getTimestamp(): number { return entityUtilsMod().getTimestamp(); }
-export function generateShortCode(entityType: EARS.Entity, prefix?: string): string { return entityUtilsMod().generateShortCode(entityType, prefix); }
-export function generateLabelWithCount(base: string, entityType: EARS.Entity): string { return entityUtilsMod().generateLabelWithCount(base, entityType); }
-export function filterSystemFields<T extends Record<string, unknown>>(updates: T, excludes?: string[]): Partial<T> {
-  return entityUtilsMod().filterSystemFields(updates, excludes);
-}
-
-let _queryMod: any;
-function queryMod() {
-  if (!_queryMod) _queryMod = getHostModule('ears-query');
-  return _queryMod;
-}
-
-export function b64Encode(n: number): string { return queryMod().b64Encode(n); }
-export function b64Decode(s: string): number { return queryMod().b64Decode(s); }
+export function resetLmdbFiles(): Promise<void> { return attrStorageMod().resetLmdbFiles(); }
+export function closePersistence(): void { return attrStorageMod().closePersistence(); }
+export function reinitializeLmdb(): void { return attrStorageMod().reinitializeLmdb(); }
+export const envs: any = new Proxy({} as any, { get(_, p) { return attrStorageMod().envs[p]; } });
+export const policy: any = new Proxy({} as any, { get(_, p) { return attrStorageMod().policy[p]; } });
+export const persistence: any = new Proxy({} as any, { get(_, p) { return attrStorageMod().persistence[p]; } });
 
 let _lmdbQueryMod: any;
 function lmdbQueryMod() {

@@ -1,39 +1,31 @@
-/*───────────────────────────────────────────────────────────────────────────
- * tx.ts – fluent *mutation* helper (safe & expressive v2)
- *───────────────────────────────────────────────────────────────────────────*/
 import {
   destroyEntity,
   putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
   grantRole, revokeRole,
   addRelation, updateRelation, removeRelation,
   createEntity,
-  getRoles,               // for no‑op guards
-} from "@/core/ears/attribute-storage";
+  getRoles,
+} from './attribute-storage';
 
-import { edgeStore } from "@/core/ears/helpers/edge-store";
-import { qx } from "@/core/ears/helpers/query";
-import { EARS } from "@/core/types";
-import { wouldCreateCycle, linkSymmetric } from "@/core/ears/helpers/graph";
-import { getRegisteredEntityTypes } from "@/core/packs/pack-registration";
+import { edgeStore } from './edge-store';
+import { qx } from './query';
+import { EARS } from '../types/entities';
+import { wouldCreateCycle, linkSymmetric } from './graph';
+import { getEntityTypeChecker } from './runtime';
 
 export interface SafeLinkOptions {
-  /** Additional info to store with the relation */
   info?: unknown;
-  /** If true, creates bidirectional edges automatically */
   symmetric?: boolean;
-  /** If specified, prevents cycles within this group of relation kinds */
   acyclicGroup?: readonly EARS.RelKind[];
 }
 
 export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false) {
-  const isEntityType = getRegisteredEntityTypes().has(typeOrId);
+  const isEntityType = getEntityTypeChecker()(typeOrId);
 
-  // Generate new ID if entity type provided, otherwise use the provided ID
   const id: EARS.EntityId = isEntityType && !useProvidedId
     ? createEntity(typeOrId as EARS.Entity)
     : (typeOrId as EARS.EntityId);
 
-  // Add timestamp for new entities (either from entity type or when explicitly marked as new)
   if (isEntityType || useProvidedId) {
     putAttr(id, EARS.AttrKind.Custom('createdAt'), Date.now());
   }
@@ -42,9 +34,7 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
     if (t === id) throw new Error("tx.link(): source and target cannot be the same");
   };
 
-  /*──────── core fluent surface ───────────*/
   const self = {
-    /*─ attrs ─*/
     put: (k: EARS.AttrKind | string, v: unknown, allowMultiple = false) => {
       const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
       if (allowMultiple) {
@@ -80,7 +70,6 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
       return self;
     },
 
-    /*─ roles ─*/
     grant: (r: string) => {
       if (!getRoles(id).includes(r)) grantRole(id, r);
       return self;
@@ -90,16 +79,14 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
       return self;
     },
     ensure: (r: string, scope?: readonly EARS.EntityId[]) => {
-      // Only query if scope not provided
       const entities = scope ?? qx().withRole(r).ids();
       entities.forEach(e => revokeRole(e, r));
       grantRole(id, r);
       return self;
     },
 
-    /*─ relations (raw) ─*/
     link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => {
-      preventSelfLoop(t); // ! this is being reached
+      preventSelfLoop(t);
       addRelation(id, k, t, info);
       return self;
     },
@@ -112,7 +99,6 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
     },
     unlink: (rel: EARS.EntityId) => (removeRelation(rel), self),
 
-    /*─ criteria‑edges (edge‑store) ─*/
     linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => {
       preventSelfLoop(t);
       edgeStore.linkOne(id, k, t, info);
@@ -120,12 +106,8 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
     },
     safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => {
       preventSelfLoop(t);
-      
       const opts = options || {};
-      
-      // Check for cycles if configured
       if (opts.acyclicGroup && wouldCreateCycle(id, t, opts.acyclicGroup)) {
-        // Generate meaningful error message based on context
         let errorMsg: string;
         if (opts.acyclicGroup.length === 1) {
           errorMsg = `Cannot create a ${k} relation that would form a cycle`;
@@ -135,14 +117,10 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
         }
         throw new Error(errorMsg);
       }
-      
-      // Handle symmetric relations
       if (opts.symmetric) {
         linkSymmetric(id, t, k, opts.info);
         return self;
       }
-      
-      // Default behavior - regular linkOne
       return self.linkOne(k, t, opts.info);
     },
     patchLink: (
@@ -176,33 +154,27 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
       if (def.attributes) {
         self.batchPut(def.attributes);
       }
-
       if (def.links) {
         const links = Array.isArray(def.links[0])
           ? def.links as Array<[EARS.RelKind, EARS.EntityId]>
           : [def.links] as Array<[EARS.RelKind, EARS.EntityId]>;
-
         for (const [kind, target] of links) {
           self.link(kind, target);
         }
       }
-
       if (def.roles) {
         const roles = Array.isArray(def.roles) ? def.roles : [def.roles];
         for (const role of roles) {
           self.grant(role);
         }
       }
-
       return self;
     },
 
-    /*─ entity lifecycle ─*/
     destroy: (skipPersistence = false) => (destroyEntity(id, skipPersistence), undefined as never),
 
-    /*─ misc ─*/
     id: () => id,
   } as const;
 
   return self;
-};
+}

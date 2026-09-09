@@ -1,4 +1,4 @@
-import { qx } from '@/core/ears/helpers/query';
+import { qx } from '@abuddy/sdk/ears';
 import { EARS } from '@/core/types';
 
 /**

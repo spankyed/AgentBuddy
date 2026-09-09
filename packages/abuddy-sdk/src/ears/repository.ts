@@ -185,3 +185,11 @@ function txHelpersM() {
 export const transactionHelpers = new Proxy({} as any, {
   get(_, prop: string) { return txHelpersM()[prop]; },
 });
+
+export function prepareEntity<T extends { entityType: EARS.Entity }>(
+  entityType: EARS.Entity,
+  data: Partial<T>,
+  defaults?: Partial<T>
+): Omit<T, 'id'> {
+  return txHelpersM().prepareEntity(entityType, data, defaults);
+}
