@@ -117,7 +117,12 @@ export default defineConfig({
       '@xterm/addon-web-links',
       'xstate',
       '@xstate/vue',
-      'lucide-vue-next'
+      'lucide-vue-next',
+      '@tiptap/core',
+      '@tiptap/vue-3',
+      '@tiptap/starter-kit',
+      'reka-ui',
+      '@vue-flow/core',
     ]
   },
 })
