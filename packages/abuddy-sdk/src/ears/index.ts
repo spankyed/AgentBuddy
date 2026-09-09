@@ -9,7 +9,9 @@ export { createEntity } from './attribute-storage';
 export {
   repository, registerRepository, _flushEarlyRegistrations,
   findById, findByIdRaw, findAll, findWhere, hasIdCollision,
-  createEntityWithDefaults, updateEntity, exists, createRelation,
+  createEntityWithDefaults, updateEntity, exists,
+  repoCreateRelation as createRelation,
+  repoRemoveRelation, repoGrantRole, repoRevokeRole,
   findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
   RepositoryError, RepositoryErrorCode,
   queryHelpers, transactionHelpers,

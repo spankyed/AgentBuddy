@@ -1,8 +1,3 @@
-/**
- * Repository error types for validation and error handling
- */
-
-// Common repository error codes
 export const RepositoryErrorCode = {
   NOT_FOUND: 'NOT_FOUND',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -15,7 +10,6 @@ export const RepositoryErrorCode = {
 
 export type RepositoryErrorCode = typeof RepositoryErrorCode[keyof typeof RepositoryErrorCode];
 
-// Base repository error class
 export class RepositoryError extends Error {
   constructor(
     message: string,

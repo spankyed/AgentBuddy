@@ -2,9 +2,6 @@ import { registerHostModule } from '@abuddy/sdk/runtime';
 import { initRpc } from '@abuddy/sdk/rpc';
 import { initEARSRuntime, _flushEarlyRegistrations } from '@abuddy/sdk/ears';
 import * as repositoryMod from '@/repository';
-import * as sharedRepository from '@/core/shared/repository';
-import * as queryHelpers from '@/core/shared/repository/query-helpers';
-import * as transactionHelpers from '@/core/shared/repository/transaction-helpers';
 import * as attributeStorage from '@/core/ears/attribute-storage';
 import * as lmdbQuery from '@/core/persistence/lmdb/query';
 import * as hydrateSharded from '@/core/persistence/partitioning/hydrate-sharded';
@@ -33,9 +30,6 @@ initEARSRuntime({
 
 registerHostModule('repository', repositoryMod);
 _flushEarlyRegistrations();
-registerHostModule('shared-repository', sharedRepository);
-registerHostModule('query-helpers', queryHelpers);
-registerHostModule('transaction-helpers', transactionHelpers);
 registerHostModule('attribute-storage', attributeStorage);
 registerHostModule('lmdb-query', lmdbQuery);
 registerHostModule('hydrate-sharded', hydrateSharded);

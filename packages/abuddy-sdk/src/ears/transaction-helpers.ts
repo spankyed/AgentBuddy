@@ -1,18 +1,15 @@
-import { tx, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
-import { EARS } from '@/core/types';
+// STATUS: Unused — no external consumers currently import these helpers.
+// Kept for future use; the individual functions are exported from the SDK barrel.
+import { tx } from './transaction';
+import { getTimestamp, generateShortCode, generateLabelWithCount } from './entity-utils';
+import { EARS } from '../types/entities';
 
-/**
- * Type-safe transaction helpers for common operations
- */
-
-// Prepare entity with common fields
 export function prepareEntity<T extends { entityType: EARS.Entity }>(
   entityType: EARS.Entity,
   data: Partial<T>,
   defaults?: Partial<T>
 ): Omit<T, 'id'> {
   const ts = getTimestamp();
-  
   return {
     ...defaults,
     ...data,
@@ -22,7 +19,6 @@ export function prepareEntity<T extends { entityType: EARS.Entity }>(
   } as Omit<T, 'id'>;
 }
 
-// Create entity with auto-generated fields
 export function createEntityWithDefaults<T extends {
   entityType: EARS.Entity;
   shortCode?: string;
@@ -53,7 +49,6 @@ export function createEntityWithDefaults<T extends {
   return { ...entity, id } as T & { id: EARS.EntityId };
 }
 
-// Update entity fields with timestamp
 export function updateEntity(
   id: EARS.EntityId,
   updates: Record<string, any>,
@@ -64,29 +59,20 @@ export function updateEntity(
   if (!skipTimestamp) {
     transaction.merge('updatedAt', getTimestamp());
   }
-  
-  // Update each field
+
   Object.entries(updates).forEach(([key, value]) => {
-    if (value === undefined) {
-      // Skip undefined values
-      return;
-    }
-    
+    if (value === undefined) return;
     if (value === null) {
-      // Drop null values
       transaction.drop(EARS.AttrKind.Custom(key));
     } else if (Array.isArray(value)) {
-      // Replace arrays entirely
       transaction.drop(EARS.AttrKind.Custom(key));
       transaction.put(key, value);
     } else {
-      // Replace other values (use update for full replacement instead of merge)
       transaction.update(EARS.AttrKind.Custom(key), value);
     }
   });
 }
 
-// Create relationship between entities
 export function createRelation(
   sourceId: EARS.EntityId,
   relationType: EARS.RelKind,
@@ -95,7 +81,6 @@ export function createRelation(
   tx(sourceId).link(relationType, targetId);
 }
 
-// Remove relationship between entities
 export function removeRelation(
   sourceId: EARS.EntityId,
   relationType: EARS.RelKind,
@@ -108,18 +93,10 @@ export function removeRelation(
   }
 }
 
-// Grant role to entity
-export function grantRole(
-  entityId: EARS.EntityId,
-  role: string
-): void {
+export function grantRole(entityId: EARS.EntityId, role: string): void {
   tx(entityId).grant(role);
 }
 
-// Revoke role from entity
-export function revokeRole(
-  entityId: EARS.EntityId,
-  role: string
-): void {
+export function revokeRole(entityId: EARS.EntityId, role: string): void {
   tx(entityId).revoke(role);
-} 
+}
