@@ -1,9 +1,11 @@
+import { defineAsyncComponent } from 'vue';
 import type { Plugin } from "@abuddy/sdk/fe";
 import { Code2 } from 'lucide-vue-next';
 import state, { id } from './state.ts';
-import canvas from './canvas/canvas.vue';
-import panel from './features/panel.vue';
 import settings from './settings.vue';
+
+const canvas = defineAsyncComponent(() => import('./canvas/canvas.vue'));
+const panel = defineAsyncComponent(() => import('./features/panel.vue'));
 
 const codePlugin: Plugin = {
   id,

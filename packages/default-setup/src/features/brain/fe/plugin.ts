@@ -1,10 +1,12 @@
+import { defineAsyncComponent } from 'vue';
 import type { Plugin } from "@abuddy/sdk/fe";
 import config from '../feature.config';
 import { Brain } from 'lucide-vue-next';
 import state, { id } from './state';
-import canvas from './canvas.vue';
 import settings from './settings.vue';
-import panel from './panel.vue';
+
+const canvas = defineAsyncComponent(() => import('./canvas.vue'));
+const panel = defineAsyncComponent(() => import('./panel.vue'));
 
 const brainPlugin: Plugin = {
   id,
