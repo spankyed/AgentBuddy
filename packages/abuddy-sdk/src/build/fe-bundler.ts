@@ -2,29 +2,26 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin, BuildOptions } from 'esbuild';
-
-// Host-provided packages mapped to window.__abuddy keys.
-// External packs import these normally; the bundler rewrites them to
-// pull from the host's shared instances at runtime.
-const HOST_DEPS: Record<string, string> = {
-  'vue': 'vue',
-  'xstate': 'xstate',
-  '@xstate/vue': 'xstateVue',
-};
+import { SHARED_DEPS } from '../fe/shared-deps';
 
 function hostDepsPlugin(packDir: string): Plugin {
+  const escaped = Object.keys(SHARED_DEPS)
+    .map(k => k.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&'))
+    .join('|');
+  const filter = new RegExp(`^(${escaped})$`);
+
   return {
     name: 'host-deps',
     setup(build) {
-      const filter = /^(vue|xstate|@xstate\/vue)$/;
-
       build.onResolve({ filter }, (args) => ({
         path: args.path,
         namespace: 'host-dep',
       }));
 
       build.onLoad({ filter: /.*/, namespace: 'host-dep' }, (args) => {
-        const globalKey = HOST_DEPS[args.path];
+        const dep = SHARED_DEPS[args.path];
+        if (!dep) return undefined;
+        const globalKey = dep.globalKey;
 
         // Discover named exports from the actual installed module so that
         // `import { ref } from 'vue'` works in the bundled output.

@@ -82,6 +82,7 @@ export interface PackSnapshot {
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;
+  sdkVersion?: string;
 }
 
 

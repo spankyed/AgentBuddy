@@ -12,11 +12,31 @@ import {
   discoverPacks,
   reconcileExternalRegistry,
 } from '@abuddy/sdk/packs';
+import type { PackSnapshot } from '@abuddy/sdk/build';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
 const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
 const logger = createLogger('pack-loader');
+
+let _hostSdkVersion: string | undefined;
+function getHostSdkVersion(): string | undefined {
+  if (_hostSdkVersion !== undefined) return _hostSdkVersion;
+  try {
+    const sdkEntry = esmRequire.resolve('@abuddy/sdk');
+    let dir = path.dirname(sdkEntry);
+    while (dir !== path.dirname(dir)) {
+      const candidate = path.join(dir, 'package.json');
+      if (fs.existsSync(candidate)) {
+        const pkg = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
+        if (pkg.name === '@abuddy/sdk') { _hostSdkVersion = pkg.version; break; }
+      }
+      dir = path.dirname(dir);
+    }
+  } catch {}
+  _hostSdkVersion ??= '';
+  return _hostSdkVersion || undefined;
+}
 
 // Re-export discovery types and seed helpers for backward-compatible imports
 export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from '@abuddy/sdk/packs';
@@ -161,6 +181,23 @@ export function loadExternalPacks(): LoadedPack[] {
         logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
         continue;
       }
+    }
+
+    const snapshotPath = path.join(dir, 'dist', 'snapshot.json');
+    if (fs.existsSync(snapshotPath)) {
+      try {
+        const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
+        const hostSdk = getHostSdkVersion();
+        if (snapshot.sdkVersion && hostSdk) {
+          const packMajor = snapshot.sdkVersion.split('.')[0];
+          const hostMajor = hostSdk.split('.')[0];
+          if (packMajor !== hostMajor) {
+            logger.warn(
+              `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
+            );
+          }
+        }
+      } catch {}
     }
 
     const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();

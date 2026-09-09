@@ -79,7 +79,12 @@ export async function build(args: string[]) {
       defs[file.replace(/\.d\.ts$/, '')] = fs.readFileSync(path.join(defsDir, file), 'utf-8');
     }
   }
-  const snapshot: PackSnapshot = { types, defs, manifest };
+  let sdkVersion: string | undefined;
+  try {
+    const sdkPkgPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'package.json');
+    sdkVersion = JSON.parse(fs.readFileSync(sdkPkgPath, 'utf-8')).version;
+  } catch {}
+  const snapshot: PackSnapshot = { types, defs, manifest, sdkVersion };
   fs.writeFileSync(path.join(outputDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
   console.log(`\nBuild complete:`);
