@@ -1,8 +1,18 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { generateEntries } from '../generate-entries';
-import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag } from './templates';
+import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag, updateRegisterArray } from './templates';
 import { readManifest, writeManifest, addStepDefinition } from './manifest';
+
+const HELP = `
+Usage: abuddy add step <type> [options]
+
+Options:
+  --trigger    Create a trigger-type step instead of a regular step
+
+Example:
+  abuddy add step my-step
+  abuddy add step my-trigger --trigger
+`.trim();
 
 const INDEX = (type: string, camel: string, pascal: string) => `import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { ${pascal}DSLNode, ${pascal}CompiledNode } from './types';
@@ -68,30 +78,12 @@ defineEmits<{ 'update:modelValue': [value: Record<string, unknown>] }>();
 </template>
 `;
 
-function updateRegisterFile(
-  filePath: string,
-  importLine: string,
-  exportName: string,
-): boolean {
-  if (!fs.existsSync(filePath)) return false;
-  let content = fs.readFileSync(filePath, 'utf-8');
-
-  if (content.includes(exportName)) return false;
-
-  const lastImportIdx = content.lastIndexOf('\nimport ');
-  if (lastImportIdx === -1) return false;
-  const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
-  content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
-
-  const arrayCloseIdx = content.lastIndexOf('];');
-  if (arrayCloseIdx === -1) return false;
-  content = content.slice(0, arrayCloseIdx) + `  ${exportName},\n` + content.slice(arrayCloseIdx);
-
-  fs.writeFileSync(filePath, content);
-  return true;
-}
-
 export async function addStep(args: string[], root: string) {
+  if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+    console.log(HELP);
+    return;
+  }
+
   const type = args[0];
   validateName(type, 'Step');
 
@@ -119,22 +111,21 @@ export async function addStep(args: string[], root: string) {
     : stepsConfig?.register;
 
   if (registerPath) {
-    const beRegister = path.join(root, registerPath);
     const suffix = isTrigger ? 'Trigger' : 'Step';
     const exportName = `${camel}${suffix}`;
-    updateRegisterFile(
-      beRegister,
+
+    updateRegisterArray(
+      path.join(root, registerPath),
       `import { ${exportName} } from './${type}';`,
-      exportName,
+      `  ${exportName},\n`,
     );
 
     const feRegisterPath = registerPath.replace(/\.ts$/, '-fe.ts');
-    const feRegister = path.join(root, feRegisterPath);
     const feExportName = `${camel}${suffix}FE`;
-    updateRegisterFile(
-      feRegister,
+    updateRegisterArray(
+      path.join(root, feRegisterPath),
       `import { ${feExportName} } from './${type}/fe';`,
-      feExportName,
+      `  ${feExportName},\n`,
     );
   }
 
@@ -149,5 +140,5 @@ export async function addStep(args: string[], root: string) {
 
   console.log(`\nCreated step "${type}":`);
   logCreated(root, created);
-  console.log(`\n  manifest updated + register files updated + __generated__/ regenerated`);
+  console.log(`\n  manifest + register files updated, __generated__/ regenerated`);
 }

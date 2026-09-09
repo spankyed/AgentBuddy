@@ -46,3 +46,50 @@ export function parseFlag(args: string[], flag: string): string | undefined {
 export function hasFlag(args: string[], flag: string): boolean {
   return args.includes(flag);
 }
+
+export function updateRegisterArray(
+  filePath: string,
+  importLine: string,
+  arrayEntry: string,
+): boolean {
+  if (!fs.existsSync(filePath)) return false;
+  let content = fs.readFileSync(filePath, 'utf-8');
+
+  if (content.includes(arrayEntry.trim().split('\n')[0])) return false;
+
+  const lastImportIdx = content.lastIndexOf('\nimport ');
+  if (lastImportIdx === -1) return false;
+  const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
+  content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
+
+  const arrayCloseIdx = content.lastIndexOf('];');
+  if (arrayCloseIdx === -1) return false;
+  content = content.slice(0, arrayCloseIdx) + arrayEntry + content.slice(arrayCloseIdx);
+
+  fs.writeFileSync(filePath, content);
+  return true;
+}
+
+export function updateComponentMap(
+  filePath: string,
+  importLine: string,
+  mapKey: string,
+  mapValue: string,
+): boolean {
+  if (!fs.existsSync(filePath)) return false;
+  let content = fs.readFileSync(filePath, 'utf-8');
+
+  if (content.includes(`'${mapKey}'`) || content.includes(`"${mapKey}"`)) return false;
+
+  const lastImportIdx = content.lastIndexOf('\nimport ');
+  if (lastImportIdx === -1) return false;
+  const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
+  content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
+
+  const mapCloseIdx = content.lastIndexOf('};');
+  if (mapCloseIdx === -1) return false;
+  content = content.slice(0, mapCloseIdx) + `  '${mapKey}': ${mapValue},\n` + content.slice(mapCloseIdx);
+
+  fs.writeFileSync(filePath, content);
+  return true;
+}

@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { generateEntries } from '../generate-entries';
-import { validateName, toCamelCase, writeIfNotExists, logCreated, parseFlag } from './templates';
+import { validateName, toCamelCase, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addPackService, addFeatureService } from './manifest';
 
 const SERVICE_TEMPLATE = (camel: string) => `export function create${camel[0].toUpperCase() + camel.slice(1)}Service() {
@@ -8,7 +8,23 @@ const SERVICE_TEMPLATE = (camel: string) => `export function create${camel[0].to
 }
 `;
 
+const HELP = `
+Usage: abuddy add service <name> [options]
+
+Options:
+  --feature <feature>    Create a feature service instead of pack-level
+
+Example:
+  abuddy add service cache
+  abuddy add service bookmarks --feature bookmarks
+`.trim();
+
 export async function addService(args: string[], root: string) {
+  if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+    console.log(HELP);
+    return;
+  }
+
   const name = args[0];
   validateName(name, 'Service');
 

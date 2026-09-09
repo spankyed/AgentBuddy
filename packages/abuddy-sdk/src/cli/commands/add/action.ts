@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { validateName, toLabel, writeIfNotExists, logCreated, parseFlag } from './templates';
+import { validateName, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest } from './manifest';
 
 const ACTION_TEMPLATE = (label: string, category: string) => `import type { ActionMeta } from '@abuddy/sdk/build';
@@ -22,7 +22,22 @@ export async function action(
 }
 `;
 
+const HELP = `
+Usage: abuddy add action <name> [options]
+
+Options:
+  --category <category>    Action category (default: pack id)
+
+Example:
+  abuddy add action analyze-text --category analysis
+`.trim();
+
 export async function addAction(args: string[], root: string) {
+  if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+    console.log(HELP);
+    return;
+  }
+
   const name = args[0];
   validateName(name, 'Action');
 

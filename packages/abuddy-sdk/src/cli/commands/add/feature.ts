@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { generateEntries } from '../generate-entries';
-import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag } from './templates';
+import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
 const FEATURE_CONFIG = (name: string, designation?: string) => {
@@ -128,7 +128,24 @@ const SETTINGS_VUE = () => `<script setup lang="ts">
 </template>
 `;
 
+const HELP = `
+Usage: abuddy add feature <name> [options]
+
+Options:
+  --label <Label>          Display label (default: derived from name)
+  --icon <LucideIcon>      Lucide icon name (default: Box)
+  --designation <role>     EARS designation
+
+Example:
+  abuddy add feature bookmarks --label "Bookmarks" --icon Bookmark
+`.trim();
+
 export async function addFeature(args: string[], root: string) {
+  if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+    console.log(HELP);
+    return;
+  }
+
   const name = args[0];
   validateName(name, 'Feature');
 
