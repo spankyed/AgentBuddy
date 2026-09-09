@@ -2,8 +2,7 @@ import { setPersistence, clearMemory } from "@abuddy/sdk/ears";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@abuddy/sdk/utils";
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
-import { makePolicy, type PartitionPolicy } from "@/core/persistence/partitioning/policy";
-import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
+import { makePolicy, makeShardedPersistence, type PartitionPolicy } from "@abuddy/sdk/persistence";
 import { getRegisteredEARSPolicy } from "@abuddy/sdk/packs";
 
 const HARD_DELETE_MODE = true;

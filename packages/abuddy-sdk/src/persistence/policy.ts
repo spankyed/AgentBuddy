@@ -1,4 +1,4 @@
-import { EARS } from '@/core/types';
+import type { EARS } from '../types';
 
 export type Partition = 'primary' | 'volatileBackup' | 'secrets';
 
@@ -33,11 +33,9 @@ export function makePolicy(config: {
     },
 
     routeRelation({ srcType, tgtType }) {
-      // If either side is a secret, put the relation in secrets partition
       if (secrets.has(srcType) || secrets.has(tgtType)) {
         return 'secrets';
       }
-      // If either side is excluded, put the relation with the excluded set
       if (excluded.has(srcType) || excluded.has(tgtType)) {
         return 'volatileBackup';
       }

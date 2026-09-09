@@ -8,7 +8,7 @@ export interface PersistenceSink {
 
   onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]): void;
   onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
-  
+
   /** Rewrite the whole array for (kind, entityId) to keep indices consistent. */
   onPutAttrArray?(kind: string, entityId: string, values: unknown[]): void;
 
@@ -18,7 +18,7 @@ export interface PersistenceSink {
 
   /** Optional: flush pending operations and close on shutdown */
   close?(): void;
-  
+
   /** Optional: get error statistics for monitoring */
   getErrorStats?(): { errorCount: number; lastError: any };
 }
