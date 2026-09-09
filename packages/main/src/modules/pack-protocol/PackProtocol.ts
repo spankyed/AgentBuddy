@@ -32,15 +32,31 @@ class PackProtocol implements AppModule {
     ]);
 
     app.whenReady().then(() => {
-      protocol.handle('pack', (request) => {
+      protocol.handle('pack', async (request) => {
         const url = new URL(request.url);
         const packId = url.hostname;
         const filePath = decodeURIComponent(url.pathname);
 
         const packsDir = getPacksDir();
+
+        const devSignalPath = path.join(packsDir, packId, '.dev');
+        if (fs.existsSync(devSignalPath)) {
+          try {
+            const signal = JSON.parse(fs.readFileSync(devSignalPath, 'utf-8'));
+            const devUrl = `http://localhost:${signal.port}${filePath}`;
+            const res = await fetch(devUrl);
+            if (res.ok) {
+              const body = await res.arrayBuffer();
+              const headers: Record<string, string> = {};
+              const ct = res.headers.get('content-type');
+              if (ct) headers['Content-Type'] = ct;
+              return new Response(body, { headers });
+            }
+          } catch {}
+        }
+
         const resolved = path.resolve(packsDir, packId, filePath.replace(/^\//, ''));
 
-        // Trailing separator prevents pack "fo" accessing pack "foobar"
         const allowedPrefix = path.join(packsDir, packId) + path.sep;
         if (!resolved.startsWith(allowedPrefix)) {
           return new Response('Forbidden', { status: 403 });

@@ -29,15 +29,14 @@ function parseNamedExports(source: string): string[] {
 
 function generateGlobalProxy(globalKey: string, namedExports: string[]): string {
   const lines = [`const __m = window.__abuddy.${globalKey};`];
-  if (namedExports.length > 0) {
-    lines.push(`const { ${namedExports.join(', ')} } = __m;`);
-    lines.push(`export { ${namedExports.join(', ')} };`);
+  for (const name of namedExports) {
+    lines.push(`export const ${name} = __m.${name};`);
   }
   lines.push(`export default __m;`);
   return lines.join('\n');
 }
 
-function packExternalsPlugin(packDir: string): VitePlugin {
+export function packExternalsPlugin(packDir: string): VitePlugin {
   const feDeps = getSharedFeDeps();
   const sdkModules = getSdkFeModules();
 
@@ -146,6 +145,9 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         minify: false,
         target: 'es2022',
         cssCodeSplit: false,
+        rollupOptions: {
+          treeshake: { propertyReadSideEffects: false },
+        },
       },
       logLevel: 'warn',
     });
