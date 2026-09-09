@@ -9,6 +9,7 @@ abuddy - AgentBuddy Pack CLI
 
 Commands:
   init [name]         Scaffold a new pack
+  add <entity>        Add a feature, step, seed, etc.
   generate            Generate EARS types from manifest + deps
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
@@ -19,6 +20,9 @@ Commands:
   uninstall <id>      Remove an installed pack
   list                Show installed packs
   dev                 Watch mode for local development
+  info                Show pack summary
+  doctor              Run health checks
+  clean               Remove build artifacts
 
 Options:
   --help, -h          Show this help
@@ -27,6 +31,7 @@ Options:
 
 const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>> = {
   'init':              async () => (await import('./commands/init')).init,
+  'add':               async () => (await import('./commands/add')).add,
   'generate':          async () => (await import('./commands/generate')).generate,
   'generate-entries':  async () => (await import('./commands/generate-entries')).generateEntries,
   'fetch-deps':        async () => (await import('./commands/fetch-deps')).fetchDeps,
@@ -37,6 +42,9 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
   'list':       async () => (await import('./commands/list')).list,
   'dev':        async () => (await import('./commands/dev')).dev,
+  'info':       async () => (await import('./commands/info')).info,
+  'doctor':     async () => (await import('./commands/doctor')).doctor,
+  'clean':      async () => (await import('./commands/clean')).clean,
 };
 
 async function main() {
