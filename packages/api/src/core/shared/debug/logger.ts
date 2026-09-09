@@ -74,7 +74,11 @@ class Logger {
 
     // Still log to console for debugging
     const prefix = this.source ? `[${this.source}]` : '';
-    originalConsole[level](prefix, message, meta);
+    if (meta !== undefined) {
+      originalConsole[level](prefix, message, meta);
+    } else {
+      originalConsole[level](prefix, message);
+    }
   }
 
   debug(message: string, meta?: Record<string, any>) {
