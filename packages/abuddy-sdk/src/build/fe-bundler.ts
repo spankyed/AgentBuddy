@@ -115,6 +115,78 @@ function sdkExternalPlugin(packDir: string): Plugin {
   };
 }
 
+function vueSfcPlugin(): Plugin {
+  return {
+    name: 'vue-sfc',
+    setup(build) {
+      build.onLoad({ filter: /\.vue$/ }, async (args) => {
+        const { parse, compileScript, compileTemplate, compileStyle } = await import('@vue/compiler-sfc');
+        const source = fs.readFileSync(args.path, 'utf-8');
+        const filename = path.basename(args.path);
+        const { descriptor, errors } = parse(source, { filename });
+
+        if (errors.length) {
+          return { errors: errors.map(e => ({ text: e.message })) };
+        }
+
+        const scopeId = `data-v-${Buffer.from(args.path).toString('base64url').slice(0, 8)}`;
+        const hasScoped = descriptor.styles.some(s => s.scoped);
+
+        const script = descriptor.script || descriptor.scriptSetup
+          ? compileScript(descriptor, { id: scopeId })
+          : { content: 'export default {}', bindings: {} };
+
+        const template = descriptor.template
+          ? compileTemplate({
+              source: descriptor.template.content,
+              filename,
+              id: scopeId,
+              scoped: hasScoped,
+              compilerOptions: { bindingMetadata: script.bindings },
+            })
+          : null;
+
+        let code = script.content;
+        if (template) {
+          code += `\n${template.code}\n`;
+        }
+
+        code = code.replace(
+          /export\s+default\s+\/\*@__PURE__\*\/\s*_defineComponent/,
+          'const __component = /*@__PURE__*/ _defineComponent',
+        );
+        if (!code.includes('const __component')) {
+          code = code.replace(/export\s+default\s*/, 'const __component = ');
+        }
+
+        if (template) {
+          code += `\n__component.render = render;\n`;
+        }
+        if (hasScoped) {
+          code += `__component.__scopeId = '${scopeId}';\n`;
+        }
+
+        if (descriptor.styles.length) {
+          const compiledStyles = descriptor.styles.map(s =>
+            compileStyle({
+              source: s.content,
+              filename,
+              id: scopeId,
+              scoped: s.scoped ?? false,
+            }).code
+          ).join('\n');
+          const escaped = JSON.stringify(compiledStyles);
+          code = `(()=>{const s=document.createElement('style');s.textContent=${escaped};document.head.appendChild(s)})();\n` + code;
+        }
+
+        code += `\nexport default __component;\n`;
+
+        return { contents: code, loader: 'ts', resolveDir: path.dirname(args.path) };
+      });
+    },
+  };
+}
+
 interface BundleFEOptions {
   packDir: string;
   outputDir: string;
@@ -151,11 +223,10 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
     minify: false,
     sourcemap: true,
     plugins: [
+      vueSfcPlugin(),
       hostDepsPlugin(packDir),
       sdkExternalPlugin(packDir),
     ],
-    // .vue SFC files require a separate build tool (Vite);
-    // pack-cli bundles .ts/.tsx out of the box
     loader: {
       '.ts': 'ts',
       '.tsx': 'tsx',

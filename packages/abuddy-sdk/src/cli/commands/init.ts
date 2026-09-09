@@ -92,7 +92,7 @@ export const steps: StepDefinition[] = [
 `;
 
 const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, on, keepAlive } from '#generated/flow-helpers';
+import { entry, keepAlive } from '@abuddy/sdk/build';
 
 export default {
   "Example Flow": [
