@@ -16,10 +16,10 @@ Commands:
   build [--skip-generate]  Compile pack artifacts to dist/
   pack                Bundle dist/ into a .tgz for release
   validate            Check manifest and types
-  install <path>      Install a pack from a directory or .zip
-  uninstall <id>      Remove an installed pack
-  list                Show installed packs
-  dev                 Watch mode for local development
+  install <source> [-d]  Install a pack (path, URL, GitHub, or registry name)
+  uninstall <id> [-d]   Remove an installed pack
+  list [-d]             Show installed packs
+  dev                   Dev server with HMR (always targets dev environment)
   info                Show pack summary
   doctor              Run health checks
   clean               Remove build artifacts

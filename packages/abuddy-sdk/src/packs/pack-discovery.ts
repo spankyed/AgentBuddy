@@ -86,9 +86,28 @@ export interface PackPluginDefinition {
   settings?: Record<string, unknown>;
 }
 
+export const APP_NAME = 'abuddy';
+export const DEV_APP_NAME = 'abuddy-dev';
+
+export function resolveAppDataDir(appName: string): string {
+  const home = os.homedir();
+  switch (process.platform) {
+    case 'darwin':
+      return path.join(home, 'Library', 'Application Support', appName);
+    case 'win32':
+      return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), appName);
+    default:
+      return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), appName);
+  }
+}
+
 export function getPacksDir(): string {
   const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
   return path.join(userDataPath, 'packs');
+}
+
+export function getPacksDirForEnv(dev: boolean): string {
+  return path.join(resolveAppDataDir(dev ? DEV_APP_NAME : APP_NAME), 'packs');
 }
 
 export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {

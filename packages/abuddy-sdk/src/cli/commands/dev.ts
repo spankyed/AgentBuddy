@@ -3,10 +3,10 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../../build/fe-bundler';
-import { getPacksDir } from '../../packs/pack-discovery';
+import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { installPackFromLocal } from '../../packs/pack-installer';
 
-function writeSignalFile(packId: string, port: number): string {
-  const packsDir = getPacksDir();
+function writeSignalFile(packsDir: string, packId: string, port: number): string {
   const packDir = path.join(packsDir, packId);
   fs.mkdirSync(packDir, { recursive: true });
   const signalPath = path.join(packDir, '.dev');
@@ -16,23 +16,6 @@ function writeSignalFile(packId: string, port: number): string {
 
 function removeSignalFile(signalPath: string) {
   try { fs.unlinkSync(signalPath); } catch {}
-}
-
-function syncToPacksDir(srcDir: string, destDir: string) {
-  if (fs.existsSync(destDir)) fs.rmSync(destDir, { recursive: true, force: true });
-  copyDir(srcDir, destDir);
-}
-
-function copyDir(src: string, dest: string) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    const s = path.join(src, entry.name);
-    const d = path.join(dest, entry.name);
-    if (entry.isDirectory()) copyDir(s, d);
-    else fs.copyFileSync(s, d);
-  }
 }
 
 export async function dev(_args: string[]) {
@@ -45,16 +28,14 @@ export async function dev(_args: string[]) {
 
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
+  const packsDir = getPacksDirForEnv(true);
 
   console.log('Running initial build...\n');
   await build([]);
 
-  const packsDir = getPacksDir();
-  const installedDir = path.join(packsDir, manifest.id);
-  const alreadyInstalled = fs.existsSync(path.join(installedDir, 'abuddy.json'));
-
-  console.log(`${alreadyInstalled ? 'Syncing' : 'Installing'} pack to ${installedDir}...`);
-  syncToPacksDir(root, installedDir);
+  console.log(`Installing pack to dev environment...`);
+  const result = await installPackFromLocal(root, packsDir);
+  console.log(`  ${result.dir}\n`);
 
   if (!feEntry) {
     console.log('No FE entry found. Falling back to watch + rebuild mode.\n');
@@ -108,7 +89,7 @@ export async function dev(_args: string[]) {
     throw new Error('Vite dev server failed to bind a port');
   }
 
-  const signalPath = writeSignalFile(manifest.id, port);
+  const signalPath = writeSignalFile(packsDir, manifest.id, port);
 
   function cleanup() {
     removeSignalFile(signalPath);

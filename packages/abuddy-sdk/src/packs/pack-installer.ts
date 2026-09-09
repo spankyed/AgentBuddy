@@ -2,10 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
-import { createLogger } from '../logger';
 import { getPacksDir, discoverBuiltInPacks } from './pack-discovery';
 
-const logger = createLogger('pack-installer');
+const log = {
+  info(...args: unknown[]) { console.log(...args); },
+  warn(...args: unknown[]) { console.warn(...args); },
+};
 
 export interface InstallResult {
   id: string;
@@ -15,8 +17,8 @@ export interface InstallResult {
   missingDependencies: string[];
 }
 
-function ensurePacksDir(): string {
-  const dir = getPacksDir();
+function ensurePacksDir(targetDir?: string): string {
+  const dir = targetDir ?? getPacksDir();
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -116,14 +118,14 @@ export function checkDependencies(
   return missing;
 }
 
-export async function installPackFromLocal(source: string): Promise<InstallResult> {
+export async function installPackFromLocal(source: string, targetPacksDir?: string): Promise<InstallResult> {
   const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
   const resolved = path.resolve(expanded);
   if (!fs.existsSync(resolved)) {
     throw new Error(`Path not found: ${resolved}`);
   }
 
-  const packsDir = ensurePacksDir();
+  const packsDir = ensurePacksDir(targetPacksDir);
   let sourceDir: string;
   let cleanup: (() => void) | undefined;
 
@@ -149,16 +151,16 @@ export async function installPackFromLocal(source: string): Promise<InstallResul
     const destDir = path.join(packsDir, manifest.id);
 
     if (fs.existsSync(destDir)) {
-      logger.info(`Replacing existing pack ${manifest.id}`);
+      console.log(`Replacing existing pack ${manifest.id}`);
       fs.rmSync(destDir, { recursive: true, force: true });
     }
 
     copyDir(sourceDir, destDir);
     const missingDependencies = checkDependencies(
       JSON.parse(fs.readFileSync(path.join(destDir, 'abuddy.json'), 'utf-8')),
-      ensurePacksDir(),
+      packsDir,
     );
-    logger.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
+    log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
 
     return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies };
   } finally {
@@ -166,7 +168,7 @@ export async function installPackFromLocal(source: string): Promise<InstallResul
   }
 }
 
-export async function installPackFromUrl(url: string): Promise<InstallResult> {
+export async function installPackFromUrl(url: string, targetPacksDir?: string): Promise<InstallResult> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
   try {
     const filename = new URL(url).pathname.split('/').pop() || 'pack.tgz';
@@ -188,7 +190,7 @@ export async function installPackFromUrl(url: string): Promise<InstallResult> {
 
     const sourceDir = findPackRoot(extractDir);
     const manifest = validateManifest(sourceDir);
-    const packsDir = ensurePacksDir();
+    const packsDir = ensurePacksDir(targetPacksDir);
     const destDir = path.join(packsDir, manifest.id);
 
     if (fs.existsSync(destDir)) {
@@ -199,14 +201,14 @@ export async function installPackFromUrl(url: string): Promise<InstallResult> {
       JSON.parse(fs.readFileSync(path.join(destDir, 'abuddy.json'), 'utf-8')),
       packsDir,
     );
-    logger.info(`Installed "${manifest.name}" v${manifest.version} from URL`);
+    log.info(`Installed "${manifest.name}" v${manifest.version} from URL`);
     return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies };
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
-export async function installPackFromGitHub(slug: string): Promise<InstallResult> {
+export async function installPackFromGitHub(slug: string, targetPacksDir?: string): Promise<InstallResult> {
   const [ownerRepo, tag] = slug.split('@');
   const [owner, repo] = ownerRepo.split('/');
   if (!owner || !repo) {
@@ -231,24 +233,24 @@ export async function installPackFromGitHub(slug: string): Promise<InstallResult
     throw new Error(`No .tgz asset found in release${tag ? ` ${tag}` : ' (latest)'}`);
   }
 
-  return installPackFromUrl(tgzAsset.browser_download_url);
+  return installPackFromUrl(tgzAsset.browser_download_url, targetPacksDir);
 }
 
-export async function installPack(packSlug: string, source?: string): Promise<InstallResult> {
+export async function installPack(packSlug: string, source?: string, targetPacksDir?: string): Promise<InstallResult> {
   if (source === 'local') {
-    return installPackFromLocal(packSlug);
+    return installPackFromLocal(packSlug, targetPacksDir);
   }
   if (source === 'url') {
-    return installPackFromUrl(packSlug);
+    return installPackFromUrl(packSlug, targetPacksDir);
   }
   if (packSlug.startsWith('http://') || packSlug.startsWith('https://')) {
-    return installPackFromUrl(packSlug);
+    return installPackFromUrl(packSlug, targetPacksDir);
   }
-  return installPackFromGitHub(packSlug);
+  return installPackFromGitHub(packSlug, targetPacksDir);
 }
 
-export async function uninstallPack(packId: string): Promise<void> {
-  const packsDir = getPacksDir();
+export async function uninstallPack(packId: string, targetPacksDir?: string): Promise<void> {
+  const packsDir = targetPacksDir ?? getPacksDir();
   const packDir = path.join(packsDir, packId);
 
   if (!fs.existsSync(packDir)) {
@@ -256,5 +258,5 @@ export async function uninstallPack(packId: string): Promise<void> {
   }
 
   fs.rmSync(packDir, { recursive: true, force: true });
-  logger.info(`Uninstalled pack "${packId}"`);
+  log.info(`Uninstalled pack "${packId}"`);
 }
