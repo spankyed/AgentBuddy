@@ -13,7 +13,7 @@ import {
   reconcileExternalRegistry,
 } from '@abuddy/sdk/packs';
 import type { PackSnapshot } from '@abuddy/sdk/build';
-import { getSharedBeDeps } from '@abuddy/sdk/src/shared-deps';
+import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/shared-deps';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
@@ -22,20 +22,11 @@ const logger = createLogger('pack-loader');
 
 let _hostSdkVersion: string | undefined;
 function getHostSdkVersion(): string | undefined {
-  if (_hostSdkVersion !== undefined) return _hostSdkVersion;
+  if (_hostSdkVersion !== undefined) return _hostSdkVersion || undefined;
   try {
     const sdkEntry = esmRequire.resolve('@abuddy/sdk');
-    let dir = path.dirname(sdkEntry);
-    while (dir !== path.dirname(dir)) {
-      const candidate = path.join(dir, 'package.json');
-      if (fs.existsSync(candidate)) {
-        const pkg = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
-        if (pkg.name === '@abuddy/sdk') { _hostSdkVersion = pkg.version; break; }
-      }
-      dir = path.dirname(dir);
-    }
-  } catch {}
-  _hostSdkVersion ??= '';
+    _hostSdkVersion = findSdkVersion(path.dirname(sdkEntry)) ?? '';
+  } catch { _hostSdkVersion = ''; }
   return _hostSdkVersion || undefined;
 }
 

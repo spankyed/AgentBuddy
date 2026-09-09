@@ -1,21 +1,23 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 export interface SharedDep {
   globalKey?: string;
-  tier: 'core' | 'optional';
   target: 'fe' | 'be' | 'both';
 }
 
 export const SHARED_DEPS: Record<string, SharedDep> = {
-  'vue':                  { globalKey: 'vue',              tier: 'core',     target: 'fe' },
-  'xstate':               { globalKey: 'xstate',           tier: 'core',     target: 'both' },
-  '@xstate/vue':          { globalKey: 'xstateVue',        tier: 'core',     target: 'fe' },
-  'zod':                  {                                tier: 'core',     target: 'be' },
+  'vue':                  { globalKey: 'vue',              target: 'fe' },
+  'xstate':               { globalKey: 'xstate',           target: 'both' },
+  '@xstate/vue':          { globalKey: 'xstateVue',        target: 'fe' },
+  'zod':                  {                                target: 'be' },
 
-  '@tiptap/core':         { globalKey: 'tiptapCore',       tier: 'optional', target: 'fe' },
-  '@tiptap/vue-3':        { globalKey: 'tiptapVue3',       tier: 'optional', target: 'fe' },
-  '@tiptap/starter-kit':  { globalKey: 'tiptapStarterKit', tier: 'optional', target: 'fe' },
-  'reka-ui':              { globalKey: 'rekaUi',           tier: 'optional', target: 'fe' },
-  'lucide-vue-next':      { globalKey: 'lucideVueNext',    tier: 'optional', target: 'fe' },
-  '@vue-flow/core':       { globalKey: 'vueFlowCore',      tier: 'optional', target: 'fe' },
+  '@tiptap/core':         { globalKey: 'tiptapCore',       target: 'fe' },
+  '@tiptap/vue-3':        { globalKey: 'tiptapVue3',       target: 'fe' },
+  '@tiptap/starter-kit':  { globalKey: 'tiptapStarterKit', target: 'fe' },
+  'reka-ui':              { globalKey: 'rekaUi',           target: 'fe' },
+  'lucide-vue-next':      { globalKey: 'lucideVueNext',    target: 'fe' },
+  '@vue-flow/core':       { globalKey: 'vueFlowCore',      target: 'fe' },
 };
 
 export function getSharedFeDeps(): Record<string, SharedDep & { globalKey: string }> {
@@ -26,4 +28,19 @@ export function getSharedFeDeps(): Record<string, SharedDep & { globalKey: strin
 
 export function getSharedBeDeps(): string[] {
   return Object.keys(SHARED_DEPS).filter(k => SHARED_DEPS[k].target !== 'fe');
+}
+
+export function findSdkVersion(startDir: string): string | undefined {
+  let dir = startDir;
+  while (dir !== path.dirname(dir)) {
+    const pkgPath = path.join(dir, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        if (pkg.name === '@abuddy/sdk') return pkg.version;
+      } catch {}
+    }
+    dir = path.dirname(dir);
+  }
+  return undefined;
 }

@@ -6,3 +6,11 @@ declare module 'virtual:built-in-packs' {
   const packs: Record<string, () => Promise<{ default: PackFERegistration }>>;
   export default packs;
 }
+
+declare module 'virtual:host-deps' {}
+
+declare global {
+  interface Window {
+    __abuddy?: Record<string, unknown>;
+  }
+}

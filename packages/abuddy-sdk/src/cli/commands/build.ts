@@ -10,6 +10,7 @@ import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
 import { generate, resolveDepTypes } from './generate';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
+import { findSdkVersion } from '../../shared-deps';
 
 async function loadPackConfig(root: string): Promise<PackConfig | null> {
   const configPath = path.join(root, 'compile.config.ts');
@@ -79,11 +80,7 @@ export async function build(args: string[]) {
       defs[file.replace(/\.d\.ts$/, '')] = fs.readFileSync(path.join(defsDir, file), 'utf-8');
     }
   }
-  let sdkVersion: string | undefined;
-  try {
-    const sdkPkgPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'package.json');
-    sdkVersion = JSON.parse(fs.readFileSync(sdkPkgPath, 'utf-8')).version;
-  } catch {}
+  const sdkVersion = findSdkVersion(path.dirname(new URL(import.meta.url).pathname));
   const snapshot: PackSnapshot = { types, defs, manifest, sdkVersion };
   fs.writeFileSync(path.join(outputDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 

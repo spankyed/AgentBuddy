@@ -12,7 +12,7 @@ import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
 import { loadPackPlugins, loadPackFEEntry, loadPackStyles } from '@/core/packs/pack-loader';
-import '@/core/packs/host-deps';
+import 'virtual:host-deps';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 
 declare const __APP_VERSION__: string;
