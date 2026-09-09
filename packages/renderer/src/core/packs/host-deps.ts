@@ -1,4 +1,4 @@
-import { SHARED_DEPS } from '@abuddy/sdk/fe/shared-deps';
+import { getSharedFeDeps } from '@abuddy/sdk/shared-deps';
 import * as vue from 'vue';
 import * as xstate from 'xstate';
 import * as xstateVue from '@xstate/vue';
@@ -27,8 +27,9 @@ declare global {
   }
 }
 
+const feDeps = getSharedFeDeps();
 const abuddy: Record<string, unknown> = {};
-for (const [, { globalKey }] of Object.entries(SHARED_DEPS)) {
+for (const [, { globalKey }] of Object.entries(feDeps)) {
   if (modules[globalKey]) {
     abuddy[globalKey] = modules[globalKey];
   }

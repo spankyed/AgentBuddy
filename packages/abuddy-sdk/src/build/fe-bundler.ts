@@ -2,10 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin, BuildOptions } from 'esbuild';
-import { SHARED_DEPS } from '../fe/shared-deps';
+import { getSharedFeDeps } from '../shared-deps';
 
 function hostDepsPlugin(packDir: string): Plugin {
-  const escaped = Object.keys(SHARED_DEPS)
+  const feDeps = getSharedFeDeps();
+  const escaped = Object.keys(feDeps)
     .map(k => k.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&'))
     .join('|');
   const filter = new RegExp(`^(${escaped})$`);
@@ -19,7 +20,7 @@ function hostDepsPlugin(packDir: string): Plugin {
       }));
 
       build.onLoad({ filter: /.*/, namespace: 'host-dep' }, (args) => {
-        const dep = SHARED_DEPS[args.path];
+        const dep = feDeps[args.path];
         if (!dep) return undefined;
         const globalKey = dep.globalKey;
 

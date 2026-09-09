@@ -21,7 +21,7 @@
     "./ids": "./src/ids/index.ts",
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
-    "./fe/shared-deps": "./src/fe/shared-deps.ts",
+    "./shared-deps": "./src/shared-deps.ts",
     "./fe/pack-store": "./src/fe/pack-store.ts",
     "./fe/contributions": "./src/fe/contribution-types.ts",
     "./fe/design/ToastNotification.vue": "./src/fe/design/ToastNotification.vue",

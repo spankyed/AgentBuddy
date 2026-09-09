@@ -13,6 +13,7 @@ import {
   reconcileExternalRegistry,
 } from '@abuddy/sdk/packs';
 import type { PackSnapshot } from '@abuddy/sdk/build';
+import { getSharedBeDeps } from '@abuddy/sdk/src/shared-deps';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
@@ -86,7 +87,7 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
 
 // ── External pack loading ────────────────────────────────────────────
 
-const HOST_PROVIDED_PACKAGES = ['xstate', 'zod'];
+const HOST_PROVIDED_PACKAGES = getSharedBeDeps();
 
 export interface LoadedPack {
   manifest: import('@abuddy/sdk/packs').PackManifest;
