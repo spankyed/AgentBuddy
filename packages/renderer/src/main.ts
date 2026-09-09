@@ -155,6 +155,8 @@ app.provide('actorSystem', applicationState.system);
 app.provide('applicationActor', applicationState);
 app.mount('#app');
 
+window.electronAPI?.rendererReady?.();
+
 // Load external pack FE contributions after boot
 trpc.packs.registry.query().then(async (registry) => {
   const externalPacks = registry.filter(p => !p.builtIn);

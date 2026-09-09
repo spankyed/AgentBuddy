@@ -438,14 +438,14 @@ class WindowManager implements AppModule {
     const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
                      process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
     const iconPath = join(process.cwd(), 'build', 'resources', iconName);
-    
+
     // Get the API port before creating the window
     const apiPort = this.#apiServer?.getStatus().port || 3001;
     const startupId = this.#apiServer?.getStatus().startupId;
     console.log(`[MAIN] Creating window with API port: ${apiPort}`);
-    
+
     const browserWindow = new BrowserWindow({
-      show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
+      show: false,
       width: WINDOW_CONFIG.WIDTH,
       height: WINDOW_CONFIG.HEIGHT,
       minWidth: WINDOW_CONFIG.MIN_WIDTH,
@@ -458,6 +458,7 @@ class WindowManager implements AppModule {
       frame: false, // All platforms: frameless with custom window controls
       transparent: false,
       vibrancy: 'under-window', // macOS: window vibrancy effect
+      backgroundColor: '#171717',
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -487,6 +488,28 @@ class WindowManager implements AppModule {
     }
 
     return browserWindow;
+  }
+
+  private waitForRendererReady(browserWindow: BrowserWindow): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const TIMEOUT = 15_000;
+
+      const onReady = (event: Electron.IpcMainEvent) => {
+        if (event.sender === browserWindow.webContents) {
+          clearTimeout(timer);
+          ipcMain.removeListener('renderer:ready', onReady);
+          resolve();
+        }
+      };
+
+      const timer = setTimeout(() => {
+        console.warn('[MAIN] Renderer did not signal ready within timeout, showing window anyway');
+        ipcMain.removeListener('renderer:ready', onReady);
+        resolve();
+      }, TIMEOUT);
+
+      ipcMain.on('renderer:ready', onReady);
+    });
   }
 
   async createPopoutWindow(pluginId: string, pluginTitle?: string): Promise<BrowserWindow> {
@@ -578,15 +601,16 @@ class WindowManager implements AppModule {
 
   async restoreOrCreateWindow(show = false) {
     // Find main window using window tagging
-    let window = BrowserWindow.getAllWindows().find(w => 
+    let window = BrowserWindow.getAllWindows().find(w =>
       !w.isDestroyed() && this.isMainWindow(w)
     );
-    
-    if (window === undefined) {
+
+    const isNewWindow = window === undefined;
+    if (isNewWindow) {
       window = await this.createWindow();
     }
 
-    if (!show) {
+    if (!show || !window) {
       return window;
     }
 
@@ -595,15 +619,18 @@ class WindowManager implements AppModule {
       window.restore();
     }
 
-    // Show the window
+    if (isNewWindow) {
+      await this.waitForRendererReady(window);
+    }
+
     window.show();
-    
+
     if (this.#openDevTools) {
       window.webContents.openDevTools();
     }
-    
+
     window.focus();
-    
+
     // Close splash after main window is shown
     await this.closeSplashWithDelay();
 

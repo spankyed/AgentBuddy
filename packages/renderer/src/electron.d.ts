@@ -92,6 +92,7 @@ declare global {
       protocolAction: {
         onAction: (callback: (data: { action: string; params: Record<string, string> }) => void) => () => void;
       };
+      rendererReady: () => void;
       apiPort: number;
       startupId?: string;
     };

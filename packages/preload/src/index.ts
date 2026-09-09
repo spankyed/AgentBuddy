@@ -231,6 +231,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startupId,
   browser,
   protocolAction,
+  rendererReady: () => ipcRenderer.send('renderer:ready'),
 });
 
 // Export the tRPC client and connection status
