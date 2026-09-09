@@ -128,6 +128,9 @@ export function findFEEntry(packDir: string): string | null {
   const srcEntryJs = path.join(packDir, 'src', 'pack-entry-fe.js');
   if (fs.existsSync(srcEntryJs)) return srcEntryJs;
 
+  const generatedEntry = path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts');
+  if (fs.existsSync(generatedEntry)) return generatedEntry;
+
   return null;
 }
 

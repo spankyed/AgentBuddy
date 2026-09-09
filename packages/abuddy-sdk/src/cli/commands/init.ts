@@ -14,7 +14,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     entities: { [pascalName]: pascalName },
     relKinds: {},
     fe: { entry: 'dist/fe.js', styles: 'dist/fe.css' },
-    plugins: [],
+    features: [],
     dependencies: {},
     permissions: [],
     steps: 'src/extensions/steps/register.ts',
@@ -33,13 +33,6 @@ export default {
   name: '${name}',
   settings: './settings.ts',
 } satisfies FeatureConfig;
-`;
-
-const ENTITIES_TEMPLATE = `export { EARS, BaseEntity } from '../__generated__/ears';
-`;
-
-const TYPES_TEMPLATE = `export { EARS } from '../.abuddy/generated/types';
-export type { BaseEntity, EntityId } from '../.abuddy/generated/types';
 `;
 
 const TSCONFIG_TEMPLATE = JSON.stringify({
@@ -82,18 +75,6 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
 }, null, 2);
 
-const FE_ENTRY_TEMPLATE = (_name: string) => `import type { PackFERegistration } from '@abuddy/sdk/fe';
-
-const registration: PackFERegistration = {
-  plugins: [],
-  // steps: [],
-  // artifacts: [],
-  // blocks: [],
-};
-
-export default registration;
-`;
-
 const VITEST_CONFIG_TEMPLATE = `import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -110,7 +91,7 @@ export const steps: StepDefinition[] = [
 ];
 `;
 
-const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '../types';
+const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '@abuddy/sdk/build';
 import { entry, on, keepAlive } from '#generated/flow-helpers';
 
 export default {
@@ -176,18 +157,6 @@ export async function init(args: string[]) {
     FEATURE_CONFIG_TEMPLATE(name),
   );
   fs.writeFileSync(
-    path.join(dir, 'src', 'entities.ts'),
-    ENTITIES_TEMPLATE,
-  );
-  fs.writeFileSync(
-    path.join(dir, 'src', 'types.ts'),
-    TYPES_TEMPLATE,
-  );
-  fs.writeFileSync(
-    path.join(dir, 'src', 'pack-entry-fe.ts'),
-    FE_ENTRY_TEMPLATE(name),
-  );
-  fs.writeFileSync(
     path.join(dir, 'vitest.config.ts'),
     VITEST_CONFIG_TEMPLATE,
   );
@@ -209,7 +178,8 @@ export async function init(args: string[]) {
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your seed code:`);
-  console.log(`  import type { ActionMeta, Services, Z } from '../../types';`);
+  console.log(`  import type { ActionMeta } from '@abuddy/sdk/build';`);
+  console.log(`  import type { Services, Z } from '#generated/services';`);
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);
