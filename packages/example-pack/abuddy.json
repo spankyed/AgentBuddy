@@ -14,7 +14,16 @@
   },
   "plugins": [],
   "permissions": [],
-  "steps": "src/steps/register.ts",
+  "steps": {
+    "register": "src/steps/register.ts",
+    "definitions": [
+      {
+        "type": "delay",
+        "path": "src/steps",
+        "dsl": { "primaryField": "duration" }
+      }
+    ]
+  },
   "boot": {
     "seed": {
       "actions": "src/seeds/actions",

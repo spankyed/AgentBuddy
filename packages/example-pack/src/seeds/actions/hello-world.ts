@@ -1,4 +1,4 @@
-import type { ActionMeta, Services, Z } from '../../types';
+import type { ActionMeta } from '@abuddy/sdk/build';
 
 export const meta: ActionMeta = {
   label: 'Hello World',
@@ -11,9 +11,6 @@ export const meta: ActionMeta = {
 
 export async function action(
   params: { name?: string },
-  _services: Services,
-  _z: Z,
-  _flowId?: string,
 ) {
   const name = params.name ?? 'World';
   return { greeting: `Hello, ${name}! (from example-pack)` };

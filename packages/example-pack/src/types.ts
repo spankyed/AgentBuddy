@@ -1,17 +1,13 @@
-export type {
-  EARS,
-  EntityId,
-  Services,
-  Z,
-  ActionMeta,
-  PromptMeta,
-  ActionParameter,
-  TemplateInput,
-} from '../.abuddy/generated/types';
+export type { EARS, BaseEntity } from '../.abuddy/generated/ears';
+export type { ActionMeta, ActionParameter, PromptMeta, TemplateInput } from '@abuddy/sdk/build';
+export type { DSLStepNode, FlowDSL, Track } from '@abuddy/sdk/build';
 
-import type { DSLStepNode } from '../.abuddy/generated/types';
+import type { EARS as _EARS } from '../.abuddy/generated/ears';
+export type EntityId = _EARS.EntityId;
 
-interface DSLDelayNode {
+import type { DSLStepNode } from '@abuddy/sdk/build';
+
+export interface DSLDelayNode {
   type: 'delay';
   duration: number;
   label?: string;
@@ -21,19 +17,3 @@ interface DSLDelayNode {
 }
 
 export type PackStepNode = DSLStepNode | DSLDelayNode;
-
-interface PackTrack {
-  event?: string;
-  schedule?: string;
-  label?: string;
-  description?: string;
-  exits: PackStepNode[][];
-}
-
-interface PackFlowConfig {
-  tracks: PackTrack[];
-  root?: boolean;
-  sourceHash?: string;
-}
-
-export type FlowDSL = Record<string, PackTrack[] | PackFlowConfig>;
