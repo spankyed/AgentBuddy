@@ -1,6 +1,7 @@
 import { rootEvents } from '../rpc';
 import { createLogger } from '../logger';
-import { randomId } from '../utils';
+// Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
+import { randomId } from '../utils/random-id';
 import { repository } from '../ears/repository';
 import type { EARS } from '../types/entities';
 import type { StepRuntimeError } from './types';
