@@ -6,10 +6,10 @@ import {
   resolveFeatureSettingsFromManifest,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '../../build';
+import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
 import { generate, resolveDepTypes } from './generate';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
-import { findFEEntry, bundlePackFE } from '../fe-bundler';
 
 async function loadPackConfig(root: string): Promise<PackConfig | null> {
   const configPath = path.join(root, 'compile.config.ts');
