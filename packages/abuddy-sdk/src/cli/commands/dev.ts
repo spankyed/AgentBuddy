@@ -18,6 +18,23 @@ function removeSignalFile(signalPath: string) {
   try { fs.unlinkSync(signalPath); } catch {}
 }
 
+function syncToPacksDir(srcDir: string, destDir: string) {
+  if (fs.existsSync(destDir)) fs.rmSync(destDir, { recursive: true, force: true });
+  copyDir(srcDir, destDir);
+}
+
+function copyDir(src: string, dest: string) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) continue;
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyDir(s, d);
+    else fs.copyFileSync(s, d);
+  }
+}
+
 export async function dev(_args: string[]) {
   const root = findPackRoot(process.cwd());
   const srcDir = path.join(root, 'src');
@@ -31,6 +48,13 @@ export async function dev(_args: string[]) {
 
   console.log('Running initial build...\n');
   await build([]);
+
+  const packsDir = getPacksDir();
+  const installedDir = path.join(packsDir, manifest.id);
+  const alreadyInstalled = fs.existsSync(path.join(installedDir, 'abuddy.json'));
+
+  console.log(`${alreadyInstalled ? 'Syncing' : 'Installing'} pack to ${installedDir}...`);
+  syncToPacksDir(root, installedDir);
 
   if (!feEntry) {
     console.log('No FE entry found. Falling back to watch + rebuild mode.\n');
