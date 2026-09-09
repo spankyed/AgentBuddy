@@ -1,17 +1,36 @@
 const path = require('path');
+const fs = require('fs');
+
+const packagesDir = path.join(__dirname, '..');
+
+function discoverBuiltInPackContentPaths() {
+  const paths = [];
+  for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = path.join(packagesDir, entry.name, 'abuddy.json');
+    if (!fs.existsSync(manifestPath)) continue;
+    try {
+      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      if (m.builtIn && m.id) {
+        paths.push(path.join(packagesDir, entry.name, 'src/**/*.{vue,js,ts,jsx,tsx}'));
+      }
+    } catch {}
+  }
+  return paths;
+}
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     path.join(__dirname, './index.html'),
     path.join(__dirname, './src/**/*.{vue,js,ts,jsx,tsx}'),
-    path.join(__dirname, '../default-setup/src/**/*.{vue,js,ts,jsx,tsx}'),
-    path.join(__dirname, '../abuddy-sdk/src/**/*.{vue,js,ts,jsx,tsx}'),
+    path.join(packagesDir, 'abuddy-sdk/src/fe/**/*.{vue,js,ts,jsx,tsx}'),
+    ...discoverBuiltInPackContentPaths(),
   ],
   safelist: [
     // Ensure these classes are always generated for testing
     'bg-red-500',
-    'text-white', 
+    'text-white',
     'p-4',
     'hidden',
     'bg-neutral-900',
@@ -30,7 +49,7 @@ module.exports = {
       },
       keyframes: {
         'slide-down': {
-          '0%': { 
+          '0%': {
             opacity: '0',
             transform: 'translateY(-10px)'
           },

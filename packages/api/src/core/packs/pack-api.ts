@@ -12,6 +12,7 @@ export interface PackRegistryEntry {
   name: string;
   version: string;
   feEntry?: string;
+  feStyles?: string;
   plugins: {
     id: string;
     entry: string;
@@ -22,12 +23,13 @@ export interface PackRegistryEntry {
 
 function toRegistryEntries(packs: LoadedPack[]): PackRegistryEntry[] {
   return packs
-    .filter(p => p.manifest.fe?.entry || p.manifest.plugins?.some(d => d.plugin))
+    .filter(p => p.manifest.fe?.entry || p.manifest.fe?.styles || p.manifest.plugins?.some(d => d.plugin))
     .map(p => ({
       id: p.manifest.id,
       name: p.manifest.name,
       version: p.manifest.version,
       feEntry: p.manifest.fe?.entry,
+      feStyles: p.manifest.fe?.styles,
       plugins: (p.manifest.plugins ?? [])
         .filter(d => d.plugin)
         .map(d => ({

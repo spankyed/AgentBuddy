@@ -23,7 +23,7 @@ export interface PackManifest {
   packServices?: Record<string, string>;
   defaultPlugin?: string;
   partitionPolicy?: { excludedEntityTypes?: string[]; secretEntityTypes?: string[] };
-  fe?: { tiptapPlugins?: string; appExtensions?: Record<string, string> };
+  fe?: { tiptapPlugins?: string; appExtensions?: Record<string, string>; styles?: string };
   entityShapes?: Record<string, { source: string; type: string }>;
   dsl?: Record<string, DslEntry>;
 }

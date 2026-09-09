@@ -17,6 +17,21 @@ async function resolveLucideIcon(iconName: string): Promise<any> {
   }
 }
 
+export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: string): Promise<void> {
+  return new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${packBaseUrl}/${stylesPath}`;
+    link.dataset.packId = packId;
+    link.onload = () => resolve();
+    link.onerror = () => {
+      console.warn(`[pack-loader] Failed to load styles for pack ${packId}`);
+      resolve();
+    };
+    document.head.appendChild(link);
+  });
+}
+
 export async function loadPackFEEntry(
   entry: string,
   packBaseUrl: string,

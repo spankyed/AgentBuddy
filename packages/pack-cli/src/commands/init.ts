@@ -13,7 +13,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     hostVersion: '>=0.3.0',
     entities: { [pascalName]: pascalName },
     relKinds: {},
-    fe: { entry: 'dist/fe.js' },
+    fe: { entry: 'dist/fe.js', styles: 'dist/fe.css' },
     plugins: [],
     dependencies: {},
     permissions: [],

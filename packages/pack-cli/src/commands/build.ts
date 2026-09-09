@@ -101,6 +101,10 @@ export async function build(args: string[]) {
     const feResult = await bundlePackFE({ packDir: root, outputDir, entryPoint: feEntry });
     if (feResult.success) {
       console.log(`  fe: dist/fe.js`);
+      const cssPath = path.join(outputDir, 'fe.css');
+      if (fs.existsSync(cssPath)) {
+        console.log(`  fe styles: dist/fe.css`);
+      }
     } else {
       console.error(`\nFE bundle failed: ${feResult.error}`);
     }

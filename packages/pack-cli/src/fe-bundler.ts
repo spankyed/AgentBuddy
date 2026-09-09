@@ -95,15 +95,14 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   // Dynamic import so pack-cli doesn't hard-depend on esbuild at module level
   const esbuild = await import('esbuild');
 
-  const outfile = path.join(outputDir, 'fe.js');
-
   const buildOptions: BuildOptions = {
     entryPoints: [entryPoint],
     bundle: true,
     format: 'esm',
     platform: 'browser',
     target: 'es2022',
-    outfile,
+    outdir: outputDir,
+    entryNames: 'fe',
     minify: false,
     sourcemap: true,
     plugins: [

@@ -11,7 +11,7 @@ import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
-import { loadPackPlugins, loadPackFEEntry } from '@/core/packs/pack-loader';
+import { loadPackPlugins, loadPackFEEntry, loadPackStyles } from '@/core/packs/pack-loader';
 import '@/core/packs/host-deps';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 
@@ -151,6 +151,10 @@ trpc.packs.registry.query().then(async (registry) => {
   if (!registry.length) return;
   for (const pack of registry) {
     const packBaseUrl = `pack://${pack.id}`;
+
+    if (pack.feStyles) {
+      await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
+    }
 
     if (pack.feEntry) {
       const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);

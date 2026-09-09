@@ -61,7 +61,7 @@ export interface PackManifest {
   hostVersion?: string;
   seedTypes?: string[];
   plugins?: PackPluginDefinition[];
-  fe?: { entry: string };
+  fe?: { entry: string; styles?: string };
   permissions?: string[];
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
