@@ -4,9 +4,6 @@
     "paths": {
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
-      "@/registries/*": ["../default-setup/src/registries/*"],
-      "@/plugins/*": ["../default-setup/src/plugins/*"],
-      "@/steps/*": ["../default-setup/src/steps/*"],
       "@/*": ["src/*"]
     }
   }
