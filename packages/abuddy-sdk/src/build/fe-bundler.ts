@@ -2,7 +2,28 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin, BuildOptions } from 'esbuild';
-import { getSharedFeDeps } from '../shared-deps';
+import { getSharedFeDeps, getSdkFeModules } from '../shared-deps';
+
+function parseNamedExports(source: string): string[] {
+  const exports: string[] = [];
+  const cleaned = source.replace(/export\s+type\s*\{[^}]*\}/g, '');
+
+  for (const match of cleaned.matchAll(/export\s*\{([^}]+)\}/g)) {
+    for (const item of match[1].split(',')) {
+      const trimmed = item.trim();
+      if (!trimmed || trimmed.startsWith('type ')) continue;
+      const asMatch = trimmed.match(/\w+\s+as\s+(\w+)/);
+      const name = asMatch ? asMatch[1] : trimmed.split(/\s/)[0];
+      if (name !== 'default') exports.push(name);
+    }
+  }
+
+  for (const match of cleaned.matchAll(/export\s+(?:const|let|var|function|class)\s+(\w+)/g)) {
+    exports.push(match[1]);
+  }
+
+  return [...new Set(exports)];
+}
 
 function hostDepsPlugin(packDir: string): Plugin {
   const feDeps = getSharedFeDeps();
@@ -52,20 +73,43 @@ function hostDepsPlugin(packDir: string): Plugin {
   };
 }
 
-// Resolves @abuddy/sdk/* imports to the actual SDK source in the workspace,
-// so pack FE code can import composables, design components, etc.
-function sdkResolvePlugin(packDir: string): Plugin {
+function sdkExternalPlugin(packDir: string): Plugin {
+  const sdkModules = getSdkFeModules();
+
   return {
-    name: 'sdk-resolve',
+    name: 'sdk-external',
     setup(build) {
       build.onResolve({ filter: /^@abuddy\/sdk/ }, (args) => {
+        if (sdkModules[args.path]) {
+          return { path: args.path, namespace: 'sdk-external' };
+        }
         try {
           const req = createRequire(path.join(packDir, 'package.json'));
-          const resolved = req.resolve(args.path);
-          return { path: resolved };
+          return { path: req.resolve(args.path) };
         } catch {
           return undefined;
         }
+      });
+
+      build.onLoad({ filter: /.*/, namespace: 'sdk-external' }, (args) => {
+        const mod = sdkModules[args.path];
+        if (!mod) return undefined;
+
+        let namedExports: string[] = [];
+        try {
+          const req = createRequire(path.join(packDir, 'package.json'));
+          const sourcePath = req.resolve(args.path);
+          namedExports = parseNamedExports(fs.readFileSync(sourcePath, 'utf-8'));
+        } catch {}
+
+        const lines = [`const __m = window.__abuddy.${mod.globalKey};`];
+        if (namedExports.length > 0) {
+          lines.push(`const { ${namedExports.join(', ')} } = __m;`);
+          lines.push(`export { ${namedExports.join(', ')} };`);
+        }
+        lines.push(`export default __m;`);
+
+        return { contents: lines.join('\n'), loader: 'js' };
       });
     },
   };
@@ -105,7 +149,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
     sourcemap: true,
     plugins: [
       hostDepsPlugin(packDir),
-      sdkResolvePlugin(packDir),
+      sdkExternalPlugin(packDir),
     ],
     // .vue SFC files require a separate build tool (Vite);
     // pack-cli bundles .ts/.tsx out of the box

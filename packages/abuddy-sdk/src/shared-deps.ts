@@ -26,6 +26,24 @@ export function getSharedFeDeps(): Record<string, SharedDep & { globalKey: strin
   ) as Record<string, SharedDep & { globalKey: string }>;
 }
 
+export interface SdkFeModule {
+  globalKey: string;
+}
+
+export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
+  '@abuddy/sdk/fe':           { globalKey: 'sdkFe' },
+  '@abuddy/sdk/runtime':      { globalKey: 'sdkRuntime' },
+  '@abuddy/sdk/steps':        { globalKey: 'sdkSteps' },
+  '@abuddy/sdk/artifacts':    { globalKey: 'sdkArtifacts' },
+  '@abuddy/sdk/blocks':       { globalKey: 'sdkBlocks' },
+  '@abuddy/sdk/designations': { globalKey: 'sdkDesignations' },
+  '@abuddy/sdk/helpers':      { globalKey: 'sdkHelpers' },
+};
+
+export function getSdkFeModules(): Record<string, SdkFeModule> {
+  return SDK_FE_MODULES;
+}
+
 export function getSharedBeDeps(): string[] {
   return Object.keys(SHARED_DEPS).filter(k => SHARED_DEPS[k].target !== 'fe');
 }

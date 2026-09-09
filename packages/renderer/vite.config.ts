@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps } from '@abuddy/sdk/shared-deps'
+import { getSharedFeDeps, getSdkFeModules } from '@abuddy/sdk/shared-deps'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -71,12 +71,19 @@ function hostDepsPlugin(): Plugin {
   const VIRTUAL_ID = 'virtual:host-deps';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
   const feDeps = getSharedFeDeps();
+  const sdkModules = getSdkFeModules();
 
-  const importLines = Object.entries(feDeps)
+  const depsImportLines = Object.entries(feDeps)
     .map(([pkg, { globalKey }]) => `import * as ${globalKey} from '${pkg}';`)
     .join('\n');
-  const keys = Object.values(feDeps).map(d => d.globalKey).join(', ');
-  const virtualContent = `${importLines}\nwindow.__abuddy = { ${keys} };\n`;
+  const sdkImportLines = Object.entries(sdkModules)
+    .map(([pkg, { globalKey }]) => `import * as ${globalKey} from '${pkg}';`)
+    .join('\n');
+  const allKeys = [
+    ...Object.values(feDeps).map(d => d.globalKey),
+    ...Object.values(sdkModules).map(d => d.globalKey),
+  ].join(', ');
+  const virtualContent = `${depsImportLines}\n${sdkImportLines}\nwindow.__abuddy = { ${allKeys} };\n`;
 
   return {
     name: 'host-deps',
