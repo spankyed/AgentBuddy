@@ -6,48 +6,16 @@ import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
 import {
   readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry,
-  type PackRegistryEntry,
+  type PackRegistryEntry, type PackInfo, type BuiltInPackInfo,
   installPack as runInstall, uninstallPack as runUninstall,
   getPackContributions, type PackContributions,
 } from '@abuddy/sdk/packs';
-import type { PackFeatureDef } from '@abuddy/sdk/framework';
 
-export interface PackInfo {
-  id: string;
-  name: string;
-  version: string;
-  enabled: boolean;
-  builtIn: boolean;
-  entityCount: number;
-  hasFeEntry: boolean;
-  hostVersion?: string;
-  description?: string;
-  entities: Record<string, string>;
-  relKinds: Record<string, string>;
-  plugins: string[];
-  permissions: string[];
-  systems: string[];
-  services: string[];
-  steps: string[];
-  artifacts: string[];
-  blocks: string[];
-  migrationCount: number;
-  bootHooks: string[];
-  features: PackFeatureDef[];
-  dir?: string;
-  registeredAt?: string;
-}
+export type { PackInfo };
 
-interface BuiltInPackEntry {
-  id: string;
-  name: string;
-  version: string;
-  dir: string;
-}
+let _builtInPacks: BuiltInPackInfo[] = [];
 
-let _builtInPacks: BuiltInPackEntry[] = [];
-
-export function setBuiltInPacks(packs: BuiltInPackEntry[] | undefined): void {
+export function setBuiltInPacks(packs: BuiltInPackInfo[] | undefined): void {
   _builtInPacks = packs ?? [];
 }
 

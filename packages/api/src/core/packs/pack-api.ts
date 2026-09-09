@@ -7,7 +7,7 @@ export function setLoadedPacks(packs: LoadedPack[]) {
   _loadedPacks = packs;
 }
 
-export interface PackRegistryEntry {
+export interface PackBundleEntry {
   id: string;
   name: string;
   version: string;
@@ -21,7 +21,7 @@ export interface PackRegistryEntry {
   }[];
 }
 
-function toRegistryEntries(packs: LoadedPack[]): PackRegistryEntry[] {
+function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
   return packs
     .filter(p => p.manifest.fe?.entry || p.manifest.fe?.styles || p.manifest.plugins?.some(d => d.plugin))
     .map(p => ({

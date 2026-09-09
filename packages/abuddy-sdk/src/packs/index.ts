@@ -7,7 +7,7 @@ export {
   getBootHooks, runRegisteredBootSeeds,
   getPackContributions,
 } from './pack-registration';
-export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions } from './pack-registration';
+export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration';
 
 // Discovery
 export {

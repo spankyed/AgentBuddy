@@ -225,6 +225,32 @@ export interface PackContributions {
   features: PackFeatureDef[];
 }
 
+export interface PackInfo {
+  id: string;
+  name: string;
+  version: string;
+  enabled: boolean;
+  builtIn: boolean;
+  entityCount: number;
+  hasFeEntry: boolean;
+  hostVersion?: string;
+  description?: string;
+  entities: Record<string, string>;
+  relKinds: Record<string, string>;
+  plugins: string[];
+  permissions: string[];
+  systems: string[];
+  services: string[];
+  steps: string[];
+  artifacts: string[];
+  blocks: string[];
+  migrationCount: number;
+  bootHooks: string[];
+  features: PackFeatureDef[];
+  dir?: string;
+  registeredAt?: string;
+}
+
 export function getPackContributions(packId: string): PackContributions | null {
   const reg = registrations.get(packId);
   if (!reg) return null;

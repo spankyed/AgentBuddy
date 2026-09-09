@@ -1,42 +1,11 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { trpc } from '@abuddy/sdk/rpc';
+import type { PackInfo } from '@abuddy/sdk/packs';
+
+export type { PackInfo };
 
 export const id = 'packs';
-
-export interface PackFeatureInfo {
-  id: string;
-  designation?: string;
-  hasSystem: boolean;
-  plugin?: { label: string; icon: string; isPinned?: boolean };
-  services: string[];
-}
-
-export interface PackInfo {
-  id: string;
-  name: string;
-  version: string;
-  enabled: boolean;
-  builtIn: boolean;
-  entityCount: number;
-  hasFeEntry: boolean;
-  hostVersion?: string;
-  description?: string;
-  entities: Record<string, string>;
-  relKinds: Record<string, string>;
-  plugins: string[];
-  permissions: string[];
-  systems: string[];
-  services: string[];
-  steps: string[];
-  artifacts: string[];
-  blocks: string[];
-  migrationCount: number;
-  bootHooks: string[];
-  features: PackFeatureInfo[];
-  dir?: string;
-  registeredAt?: string;
-}
 
 export interface PacksContext {
   packs: PackInfo[];
