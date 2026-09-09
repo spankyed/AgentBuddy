@@ -24,12 +24,17 @@ export { discoverBuiltInPacks } from '@abuddy/sdk/packs';
 export { computePackSeedHash, seedPackData } from './pack-seed';
 
 // ── Built-in pack loading ────────────────────────────────────────────
-// Dev: scans packagesDir for abuddy.json, dynamically imports each pack.
-// Prod: tsup replaces this function body (between the @tsup-rewrite markers)
-// with hardcoded require() calls and a baked-in BuiltInPackInfo[] return value.
-// Both versions take packagesDir and return BuiltInPackInfo[].
+// The loader map is provided by a virtual module generated at build time
+// by the 'built-in-pack-loaders' esbuild plugin in tsup.config.ts. It
+// discovers built-in packs (abuddy.json with builtIn: true) and generates
+// dynamic import() expressions that esbuild can trace and bundle. tsc uses
+// the module declaration below for types without following into pack source.
+//
+// To add a new built-in pack: drop an abuddy.json with builtIn: true and
+// a src/__generated__/pack-entry.ts — the plugin picks it up automatically.
 
-// @tsup-rewrite-start loadBuiltInPacks
+import builtInLoaders from 'virtual:built-in-pack-loaders';
+
 export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPackInfo[]> {
   const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
@@ -38,9 +43,13 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
   }
   const loaded: BuiltInPackInfo[] = [];
   for (const pack of discovered) {
-    const entryPath = path.join(pack.dir, pack.entry);
+    const loader = builtInLoaders[pack.id];
+    if (!loader) {
+      logger.warn(`Built-in pack ${pack.id}: no loader in virtual:built-in-pack-loaders, skipping`);
+      continue;
+    }
     try {
-      const mod = await import(entryPath);
+      const mod = await loader();
       if (!mod.registration) {
         logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
@@ -54,7 +63,6 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
   }
   return loaded;
 }
-// @tsup-rewrite-end loadBuiltInPacks
 
 // ── External pack loading ────────────────────────────────────────────
 

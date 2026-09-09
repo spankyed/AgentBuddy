@@ -6,10 +6,13 @@ Backend pack infrastructure. Four modules handle discovery, loading, registratio
 
 ### Built-in packs
 
-Discovered from `packages/` by scanning for `abuddy.json` with `builtIn: true`. Loaded every boot. Built-in packs are pre-bundled in prod but designed to be disableable at runtime (architectural groundwork — no UI yet).
+Discovered from `packages/` by scanning for `abuddy.json` with `builtIn: true`. Designed to be disableable at runtime (architectural groundwork — no UI yet).
 
-- **Dev**: `loadBuiltInPacks()` in `pack-loader.ts` calls `discoverBuiltInPacks()` at runtime, then `await import()`s each pack's `src/__generated__/pack-entry` directly. Returns `BuiltInPackInfo[]`.
-- **Prod**: The tsup build (`packages/api/tsup.config.ts`) rewrites `loadBuiltInPacks()` at bundle time. The `rewrite-pack-loader` esbuild plugin scans `packages/` for `abuddy.json` during the build, then replaces the function body (between `@tsup-rewrite-start/end` markers) with hardcoded `require()` calls and a baked-in `BuiltInPackInfo[]` return value. The resulting bundle has no runtime discovery — packs are baked in. Both dev and prod versions take `packagesDir` and return `BuiltInPackInfo[]`, so callers use the return value directly.
+`loadBuiltInPacks()` in `pack-loader.ts` uses two mechanisms:
+- **Discovery** (`discoverBuiltInPacks()`) — runtime filesystem scan of `BUILT_IN_PACKS_DIR` for `abuddy.json` metadata (id, name, version). Returns `BuiltInPackInfo[]`.
+- **Loading** (`virtual:built-in-pack-loaders`) — a virtual module generated at build time by the `built-in-pack-loaders` esbuild plugin in `tsup.config.ts`. It scans `packages/` for built-in packs and generates `import()` expressions that esbuild traces and bundles as a code-split chunk (the pack code lives in a separate `dist/pack-entry-*.js` file, sharing dependencies with `server.js` via chunks). New built-in packs are picked up automatically — no manual registration needed.
+
+The same code path runs in both dev and prod (the API always runs from the tsup bundle).
 
 ### External packs
 
@@ -116,14 +119,13 @@ Packs without `fe.entry` fall back to per-plugin loading from `plugins[].plugin.
 
 External pack FE modules cannot call `registerPackFE()` themselves — they don't share the host's SDK module instance (they'd register into a separate copy of the registries). The host always mediates.
 
-## tsup rewrite details
+## Built-in pack loading via virtual module
 
-The `@tsup-rewrite-start/end loadBuiltInPacks` markers in `pack-loader.ts` delimit the function body that gets replaced during production builds. The rewrite:
-- Runs `discoverBuiltInPackEntries()` in tsup.config.ts at build time (not runtime)
-- Generates one `require()` + `registerPack()` call per discovered built-in pack
-- Bakes a `BuiltInPackInfo[]` return value with `id`, `name`, `version`, `dir`, and `entry` from each pack's `abuddy.json` — the `dir` is computed at runtime from the `packagesDir` argument (set by `BUILT_IN_PACKS_DIR` env var)
-- Also replaces `esmRequire(` → `require(` globally in the file (CJS compat)
+The `built-in-pack-loaders` esbuild plugin in `tsup.config.ts` provides a `virtual:built-in-pack-loaders` module. At build time it:
+- Scans `packages/` for `abuddy.json` with `builtIn: true`
+- Generates a loader map: `{ 'pack-id': () => import('./relative/path/to/pack-entry') }`
+- esbuild traces the string-literal `import()` paths and bundles each pack as a code-split chunk
 
-Both dev and prod versions of `loadBuiltInPacks()` accept `packagesDir: string` and return `BuiltInPackInfo[]`. Callers use the return value directly — no separate `discoverBuiltInPacks()` call needed.
+The type declaration for the virtual module lives in `src/env.d.ts`. `pack-loader.ts` imports the module and calls loaders by pack ID during boot. Runtime discovery (`discoverBuiltInPacks()`) still runs to get pack metadata (name, version, dir) for the registry.
 
-If you add a new built-in pack, it's picked up automatically by both paths — dev via runtime filesystem scan, prod via the build-time scan in tsup.config.ts.
+If you add a new built-in pack, it's picked up automatically — the plugin discovers it at build time, and `discoverBuiltInPacks()` finds it at runtime.
