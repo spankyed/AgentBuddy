@@ -1,31 +1,21 @@
 import { getHostModule } from '../runtime/host';
 
-// --- Paths ---
-let _pathsMod: any;
-function pathsMod() { if (!_pathsMod) _pathsMod = getHostModule('paths'); return _pathsMod; }
+// --- Paths (direct) ---
+export {
+  getUserDataPath, getSearchIndicesPath, getModelsCachePath,
+  getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath,
+  ensureDirectoryExists, createExportDir,
+  getIndexPath, getIndexFilePath, getIndexMetadataPath, getIndexMappingsPath,
+  resolvePath,
+} from './paths';
 
-export function getMediaPath(...args: any[]): string { return pathsMod().getMediaPath(...args); }
-export function getLmdbPath(...args: any[]): string { return pathsMod().getLmdbPath(...args); }
-export function getVolatileLmdbPath(...args: any[]): string { return pathsMod().getVolatileLmdbPath(...args); }
-export function getSecretsLmdbPath(...args: any[]): string { return pathsMod().getSecretsLmdbPath(...args); }
-export function createExportDir(parentDir: string, systemName: string): string { return pathsMod().createExportDir(parentDir, systemName); }
-export function ensureDirectoryExists(dirPath: string): void { return pathsMod().ensureDirectoryExists(dirPath); }
-
-// --- Media ---
-let _mediaMod: any;
-function mediaMod() { if (!_mediaMod) _mediaMod = getHostModule('media'); return _mediaMod; }
-
-export function extractMediaRefs(...args: any[]): any[] { return mediaMod().extractMediaRefs(...args); }
-export function copyMediaByRef(...args: any[]): any { return mediaMod().copyMediaByRef(...args); }
-export function rewriteMediaUrls(...args: any[]): string { return mediaMod().rewriteMediaUrls(...args); }
-export function copyFlatMedia(...args: any[]): any { return mediaMod().copyFlatMedia(...args); }
-export function resolveMedia(...args: any[]): any { return mediaMod().resolveMedia(...args); }
-export function readMediaBuffer(...args: any[]): any { return mediaMod().readMediaBuffer(...args); }
-export function extractAndResolveImages(...args: any[]): any[] { return mediaMod().extractAndResolveImages(...args); }
-export function stripMediaRefs(...args: any[]): string { return mediaMod().stripMediaRefs(...args); }
-export function restoreJsonMediaRefs(...args: any[]): { content: string; mediaRestored: number } { return mediaMod().restoreJsonMediaRefs(...args); }
-export function restoreMarkdownMediaRefs(...args: any[]): { content: string; mediaRestored: number } { return mediaMod().restoreMarkdownMediaRefs(...args); }
-export type MediaRef = any;
+// --- Media (direct) ---
+export {
+  extractMediaRefs, copyMediaByRef, rewriteMediaUrls, copyFlatMedia,
+  resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs,
+  restoreJsonMediaRefs, restoreMarkdownMediaRefs,
+} from './media';
+export type { MediaRef, ResolvedMedia } from './media';
 
 export interface ImagePart {
   type: 'image'
@@ -33,39 +23,38 @@ export interface ImagePart {
   mimeType: string
 }
 
+import { extractMediaRefs as _extractMediaRefs, readMediaBuffer as _readMediaBuffer } from './media';
+
 export function extractImageParts(markdown: string): ImagePart[] {
-  return extractMediaRefs(markdown)
-    .map((ref: any) => readMediaBuffer(ref))
-    .filter((img: any): img is NonNullable<typeof img> => img !== null)
-    .map((img: any) => ({
+  return _extractMediaRefs(markdown)
+    .map((ref) => _readMediaBuffer(ref))
+    .filter((img): img is NonNullable<typeof img> => img !== null)
+    .map((img) => ({
       type: 'image' as const,
       image: img.data,
       mimeType: img.mimeType,
     }));
 }
 
-// --- Export ---
-let _exportMod: any;
-function exportMod() { if (!_exportMod) _exportMod = getHostModule('export'); return _exportMod; }
+// --- Export utilities (direct) ---
+export {
+  writeExportJson, writeExportFile, stripInternalFields,
+  toSlug, uniqueFilename,
+} from './export';
 
-export function writeExportJson(outputDir: string, filename: string, data: unknown): string { return exportMod().writeExportJson(outputDir, filename, data); }
-export function writeExportFile(dir: string, filename: string, content: string): string { return exportMod().writeExportFile(dir, filename, content); }
-export function stripInternalFields<T extends object>(items: T[]): Record<string, unknown>[] {
-  return exportMod().stripInternalFields(items);
-}
-export function toSlug(text: string): string { return exportMod().toSlug(text); }
-export function uniqueFilename(name: string, existingNames: Set<string>): string { return exportMod().uniqueFilename(name, existingNames); }
+// --- Resolve CLI (direct) ---
+export {
+  resolveForService, resolveCliPath, testCli,
+  isCliName, clearCliPathCache,
+} from './resolve-cli';
+export type { CliName } from './resolve-cli';
 
-// --- Resolve CLI ---
-let _cliMod: any;
-function cliMod() { if (!_cliMod) _cliMod = getHostModule('resolve-cli'); return _cliMod; }
-
-export function resolveForService(name: string): Promise<string> {
-  return cliMod().resolveForService(name);
-}
-export function testCli(...args: any[]): any { return cliMod().testCli(...args); }
-export function isCliName(name: string): boolean { return cliMod().isCliName(name); }
-export function clearCliPathCache(): void { return cliMod().clearCliPathCache(); }
+// --- Seed (direct) ---
+export {
+  registerSeeder, seedData, seedCollection,
+  loadJSON, shouldSeedAll, filterByInclude,
+} from './seed';
+export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } from './seed';
 
 // --- Rename / Remove Mapping ---
 
@@ -270,82 +259,26 @@ export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ');
 }
 
-// --- System Errors ---
+// --- System Errors (host-injected) ---
 let _systemErrorsMod: any;
 function systemErrorsMod() { if (!_systemErrorsMod) _systemErrorsMod = getHostModule('system-errors'); return _systemErrorsMod; }
 
 export function reportSystemError(...args: any[]): void { return systemErrorsMod().reportSystemError(...args); }
 
-// --- Seed ---
-let _seedMod: any;
-function seedMod() { if (!_seedMod) _seedMod = getHostModule('seed'); return _seedMod; }
-
-export interface SeedCounts {
-  created: number;
-  updated: number;
-  skipped: number;
-}
-
-export type SeedIncludeSet = true | ReadonlySet<string>;
-
-export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
-
-export interface SeederContext {
-  compiledDir: string;
-  include?: SeedIncludeSet;
-  mode?: ImportMode;
-  log: (...args: any[]) => void;
-}
-
-export interface Seeder {
-  key: string;
-  seed(ctx: SeederContext): SeedCounts;
-}
-
-export function registerSeeder(seeder: Seeder): void { return seedMod().registerSeeder(seeder); }
-
-export function seedData(options: {
-  compiledDir: string;
-  include?: Record<string, SeedIncludeSet | undefined>;
-  mode?: ImportMode;
-  verbose?: boolean;
-}): Record<string, SeedCounts> { return seedMod().seedData(options); }
-
-export function seedCollection<T>(opts: {
-  file: string;
-  label: string;
-  getKey: (item: T) => string;
-  findExisting: (item: T) => { id: string } | undefined;
-  create: (item: T) => void;
-  update: (id: string, item: T) => void;
-  log: (...args: any[]) => void;
-  include?: SeedIncludeSet;
-  mode?: ImportMode;
-  wipe?: () => void;
-  getSourceHash?: (item: T) => string | undefined;
-  getExistingSourceHash?: (existing: { id: string }) => string | undefined;
-}): SeedCounts { return seedMod().seedCollection(opts); }
-
-export function loadJSON<T = unknown>(filePath: string): T | null { return seedMod().loadJSON(filePath); }
-export function shouldSeedAll(inc?: SeedIncludeSet): boolean { return seedMod().shouldSeedAll(inc); }
-export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc?: SeedIncludeSet): T[] {
-  return seedMod().filterByInclude(items, getKey, inc);
-}
-
-// --- Lifecycle ---
+// --- Lifecycle (host-injected) ---
 let _lifecycleMod: any;
 function lifecycleMod() { if (!_lifecycleMod) _lifecycleMod = getHostModule('lifecycle'); return _lifecycleMod; }
 
 export function registerShutdownHook(fn: () => void | Promise<void>): void { return lifecycleMod().registerShutdownHook(fn); }
 export function runShutdownHooks(): Promise<void> { return lifecycleMod().runShutdownHooks(); }
 
-// --- Version ---
+// --- Version (host-injected) ---
 let _versionMod: any;
 function versionMod() { if (!_versionMod) _versionMod = getHostModule('version'); return _versionMod; }
 
 export function getAppVersion(): string { return versionMod().APP_VERSION; }
 
-// --- Migrations ---
+// --- Migrations (host-injected) ---
 let _migrationsMod: any;
 function migrationsMod() { if (!_migrationsMod) _migrationsMod = getHostModule('migrations'); return _migrationsMod; }
 

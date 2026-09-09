@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { EARS } from '@/core/types';
+import type { EARS } from '../types';
 
 export interface SeedCounts {
   created: number;

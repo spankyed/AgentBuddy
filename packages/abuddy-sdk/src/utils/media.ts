@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { getMediaPath, ensureDirectoryExists } from '@/core/shared/paths'
+import { getMediaPath, ensureDirectoryExists } from './paths'
 
 // ---------------------------------------------------------------------------
 // Types
