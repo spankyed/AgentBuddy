@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createLogger } from '../logger';
+import { getPacksDir, discoverBuiltInPacks } from './pack-discovery';
 
 const logger = createLogger('pack-installer');
 
@@ -11,11 +12,7 @@ export interface InstallResult {
   name: string;
   version: string;
   dir: string;
-}
-
-function getPacksDir(): string {
-  const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
-  return path.join(userDataPath, 'packs');
+  missingDependencies: string[];
 }
 
 function ensurePacksDir(): string {
@@ -82,6 +79,43 @@ function findPackRoot(dir: string): string {
   return dir;
 }
 
+function getBuiltInPackIds(): Set<string> {
+  const ids = new Set<string>();
+  const builtInDir = process.env.BUILT_IN_PACKS_DIR;
+  if (builtInDir) {
+    for (const pack of discoverBuiltInPacks(builtInDir)) ids.add(pack.id);
+    return ids;
+  }
+  const packagesDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
+  try {
+    for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const manifestPath = path.join(packagesDir, entry.name, 'abuddy.json');
+      if (!fs.existsSync(manifestPath)) continue;
+      try {
+        const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        if (m.builtIn && m.id) ids.add(m.id);
+      } catch {}
+    }
+  } catch {}
+  return ids;
+}
+
+export function checkDependencies(
+  manifest: { dependencies?: Record<string, string> },
+  packsDir: string,
+): string[] {
+  const deps = manifest.dependencies ?? {};
+  if (Object.keys(deps).length === 0) return [];
+  const builtInIds = getBuiltInPackIds();
+  const missing: string[] = [];
+  for (const depId of Object.keys(deps)) {
+    if (builtInIds.has(depId)) continue;
+    if (!fs.existsSync(path.join(packsDir, depId, 'abuddy.json'))) missing.push(depId);
+  }
+  return missing;
+}
+
 export async function installPackFromLocal(source: string): Promise<InstallResult> {
   const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
   const resolved = path.resolve(expanded);
@@ -120,9 +154,13 @@ export async function installPackFromLocal(source: string): Promise<InstallResul
     }
 
     copyDir(sourceDir, destDir);
+    const missingDependencies = checkDependencies(
+      JSON.parse(fs.readFileSync(path.join(destDir, 'abuddy.json'), 'utf-8')),
+      ensurePacksDir(),
+    );
     logger.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
 
-    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir };
+    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies };
   } finally {
     cleanup?.();
   }
@@ -139,39 +177,30 @@ export async function installPackFromUrl(url: string): Promise<InstallResult> {
     const buffer = Buffer.from(await response.arrayBuffer());
     fs.writeFileSync(downloadPath, buffer);
 
+    const extractDir = path.join(tmpDir, 'extracted');
     if (filename.endsWith('.tgz') || filename.endsWith('.tar.gz')) {
-      const extractDir = path.join(tmpDir, 'extracted');
       extractTgz(downloadPath, extractDir);
-      const sourceDir = findPackRoot(extractDir);
-      const manifest = validateManifest(sourceDir);
-      const packsDir = ensurePacksDir();
-      const destDir = path.join(packsDir, manifest.id);
-
-      if (fs.existsSync(destDir)) {
-        fs.rmSync(destDir, { recursive: true, force: true });
-      }
-      copyDir(sourceDir, destDir);
-      logger.info(`Installed "${manifest.name}" v${manifest.version} from URL`);
-      return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir };
-    }
-
-    if (filename.endsWith('.zip')) {
-      const extractDir = path.join(tmpDir, 'extracted');
+    } else if (filename.endsWith('.zip')) {
       extractZip(downloadPath, extractDir);
-      const sourceDir = findPackRoot(extractDir);
-      const manifest = validateManifest(sourceDir);
-      const packsDir = ensurePacksDir();
-      const destDir = path.join(packsDir, manifest.id);
-
-      if (fs.existsSync(destDir)) {
-        fs.rmSync(destDir, { recursive: true, force: true });
-      }
-      copyDir(sourceDir, destDir);
-      logger.info(`Installed "${manifest.name}" v${manifest.version} from URL`);
-      return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir };
+    } else {
+      throw new Error('URL must point to a .tgz or .zip file');
     }
 
-    throw new Error('URL must point to a .tgz or .zip file');
+    const sourceDir = findPackRoot(extractDir);
+    const manifest = validateManifest(sourceDir);
+    const packsDir = ensurePacksDir();
+    const destDir = path.join(packsDir, manifest.id);
+
+    if (fs.existsSync(destDir)) {
+      fs.rmSync(destDir, { recursive: true, force: true });
+    }
+    copyDir(sourceDir, destDir);
+    const missingDependencies = checkDependencies(
+      JSON.parse(fs.readFileSync(path.join(destDir, 'abuddy.json'), 'utf-8')),
+      packsDir,
+    );
+    logger.info(`Installed "${manifest.name}" v${manifest.version} from URL`);
+    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies };
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

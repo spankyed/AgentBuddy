@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getPacksDir } from './install';
+import { getPacksDir } from '../../packs/pack-discovery';
 
 export async function list(_args: string[]) {
   const packsDir = getPacksDir();
