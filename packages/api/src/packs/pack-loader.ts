@@ -71,7 +71,8 @@ const SDK_BRIDGE: Record<string, any> = {
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
-const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
+// Always use createRequire — esbuild's require shim is a Proxy without .cache
+const esmRequire = Module.createRequire(_metaUrl);
 const logger = createLogger('pack-loader');
 
 let _hostSdkVersion: string | undefined;
