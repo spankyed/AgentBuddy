@@ -96,9 +96,11 @@ export function registerPack(registration: PackRegistration): void {
     throw err;
   }
 
-  const designated = registration.systems.filter(s => s.designation);
-  if (designated.length) {
-    registerDesignations(designated.map(s => s.designation!));
+  const systemDesignations = registration.systems.filter(s => s.designation).map(s => s.designation!);
+  const featureDesignations = (registration.features ?? []).filter(f => f.designation).map(f => f.designation!);
+  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
+  if (allDesignations.length) {
+    registerDesignations(allDesignations);
   }
 
   registrations.set(registration.id, registration);
@@ -121,9 +123,11 @@ export function unregisterPack(packId: string): void {
     for (const block of reg.blocks) blockRegistry.unregister(block.type);
   }
 
-  const designated = reg.systems.filter(s => s.designation);
-  if (designated.length) {
-    unregisterDesignations(designated.map(s => s.designation!));
+  const systemDesignations = reg.systems.filter(s => s.designation).map(s => s.designation!);
+  const featureDesignations = (reg.features ?? []).filter(f => f.designation).map(f => f.designation!);
+  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
+  if (allDesignations.length) {
+    unregisterDesignations(allDesignations);
   }
 
   registrations.delete(packId);
@@ -166,6 +170,10 @@ export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
   for (const reg of registrations.values()) {
     for (const sys of reg.systems) {
       map.set(sys.id, sys.events);
+    }
+    if (reg.boot?.earlySystem) {
+      const m = reg.boot.earlySystem;
+      map.set(m.id, new Set(m.events));
     }
   }
   return map;
