@@ -3,8 +3,15 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../../build/fe-bundler';
-import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { getPacksDirForEnv, getApiPortFile } from '../../packs/pack-discovery';
 import { installPackFromLocal } from '../../packs/pack-installer';
+
+function getDevApiUrl(): string | null {
+  try {
+    const port = fs.readFileSync(getApiPortFile(true), 'utf-8').trim();
+    return port ? `http://localhost:${port}` : null;
+  } catch { return null; }
+}
 
 function writeSignalFile(packsDir: string, packId: string, port: number): string {
   const packDir = path.join(packsDir, packId);
@@ -132,15 +139,20 @@ export async function dev(_args: string[]) {
         console.log('Installing to dev...');
         await installPackFromLocal(root, packsDir);
         console.log('Triggering BE reload...');
-        const res = await fetch(`http://localhost:3001/dev/reload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ packId: manifest.id }),
-        });
-        if (res.ok) {
-          console.log('BE reloaded successfully.\n');
+        const apiUrl = getDevApiUrl();
+        if (!apiUrl) {
+          console.warn('Dev app not running (no port file). Restart to apply BE changes.\n');
         } else {
-          console.warn('BE reload failed. Restart the app to apply changes.\n');
+          const res = await fetch(`${apiUrl}/dev/reload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ packId: manifest.id }),
+          });
+          if (res.ok) {
+            console.log('BE reloaded successfully.\n');
+          } else {
+            console.warn('BE reload failed. Restart the app to apply changes.\n');
+          }
         }
       } catch {
         console.warn('Could not reach dev app. Restart to apply BE changes.\n');
@@ -171,15 +183,20 @@ async function watchRebuildFallback(root: string, srcDir: string, packId: string
         console.log(`\nChange detected: ${label}`);
         await build([]);
         await installPackFromLocal(root, packsDir);
-        const res = await fetch(`http://localhost:3001/dev/reload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ packId }),
-        });
-        if (res.ok) {
-          console.log('BE reloaded successfully.\n');
+        const apiUrl = getDevApiUrl();
+        if (!apiUrl) {
+          console.warn('Dev app not running (no port file). Restart to apply changes.\n');
         } else {
-          console.warn('BE reload failed. Restart the app to apply changes.\n');
+          const res = await fetch(`${apiUrl}/dev/reload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ packId }),
+          });
+          if (res.ok) {
+            console.log('BE reloaded successfully.\n');
+          } else {
+            console.warn('BE reload failed. Restart the app to apply changes.\n');
+          }
         }
       } catch {
         console.warn('Could not reach dev app. Restart to apply changes.\n');

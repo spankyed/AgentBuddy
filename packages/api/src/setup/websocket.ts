@@ -1,4 +1,6 @@
 import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
@@ -7,6 +9,7 @@ import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
 import { runShutdownHooks } from '@abuddy/sdk/utils';
+import { getApiPortFile } from '@abuddy/sdk/packs';
 
 function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method === 'POST' && req.url === '/dev/reload') {
@@ -56,6 +59,14 @@ export function createWebSocketServer() {
     // ! Log server startup (both to logger and console for main process) do not remove or modify
     const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
     console.log(message);
+
+    if (process.env.NODE_ENV === 'development') {
+      const portFile = getApiPortFile();
+      try {
+        fs.mkdirSync(path.dirname(portFile), { recursive: true });
+        fs.writeFileSync(portFile, String(port));
+      } catch {}
+    }
   });
 
   // Apply tRPC handler
@@ -68,6 +79,7 @@ export function createWebSocketServer() {
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
     runShutdownHooks();
+    try { fs.unlinkSync(getApiPortFile()); } catch {}
   });
 
   // Setup graceful shutdown

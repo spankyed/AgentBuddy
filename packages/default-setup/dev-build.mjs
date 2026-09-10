@@ -7,8 +7,18 @@ const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
 const outfile = path.resolve(__dirname, 'dist/dev-entry.cjs');
 
+import * as os from 'os';
 const watchMode = process.argv.includes('--watch');
-const API_PORT = process.env.API_PORT || '3001';
+
+function resolveAppDataDir(appName) {
+  const home = os.homedir();
+  switch (process.platform) {
+    case 'darwin': return path.join(home, 'Library', 'Application Support', appName);
+    case 'win32': return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), appName);
+    default: return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), appName);
+  }
+}
+const PORT_FILE = path.join(resolveAppDataDir('abuddy-dev'), 'api-port');
 
 const aliasPlugin = {
   name: 'resolve-aliases',
@@ -77,9 +87,16 @@ let isFirstBuild = true;
 let reloadTimer = null;
 const DEBOUNCE_MS = 300;
 
+function getApiPort() {
+  try { return fs.readFileSync(PORT_FILE, 'utf-8').trim(); } catch {}
+  return null;
+}
+
 async function notifyReload() {
+  const port = getApiPort();
+  if (!port) return;
   try {
-    const res = await fetch(`http://localhost:${API_PORT}/dev/reload`, {
+    const res = await fetch(`http://localhost:${port}/dev/reload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
@@ -91,7 +108,7 @@ async function notifyReload() {
       console.warn(`[dev-build] Reload failed (${res.status}): ${body}`);
     }
   } catch {
-    // API not ready yet — expected during initial build
+    // API not ready yet
   }
 }
 

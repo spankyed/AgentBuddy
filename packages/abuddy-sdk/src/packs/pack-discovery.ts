@@ -107,6 +107,11 @@ export function getPacksDir(): string {
   return path.join(userDataPath, 'packs');
 }
 
+export function getApiPortFile(dev?: boolean): string {
+  const isDev = dev ?? process.env.NODE_ENV === 'development';
+  return path.join(resolveAppDataDir(isDev ? DEV_APP_NAME : APP_NAME), 'api-port');
+}
+
 export function getPacksDirForEnv(dev: boolean): string {
   return path.join(resolveAppDataDir(dev ? DEV_APP_NAME : APP_NAME), 'packs');
 }

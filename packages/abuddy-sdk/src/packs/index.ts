@@ -12,7 +12,7 @@ export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackCont
 // Discovery
 export {
   discoverBuiltInPacks, discoverPacks,
-  getPacksDir, reconcileExternalRegistry,
+  getPacksDir, getApiPortFile, reconcileExternalRegistry,
 } from './pack-discovery';
 export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from './pack-discovery';
 
