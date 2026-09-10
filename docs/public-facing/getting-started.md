@@ -30,6 +30,13 @@ my-pack/
       my-pack/             # Default feature
         feature.config.ts
         settings.ts
+        be/
+          system.ts         # Backend XState machine (via `abuddy add feature`)
+        fe/
+          plugin.ts         # Frontend plugin definition
+          state.ts          # Frontend XState machine
+          canvas/
+            list.vue
     extensions/
       steps/
         register.ts         # Step registration barrel
