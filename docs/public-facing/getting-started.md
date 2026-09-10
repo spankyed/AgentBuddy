@@ -23,24 +23,20 @@ my-pack/
   abuddy.json              # Pack manifest — the single source of truth
   package.json             # Node package with #generated/* subpath import
   tsconfig.json
+  vitest.config.ts
+  .gitignore
   src/
     features/
       my-pack/             # Default feature
         feature.config.ts
         settings.ts
-        be/
-          system.ts         # Backend XState machine
-        fe/
-          plugin.ts         # Frontend plugin definition
-          state.ts          # Frontend XState machine
-          canvas/
-            list.vue
     extensions/
       steps/
         register.ts         # Step registration barrel
     seeds/
       actions/
       flows/
+        example-flow.ts     # Starter flow using DSL helpers
     __generated__/          # Auto-generated from manifest — never edit
       pack-entry.ts
       pack-entry-fe.ts
@@ -48,9 +44,15 @@ my-pack/
       services.ts
       flow-helpers.ts
       ...
+  .abuddy/
+    generated/              # EARS types from deps
+    deps/                   # Cached dependency snapshots
+  tests/
+    unit/
+      my-pack.spec.ts
 ```
 
-The init command also runs `abuddy generate` and `abuddy generate-entries` to bootstrap the generated files.
+The generated manifest declares `"default-setup": "*"` as a dependency — this gives your pack access to the built-in entity types, relation kinds, and step definitions. The init command resolves dependencies then runs `abuddy generate` and `abuddy generate-entries` to bootstrap the generated files.
 
 ## The dev loop
 
@@ -65,7 +67,8 @@ The build pipeline:
 1. `abuddy generate` — resolves dependencies and generates EARS type definitions
 2. `abuddy generate-entries` — reads `abuddy.json` and generates all files in `src/__generated__/`
 3. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to JSON in `dist/`
-4. FE bundling — bundles `src/pack-entry-fe.ts` into `dist/fe.js` via esbuild
+4. Snapshot — writes `dist/snapshot.json` (types, defs, manifest) for downstream packs
+5. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/fe.js` via Vite
 
 ## Build and distribute
 
@@ -114,7 +117,6 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 ## Constraints
 
-- Vue SFCs (`.vue` files) are not directly supported by the esbuild FE bundler. If your pack uses SFCs, add a Vite pre-build step.
 - External packs cannot use `earlySystem` or `partitionPolicy` (reserved for built-in packs).
 - Entity types, relation kinds, step types, and service keys must be unique across all installed packs.
 - The app must be restarted after installing or uninstalling a pack.
