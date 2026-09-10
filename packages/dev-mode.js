@@ -25,7 +25,7 @@ const apiBuildDone = new Promise((resolve) => {
 
 // Built-in pack dev watch (compiles default-setup to CJS for BE hot reload)
 const devBuild = fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--watch'], {
-  stdio: 'inherit',
+  stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
 });
 process.on('exit', () => devBuild.kill());
 const devBuildReady = new Promise((resolve) => {
