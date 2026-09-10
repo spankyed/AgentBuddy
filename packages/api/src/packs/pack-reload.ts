@@ -7,6 +7,7 @@ import {
   getPackContributions,
   getPacksDir,
 } from '@abuddy/sdk/packs';
+import type { PackSystemDef } from '@abuddy/sdk/framework';
 import { registerShutdownHook, runShutdownHooksForKey } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
 import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
@@ -30,6 +31,52 @@ const esmRequire = typeof require === 'function' ? require : Module.createRequir
 
 const logger = createLogger('pack-reload');
 
+interface ReloadResult {
+  newSystemIds: string[];
+  shutdown?: () => void;
+  createDefaultSettings?: () => void;
+  afterRegister?: () => void;
+}
+
+async function reloadPack(
+  packId: string,
+  backendActor: import('xstate').AnyActorRef,
+  loadFresh: () => ReloadResult | null,
+  cacheDir: string,
+): Promise<void> {
+  const contributions = getPackContributions(packId);
+  const oldSystemIds = contributions?.systems ?? [];
+
+  logger.info(`Reloading pack: ${packId}`);
+
+  runShutdownHooksForKey(packId);
+
+  try { unregisterPack(packId); } catch {
+    logger.info(`Pack ${packId} was not previously registered`);
+  }
+
+  invalidateEventValidationMap();
+  invalidatePartitionPolicy();
+  clearPackRequireCache(cacheDir);
+
+  const result = loadFresh();
+  if (!result) return;
+
+  if (result.shutdown) {
+    registerShutdownHook(result.shutdown, packId);
+  }
+  result.createDefaultSettings?.();
+  result.afterRegister?.();
+
+  backendActor.send({
+    type: 'RELOAD_PACK',
+    packId,
+    systemIds: [...new Set([...oldSystemIds, ...result.newSystemIds])],
+  });
+
+  logger.info(`Pack reloaded: ${packId} (${result.newSystemIds.length} systems)`);
+}
+
 export async function reloadExternalPack(
   packId: string,
   backendActor: import('xstate').AnyActorRef,
@@ -46,74 +93,35 @@ export async function reloadExternalPack(
     throw new Error(`No abuddy.json found in ${packDir}`);
   }
 
-  const contributions = getPackContributions(packId);
-  const oldSystemIds = contributions?.systems ?? [];
+  await reloadPack(packId, backendActor, () => {
+    const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    const pack = loadSingleExternalPack(manifest, packDir);
+    if (!pack) {
+      logger.error(`Failed to load pack ${packId} after rebuild`);
+      return null;
+    }
 
-  logger.info(`Reloading pack: ${packId}`);
+    const registered = registerExternalPacks([pack]);
+    if (registered.length === 0) {
+      logger.error(`Failed to register pack ${packId}`);
+      return null;
+    }
 
-  // 1. Run pack's shutdown hooks
-  runShutdownHooksForKey(packId);
-
-  // 2. Tear down old registration
-  try {
-    unregisterPack(packId);
-  } catch {
-    logger.info(`Pack ${packId} was not previously registered`);
-  }
-
-  // 3. Invalidate caches
-  invalidateEventValidationMap();
-  invalidatePartitionPolicy();
-
-  // 4. Clear Node require cache for the pack's files
-  clearPackRequireCache(packDir);
-
-  // 5. Re-load the pack from disk
-  const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  const pack = loadSingleExternalPack(manifest, packDir);
-  if (!pack) {
-    logger.error(`Failed to load pack ${packId} after rebuild`);
-    return;
-  }
-
-  // 6. Re-register
-  const registered = registerExternalPacks([pack]);
-  if (registered.length === 0) {
-    logger.error(`Failed to register pack ${packId}`);
-    return;
-  }
-
-  // 7. Re-register shutdown hooks + run boot hooks
-  if (pack.boot?.shutdown) {
-    registerShutdownHook(pack.boot.shutdown, packId);
-  }
-  if (pack.boot?.createDefaultSettings) {
-    pack.boot.createDefaultSettings();
-  }
-
-  // 8. Re-seed pack data (hash-checked)
-  seedPackData(
-    [pack],
-    seedData,
-    () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
-    (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
-  );
-
-  // 9. Update the loaded packs registry for tRPC
-  updateLoadedPack(pack);
-
-  // 10. Send RELOAD_PACK to the backend actor
-  const newSystemIds = Array.from(pack.systems.keys()).map(
-    featureId => `${packId}.${featureId}`,
-  );
-
-  backendActor.send({
-    type: 'RELOAD_PACK',
-    packId,
-    systemIds: [...new Set([...oldSystemIds, ...newSystemIds])],
-  });
-
-  logger.info(`Pack reloaded: ${packId} (${newSystemIds.length} systems)`);
+    return {
+      newSystemIds: Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`),
+      shutdown: pack.boot?.shutdown,
+      createDefaultSettings: pack.boot?.createDefaultSettings,
+      afterRegister: () => {
+        seedPackData(
+          [pack],
+          seedData,
+          () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
+          (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+        );
+        updateLoadedPack(pack);
+      },
+    };
+  }, packDir);
 }
 
 export async function reloadBuiltInPack(
@@ -128,40 +136,19 @@ export async function reloadBuiltInPack(
     throw new Error(`Dev entry not found: ${devEntry}`);
   }
 
-  const contributions = getPackContributions(packId);
-  const oldSystemIds = contributions?.systems ?? [];
+  await reloadPack(packId, backendActor, () => {
+    const mod = withHostResolution(() => esmRequire(devEntry));
+    if (!mod.registration) {
+      logger.error(`Dev entry for ${packId} has no registration export`);
+      return null;
+    }
 
-  logger.info(`Reloading built-in pack: ${packId}`);
+    registerPack(mod.registration);
 
-  runShutdownHooksForKey(packId);
-
-  try { unregisterPack(packId); } catch {
-    logger.info(`Pack ${packId} was not previously registered`);
-  }
-
-  invalidateEventValidationMap();
-  invalidatePartitionPolicy();
-  clearPackRequireCache(path.join(packInfo.dir, 'dist'));
-
-  const mod = withHostResolution(() => esmRequire(devEntry));
-  if (!mod.registration) {
-    logger.error(`Dev entry for ${packId} has no registration export`);
-    return;
-  }
-
-  registerPack(mod.registration);
-  if (mod.registration.boot?.shutdown) {
-    registerShutdownHook(mod.registration.boot.shutdown, packId);
-  }
-  mod.registration.boot?.createDefaultSettings?.();
-
-  const newSystemIds = (mod.registration.systems as import('@abuddy/sdk/framework').PackSystemDef[]).map(s => s.id);
-
-  backendActor.send({
-    type: 'RELOAD_PACK',
-    packId,
-    systemIds: [...new Set([...oldSystemIds, ...newSystemIds])],
-  });
-
-  logger.info(`Built-in pack reloaded: ${packId} (${newSystemIds.length} systems)`);
+    return {
+      newSystemIds: (mod.registration.systems as PackSystemDef[]).map(s => s.id),
+      shutdown: mod.registration.boot?.shutdown,
+      createDefaultSettings: mod.registration.boot?.createDefaultSettings,
+    };
+  }, path.join(packInfo.dir, 'dist'));
 }
