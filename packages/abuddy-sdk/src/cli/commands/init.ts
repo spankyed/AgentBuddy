@@ -35,6 +35,14 @@ export default {
 } satisfies FeatureConfig;
 `;
 
+const SETTINGS_TEMPLATE = (id: string) => `export default {
+  plugins: {
+    _meta: { visibility: { ${id}: true } },
+    ${id}: {}
+  }
+}
+`;
+
 const TSCONFIG_TEMPLATE = JSON.stringify({
   compilerOptions: {
     target: 'ES2022',
@@ -92,11 +100,11 @@ export const steps: StepDefinition[] = [
 `;
 
 const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, keepAlive } from '@abuddy/sdk/build';
+import { entry, on } from '#generated/flow-helpers';
 
 export default {
   "Example Flow": [
-    entry([keepAlive()]),
+    entry([]),
   ],
 } satisfies FlowDSL;
 `;
@@ -155,6 +163,10 @@ export async function init(args: string[]) {
   fs.writeFileSync(
     path.join(dir, 'src', 'features', name, 'feature.config.ts'),
     FEATURE_CONFIG_TEMPLATE(name),
+  );
+  fs.writeFileSync(
+    path.join(dir, 'src', 'features', name, 'settings.ts'),
+    SETTINGS_TEMPLATE(name),
   );
   fs.writeFileSync(
     path.join(dir, 'vitest.config.ts'),

@@ -54,7 +54,7 @@ export async function addArtifact(args: string[], root: string) {
     updateRegisterArray(
       path.join(root, registerPath),
       `import { ${icon} } from 'lucide-vue-next';`,
-      `  {\n    type: '${type}',\n    fe: {\n      icon: ${icon},\n      loadComponent: () => require('./viewers/${type}-artifact.vue').default,\n    },\n  },\n`,
+      `  {\n    type: '${type}',\n    fe: {\n      icon: ${icon},\n      loadComponent: () => import('./viewers/${type}-artifact.vue'),\n    },\n  },\n`,
     );
 
     const feRegisterPath = registerPath.replace(/\.ts$/, '-fe.ts');

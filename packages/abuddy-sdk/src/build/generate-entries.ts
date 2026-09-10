@@ -729,8 +729,6 @@ export {};
   }
 
   function generateFlowHelpers(): string {
-    if (stepDefinitions.length === 0) return '';
-
     const imports: string[] = [];
     const helpers: string[] = [];
     const customReExports: string[] = [];

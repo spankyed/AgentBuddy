@@ -75,11 +75,5 @@ export async function doctor(_args: string[]) {
     return 'pass';
   });
 
-  check('Dependencies declared', () => {
-    const deps = manifest.dependencies || {};
-    if (Object.keys(deps).length === 0) return 'warn' as Status;
-    return 'pass';
-  });
-
   console.log('');
 }

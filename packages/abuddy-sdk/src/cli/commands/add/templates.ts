@@ -59,8 +59,10 @@ export function updateRegisterArray(
 
   const lastImportIdx = content.lastIndexOf('\nimport ');
   if (lastImportIdx === -1) return false;
-  const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
-  content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
+  if (importLine) {
+    const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
+    content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
+  }
 
   const arrayCloseIdx = content.lastIndexOf('];');
   if (arrayCloseIdx === -1) return false;

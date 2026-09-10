@@ -138,7 +138,7 @@ async function watchRebuildFallback(root: string, srcDir: string) {
 
   fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
     if (!filename || filename.endsWith('.d.ts')) return;
-    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx') && !filename.endsWith('.vue') && !filename.endsWith('.md')) return;
+    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx') && !filename.endsWith('.vue') && !filename.endsWith('.css') && !filename.endsWith('.md')) return;
     scheduleBuild(filename);
   });
 

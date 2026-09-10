@@ -111,8 +111,7 @@ export async function addStep(args: string[], root: string) {
     : stepsConfig?.register;
 
   if (registerPath) {
-    const suffix = isTrigger ? 'Trigger' : 'Step';
-    const exportName = `${camel}${suffix}`;
+    const exportName = `${camel}Step`;
 
     updateRegisterArray(
       path.join(root, registerPath),
@@ -121,7 +120,7 @@ export async function addStep(args: string[], root: string) {
     );
 
     const feRegisterPath = registerPath.replace(/\.ts$/, '-fe.ts');
-    const feExportName = `${camel}${suffix}FE`;
+    const feExportName = `${camel}StepFE`;
     updateRegisterArray(
       path.join(root, feRegisterPath),
       `import { ${feExportName} } from './${type}/fe';`,
