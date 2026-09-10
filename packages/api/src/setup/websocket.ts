@@ -14,14 +14,19 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', async () => {
       try {
-        const { packId } = JSON.parse(body);
+        const { packId, builtIn } = JSON.parse(body);
         if (!packId || typeof packId !== 'string') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'packId required' }));
           return;
         }
-        const { reloadExternalPack } = await import('@/packs/pack-reload');
-        await reloadExternalPack(packId, backendActor);
+        if (builtIn) {
+          const { reloadBuiltInPack } = await import('@/packs/pack-reload');
+          await reloadBuiltInPack(packId, backendActor);
+        } else {
+          const { reloadExternalPack } = await import('@/packs/pack-reload');
+          await reloadExternalPack(packId, backendActor);
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       } catch (err) {

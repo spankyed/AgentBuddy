@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@/core/shared/debug/logger';
 import {
+  registerPack,
   unregisterPack,
   getPackContributions,
   getPacksDir,
@@ -9,16 +10,23 @@ import {
 import { registerShutdownHook, runShutdownHooksForKey } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
 import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
+import Module from 'module';
 import {
   loadSingleExternalPack,
   clearPackRequireCache,
   registerExternalPacks,
+  getBuiltInPackInfos,
+  withHostResolution,
 } from './pack-loader';
 import { seedPackData } from './pack-seed';
 import { updateLoadedPack } from './pack-api';
 import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
 import type { PackManifest } from '@abuddy/sdk/packs';
+
+// @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
+const _metaUrl: string = import.meta.url;
+const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
 
 const logger = createLogger('pack-reload');
 
@@ -106,4 +114,49 @@ export async function reloadExternalPack(
   });
 
   logger.info(`Pack reloaded: ${packId} (${newSystemIds.length} systems)`);
+}
+
+export async function reloadBuiltInPack(
+  packId: string,
+  backendActor: import('xstate').AnyActorRef,
+): Promise<void> {
+  const packInfo = getBuiltInPackInfos().find(p => p.id === packId);
+  if (!packInfo) throw new Error(`Built-in pack not found: ${packId}`);
+
+  const devEntry = path.join(packInfo.dir, 'dist', 'dev-entry.cjs');
+  if (!fs.existsSync(devEntry)) {
+    throw new Error(`Dev entry not found: ${devEntry}`);
+  }
+
+  const contributions = getPackContributions(packId);
+  const oldSystemIds = contributions?.systems ?? [];
+
+  logger.info(`Reloading built-in pack: ${packId}`);
+
+  try { unregisterPack(packId); } catch {
+    logger.info(`Pack ${packId} was not previously registered`);
+  }
+
+  invalidateEventValidationMap();
+  invalidatePartitionPolicy();
+  clearPackRequireCache(path.join(packInfo.dir, 'dist'));
+
+  const mod = withHostResolution(() => esmRequire(devEntry));
+  if (!mod.registration) {
+    logger.error(`Dev entry for ${packId} has no registration export`);
+    return;
+  }
+
+  registerPack(mod.registration);
+  mod.registration.boot?.createDefaultSettings?.();
+
+  const newSystemIds = mod.registration.systems.map((s: any) => s.id);
+
+  backendActor.send({
+    type: 'RELOAD_PACK',
+    packId,
+    systemIds: [...new Set([...oldSystemIds, ...newSystemIds])],
+  });
+
+  logger.info(`Built-in pack reloaded: ${packId} (${newSystemIds.length} systems)`);
 }

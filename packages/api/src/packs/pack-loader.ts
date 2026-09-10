@@ -15,6 +15,58 @@ import {
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/shared-deps';
 
+// ── SDK bridge ──────────────────────────────────────────────────────
+// The API bundle inlines @abuddy/sdk (tsup bundles it). Any CJS code
+// loaded at runtime (external packs, built-in dev entry) that does
+// require('@abuddy/sdk/ears') would get a SEPARATE module instance
+// with empty singleton state (Maps, registries). These static imports
+// resolve to the BUNDLED instances — the ones with hydrated data.
+// withHostResolution injects them into require.cache so dynamically
+// loaded pack code shares the real singletons.
+import * as _sdkRoot from '@abuddy/sdk';
+import * as _sdkEars from '@abuddy/sdk/ears';
+import * as _sdkFramework from '@abuddy/sdk/framework';
+import * as _sdkHelpers from '@abuddy/sdk/helpers';
+import * as _sdkPacks from '@abuddy/sdk/packs';
+import * as _sdkUtils from '@abuddy/sdk/utils';
+import * as _sdkRpc from '@abuddy/sdk/rpc';
+import * as _sdkIds from '@abuddy/sdk/ids';
+import * as _sdkLogger from '@abuddy/sdk/logger';
+import * as _sdkServices from '@abuddy/sdk/services';
+import * as _sdkSeed from '@abuddy/sdk/seed';
+import * as _sdkBackup from '@abuddy/sdk/backup';
+import * as _sdkSteps from '@abuddy/sdk/steps';
+import * as _sdkArtifacts from '@abuddy/sdk/artifacts';
+import * as _sdkBlocks from '@abuddy/sdk/blocks';
+import * as _sdkBuild from '@abuddy/sdk/build';
+import * as _sdkTypes from '@abuddy/sdk/types';
+// @ts-expect-error — resolved by esbuild, not tsc
+import * as _sdkInference from '@abuddy/sdk/inference';
+// @ts-expect-error — resolved by esbuild, not tsc
+import * as _sdkTemplates from '@abuddy/sdk/templates';
+
+const SDK_BRIDGE: Record<string, any> = {
+  '@abuddy/sdk': _sdkRoot,
+  '@abuddy/sdk/ears': _sdkEars,
+  '@abuddy/sdk/framework': _sdkFramework,
+  '@abuddy/sdk/helpers': _sdkHelpers,
+  '@abuddy/sdk/packs': _sdkPacks,
+  '@abuddy/sdk/utils': _sdkUtils,
+  '@abuddy/sdk/rpc': _sdkRpc,
+  '@abuddy/sdk/ids': _sdkIds,
+  '@abuddy/sdk/logger': _sdkLogger,
+  '@abuddy/sdk/services': _sdkServices,
+  '@abuddy/sdk/seed': _sdkSeed,
+  '@abuddy/sdk/backup': _sdkBackup,
+  '@abuddy/sdk/steps': _sdkSteps,
+  '@abuddy/sdk/artifacts': _sdkArtifacts,
+  '@abuddy/sdk/blocks': _sdkBlocks,
+  '@abuddy/sdk/build': _sdkBuild,
+  '@abuddy/sdk/types': _sdkTypes,
+  '@abuddy/sdk/inference': _sdkInference,
+  '@abuddy/sdk/templates': _sdkTemplates,
+};
+
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
 const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
@@ -47,6 +99,11 @@ export { computePackSeedHash, seedPackData } from './pack-seed';
 
 import builtInLoaders from 'virtual:built-in-pack-loaders';
 
+const DEV_ENTRY_FILENAME = 'dev-entry.cjs';
+
+let _builtInPackInfos: BuiltInPackInfo[] = [];
+export function getBuiltInPackInfos(): BuiltInPackInfo[] { return _builtInPackInfos; }
+
 export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPackInfo[]> {
   const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
@@ -55,6 +112,25 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
   }
   const loaded: BuiltInPackInfo[] = [];
   for (const pack of discovered) {
+    // Dev mode: load from CJS on disk (enables hot reload)
+    if (process.env.NODE_ENV === 'development') {
+      const devEntry = path.join(pack.dir, 'dist', DEV_ENTRY_FILENAME);
+      if (fs.existsSync(devEntry)) {
+        try {
+          const mod = withHostResolution(() => esmRequire(devEntry));
+          if (mod.registration) {
+            registerPack(mod.registration);
+            loaded.push(pack);
+            logger.info(`Loaded built-in pack (dev): ${pack.id}`);
+            continue;
+          }
+        } catch (err) {
+          logger.warn(`Dev entry failed for ${pack.id}, falling back to bundle:`, err as Error);
+        }
+      }
+    }
+
+    // Production / fallback: use the bundled virtual module loader
     const loader = builtInLoaders[pack.id];
     if (!loader) {
       logger.warn(`Built-in pack ${pack.id}: no loader in virtual:built-in-pack-loaders, skipping`);
@@ -73,6 +149,7 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
       logger.error(`Failed to load built-in pack ${pack.id}:`, err as Error);
     }
   }
+  _builtInPackInfos = loaded;
   return loaded;
 }
 
@@ -93,26 +170,27 @@ export interface LoadedPack {
   migrations?: import('@abuddy/sdk/framework').PackMigration[];
 }
 
-function withHostResolution<T>(fn: () => T): T {
+export function withHostResolution<T>(fn: () => T): T {
   const originalResolve = (Module as any)._resolveFilename;
 
   const hostResolutions = new Map<string, string>();
-  try {
-    const sdkEntry = esmRequire.resolve('@abuddy/sdk');
-    hostResolutions.set('@abuddy/sdk', sdkEntry.replace(/\/index\.(js|cjs|ts)$/, ''));
-  } catch {}
   for (const pkg of HOST_PROVIDED_PACKAGES) {
     try { hostResolutions.set(pkg, esmRequire.resolve(pkg)); } catch {}
   }
 
+  // Pre-populate require.cache so SDK requires get the bundled singletons.
+  // These persist — lazy requires inside pack callbacks need them too.
+  for (const [specifier, exports] of Object.entries(SDK_BRIDGE)) {
+    const cacheKey = `__sdk_bridge__/${specifier}`;
+    if (!require.cache[cacheKey]) {
+      require.cache[cacheKey] = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
+    }
+  }
+
   try {
     (Module as any)._resolveFilename = function (request: string, ...args: any[]) {
-      if (request.startsWith('@abuddy/sdk')) {
-        const sdkBase = hostResolutions.get('@abuddy/sdk');
-        if (sdkBase) {
-          const mapped = request.replace('@abuddy/sdk', sdkBase);
-          return originalResolve.call(this, mapped, ...args);
-        }
+      if (SDK_BRIDGE[request]) {
+        return `__sdk_bridge__/${request}`;
       }
       if (hostResolutions.has(request)) {
         return hostResolutions.get(request)!;

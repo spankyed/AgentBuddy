@@ -1,4 +1,5 @@
 import {build, createServer} from 'vite';
+import { fork } from 'child_process';
 import path from 'path';
 
 /**
@@ -55,6 +56,11 @@ const packagesToStart = [
   'packages/preload',
   'packages/main',
 ];
+
+// Start built-in pack dev watch (compiles default-setup to CJS for BE hot reload)
+fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--watch'], {
+  stdio: 'inherit',
+});
 
 for (const pkg of packagesToStart) {
   await build({
