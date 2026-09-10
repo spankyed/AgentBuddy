@@ -40,6 +40,7 @@ import * as _sdkArtifacts from '@abuddy/sdk/artifacts';
 import * as _sdkBlocks from '@abuddy/sdk/blocks';
 import * as _sdkBuild from '@abuddy/sdk/build';
 import * as _sdkTypes from '@abuddy/sdk/types';
+import * as _sdkDesignations from '@abuddy/sdk/designations';
 // @ts-expect-error — resolved by esbuild, not tsc
 import * as _sdkInference from '@abuddy/sdk/inference';
 // @ts-expect-error — resolved by esbuild, not tsc
@@ -63,6 +64,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/blocks': _sdkBlocks,
   '@abuddy/sdk/build': _sdkBuild,
   '@abuddy/sdk/types': _sdkTypes,
+  '@abuddy/sdk/designations': _sdkDesignations,
   '@abuddy/sdk/inference': _sdkInference,
   '@abuddy/sdk/templates': _sdkTemplates,
 };

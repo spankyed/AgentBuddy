@@ -150,7 +150,7 @@ export async function reloadBuiltInPack(
   registerPack(mod.registration);
   mod.registration.boot?.createDefaultSettings?.();
 
-  const newSystemIds = mod.registration.systems.map((s: any) => s.id);
+  const newSystemIds = (mod.registration.systems as import('@abuddy/sdk/framework').PackSystemDef[]).map(s => s.id);
 
   backendActor.send({
     type: 'RELOAD_PACK',
