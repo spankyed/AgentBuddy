@@ -62,6 +62,7 @@ const packagesToStart = [
 const devBuild = fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--watch'], {
   stdio: 'inherit',
 });
+process.on('exit', () => devBuild.kill());
 await new Promise((resolve) => {
   devBuild.on('message', (msg) => { if (msg.type === 'ready') resolve(); });
   devBuild.on('exit', resolve);
