@@ -1,11 +1,11 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@abuddy/sdk/packs';
+import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@abuddy/sdk/packs';
 import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
-  loadBuiltInPacks,
+  loadBuiltInPacks, getBuiltInPackInfos,
   loadExternalPacks, registerExternalPacks, seedPackData,
 } from '@/packs/pack-loader';
 import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
@@ -53,15 +53,11 @@ export async function setupBackend(): Promise<void> {
     externalPacks = registerExternalPacks(externalPacks);
   }
 
-  // ── Wire shutdown hooks ─────────────────────────────────────────────
-  // External packs get keyed hooks (for scoped reload teardown).
-  // Built-in packs get unkeyed hooks (global shutdown only).
-  const externalShutdownFns = new Set(
-    externalPacks.map(p => p.boot?.shutdown).filter(Boolean),
-  );
-  for (const hooks of getBootHooks()) {
-    if (hooks.shutdown && !externalShutdownFns.has(hooks.shutdown)) {
-      registerShutdownHook(hooks.shutdown);
+  // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
+  for (const info of getBuiltInPackInfos()) {
+    const hooks = getPackBootHooks(info.id);
+    if (hooks?.shutdown) {
+      registerShutdownHook(hooks.shutdown, info.id);
     }
   }
   for (const pack of externalPacks) {

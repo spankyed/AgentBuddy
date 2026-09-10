@@ -4,7 +4,7 @@ export {
   getRegisteredSystems, buildRegisteredEventValidationMap,
   getRegisteredEntityTypes, getRegisteredEARS, getRegisteredEARSPolicy,
   getRegisteredServices, getRegisteredMigrations,
-  getBootHooks, runRegisteredBootSeeds,
+  getBootHooks, getPackBootHooks, runRegisteredBootSeeds,
   getPackContributions,
 } from './pack-registration';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration';

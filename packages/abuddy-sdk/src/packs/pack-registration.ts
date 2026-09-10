@@ -203,6 +203,10 @@ export function getBootHooks(): PackBootHooks[] {
   return hooks;
 }
 
+export function getPackBootHooks(packId: string): PackBootHooks | null {
+  return registrations.get(packId)?.boot ?? null;
+}
+
 export function runRegisteredBootSeeds(
   orchestrateSeed?: (manifest: PackSeedManifest) => void,
 ): void {

@@ -133,6 +133,8 @@ export async function reloadBuiltInPack(
 
   logger.info(`Reloading built-in pack: ${packId}`);
 
+  runShutdownHooksForKey(packId);
+
   try { unregisterPack(packId); } catch {
     logger.info(`Pack ${packId} was not previously registered`);
   }
@@ -148,6 +150,9 @@ export async function reloadBuiltInPack(
   }
 
   registerPack(mod.registration);
+  if (mod.registration.boot?.shutdown) {
+    registerShutdownHook(mod.registration.boot.shutdown, packId);
+  }
   mod.registration.boot?.createDefaultSettings?.();
 
   const newSystemIds = (mod.registration.systems as import('@abuddy/sdk/framework').PackSystemDef[]).map(s => s.id);
