@@ -18,6 +18,22 @@ function removeSignalFile(signalPath: string) {
   try { fs.unlinkSync(signalPath); } catch {}
 }
 
+function writeReloadSignal(packsDir: string, packId: string) {
+  const reloadPath = path.join(packsDir, packId, '.reload');
+  fs.writeFileSync(reloadPath, JSON.stringify({ timestamp: Date.now() }));
+}
+
+function removeReloadSignal(packsDir: string, packId: string) {
+  try { fs.unlinkSync(path.join(packsDir, packId, '.reload')); } catch {}
+}
+
+function isBEFile(filename: string): boolean {
+  if (!filename.endsWith('.ts') && !filename.endsWith('.tsx')) return false;
+  if (filename.endsWith('.d.ts')) return false;
+  const parts = filename.split(path.sep);
+  return !parts.includes('fe') && !parts.includes('canvas');
+}
+
 export async function dev(_args: string[]) {
   const root = findPackRoot(process.cwd());
   const srcDir = path.join(root, 'src');
@@ -39,7 +55,7 @@ export async function dev(_args: string[]) {
 
   if (!feEntry) {
     console.log('No FE entry found. Falling back to watch + rebuild mode.\n');
-    await watchRebuildFallback(root, srcDir);
+    await watchRebuildFallback(root, srcDir, packsDir, manifest.id);
     return;
   }
 
@@ -93,6 +109,7 @@ export async function dev(_args: string[]) {
 
   function cleanup() {
     removeSignalFile(signalPath);
+    removeReloadSignal(packsDir, manifest.id);
     server.close();
   }
 
@@ -114,14 +131,32 @@ export async function dev(_args: string[]) {
     }, 300);
   });
 
+  let beDebounce: ReturnType<typeof setTimeout> | null = null;
+  fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
+    if (!filename || !isBEFile(filename)) return;
+    if (beDebounce) clearTimeout(beDebounce);
+    beDebounce = setTimeout(async () => {
+      console.log(`\nBE change detected: ${filename}`);
+      console.log('Rebuilding and reloading API server...');
+      try {
+        await build([]);
+        await installPackFromLocal(root, packsDir);
+        writeReloadSignal(packsDir, manifest.id);
+        console.log('Reload signal sent.');
+      } catch (err) {
+        console.error(`Rebuild failed: ${err instanceof Error ? err.message : err}`);
+      }
+    }, 300);
+  });
+
   console.log(`\nDev server running at http://localhost:${port}`);
-  console.log(`FE changes hot-reload. BE changes require app restart.`);
+  console.log(`FE changes hot-reload. BE changes trigger API restart.`);
   console.log('Press Ctrl+C to stop.\n');
 
   await new Promise(() => {});
 }
 
-async function watchRebuildFallback(root: string, srcDir: string) {
+async function watchRebuildFallback(root: string, srcDir: string, packsDir: string, packId: string) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   function scheduleBuild(label: string) {
@@ -130,11 +165,22 @@ async function watchRebuildFallback(root: string, srcDir: string) {
       console.log(`\nChange detected: ${label}`);
       try {
         await build([]);
+        await installPackFromLocal(root, packsDir);
+        writeReloadSignal(packsDir, packId);
+        console.log('Reload signal sent.');
       } catch (err) {
         console.error(`Build failed: ${err instanceof Error ? err.message : err}`);
       }
     }, 300);
   }
+
+  function cleanup() {
+    removeReloadSignal(packsDir, packId);
+  }
+
+  process.on('exit', cleanup);
+  process.on('SIGINT', () => { cleanup(); process.exit(0); });
+  process.on('SIGTERM', () => { cleanup(); process.exit(0); });
 
   fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
     if (!filename || filename.endsWith('.d.ts')) return;
@@ -146,6 +192,6 @@ async function watchRebuildFallback(root: string, srcDir: string) {
     scheduleBuild('abuddy.json');
   });
 
-  console.log('Watching src/ and abuddy.json... (Ctrl+C to stop)');
+  console.log('Watching src/ and abuddy.json — changes trigger rebuild + API reload. (Ctrl+C to stop)');
   await new Promise(() => {});
 }
