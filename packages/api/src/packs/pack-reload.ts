@@ -27,7 +27,7 @@ import type { PackManifest } from '@abuddy/sdk/packs';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
-const esmRequire = typeof require === 'function' ? require : Module.createRequire(_metaUrl);
+const esmRequire = Module.createRequire(_metaUrl);
 
 const logger = createLogger('pack-reload');
 
