@@ -10,6 +10,14 @@ async function loadDepSnapshots(root: string, deps: Record<string, string>): Pro
   for (const [depId, depValue] of Object.entries(deps)) {
     const resolved = await resolveDep(root, depId, depValue);
     if (!resolved) {
+      if (depValue.startsWith('file:')) {
+        const depPath = path.resolve(root, depValue.slice('file:'.length).trim());
+        throw new Error(
+          `Dependency "${depId}" not found — no snapshot at ${depPath}/dist/snapshot.json\n` +
+          `  Build it first:\n` +
+          `    cd ${depPath} && abuddy build`,
+        );
+      }
       console.warn(`  Warning: could not resolve dependency "${depId}" — try "abuddy fetch-deps"`);
       continue;
     }
