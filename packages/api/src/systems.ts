@@ -34,11 +34,13 @@ export type BusEvent =
 export type { SystemEvents };
 
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
+type ReloadPackConnectEvent = { type: 'RELOAD_PACK_CONNECT'; systemIds: string[] };
 
 export type BackendEvents =
   | BusEvent
   | SystemEvents
   | ReloadPackEvent
+  | ReloadPackConnectEvent
 
 export interface BusContext {
   threads: string[];
@@ -106,7 +108,7 @@ export const backendSystem = setup({
         (enqueue as any).spawnChild(state, { id, systemId: id });
       }
     }),
-    reloadPack: enqueueActions(({ enqueue, event, system }) => {
+    reloadPack: enqueueActions(({ enqueue, event }) => {
       const { systemIds } = event as ReloadPackEvent;
       for (const id of systemIds) {
         (enqueue as any).stopChild(id);
@@ -118,10 +120,14 @@ export const backendSystem = setup({
           (enqueue as any).spawnChild(machine, { id, systemId: id });
         }
       }
+      enqueue.raise({ type: 'RELOAD_PACK_CONNECT', systemIds } as ReloadPackConnectEvent);
+    }),
+    connectReloadedSystems: ({ event, system }) => {
+      const { systemIds } = event as ReloadPackConnectEvent;
       for (const id of systemIds) {
         try { system.get(id).send({ type: 'CLIENT_CONNECTED' }); } catch {}
       }
-    }),
+    },
   }
 }).createMachine(
   {
@@ -153,6 +159,9 @@ export const backendSystem = setup({
           },
           RELOAD_PACK: {
             actions: 'reloadPack',
+          },
+          RELOAD_PACK_CONNECT: {
+            actions: 'connectReloadedSystems',
           },
         }
       },
