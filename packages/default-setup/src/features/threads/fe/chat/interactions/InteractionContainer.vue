@@ -6,7 +6,7 @@
         :is="getBlockComponent(block.type)"
         :ref="(el: any) => captureRef(block.type, el)"
         v-bind="blockBindings(block)"
-        @submit="getSubmitHandler(block.type)"
+        @submit="getSubmitHandler(block.type)($event)"
         @cancel="handleCancel"
       />
     </template>
