@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { execFile } from 'child_process';
-import { app, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
@@ -28,6 +28,7 @@ export class ApiServer implements AppModule {
   private actualPort?: number;
   private lastError?: { message: string; stack?: string };
   private readonly startupId = randomUUID();
+  private devReloadPending = false;
 
   constructor() {
     process.env.AGENTBUDDY_STARTUP_ID = this.startupId;
@@ -88,7 +89,10 @@ export class ApiServer implements AppModule {
       app.exit(0);
     });
 
-    app.whenReady().then(() => this.startApiServer());
+    app.whenReady().then(() => {
+      this.startApiServer();
+      if (!app.isPackaged) this.startDevReloadWatcher();
+    });
     
     app.on('before-quit', () => {
       this.isShuttingDown = true;
@@ -215,10 +219,16 @@ export class ApiServer implements AppModule {
     this.lastError = undefined;
     logInfo(`[MAIN] API server is running on port ${port}`);
     broadcastEvent(API_EVENTS.STARTED, { port, startupId: this.startupId });
-    
+
     if (this.serverReadyResolve) {
       this.serverReadyResolve();
       this.serverReadyResolve = undefined;
+    }
+
+    if (this.devReloadPending) {
+      this.devReloadPending = false;
+      logInfo('[MAIN] Dev reload complete, refreshing renderer...');
+      BrowserWindow.getAllWindows().forEach(w => w.webContents.reload());
     }
   }
 
@@ -275,6 +285,44 @@ export class ApiServer implements AppModule {
 
   private stopApiServer(): void {
     this.processManager.kill('SIGTERM', API_CONFIG.SHUTDOWN_TIMEOUT);
+  }
+
+  public async restartApiServer(): Promise<void> {
+    if (this.isShuttingDown) return;
+
+    logInfo('[MAIN] Restarting API server (dev reload)...');
+    this.devReloadPending = true;
+    this.restartAttempts = 0;
+    broadcastEvent(API_EVENTS.RESTARTING, {
+      attempt: 0,
+      maxAttempts: API_CONFIG.MAX_RESTART_ATTEMPTS,
+      startupId: this.startupId,
+    });
+
+    this.stopApiServer();
+    await this.startApiServer();
+  }
+
+  private startDevReloadWatcher(): void {
+    const packsDir = path.join(app.getPath('userData'), 'packs');
+    fs.mkdirSync(packsDir, { recursive: true });
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    fs.watch(packsDir, { recursive: true }, (_eventType, filename) => {
+      if (!filename || path.basename(filename) !== '.reload') return;
+
+      const reloadPath = path.join(packsDir, filename);
+      try { fs.unlinkSync(reloadPath); } catch {}
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        logInfo('[MAIN] Dev reload signal detected, restarting API server...');
+        this.restartApiServer();
+      }, 500);
+    });
+
+    logInfo(`[MAIN] Watching for dev reload signals in ${packsDir}`);
   }
 
   public getStatus(): {
