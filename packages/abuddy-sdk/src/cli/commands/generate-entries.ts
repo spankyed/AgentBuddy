@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PackTypeManifest } from '../../build';
+import type { PackTypeManifest, PackSnapshot } from '../../build';
 import { generatePackFiles } from '../../build';
 import { findPackRoot, readManifest } from '../utils';
 
@@ -18,6 +18,7 @@ export async function generateEntries(
   _args: string[],
   packRoot?: string,
   depTypes?: Map<string, PackTypeManifest>,
+  depSnapshots?: Map<string, PackSnapshot>,
 ) {
   const root = packRoot ?? findPackRoot(process.cwd());
   const outDir = path.join(root, 'src/__generated__');
@@ -37,7 +38,7 @@ export async function generateEntries(
   const manifest = readManifest(root);
   fs.mkdirSync(outDir, { recursive: true });
 
-  const files = generatePackFiles(manifest, { packRoot: root, depTypes });
+  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
 
   for (const [filePath, content] of Object.entries(files)) {
     fs.writeFileSync(path.join(root, filePath), content);

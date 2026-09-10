@@ -18,7 +18,12 @@ async function loadDepSnapshots(root: string, deps: Record<string, string>): Pro
   return result;
 }
 
-export async function resolveDepTypes(root: string, deps?: Record<string, string>): Promise<Map<string, PackTypeManifest>> {
+export interface ResolvedDeps {
+  depTypes: Map<string, PackTypeManifest>;
+  depSnapshots: Map<string, PackSnapshot>;
+}
+
+export async function resolveDeps(root: string, deps?: Record<string, string>): Promise<ResolvedDeps> {
   const depSnapshots = deps
     ? await loadDepSnapshots(root, deps)
     : new Map<string, PackSnapshot>();
@@ -26,7 +31,7 @@ export async function resolveDepTypes(root: string, deps?: Record<string, string
   const depTypes = new Map<string, PackTypeManifest>();
   for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
 
-  return depTypes;
+  return { depTypes, depSnapshots };
 }
 
 // ── Command ──

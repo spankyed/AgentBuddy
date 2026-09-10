@@ -15,7 +15,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     relKinds: {},
     fe: { entry: 'dist/fe.js', styles: 'dist/fe.css' },
     features: [],
-    dependencies: {},
+    dependencies: { 'default-setup': '*' },
     permissions: [],
     steps: 'src/extensions/steps/register.ts',
     boot: {
@@ -100,11 +100,11 @@ export const steps: StepDefinition[] = [
 `;
 
 const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, on } from '#generated/flow-helpers';
+import { entry, on, keepAlive } from '#generated/flow-helpers';
 
 export default {
   "Example Flow": [
-    entry([]),
+    entry([keepAlive()]),
   ],
 } satisfies FlowDSL;
 `;

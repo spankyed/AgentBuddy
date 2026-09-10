@@ -1,6 +1,6 @@
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
-import type { PackManifest, PackFeatureEntry, PackTypeManifest, SeedEntryConfig, StepEntry } from './manifest';
+import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -210,6 +210,7 @@ function toPascalCase(id: string): string {
 export interface GenerateEntriesOptions {
   packRoot: string;
   depTypes?: Map<string, PackTypeManifest>;
+  depSnapshots?: Map<string, PackSnapshot>;
 }
 
 export function generatePackFiles(
@@ -217,6 +218,7 @@ export function generatePackFiles(
   opts: GenerateEntriesOptions,
 ): Record<string, string> {
   const root = opts.packRoot;
+  const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
 
   function resolveServiceImport(key: string, manifestPath: string) {
     const base = join(root, manifestPath);
@@ -435,7 +437,11 @@ ${regProps.join('\n')}
   // ── Registries ────────────────────────────────────────────────
 
   function generateEars(): string {
-    const depTypes = opts.depTypes ?? new Map<string, PackTypeManifest>();
+    let depTypes = opts.depTypes;
+    if (!depTypes) {
+      depTypes = new Map<string, PackTypeManifest>();
+      for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
+    }
     const registry = mergeRegistries(manifest.id, manifest, depTypes);
     return emitEARS(manifest.id, registry);
   }
@@ -444,13 +450,25 @@ ${regProps.join('\n')}
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
 
-    const exports = systemFeatures
+    const ownExports = systemFeatures
       .map(f => `export { ${f.id} } from '${toImportPath(f.system!.entry)}';`)
       .join('\n');
 
+    const depExports: string[] = [];
+    const seenIds = new Set(systemFeatures.map(f => f.id));
+    for (const [depId, snap] of depSnapshots) {
+      const depFeatures = (snap.manifest.features ?? []).filter(f => f.system);
+      const lines = depFeatures
+        .filter(f => !seenIds.has(f.id))
+        .map(f => { seenIds.add(f.id); return `export const ${f.id} = '${f.id}';`; });
+      if (lines.length) {
+        depExports.push(`// ${depId}`, ...lines);
+      }
+    }
+
     return `${HEADER}
-${exports}
-`;
+${ownExports}
+${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}`;
   }
 
   function generateEventChannels(): string {
@@ -674,33 +692,75 @@ export type { ImportMode } from '@abuddy/sdk/utils';
   }
 
   function generateEntityShapes(): string {
-    const shapes = manifest.entityShapes;
-    if (!shapes || Object.keys(shapes).length === 0) return '';
+    const allImports: string[] = [];
+    const allEntries: string[] = [];
+    const seenEntities = new Set<string>();
 
-    const byPath = new Map<string, Set<string>>();
-    for (const { source, type: typeName } of Object.values(shapes)) {
-      const p = toImportPath(source);
-      if (!byPath.has(p)) byPath.set(p, new Set());
-      byPath.get(p)!.add(typeName);
+    const shapes = manifest.entityShapes;
+    if (shapes) {
+      const byPath = new Map<string, Set<string>>();
+      for (const { source, type: typeName } of Object.values(shapes)) {
+        const p = toImportPath(source);
+        if (!byPath.has(p)) byPath.set(p, new Set());
+        byPath.get(p)!.add(typeName);
+      }
+      allImports.push(
+        ...Array.from(byPath.entries())
+          .map(([p, names]) => `import type { ${[...names].join(', ')} } from '${p}';`),
+      );
+      for (const [entity, { type: typeName }] of Object.entries(shapes)) {
+        seenEntities.add(entity);
+        allEntries.push(`    '${entity}': Attrs<${typeName}>;`);
+      }
     }
 
-    const imports = Array.from(byPath.entries())
-      .map(([p, names]) => `import type { ${[...names].join(', ')} } from '${p}';`)
-      .join('\n');
+    for (const [depId, snap] of depSnapshots) {
+      const depShapes = snap.manifest.entityShapes;
+      if (!depShapes) continue;
 
-    const entries = Object.entries(shapes)
-      .map(([entity, { type: typeName }]) => `    '${entity}': Attrs<${typeName}>;`)
-      .join('\n');
+      const depDefsDir = join(root, '.abuddy', 'deps', depId, 'defs');
+      if (!existsSync(depDefsDir)) continue;
+
+      const availableDefs = new Set<string>();
+      try {
+        for (const file of readdirSync(depDefsDir) as string[]) {
+          if (file.endsWith('.d.ts')) {
+            const content = readFileSync(join(depDefsDir, file), 'utf-8');
+            for (const m of content.matchAll(/export\s+(?:declare\s+)?(?:type|interface)\s+(\w+)/g)) {
+              availableDefs.add(m[1]);
+            }
+          }
+        }
+      } catch {}
+
+      const depByPath = new Map<string, Set<string>>();
+      for (const [entity, { type: typeName }] of Object.entries(depShapes)) {
+        if (seenEntities.has(entity)) continue;
+        if (!availableDefs.has(typeName)) continue;
+        seenEntities.add(entity);
+
+        const defsImportPath = `../../.abuddy/deps/${depId}/defs`;
+        if (!depByPath.has(defsImportPath)) depByPath.set(defsImportPath, new Set());
+        depByPath.get(defsImportPath)!.add(typeName);
+        allEntries.push(`    '${entity}': Attrs<${typeName}>;`);
+      }
+      allImports.push(
+        ...Array.from(depByPath.entries())
+          .map(([p, names]) => `import type { ${[...names].join(', ')} } from '${p}';`),
+      );
+    }
+
+    if (allEntries.length === 0) return '';
 
     return `${HEADER}
 import type { BaseEntity } from '@abuddy/sdk/types';
-${imports}
+${allImports.join('\n')}
 
 type Attrs<T> = Omit<T, keyof BaseEntity>;
 
 declare module '@abuddy/sdk/types' {
   interface EntityShapeRegistry {
-${entries}
+${allEntries.join('\n')}
   }
 }
 
@@ -728,25 +788,20 @@ export {};
     return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
   }
 
-  function generateFlowHelpers(): string {
-    const imports: string[] = [];
-    const helpers: string[] = [];
-    const customReExports: string[] = [];
+  function emitStepHelper(step: StepEntry, isLocal: boolean): { imports: string[]; helper?: string; reExport?: string } | null {
+    if (!step.dsl) return null;
+    const dsl = step.dsl;
+    const name = toCamelCase(step.type);
 
-    for (const step of stepDefinitions) {
-      if (!step.dsl) continue;
-
-      const dsl = step.dsl;
-      const name = toCamelCase(step.type);
-
-      if (dsl.custom) {
-        customReExports.push(`export * from '${toImportPath(step.path + '/helpers')}';`);
-        continue;
+    if (dsl.custom) {
+      if (isLocal) {
+        return { imports: [], reExport: `export * from '${toImportPath(step.path + '/helpers')}';` };
       }
+      return null;
+    }
 
-      const importPath = toImportPath(step.path + '/types');
-
-      if (dsl.primaryField) {
+    if (dsl.primaryField) {
+      if (isLocal) {
         const typesFile = join(root, step.path, 'types.ts');
         const content = existsSync(typesFile) ? readFileSync(typesFile, 'utf-8') : '';
         const dslMatch = content.match(/export\s+interface\s+(DSL\w+Node)\b/);
@@ -754,42 +809,74 @@ export {};
           throw new Error(`Step "${step.type}": no DSL*Node interface found in ${step.path}/types.ts`);
         }
         const dslTypeName = dslMatch[1];
-        imports.push(`import type { ${dslTypeName} } from '${importPath}';`);
-        helpers.push(
-`export function ${name}(${dsl.primaryField}: string, opts?: Omit<${dslTypeName}, 'type' | '${dsl.primaryField}'>): DSLStepNode {
-  return { type: '${step.type}', ${dsl.primaryField}, ...opts };
-}`
-        );
-      } else if (dsl.defaultLabel) {
-        helpers.push(
-`export function ${name}(label: string = '${dsl.defaultLabel}'): DSLStepNode {
-  return { type: '${step.type}', label };
-}`
-        );
-      } else {
-        helpers.push(
-`export function ${name}(label?: string): DSLStepNode {
-  return { type: '${step.type}', ...(label && { label }) };
-}`
-        );
+        return {
+          imports: [`import type { ${dslTypeName} } from '${toImportPath(step.path + '/types')}';`],
+          helper: `export function ${name}(${dsl.primaryField}: string, opts?: Omit<${dslTypeName}, 'type' | '${dsl.primaryField}'>): DSLStepNode {\n  return { type: '${step.type}', ${dsl.primaryField}, ...opts };\n}`,
+        };
+      }
+      return {
+        imports: [],
+        helper: `export function ${name}(${dsl.primaryField}: string, opts?: Record<string, unknown>): DSLStepNode {\n  return { type: '${step.type}', ${dsl.primaryField}, ...opts };\n}`,
+      };
+    }
+
+    if (dsl.defaultLabel) {
+      return {
+        imports: [],
+        helper: `export function ${name}(label: string = '${dsl.defaultLabel}'): DSLStepNode {\n  return { type: '${step.type}', label };\n}`,
+      };
+    }
+
+    return {
+      imports: [],
+      helper: `export function ${name}(label?: string): DSLStepNode {\n  return { type: '${step.type}', ...(label && { label }) };\n}`,
+    };
+  }
+
+  function emitTriggerTrackBuilder(step: StepEntry, isLocal: boolean): string | null {
+    if (step.kind !== 'trigger') return null;
+    if (!isLocal) return null;
+    const defFile = join(root, step.path, 'index.ts');
+    if (!existsSync(defFile)) return null;
+    const content = readFileSync(defFile, 'utf-8');
+    const match = content.match(/trackField:\s*['"](\w+)['"]/);
+    if (!match) return null;
+    const trackField = match[1];
+    if (trackField === 'event') return null;
+    return `export function ${toCamelCase(trackField)}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {\n  return { ${trackField}, label: label ?? \`${toPascalCase(trackField)} (\${${trackField}})\`, exits };\n}`;
+  }
+
+  function generateFlowHelpers(): string {
+    const imports: string[] = [];
+    const helpers: string[] = [];
+    const customReExports: string[] = [];
+    const seenTypes = new Set<string>();
+
+    function processSteps(steps: StepEntry[], isLocal: boolean) {
+      for (const step of steps) {
+        if (seenTypes.has(step.type)) continue;
+        seenTypes.add(step.type);
+
+        const result = emitStepHelper(step, isLocal);
+        if (result) {
+          imports.push(...result.imports);
+          if (result.helper) helpers.push(result.helper);
+          if (result.reExport) customReExports.push(result.reExport);
+        }
+
+        const track = emitTriggerTrackBuilder(step, isLocal);
+        if (track) helpers.push(track);
       }
     }
 
-    // Trigger track builders
-    for (const step of stepDefinitions) {
-      if (step.kind !== 'trigger') continue;
-      const defFile = join(root, step.path, 'index.ts');
-      if (!existsSync(defFile)) continue;
-      const content = readFileSync(defFile, 'utf-8');
-      const match = content.match(/trackField:\s*['"](\w+)['"]/);
-      if (!match) continue;
-      const trackField = match[1];
-      if (trackField === 'event') continue;
-      helpers.push(
-`export function ${toCamelCase(trackField)}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {
-  return { ${trackField}, label: label ?? \`${toPascalCase(trackField)} (\${${trackField}})\`, exits };
-}`
-      );
+    processSteps(stepDefinitions, true);
+
+    for (const [, snap] of depSnapshots) {
+      const depManifest = snap.manifest;
+      const depSteps: StepEntry[] = (typeof depManifest.steps === 'object' && depManifest.steps !== null)
+        ? depManifest.steps.definitions ?? []
+        : [];
+      processSteps(depSteps, false);
     }
 
     return `${HEADER}

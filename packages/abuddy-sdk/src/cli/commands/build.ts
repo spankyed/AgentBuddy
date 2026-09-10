@@ -7,7 +7,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '../../build';
 import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
-import { generate, resolveDepTypes } from './generate';
+import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
 import { findSdkVersion } from '../../shared-deps';
@@ -28,8 +28,8 @@ export async function build(args: string[]) {
 
   if (!args.includes('--skip-generate')) {
     await generate([]);
-    const depTypes = await resolveDepTypes(root, manifest.dependencies);
-    await generateEntries([], undefined, depTypes);
+    const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
+    await generateEntries([], undefined, depTypes, depSnapshots);
   }
 
   console.log(`Building pack: ${manifest.name} v${manifest.version}`);
