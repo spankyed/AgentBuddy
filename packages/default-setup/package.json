@@ -11,7 +11,8 @@
     "test": "vitest run",
     "prepare": "abuddy generate-entries",
     "generate:entries": "abuddy generate-entries",
-    "generate:defs": "npx rollup -c rollup-defs.config.mjs"
+    "generate:defs": "npx rollup -c rollup-defs.config.mjs",
+    "build": "abuddy build"
   },
   "dependencies": {
     "@abuddy/sdk": "*"

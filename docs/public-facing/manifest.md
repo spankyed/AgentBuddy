@@ -22,7 +22,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `defaultPlugin` | `string` | no | Feature ID of the default sidebar plugin |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations |
-| `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver or `github:owner/repo range`) |
+| `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `boot` | `PackBootConfig` | no | Boot-time hooks |
 | `fe` | `object` | no | FE-only registrations |
@@ -163,12 +163,23 @@ When a seed value is an object instead of a string path:
 {
   "dependencies": {
     "other-pack": ">=0.1.0",
-    "github-pack": "github:user/repo >=0.2.0"
+    "github-pack": "github:user/repo >=0.2.0",
+    "local-pack": "file:../path/to/pack"
   }
 }
 ```
 
-Dependencies are resolved in order: local workspace -> `.abuddy/deps/` cache -> GitHub releases -> registry (future). Run `abuddy fetch-deps` to pull dependency type manifests for cross-pack type interop.
+Three dependency formats are supported:
+
+| Format | Example | Description |
+|---|---|---|
+| Semver range | `">=0.1.0"`, `"*"` | Resolves from workspace, then registry (future) |
+| `github:` | `"github:user/repo >=0.2.0"` | Resolves from GitHub releases (optional semver filter) |
+| `file:` | `"file:../other-pack"` | Resolves from a local filesystem path (relative to pack root or absolute). Always reads fresh — skips cache. Ideal for local development. |
+
+Resolution order for semver and `github:` deps: local workspace -> `.abuddy/deps/` cache -> GitHub releases -> registry (future). `file:` deps resolve directly from the given path and do not fall through to other resolvers.
+
+Run `abuddy fetch-deps` to pull dependency snapshots for cross-pack type interop.
 
 ## Entities and relations
 

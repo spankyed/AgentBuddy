@@ -11,20 +11,24 @@ import { findPackRoot, readManifest } from '../utils';
 // ── Dependency value parsing ──
 
 interface DepSource {
-  github: string | null;  // "owner/repo" or null
-  range: string;          // semver range, e.g. ">=0.1.0"
+  github: string | null;    // "owner/repo" or null
+  filePath: string | null;  // local filesystem path or null
+  range: string;            // semver range, e.g. ">=0.1.0"
 }
 
 function parseDepValue(value: string): DepSource {
+  if (value.startsWith('file:')) {
+    return { github: null, filePath: value.slice('file:'.length).trim(), range: '*' };
+  }
   if (value.startsWith('github:')) {
     const rest = value.slice('github:'.length).trim();
     const spaceIdx = rest.indexOf(' ');
     if (spaceIdx === -1) {
-      return { github: rest, range: '*' };
+      return { github: rest, filePath: null, range: '*' };
     }
-    return { github: rest.slice(0, spaceIdx), range: rest.slice(spaceIdx + 1).trim() };
+    return { github: rest.slice(0, spaceIdx), filePath: null, range: rest.slice(spaceIdx + 1).trim() };
   }
-  return { github: null, range: value };
+  return { github: null, filePath: null, range: value };
 }
 
 // ── Local cache ──
@@ -54,6 +58,13 @@ function resolveFromWorkspace(root: string, depId: string): PackSnapshot | null 
     if (result) return result;
   }
   return null;
+}
+
+// ── File path resolution ──
+
+function resolveFromFile(root: string, filePath: string): PackSnapshot | null {
+  const resolved = path.resolve(root, filePath);
+  return tryReadSnapshot(path.join(resolved, 'dist', 'snapshot.json'));
 }
 
 // ── GitHub release resolution ──
@@ -176,7 +187,14 @@ function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
 // ── Resolution chain ──
 
 async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<{ snapshot: PackSnapshot; source: string } | null> {
-  const { github, range } = parseDepValue(depValue);
+  const { github, filePath, range } = parseDepValue(depValue);
+
+  if (filePath) {
+    const snapshot = resolveFromFile(root, filePath);
+    if (snapshot) return { snapshot, source: `file:${path.resolve(root, filePath)}` };
+    console.warn(`  Warning: no snapshot at ${path.resolve(root, filePath, 'dist', 'snapshot.json')}`);
+    return null;
+  }
 
   // Workspace first — always try, even with github: prefix (local dev)
   const workspace = resolveFromWorkspace(root, depId);
@@ -200,14 +218,15 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 }
 
 export async function resolveDep(root: string, depId: string, depValue: string, skipCache = false): Promise<PackSnapshot | null> {
-  if (!skipCache) {
+  const isFileDep = depValue.startsWith('file:');
+  if (!skipCache && !isFileDep) {
     const cached = resolveFromLocal(root, depId);
     if (cached) return cached;
   }
 
   const result = await resolveFromUpstream(root, depId, depValue);
   if (result) {
-    cacheDep(root, depId, result.snapshot);
+    if (!isFileDep) cacheDep(root, depId, result.snapshot);
     return result.snapshot;
   }
 
@@ -234,9 +253,10 @@ export async function fetchDeps(_args: string[]) {
   const failed: string[] = [];
 
   for (const depId of depIds) {
-    const result = await resolveFromUpstream(root, depId, deps[depId]);
+    const depValue = deps[depId];
+    const result = await resolveFromUpstream(root, depId, depValue);
     if (result) {
-      cacheDep(root, depId, result.snapshot);
+      if (!depValue.startsWith('file:')) cacheDep(root, depId, result.snapshot);
       const entityCount = Object.keys(result.snapshot.types.entities).length;
       const relCount = Object.keys(result.snapshot.types.relKinds).length;
       const defCount = Object.keys(result.snapshot.defs).length;
