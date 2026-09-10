@@ -53,11 +53,17 @@ export async function setupBackend(): Promise<void> {
     externalPacks = registerExternalPacks(externalPacks);
   }
 
-  // ── Wire shutdown hooks for ALL registered packs ────────────────────
+  // ── Wire shutdown hooks ─────────────────────────────────────────────
+  // External packs get keyed hooks (for scoped reload teardown).
+  // Built-in packs get unkeyed hooks (global shutdown only).
+  const externalShutdownFns = new Set(
+    externalPacks.map(p => p.boot?.shutdown).filter(Boolean),
+  );
   for (const hooks of getBootHooks()) {
-    if (hooks.shutdown) registerShutdownHook(hooks.shutdown);
+    if (hooks.shutdown && !externalShutdownFns.has(hooks.shutdown)) {
+      registerShutdownHook(hooks.shutdown);
+    }
   }
-  // External packs also get keyed hooks for scoped reload teardown
   for (const pack of externalPacks) {
     if (pack.boot?.shutdown) {
       registerShutdownHook(pack.boot.shutdown, pack.manifest.id);

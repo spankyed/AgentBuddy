@@ -75,9 +75,12 @@ export async function reloadExternalPack(
     return;
   }
 
-  // 7. Re-register shutdown hooks
+  // 7. Re-register shutdown hooks + run boot hooks
   if (pack.boot?.shutdown) {
     registerShutdownHook(pack.boot.shutdown, packId);
+  }
+  if (pack.boot?.createDefaultSettings) {
+    pack.boot.createDefaultSettings();
   }
 
   // 8. Re-seed pack data (hash-checked)

@@ -132,7 +132,7 @@ export async function dev(_args: string[]) {
         console.log('Installing to dev...');
         await installPackFromLocal(root, packsDir);
         console.log('Triggering BE reload...');
-        const res = await fetch(`http://localhost:3001/trpc/packs.reload`, {
+        const res = await fetch(`http://localhost:3001/dev/reload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ packId: manifest.id }),
@@ -171,7 +171,7 @@ async function watchRebuildFallback(root: string, srcDir: string, packId: string
         console.log(`\nChange detected: ${label}`);
         await build([]);
         await installPackFromLocal(root, packsDir);
-        const res = await fetch(`http://localhost:3001/trpc/packs.reload`, {
+        const res = await fetch(`http://localhost:3001/dev/reload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ packId }),

@@ -1,3 +1,4 @@
+import * as http from 'http';
 import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
@@ -7,24 +8,56 @@ import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
 import { runShutdownHooks } from '@abuddy/sdk/utils';
 
+function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method === 'POST' && req.url === '/dev/reload') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { packId } = JSON.parse(body);
+        if (!packId || typeof packId !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'packId required' }));
+          return;
+        }
+        const { reloadExternalPack } = await import('@/packs/pack-reload');
+        await reloadExternalPack(packId, backendActor);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        logger.error('Pack reload failed:', err as Error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: (err as Error).message }));
+      }
+    });
+    return;
+  }
+
+  res.writeHead(404);
+  res.end();
+}
+
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
-  
-  // Create WebSocket server
-  const wss = new WebSocketServer({ 
-    port,
+
+  const httpServer = http.createServer(handleHttpRequest);
+
+  const wss = new WebSocketServer({
+    server: httpServer,
     verifyClient: WS_CONFIG.verifyClient
   });
 
-  // ! Log server startup (both to logger and console for main process) do not remove or modify
-  const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
-  console.log(message);
+  httpServer.listen(port, () => {
+    // ! Log server startup (both to logger and console for main process) do not remove or modify
+    const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
+    console.log(message);
+  });
 
   // Apply tRPC handler
-  const handler = applyWSSHandler({ 
-    wss, 
-    router: appRouter, 
-    createContext 
+  const handler = applyWSSHandler({
+    wss,
+    router: appRouter,
+    createContext
   });
 
   // Safety net: always kill terminal processes before the API process exits
@@ -38,6 +71,7 @@ export function createWebSocketServer() {
     backendActor?.stop();
     handler.broadcastReconnectNotification();
     wss.close();
+    httpServer.close();
     // Exit explicitly so the 'exit' handler fires before Electron force-kills us
     process.exit(0);
   });

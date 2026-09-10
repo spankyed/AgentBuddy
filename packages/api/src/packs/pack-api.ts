@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { router, procedure } from '@/core/router/trpc';
 import type { LoadedPack } from './pack-loader';
 import type { BuiltInPackInfo } from './pack-loader';
@@ -75,13 +74,4 @@ export const packsRouter = router({
       ...toRegistryEntries(_loadedPacks),
     ];
   }),
-
-  reload: procedure
-    .input(z.object({ packId: z.string() }))
-    .mutation(async ({ input }) => {
-      const { reloadExternalPack } = await import('./pack-reload');
-      const { backendActor } = await import('@/setup/backend');
-      await reloadExternalPack(input.packId, backendActor);
-      return { ok: true };
-    }),
 });
