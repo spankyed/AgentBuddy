@@ -58,8 +58,13 @@ const packagesToStart = [
 ];
 
 // Start built-in pack dev watch (compiles default-setup to CJS for BE hot reload)
-fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--watch'], {
+// Wait for initial build so dev-entry.cjs exists before the API boots.
+const devBuild = fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--watch'], {
   stdio: 'inherit',
+});
+await new Promise((resolve) => {
+  devBuild.on('message', (msg) => { if (msg.type === 'ready') resolve(); });
+  devBuild.on('exit', resolve);
 });
 
 for (const pkg of packagesToStart) {

@@ -107,6 +107,7 @@ if (watchMode) {
             if (result.errors.length === 0) {
               if (isFirstBuild) {
                 isFirstBuild = false;
+                process.send?.({ type: 'ready' });
                 console.log('[dev-build] Initial build complete');
               } else {
                 clearTimeout(reloadTimer);
