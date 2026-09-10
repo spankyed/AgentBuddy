@@ -74,6 +74,8 @@ const buildOptions = {
 };
 
 let isFirstBuild = true;
+let reloadTimer = null;
+const DEBOUNCE_MS = 300;
 
 async function notifyReload() {
   try {
@@ -107,7 +109,8 @@ if (watchMode) {
                 isFirstBuild = false;
                 console.log('[dev-build] Initial build complete');
               } else {
-                notifyReload();
+                clearTimeout(reloadTimer);
+                reloadTimer = setTimeout(notifyReload, DEBOUNCE_MS);
               }
             }
           });
