@@ -36,7 +36,7 @@
     "test": "npx playwright test ./tests/e2e.spec.ts",
     "test:unit": "npm test --workspace @app/api && npm test --workspace @app/default-setup",
     "start": "node packages/dev-mode.js",
-    "start:gen": "npm run build:be && npm run generate:defs -w @app/default-setup && npm run generate:entries -w @app/default-setup && node packages/dev-mode.js",
+    "start:gen": "npm run generate:defs -w @app/default-setup && node packages/dev-mode.js",
     "start:inspect": "ELECTRON_INSPECT=true node packages/dev-mode.js",
     "start:no-build": "node packages/dev-mode.js",
     "build:be": "npm run build --workspace @app/api",
