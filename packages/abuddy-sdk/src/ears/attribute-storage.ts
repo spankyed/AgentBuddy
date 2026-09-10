@@ -120,7 +120,7 @@ export function addRelation(
       if (fromTarget.has(existingRelId)) {
         const existingRel = getAttr(existingRelId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
         if (info === undefined || JSON.stringify(existingRel.info) === JSON.stringify(info)) {
-          console.warn(`[Relation] Duplicate relation link attempted (${kind}) between ${src} and ${tgt}. Reusing existing relation.`);
+          // Relation already exists with same (src, kind, tgt, info) — reuse it
           return existingRelId;
         }
       }
