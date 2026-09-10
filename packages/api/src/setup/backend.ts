@@ -57,6 +57,12 @@ export async function setupBackend(): Promise<void> {
   for (const hooks of getBootHooks()) {
     if (hooks.shutdown) registerShutdownHook(hooks.shutdown);
   }
+  // External packs also get keyed hooks for scoped reload teardown
+  for (const pack of externalPacks) {
+    if (pack.boot?.shutdown) {
+      registerShutdownHook(pack.boot.shutdown, pack.manifest.id);
+    }
+  }
 
   // ── Hydrate (policy now sees all entity types from all packs)
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });

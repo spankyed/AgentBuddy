@@ -10,6 +10,14 @@ export function registerDesignations(designations: Designations): void {
   }
 }
 
+export function unregisterDesignations(designations: Designations): void {
+  if (Array.isArray(designations)) {
+    for (const role of designations) registry.delete(role);
+  } else {
+    for (const role of Object.keys(designations)) registry.delete(role);
+  }
+}
+
 export function getDesignated(role: string): string {
   const id = registry.get(role);
   if (!id) throw new Error(`No feature designated for "${role}". Ensure a pack declares this designation.`);

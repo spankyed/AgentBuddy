@@ -156,6 +156,99 @@ function loadSystemFromCJS(
   }
 }
 
+export function loadSingleExternalPack(
+  manifest: import('@abuddy/sdk/packs').PackManifest,
+  dir: string,
+): LoadedPack | null {
+  if (manifest.hostVersion) {
+    const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
+    if (compareVersions(APP_VERSION, minVersion) < 0) {
+      logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
+      return null;
+    }
+  }
+
+  const snapshotPath = path.join(dir, 'dist', 'snapshot.json');
+  if (fs.existsSync(snapshotPath)) {
+    try {
+      const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
+      const hostSdk = getHostSdkVersion();
+      if (snapshot.sdkVersion && hostSdk) {
+        const packMajor = snapshot.sdkVersion.split('.')[0];
+        const hostMajor = hostSdk.split('.')[0];
+        if (packMajor !== hostMajor) {
+          logger.warn(
+            `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
+          );
+        }
+      }
+    } catch {}
+  }
+
+  const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
+
+  if (manifest.plugins) {
+    for (const plugin of manifest.plugins) {
+      if (!plugin.system?.entry) continue;
+
+      const system = loadSystemFromCJS(plugin.system.entry, dir);
+      if (system) {
+        if (plugin.system.events?.incoming) {
+          for (const evt of plugin.system.events.incoming) {
+            system.events.add(evt);
+          }
+        }
+        systems.set(plugin.id, system);
+        logger.info(`Loaded system: ${manifest.id}/${plugin.id}`);
+      }
+    }
+  }
+
+  const pack: LoadedPack = { manifest, dir, systems };
+
+  const mainEntry = path.join(dir, 'dist', 'index.js');
+  if (fs.existsSync(mainEntry)) {
+    try {
+      withHostResolution(() => {
+        const mod = esmRequire(mainEntry);
+        if (mod.services) pack.services = mod.services;
+        if (mod.steps) pack.steps = mod.steps;
+        if (mod.artifacts) pack.artifacts = mod.artifacts;
+        if (mod.blocks) pack.blocks = mod.blocks;
+        if (mod.ears) pack.ears = mod.ears;
+        if (mod.boot) pack.boot = mod.boot;
+        if (mod.migrations) pack.migrations = mod.migrations;
+      });
+    } catch (err) {
+      logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
+    }
+  }
+
+  if (!pack.ears && (manifest.entities || manifest.relKinds)) {
+    pack.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
+  }
+
+  if (pack.boot?.earlySystem) {
+    logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
+    delete pack.boot.earlySystem;
+  }
+  if (pack.ears?.partitionPolicy) {
+    logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
+    delete pack.ears.partitionPolicy;
+  }
+
+  return pack;
+}
+
+export function clearPackRequireCache(packDir: string): void {
+  const prefix = packDir + path.sep;
+  for (const key of Object.keys(require.cache)) {
+    if (key.startsWith(prefix)) {
+      delete require.cache[key];
+    }
+  }
+}
+
 export function loadExternalPacks(): LoadedPack[] {
   const packsDir = getPacksDir();
   const discovered = discoverPacks(packsDir);
@@ -167,84 +260,8 @@ export function loadExternalPacks(): LoadedPack[] {
   const loaded: LoadedPack[] = [];
 
   for (const { manifest, dir } of enabled) {
-    if (manifest.hostVersion) {
-      const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
-      if (compareVersions(APP_VERSION, minVersion) < 0) {
-        logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
-        continue;
-      }
-    }
-
-    const snapshotPath = path.join(dir, 'dist', 'snapshot.json');
-    if (fs.existsSync(snapshotPath)) {
-      try {
-        const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
-        const hostSdk = getHostSdkVersion();
-        if (snapshot.sdkVersion && hostSdk) {
-          const packMajor = snapshot.sdkVersion.split('.')[0];
-          const hostMajor = hostSdk.split('.')[0];
-          if (packMajor !== hostMajor) {
-            logger.warn(
-              `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
-            );
-          }
-        }
-      } catch {}
-    }
-
-    const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
-
-    if (manifest.plugins) {
-      for (const plugin of manifest.plugins) {
-        if (!plugin.system?.entry) continue;
-
-        const system = loadSystemFromCJS(plugin.system.entry, dir);
-        if (system) {
-          if (plugin.system.events?.incoming) {
-            for (const evt of plugin.system.events.incoming) {
-              system.events.add(evt);
-            }
-          }
-          systems.set(plugin.id, system);
-          logger.info(`Loaded system: ${manifest.id}/${plugin.id}`);
-        }
-      }
-    }
-
-    const pack: LoadedPack = { manifest, dir, systems };
-
-    const mainEntry = path.join(dir, 'dist', 'index.js');
-    if (fs.existsSync(mainEntry)) {
-      try {
-        withHostResolution(() => {
-          const mod = esmRequire(mainEntry);
-          if (mod.services) pack.services = mod.services;
-          if (mod.steps) pack.steps = mod.steps;
-          if (mod.artifacts) pack.artifacts = mod.artifacts;
-          if (mod.blocks) pack.blocks = mod.blocks;
-          if (mod.ears) pack.ears = mod.ears;
-          if (mod.boot) pack.boot = mod.boot;
-          if (mod.migrations) pack.migrations = mod.migrations;
-        });
-      } catch (err) {
-        logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
-      }
-    }
-
-    if (!pack.ears && (manifest.entities || manifest.relKinds)) {
-      pack.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
-    }
-
-    if (pack.boot?.earlySystem) {
-      logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
-      delete pack.boot.earlySystem;
-    }
-    if (pack.ears?.partitionPolicy) {
-      logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
-      delete pack.ears.partitionPolicy;
-    }
-
-    loaded.push(pack);
+    const pack = loadSingleExternalPack(manifest, dir);
+    if (pack) loaded.push(pack);
   }
 
   return loaded;

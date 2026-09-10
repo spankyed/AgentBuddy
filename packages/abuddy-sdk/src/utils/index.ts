@@ -253,7 +253,7 @@ function systemErrorsMod() { if (!_systemErrorsMod) _systemErrorsMod = getHostMo
 export function reportSystemError(...args: any[]): void { return systemErrorsMod().reportSystemError(...args); }
 
 // --- Lifecycle (direct) ---
-export { registerShutdownHook, runShutdownHooks } from './lifecycle';
+export { registerShutdownHook, runShutdownHooks, runShutdownHooksForKey, removeShutdownHooksForKey } from './lifecycle';
 
 // --- Version (host-injected) ---
 let _versionMod: any;

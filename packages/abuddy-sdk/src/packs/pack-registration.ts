@@ -6,7 +6,7 @@
  */
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '../framework';
-import { registerDesignations } from '../designations';
+import { registerDesignations, unregisterDesignations } from '../designations';
 import { stepRegistry } from '../steps';
 import { artifactRegistry } from '../artifacts';
 import { blockRegistry } from '../blocks';
@@ -103,6 +103,30 @@ export function registerPack(registration: PackRegistration): void {
 
   registrations.set(registration.id, registration);
 
+  _entityTypeCache = null;
+  _servicesCache = null;
+}
+
+export function unregisterPack(packId: string): void {
+  const reg = registrations.get(packId);
+  if (!reg) throw new Error(`Pack "${packId}" is not registered`);
+
+  if (reg.steps) {
+    for (const step of reg.steps) stepRegistry.unregister(step.type);
+  }
+  if (reg.artifacts) {
+    for (const art of reg.artifacts) artifactRegistry.unregister(art.type);
+  }
+  if (reg.blocks) {
+    for (const block of reg.blocks) blockRegistry.unregister(block.type);
+  }
+
+  const designated = reg.systems.filter(s => s.designation);
+  if (designated.length) {
+    unregisterDesignations(designated.map(s => s.designation!));
+  }
+
+  registrations.delete(packId);
   _entityTypeCache = null;
   _servicesCache = null;
 }

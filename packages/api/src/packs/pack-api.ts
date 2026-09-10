@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { router, procedure } from '@/core/router/trpc';
 import type { LoadedPack } from './pack-loader';
 import type { BuiltInPackInfo } from './pack-loader';
@@ -7,6 +8,15 @@ let _builtInPacks: BuiltInPackInfo[] = [];
 
 export function setLoadedPacks(packs: LoadedPack[]) {
   _loadedPacks = packs;
+}
+
+export function updateLoadedPack(pack: LoadedPack) {
+  const idx = _loadedPacks.findIndex(p => p.manifest.id === pack.manifest.id);
+  if (idx >= 0) {
+    _loadedPacks[idx] = pack;
+  } else {
+    _loadedPacks.push(pack);
+  }
 }
 
 export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {
@@ -65,4 +75,13 @@ export const packsRouter = router({
       ...toRegistryEntries(_loadedPacks),
     ];
   }),
+
+  reload: procedure
+    .input(z.object({ packId: z.string() }))
+    .mutation(async ({ input }) => {
+      const { reloadExternalPack } = await import('./pack-reload');
+      const { backendActor } = await import('@/setup/backend');
+      await reloadExternalPack(input.packId, backendActor);
+      return { ok: true };
+    }),
 });
