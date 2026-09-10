@@ -27,8 +27,8 @@ export async function build(args: string[]) {
   const manifest = readManifest(root);
 
   if (!args.includes('--skip-generate')) {
-    await generate([]);
     const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
+    await generate([], undefined, depSnapshots);
     await generateEntries([], undefined, depTypes, depSnapshots);
   }
 

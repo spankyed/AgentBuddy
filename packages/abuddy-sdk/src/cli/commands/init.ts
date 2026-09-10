@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
-import { generate } from './generate';
+import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
+import { readManifest } from '../utils';
 
 const MANIFEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
@@ -185,8 +186,10 @@ export async function init(args: string[]) {
     EXAMPLE_TEST_TEMPLATE(name),
   );
 
-  await generate([], dir);
-  await generateEntries([], dir);
+  const initManifest = readManifest(dir);
+  const { depTypes, depSnapshots } = await resolveDeps(dir, initManifest.dependencies);
+  await generate([], dir, depSnapshots);
+  await generateEntries([], dir, depTypes, depSnapshots);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
   console.log(`\nImport types in your seed code:`);

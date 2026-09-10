@@ -36,15 +36,15 @@ export async function resolveDeps(root: string, deps?: Record<string, string>): 
 
 // ── Command ──
 
-export async function generate(_args: string[], packRoot?: string) {
+export async function generate(_args: string[], packRoot?: string, preResolvedDeps?: Map<string, PackSnapshot>) {
   const root = packRoot ?? findPackRoot(process.cwd());
   const manifest = readManifest(root);
 
   console.log(`Generating types for: ${manifest.name}`);
 
-  const depSnapshots = manifest.dependencies
+  const depSnapshots = preResolvedDeps ?? (manifest.dependencies
     ? await loadDepSnapshots(root, manifest.dependencies)
-    : new Map<string, PackSnapshot>();
+    : new Map<string, PackSnapshot>());
 
   const generatedDir = path.join(root, '.abuddy', 'generated');
   fs.mkdirSync(generatedDir, { recursive: true });

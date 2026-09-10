@@ -721,25 +721,29 @@ export type { ImportMode } from '@abuddy/sdk/utils';
       const depDefsDir = join(root, '.abuddy', 'deps', depId, 'defs');
       if (!existsSync(depDefsDir)) continue;
 
-      const availableDefs = new Set<string>();
+      const typeToFile = new Map<string, string>();
       try {
-        for (const file of readdirSync(depDefsDir) as string[]) {
+        for (const file of readdirSync(depDefsDir)) {
           if (file.endsWith('.d.ts')) {
+            const key = file.replace(/\.d\.ts$/, '');
             const content = readFileSync(join(depDefsDir, file), 'utf-8');
             for (const m of content.matchAll(/export\s+(?:declare\s+)?(?:type|interface)\s+(\w+)/g)) {
-              availableDefs.add(m[1]);
+              typeToFile.set(m[1], key);
             }
           }
         }
-      } catch {}
+      } catch (e) {
+        console.warn(`  Warning: failed to read defs for dep "${depId}": ${e instanceof Error ? e.message : e}`);
+      }
 
       const depByPath = new Map<string, Set<string>>();
       for (const [entity, { type: typeName }] of Object.entries(depShapes)) {
         if (seenEntities.has(entity)) continue;
-        if (!availableDefs.has(typeName)) continue;
+        const fileKey = typeToFile.get(typeName);
+        if (!fileKey) continue;
         seenEntities.add(entity);
 
-        const defsImportPath = `../../.abuddy/deps/${depId}/defs`;
+        const defsImportPath = `../../.abuddy/deps/${depId}/defs/${fileKey}`;
         if (!depByPath.has(defsImportPath)) depByPath.set(defsImportPath, new Set());
         depByPath.get(defsImportPath)!.add(typeName);
         allEntries.push(`    '${entity}': Attrs<${typeName}>;`);

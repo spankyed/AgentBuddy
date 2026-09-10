@@ -9,9 +9,20 @@ const HASH_FILE = '.inputs-hash';
 const TEMPLATE_PATH = path.resolve(import.meta.dirname, '../../build/generate-entries.ts');
 
 function computeInputsHash(root: string): string {
-  const manifestContent = fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8');
-  const templateContent = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
-  return createHash('sha256').update(manifestContent).update(templateContent).digest('hex');
+  const hash = createHash('sha256');
+  hash.update(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
+  hash.update(fs.readFileSync(TEMPLATE_PATH, 'utf-8'));
+  const depsDir = path.join(root, '.abuddy', 'deps');
+  if (fs.existsSync(depsDir)) {
+    for (const depId of fs.readdirSync(depsDir).sort()) {
+      const snapPath = path.join(depsDir, depId, 'snapshot.json');
+      if (fs.existsSync(snapPath)) {
+        hash.update(depId);
+        hash.update(fs.readFileSync(snapPath, 'utf-8'));
+      }
+    }
+  }
+  return hash.digest('hex');
 }
 
 export async function generateEntries(
