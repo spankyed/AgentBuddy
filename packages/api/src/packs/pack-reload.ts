@@ -68,11 +68,28 @@ async function reloadPack(
   result.createDefaultSettings?.();
   result.afterRegister?.();
 
-  backendActor.send({
-    type: 'RELOAD_PACK',
-    packId,
-    systemIds: [...new Set([...oldSystemIds, ...result.newSystemIds])],
-  });
+  const systemIds = [...new Set([...oldSystemIds, ...result.newSystemIds])];
+
+  // XState's unregisterRecursively misses grandchild actors spawned without
+  // an explicit `id` (they collide under the "undefined" key in
+  // snapshot.children). Temporarily patch system._set to force-unregister
+  // any orphaned actor before the replacement registers the same systemId.
+  const sys = (backendActor as any).system;
+  const originalSet = sys._set;
+  sys._set = (systemId: string, actorRef: unknown) => {
+    const existing = sys.get(systemId);
+    if (existing) {
+      sys._unregister(existing);
+    }
+    originalSet(systemId, actorRef);
+  };
+
+  try {
+    backendActor.send({ type: 'RELOAD_PACK', packId, systemIds });
+    backendActor.send({ type: 'RELOAD_PACK_CONNECT', systemIds });
+  } finally {
+    sys._set = originalSet;
+  }
 
   logger.info(`Pack reloaded: ${packId} (${result.newSystemIds.length} systems)`);
 }

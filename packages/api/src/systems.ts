@@ -113,7 +113,6 @@ export const backendSystem = setup({
       for (const id of systemIds) {
         (enqueue as any).stopChild(id);
       }
-      enqueue.raise({ type: 'RELOAD_PACK_CONNECT', systemIds } as ReloadPackConnectEvent);
     }),
     connectReloadedSystems: enqueueActions(({ enqueue, event, system }) => {
       const { systemIds } = event as ReloadPackConnectEvent;
