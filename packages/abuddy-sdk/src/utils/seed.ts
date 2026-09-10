@@ -27,8 +27,9 @@ export interface Seeder {
 const seeders: Seeder[] = [];
 
 export function registerSeeder(seeder: Seeder): void {
-  if (seeders.some(s => s.key === seeder.key)) {
-    console.warn(`[seed] Duplicate seeder key "${seeder.key}", skipping`);
+  const idx = seeders.findIndex(s => s.key === seeder.key);
+  if (idx !== -1) {
+    seeders[idx] = seeder;
     return;
   }
   seeders.push(seeder);

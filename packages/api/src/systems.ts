@@ -113,6 +113,10 @@ export const backendSystem = setup({
       for (const id of systemIds) {
         (enqueue as any).stopChild(id);
       }
+      enqueue.raise({ type: 'RELOAD_PACK_CONNECT', systemIds } as ReloadPackConnectEvent);
+    }),
+    connectReloadedSystems: enqueueActions(({ enqueue, event, system }) => {
+      const { systemIds } = event as ReloadPackConnectEvent;
       const systems = getRegisteredSystems();
       for (const id of systemIds) {
         const machine = systems.get(id);
@@ -120,14 +124,10 @@ export const backendSystem = setup({
           (enqueue as any).spawnChild(machine, { id, systemId: id });
         }
       }
-      enqueue.raise({ type: 'RELOAD_PACK_CONNECT', systemIds } as ReloadPackConnectEvent);
-    }),
-    connectReloadedSystems: ({ event, system }) => {
-      const { systemIds } = event as ReloadPackConnectEvent;
       for (const id of systemIds) {
         try { system.get(id).send({ type: 'CLIENT_CONNECTED' }); } catch {}
       }
-    },
+    }),
   }
 }).createMachine(
   {
