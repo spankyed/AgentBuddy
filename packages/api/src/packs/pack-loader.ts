@@ -183,10 +183,20 @@ export function withHostResolution<T>(fn: () => T): T {
 
   // Pre-populate esmRequire.cache so SDK requires get the bundled singletons.
   // These persist — lazy requires inside pack callbacks need them too.
+  // Cache entries are injected at both the bridge key (used while the
+  // _resolveFilename patch is active) and the real resolved path (used by
+  // lazy __esm() initializers that run after withHostResolution returns).
   for (const [specifier, exports] of Object.entries(SDK_BRIDGE)) {
     const cacheKey = `__sdk_bridge__/${specifier}`;
     if (!esmRequire.cache[cacheKey]) {
-      esmRequire.cache[cacheKey] = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
+      const entry = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
+      esmRequire.cache[cacheKey] = entry;
+      try {
+        const realPath = esmRequire.resolve(specifier);
+        if (!esmRequire.cache[realPath]) {
+          esmRequire.cache[realPath] = entry;
+        }
+      } catch {}
     }
   }
 
