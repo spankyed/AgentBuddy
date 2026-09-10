@@ -11,6 +11,5 @@ export function toPackSystemDefs(entries: SystemEntry[]): PackSystemDef[] {
     id: spec.id,
     machine,
     events: new Set<string>(machine.events),
-    designation: spec.designation,
   }));
 }

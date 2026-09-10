@@ -279,6 +279,14 @@ export function generatePackFiles(
       .map(f => f.system!.exportName)
       .join(', ');
 
+    const designatedFeatures = orderedSystemFeatures.filter(f => f.designation);
+    const designationMapLiteral = designatedFeatures.length
+      ? `{ ${designatedFeatures.map(f => `${f.id}: '${f.designation}'`).join(', ')} }`
+      : '';
+    const systemsExpr = designatedFeatures.length
+      ? `toPackSystemDefs([${systemEntries}]).map(s => {\n    const d: Record<string, string> = ${designationMapLiteral};\n    return d[s.id] ? { ...s, designation: d[s.id] } : s;\n  })`
+      : `toPackSystemDefs([${systemEntries}])`;
+
     const earlyImport = earlyFeature?.system
       ? `import { ${earlyFeature.system.exportName} } from '${toImportPath(earlyFeature.system.entry)}';\n`
       : '';
@@ -332,7 +340,7 @@ import { DEFAULT_COMPILED_DIR } from './seeders';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
-  systems: toPackSystemDefs([${systemEntries}]),
+  systems: ${systemsExpr},
   services: featureServices,
 ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
@@ -373,7 +381,13 @@ ${featuresLiteral},
     const pluginFeatures = features.filter(f => f.plugin);
 
     const pluginImports = pluginFeatures
-      .map(f => `import ${toPascalCase(f.id)} from '${toImportPath(f.plugin!.entry)}';`)
+      .map(f => {
+        const name = toPascalCase(f.id);
+        if (f.designation) {
+          return `import _${name} from '${toImportPath(f.plugin!.entry)}';\nconst ${name} = { ..._${name}, designation: '${f.designation}' } as typeof _${name};`;
+        }
+        return `import ${name} from '${toImportPath(f.plugin!.entry)}';`;
+      })
       .join('\n');
 
     const pluginList = pluginFeatures.map(f => toPascalCase(f.id)).join(', ');

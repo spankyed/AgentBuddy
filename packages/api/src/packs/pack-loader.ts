@@ -270,11 +270,15 @@ export function loadExternalPacks(): LoadedPack[] {
 export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {
-    const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => ({
-      id: `${pack.manifest.id}.${featureId}`,
-      machine: sys.machine,
-      events: sys.events,
-    }));
+    const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => {
+      const pluginDef = pack.manifest.plugins?.find(p => p.id === featureId);
+      return {
+        id: `${pack.manifest.id}.${featureId}`,
+        machine: sys.machine,
+        events: sys.events,
+        designation: pluginDef?.designation,
+      };
+    });
     try {
       registerPack({
         id: pack.manifest.id,

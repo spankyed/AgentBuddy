@@ -69,6 +69,7 @@ export interface PackManifest {
 
 export interface PackPluginDefinition {
   id: string;
+  designation?: string;
   priority?: number;
   system?: {
     entry: string;

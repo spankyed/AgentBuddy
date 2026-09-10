@@ -6,6 +6,7 @@ export interface PackPluginManifest {
   entry: string;
   label: string;
   icon: string;
+  designation?: string;
 }
 
 async function resolveLucideIcon(iconName: string): Promise<any> {
@@ -67,6 +68,10 @@ export async function loadPackPlugin(
 
     if (typeof manifest.icon === 'string' && !plugin.icon) {
       plugin.icon = await resolveLucideIcon(manifest.icon);
+    }
+
+    if (manifest.designation && !plugin.designation) {
+      plugin.designation = manifest.designation;
     }
 
     return plugin as Plugin;

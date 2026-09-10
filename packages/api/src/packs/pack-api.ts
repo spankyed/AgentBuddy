@@ -34,6 +34,7 @@ export interface PackBundleEntry {
     entry: string;
     label: string;
     icon: string;
+    designation?: string;
   }[];
 }
 
@@ -53,6 +54,7 @@ function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
           entry: d.plugin!.entry,
           label: d.plugin!.label,
           icon: d.plugin!.icon,
+          designation: d.designation,
         })),
     }));
 }

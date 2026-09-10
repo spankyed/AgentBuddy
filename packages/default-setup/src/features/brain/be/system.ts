@@ -1,6 +1,6 @@
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import config from '../feature.config';
+
 import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
 import { emit, getActor } from '@abuddy/sdk/helpers';
@@ -57,7 +57,7 @@ export interface BrainContext {
   eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
 }
 
-export const brainSpec = defineSystem('brain', { designation: config.designation })<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
+export const brainSpec = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
 export const brain = brainSpec.id;
 export const brainRuntime = 'brain-runtime' as const;
 

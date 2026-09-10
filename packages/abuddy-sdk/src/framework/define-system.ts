@@ -21,7 +21,6 @@ export interface SystemSpec<
   TContext = {},
 > {
   id: Id;
-  designation?: string;
   types: { context: TContext; events: TEvents | SystemEvents };
   typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
   /** Phantom — incoming events with `systemId` attached (wire format). */
@@ -41,14 +40,13 @@ export interface SystemSpec<
  * >();
  * ```
  */
-export function defineSystem<Id extends string>(id: Id, opts?: { designation?: string }) {
+export function defineSystem<Id extends string>(id: Id) {
   return <
     TEvents extends { type: string },
     TOutgoing extends { type: string },
     TContext = {},
   >(): SystemSpec<Id, TEvents, TOutgoing, TContext> => ({
     id,
-    designation: opts?.designation,
     types: {
       context: {} as TContext,
       events: {} as TEvents | SystemEvents,
