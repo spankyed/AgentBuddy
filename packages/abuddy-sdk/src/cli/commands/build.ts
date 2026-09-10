@@ -99,7 +99,7 @@ export async function build(args: string[]) {
   }
 
   // ── FE bundling ──────────────────────────────────────────────────────
-  const feEntry = findFEEntry(root);
+  const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
   if (feEntry) {
     const feResult = await bundlePackFE({ packDir: root, outputDir, entryPoint: feEntry });
     if (feResult.success) {

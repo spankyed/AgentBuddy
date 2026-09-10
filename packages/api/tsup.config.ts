@@ -58,14 +58,16 @@ function tryResolve(base: string, subpath: string): string | null {
   return null;
 }
 
-export default defineConfig({
-  entry: ['src/types.ts', 'src/server.ts'],
-  format: ['esm', 'cjs'],
-  dts: true,
-  shims: true,
-  minify: true,
-  external: ['typescript', 'esbuild'],
-  esbuildPlugins: [
+export default defineConfig((options) => {
+  const isDev = options.env?.NODE_ENV === 'development';
+  return {
+    entry: isDev ? ['src/server.ts'] : ['src/types.ts', 'src/server.ts'],
+    format: isDev ? ['esm'] : ['esm', 'cjs'],
+    dts: !isDev,
+    shims: true,
+    minify: !isDev,
+    external: ['typescript', 'esbuild'],
+    esbuildPlugins: [
     {
       name: 'externalize-vue',
       setup(build) {
@@ -124,5 +126,6 @@ export default defineConfig({
         });
       },
     },
-  ],
+    ],
+  };
 });

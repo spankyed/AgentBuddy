@@ -6,6 +6,7 @@
   "description": "",
   "scripts": {
     "build": "tsc --noEmit && NODE_OPTIONS='--max-old-space-size=8192' tsup",
+    "build:dev": "NODE_OPTIONS='--max-old-space-size=8192' tsup --env.NODE_ENV development",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --noEmit --watch --preserveWatchOutput",
     "dev:serve": "tsx --watch src/server.ts",

@@ -12,7 +12,8 @@
     "prepare": "abuddy generate-entries",
     "generate:entries": "abuddy generate-entries",
     "generate:defs": "npx rollup -c rollup-defs.config.mjs",
-    "build": "abuddy build"
+    "build": "abuddy build",
+    "build:dev": "abuddy build --skip-fe"
   },
   "dependencies": {
     "@abuddy/sdk": "*"
