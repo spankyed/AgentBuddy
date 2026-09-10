@@ -21,7 +21,7 @@ import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/shared-deps';
 // require('@abuddy/sdk/ears') would get a SEPARATE module instance
 // with empty singleton state (Maps, registries). These static imports
 // resolve to the BUNDLED instances — the ones with hydrated data.
-// withHostResolution injects them into require.cache so dynamically
+// withHostResolution injects them into esmRequire.cache so dynamically
 // loaded pack code shares the real singletons.
 import * as _sdkRoot from '@abuddy/sdk';
 import * as _sdkEars from '@abuddy/sdk/ears';
@@ -180,12 +180,12 @@ export function withHostResolution<T>(fn: () => T): T {
     try { hostResolutions.set(pkg, esmRequire.resolve(pkg)); } catch {}
   }
 
-  // Pre-populate require.cache so SDK requires get the bundled singletons.
+  // Pre-populate esmRequire.cache so SDK requires get the bundled singletons.
   // These persist — lazy requires inside pack callbacks need them too.
   for (const [specifier, exports] of Object.entries(SDK_BRIDGE)) {
     const cacheKey = `__sdk_bridge__/${specifier}`;
-    if (!require.cache[cacheKey]) {
-      require.cache[cacheKey] = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
+    if (!esmRequire.cache[cacheKey]) {
+      esmRequire.cache[cacheKey] = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
     }
   }
 
@@ -322,9 +322,9 @@ export function loadSingleExternalPack(
 
 export function clearPackRequireCache(packDir: string): void {
   const prefix = packDir + path.sep;
-  for (const key of Object.keys(require.cache)) {
+  for (const key of Object.keys(esmRequire.cache)) {
     if (key.startsWith(prefix)) {
-      delete require.cache[key];
+      delete esmRequire.cache[key];
     }
   }
 }
