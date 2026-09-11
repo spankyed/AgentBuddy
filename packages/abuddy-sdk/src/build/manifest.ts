@@ -1,5 +1,6 @@
 import * as path from 'path';
 
+// Keep in sync with abuddy.schema.json (editor validation for pack authors)
 export interface PackManifest {
   id: string;
   name: string;
@@ -23,7 +24,7 @@ export interface PackManifest {
   packServices?: Record<string, string>;
   defaultPlugin?: string;
   partitionPolicy?: { excludedEntityTypes?: string[]; secretEntityTypes?: string[] };
-  fe?: { tiptapPlugins?: string; appExtensions?: Record<string, string>; styles?: string };
+  fe?: { entry?: string; tiptapPlugins?: string; appExtensions?: Record<string, string>; styles?: string };
   entityShapes?: Record<string, { source: string; type: string }>;
   dsl?: Record<string, DslEntry>;
 }
@@ -116,6 +117,7 @@ export type PackPermission =
 
 export interface PackPluginDefinition {
   id: string;
+  designation?: string;
   priority?: number;
   system?: PackSystemEntry;
   plugin?: PackPluginEntry;

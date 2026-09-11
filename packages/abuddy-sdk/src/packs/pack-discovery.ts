@@ -3,8 +3,11 @@ import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '../logger';
 import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
+import type { PackManifest, PackPluginDefinition } from '../build/manifest';
 
 const logger = createLogger('pack-discovery');
+
+export type { PackManifest, PackPluginDefinition };
 
 // ── Built-in pack discovery ─────────────────────────────────────────
 
@@ -53,39 +56,6 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
 }
 
 // ── External pack discovery ─────────────────────────────────────────
-
-export interface PackManifest {
-  id: string;
-  name: string;
-  version: string;
-  hostVersion?: string;
-  seedTypes?: string[];
-  plugins?: PackPluginDefinition[];
-  fe?: { entry: string; styles?: string };
-  permissions?: string[];
-  entities?: Record<string, string>;
-  relKinds?: Record<string, string>;
-}
-
-export interface PackPluginDefinition {
-  id: string;
-  designation?: string;
-  priority?: number;
-  system?: {
-    entry: string;
-    events?: {
-      incoming?: string[];
-      outgoing?: string[];
-    };
-  };
-  plugin?: {
-    entry: string;
-    label: string;
-    icon: string;
-  };
-  entities?: string[];
-  settings?: Record<string, unknown>;
-}
 
 export const APP_NAME = 'abuddy';
 export const DEV_APP_NAME = 'abuddy-dev';
