@@ -30,7 +30,9 @@ class ProtocolHandler implements AppModule {
       const win = BrowserWindow.getAllWindows().find(w => !w.isDestroyed());
       if (win) {
         if (win.isMinimized()) win.restore();
-        win.focus();
+        if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
+          win.focus();
+        }
         win.webContents.send('protocol-action', {action, params});
       }
     } catch (e) {

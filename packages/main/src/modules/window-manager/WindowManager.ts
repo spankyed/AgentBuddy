@@ -109,8 +109,10 @@ class WindowManager implements AppModule {
           if (mainWindow.isMinimized()) {
             mainWindow.restore();
           }
-          mainWindow.show();
-          mainWindow.focus();
+          if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
+            mainWindow.show();
+            mainWindow.focus();
+          }
         }
       }
     });
@@ -148,16 +150,20 @@ class WindowManager implements AppModule {
         if (existing.isMinimized()) {
           existing.restore();
         }
-        existing.show();
-        existing.focus();
+        if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
+          existing.show();
+          existing.focus();
+        }
         return;
       }
 
       const popout = await this.createPopoutWindow(pluginId, title);
       this.#popoutWindows.set(pluginId, popout);
       popout.on('closed', () => this.#popoutWindows.delete(pluginId));
-      popout.show();
-      popout.focus();
+      if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
+        popout.show();
+        popout.focus();
+      }
     });
 
     ipcMain.on('zoom:changed', (event, zoomFactor: number) => {
@@ -623,7 +629,7 @@ class WindowManager implements AppModule {
       await this.waitForRendererReady(window);
     }
 
-    if (process.env.PLAYWRIGHT_TEST !== 'true') {
+    if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
       window.show();
       window.focus();
     }

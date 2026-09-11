@@ -80,7 +80,9 @@ function resolveScreenshotDir(override?: string): string {
 function resolveAbuddyBin(appRoot: string): string {
   const localBin = path.join(process.cwd(), 'node_modules', '.bin', 'abuddy');
   if (fs.existsSync(localBin)) return localBin;
-  return path.join(appRoot, 'node_modules', '.bin', 'abuddy');
+  const appBin = path.join(appRoot, 'node_modules', '.bin', 'abuddy');
+  if (fs.existsSync(appBin)) return appBin;
+  return 'abuddy';
 }
 
 function syncPackToDevDir(src: string, dest: string): void {

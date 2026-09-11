@@ -28,7 +28,7 @@ When a test worker starts, the fixture runs this sequence:
    - Check for a `.dev` signal file in the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`). If present, `abuddy dev` is running — skip build/sync
    - If no `.dev` signal: build the pack if `dist/` doesn't exist (using the `abuddy build` CLI binary), then sync the pack files to the dev packs directory (recursive copy, skipping symlinks, `node_modules`, and `.git`)
 
-3. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` (so external packs don't need `electron` installed), then launches with `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` and `PLAYWRIGHT_TEST=true`. The Electron app starts the same as dev mode but with error handling set to crash immediately on uncaught exceptions.
+3. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` (so external packs don't need `electron` installed), then launches with `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` and `PLAYWRIGHT_TEST=true`. The Electron app starts the same as dev mode but headless (no window display or splash screen) and with error handling set to crash immediately on uncaught exceptions.
 
 4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s.
 
@@ -118,9 +118,10 @@ Pack developers can write and run E2E tests without touching the AgentBuddy repo
 
 ```bash
 cd /path/to/my-pack
-npx abuddy init-tests                                    # scaffold config + sample test
+abuddy init-tests                                        # scaffold config + sample test, link SDK
 npm i -D @playwright/test
-ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test       # run tests
+export ABUDDY_ROOT=/path/to/AgentBuddy                   # add to shell profile
+abuddy test                                              # run tests
 ```
 
 ### 2. From this repo (quick iteration)
@@ -153,7 +154,7 @@ The renderer exposes on `window`:
 
 | Variable | Description |
 |----------|-------------|
-| `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; makes uncaught errors crash immediately |
+| `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; crashes on uncaught errors and runs headless (no window display) |
 | `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
 | `PACK_DIR=/path/to/pack` | Syncs pack to dev packs dir (builds if no `dist/`), waits for plugins before tests run |
 | `ABUDDY_ROOT=/path/to/AgentBuddy` | Path to the AgentBuddy monorepo (auto-detected inside the monorepo) |

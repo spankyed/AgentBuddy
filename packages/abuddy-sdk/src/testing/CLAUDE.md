@@ -27,7 +27,7 @@ External packs import directly:
 import { test, expect } from '@abuddy/sdk/testing';
 ```
 
-Since external packs depend on `@abuddy/sdk` (linked or installed), the import resolves through the SDK's `package.json` exports.
+The `abuddy init-tests` and `abuddy test` commands automatically symlink the SDK into the pack's `node_modules/@abuddy/sdk`, so the import resolves through Node's standard module resolution.
 
 ## Prerequisites
 
@@ -38,23 +38,31 @@ git clone <agentbuddy-repo> /path/to/AgentBuddy
 cd /path/to/AgentBuddy && npm install && npm run build
 ```
 
-The fixture resolves the Electron binary from the monorepo's `node_modules/electron` — external packs do **not** need `electron` as a dependency. `@abuddy/sdk` is currently private (`"private": true`), so packs must link to a local copy rather than installing from npm.
+The fixture resolves the Electron binary from the monorepo's `node_modules/electron` — external packs do **not** need `electron` as a dependency.
 
 ## Setup for external packs
 
 ```bash
 cd /path/to/my-pack
-npx abuddy init-tests              # scaffolds playwright.config.ts + tests/e2e/smoke.spec.ts
+abuddy init-tests                  # scaffolds playwright.config.ts + tests/e2e/smoke.spec.ts, links SDK
 npm i -D @playwright/test          # install Playwright
 export ABUDDY_ROOT=/path/to/AgentBuddy  # add to .env or shell profile
+abuddy test                        # run tests
 ```
 
 The `init-tests` CLI command (source: `packages/abuddy-sdk/src/cli/commands/init-tests.ts`):
 - Reads the pack's `abuddy.json` to extract the first plugin ID
 - Creates `playwright.config.ts` with `testDir: 'tests/e2e'`, `timeout: 60_000`, `workers: 1`
 - Creates `tests/e2e/smoke.spec.ts` with `waitForPlugin()` and `navigate()` pre-filled for the detected plugin
-- Appends `tests/screenshots/`, `tests/results/`, `test-results/` to `.gitignore`
+- Symlinks `@abuddy/sdk` into the pack's `node_modules` so `import ... from '@abuddy/sdk/testing'` resolves
+- Appends `tests/screenshots/`, `tests/results/` to `.gitignore`
 - Warns if `ABUDDY_ROOT` is not set
+
+The `test` CLI command (source: `packages/abuddy-sdk/src/cli/commands/test.ts`):
+- Validates `ABUDDY_ROOT` is set and points to a valid monorepo
+- Ensures the SDK symlink in `node_modules/@abuddy/sdk` (re-creates if `npm install` removed it)
+- Passes through `ABUDDY_ROOT` and auto-sets `PACK_DIR` to current directory
+- Passes all args through to `npx playwright test`
 
 ## How the fixture finds AgentBuddy
 
@@ -62,7 +70,7 @@ The `init-tests` CLI command (source: `packages/abuddy-sdk/src/cli/commands/init
 
 1. **`options.appRoot`** — explicit path passed to `createTest()`. Used for custom setups.
 2. **`ABUDDY_ROOT` env var** — set by the pack developer. This is the primary mechanism for external packs.
-3. **Auto-detection** — walks up from the SDK package directory (`import.meta.dirname`) looking for `packages/entry-point.mjs`. This always works inside the monorepo, since the SDK lives at `packages/abuddy-sdk/`.
+3. **Auto-detection** — walks up from the SDK package directory (`import.meta.dirname`) looking for `packages/entry-point.mjs`. This only works inside the monorepo. When the SDK is installed standalone (e.g. via Homebrew), `ABUDDY_ROOT` is required.
 
 If none of these resolve, the fixture throws with a clear message telling the developer to set `ABUDDY_ROOT`.
 
@@ -77,7 +85,7 @@ Once resolved, `validateAppRoot()` checks that the directory contains the requir
    - Check for `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`
      - If `.dev` exists: `abuddy dev` is running, skip build/sync entirely
      - If no `.dev`: build the pack (if no `dist/`), then copy pack files to the dev packs directory
-   - Build uses the `abuddy build` CLI binary, resolved from: pack's local `node_modules/.bin/abuddy` first, then the host app's binary
+   - Build uses the `abuddy build` CLI binary, resolved from: pack's local `node_modules/.bin/abuddy` first, then the host app's binary, then `abuddy` on PATH
    - Sync copies files recursively, skipping symlinks, `node_modules`, and `.git` (matches the SDK's `copyDir` pattern from `pack-installer.ts`)
 
 2. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` via `createRequire`, then calls `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` with `PLAYWRIGHT_TEST=true`. This ensures external packs don't need `electron` installed locally.
@@ -150,26 +158,41 @@ Screenshot output location depends on context:
 
 | Variable | Description |
 |----------|-------------|
-| `ABUDDY_ROOT` | Path to the AgentBuddy monorepo. Required for external packs unless the SDK can auto-detect it. |
+| `ABUDDY_ROOT` | Path to the AgentBuddy monorepo. Required for external packs; auto-detected inside the monorepo. |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/sync and plugin waiting. |
-| `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The Electron app uses this to crash on uncaught errors. |
+| `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. Crashes on uncaught errors and runs headless (suppresses window display and splash screen). |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |
 
 ## Running tests
 
+### With `abuddy test` (recommended for external packs)
+
+`abuddy test` sets `ABUDDY_ROOT` and `PACK_DIR` for you and forwards all args to Playwright:
+
+```bash
+abuddy test                    # run all tests
+abuddy test -g "renders"       # grep by test name
+abuddy test smoke              # run a specific file
+```
+
+Requires `ABUDDY_ROOT` in your environment (add to shell profile).
+
+### With `npx playwright test` directly
+
+You can skip the `abuddy` wrapper and run Playwright yourself. Set the env vars manually:
+
 ```bash
 # From an external pack directory
-ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test
-
-# With PACK_DIR for plugin waiting (when not using abuddy dev)
 ABUDDY_ROOT=/path/to/AgentBuddy PACK_DIR=. npx playwright test
 
-# From the AgentBuddy monorepo (ABUDDY_ROOT auto-detected)
+# From the AgentBuddy monorepo (ABUDDY_ROOT auto-detected, no PACK_DIR needed)
 npx playwright test
 
 # Testing an external pack from the monorepo
 PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
 ```
+
+When running directly, you must also ensure `@abuddy/sdk` is resolvable from your pack's `node_modules` — either by running `abuddy init-tests` first (which creates a symlink) or by linking it manually.
 
 ## Key implementation details
 

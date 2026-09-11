@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { ensureSdkLink } from '../utils';
 
 const PLAYWRIGHT_CONFIG = `import { defineConfig } from '@playwright/test';
 
@@ -85,13 +86,15 @@ export async function initTests(_args: string[]): Promise<void> {
     }
   }
 
+  ensureSdkLink(cwd);
+  console.log('Linked @abuddy/sdk into node_modules');
+
   if (!process.env.ABUDDY_ROOT) {
     console.log('\nPrerequisite: a local clone of the AgentBuddy monorepo (installed + built).');
     console.log('Set ABUDDY_ROOT to point to it:');
     console.log('  export ABUDDY_ROOT=/path/to/AgentBuddy');
-    console.log('\nAdd it to your .env or shell profile so it persists across sessions.');
   }
 
   console.log('\nTo run tests:');
-  console.log('  ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test');
+  console.log('  abuddy test');
 }
