@@ -6,12 +6,12 @@ import App from './App.vue'
 import './style.css'
 import builtInPacks from 'virtual:built-in-packs';
 import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe';
-import { packsPlugin } from '@/core/packs/plugin';
+import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { trpc } from '@/core/trpc';
-import { handleProtocolInstall, requestPackInstall } from '@/core/packs/pack-install';
-import { loadPackPlugins, loadPackFEEntry, loadPackStyles } from '@/core/packs/pack-loader';
+import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
+import { loadPackPlugins, loadPackFEEntry, loadPackStyles } from '@/packs/pack-loader';
 import 'virtual:host-deps';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 
