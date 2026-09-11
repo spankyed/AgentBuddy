@@ -5,7 +5,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/helpers';
 import {
-  readPackRegistry, writePackRegistry, addToRegistry, removeFromRegistry,
+  readPackRegistry, modifyRegistry, addToRegistry, removeFromRegistry,
   type PackRegistryEntry, type PackInfo, type BuiltInPackInfo,
   installPack as runInstall, uninstallPack as runUninstall,
   getPackContributions, type PackContributions,
@@ -142,15 +142,13 @@ export const packsSystem = setup({
       system.get(bus).send(emit(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug }));
 
       runInstall(packSlug, ev.source).then(result => {
-        const entries = readPackRegistry();
-        const updated = addToRegistry(entries, {
+        modifyRegistry(entries => addToRegistry(entries, {
           id: result.id,
           name: result.name,
           version: result.version,
           dir: result.dir,
           enabled: true,
-        });
-        writePackRegistry(updated);
+        }));
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_INSTALL_COMPLETE' as const,
@@ -177,9 +175,7 @@ export const packsSystem = setup({
       console.log(`[packs] Uninstall requested: ${packId}`);
 
       runUninstall(packId).then(() => {
-        const entries = readPackRegistry();
-        const updated = removeFromRegistry(entries, packId);
-        writePackRegistry(updated);
+        modifyRegistry(entries => removeFromRegistry(entries, packId));
         removeLoadedPack(packId);
 
         system.get(bus).send(emit(packs, {
@@ -200,17 +196,16 @@ export const packsSystem = setup({
 
     togglePackEnabled: ({ system, event }) => {
       const ev = packsSpec.typeOf('TOGGLE_PACK_ENABLED', event);
-      const entries = readPackRegistry();
-      const entry = entries.find(e => e.id === ev.packId);
+      const current = readPackRegistry();
+      const entry = current.find(e => e.id === ev.packId);
       if (!entry) {
         console.warn(`[packs] Pack not found: ${ev.packId}`);
         return;
       }
       const newEnabled = !entry.enabled;
-      const updated = entries.map(e =>
-        e.id === ev.packId ? { ...e, enabled: newEnabled } : e,
+      modifyRegistry(entries =>
+        entries.map(e => e.id === ev.packId ? { ...e, enabled: newEnabled } : e),
       );
-      writePackRegistry(updated);
       system.get(bus).send(emit(packs, {
         type: 'PACK_ENABLED_CHANGED' as const,
         packId: ev.packId,

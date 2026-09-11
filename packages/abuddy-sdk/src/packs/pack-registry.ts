@@ -80,3 +80,10 @@ export function addToRegistry(entries: PackRegistryEntry[], pack: Omit<PackRegis
 export function removeFromRegistry(entries: PackRegistryEntry[], id: string): PackRegistryEntry[] {
   return entries.filter(e => e.id !== id);
 }
+
+export function modifyRegistry(mutate: (entries: PackRegistryEntry[]) => PackRegistryEntry[]): PackRegistryEntry[] {
+  const entries = readPackRegistry();
+  const updated = mutate(entries);
+  writePackRegistry(updated);
+  return updated;
+}

@@ -18,7 +18,7 @@ export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from './pack
 
 // Registry (JSON file CRUD)
 export {
-  readPackRegistry, writePackRegistry,
+  readPackRegistry, writePackRegistry, modifyRegistry,
   addToRegistry, removeFromRegistry,
 } from './pack-registry';
 export type { PackRegistryEntry } from './pack-registry';
