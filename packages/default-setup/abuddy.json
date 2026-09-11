@@ -238,7 +238,7 @@
   "artifacts": "src/extensions/artifacts/register.ts",
   "blocks": "src/extensions/blocks/register.ts",
   "fe": {
-    "tiptapPlugins": "src/extensions/tiptap-plugins.ts",
+    "tiptapPlugins": "src/extensions/tiptap/index.ts",
     "appExtensions": {
       "welcome": "src/extensions/Welcome.vue"
     }
