@@ -50,11 +50,11 @@ npx playwright test tests/e2e/scratch # Run ad-hoc scratch test (gitignored)
 DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
 ```
 
-Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, and `waitForState(check)`.
+Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, `waitForState(check)`, and `waitForPlugin(pluginId)`.
 
-For external pack testing, set `PACK_DIR=/path/to/pack` — syncs the pack and waits for its plugins. External packs can run tests from their own repo: `npx abuddy init-tests` scaffolds the setup, then `ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test`.
+The fixture source is `@abuddy/sdk/testing` (`packages/abuddy-sdk/src/testing/index.ts`), re-exported by `tests/e2e/fixtures/app.ts`. It launches Electron, finds the main window via `window.applicationState`, bypasses onboarding, and provides the `AppHelper` API. External packs share the same fixture — `npx abuddy init-tests` scaffolds tests in a pack repo, then `ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test` runs them. Set `PACK_DIR=/path/to/pack` to sync/build a pack and wait for its plugins.
 
-The fixture source lives in `packages/abuddy-sdk/src/testing/index.ts` (`@abuddy/sdk/testing`). For the full API and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`.
+For full fixture lifecycle, API reference, and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`. For external pack testing details, see `packages/abuddy-sdk/src/testing/CLAUDE.md`.
 
 ## Architecture
 

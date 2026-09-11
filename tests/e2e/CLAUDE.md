@@ -13,9 +13,38 @@ DEBUG_E2E=1 npm test                  # Electron process output to terminal
 
 Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
+## How the fixture works
+
+The test infrastructure lives in `@abuddy/sdk/testing` (source: `packages/abuddy-sdk/src/testing/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
+
+### Startup lifecycle
+
+When a test worker starts, the fixture runs this sequence:
+
+1. **Resolve app root** — `resolveAppRoot()` checks `ABUDDY_ROOT` env var, then auto-detects by walking up from the SDK package directory looking for `packages/entry-point.mjs`. Inside the monorepo, auto-detection always works.
+
+2. **Pack setup** (only when `PACK_DIR` is set):
+   - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
+   - Check for a `.dev` signal file in the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`). If present, `abuddy dev` is running — skip build/sync
+   - If no `.dev` signal: build the pack if `dist/` doesn't exist (using the `abuddy build` CLI binary), then sync the pack files to the dev packs directory (recursive copy, skipping symlinks, `node_modules`, and `.git`)
+
+3. **Launch Electron** — `_electron.launch({ args: ['.'], cwd: appRoot })` with `PLAYWRIGHT_TEST=true` in the environment. The Electron app starts the same as dev mode but with error handling set to crash immediately on uncaught exceptions.
+
+4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s.
+
+5. **Wait for connected state** — `page.waitForFunction()` checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or `{ onboarding: ... }`. If onboarding is detected, calls `window.__disableOnboardingUI()` then waits for `running.connected`.
+
+6. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. A `console.error` listener watches for `[pack-loader] Failed to load FE entry` messages and sets a `packFeFailed` flag to bail early instead of waiting 30s.
+
+7. **Provide the `appPage` and `app` fixtures** to the test.
+
+### Teardown
+
+After each test, `pageerror` and `console` listeners are removed to prevent accumulation. After all tests in the worker complete, `electronApp.close()` shuts down the Electron process.
+
 ## Fixture API
 
-Tests import from `./fixtures/app` which re-exports from `@abuddy/sdk/testing` (source at `packages/abuddy-sdk/src/testing/index.ts`). Three fixtures are provided:
+Three fixtures are provided, each at a different scope:
 
 | Fixture        | Scope  | Description |
 |----------------|--------|-------------|
@@ -26,13 +55,13 @@ Tests import from `./fixtures/app` which re-exports from `@abuddy/sdk/testing` (
 ### AppHelper methods
 
 ```ts
-app.screenshot(name)          // Save PNG to tests/screenshots/{name}.png
-app.navigate(pluginId)        // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
-app.getState()                // Returns snapshot.value (e.g. { running: 'connected' })
-app.getContext()              // Returns { activePluginId, pluginIds }
-app.sendEvent(event)          // Send any event to applicationState
-app.waitForState(check, ms?)  // Wait for dot-separated state path (e.g. 'running.connected')
-app.waitForPlugin(pluginId, ms?) // Wait for a plugin to appear (useful for external packs, default 30s)
+app.screenshot(name)             // Save PNG to tests/screenshots/{name}.png
+app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
+app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
+app.getContext()                 // Returns { activePluginId, pluginIds }
+app.sendEvent(event)             // Send any event to applicationState
+app.waitForState(check, ms?)     // Wait for dot-separated state path (e.g. 'running.connected')
+app.waitForPlugin(pluginId, ms?) // Wait for a plugin to appear in the plugin list (default 30s)
 ```
 
 ### Direct page access
@@ -81,28 +110,33 @@ Create it fresh each time you need to visually verify something. Delete when don
 
 ## Testing external packs
 
-External pack developers can write and run tests from their own repo using `@abuddy/sdk/testing`. See `packages/abuddy-sdk/src/testing/CLAUDE.md` for the full external pack testing guide.
+There are two ways to test external packs:
 
-### Quick setup for a pack
+### 1. From the pack's own repo (preferred for pack developers)
+
+Pack developers can write and run E2E tests without touching the AgentBuddy repo. The fixture is available as `@abuddy/sdk/testing`. See `packages/abuddy-sdk/src/testing/CLAUDE.md` for the full external pack testing guide.
 
 ```bash
 cd /path/to/my-pack
-npx abuddy init-tests              # scaffolds config + sample test
+npx abuddy init-tests                                    # scaffold config + sample test
 npm i -D @playwright/test
-ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test
+ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test       # run tests
 ```
 
-### Testing from this repo
+### 2. From this repo (quick iteration)
 
-Set `PACK_DIR` to test an external pack from the AgentBuddy repo:
+Set `PACK_DIR` to test an external pack using the AgentBuddy monorepo's test runner:
 
 ```bash
 PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
 ```
 
-The fixture detects whether `abuddy dev` is running (via the `.dev` signal file) and skips sync if so. If the pack has no `dist/` directory, it builds using the SDK binary.
+The fixture detects whether `abuddy dev` is running for the pack (via the `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`) and skips build/sync if so.
 
-If the pack's FE fails to load at runtime, the fixture logs a warning and continues — the test still runs so you can inspect the error.
+- **Hot (with `abuddy dev` running)**: The pack is already installed and managed by the dev server. The fixture just waits for plugins to load.
+- **Cold (no `abuddy dev`)**: The fixture builds (if no `dist/`), copies the pack to the dev packs directory, launches Electron, and waits for plugins.
+
+If the pack's frontend fails to load at runtime, the fixture logs a warning and continues — the test still runs so you can inspect the error.
 
 ### Finding plugin IDs
 
@@ -117,9 +151,12 @@ The renderer exposes on `window`:
 
 ## Environment variables
 
-- `PLAYWRIGHT_TEST=true` — set automatically by the fixture; makes uncaught errors crash immediately
-- `DEBUG_E2E=1` — pipes Electron stdout/stderr to the test terminal
-- `PACK_DIR=/path/to/pack` — syncs pack to dev packs dir (builds if no `dist/`), waits for plugins before tests run
+| Variable | Description |
+|----------|-------------|
+| `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; makes uncaught errors crash immediately |
+| `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
+| `PACK_DIR=/path/to/pack` | Syncs pack to dev packs dir (builds if no `dist/`), waits for plugins before tests run |
+| `ABUDDY_ROOT=/path/to/AgentBuddy` | Path to the AgentBuddy monorepo (auto-detected inside the monorepo) |
 
 ## Key events for sendEvent()
 
@@ -132,3 +169,13 @@ The renderer exposes on `window`:
 { type: 'MAXIMIZE_CHAT' }                     // Maximize chat panel
 { type: 'RESTORE_CHAT' }                      // Restore chat panel size
 ```
+
+## File map
+
+| File | Purpose |
+|------|---------|
+| `fixtures/app.ts` | Thin re-export from `@abuddy/sdk/testing` |
+| `smoke.spec.ts` | Basic tests: app launches, reaches connected state, plugins load, default screenshot |
+| `navigation.spec.ts` | Navigate between plugins, screenshot each |
+| `scratch.spec.ts` | Ad-hoc test file (gitignored — create as needed) |
+| `packages/abuddy-sdk/src/testing/index.ts` | The actual fixture source (shared between monorepo and external packs) |
