@@ -1,4 +1,5 @@
 import type { EntityId, Services } from '@/__generated__/services';
+import { buildTranscript, type TranscriptMessage } from '@abuddy/sdk/actions';
 
 type ThreadMessage = {
   id?: string;
@@ -20,9 +21,6 @@ export interface BootstrapPromptOptions {
   providerName: string;
 }
 
-const MAX_HISTORY_MESSAGES = 40;
-const MAX_MESSAGE_CHARS = 6_000;
-
 function shouldIncludeMessage(message: ThreadMessage, currentMessageId?: string): boolean {
   if (!message?.text?.trim()) return false;
   if (currentMessageId && message.id === currentMessageId) return false;
@@ -36,18 +34,6 @@ function shouldIncludeMessage(message: ThreadMessage, currentMessageId?: string)
   return message.sender === 'user' || message.sender === 'assistant' || message.sender === 'system';
 }
 
-function roleLabel(sender: string | undefined): string {
-  if (sender === 'assistant') return 'Assistant';
-  if (sender === 'system') return 'System';
-  return 'User';
-}
-
-function clampMessage(text: string): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= MAX_MESSAGE_CHARS) return trimmed;
-  return `${trimmed.slice(0, MAX_MESSAGE_CHARS).trimEnd()}\n[Message truncated]`;
-}
-
 export function buildSessionBootstrapPrompt(
   services: Services,
   options: BootstrapPromptOptions,
@@ -58,11 +44,12 @@ export function buildSessionBootstrapPrompt(
 
   if (messages.length === 0) return options.currentText;
 
-  const selected = messages.slice(-MAX_HISTORY_MESSAGES);
-  const omitted = messages.length - selected.length;
-  const transcript = selected
-    .map((message) => `${roleLabel(message.sender)}:\n${clampMessage(message.text ?? '')}`)
-    .join('\n\n');
+  const transcriptMessages: TranscriptMessage[] = messages.map(m => ({
+    role: m.sender ?? 'user',
+    text: m.text ?? '',
+  }));
+
+  const { transcript, omitted } = buildTranscript(transcriptMessages);
 
   const omittedLine = omitted > 0
     ? `\n\n[${omitted} earlier message${omitted === 1 ? '' : 's'} omitted]`
