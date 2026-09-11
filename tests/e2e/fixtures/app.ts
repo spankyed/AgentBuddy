@@ -79,14 +79,12 @@ export const test = base.extend<
   appPage: async ({ electronApp }, use) => {
     const page = await findMainWindow(electronApp);
 
-    page.on('pageerror', (error) => {
-      console.error('[page error]', error);
-    });
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        console.error(`[console.error] ${msg.text()}`);
-      }
-    });
+    const onPageError = (error: Error) => console.error('[page error]', error);
+    const onConsole = (msg: import('@playwright/test').ConsoleMessage) => {
+      if (msg.type() === 'error') console.error(`[console.error] ${msg.text()}`);
+    };
+    page.on('pageerror', onPageError);
+    page.on('console', onConsole);
 
     // Wait for app to reach a usable state (connected or onboarding)
     await page.waitForFunction(() => {
@@ -114,6 +112,9 @@ export const test = base.extend<
     }
 
     await use(page);
+
+    page.removeListener('pageerror', onPageError);
+    page.removeListener('console', onConsole);
   },
 
   app: async ({ appPage: page }, use) => {
