@@ -2,9 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackManifest, PackFeatureEntry } from '../../../build/manifest';
 
-export function readManifest(root: string): PackManifest {
-  return JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
-}
+export { readManifest } from '../../utils';
 
 export function writeManifest(root: string, manifest: PackManifest): void {
   fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify(manifest, null, 2) + '\n');

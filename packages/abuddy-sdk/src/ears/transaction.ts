@@ -11,13 +11,7 @@ import { edgeStore } from './edge-store';
 import { qx } from './query';
 import { EARS } from '../types/entities';
 import { wouldCreateCycle, linkSymmetric } from './graph';
-import { getEntityTypeChecker } from './runtime';
-
-export interface SafeLinkOptions {
-  info?: unknown;
-  symmetric?: boolean;
-  acyclicGroup?: readonly EARS.RelKind[];
-}
+import { getEntityTypeChecker, type SafeLinkOptions } from './runtime';
 
 export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false) {
   const isEntityType = getEntityTypeChecker()(typeOrId);

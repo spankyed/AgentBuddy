@@ -89,7 +89,7 @@ export interface QueryBuilder<E extends string = string> {
 export interface SafeLinkOptions {
   info?: unknown;
   symmetric?: boolean;
-  acyclicGroup?: readonly string[];
+  acyclicGroup?: readonly EARS.RelKind[];
 }
 
 export interface TransactionBuilder {
