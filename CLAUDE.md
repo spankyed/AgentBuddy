@@ -52,9 +52,9 @@ DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
 
 Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, and `waitForState(check)`.
 
-For external pack testing, set `PACK_DIR=/path/to/pack` — syncs the pack and waits for its plugins.
+For external pack testing, set `PACK_DIR=/path/to/pack` — syncs the pack and waits for its plugins. External packs can run tests from their own repo: `npx abuddy init-tests` scaffolds the setup, then `ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test`.
 
-For the full fixture API and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`.
+The fixture source lives in `packages/abuddy-sdk/src/testing/index.ts` (`@abuddy/sdk/testing`). For the full API and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`.
 
 ## Architecture
 

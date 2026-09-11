@@ -15,7 +15,7 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 ## Fixture API
 
-Tests import from `./fixtures/app` which provides three fixtures:
+Tests import from `./fixtures/app` which re-exports from `@abuddy/sdk/testing` (source at `packages/abuddy-sdk/src/testing/index.ts`). Three fixtures are provided:
 
 | Fixture        | Scope  | Description |
 |----------------|--------|-------------|
@@ -81,45 +81,32 @@ Create it fresh each time you need to visually verify something. Delete when don
 
 ## Testing external packs
 
-External pack plugins load asynchronously after the app reaches `running.connected`. The fixture supports two workflows:
+External pack developers can write and run tests from their own repo using `@abuddy/sdk/testing`. See `packages/abuddy-sdk/src/testing/CLAUDE.md` for the full external pack testing guide.
 
-### With `abuddy dev` running (hot)
+### Quick setup for a pack
 
-If `abuddy dev` is already running for the pack, the pack is installed and managed. Just set `PACK_DIR` so the fixture waits for the pack's plugins:
+```bash
+cd /path/to/my-pack
+npx abuddy init-tests              # scaffolds config + sample test
+npm i -D @playwright/test
+ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test
+```
+
+### Testing from this repo
+
+Set `PACK_DIR` to test an external pack from the AgentBuddy repo:
 
 ```bash
 PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
 ```
 
-### Cold start (no `abuddy dev`)
-
-Set `PACK_DIR` and the fixture handles everything — syncs the pack to the dev packs directory, launches the app, and waits for plugins to load:
-
-```bash
-PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
-```
-
-The fixture detects whether `abuddy dev` is running (via the `.dev` signal file) and skips sync if so. If the pack has no `dist/` directory, it builds using the AgentBuddy repo's SDK binary.
+The fixture detects whether `abuddy dev` is running (via the `.dev` signal file) and skips sync if so. If the pack has no `dist/` directory, it builds using the SDK binary.
 
 If the pack's FE fails to load at runtime, the fixture logs a warning and continues — the test still runs so you can inspect the error.
 
 ### Finding plugin IDs
 
 Plugin IDs come from the pack's `abuddy.json` → `features[].plugin.id` (or `features[].id` as fallback).
-
-### Example scratch test for a pack
-
-```ts
-import { test, expect } from './fixtures/app';
-
-test('verify pack UI', async ({ app }) => {
-  // waitForPlugin is called automatically by the fixture when PACK_DIR is set,
-  // but you can also call it manually if needed
-  await app.waitForPlugin('bookmarks');
-  await app.navigate('bookmarks');
-  await app.screenshot('pack-bookmarks');
-});
-```
 
 ## Renderer globals
 

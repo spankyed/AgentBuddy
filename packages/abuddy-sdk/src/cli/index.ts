@@ -20,6 +20,7 @@ Commands:
   uninstall <id> [-d]   Remove an installed pack
   list [-d]             Show installed packs
   dev                   Dev server with HMR (always targets dev environment)
+  init-tests            Scaffold Playwright E2E test setup
   info                Show pack summary
   doctor              Run health checks
   clean               Remove build artifacts
@@ -42,6 +43,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
   'list':       async () => (await import('./commands/list')).list,
   'dev':        async () => (await import('./commands/dev')).dev,
+  'init-tests': async () => (await import('./commands/init-tests')).initTests,
   'info':       async () => (await import('./commands/info')).info,
   'doctor':     async () => (await import('./commands/doctor')).doctor,
   'clean':      async () => (await import('./commands/clean')).clean,

@@ -57,7 +57,8 @@
     "./cron": "./src/cron.ts",
     "./seed": "./src/seed/index.ts",
     "./packs": "./src/packs/index.ts",
-    "./persistence": "./src/persistence/index.ts"
+    "./persistence": "./src/persistence/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "peerDependencies": {
     "@guolao/vue-monaco-editor": "^1.5.5",
@@ -76,7 +77,8 @@
     "ai": "^4.0.0",
     "@ai-sdk/anthropic": "^1.0.0",
     "@ai-sdk/google": "^2.0.0",
-    "@ai-sdk/openai": "^1.0.0"
+    "@ai-sdk/openai": "^1.0.0",
+    "@playwright/test": ">=1.40.0"
   },
   "peerDependenciesMeta": {
     "vue": {
@@ -128,6 +130,9 @@
       "optional": true
     },
     "@ai-sdk/openai": {
+      "optional": true
+    },
+    "@playwright/test": {
       "optional": true
     }
   },
