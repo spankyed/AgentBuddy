@@ -573,7 +573,12 @@ export const featureServices = {
 ${entries.join('\n')}
 };
 
-export type Services = typeof featureServices;
+/**
+ * What an action actually receives: this pack's feature services plus the
+ * ambient ones the host injects (logger, emitter, repository).
+ * The featureServices value itself stays feature-only.
+ */
+export type Services = typeof featureServices & import('@abuddy/sdk/services').HostServices;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 `;
@@ -683,14 +688,17 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       throw new Error(`Seed "${key}": unknown standard seed type and no "seeder" path provided`);
     }
 
+    const packDirName = basename(root);
     return `${HEADER}
 import path from 'path';
+import { existsSync } from 'fs';
 import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
 import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { EARS } from './ears';
 ${packImports.join('\n')}
 
-export const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', '${basename(root)}', 'dist');
+const _dirDist = path.resolve(import.meta.dirname, '..', '..', 'dist');
+export const DEFAULT_COMPILED_DIR = existsSync(_dirDist) ? _dirDist : path.resolve(process.cwd(), '..', '${packDirName}', 'dist');
 
 ${registrations.join('\n')}
 
