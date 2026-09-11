@@ -17,14 +17,23 @@ src/
     types.ts               # Type barrel (outgoing events + per-feature types)
     services.ts            # Service aggregation (featureServices object)
     service-types.ts       # ServiceRegistry module augmentation
-  default-settings.ts      # Full default SettingsData object
+    contributions.ts       # Contribution types, categories, item providers (tiptap references)
+    entity-shapes.ts       # Maps entity type strings to attribute interfaces
+    seeders.ts             # Seed registration for all seed types
+    step-types.ts          # Step type augmentation
+    flow-helpers.ts        # Flow helper utilities
+    dsl-register-fe.ts     # FE-side DSL registrations
+    defs.config.mjs        # Rollup config for DSL def compilation
+  defs/                    # DSL type definitions (action.ts, prompt.ts, database.ts)
   features/                # 13 features (each has be/ and fe/ dirs)
-  registries/              # Hand-authored cross-cutting code (entity-shapes, tiptap, extensions, seed, service implementations)
+  extensions/              # Cross-cutting concerns
+    artifacts/             # Artifact viewer definitions + Vue components
+    blocks/                # Message block definitions (display + input)
+    services/              # Pack-level services (text-stream, filesystem, model-client, openai-auth)
+    steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
+    tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
+    Welcome.vue            # Welcome screen app extension
   seeds/                   # DSL source for actions, prompts, flows, library, notes, faqs
-  steps/                   # Flow step definitions (action, llm, switch, fire, query, create, etc.)
-  artifacts/               # Artifact viewer definitions + Vue components
-  blocks/                  # Message block definitions (display + input)
-  extensions/              # App-level extensions (Welcome screen)
   migrations/              # Version-targeted data migrations
 ```
 
@@ -39,7 +48,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
 - `fe/state.ts` — XState frontend state machine
 - `fe/canvas/` — Main view components
-- `fe/references.ts` — Tiptap reference type definitions (if applicable)
+- `fe/contributions.ts` — Tiptap contribution type definitions (if applicable)
 - `feature.config.ts` — Build-time config (name, designation, settings path)
 - `settings.ts` — Per-feature default settings
 
@@ -55,18 +64,18 @@ System IDs re-exported from `__generated__/system-ids.ts`. System specs (identit
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/registries/services/` (pack-level services). These are stateless modules that systems and actions can call:
+Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/extensions/services/` (pack-level services). These are stateless modules that systems and actions can call:
 
-`llm`, `database`, `prompt`, `action`, `library`, `browser`, `settings`, `textStream`, `chat`, `artifact`, `brain`, `cli`, `filesystem`, `threads`, `codex`, `modelClient`, `openaiAuth`
+`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `llm`, `brain`, `database`, `settings`, `textStream`, `filesystem`, `modelClient`, `openaiAuth`
 
-The model client (`registries/services/model-client/`) handles LLM streaming, tool calling, conversation management, and context compaction.
+The model client (`extensions/services/model-client/`) handles LLM streaming, tool calling, conversation management, and context compaction.
 
 ## EARS (Entity types + Relations)
 
 Entity types and relation kinds re-exported from `__generated__/ears.ts` (which re-exports from `.abuddy/generated/ears`). The pack-entry registers all entity types and relation kinds, plus partition policy (TNode excluded from persistence, Secret routed to secrets store).
 
 Type augmentations:
-- `src/registries/entity-shapes.ts` — maps entity type strings to attribute interfaces (`EntityShapeRegistry`)
+- `__generated__/entity-shapes.ts` — maps entity type strings to attribute interfaces (`EntityShapeRegistry`)
 - `__generated__/event-channels.ts` — maps plugin IDs to outgoing event types (`PluginEventRegistry`)
 
 ## Seeds
@@ -79,43 +88,49 @@ DSL source files compiled to JSON at build time. Located in `src/seeds/`:
 - `library/` — internal docs (commands reference)
 - `notes/` — welcome note
 - `faqs/` — markdown FAQ files
+- `_examples/` — example DSL files
 - `default-settings.ts` — full default settings object
 
-Build config: `compile.config.ts` points the compiler at each seed directory.
-
-Seed registration: `src/registries/seed/index.ts` registers seeders for actions, prompts, flows, library, notes, and settings with the core seed framework. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged.
+Seed registration: `__generated__/seeders.ts` registers seeders for actions, prompts, flows, library, notes, and settings with the core seed framework. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged.
 
 See `src/seeds/CLAUDE.md` for authoring details.
 
 ## Flow steps
 
-Step definitions in `src/steps/`. Each step has `index.ts` (definition), optionally `runtime.ts`, `build.ts`, and `form.vue`.
+Step definitions in `src/extensions/steps/`. Each step directory contains:
 
-13 steps: **action**, **llm**, **switch**, **fire**, **transform**, **query**, **flow**, **create**, **update**, **keep-alive**, **kill**, **schedule** (trigger), **listener** (trigger).
+- `index.ts` — `StepDefinition` combining build, runtime, and FE config
+- `fe.ts` — frontend config (icon, colors, node config, lazy-loaded form component)
+- `types.ts` — step-specific types
+- `form.vue` — optional editor form component
+- `build.ts` — optional compile/validate/decompile logic
+- `runtime.ts` — optional runtime handler
+
+13 steps: **action**, **llm**, **switch**, **fire**, **transform**, **query**, **subflow**, **create**, **update**, **keep-alive**, **kill**, **schedule** (trigger), **listener** (trigger).
 
 ## Artifacts
 
-Artifact type definitions in `src/artifacts/register.ts`. 16 viewer types with Vue components in `src/artifacts/viewers/`:
+Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, 14 with viewer components in `src/extensions/artifacts/viewers/` (graph and table are registered without a `loadComponent`):
 
 text, code, review, image, slack, todo, project, json, graph, table, markdown, claude-session, codex-session, diff, plan, note
 
-FE registration: `src/artifacts/register-fe.ts` (eagerly loads all viewer components for the renderer).
+FE registration: `src/extensions/artifacts/register-fe.ts` (eagerly loads all viewer components for the renderer).
 
 ## Message blocks
 
-Block definitions in `src/blocks/register.ts`. Two kinds:
+Block definitions in `src/extensions/blocks/register.ts`. Two kinds:
 
-**Display blocks**: prompt, note, markdown, link, tool-activity, thinking, tool-input, context-usage, session-list, actions, toggles
+**Display blocks** (default): prompt, note, markdown, link, tool-activity, thinking, tool-input, context-usage, session-list
 
-**Input blocks**: file-picker, choice, text, approval, button-group, question, project-select
+**Input blocks** (`kind: 'input'`): actions, toggles, file-picker, choice, text, approval, button-group, question, project-select
 
-FE registration: `src/blocks/register-fe.ts`.
+FE registration: `src/extensions/blocks/register-fe.ts`.
 
 ## Extensions
 
-- **Tiptap plugins** (`src/registries/tiptap-plugins.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Registered via `pack-entry-fe.ts`.
-- **App extensions** — Welcome screen component in `src/extensions/`. Registered via `pack-entry-fe.ts`.
-- **Reference types** (`src/registries/extensions.ts`) — aggregates ref types, categories, and item providers from threads, library, and notes features for the tiptap reference system.
+- **Tiptap plugins** (`src/extensions/tiptap/index.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Registered via `pack-entry-fe.ts`.
+- **App extensions** — Welcome screen component (`src/extensions/Welcome.vue`). Registered via `pack-entry-fe.ts`.
+- **Contributions** (`__generated__/contributions.ts`) — aggregates contribution types, categories, and item providers from threads, library, and notes features for the tiptap reference system.
 
 ## Migrations
 
@@ -131,8 +146,8 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 
 ## Build
 
-- `compile.config.ts` — points DSL compiler at seed source directories
-- `npm run compile` from repo root compiles all DSLs to `dist/`
+- `rollup-defs.config.mjs` — Rollup config for DSL definition compilation
+- `npm run compile` from repo root compiles all DSLs
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
-- `prepare` script runs codegen after `npm install`
+- `prepare` script runs `abuddy generate-entries` after `npm install`
