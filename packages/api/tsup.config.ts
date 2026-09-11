@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build';
+import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(__dirname, '..');

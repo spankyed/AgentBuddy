@@ -47,6 +47,8 @@
     "./blocks": "./src/blocks/index.ts",
     "./steps": "./src/steps/index.ts",
     "./build": "./src/build/index.ts",
+    "./build/shared-deps": "./src/build/shared-deps.ts",
+    "./build/discover": "./src/build/discover.ts",
     "./runtime": "./src/runtime/index.ts",
     "./logger": "./src/logger/index.ts",
     "./rpc": "./src/rpc/index.ts",

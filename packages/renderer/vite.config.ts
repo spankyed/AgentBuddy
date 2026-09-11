@@ -4,7 +4,8 @@ import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps, getSdkFeModules, discoverBuiltInPacksForBuild } from '@abuddy/sdk/build'
+import { getSharedFeDeps, getSdkFeModules } from '@abuddy/sdk/build/shared-deps'
+import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
