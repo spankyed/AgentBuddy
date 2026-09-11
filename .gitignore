@@ -16,6 +16,8 @@ packages/preload/src/**/*.js
 
 # Test output
 test-results/
+tests/screenshots/
+tests/results/
 
 # Build artifacts
 native/speech/macos/SpeechHelper
