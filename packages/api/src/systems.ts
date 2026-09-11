@@ -81,7 +81,12 @@ export const backendSystem = setup({
     },
     routeIncoming: ({ event: incoming, system }) => {
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
-      system.get(systemId).send(event);
+      const actor = system.get(systemId);
+      if (actor) {
+        actor.send(event);
+      } else {
+        console.warn(`[bus] routeIncoming: system "${systemId}" not found (may be reloading), dropping event "${event.type}"`);
+      }
     },
     sendConnected: (({ system }) => {
       const systems = getRegisteredSystems();
