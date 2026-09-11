@@ -1,11 +1,48 @@
 import { test as base, _electron, type ElectronApplication, type Page } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 const SCREENSHOT_DIR = path.join(ROOT, 'tests', 'screenshots');
+
+function getDevPacksDir(): string {
+  const home = os.homedir();
+  switch (process.platform) {
+    case 'darwin':
+      return path.join(home, 'Library', 'Application Support', 'abuddy-dev', 'packs');
+    case 'win32':
+      return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'abuddy-dev', 'packs');
+    default:
+      return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'abuddy-dev', 'packs');
+  }
+}
+
+function syncPackToDevDir(src: string, dest: string): void {
+  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+  fs.cpSync(src, dest, {
+    recursive: true,
+    filter: (s) => {
+      const name = path.basename(s);
+      return name !== 'node_modules' && name !== '.git' && name !== '.dev';
+    },
+  });
+}
+
+function readPackManifest(packDir: string): { id: string; pluginIds: string[] } | null {
+  const manifestPath = path.join(packDir, 'abuddy.json');
+  if (!fs.existsSync(manifestPath)) return null;
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  return {
+    id: manifest.id,
+    pluginIds: (manifest.features ?? [])
+      .filter((f: any) => f.plugin)
+      .map((f: any) => f.plugin?.id ?? f.id),
+  };
+}
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -14,6 +51,7 @@ export interface AppHelper {
   screenshot: (name: string) => Promise<Buffer>;
   navigate: (pluginId: string) => Promise<void>;
   waitForState: (check: string, timeout?: number) => Promise<void>;
+  waitForPlugin: (pluginId: string, timeout?: number) => Promise<void>;
 }
 
 async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
@@ -54,6 +92,25 @@ export const test = base.extend<
   { electronApp: ElectronApplication }
 >({
   electronApp: [async ({}, use) => {
+    if (process.env.PACK_DIR) {
+      const packDir = path.resolve(process.env.PACK_DIR);
+      const manifest = readPackManifest(packDir);
+      if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
+      const devPacksDir = getDevPacksDir();
+      const devSignal = path.join(devPacksDir, manifest.id, '.dev');
+      if (!fs.existsSync(devSignal)) {
+        if (!fs.existsSync(path.join(packDir, 'dist'))) {
+          const abuddyBin = path.join(ROOT, 'node_modules', '.bin', 'abuddy');
+          console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
+          execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
+        }
+        console.log(`[pack] Syncing ${manifest.id} to dev packs directory...`);
+        syncPackToDevDir(packDir, path.join(devPacksDir, manifest.id));
+      } else {
+        console.log(`[pack] abuddy dev is running for ${manifest.id}, skipping build/sync`);
+      }
+    }
+
     const app = await _electron.launch({
       args: ['.'],
       cwd: ROOT,
@@ -111,6 +168,22 @@ export const test = base.extend<
       }, null, { timeout: 10_000 });
     }
 
+    if (process.env.PACK_DIR) {
+      const manifest = readPackManifest(path.resolve(process.env.PACK_DIR));
+      if (manifest && manifest.pluginIds.length > 0) {
+        for (const pluginId of manifest.pluginIds) {
+          try {
+            await page.waitForFunction((id) => {
+              const snap = (window as any).applicationState?.getSnapshot();
+              return snap?.context?.plugins?.some((p: any) => p.id === id);
+            }, pluginId, { timeout: 30_000 });
+          } catch {
+            console.warn(`[pack] Plugin "${pluginId}" did not load within 30s — pack FE may have failed`);
+          }
+        }
+      }
+    }
+
     await use(page);
 
     page.removeListener('pageerror', onPageError);
@@ -158,6 +231,13 @@ export const test = base.extend<
         }, pluginId, { timeout: 10_000 });
         // Let the plugin UI render
         await page.waitForTimeout(500);
+      },
+
+      waitForPlugin: async (pluginId, timeout = 30_000) => {
+        await page.waitForFunction((id) => {
+          const snap = (window as any).applicationState?.getSnapshot();
+          return snap?.context?.plugins?.some((p: any) => p.id === id);
+        }, pluginId, { timeout });
       },
 
       waitForState: async (check, timeout = 10_000) => {

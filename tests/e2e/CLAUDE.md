@@ -32,6 +32,7 @@ app.getState()                // Returns snapshot.value (e.g. { running: 'connec
 app.getContext()              // Returns { activePluginId, pluginIds }
 app.sendEvent(event)          // Send any event to applicationState
 app.waitForState(check, ms?)  // Wait for dot-separated state path (e.g. 'running.connected')
+app.waitForPlugin(pluginId, ms?) // Wait for a plugin to appear (useful for external packs, default 30s)
 ```
 
 ### Direct page access
@@ -78,6 +79,48 @@ Run with: `npx playwright test tests/e2e/scratch`
 
 Create it fresh each time you need to visually verify something. Delete when done.
 
+## Testing external packs
+
+External pack plugins load asynchronously after the app reaches `running.connected`. The fixture supports two workflows:
+
+### With `abuddy dev` running (hot)
+
+If `abuddy dev` is already running for the pack, the pack is installed and managed. Just set `PACK_DIR` so the fixture waits for the pack's plugins:
+
+```bash
+PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
+```
+
+### Cold start (no `abuddy dev`)
+
+Set `PACK_DIR` and the fixture handles everything — syncs the pack to the dev packs directory, launches the app, and waits for plugins to load:
+
+```bash
+PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
+```
+
+The fixture detects whether `abuddy dev` is running (via the `.dev` signal file) and skips sync if so. If the pack has no `dist/` directory, it builds using the AgentBuddy repo's SDK binary.
+
+If the pack's FE fails to load at runtime, the fixture logs a warning and continues — the test still runs so you can inspect the error.
+
+### Finding plugin IDs
+
+Plugin IDs come from the pack's `abuddy.json` → `features[].plugin.id` (or `features[].id` as fallback).
+
+### Example scratch test for a pack
+
+```ts
+import { test, expect } from './fixtures/app';
+
+test('verify pack UI', async ({ app }) => {
+  // waitForPlugin is called automatically by the fixture when PACK_DIR is set,
+  // but you can also call it manually if needed
+  await app.waitForPlugin('bookmarks');
+  await app.navigate('bookmarks');
+  await app.screenshot('pack-bookmarks');
+});
+```
+
 ## Renderer globals
 
 The renderer exposes on `window`:
@@ -89,6 +132,7 @@ The renderer exposes on `window`:
 
 - `PLAYWRIGHT_TEST=true` — set automatically by the fixture; makes uncaught errors crash immediately
 - `DEBUG_E2E=1` — pipes Electron stdout/stderr to the test terminal
+- `PACK_DIR=/path/to/pack` — builds, installs, and waits for an external pack's plugins before tests run
 
 ## Key events for sendEvent()
 

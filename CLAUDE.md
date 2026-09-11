@@ -52,6 +52,8 @@ DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
 
 Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, and `waitForState(check)`.
 
+For external pack testing, set `PACK_DIR=/path/to/pack` — builds, installs, and waits for pack plugins automatically.
+
 For the full fixture API and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`.
 
 ## Architecture
