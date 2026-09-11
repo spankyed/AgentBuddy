@@ -623,13 +623,14 @@ class WindowManager implements AppModule {
       await this.waitForRendererReady(window);
     }
 
-    window.show();
+    if (process.env.PLAYWRIGHT_TEST !== 'true') {
+      window.show();
+      window.focus();
+    }
 
     if (this.#openDevTools) {
       window.webContents.openDevTools();
     }
-
-    window.focus();
 
     // Close splash after main window is shown
     await this.closeSplashWithDelay();

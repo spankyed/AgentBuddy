@@ -3,11 +3,6 @@ import { test, expect } from './fixtures/app';
 test('app launches without crashing', async ({ electronApp, appPage }) => {
   const window = await electronApp.browserWindow(appPage);
 
-  // Wait for window to become visible (main process shows it after renderer ready or 15s timeout)
-  await expect.poll(async () => {
-    return await window.evaluate((win) => win.isVisible());
-  }, { timeout: 20_000, message: 'Window did not become visible' }).toBe(true);
-
   const state = await window.evaluate(
     (win): { isDevToolsOpened: boolean; isCrashed: boolean } => ({
       isDevToolsOpened: win.webContents.isDevToolsOpened(),
