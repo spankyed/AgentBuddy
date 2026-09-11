@@ -109,15 +109,20 @@ describe('core/seed — seeder registry', () => {
     expect(called).toBe(false);
   });
 
-  it('rejects duplicate seeder keys', async () => {
-    const { registerSeeder } = await import('@abuddy/sdk/utils');
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('silently replaces duplicate seeder keys', async () => {
+    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
+    const os = await import('os');
+    const path = await import('path');
 
-    registerSeeder({ key: 'dup-test', seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
-    registerSeeder({ key: 'dup-test', seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
+    let callCount = 0;
+    const seed1 = () => { callCount = 1; return { created: 0, updated: 0, skipped: 0 }; };
+    const seed2 = () => { callCount = 2; return { created: 0, updated: 0, skipped: 0 }; };
 
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Duplicate seeder key'));
-    warn.mockRestore();
+    registerSeeder({ key: 'dup-replace-test', seed: seed1 });
+    registerSeeder({ key: 'dup-replace-test', seed: seed2 });
+
+    seedData({ compiledDir: path.join(os.tmpdir(), 'empty-dir-' + Date.now()) });
+    expect(callCount).toBe(2);
   });
 
   it('default-setup registers all built-in seeders', async () => {

@@ -36,7 +36,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { resolveForService } from '@/core/host-modules/resolve-cli'
+import { resolveForService } from '@abuddy/sdk/utils'
 import { query } from '@/features/code/be/services/claude-code/query'
 import type { PermissionHandler } from '@/features/code/be/services/claude-code/types'
 

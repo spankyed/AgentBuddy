@@ -6,11 +6,25 @@
  *
  * Cleans up after itself.
  */
+import { vi } from 'vitest';
+import { registerHostModule } from '@abuddy/sdk/runtime';
+
+vi.mock('virtual:built-in-pack-loaders', () => ({
+  default: {},
+}));
+
+const noop = () => {};
+const noopLogger = { debug: noop, info: noop, warn: noop, error: noop };
+registerHostModule('logger', {
+  createLogger: () => noopLogger,
+  LogEvent: {},
+});
+
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadExternalPacks, registerPackSystems, type LoadedPack } from '@/core/packs/pack-loader';
-import { setLoadedPacks } from '@/core/packs/pack-api';
+import { loadExternalPacks, type LoadedPack } from '@/packs/pack-loader';
+import { setLoadedPacks } from '@/packs/pack-api';
 
 const REAL_PACKS_DIR = path.join(os.homedir(), '.agentbuddy', 'packs');
 const TEST_PACK_ID = 'e2e-test-pack';
@@ -135,21 +149,6 @@ describe('E2E: pack loading pipeline', () => {
   it('skips features without a system entry (plugin-only)', () => {
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
     expect(testPack.systems.has('data-only')).toBe(false);
-  });
-
-  it('registers pack systems into the systems map and event validation map', () => {
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-
-    const systemsMap: Record<string, any> = {};
-    const eventValidationMap = new Map<string, Set<string>>();
-
-    registerPackSystems([testPack], systemsMap, eventValidationMap);
-
-    const systemId = `${TEST_PACK_ID}.hello`;
-    expect(systemsMap[systemId]).toBeDefined();
-    expect(systemsMap[systemId].id).toBe('e2e-hello');
-    expect(eventValidationMap.has(systemId)).toBe(true);
-    expect(eventValidationMap.get(systemId)!.has('HELLO_PING')).toBe(true);
   });
 
   it('setLoadedPacks populates registry data for FE consumption', () => {

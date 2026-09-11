@@ -42,9 +42,8 @@ export class SplashScreen implements AppModule {
     this.splashWindow.loadFile(splashPath)
       .catch((err) => console.error('[SPLASH] Failed to load splash HTML:', err));
 
-    // Show window once ready
     this.splashWindow.once('ready-to-show', () => {
-      if (this.isValid()) {
+      if (this.isValid() && process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
         const version = app.getVersion();
         this.splashWindow!.webContents.executeJavaScript(`
           const versionEl = document.getElementById('version');

@@ -15,7 +15,10 @@ untracked
 packages/preload/src/**/*.js
 
 # Test output
+tests/screenshots/
+tests/results/
 test-results/
+tests/e2e/scratch.spec.ts
 
 # Build artifacts
 native/speech/macos/SpeechHelper

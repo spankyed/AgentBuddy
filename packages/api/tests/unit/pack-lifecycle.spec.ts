@@ -1,6 +1,18 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+
+vi.mock('virtual:built-in-pack-loaders', () => ({ default: {} }));
+
+import { registerHostModule } from '../../../abuddy-sdk/src/runtime/host';
+
+const noop = () => {};
+const noopLogger = { debug: noop, info: noop, warn: noop, error: noop };
+registerHostModule('logger', {
+  createLogger: () => noopLogger,
+  LogEvent: {},
+});
 
 let tmpDir: string;
 let origCwd: string;
@@ -20,10 +32,12 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+const packsDir = () => path.join(tmpDir, 'packs');
+
 describe('pack full lifecycle: init → install → discover', () => {
   it('scaffolded pack can be installed and discovered by pack-loader', async () => {
-    const { init } = await import('../../../pack-cli/src/commands/init');
-    const { install } = await import('../../../pack-cli/src/commands/install');
+    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
     // Step 1: Init
     process.chdir(tmpDir);
@@ -61,19 +75,16 @@ describe('pack full lifecycle: init → install → discover', () => {
     }];
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
 
-    // Step 3: Install
-    await install([packDir]);
+    // Step 3: Install to test packs dir
+    await installPackFromLocal(packDir, packsDir());
 
-    const installedDir = path.join(tmpDir, 'packs', 'my-test-pack');
+    const installedDir = path.join(packsDir(), 'my-test-pack');
     expect(fs.existsSync(installedDir)).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'dist', 'system.cjs'))).toBe(true);
 
-    // Step 4: Discover via pack-loader
-    // pack-loader uses getPacksDir() which reads USER_DATA_PATH
-    const { loadExternalPacks, registerPackSystems } = await import(
-      '@/core/packs/pack-loader'
-    );
+    // Step 4: Discover via pack-loader (uses USER_DATA_PATH → tmpDir)
+    const { loadExternalPacks } = await import('@/packs/pack-loader');
 
     const packs = loadExternalPacks();
     expect(packs).toHaveLength(1);
@@ -81,18 +92,10 @@ describe('pack full lifecycle: init → install → discover', () => {
     expect(packs[0].manifest.name).toBe('My Test Pack');
     expect(packs[0].systems.has('main')).toBe(true);
     expect(packs[0].systems.get('main')!.events.has('TEST_EVENT')).toBe(true);
-
-    // Step 5: Register
-    const systemsMap: Record<string, any> = {};
-    const eventMap = new Map<string, Set<string>>();
-    registerPackSystems(packs, systemsMap, eventMap);
-
-    expect(systemsMap['my-test-pack.main']).toBeDefined();
-    expect(eventMap.get('my-test-pack.main')!.has('TEST_EVENT')).toBe(true);
   });
 
   it('update flow: reinstalling overwrites the previous version', async () => {
-    const { install } = await import('../../../pack-cli/src/commands/install');
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'update-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
@@ -105,9 +108,9 @@ describe('pack full lifecycle: init → install → discover', () => {
     }));
     fs.writeFileSync(path.join(sourceDir, 'dist', 'v1.txt'), 'version 1');
 
-    await install([sourceDir]);
+    await installPackFromLocal(sourceDir, packsDir());
 
-    const installedDir = path.join(tmpDir, 'packs', 'update-pack');
+    const installedDir = path.join(packsDir(), 'update-pack');
     expect(fs.existsSync(path.join(installedDir, 'dist', 'v1.txt'))).toBe(true);
 
     // v2 — new file, remove old one
@@ -119,7 +122,7 @@ describe('pack full lifecycle: init → install → discover', () => {
     fs.unlinkSync(path.join(sourceDir, 'dist', 'v1.txt'));
     fs.writeFileSync(path.join(sourceDir, 'dist', 'v2.txt'), 'version 2');
 
-    await install([sourceDir]);
+    await installPackFromLocal(sourceDir, packsDir());
 
     // v1 file should be gone (rmSync + fresh copy)
     expect(fs.existsSync(path.join(installedDir, 'dist', 'v1.txt'))).toBe(false);
@@ -130,7 +133,7 @@ describe('pack full lifecycle: init → install → discover', () => {
   });
 
   it('hostVersion gating prevents loading incompatible packs', async () => {
-    const { install } = await import('../../../pack-cli/src/commands/install');
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'future-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
@@ -142,9 +145,9 @@ describe('pack full lifecycle: init → install → discover', () => {
     }));
     fs.writeFileSync(path.join(sourceDir, 'dist', 'placeholder'), '');
 
-    await install([sourceDir]);
+    await installPackFromLocal(sourceDir, packsDir());
 
-    const { loadExternalPacks } = await import('@/core/packs/pack-loader');
+    const { loadExternalPacks } = await import('@/packs/pack-loader');
     const packs = loadExternalPacks();
 
     // Pack is discovered but skipped due to hostVersion
@@ -152,7 +155,7 @@ describe('pack full lifecycle: init → install → discover', () => {
   });
 
   it('multiple packs coexist and all get discovered', async () => {
-    const { install } = await import('../../../pack-cli/src/commands/install');
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
     for (const id of ['pack-alpha', 'pack-beta', 'pack-gamma']) {
       const dir = path.join(tmpDir, id);
@@ -163,10 +166,10 @@ describe('pack full lifecycle: init → install → discover', () => {
         version: '1.0.0',
       }));
       fs.writeFileSync(path.join(dir, 'dist', 'placeholder'), '');
-      await install([dir]);
+      await installPackFromLocal(dir, packsDir());
     }
 
-    const { loadExternalPacks } = await import('@/core/packs/pack-loader');
+    const { loadExternalPacks } = await import('@/packs/pack-loader');
     const packs = loadExternalPacks();
     const ids = packs.map(p => p.manifest.id).sort();
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);

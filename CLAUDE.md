@@ -39,6 +39,23 @@ npm run db:cli           # Database CLI
 npm run db:reset         # Reset database
 ```
 
+### E2E visual testing
+
+Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
+
+```bash
+npm test                              # Run all E2E tests
+npx playwright test smoke             # Run just smoke tests
+npx playwright test tests/e2e/scratch # Run ad-hoc scratch test (gitignored)
+DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
+```
+
+Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, `waitForState(check)`, and `waitForPlugin(pluginId)`.
+
+The fixture source is `@abuddy/sdk/testing` (`packages/abuddy-sdk/src/testing/index.ts`), re-exported by `tests/e2e/fixtures/app.ts`. It launches Electron, finds the main window via `window.applicationState`, bypasses onboarding, and provides the `AppHelper` API. External packs share the same fixture — `abuddy init-tests` scaffolds tests in a pack repo, then `abuddy test` runs them. Set `PACK_DIR=/path/to/pack` to sync/build a pack and wait for its plugins.
+
+For full fixture lifecycle, API reference, and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`. For external pack testing details, see `packages/abuddy-sdk/src/testing/CLAUDE.md`.
+
 ## Architecture
 
 ### Event-driven actor system
