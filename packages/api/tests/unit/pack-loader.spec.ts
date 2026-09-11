@@ -1,8 +1,22 @@
+import { vi } from 'vitest';
+import { registerHostModule } from '@abuddy/sdk/runtime';
+
+vi.mock('virtual:built-in-pack-loaders', () => ({
+  default: {},
+}));
+
+const noop = () => {};
+const noopLogger = { debug: noop, info: noop, warn: noop, error: noop };
+registerHostModule('logger', {
+  createLogger: () => noopLogger,
+  LogEvent: {},
+});
+
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadExternalPacks, registerPackSystems, seedPackData, computePackSeedHash } from '@/core/packs/pack-loader';
-import { setLoadedPacks } from '@/core/packs/pack-api';
+import { loadExternalPacks, seedPackData, computePackSeedHash } from '@/packs/pack-loader';
+import { setLoadedPacks } from '@/packs/pack-api';
 import { seedFile } from '@abuddy/sdk/build';
 
 let tmpDir: string;
@@ -197,53 +211,6 @@ describe('pack-loader', () => {
     });
   });
 
-  describe('registerPackSystems', () => {
-    it('adds systems to the systems map and event validation map', () => {
-      const systemsMap: Record<string, any> = {};
-      const eventValidationMap = new Map<string, Set<string>>();
-      const mockMachine = { id: 'test' };
-      const mockEvents = new Set(['EVENT_A', 'EVENT_B']);
-
-      const packs: any[] = [{
-        manifest: { id: 'my-pack', name: 'My Pack', version: '1.0.0' },
-        dir: '/tmp/fake',
-        systems: new Map([['feature-a', { machine: mockMachine, events: mockEvents }]]),
-      }];
-
-      registerPackSystems(packs, systemsMap, eventValidationMap);
-
-      expect(systemsMap['my-pack.feature-a']).toBe(mockMachine);
-      expect(eventValidationMap.get('my-pack.feature-a')).toEqual(mockEvents);
-    });
-
-    it('registers multiple features from multiple packs', () => {
-      const systemsMap: Record<string, any> = {};
-      const eventValidationMap = new Map<string, Set<string>>();
-
-      const packs: any[] = [
-        {
-          manifest: { id: 'pack-a', name: 'A', version: '1.0.0' },
-          dir: '/tmp/a',
-          systems: new Map([
-            ['feat-1', { machine: { id: 'a1' }, events: new Set(['X']) }],
-            ['feat-2', { machine: { id: 'a2' }, events: new Set(['Y']) }],
-          ]),
-        },
-        {
-          manifest: { id: 'pack-b', name: 'B', version: '1.0.0' },
-          dir: '/tmp/b',
-          systems: new Map([
-            ['feat-1', { machine: { id: 'b1' }, events: new Set(['Z']) }],
-          ]),
-        },
-      ];
-
-      registerPackSystems(packs, systemsMap, eventValidationMap);
-
-      expect(Object.keys(systemsMap)).toEqual(['pack-a.feat-1', 'pack-a.feat-2', 'pack-b.feat-1']);
-      expect(eventValidationMap.size).toBe(3);
-    });
-  });
 });
 
 describe('seedPackData', () => {

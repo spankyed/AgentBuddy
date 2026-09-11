@@ -90,30 +90,14 @@ describe('pack CLI: init', () => {
 });
 
 describe('pack CLI: install', () => {
-  it('installs a valid pack from a directory', async () => {
+  it('install with no args returns without throwing (prints help)', async () => {
     const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    await expect(install([])).resolves.toBeUndefined();
+  });
 
-    // Create a valid source pack
-    const sourceDir = path.join(tmpDir, 'source-pack');
-    fs.mkdirSync(sourceDir, { recursive: true });
-    writeManifest(sourceDir, {
-      id: 'hello-world',
-      name: 'Hello World',
-      version: '1.0.0',
-    });
-    writeDist(sourceDir);
-
-    // Override packs directory to temp
-    const packsDir = path.join(tmpDir, 'installed-packs');
-    fs.mkdirSync(packsDir, { recursive: true });
-
-    // The install command uses a hardcoded PACKS_DIR. We can't easily override it,
-    // but we can test the validation and structure functions.
-    // For a true E2E test, we'd need to set HOME or patch PACKS_DIR.
-
-    // Instead, test that the install function validates correctly by checking its error cases
-    await expect(install([])).rejects.toThrow(/Usage/);
-    await expect(install(['/nonexistent/path'])).rejects.toThrow(/Path not found/);
+  it('installPackFromLocal throws on nonexistent path', async () => {
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    await expect(installPackFromLocal('/nonexistent/path')).rejects.toThrow(/Path not found/);
   });
 
   it('rejects manifest with invalid id format', async () => {
@@ -155,9 +139,8 @@ describe('pack CLI: install', () => {
   });
 
   it('symlinks in source directory are skipped during copy', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
-    // Create a pack with a symlink inside
     const sourceDir = path.join(tmpDir, 'symlink-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
     writeManifest(sourceDir, {
@@ -167,36 +150,24 @@ describe('pack CLI: install', () => {
     });
     fs.writeFileSync(path.join(sourceDir, 'dist', 'real.json'), '{}');
 
-    // Create a symlink pointing outside
     const outsideFile = path.join(tmpDir, 'secret.txt');
     fs.writeFileSync(outsideFile, 'secret data');
     fs.symlinkSync(outsideFile, path.join(sourceDir, 'dist', 'link.txt'));
 
-    // Verify the symlink exists in source
     expect(fs.lstatSync(path.join(sourceDir, 'dist', 'link.txt')).isSymbolicLink()).toBe(true);
 
-    // Redirect install target via USER_DATA_PATH
-    const origUDP = process.env.USER_DATA_PATH;
-    process.env.USER_DATA_PATH = tmpDir;
+    const packsDir = path.join(tmpDir, 'packs');
+    const result = await installPackFromLocal(sourceDir, packsDir);
 
-    try {
-      await install([sourceDir]);
-
-      const installedDir = path.join(tmpDir, 'packs', 'symlink-test');
-      expect(fs.existsSync(installedDir)).toBe(true);
-      expect(fs.existsSync(path.join(installedDir, 'dist', 'real.json'))).toBe(true);
-      // Symlink should have been skipped
-      expect(fs.existsSync(path.join(installedDir, 'dist', 'link.txt'))).toBe(false);
-    } finally {
-      if (origUDP === undefined) delete process.env.USER_DATA_PATH;
-      else process.env.USER_DATA_PATH = origUDP;
-    }
+    const installedDir = result.dir;
+    expect(fs.existsSync(installedDir)).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'dist', 'real.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'dist', 'link.txt'))).toBe(false);
   });
 
   it('installs from a zip file', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
-    // Create a valid pack, zip it, then install from zip
     const sourceDir = path.join(tmpDir, 'zip-source');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
     writeManifest(sourceDir, {
@@ -206,46 +177,31 @@ describe('pack CLI: install', () => {
     });
     fs.writeFileSync(path.join(sourceDir, 'dist', 'data.json'), '{"test": true}');
 
-    // Create zip
     const zipPath = path.join(tmpDir, 'pack.zip');
     try {
       execFileSync('zip', ['-r', zipPath, '.'], { cwd: sourceDir, stdio: 'pipe' });
     } catch {
-      // zip might not be available — skip test
       console.log('zip command not available, skipping zip install test');
       return;
     }
 
-    const origUDP = process.env.USER_DATA_PATH;
-    process.env.USER_DATA_PATH = tmpDir;
+    const packsDir = path.join(tmpDir, 'packs');
+    const result = await installPackFromLocal(zipPath, packsDir);
 
-    try {
-      await install([zipPath]);
-
-      const installedDir = path.join(tmpDir, 'packs', 'zip-pack');
-      expect(fs.existsSync(installedDir)).toBe(true);
-      expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
-      expect(fs.existsSync(path.join(installedDir, 'dist', 'data.json'))).toBe(true);
-    } finally {
-      if (origUDP === undefined) delete process.env.USER_DATA_PATH;
-      else process.env.USER_DATA_PATH = origUDP;
-    }
+    const installedDir = result.dir;
+    expect(fs.existsSync(installedDir)).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'dist', 'data.json'))).toBe(true);
   });
 });
 
 describe('pack CLI: validate', () => {
   it('validateManifest catches missing fields', async () => {
-    // We test validateManifest indirectly by creating packs and calling validate
-    // Since validate uses process.exit(1) on errors, we test the underlying logic
-
     const packDir = path.join(tmpDir, 'validate-test');
     fs.mkdirSync(packDir, { recursive: true });
 
-    // Missing all required fields
     writeManifest(packDir, {});
 
-    // validate calls process.exit(1) on errors, so we need to test it carefully
-    // Instead, check the manifest structure directly
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));
     expect(manifest.id).toBeUndefined();
     expect(manifest.name).toBeUndefined();

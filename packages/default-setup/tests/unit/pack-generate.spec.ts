@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { generate } from '../../../pack-cli/src/commands/generate';
+import { generateEntries } from '../../../abuddy-sdk/src/cli/commands/generate-entries';
+import type { PackSnapshot, PackTypeManifest } from '../../../abuddy-sdk/src/build';
 
 let tmpDir: string;
 
@@ -18,11 +19,11 @@ function writeManifest(manifest: Record<string, unknown>) {
 }
 
 function readGenerated(): string {
-  return fs.readFileSync(path.join(tmpDir, '.abuddy', 'generated', 'ears.ts'), 'utf-8');
+  return fs.readFileSync(path.join(tmpDir, 'src', '__generated__', 'ears.ts'), 'utf-8');
 }
 
-describe('abuddy generate', () => {
-  it('creates .abuddy/generated/ears.ts from manifest entities', async () => {
+describe('abuddy generate-entries', () => {
+  it('creates src/__generated__/ears.ts from manifest entities', async () => {
     writeManifest({
       id: 'test-pack',
       name: 'Test Pack',
@@ -31,7 +32,7 @@ describe('abuddy generate', () => {
       relKinds: {},
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain("export const Widget = 'Widget'");
@@ -49,7 +50,7 @@ describe('abuddy generate', () => {
       relKinds: { OWNS: 'owns', FOLLOWS: 'follows' },
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain("export const OWNS = 'owns'");
@@ -66,7 +67,7 @@ describe('abuddy generate', () => {
       relKinds: {},
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = Entity.Alpha | Entity.Beta');
@@ -81,7 +82,7 @@ describe('abuddy generate', () => {
       relKinds: {},
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain("export type EntityId<E extends string = string> = import('@abuddy/sdk').EARS.EntityId<E>");
@@ -99,7 +100,7 @@ describe('abuddy generate', () => {
       relKinds: {},
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain('export interface BaseEntity');
@@ -118,7 +119,7 @@ describe('abuddy generate', () => {
       relKinds: {},
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = string');
@@ -134,7 +135,7 @@ describe('abuddy generate', () => {
       relKinds: {},
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
     expect(output).toContain("export const Role = 'role'");
@@ -151,19 +152,18 @@ describe('abuddy generate', () => {
       dependencies: { 'dep-pack': '>=0.1.0' },
     });
 
-    // Create local dep cache with snapshot.json (PackSnapshot format)
-    const depDir = path.join(tmpDir, '.abuddy', 'deps', 'dep-pack');
-    fs.mkdirSync(depDir, { recursive: true });
-    fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify({
+    const snapshot: PackSnapshot = {
       types: {
         entities: { DepWidget: 'DepWidget' },
         relKinds: { DEP_REL: 'dep_rel' },
       },
       defs: {},
       manifest: { id: 'dep-pack', name: 'Dep Pack', version: '0.1.0' },
-    }));
+    };
+    const depTypes = new Map<string, PackTypeManifest>([['dep-pack', snapshot.types]]);
+    const depSnapshots = new Map<string, PackSnapshot>([['dep-pack', snapshot]]);
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir, depTypes, depSnapshots);
 
     const output = readGenerated();
     // Own entity
@@ -184,10 +184,10 @@ describe('abuddy generate', () => {
       relKinds: { R: 'r' },
     });
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
     const first = readGenerated();
 
-    await generate([], tmpDir);
+    await generateEntries(['--force'], tmpDir);
     const second = readGenerated();
 
     expect(first).toBe(second);
