@@ -30,6 +30,8 @@ export function registerPackFE(registration: PackFERegistration): void {
 
   if (registration.defaultPlugin && !defaultPlugin) {
     defaultPlugin = registration.defaultPlugin;
+  } else if (registration.defaultPlugin) {
+    console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
   }
 
   const designated = plugins.filter(p => p.designation);
