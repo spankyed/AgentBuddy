@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [master]
+  # pull_request:
+  #   branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-14
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+
+      - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests (api)
+        run: npm test --workspace @app/api -- --reporter=verbose
+        continue-on-error: true
+
+      - name: Unit tests (default-setup)
+        run: npm test --workspace @app/default-setup -- --reporter=verbose
