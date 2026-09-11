@@ -85,7 +85,13 @@ export async function initTests(_args: string[]): Promise<void> {
     }
   }
 
+  if (!process.env.ABUDDY_ROOT) {
+    console.log('\nPrerequisite: a local clone of the AgentBuddy monorepo (installed + built).');
+    console.log('Set ABUDDY_ROOT to point to it:');
+    console.log('  export ABUDDY_ROOT=/path/to/AgentBuddy');
+    console.log('\nAdd it to your .env or shell profile so it persists across sessions.');
+  }
+
   console.log('\nTo run tests:');
-  console.log(`  ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test`);
-  console.log('\nOr add ABUDDY_ROOT to your .env / shell profile for convenience.');
+  console.log('  ABUDDY_ROOT=/path/to/AgentBuddy npx playwright test');
 }

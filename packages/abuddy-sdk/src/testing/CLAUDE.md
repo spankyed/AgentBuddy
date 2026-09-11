@@ -29,12 +29,24 @@ import { test, expect } from '@abuddy/sdk/testing';
 
 Since external packs depend on `@abuddy/sdk` (linked or installed), the import resolves through the SDK's `package.json` exports.
 
+## Prerequisites
+
+E2E tests launch the full Electron app from source. This requires a **local clone of the AgentBuddy monorepo** with dependencies installed and packages built:
+
+```bash
+git clone <agentbuddy-repo> /path/to/AgentBuddy
+cd /path/to/AgentBuddy && npm install && npm run build
+```
+
+The fixture resolves the Electron binary from the monorepo's `node_modules/electron` — external packs do **not** need `electron` as a dependency. `@abuddy/sdk` is currently private (`"private": true`), so packs must link to a local copy rather than installing from npm.
+
 ## Setup for external packs
 
 ```bash
 cd /path/to/my-pack
 npx abuddy init-tests              # scaffolds playwright.config.ts + tests/e2e/smoke.spec.ts
 npm i -D @playwright/test          # install Playwright
+export ABUDDY_ROOT=/path/to/AgentBuddy  # add to .env or shell profile
 ```
 
 The `init-tests` CLI command (source: `packages/abuddy-sdk/src/cli/commands/init-tests.ts`):
@@ -42,6 +54,7 @@ The `init-tests` CLI command (source: `packages/abuddy-sdk/src/cli/commands/init
 - Creates `playwright.config.ts` with `testDir: 'tests/e2e'`, `timeout: 60_000`, `workers: 1`
 - Creates `tests/e2e/smoke.spec.ts` with `waitForPlugin()` and `navigate()` pre-filled for the detected plugin
 - Appends `tests/screenshots/`, `tests/results/`, `test-results/` to `.gitignore`
+- Warns if `ABUDDY_ROOT` is not set
 
 ## How the fixture finds AgentBuddy
 
@@ -52,6 +65,8 @@ The `init-tests` CLI command (source: `packages/abuddy-sdk/src/cli/commands/init
 3. **Auto-detection** — walks up from the SDK package directory (`import.meta.dirname`) looking for `packages/entry-point.mjs`. This always works inside the monorepo, since the SDK lives at `packages/abuddy-sdk/`.
 
 If none of these resolve, the fixture throws with a clear message telling the developer to set `ABUDDY_ROOT`.
+
+Once resolved, `validateAppRoot()` checks that the directory contains the required files (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`). If anything is missing, the error lists exactly what's needed — a stale or incomplete checkout gets a clear diagnostic instead of an opaque Electron crash later.
 
 ## Fixture lifecycle
 
@@ -65,7 +80,7 @@ If none of these resolve, the fixture throws with a clear message telling the de
    - Build uses the `abuddy build` CLI binary, resolved from: pack's local `node_modules/.bin/abuddy` first, then the host app's binary
    - Sync copies files recursively, skipping symlinks, `node_modules`, and `.git` (matches the SDK's `copyDir` pattern from `pack-installer.ts`)
 
-2. **Launch Electron** — `_electron.launch({ args: ['.'], cwd: appRoot })` with `PLAYWRIGHT_TEST=true`
+2. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` via `createRequire`, then calls `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` with `PLAYWRIGHT_TEST=true`. This ensures external packs don't need `electron` installed locally.
 
 3. **Debug logging** (if `DEBUG_E2E=1`): pipes Electron's stdout/stderr to the test terminal with `[electron]` prefix
 
@@ -158,7 +173,9 @@ PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
 
 ## Key implementation details
 
+- **Electron binary resolution**: The fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from the monorepo's `node_modules`, then passes the binary path as `executablePath` to Playwright. This decouples the test runner's dependency tree from the Electron binary — packs don't need `electron` installed.
+- **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
+- **Dev/prod packs directory alignment**: The fixture syncs to `getPacksDirForEnv(true)` → `~/Library/Application Support/abuddy-dev/packs/`. The Electron app's `PackProtocol` uses `app.getPath('userData') + '/packs'`. These match because `SingleInstanceApp.ts` appends `-dev` to the app name when `app.isPackaged === false` (always true when running from source), which shifts `userData` to the `-dev` directory.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `abuddy.json` once per process, cached at module scope. Plugin IDs are extracted from `features[].plugin.id` with fallback to `features[].id`.
-- **Dev packs directory**: `getPacksDirForEnv(true)` returns the dev-environment packs path (e.g. `~/Library/Application Support/abuddy-dev/packs/`). This is where Electron looks for external packs at runtime.
 - **`.dev` signal file**: Written by `abuddy dev` at `{devPacksDir}/{packId}/.dev` containing `{ port, pid }`. Its presence means the pack is being served by Vite's HMR dev server via the `pack://` protocol — no need for the fixture to build or sync files.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that checks for `.dev` and proxies to the Vite dev server if present, otherwise serves files from disk.

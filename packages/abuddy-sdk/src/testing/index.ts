@@ -3,6 +3,7 @@ export { expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+import { createRequire } from 'module';
 import { getPacksDirForEnv } from '../packs/pack-discovery';
 
 export interface AppHelper {
@@ -20,14 +21,42 @@ export interface CreateTestOptions {
   screenshotDir?: string;
 }
 
+function isValidAppRoot(dir: string): boolean {
+  return fs.existsSync(path.join(dir, 'packages', 'entry-point.mjs'));
+}
+
+function validateAppRoot(dir: string): void {
+  const missing: string[] = [];
+  if (!isValidAppRoot(dir)) missing.push('packages/entry-point.mjs');
+  if (!fs.existsSync(path.join(dir, 'node_modules', 'electron'))) missing.push('node_modules/electron (run npm install)');
+  if (!fs.existsSync(path.join(dir, 'packages', 'main', 'dist'))) missing.push('packages/main/dist (run npm run build)');
+  if (!fs.existsSync(path.join(dir, 'packages', 'renderer', 'dist'))) missing.push('packages/renderer/dist (run npm run build)');
+  if (missing.length > 0) {
+    throw new Error(
+      `ABUDDY_ROOT (${dir}) is missing required files:\n` +
+      missing.map(m => `  - ${m}`).join('\n') +
+      '\n\nThe AgentBuddy monorepo must be cloned, installed, and built before E2E tests can run.',
+    );
+  }
+}
+
 function resolveAppRoot(override?: string): string {
-  if (override) return path.resolve(override);
-  if (process.env.ABUDDY_ROOT) return path.resolve(process.env.ABUDDY_ROOT);
+  if (override) {
+    const resolved = path.resolve(override);
+    validateAppRoot(resolved);
+    return resolved;
+  }
+  if (process.env.ABUDDY_ROOT) {
+    const resolved = path.resolve(process.env.ABUDDY_ROOT);
+    validateAppRoot(resolved);
+    return resolved;
+  }
 
   // Auto-detect: walk up from SDK package looking for packages/entry-point.mjs
   let dir = path.resolve(import.meta.dirname, '..', '..');
   for (let i = 0; i < 10; i++) {
-    if (fs.existsSync(path.join(dir, 'packages', 'entry-point.mjs'))) {
+    if (isValidAppRoot(dir)) {
+      validateAppRoot(dir);
       return dir;
     }
     const parent = path.dirname(dir);
@@ -36,7 +65,9 @@ function resolveAppRoot(override?: string): string {
   }
 
   throw new Error(
-    'Could not find AgentBuddy root. Set ABUDDY_ROOT env var to the AgentBuddy repo directory.',
+    'Could not find AgentBuddy root. Set ABUDDY_ROOT env var to the AgentBuddy monorepo directory.\n\n' +
+    'E2E tests require a local clone of the AgentBuddy repo with dependencies installed and packages built:\n' +
+    '  git clone <agentbuddy-repo> && cd AgentBuddy && npm install && npm run build',
   );
 }
 
@@ -147,8 +178,13 @@ export function createTest(options: CreateTestOptions = {}) {
         }
       }
 
+      // Resolve electron binary from the monorepo so external packs don't need electron installed locally
+      const appRequire = createRequire(path.join(appRoot, 'package.json'));
+      const electronPath = appRequire('electron') as unknown as string;
+
       const app = await _electron.launch({
-        args: ['.'],
+        executablePath: electronPath,
+        args: [path.join(appRoot, '.')],
         cwd: appRoot,
         env: {
           ...process.env,

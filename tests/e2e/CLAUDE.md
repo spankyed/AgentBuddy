@@ -21,14 +21,14 @@ The test infrastructure lives in `@abuddy/sdk/testing` (source: `packages/abuddy
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve app root** — `resolveAppRoot()` checks `ABUDDY_ROOT` env var, then auto-detects by walking up from the SDK package directory looking for `packages/entry-point.mjs`. Inside the monorepo, auto-detection always works.
+1. **Resolve and validate app root** — `resolveAppRoot()` checks `ABUDDY_ROOT` env var, then auto-detects by walking up from the SDK package directory looking for `packages/entry-point.mjs`. Inside the monorepo, auto-detection always works. Once resolved, `validateAppRoot()` checks for required files (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) and throws a clear error if anything is missing.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
    - Check for a `.dev` signal file in the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`). If present, `abuddy dev` is running — skip build/sync
    - If no `.dev` signal: build the pack if `dist/` doesn't exist (using the `abuddy build` CLI binary), then sync the pack files to the dev packs directory (recursive copy, skipping symlinks, `node_modules`, and `.git`)
 
-3. **Launch Electron** — `_electron.launch({ args: ['.'], cwd: appRoot })` with `PLAYWRIGHT_TEST=true` in the environment. The Electron app starts the same as dev mode but with error handling set to crash immediately on uncaught exceptions.
+3. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` (so external packs don't need `electron` installed), then launches with `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` and `PLAYWRIGHT_TEST=true`. The Electron app starts the same as dev mode but with error handling set to crash immediately on uncaught exceptions.
 
 4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s.
 
