@@ -43,7 +43,9 @@ class PackProtocol implements AppModule {
         if (fs.existsSync(devSignalPath)) {
           try {
             const signal = JSON.parse(fs.readFileSync(devSignalPath, 'utf-8'));
-            const devUrl = `http://localhost:${signal.port}${filePath}`;
+            const port = Number(signal.port);
+            if (!Number.isInteger(port) || port < 1 || port > 65535) return;
+            const devUrl = `http://localhost:${port}${filePath}`;
             const res = await fetch(devUrl);
             if (res.ok) {
               const body = await res.arrayBuffer();
