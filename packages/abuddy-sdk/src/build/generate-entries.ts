@@ -124,12 +124,7 @@ ${relKindMembers.join('\n')}
   export type AttributeStore = import('@abuddy/sdk').EARS.AttributeStore;
 }
 
-export interface BaseEntity {
-  id: EARS.EntityId;
-  entityType: EARS.Entity;
-  createdAt: number;
-  updatedAt?: number;
-}
+export type BaseEntity = import('@abuddy/sdk').BaseEntity;
 
 export const AllEntities = EARS.Entity;
 export type AllEntities = EARS.Entity;
