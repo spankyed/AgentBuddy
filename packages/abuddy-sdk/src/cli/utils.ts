@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PackManifest } from '../../build';
+import type { PackManifest } from '../build';
 
 export function findPackRoot(from: string): string {
   let dir = from;
