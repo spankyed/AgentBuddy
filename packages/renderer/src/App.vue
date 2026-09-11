@@ -5,7 +5,7 @@ import ApiStatus from './core/components/ApiStatus.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
-import { getAppExtension } from '@abuddy/sdk/fe';
+import { getAppExtension } from '@abuddy/sdk/fe/host';
 
 const WelcomeComponent = getAppExtension('welcome');
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));

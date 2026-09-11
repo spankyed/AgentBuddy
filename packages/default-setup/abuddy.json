@@ -1,4 +1,5 @@
 {
+  "$schema": "../abuddy-sdk/abuddy.schema.json",
   "id": "default-setup",
   "name": "Default Setup",
   "version": "0.1.0",

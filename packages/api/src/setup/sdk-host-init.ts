@@ -1,6 +1,6 @@
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import { initRpc } from '@abuddy/sdk/rpc';
-import { initEARSRuntime } from '@abuddy/sdk/ears';
+import { initEARSRuntime } from '@abuddy/sdk/ears/internals';
 import * as attributeStorage from '@/core/ears/attribute-storage';
 import * as lmdbQuery from '@/core/persistence/lmdb/query';
 import * as hydrateSharded from '@/core/persistence/partitioning/hydrate-sharded';

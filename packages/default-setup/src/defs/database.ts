@@ -16,12 +16,15 @@ import {
 } from '@abuddy/sdk/ears';
 
 export {
-  getEntitiesOfType, getAllEntityTypes, getAllAttributeKinds,
-  getAttributeStats, getAllRelationKinds, getAttr, getAttrs,
-  removeRelation, getAll, getAllEntities, getRoles,
-  queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
-  destroyEntity, prepareEntity, grantRole, revokeRole,
+  getEntitiesOfType, getAllEntityTypes, getAttr, getAttrs,
+  removeRelation, destroyEntity, prepareEntity,
+  getAll, getAllAttributeKinds, getAttributeStats, getAllRelationKinds,
+  getRoles, grantRole, revokeRole,
 } from '@abuddy/sdk/ears';
+export {
+  getAllEntities,
+  queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
+} from '@abuddy/sdk/ears/internals';
 
 export {
   descendants, ancestors, rootParent, linkSymmetric,

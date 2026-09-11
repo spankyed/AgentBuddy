@@ -15,7 +15,7 @@
     "baseUrl": ".",
     "paths": {
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts"],
+      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/*": ["src/*"]
     },
     "moduleResolution": "node",

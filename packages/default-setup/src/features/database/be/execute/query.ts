@@ -1,17 +1,12 @@
 import { EARS } from '@/__generated__/ears';
-import { qx } from '@abuddy/sdk/ears';
-import { 
-  getAllEntities, 
-  getAll, 
+import { qx, getAttr, getAttrs, getEntitiesOfType, getAll, getRoles } from '@abuddy/sdk/ears';
+import {
+  getAllEntities,
   queryEntitiesByRelationTo,
-  getAttr,
-  getAttrs,
-  getRoles,
-  getEntitiesOfType,
   queryEntitiesByAttribute,
-  queryEntitiesInRelationTo
-} from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/sdk/ears';
+  queryEntitiesInRelationTo,
+  relationIndex,
+} from '@abuddy/sdk/ears/internals';
 import { getSchemaStats } from '../repository/schema';
 
 /**

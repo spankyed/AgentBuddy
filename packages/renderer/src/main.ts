@@ -5,7 +5,7 @@ import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
 import builtInPacks from 'virtual:built-in-packs';
-import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe';
+import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe/host';
 import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';

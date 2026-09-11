@@ -25,6 +25,7 @@ import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/build';
 // loaded pack code shares the real singletons.
 import * as _sdkRoot from '@abuddy/sdk';
 import * as _sdkEars from '@abuddy/sdk/ears';
+import * as _sdkEarsInternals from '@abuddy/sdk/ears/internals';
 import * as _sdkFramework from '@abuddy/sdk/framework';
 import * as _sdkHelpers from '@abuddy/sdk/helpers';
 import * as _sdkPacks from '@abuddy/sdk/packs';
@@ -48,6 +49,7 @@ import * as _sdkTemplates from '@abuddy/sdk/runtime';
 const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk': _sdkRoot,
   '@abuddy/sdk/ears': _sdkEars,
+  '@abuddy/sdk/ears/internals': _sdkEarsInternals,
   '@abuddy/sdk/framework': _sdkFramework,
   '@abuddy/sdk/helpers': _sdkHelpers,
   '@abuddy/sdk/packs': _sdkPacks,

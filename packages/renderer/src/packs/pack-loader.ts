@@ -1,5 +1,5 @@
 import type { Plugin } from '@/core/types';
-import type { PackFERegistration } from '@abuddy/sdk/fe';
+import type { PackFERegistration } from '@abuddy/sdk/fe/host';
 
 export interface PackPluginManifest {
   id: string;

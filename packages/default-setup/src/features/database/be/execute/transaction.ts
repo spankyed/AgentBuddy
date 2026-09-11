@@ -1,28 +1,16 @@
 import { EARS } from '@/__generated__/ears';
-import { qx } from '@abuddy/sdk/ears';
-import { tx } from '@abuddy/sdk/ears';
-import { 
-  getAllEntities, 
-  getAll, 
+import {
+  qx, tx, getAttr, getAttrs, getEntitiesOfType, destroyEntity,
+  getAll, getRoles, grantRole, revokeRole,
+  prepareEntity, createEntityWithDefaults, updateEntity, createRelation, removeRelation,
+} from '@abuddy/sdk/ears';
+import {
+  getAllEntities,
   queryEntitiesByRelationTo,
-  getAttr,
-  getAttrs,
-  getRoles,
-  getEntitiesOfType,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
-  destroyEntity
-} from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/sdk/ears';
-import {
-  prepareEntity,
-  createEntityWithDefaults,
-  updateEntity,
-  createRelation,
-  removeRelation,
-  grantRole,
-  revokeRole
-} from '@abuddy/sdk/ears';
+  relationIndex,
+} from '@abuddy/sdk/ears/internals';
 
 /**
  * Execute a user-provided transaction against the EARS database

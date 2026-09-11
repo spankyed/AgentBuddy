@@ -13,7 +13,7 @@ export {
   createRelation,
   removeRelation,
   grantRole,
-  revokeRole
+  revokeRole,
 } from '@abuddy/sdk/ears';
 
 // Export EARS transaction builder
@@ -43,8 +43,8 @@ export { EARS } from '@/__generated__/ears';
 // ─── Query context for AI prompt generation ─────────────────────────────
 
 import { EARS as EARSTypes } from '@/__generated__/ears';
-import { getEntitiesOfType, getAll, getAllEntityTypes } from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/sdk/ears';
+import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/sdk/ears';
+import { relationIndex } from '@abuddy/sdk/ears/internals';
 
 /**
  * Build a query context from live data for AI query generation.

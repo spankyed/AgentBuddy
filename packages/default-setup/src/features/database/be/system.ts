@@ -12,8 +12,7 @@ import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace
 import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/sdk/backup';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@/__generated__/types';
-import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@abuddy/sdk/ears';
-import { hydrateSharded } from '@abuddy/sdk/ears';
+import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/sdk/ears/internals';
 import { repository } from '@abuddy/sdk/ears';
 
 const logger = createLogger('database');

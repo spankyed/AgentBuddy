@@ -1,4 +1,4 @@
-export type { Plugin, RouteComponents } from './plugin'
+export type { RouteComponents } from './plugin'
 export { pasteIntoElement } from './input-paste'
 export { useActorSystem } from './composables/useActorSystem'
 export { useApplicationActor } from './composables/useApplicationActor'
@@ -19,9 +19,6 @@ export { createHotkeyProcessor, matchesHotkey, processHotkeys, type HotkeyEvent,
 export { saveTabGroups, loadTabGroups, clearTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroup, type TabGroupColor } from './tab-groups'
 export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer'
 export { registerDesignations, getDesignated, hasDesignation } from '../designations/index'
-export { registerAppExtension, getAppExtension, hasAppExtension } from './app-extensions'
-export { registerPackFE, getRegisteredPlugins, getRegisteredDefaultPlugin } from './pack-store'
-export type { PackFERegistration } from './pack-store'
 
 export { useSettingsSaveStatus } from './composables/useSettingsSaveStatus'
 

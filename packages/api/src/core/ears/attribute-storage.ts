@@ -1,4 +1,4 @@
-import { setPersistence, clearMemory } from "@abuddy/sdk/ears";
+import { setPersistence, clearMemory } from "@abuddy/sdk/ears/internals";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@abuddy/sdk/utils";
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
