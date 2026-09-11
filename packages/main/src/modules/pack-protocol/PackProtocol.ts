@@ -44,7 +44,9 @@ class PackProtocol implements AppModule {
           try {
             const signal = JSON.parse(fs.readFileSync(devSignalPath, 'utf-8'));
             const port = Number(signal.port);
-            if (!Number.isInteger(port) || port < 1 || port > 65535) return;
+            if (!Number.isInteger(port) || port < 1 || port > 65535) {
+              return new Response('Invalid dev signal port', { status: 502 });
+            }
             const devUrl = `http://localhost:${port}${filePath}`;
             const res = await fetch(devUrl);
             if (res.ok) {
