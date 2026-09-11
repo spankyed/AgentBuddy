@@ -35,6 +35,12 @@ export interface ValidationResult {
 
 export interface SeedCompiler<TCompiled = unknown, TMerged = unknown> {
   compile(sourcePath: string): Promise<TCompiled>;
+  /**
+   * Hard failures from `compile` that dropped entries. Reported and thrown by
+   * the orchestrator before validation, so a dropped entry surfaces at its own
+   * source rather than as a downstream cross-seed reference error.
+   */
+  collectErrors?(compiled: TCompiled): string[];
   merge(entries: CompileEntry<TCompiled>[]): TMerged;
   validate?(merged: TMerged, context: CompilationContext): ValidationResult;
   write(outputDir: string, merged: TMerged): void;
@@ -163,6 +169,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   const compiledByType = new Map<string, CompileEntry<unknown>[]>();
   const mergedByType = new Map<string, unknown>();
   const warnings: string[] = [];
+  const compileErrors: string[] = [];
 
   for (const [type, compiler] of compilers) {
     if (type === 'settings') continue;
@@ -177,8 +184,21 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     const entries: CompileEntry<unknown>[] = [{ data, sourcePath, packName: packConfig.name }];
     compiledByType.set(type, entries);
 
+    for (const message of compiler.collectErrors?.(data) ?? []) {
+      compileErrors.push(`${type}: ${message}`);
+    }
+
     const merged = compiler.merge(entries);
     mergedByType.set(type, merged);
+  }
+
+  // Fail here rather than letting dropped entries resurface as misleading
+  // cross-seed validation errors (e.g. a flow referencing an action that
+  // failed to compile).
+  if (compileErrors.length > 0) {
+    throw new Error(
+      `${compileErrors.length} source(s) failed to compile:\n${compileErrors.map(e => `  \u2717 ${e}`).join('\n')}`,
+    );
   }
 
   // 3. Compile settings — base + per-feature settings merged

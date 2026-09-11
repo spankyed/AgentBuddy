@@ -35,10 +35,20 @@ export interface CompiledEntry {
 
 export interface CompileResult {
   entries: CompiledEntry[];
+  /** Soft issues; the entry was still produced. */
   warnings: string[];
+  /** Hard failures; the entry was dropped and the build must not continue. */
+  errors: string[];
 }
 
 // --- esbuild Plugin ---
+
+/**
+ * Bare specifiers that seed sources may import. These resolve to sandbox-safe
+ * SDK source and are inlined into the compiled function body by esbuild; the
+ * bundled output is still checked against DISALLOWED_NODE_PATTERNS.
+ */
+const INLINABLE_PACKAGE_IMPORTS = [/^@abuddy\/sdk\/actions(\/|$)/];
 
 function createValidatorPlugin(): esbuild.Plugin {
   return {
@@ -46,6 +56,7 @@ function createValidatorPlugin(): esbuild.Plugin {
     setup(build) {
       build.onResolve({ filter: /^[^./]/ }, (args) => {
         if (/^[a-zA-Z]:/.test(args.path)) return undefined;
+        if (INLINABLE_PACKAGE_IMPORTS.some(re => re.test(args.path))) return undefined;
         return {
           errors: [{ text: `Bare package imports are disallowed: '${args.path}'` }],
         };
@@ -56,7 +67,19 @@ function createValidatorPlugin(): esbuild.Plugin {
 
 // --- Bundling ---
 
-export async function bundleFile(filePath: string): Promise<{ bundledJs: string; errors: string[] }> {
+export interface BundleResult {
+  bundledJs: string;
+  errors: string[];
+  warnings: string[];
+}
+
+/** Render an esbuild message on one line, preserving the offending location. */
+function formatMessage(message: esbuild.Message): string {
+  const loc = message.location;
+  return loc ? `${message.text} (${loc.file}:${loc.line}:${loc.column})` : message.text;
+}
+
+export async function bundleFile(filePath: string): Promise<BundleResult> {
   try {
     const result = await esbuild.build({
       entryPoints: [filePath],
@@ -65,26 +88,29 @@ export async function bundleFile(filePath: string): Promise<{ bundledJs: string;
       format: 'esm',
       target: 'es2022',
       platform: 'neutral',
+      // Messages are collected and reported by the caller. esbuild's own stderr
+      // output would repeat a shared helper's error once per importing entry.
+      logLevel: 'silent',
       plugins: [createValidatorPlugin()],
     });
 
-    const errors: string[] = [];
-    for (const err of result.errors) errors.push(err.text);
-    for (const warn of result.warnings) errors.push(warn.text);
+    const errors = result.errors.map(formatMessage);
+    const warnings = result.warnings.map(formatMessage);
 
-    if (errors.length > 0 || result.outputFiles.length === 0) {
-      return { bundledJs: '', errors };
+    if (errors.length === 0 && result.outputFiles.length === 0) {
+      errors.push('bundling produced no output');
+    }
+    if (errors.length > 0) {
+      return { bundledJs: '', errors, warnings };
     }
 
-    return { bundledJs: result.outputFiles[0].text, errors: [] };
+    return { bundledJs: result.outputFiles[0].text, errors, warnings };
   } catch (e: any) {
-    const errors: string[] = [];
-    if (e.errors) {
-      for (const err of e.errors) errors.push(err.text);
-    } else {
-      errors.push(e.message || String(e));
-    }
-    return { bundledJs: '', errors };
+    const errors: string[] = Array.isArray(e?.errors) && e.errors.length > 0
+      ? e.errors.map(formatMessage)
+      : [e?.message || String(e)];
+    const warnings: string[] = Array.isArray(e?.warnings) ? e.warnings.map(formatMessage) : [];
+    return { bundledJs: '', errors, warnings };
   }
 }
 
@@ -304,22 +330,27 @@ async function compileSourceFile(
   filePath: string,
   sourceDir: string,
   config: CompileConfig,
-): Promise<{ entry: CompiledEntry | null; warnings: string[] }> {
+): Promise<{ entry: CompiledEntry | null; errors: string[]; warnings: string[] }> {
   const relativePath = path.relative(sourceDir, filePath);
-  const { bundledJs, errors: bundleErrors } = await bundleFile(filePath);
+  const prefix = (message: string) => `${relativePath}: ${message}`;
+
+  const { bundledJs, errors: bundleErrors, warnings: bundleWarnings } = await bundleFile(filePath);
+  const warnings = bundleWarnings.map(prefix);
+
   if (bundleErrors.length > 0) {
-    return { entry: null, warnings: bundleErrors.map(e => `${relativePath}: ${e}`) };
+    return { entry: null, errors: bundleErrors.map(prefix), warnings };
   }
 
-  const warnings = validateBundledOutput(bundledJs, relativePath);
+  warnings.push(...validateBundledOutput(bundledJs, relativePath));
+
   const meta = extractMeta(bundledJs);
   if (!meta) {
-    return { entry: null, warnings: [...warnings, `${relativePath}: could not extract meta object`] };
+    return { entry: null, errors: [prefix('could not extract meta object')], warnings };
   }
 
   const body = extractFunctionBody(bundledJs, config.functionName, config.isAsync);
   if (body === null) {
-    return { entry: null, warnings: [...warnings, `${relativePath}: could not extract ${config.functionName} function body`] };
+    return { entry: null, errors: [prefix(`could not extract ${config.functionName} function body`)], warnings };
   }
 
   const inlinedHelpers = extractInlinedHelpers(bundledJs, config.functionName);
@@ -340,7 +371,7 @@ async function compileSourceFile(
     .digest('hex')
     .slice(0, 16);
 
-  return { entry: { ...compiled, sourceHash } as CompiledEntry, warnings };
+  return { entry: { ...compiled, sourceHash } as CompiledEntry, errors: [], warnings };
 }
 
 // --- Pure compilation (returns results, no file I/O for output) ---
@@ -350,11 +381,12 @@ export async function compileSourceDir(
   config: Omit<CompileConfig, 'sourceDir' | 'outputFile'>,
 ): Promise<CompileResult> {
   if (!fs.existsSync(sourceDir)) {
-    return { entries: [], warnings: [] };
+    return { entries: [], warnings: [], errors: [] };
   }
 
   const { sourceFiles } = scanSourceFiles(sourceDir);
   const allWarnings: string[] = [];
+  const allErrors: string[] = [];
   const entries: CompiledEntry[] = [];
 
   for (const file of sourceFiles) {
@@ -364,12 +396,13 @@ export async function compileSourceDir(
       sourceDir,
       outputFile: '',
     };
-    const { entry, warnings } = await compileSourceFile(filePath, sourceDir, fullConfig);
+    const { entry, errors, warnings } = await compileSourceFile(filePath, sourceDir, fullConfig);
     allWarnings.push(...warnings);
+    allErrors.push(...errors);
     if (entry) entries.push(entry);
   }
 
-  return { entries, warnings: allWarnings };
+  return { entries, warnings: allWarnings, errors: allErrors };
 }
 
 export function sourceHash(data: object): string {

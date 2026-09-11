@@ -27,6 +27,11 @@ function writeJson(filePath: string, data: unknown): void {
 interface ActionsCompiled {
   entries: CompiledEntry[];
   warnings: string[];
+  errors: string[];
+}
+
+function collectSourceErrors(compiled: ActionsCompiled): string[] {
+  return compiled.errors;
 }
 
 export const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
@@ -37,6 +42,8 @@ export const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
       fields: { metaInput: 'input', fnBody: 'actionFn', output: 'output' },
     });
   },
+
+  collectErrors: collectSourceErrors,
 
   merge(results) {
     const all: CompiledEntry[] = [];
@@ -74,6 +81,8 @@ export const promptsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
       fields: { metaInput: 'inputs', fnBody: 'templateFn', output: 'outputSchema' },
     });
   },
+
+  collectErrors: collectSourceErrors,
 
   merge(results) {
     const all: CompiledEntry[] = [];

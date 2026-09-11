@@ -11,7 +11,7 @@ export function formatProviderError(
   currentProvider: string,
   alternatives?: Record<string, string>,
 ): ProviderErrorResult {
-  const raw = typeof error?.stderr === 'string' && error.stderr.trim()
+  const raw: string = typeof error?.stderr === 'string' && error.stderr.trim()
     ? error.stderr
     : String(error?.message || 'Unknown error');
 

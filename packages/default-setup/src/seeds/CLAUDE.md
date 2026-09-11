@@ -6,7 +6,10 @@ Actions, prompts, flows, library, notes, and faqs compiled to JSON for runtime e
 
 - Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`
 - Import types: `import type { ActionMeta, Services, Z } from '../../types'` (adjust depth)
-- No bare package imports or Node.js globals — compiler-enforced
+- No bare package imports or Node.js globals — compiler-enforced. The one exception is
+  `@abuddy/sdk/actions`, an allowlisted sandbox-safe module whose source is inlined into the
+  compiled body (see `INLINABLE_PACKAGE_IMPORTS` in `abuddy-sdk/src/build/compile-utils.ts`).
+  Type-only imports (`import type`) are erased before bundling and are always fine.
 - Files without `export const meta` are auto-detected as inlined helpers
 - See `WRITING-ACTIONS.md` for full reference
 
