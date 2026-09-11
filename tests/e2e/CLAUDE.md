@@ -126,16 +126,26 @@ abuddy test                                              # run tests
 
 ### 2. From this repo (quick iteration)
 
-Set `PACK_DIR` to test an external pack using the AgentBuddy monorepo's test runner:
+Set `PACK_DIR` to test an external pack using the monorepo's test runner. No setup needed in the pack — the fixture handles everything:
 
 ```bash
+# Run against a scratch test
 PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
+
+# Run against any test file
+PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/smoke
 ```
 
-The fixture detects whether `abuddy dev` is running for the pack (via the `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`) and skips build/sync if so.
+#### What happens when `PACK_DIR` is set
 
-- **Hot (with `abuddy dev` running)**: The pack is already installed and managed by the dev server. The fixture just waits for plugins to load.
-- **Cold (no `abuddy dev`)**: The fixture builds (if no `dist/`), copies the pack to the dev packs directory, launches Electron, and waits for plugins.
+1. **Read manifest** — parses `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
+2. **Check for `abuddy dev`** — looks for a `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`
+   - **If `.dev` exists** (`abuddy dev` is running): skips build/sync entirely — the pack is already installed and served by the Vite dev server via the `pack://` protocol
+   - **If no `.dev`**: continues to step 3
+3. **Build** (if no `dist/`): runs `abuddy build` in the pack directory
+4. **Sync** — copies the pack files (excluding `node_modules`, `.git`, symlinks) to the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/`)
+5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
+6. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Bails early if `[pack-loader] Failed to load FE entry` is logged.
 
 If the pack's frontend fails to load at runtime, the fixture logs a warning and continues — the test still runs so you can inspect the error.
 
