@@ -13,7 +13,7 @@ import {
   reconcileExternalRegistry,
 } from '@abuddy/sdk/packs';
 import type { PackSnapshot } from '@abuddy/sdk/build';
-import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/shared-deps';
+import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/build';
 
 // ── SDK bridge ──────────────────────────────────────────────────────
 // The API bundle inlines @abuddy/sdk (tsup bundles it). Any CJS code
@@ -43,8 +43,7 @@ import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
 // @ts-expect-error — resolved by esbuild, not tsc
 import * as _sdkInference from '@abuddy/sdk/inference';
-// @ts-expect-error — resolved by esbuild, not tsc
-import * as _sdkTemplates from '@abuddy/sdk/templates';
+import * as _sdkTemplates from '@abuddy/sdk/runtime';
 
 const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk': _sdkRoot,
@@ -66,7 +65,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/types': _sdkTypes,
   '@abuddy/sdk/designations': _sdkDesignations,
   '@abuddy/sdk/inference': _sdkInference,
-  '@abuddy/sdk/templates': _sdkTemplates,
+  '@abuddy/sdk/runtime': _sdkTemplates,
 };
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig

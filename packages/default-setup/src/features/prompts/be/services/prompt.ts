@@ -1,4 +1,4 @@
-import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
+import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
 import { repository } from '@abuddy/sdk/ears';
 import type { PromptEntity } from '@/features/prompts/be/types';
 

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin as VitePlugin } from 'vite';
-import { getSharedFeDeps, getSdkFeModules } from '../shared-deps';
+import { getSharedFeDeps, getSdkFeModules } from './shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 

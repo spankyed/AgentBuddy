@@ -10,7 +10,7 @@ import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
 import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
-import { findSdkVersion } from '../../shared-deps';
+import { findSdkVersion } from '../../build/shared-deps';
 
 async function loadPackConfig(root: string): Promise<PackConfig | null> {
   const configPath = path.join(root, 'compile.config.ts');

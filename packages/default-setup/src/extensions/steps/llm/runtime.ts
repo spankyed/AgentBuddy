@@ -3,7 +3,7 @@ import type { NodeEntity } from '@/__generated__/types';
 import { EARS } from '@abuddy/sdk';
 import { repository } from '@abuddy/sdk/ears';
 import { createInspectLogger } from '@abuddy/sdk/logger';
-import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
+import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
 import { generateText } from '@abuddy/sdk/inference';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 

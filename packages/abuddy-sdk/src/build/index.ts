@@ -35,8 +35,11 @@ export type {
   CompiledFAQ,
 } from './compilers';
 
-// Cron validation
-export { validateCronExpression } from './cron-utils';
+// Shared dependency registry (FE/BE externalization + host resolution)
+export {
+  getSharedFeDeps, getSdkFeModules, getSharedBeDeps, findSdkVersion,
+} from './shared-deps';
+export type { SharedDep } from './shared-deps';
 
 // Pack preview types
 export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview';
