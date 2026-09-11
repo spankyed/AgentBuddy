@@ -10,6 +10,7 @@ import {
   installPack as runInstall, uninstallPack as runUninstall,
   getPackContributions, type PackContributions,
 } from '@abuddy/sdk/packs';
+import { removeLoadedPack } from './pack-api';
 
 export type { PackInfo };
 
@@ -179,6 +180,7 @@ export const packsSystem = setup({
         const entries = readPackRegistry();
         const updated = removeFromRegistry(entries, packId);
         writePackRegistry(updated);
+        removeLoadedPack(packId);
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_UNINSTALL_COMPLETE' as const,

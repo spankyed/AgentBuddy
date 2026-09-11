@@ -18,6 +18,10 @@ export function updateLoadedPack(pack: LoadedPack) {
   }
 }
 
+export function removeLoadedPack(packId: string) {
+  _loadedPacks = _loadedPacks.filter(p => p.manifest.id !== packId);
+}
+
 export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {
   _builtInPacks = packs;
 }

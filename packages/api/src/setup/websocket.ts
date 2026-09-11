@@ -11,6 +11,8 @@ import { backendActor } from '@/setup/backend';
 import { runShutdownHooks } from '@abuddy/sdk/utils';
 import { getApiPortFile } from '@abuddy/sdk/packs';
 
+const reloadingPacks = new Set<string>();
+
 function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method === 'POST' && req.url === '/dev/reload') {
     let body = '';
@@ -23,12 +25,22 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
           res.end(JSON.stringify({ error: 'packId required' }));
           return;
         }
-        if (builtIn) {
-          const { reloadBuiltInPack } = await import('@/packs/pack-reload');
-          await reloadBuiltInPack(packId, backendActor);
-        } else {
-          const { reloadExternalPack } = await import('@/packs/pack-reload');
-          await reloadExternalPack(packId, backendActor);
+        if (reloadingPacks.has(packId)) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'reload already in progress' }));
+          return;
+        }
+        reloadingPacks.add(packId);
+        try {
+          if (builtIn) {
+            const { reloadBuiltInPack } = await import('@/packs/pack-reload');
+            await reloadBuiltInPack(packId, backendActor);
+          } else {
+            const { reloadExternalPack } = await import('@/packs/pack-reload');
+            await reloadExternalPack(packId, backendActor);
+          }
+        } finally {
+          reloadingPacks.delete(packId);
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));

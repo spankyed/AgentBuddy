@@ -30,7 +30,13 @@ const devBuild = fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--
 process.on('exit', () => devBuild.kill());
 const devBuildReady = new Promise((resolve) => {
   devBuild.on('message', (msg) => { if (msg.type === 'ready') resolve(); });
-  devBuild.on('exit', resolve);
+  devBuild.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`[dev-mode] default-setup dev-build failed with code ${code}`);
+      process.exit(1);
+    }
+    resolve();
+  });
 });
 
 // Renderer dev server (other packages depend on its settings)

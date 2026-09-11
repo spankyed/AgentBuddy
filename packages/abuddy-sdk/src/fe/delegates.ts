@@ -16,8 +16,17 @@ export function navigateToPlugin(pluginId: string, event?: Record<string, any> |
   }
   if (event) {
     const events = Array.isArray(event) ? event : [event];
-    for (const e of events) {
-      app.system.get(pluginId)?.send(e);
+    const actor = app.system.get(pluginId);
+    if (actor) {
+      for (const e of events) actor.send(e);
+    } else {
+      const sub = app.subscribe(() => {
+        const spawned = app.system.get(pluginId);
+        if (spawned) {
+          sub.unsubscribe();
+          for (const e of events) spawned.send(e);
+        }
+      });
     }
   }
 }
