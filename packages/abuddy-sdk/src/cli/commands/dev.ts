@@ -3,8 +3,15 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../../build/fe-bundler';
-import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { getPacksDirForEnv, getApiPortFile } from '../../packs/pack-discovery';
 import { installPackFromLocal } from '../../packs/pack-installer';
+
+function getDevApiUrl(): string | null {
+  try {
+    const port = fs.readFileSync(getApiPortFile(true), 'utf-8').trim();
+    return port ? `http://localhost:${port}` : null;
+  } catch { return null; }
+}
 
 function writeSignalFile(packsDir: string, packId: string, port: number): string {
   const packDir = path.join(packsDir, packId);
@@ -38,8 +45,8 @@ export async function dev(_args: string[]) {
   console.log(`  ${result.dir}\n`);
 
   if (!feEntry) {
-    console.log('No FE entry found. Falling back to watch + rebuild mode.\n');
-    await watchRebuildFallback(root, srcDir);
+    console.log('No FE entry found. Falling back to watch + rebuild + reload mode.\n');
+    await watchRebuildFallback(root, srcDir, manifest.id, packsDir);
     return;
   }
 
@@ -114,24 +121,87 @@ export async function dev(_args: string[]) {
     }, 300);
   });
 
+  // BE file watcher: rebuild → install → hot-reload backend
+  let beDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let beReloading = false;
+  fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
+    if (!filename || filename.endsWith('.vue') || filename.endsWith('.css')) return;
+    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx')) return;
+    if (filename.endsWith('.d.ts')) return;
+    if (beDebounceTimer) clearTimeout(beDebounceTimer);
+    beDebounceTimer = setTimeout(async () => {
+      if (beReloading) return;
+      beReloading = true;
+      try {
+        console.log(`\nBE change detected: ${filename}`);
+        console.log('Rebuilding...');
+        await build([]);
+        console.log('Installing to dev...');
+        await installPackFromLocal(root, packsDir);
+        console.log('Triggering BE reload...');
+        const apiUrl = getDevApiUrl();
+        if (!apiUrl) {
+          console.warn('Dev app not running (no port file). Restart to apply BE changes.\n');
+        } else {
+          const res = await fetch(`${apiUrl}/dev/reload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ packId: manifest.id }),
+          });
+          if (res.ok) {
+            console.log('BE reloaded successfully.\n');
+          } else {
+            console.warn('BE reload failed. Restart the app to apply changes.\n');
+          }
+        }
+      } catch {
+        console.warn('Could not reach dev app. Restart to apply BE changes.\n');
+      } finally {
+        beReloading = false;
+      }
+    }, 300);
+  });
+
   console.log(`\nDev server running at http://localhost:${port}`);
-  console.log(`FE changes hot-reload. BE changes require app restart.`);
+  console.log(`FE changes hot-reload via Vite HMR.`);
+  console.log(`BE changes auto-rebuild and hot-reload via API.`);
   console.log('Press Ctrl+C to stop.\n');
 
   await new Promise(() => {});
 }
 
-async function watchRebuildFallback(root: string, srcDir: string) {
+async function watchRebuildFallback(root: string, srcDir: string, packId: string, packsDir: string) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let reloading = false;
 
   function scheduleBuild(label: string) {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
-      console.log(`\nChange detected: ${label}`);
+      if (reloading) return;
+      reloading = true;
       try {
+        console.log(`\nChange detected: ${label}`);
         await build([]);
-      } catch (err) {
-        console.error(`Build failed: ${err instanceof Error ? err.message : err}`);
+        await installPackFromLocal(root, packsDir);
+        const apiUrl = getDevApiUrl();
+        if (!apiUrl) {
+          console.warn('Dev app not running (no port file). Restart to apply changes.\n');
+        } else {
+          const res = await fetch(`${apiUrl}/dev/reload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ packId }),
+          });
+          if (res.ok) {
+            console.log('BE reloaded successfully.\n');
+          } else {
+            console.warn('BE reload failed. Restart the app to apply changes.\n');
+          }
+        }
+      } catch {
+        console.warn('Could not reach dev app. Restart to apply changes.\n');
+      } finally {
+        reloading = false;
       }
     }, 300);
   }

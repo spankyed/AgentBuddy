@@ -1,6 +1,6 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import config from '../feature.config';
+
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/__generated__/system-ids';
 import { emit } from '@abuddy/sdk/helpers';
@@ -76,7 +76,7 @@ export type OutgoingSettingsEvents =
   | { type: 'APP_RESET_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
-export const settingsSpec = defineSystem('settings', { designation: config.designation })<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
+export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsSpec.id;
 
 export const settingsSystem = setup({

@@ -43,6 +43,10 @@ let persistence = makeShardedPersistence(policy, sinks);
 // Inject LMDB persistence into the SDK engine
 setPersistence(persistence);
 
+export function invalidatePartitionPolicy(): void {
+  _resolvedPolicy = null;
+}
+
 export { envs, policy, persistence };
 
 export function closePersistence() {

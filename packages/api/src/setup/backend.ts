@@ -1,11 +1,11 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@abuddy/sdk/packs';
+import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@abuddy/sdk/packs';
 import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
-  loadBuiltInPacks,
+  loadBuiltInPacks, getBuiltInPackInfos,
   loadExternalPacks, registerExternalPacks, seedPackData,
 } from '@/packs/pack-loader';
 import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
@@ -53,9 +53,17 @@ export async function setupBackend(): Promise<void> {
     externalPacks = registerExternalPacks(externalPacks);
   }
 
-  // ── Wire shutdown hooks for ALL registered packs ────────────────────
-  for (const hooks of getBootHooks()) {
-    if (hooks.shutdown) registerShutdownHook(hooks.shutdown);
+  // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
+  for (const info of getBuiltInPackInfos()) {
+    const hooks = getPackBootHooks(info.id);
+    if (hooks?.shutdown) {
+      registerShutdownHook(hooks.shutdown, info.id);
+    }
+  }
+  for (const pack of externalPacks) {
+    if (pack.boot?.shutdown) {
+      registerShutdownHook(pack.boot.shutdown, pack.manifest.id);
+    }
   }
 
   // ── Hydrate (policy now sees all entity types from all packs)

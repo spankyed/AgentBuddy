@@ -9,6 +9,15 @@ export function setLoadedPacks(packs: LoadedPack[]) {
   _loadedPacks = packs;
 }
 
+export function updateLoadedPack(pack: LoadedPack) {
+  const idx = _loadedPacks.findIndex(p => p.manifest.id === pack.manifest.id);
+  if (idx >= 0) {
+    _loadedPacks[idx] = pack;
+  } else {
+    _loadedPacks.push(pack);
+  }
+}
+
 export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {
   _builtInPacks = packs;
 }
@@ -25,6 +34,7 @@ export interface PackBundleEntry {
     entry: string;
     label: string;
     icon: string;
+    designation?: string;
   }[];
 }
 
@@ -44,6 +54,7 @@ function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
           entry: d.plugin!.entry,
           label: d.plugin!.label,
           icon: d.plugin!.icon,
+          designation: d.designation,
         })),
     }));
 }

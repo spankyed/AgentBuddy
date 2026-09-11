@@ -6,9 +6,6 @@ import * as th from './transaction-helpers';
 const entries: Record<string, any> = {};
 
 export function registerRepository(name: string, value: any): void {
-  if (entries[name]) {
-    console.warn(`[repository] "${name}" registered twice — overwriting`);
-  }
   entries[name] = value;
 }
 

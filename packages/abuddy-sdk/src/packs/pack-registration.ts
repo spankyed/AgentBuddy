@@ -6,7 +6,7 @@
  */
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '../framework';
-import { registerDesignations } from '../designations';
+import { registerDesignations, unregisterDesignations } from '../designations';
 import { stepRegistry } from '../steps';
 import { artifactRegistry } from '../artifacts';
 import { blockRegistry } from '../blocks';
@@ -96,13 +96,41 @@ export function registerPack(registration: PackRegistration): void {
     throw err;
   }
 
-  const designated = registration.systems.filter(s => s.designation);
-  if (designated.length) {
-    registerDesignations(designated.map(s => s.designation!));
+  const systemDesignations = registration.systems.filter(s => s.designation).map(s => s.designation!);
+  const featureDesignations = (registration.features ?? []).filter(f => f.designation).map(f => f.designation!);
+  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
+  if (allDesignations.length) {
+    registerDesignations(allDesignations);
   }
 
   registrations.set(registration.id, registration);
 
+  _entityTypeCache = null;
+  _servicesCache = null;
+}
+
+export function unregisterPack(packId: string): void {
+  const reg = registrations.get(packId);
+  if (!reg) throw new Error(`Pack "${packId}" is not registered`);
+
+  if (reg.steps) {
+    for (const step of reg.steps) stepRegistry.unregister(step.type);
+  }
+  if (reg.artifacts) {
+    for (const art of reg.artifacts) artifactRegistry.unregister(art.type);
+  }
+  if (reg.blocks) {
+    for (const block of reg.blocks) blockRegistry.unregister(block.type);
+  }
+
+  const systemDesignations = reg.systems.filter(s => s.designation).map(s => s.designation!);
+  const featureDesignations = (reg.features ?? []).filter(f => f.designation).map(f => f.designation!);
+  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
+  if (allDesignations.length) {
+    unregisterDesignations(allDesignations);
+  }
+
+  registrations.delete(packId);
   _entityTypeCache = null;
   _servicesCache = null;
 }
@@ -143,6 +171,10 @@ export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
     for (const sys of reg.systems) {
       map.set(sys.id, sys.events);
     }
+    if (reg.boot?.earlySystem) {
+      const m = reg.boot.earlySystem;
+      map.set(m.id, new Set(m.events));
+    }
   }
   return map;
 }
@@ -177,6 +209,10 @@ export function getBootHooks(): PackBootHooks[] {
     if (reg.boot) hooks.push(reg.boot);
   }
   return hooks;
+}
+
+export function getPackBootHooks(packId: string): PackBootHooks | null {
+  return registrations.get(packId)?.boot ?? null;
 }
 
 export function runRegisteredBootSeeds(

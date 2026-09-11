@@ -182,7 +182,7 @@ trpc.packs.registry.query().then(async (registry) => {
 
     if (!pack.plugins.length) continue;
     const plugins = await loadPackPlugins(
-      pack.plugins.map(p => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon })),
+      pack.plugins.map(p => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon, designation: p.designation })),
       packBaseUrl,
     );
     if (plugins.length > 0) {

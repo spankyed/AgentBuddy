@@ -1,6 +1,6 @@
 import { registerRepository } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import { qx } from '@abuddy/sdk/ears';
+import { qx, findById } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears';
 import type {
@@ -472,14 +472,12 @@ export const brainCommands = {
     rootFlow: FlowEntity;
     rootFlowTNode: TNodeEntity;
   } => {
-    const now = Date.now();
     const rootId = ROOT_TNODE_ID;
 
-    // Get root flow
     const rootFlow = qx(EARS.Entity.Flow)
       .withRole(ROOT_FLOW_ROLE)
       .pickOne(["id", "label", "flowType", "status", "createdAt"]) as FlowEntity | undefined;
-      
+
     if (!rootFlow) {
       throw new Error(
         "Cannot create root flow TNode: No flow with 'root_flow' role found. " +
@@ -487,6 +485,12 @@ export const brainCommands = {
       );
     }
 
+    const existing = findById<TNodeEntity>(rootId);
+    if (existing) {
+      return { rootFlow, rootFlowTNode: existing };
+    }
+
+    const now = Date.now();
     tx(rootId)
       .batchPut({
         entityType: EARS.Entity.TNode,
@@ -498,7 +502,7 @@ export const brainCommands = {
       })
       .link(EARS.RelKind.INSTANCE_OF, rootFlow.id)
       .grant(ROOT_TRACE_NODE_ROLE);
-    
+
     const rootFlowTNode: TNodeEntity = {
       id: rootId,
       entityType: EARS.Entity.TNode,
@@ -508,7 +512,7 @@ export const brainCommands = {
       startedAt: now,
       createdAt: now,
     };
-    
+
     return {
       rootFlow,
       rootFlowTNode,

@@ -119,11 +119,32 @@ export function findFEEntry(packDir: string): string | null {
   return null;
 }
 
+function readTsconfigAliases(packDir: string): Record<string, string> {
+  const aliases: Record<string, string> = {};
+  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  if (!fs.existsSync(tsconfigPath)) return aliases;
+  try {
+    const raw = fs.readFileSync(tsconfigPath, 'utf-8').replace(/\/\/.*/g, '').replace(/,\s*([}\]])/g, '$1');
+    const tsconfig = JSON.parse(raw);
+    const paths: Record<string, string[]> = tsconfig.compilerOptions?.paths ?? {};
+    for (const [pattern, targets] of Object.entries(paths)) {
+      if (!pattern.endsWith('/*') || !targets[0]?.endsWith('/*')) continue;
+      const alias = pattern.slice(0, -2);
+      const target = targets[0].slice(0, -2);
+      aliases[alias] = path.resolve(packDir, target);
+    }
+  } catch {}
+  return aliases;
+}
+
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
   const { packDir, outputDir, entryPoint } = options;
 
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
+
+  const tsconfigAliases = readTsconfigAliases(packDir);
+  const aliasEntries = Object.entries(tsconfigAliases).map(([find, replacement]) => ({ find, replacement }));
 
   try {
     await vite.build({
@@ -133,6 +154,9 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         packExternalsPlugin(packDir),
         vue(),
       ],
+      resolve: {
+        alias: aliasEntries,
+      },
       build: {
         lib: {
           entry: entryPoint,

@@ -311,7 +311,7 @@ export const createApplicationState = () => setup({
       return { hotkeys };
     }),
 
-    mergePackPlugins: assign(({ event, context }) => {
+    mergePackPlugins: enqueueActions(({ event, context, enqueue }) => {
       const { plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
       const existingIds = new Set(context.plugins.map(p => p.id));
       const skipped = packPlugins.filter(p => existingIds.has(p.id));
@@ -319,7 +319,7 @@ export const createApplicationState = () => setup({
         console.warn(`[pack-loader] Skipping plugins with duplicate IDs: ${skipped.map(p => p.id).join(', ')}`);
       }
       const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
-      if (newPlugins.length === 0) return {};
+      if (newPlugins.length === 0) return;
       stepRegistry.initComponents();
       const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
       const allPlugins = packsIdx >= 0
@@ -327,11 +327,14 @@ export const createApplicationState = () => setup({
         : [...context.plugins, ...newPlugins];
       const pluginVisibility = { ...context.pluginVisibility };
       for (const p of newPlugins) pluginVisibility[p.id] = true;
-      return {
+      enqueue.assign({
         plugins: allPlugins,
         visiblePlugins: allPlugins.filter(p => pluginVisibility[p.id] !== false),
         pluginVisibility,
-      };
+      });
+      for (const plugin of newPlugins) {
+        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+      }
     }),
 
     updatePluginVisibility: assign(({ event, context }) => {

@@ -207,6 +207,10 @@ Keys become TypeScript constants in the generated `ears.ts`, values are the runt
   "hostVersion": ">=0.3.0",
   "license": "MIT",
 
+  "dependencies": {
+    "default-setup": "*"
+  },
+
   "entities": {
     "Bookmark": "Bookmark"
   },

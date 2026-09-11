@@ -46,7 +46,7 @@ Read `abuddy.json` and generate all files in `src/__generated__/`. Uses input ha
 
 #### `abuddy fetch-deps`
 
-Fetch dependency type manifests from workspace siblings, GitHub releases, or the registry. Caches results in `.abuddy/deps/`.
+Fetch dependency snapshots from upstream and cache them in `.abuddy/deps/`. Resolution order: `file:` path (always fresh, never cached) → workspace siblings → GitHub releases → registry (future). See [Manifest Reference — Dependencies](manifest.md#dependencies) for the supported formats.
 
 ### Building
 
@@ -58,7 +58,7 @@ Full build pipeline:
 2. Compiles seeds (actions, prompts, flows) to JSON in `dist/`
 3. Merges feature settings into a default settings object
 4. Writes `dist/snapshot.json` (types, manifest, SDK version)
-5. Bundles `src/pack-entry-fe.ts` into `dist/fe.js` via esbuild
+5. Bundles `src/__generated__/pack-entry-fe.ts` into `dist/fe.js` via Vite (with Vue SFC support)
 
 #### `abuddy pack`
 

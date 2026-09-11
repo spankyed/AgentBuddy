@@ -21,6 +21,10 @@ export function getEventValidationMap(): Map<string, Set<string>> {
   return _eventValidationMap;
 }
 
+export function invalidateEventValidationMap(): void {
+  _eventValidationMap = null;
+}
+
 // ─── Bus actor ───────────────────────────────────────────────────────
 
 export type BusEvent =
@@ -29,9 +33,12 @@ export type BusEvent =
 
 export type { SystemEvents };
 
+export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
+
 export type BackendEvents =
   | BusEvent
   | SystemEvents
+  | ReloadPackEvent
 
 export interface BusContext {
   threads: string[];
@@ -76,7 +83,7 @@ export const backendSystem = setup({
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
     },
-    sendConnected: (({ system, event }) => {
+    sendConnected: (({ system }) => {
       const systems = getRegisteredSystems();
       for (const id of systems.keys()) {
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
@@ -96,7 +103,23 @@ export const backendSystem = setup({
     spawnActors: enqueueActions(({ enqueue }) => {
       const systems = getRegisteredSystems();
       for (const [id, state] of systems) {
-        enqueue.spawnChild(state, { systemId: id });
+        (enqueue as any).spawnChild(state, { id, systemId: id });
+      }
+    }),
+    reloadPack: enqueueActions(({ enqueue, event, system }) => {
+      const { systemIds } = event as ReloadPackEvent;
+      for (const id of systemIds) {
+        (enqueue as any).stopChild(id);
+      }
+      const machines = getRegisteredSystems();
+      for (const id of systemIds) {
+        const machine = machines.get(id);
+        if (machine) {
+          (enqueue as any).spawnChild(machine, { id, systemId: id });
+        }
+      }
+      for (const id of systemIds) {
+        try { system.get(id).send({ type: 'CLIENT_CONNECTED' }); } catch {}
       }
     }),
   }
@@ -127,6 +150,9 @@ export const backendSystem = setup({
           },
           OUTGOING: {
             actions: 'notify',
+          },
+          RELOAD_PACK: {
+            actions: 'reloadPack',
           },
         }
       },

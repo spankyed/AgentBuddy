@@ -69,6 +69,7 @@ export interface PackManifest {
 
 export interface PackPluginDefinition {
   id: string;
+  designation?: string;
   priority?: number;
   system?: {
     entry: string;
@@ -104,6 +105,11 @@ export function resolveAppDataDir(appName: string): string {
 export function getPacksDir(): string {
   const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
   return path.join(userDataPath, 'packs');
+}
+
+export function getApiPortFile(dev?: boolean): string {
+  const isDev = dev ?? process.env.NODE_ENV === 'development';
+  return path.join(resolveAppDataDir(isDev ? DEV_APP_NAME : APP_NAME), 'api-port');
 }
 
 export function getPacksDirForEnv(dev: boolean): string {

@@ -1,6 +1,6 @@
 import { setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import config from '../feature.config';
+
 import { emit } from '@abuddy/sdk/helpers';
 import { rootEvents } from '@abuddy/sdk/rpc';
 import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
@@ -24,7 +24,7 @@ export type OutgoingBrowserEvents =
 
 export interface BrowserContext {}
 
-export const browserSpec = defineSystem('browser', { designation: config.designation })<
+export const browserSpec = defineSystem('browser')<
   IncomingBrowserEvents | BrowserInternalEvents,
   OutgoingBrowserEvents,
   BrowserContext

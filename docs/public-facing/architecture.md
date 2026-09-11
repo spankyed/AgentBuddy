@@ -12,7 +12,7 @@ This chapter covers how packs work under the hood: loading, dependency sharing, 
 <id>/
   abuddy.json         # Manifest
   dist/
-    snapshot.json      # Types, manifest, SDK version
+    snapshot.json      # Types, defs, manifest, SDK version
     fe.js              # Bundled FE entry
     fe.css             # Extracted styles
     fe.js.map          # Source map
@@ -110,16 +110,13 @@ import * as sdkFe from '@abuddy/sdk/fe';
 window.__abuddy = { vue, xstate, sdkFe, /* ... */ };
 ```
 
-**Pack side (esbuild):** Two plugins rewrite pack imports to read from the globals:
-
-- `hostDepsPlugin` — externalizes third-party packages (vue, xstate, lucide-vue-next, etc.)
-- `sdkExternalPlugin` — externalizes SDK barrel subpaths (`@abuddy/sdk/fe`, `/runtime`, `/steps`, etc.)
-
-For each externalized import, esbuild generates a shim:
+**Pack side (Vite):** A single Vite plugin (`packExternalsPlugin`) intercepts imports of shared deps and SDK barrels, replacing them with virtual modules that proxy from the globals:
 
 ```javascript
 // import { ref } from 'vue'  becomes:
-var { ref } = window.__abuddy.vue;
+const __m = window.__abuddy.vue;
+export const ref = __m.ref;
+export default __m;
 ```
 
 ### Shared third-party deps
@@ -158,17 +155,16 @@ Only registered barrel subpaths are externalized. Deep imports like `@abuddy/sdk
 
 ## FE build pipeline
 
-The FE bundler uses esbuild with:
+The FE bundler uses Vite with `@vitejs/plugin-vue`:
 
 - **Format:** ESM
 - **Target:** es2022
-- **Platform:** browser
 - **Sourcemaps:** enabled
 - **Minification:** off (the host handles this)
-- **Entry:** `src/pack-entry-fe.ts`
+- **Entry:** `src/__generated__/pack-entry-fe.ts` (falls back to `src/pack-entry-fe.ts`)
 - **Output:** `dist/fe.js` + `dist/fe.css`
 
-Vue SFCs (`.vue` files) are **not** supported by esbuild. If your pack uses SFCs, you need a Vite pre-build step that compiles them to JS before the pack build runs.
+Vue SFCs (`.vue` files) are compiled automatically — no extra build step needed.
 
 ## External pack constraints
 
@@ -184,6 +180,19 @@ Vue SFCs (`.vue` files) are **not** supported by esbuild. If your pack uses SFCs
 | `partitionPolicy` | No | Security: controls data routing |
 | `builtIn` | No | Reserved for the default pack |
 
-## BE dependency resolution
+## Build-time dependency resolution
+
+At build time, `abuddy generate` and `abuddy build` resolve pack dependencies to import entity types, relation kinds, step definitions, and type declarations from upstream packs. The resolution chain is:
+
+1. **`file:` path** — reads `dist/snapshot.json` directly from the given filesystem path (relative to pack root or absolute). Always fresh — skips cache read and write. Fails hard with an actionable error if the snapshot is missing.
+2. **Workspace** — checks hardcoded sibling paths (`../<id>/dist/`, `../../packages/<id>/dist/`, etc.). Used automatically inside monorepos.
+3. **GitHub releases** — for `github:owner/repo` deps, fetches the latest release matching the semver range and extracts `snapshot.json` from the `.tgz` asset.
+4. **Registry** — stub for future `api.abuddy.com` resolution. Currently a no-op.
+
+Resolved snapshots (except `file:` deps) are cached in `.abuddy/deps/<id>/snapshot.json` with type declaration files written to `.abuddy/deps/<id>/defs/`. The `generate-entries` command includes these cached snapshots in its input hash, so changes to a dependency's snapshot invalidate the generated output.
+
+A `PackSnapshot` contains: `types` (entity and relKind maps), `defs` (`.d.ts` file contents for cross-pack type interop), `manifest` (full pack manifest), and `sdkVersion`.
+
+## BE dependency resolution (runtime)
 
 On the backend, `withHostResolution()` patches Node's `Module._resolveFilename` so that `require('@abuddy/sdk')` and shared dependencies inside pack code resolve to the host's installed copies rather than the pack's own `node_modules`. This ensures singletons (SDK registries, xstate internals) are shared.

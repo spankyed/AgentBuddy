@@ -1,10 +1,10 @@
 // Registration
 export {
-  registerPack, registerHostSystem,
+  registerPack, unregisterPack, registerHostSystem,
   getRegisteredSystems, buildRegisteredEventValidationMap,
   getRegisteredEntityTypes, getRegisteredEARS, getRegisteredEARSPolicy,
   getRegisteredServices, getRegisteredMigrations,
-  getBootHooks, runRegisteredBootSeeds,
+  getBootHooks, getPackBootHooks, runRegisteredBootSeeds,
   getPackContributions,
 } from './pack-registration';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration';
@@ -12,7 +12,7 @@ export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackCont
 // Discovery
 export {
   discoverBuiltInPacks, discoverPacks,
-  getPacksDir, reconcileExternalRegistry,
+  getPacksDir, getApiPortFile, reconcileExternalRegistry,
 } from './pack-discovery';
 export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from './pack-discovery';
 
