@@ -39,6 +39,21 @@ npm run db:cli           # Database CLI
 npm run db:reset         # Reset database
 ```
 
+### E2E visual testing
+
+Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
+
+```bash
+npm test                              # Run all E2E tests
+npx playwright test smoke             # Run just smoke tests
+npx playwright test tests/e2e/scratch # Run ad-hoc scratch test (gitignored)
+DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
+```
+
+Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, and `waitForState(check)`.
+
+For the full fixture API and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`.
+
 ## Architecture
 
 ### Event-driven actor system

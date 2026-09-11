@@ -18,6 +18,7 @@ packages/preload/src/**/*.js
 test-results/
 tests/screenshots/
 tests/results/
+tests/e2e/scratch.spec.ts
 
 # Build artifacts
 native/speech/macos/SpeechHelper
