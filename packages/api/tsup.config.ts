@@ -2,48 +2,15 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(__dirname, '..');
 const apiSrc = path.resolve(__dirname, 'src');
 
-function discoverBuiltInPackSrcDirs(): string[] {
-  const dirs: string[] = [];
-  for (const entry of fs.readdirSync(packagesRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const manifestPath = path.join(packagesRoot, entry.name, 'abuddy.json');
-    if (!fs.existsSync(manifestPath)) continue;
-    try {
-      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      if (m.builtIn) dirs.push(path.resolve(packagesRoot, entry.name, 'src'));
-    } catch {}
-  }
-  return dirs;
-}
-
-const builtInPackSrcDirs = discoverBuiltInPackSrcDirs();
+const builtInPacks = discoverBuiltInPacksForBuild(packagesRoot);
+const builtInPackSrcDirs = builtInPacks.map(p => p.srcDir);
 const packLoaderDir = path.resolve(__dirname, 'src', 'packs');
-
-// Scans packages/ for abuddy.json with builtIn: true and returns pack ID +
-// absolute path to the pack-entry file. Used by the built-in-pack-loaders
-// esbuild plugin to generate import() expressions the bundler can trace.
-function discoverBuiltInPackEntries(): { id: string; entryPath: string }[] {
-  const entries: { id: string; entryPath: string }[] = [];
-  for (const entry of fs.readdirSync(packagesRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const manifestPath = path.join(packagesRoot, entry.name, 'abuddy.json');
-    if (!fs.existsSync(manifestPath)) continue;
-    try {
-      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      if (!m.builtIn || !m.id) continue;
-      const entryPath = path.join(packagesRoot, entry.name, 'src', '__generated__', 'pack-entry');
-      if (fs.existsSync(entryPath + '.ts') || fs.existsSync(entryPath + '.js')) {
-        entries.push({ id: m.id, entryPath });
-      }
-    } catch {}
-  }
-  return entries;
-}
 
 function tryResolve(base: string, subpath: string): string | null {
   const candidates = [
@@ -91,12 +58,12 @@ export default defineConfig((options) => {
         }));
 
         build.onLoad({ filter: /.*/, namespace: NAMESPACE }, () => {
-          const packs = discoverBuiltInPackEntries();
-          if (packs.length === 0) {
+          const packsWithEntry = builtInPacks.filter(p => p.entryPath);
+          if (packsWithEntry.length === 0) {
             throw new Error('[built-in-pack-loaders] No built-in packs found — production bundle would have no packs to load');
           }
-          const lines = packs.map(p => {
-            const relPath = path.relative(packLoaderDir, p.entryPath).replace(/\\/g, '/');
+          const lines = packsWithEntry.map(p => {
+            const relPath = path.relative(packLoaderDir, p.entryPath!).replace(/\\/g, '/');
             return `  ${JSON.stringify(p.id)}: () => import('${relPath}'),`;
           });
           return {

@@ -66,6 +66,10 @@ export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './s
 export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes } from './generate-entries';
 export type { GenerateEntriesOptions } from './generate-entries';
 
+// Built-in pack discovery (build-time)
+export { discoverBuiltInPacksForBuild } from './discover';
+export type { BuiltInPackBuildInfo } from './discover';
+
 // Pack validation
 export { validateManifest, validateFeatures } from './validate';
 export type { ManifestValidation } from './validate';

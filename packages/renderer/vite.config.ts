@@ -1,31 +1,16 @@
 import { fileURLToPath } from 'node:url'
-import { readdirSync, readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps, getSdkFeModules } from '@abuddy/sdk/build'
+import { getSharedFeDeps, getSdkFeModules, discoverBuiltInPacksForBuild } from '@abuddy/sdk/build'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
-interface BuiltInPack { id: string; srcDir: string }
 
-function discoverBuiltInPacks(): BuiltInPack[] {
-  const packs: BuiltInPack[] = [];
-  for (const entry of readdirSync(packagesRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const manifestPath = resolve(packagesRoot, entry.name, 'abuddy.json');
-    if (!existsSync(manifestPath)) continue;
-    try {
-      const m = JSON.parse(readFileSync(manifestPath, 'utf-8'));
-      if (m.builtIn && m.id) packs.push({ id: m.id, srcDir: resolve(packagesRoot, entry.name, 'src') });
-    } catch {}
-  }
-  return packs;
-}
-
-const packs = discoverBuiltInPacks();
+const packs = discoverBuiltInPacksForBuild(packagesRoot);
 
 /**
  * Single plugin for all built-in pack resolution:
@@ -38,7 +23,7 @@ function builtInPacksPlugin(): Plugin {
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
 
   const feEntries = packs
-    .filter(p => existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')))
+    .filter(p => p.entryPath && existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')))
     .map(p => `  '${p.id}': () => import('@${p.id}/__generated__/pack-entry-fe'),`)
     .join('\n');
   const virtualContent = `export default {\n${feEntries}\n};\n`;
