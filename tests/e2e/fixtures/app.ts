@@ -1,47 +1,44 @@
 import { test as base, _electron, type ElectronApplication, type Page } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { getPacksDirForEnv } from '../../../packages/abuddy-sdk/src/packs/pack-discovery';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 const SCREENSHOT_DIR = path.join(ROOT, 'tests', 'screenshots');
 
-function getDevPacksDir(): string {
-  const home = os.homedir();
-  switch (process.platform) {
-    case 'darwin':
-      return path.join(home, 'Library', 'Application Support', 'abuddy-dev', 'packs');
-    case 'win32':
-      return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'abuddy-dev', 'packs');
-    default:
-      return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'abuddy-dev', 'packs');
+function syncPackToDevDir(src: string, dest: string): void {
+  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) continue;
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      syncPackToDevDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
   }
 }
 
-function syncPackToDevDir(src: string, dest: string): void {
-  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-  fs.cpSync(src, dest, {
-    recursive: true,
-    filter: (s) => {
-      const name = path.basename(s);
-      return name !== 'node_modules' && name !== '.git' && name !== '.dev';
-    },
-  });
-}
-
-function readPackManifest(packDir: string): { id: string; pluginIds: string[] } | null {
-  const manifestPath = path.join(packDir, 'abuddy.json');
-  if (!fs.existsSync(manifestPath)) return null;
+let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
+function getPackManifest(): { id: string; pluginIds: string[] } | null {
+  if (_packManifest !== undefined) return _packManifest;
+  if (!process.env.PACK_DIR) { _packManifest = null; return null; }
+  const manifestPath = path.join(path.resolve(process.env.PACK_DIR), 'abuddy.json');
+  if (!fs.existsSync(manifestPath)) { _packManifest = null; return null; }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  return {
+  _packManifest = {
     id: manifest.id,
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
       .map((f: any) => f.plugin?.id ?? f.id),
   };
+  return _packManifest;
 }
 
 export interface AppHelper {
@@ -94,15 +91,20 @@ export const test = base.extend<
   electronApp: [async ({}, use) => {
     if (process.env.PACK_DIR) {
       const packDir = path.resolve(process.env.PACK_DIR);
-      const manifest = readPackManifest(packDir);
+      const manifest = getPackManifest();
       if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-      const devPacksDir = getDevPacksDir();
+      const devPacksDir = getPacksDirForEnv(true);
       const devSignal = path.join(devPacksDir, manifest.id, '.dev');
       if (!fs.existsSync(devSignal)) {
         if (!fs.existsSync(path.join(packDir, 'dist'))) {
           const abuddyBin = path.join(ROOT, 'node_modules', '.bin', 'abuddy');
           console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
-          execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
+          try {
+            execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
+          } catch (e: any) {
+            const stderr = e.stderr?.toString() || e.message;
+            throw new Error(`Pack build failed for ${manifest.id}:\n${stderr}`);
+          }
         }
         console.log(`[pack] Syncing ${manifest.id} to dev packs directory...`);
         syncPackToDevDir(packDir, path.join(devPacksDir, manifest.id));
@@ -136,9 +138,13 @@ export const test = base.extend<
   appPage: async ({ electronApp }, use) => {
     const page = await findMainWindow(electronApp);
 
+    let packFeFailed = false;
     const onPageError = (error: Error) => console.error('[page error]', error);
     const onConsole = (msg: import('@playwright/test').ConsoleMessage) => {
-      if (msg.type() === 'error') console.error(`[console.error] ${msg.text()}`);
+      if (msg.type() === 'error') {
+        console.error(`[console.error] ${msg.text()}`);
+        if (msg.text().includes('[pack-loader] Failed to load FE entry')) packFeFailed = true;
+      }
     };
     page.on('pageerror', onPageError);
     page.on('console', onConsole);
@@ -169,9 +175,13 @@ export const test = base.extend<
     }
 
     if (process.env.PACK_DIR) {
-      const manifest = readPackManifest(path.resolve(process.env.PACK_DIR));
+      const manifest = getPackManifest();
       if (manifest && manifest.pluginIds.length > 0) {
         for (const pluginId of manifest.pluginIds) {
+          if (packFeFailed) {
+            console.warn(`[pack] Pack FE failed to load — skipping wait for "${pluginId}"`);
+            continue;
+          }
           try {
             await page.waitForFunction((id) => {
               const snap = (window as any).applicationState?.getSnapshot();

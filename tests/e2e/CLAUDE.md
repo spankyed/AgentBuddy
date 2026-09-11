@@ -132,7 +132,7 @@ The renderer exposes on `window`:
 
 - `PLAYWRIGHT_TEST=true` — set automatically by the fixture; makes uncaught errors crash immediately
 - `DEBUG_E2E=1` — pipes Electron stdout/stderr to the test terminal
-- `PACK_DIR=/path/to/pack` — builds, installs, and waits for an external pack's plugins before tests run
+- `PACK_DIR=/path/to/pack` — syncs pack to dev packs dir (builds if no `dist/`), waits for plugins before tests run
 
 ## Key events for sendEvent()
 
