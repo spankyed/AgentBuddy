@@ -58,7 +58,7 @@ Default plugin is Threads.
 
 ## Systems
 
-Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file exports a `SystemEntry`. The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot).
+Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot).
 
 System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file; designated features pass `{ designation: config.designation }` from their `feature.config.ts`.
 

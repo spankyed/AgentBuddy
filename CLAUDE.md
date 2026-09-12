@@ -27,9 +27,11 @@ npm run build:be         # Build backend only
 npm run build            # Build all workspaces
 npm run build-prod       # Full production build (build/build.sh)
 
-npm run typecheck        # Type check everything (FE + BE)
+npm run typecheck        # Type check everything (FE + BE + SDK + default-setup pack)
 npm run typecheck:fe     # Frontend only (vue-tsc)
 npm run typecheck:be     # Backend only (tsc --noEmit)
+npm run typecheck:sdk    # @abuddy/sdk only
+npm run typecheck:pack   # @app/default-setup only
 npm run test-build       # Verify FE + BE compile
 
 npm test                 # Playwright E2E tests
@@ -79,7 +81,7 @@ Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSyst
 
 - `@abuddy/sdk/ears` — pack-facing: `qx`, `tx`, `repository`, `findById`, `grantRole`, etc.
 - `@abuddy/sdk/ears/internals` — host-only: `initEARSRuntime`, `edgeStore`, `relationIndex`, `clearMemory`, etc.
-- `@abuddy/sdk/fe` — pack-facing: `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
+- `@abuddy/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
 - `@abuddy/sdk/fe/host` — host-only: `registerPackFE`, `getRegisteredPlugins`, etc.
 
 When adding new EARS or FE exports, put them in the correct barrel. After changing pack-facing exports, run `npm run api:update` in `packages/abuddy-sdk` and commit the updated `etc/*.api.md` reports.

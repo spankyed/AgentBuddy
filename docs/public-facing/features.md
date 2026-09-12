@@ -81,15 +81,18 @@ export const bookmarksSystem = setup({
   },
 });
 
-// Export the entry (required by the manifest)
-export const bookmarksEntry: SystemEntry = {
+// Default-export the entry — this is what the manifest loads
+const bookmarksEntry: SystemEntry = {
   spec: bookmarksSpec,
   machine: bookmarksSystem,
 };
+
+export default bookmarksEntry;
 ```
 
 ### Key rules
 
+- **Default-export the `SystemEntry`** — every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`, `feature.config.ts`) default-exports its single contribution. Named exports alongside it are fine; the default is what gets loaded.
 - **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects. Send initial state back to the plugin via the bus.
 - **Use `emit()` to send to the frontend** — `system.get(bus).send(emit(systemId, event))` routes the event to the matching frontend plugin.
 - **Never use `pluginId` as a field name in outgoing events** — the transport layer overwrites it. Use `targetId` or similar instead.
@@ -224,8 +227,7 @@ The corresponding `abuddy.json` entry:
   "id": "bookmarks",
   "settings": "src/features/bookmarks/settings.ts",
   "system": {
-    "entry": "src/features/bookmarks/be/system.ts",
-    "exportName": "bookmarksEntry"
+    "entry": "src/features/bookmarks/be/system.ts"
   },
   "plugin": {
     "entry": "src/features/bookmarks/fe/plugin.ts",

@@ -146,7 +146,25 @@ To get typed attributes on entities, declare shapes in the manifest:
 }
 ```
 
-This generates a `EntityShapeRegistry` module augmentation so EARS queries return typed results.
+This generates an `EntityShapeRegistry` module augmentation. Once an entity has a
+registered shape, queries seeded with that entity type are checked against it:
+
+```ts
+qx(EARS.Entity.Bookmark).where('url', u)      // ok — declared attribute
+qx(EARS.Entity.Bookmark).where('urll', u)     // compile error
+qx(EARS.Entity.Bookmark).pickAll()[0].title   // typed, no cast needed
+qx(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are included
+```
+
+`where`, `orderBy`, `distinct`, `groupBy` and `pickAll` all narrow this way. Entity
+types **without** a registered shape fall back to `Record<string, any>`, so they stay
+permissive — as do builders seeded by id or with no seed (`qx(someId)`, `qx()`), since
+those cannot know the entity type. `pick`/`pickOne`/`linksPick` are deliberately not
+narrowed: their field lists are often computed, and `linksPick`'s fields describe the
+relation's *target* entity rather than the one being queried.
+
+Declare every attribute you actually write. A field written at runtime but missing from
+the interface (a soft-delete marker, say) becomes a compile error at its read sites.
 
 ### Constraints
 

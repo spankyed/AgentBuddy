@@ -43,8 +43,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
       "designation": "bookmarks",
       "settings": "src/features/bookmarks/settings.ts",
       "system": {
-        "entry": "src/features/bookmarks/be/system.ts",
-        "exportName": "bookmarksEntry"
+        "entry": "src/features/bookmarks/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/bookmarks/fe/plugin.ts",
@@ -66,7 +65,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `id` | `string` | yes | Unique feature identifier |
 | `designation` | `string` | no | Links the system to an EARS designation |
 | `settings` | `string` | no | Path to default settings file |
-| `system` | `{ entry, exportName, outgoingEventsType? }` | no | Backend system module |
+| `system` | `{ entry, outgoingEventsType? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`, the same way a plugin module default-exports its `Plugin`. |
 | `plugin` | `{ entry, label, icon, isPinned? }` | no | Frontend plugin definition |
 | `services` | `Record<string, string>` | yes | Service modules (`key` -> `path`) |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
@@ -220,8 +219,7 @@ Keys become TypeScript constants in the generated `ears.ts`, values are the runt
       "id": "bookmarks",
       "settings": "src/features/bookmarks/settings.ts",
       "system": {
-        "entry": "src/features/bookmarks/be/system.ts",
-        "exportName": "bookmarksEntry"
+        "entry": "src/features/bookmarks/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/bookmarks/fe/plugin.ts",
