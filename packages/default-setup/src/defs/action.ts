@@ -5,12 +5,14 @@
 
 import { featureServices } from '@/__generated__/services';
 import { createLogger } from '@abuddy/sdk/logger';
-import * as emitter from '@abuddy/sdk/services';
+import {
+  sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming,
+} from '@abuddy/sdk/services';
 import { repository } from '@abuddy/sdk/ears';
 
 export const services = {
   logger: createLogger('action-dsl'),
-  emitter,
+  emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
   repository,
   ...featureServices,
 };
