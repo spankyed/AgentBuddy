@@ -6,6 +6,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `$schema` | `string` | no | JSON Schema reference for editor validation |
 | `$manifestVersion` | `1` | no | Schema version. Enables future format evolution. |
 | `id` | `string` | yes | Unique pack identifier (kebab-case) |
 | `name` | `string` | yes | Human-readable display name |
@@ -69,12 +70,10 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `settings` | `string` | no | Path to default settings file |
 | `system` | `{ entry, outgoingEventsType?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`. `events` declares `incoming`/`outgoing` event arrays for runtime routing. |
 | `plugin` | `{ entry, label, icon, isPinned? }` | no | Frontend plugin definition |
-| `services` | `Record<string, string>` | no | Service modules (`key` -> `path`). Defaults to `{}`. |
+| `services` | `Record<string, string>` | no | Service modules (`key` -> `path`) |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
 | `earlySystem` | `boolean` | no | Run before EARS hydration (built-in only) |
 | `contributions` | `string` | no | Path to contribution type providers |
-| `priority` | `integer` | no | Load order priority (lower runs first) |
-| `entities` | `string[]` | no | Entity types this feature manages |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 

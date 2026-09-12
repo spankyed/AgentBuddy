@@ -4,7 +4,6 @@ import * as os from 'os';
 import { createLogger } from '../logger';
 import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
 import type { PackManifest } from '../build/manifest';
-import { parseManifest } from '../build/validate';
 
 const logger = createLogger('pack-discovery');
 
@@ -123,9 +122,8 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
 
     try {
       const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      const validation = parseManifest(raw);
-      if (validation.errors.length > 0) {
-        logger.warn(`Skipping ${entry.name}: invalid manifest (${validation.errors[0]})`);
+      if (!raw.id || !raw.name || !raw.version) {
+        logger.warn(`Skipping ${entry.name}: manifest missing id, name, or version`);
         continue;
       }
       results.push({ manifest: raw as PackManifest, dir: packDir });

@@ -3,9 +3,9 @@ import { z } from 'zod';
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
 export const StepDSLMetaSchema = z.object({
-  primaryField: z.string().optional(),
-  defaultLabel: z.string().optional(),
-  custom: z.literal(true).optional(),
+  primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
+  defaultLabel: z.string().describe('Fallback label when primaryField is empty.').optional(),
+  custom: z.literal(true).describe('Marks the step as a custom (non-built-in) type.').optional(),
 }).strict();
 
 export const StepEntrySchema = z.object({
@@ -67,10 +67,7 @@ export const FeatureEntrySchema = z.object({
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: z.record(z.string(), z.string()).describe('Service modules. Keys are service names, values are source file paths.').optional(),
   contributions: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
-  priority: z.number().int().describe('Load order priority (lower runs first).').optional(),
-  entities: z.array(z.string()).describe('Entity types this feature manages.').optional(),
 }).strict();
-
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
 
@@ -126,7 +123,7 @@ export const ManifestSchema = z.object({
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.array(FeatureEntrySchema)
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
-defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
+  defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
   packServices: z.record(z.string(), z.string())
     .describe('Pack-level services not tied to a specific feature. Keys are service names, values are source file paths.').optional(),
   boot: BootConfigSchema.optional(),

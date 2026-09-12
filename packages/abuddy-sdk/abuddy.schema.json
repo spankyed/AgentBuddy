@@ -221,17 +221,6 @@
           "contributions": {
             "type": "string",
             "description": "Built-in packs only. Ignored for external packs."
-          },
-          "priority": {
-            "type": "integer",
-            "description": "Load order priority (lower runs first)."
-          },
-          "entities": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Entity types this feature manages."
           }
         },
         "required": [
@@ -363,14 +352,17 @@
                     "type": "object",
                     "properties": {
                       "primaryField": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The field whose value becomes the step label in the flow editor."
                       },
                       "defaultLabel": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Fallback label when primaryField is empty."
                       },
                       "custom": {
                         "type": "boolean",
-                        "const": true
+                        "const": true,
+                        "description": "Marks the step as a custom (non-built-in) type."
                       }
                     },
                     "additionalProperties": false,
