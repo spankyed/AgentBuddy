@@ -2,8 +2,7 @@ import * as path from 'path';
 import type { z } from 'zod';
 import type {
   ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema,
-  StepEntrySchema, StepDSLMetaSchema, PluginDefinitionSchema, DslEntrySchema,
-  PackPermissionSchema,
+  StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
 } from './manifest-schema';
 
 // Types derived from the canonical Zod schema in manifest-schema.ts.
@@ -16,7 +15,6 @@ export type PackBootConfig = z.infer<typeof BootConfigSchema>;
 export type SeedEntryConfig = z.infer<typeof SeedEntryConfigSchema>;
 export type StepEntry = z.infer<typeof StepEntrySchema>;
 export type StepDSLMeta = z.infer<typeof StepDSLMetaSchema>;
-export type PackPluginDefinition = z.infer<typeof PluginDefinitionSchema>;
 export type DslEntry = z.infer<typeof DslEntrySchema>;
 export type PackPermission = z.infer<typeof PackPermissionSchema>;
 

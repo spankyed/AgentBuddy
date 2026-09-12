@@ -71,24 +71,6 @@ export const FeatureEntrySchema = z.object({
   entities: z.array(z.string()).describe('Entity types this feature manages.').optional(),
 }).strict();
 
-// Deprecated — use features instead. Kept for backward compatibility with external packs.
-const PluginSystemSchema = z.object({
-  entry: z.string(),
-  events: z.object({
-    incoming: z.array(z.string()).optional(),
-    outgoing: z.array(z.string()).optional(),
-  }).strict().optional(),
-}).strict();
-
-export const PluginDefinitionSchema = z.object({
-  id: z.string(),
-  designation: z.string().optional(),
-  priority: z.number().int().optional(),
-  system: PluginSystemSchema.optional(),
-  plugin: PluginSchema.optional(),
-  entities: z.array(z.string()).optional(),
-  settings: z.record(z.string(), z.unknown()).optional(),
-}).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
 
@@ -144,9 +126,7 @@ export const ManifestSchema = z.object({
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.array(FeatureEntrySchema)
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
-  plugins: z.array(PluginDefinitionSchema).optional()
-    .describe('Deprecated — use features instead.'),
-  defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
+defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
   packServices: z.record(z.string(), z.string())
     .describe('Pack-level services not tied to a specific feature. Keys are service names, values are source file paths.').optional(),
   boot: BootConfigSchema.optional(),

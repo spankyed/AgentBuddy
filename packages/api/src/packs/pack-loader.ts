@@ -106,7 +106,7 @@ function getHostSdkVersion(): string | undefined {
 }
 
 // Re-export discovery types and seed helpers for backward-compatible imports
-export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from '@abuddy/sdk/packs';
+export type { BuiltInPackInfo, PackManifest } from '@abuddy/sdk/packs';
 export { discoverBuiltInPacks } from '@abuddy/sdk/packs';
 export { computePackSeedHash, seedPackData } from './pack-seed';
 
@@ -317,10 +317,7 @@ export function loadSingleExternalPack(
 
   const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
 
-  if (manifest.plugins && !manifest.features) {
-    logger.warn(`Pack ${manifest.id}: "plugins" is deprecated in abuddy.json — use "features" instead`);
-  }
-  const pluginEntries = manifest.features ?? manifest.plugins;
+  const pluginEntries = manifest.features;
   if (pluginEntries) {
     for (const plugin of pluginEntries) {
       if (!plugin.system?.entry) continue;
@@ -405,7 +402,7 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {
     const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => {
-      const entries = pack.manifest.features ?? pack.manifest.plugins;
+      const entries = pack.manifest.features;
       const pluginDef = entries?.find(p => p.id === featureId);
       return {
         id: `${pack.manifest.id}.${featureId}`,

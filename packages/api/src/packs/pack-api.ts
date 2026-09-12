@@ -45,11 +45,11 @@ export interface PackBundleEntry {
 function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
   return packs
     .filter(p => {
-      const entries = p.manifest.features ?? p.manifest.plugins;
+      const entries = p.manifest.features;
       return p.manifest.fe?.entry || p.manifest.fe?.styles || entries?.some(d => d.plugin);
     })
     .map(p => {
-      const entries = p.manifest.features ?? p.manifest.plugins ?? [];
+      const entries = p.manifest.features ?? [];
       return {
         id: p.manifest.id,
         name: p.manifest.name,

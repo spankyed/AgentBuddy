@@ -64,9 +64,6 @@ function extractPluginNames(manifest: Record<string, any> | null): string[] {
       .filter((f: any) => f.plugin)
       .map((f: any) => f.plugin.label ?? f.id);
   }
-  if (manifest.plugins) {
-    return manifest.plugins.map((p: any) => p.id ?? p.label ?? 'unknown');
-  }
   return [];
 }
 

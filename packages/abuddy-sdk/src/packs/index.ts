@@ -15,7 +15,7 @@ export {
   getPacksDir, getPacksDirForEnv, getApiPortFile, reconcileExternalRegistry,
   getAppName, resolveAppEnv, resolveAppDataDir,
 } from './pack-discovery';
-export type { BuiltInPackInfo, PackManifest, PackPluginDefinition, AppEnv } from './pack-discovery';
+export type { BuiltInPackInfo, PackManifest, AppEnv } from './pack-discovery';
 
 // Registry (JSON file CRUD)
 export {

@@ -3,12 +3,12 @@ import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '../logger';
 import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
-import type { PackManifest, PackPluginDefinition } from '../build/manifest';
+import type { PackManifest } from '../build/manifest';
 import { parseManifest } from '../build/validate';
 
 const logger = createLogger('pack-discovery');
 
-export type { PackManifest, PackPluginDefinition };
+export type { PackManifest };
 
 // ── Built-in pack discovery ─────────────────────────────────────────
 
