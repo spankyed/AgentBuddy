@@ -4,7 +4,8 @@
   "apiReport": {
     "enabled": true,
     "reportFolder": "./etc/",
-    "reportFileName": "ears.api.md"
+    "reportFileName": "ears.api.md",
+    "reportTempFolder": "<projectFolder>/.temp/"
   },
   "docModel": { "enabled": false },
   "dtsRollup": { "enabled": false },
@@ -13,7 +14,6 @@
     "tsconfigFilePath": "./tsconfig.api-extractor.json"
   },
   "projectFolder": ".",
-  "tempFolder": "./.temp/",
   "messages": {
     "extractorMessageReporting": {
       "ae-missing-release-tag": { "logLevel": "none" }
