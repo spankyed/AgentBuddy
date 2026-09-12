@@ -5,25 +5,29 @@ PRIVATE_REPO="spankyed/AgentBuddy"
 PUBLIC_REPO="spankyed/AgentBuddy-releases"
 
 # Channel detection
-TAG_PATTERN="v*"
+IS_BETA=false
 for arg in "$@"; do
   if [[ "$arg" == "--beta" ]]; then
-    TAG_PATTERN="beta-v*"
+    IS_BETA=true
     shift
     break
   fi
 done
 
-# Use provided tag or fetch latest matching the channel pattern
+# Use provided tag or fetch latest matching the channel
 if [[ -n "${1:-}" ]]; then
   TAG="$1"
 else
-  TAG=$(gh release list --repo "$PRIVATE_REPO" --limit 20 --json tagName -q "[.[].tagName | select(test(\"^${TAG_PATTERN//\*/.*}\$\"))][0]")
+  if [ "$IS_BETA" = true ]; then
+    TAG=$(gh release list --repo "$PRIVATE_REPO" --limit 20 --json tagName -q '[.[].tagName | select(test("-beta"))][0]')
+  else
+    TAG=$(gh release list --repo "$PRIVATE_REPO" --limit 20 --json tagName -q '[.[].tagName | select(test("-beta") | not)][0]')
+  fi
   if [[ -z "$TAG" ]]; then
-    echo "No releases matching ${TAG_PATTERN} found on $PRIVATE_REPO. Nothing to publish."
+    echo "No matching releases found on $PRIVATE_REPO. Nothing to publish."
     exit 0
   fi
-  echo "No tag specified, using latest matching ${TAG_PATTERN}: $TAG"
+  echo "No tag specified, using latest: $TAG"
 fi
 
 # Check if release already exists on public repo
@@ -47,7 +51,7 @@ gh release download "$TAG" --repo "$PRIVATE_REPO" --dir "$TMPDIR"
 
 # Mark beta releases as prerelease on the public repo
 PRERELEASE_FLAG=""
-if [[ "$TAG" == beta-* ]]; then
+if [[ "$TAG" == *-beta* ]]; then
   PRERELEASE_FLAG="--prerelease"
 fi
 

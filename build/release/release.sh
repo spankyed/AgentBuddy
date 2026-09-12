@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Release script for AgentBuddy
-# Usage: npm run release [patch|minor|major] [--dry-run] [--skip-migration-check]
+# Usage: npm run release [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]
 #
-# 1. Validates clean working tree
-# 2. Runs typecheck
-# 3. Bumps version in package.json
-# 4. Checks if default-settings.ts changed and requires a migration
-# 5. Generates changelog from conventional commits
-# 6. Commits, tags, and pushes (triggering CI)
+# Version flow:
+#   0.3.14         + --beta  → 0.3.15-beta.0   (start beta cycle for next patch)
+#   0.3.15-beta.0  + --beta  → 0.3.15-beta.1   (iterate beta)
+#   0.3.15-beta.1  (no flag) → 0.3.15           (promote to release)
+#   0.3.15         (no flag) → 0.3.16           (normal release)
+#
+# Tags are always v${VERSION}: v0.3.15-beta.0, v0.3.15, etc.
 
 set -e
 
@@ -26,24 +27,26 @@ NC='\033[0m'
 BUMP_TYPE="patch"
 DRY_RUN=false
 SKIP_MIGRATION_CHECK=false
-CHANNEL="production"
+IS_BETA=false
 
 for arg in "$@"; do
   case "$arg" in
     patch|minor|major) BUMP_TYPE="$arg" ;;
     --dry-run) DRY_RUN=true ;;
     --skip-migration-check) SKIP_MIGRATION_CHECK=true ;;
-    --beta) CHANNEL="beta" ;;
+    --beta) IS_BETA=true ;;
     *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]"; exit 1 ;;
   esac
 done
 
-IS_BETA=false
-TAG_PREFIX="v"
+CURRENT_VERSION=$(node -p "require('./package.json').version")
+CURRENT_IS_PRERELEASE=false
+if [[ "$CURRENT_VERSION" == *-* ]]; then
+  CURRENT_IS_PRERELEASE=true
+fi
+
 CHANNEL_LABEL=""
-if [[ "$CHANNEL" == "beta" ]]; then
-  IS_BETA=true
-  TAG_PREFIX="beta-v"
+if [ "$IS_BETA" = true ]; then
   CHANNEL_LABEL=" (Beta)"
 fi
 
@@ -68,30 +71,44 @@ npm run typecheck
 echo -e "${GREEN}✓${NC} Type checks passed"
 echo ""
 
-# (tests disabled — e2e tests are stale boilerplate, fix separately)
-
 # Step 3: Bump version
-CURRENT_VERSION=$(node -p "require('./package.json').version")
-echo -e "${BLUE}[3/6]${NC} Bumping version ($BUMP_TYPE)..."
+echo -e "${BLUE}[3/6]${NC} Bumping version..."
 
-# Use npm version to calculate the new version without committing
-npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null 2>&1
+if [ "$IS_BETA" = true ]; then
+  if [ "$CURRENT_IS_PRERELEASE" = true ]; then
+    # Already in a beta cycle — iterate: 0.3.15-beta.0 → 0.3.15-beta.1
+    npm version prerelease --preid=beta --no-git-tag-version > /dev/null 2>&1
+  else
+    # Start a new beta cycle: 0.3.14 → 0.3.15-beta.0 (for patch)
+    npm version "pre${BUMP_TYPE}" --preid=beta --no-git-tag-version > /dev/null 2>&1
+  fi
+else
+  if [ "$CURRENT_IS_PRERELEASE" = true ]; then
+    # Promote prerelease to release: 0.3.15-beta.1 → 0.3.15
+    npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null 2>&1
+  else
+    # Normal release: 0.3.15 → 0.3.16
+    npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null 2>&1
+  fi
+fi
+
 NEW_VERSION=$(node -p "require('./package.json').version")
+TAG_NAME="v${NEW_VERSION}"
 
 echo "  $CURRENT_VERSION → $NEW_VERSION"
 
-TAG_NAME="${TAG_PREFIX}${NEW_VERSION}"
-
 if [ "$DRY_RUN" = true ]; then
   # Check migration status for dry-run output
-  LAST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null || echo "")
+  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
   MIGRATION_STATUS="no settings changes"
-  if [ "$IS_BETA" = true ]; then
+  if [[ "$NEW_VERSION" == *-beta* ]]; then
     MIGRATION_STATUS="skipped (beta shares production migrations)"
   elif [ -n "$LAST_TAG" ]; then
     SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
     if [ -n "$SETTINGS_CHANGED" ]; then
-      MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
+      # Extract the release version (strip prerelease suffix) for migration file lookup
+      RELEASE_VERSION="${NEW_VERSION%%-*}"
+      MIGRATION_FILE="packages/api/src/setup/migrations/$RELEASE_VERSION.ts"
       if [ -f "$MIGRATION_FILE" ]; then
         MIGRATION_STATUS="settings changed, migration found ✓"
       elif [ "$SKIP_MIGRATION_CHECK" = true ]; then
@@ -125,23 +142,24 @@ echo ""
 
 # Step 4: Check if default-settings.ts changed and requires a migration
 echo -e "${BLUE}[4/6]${NC} Checking for settings migration..."
-if [ "$IS_BETA" = true ]; then
+if [[ "$NEW_VERSION" == *-beta* ]]; then
   echo -e "${GREEN}✓${NC} Beta release — shares production migration chain, skipping check"
 elif [ "$SKIP_MIGRATION_CHECK" = true ]; then
   echo -e "${YELLOW}⊘${NC} Migration check skipped (--skip-migration-check)"
 else
-  LAST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null || echo "")
+  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
   if [ -z "$LAST_TAG" ]; then
     echo -e "${GREEN}✓${NC} No previous release tag found, skipping check"
   else
     SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
     if [ -n "$SETTINGS_CHANGED" ]; then
-      MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
+      RELEASE_VERSION="${NEW_VERSION%%-*}"
+      MIGRATION_FILE="packages/api/src/setup/migrations/$RELEASE_VERSION.ts"
       if [ ! -f "$MIGRATION_FILE" ]; then
         echo -e "${RED}✗ default-settings.ts has changed since $LAST_TAG but no migration found at:${NC}"
         echo "    $MIGRATION_FILE"
         echo ""
-        echo -e "  Create a migration for v$NEW_VERSION or re-run with ${YELLOW}npm run release:no-migrate${NC}"
+        echo -e "  Create a migration for v$RELEASE_VERSION or re-run with ${YELLOW}npm run release:no-migrate${NC}"
         # Revert version bump
         npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
         exit 1
@@ -157,8 +175,8 @@ echo ""
 # Step 5: Generate changelog
 echo -e "${BLUE}[5/6]${NC} Generating changelog..."
 
-# Find last tag for this channel
-LAST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null || echo "")
+# Find the most recent tag (any channel)
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
   RANGE="$LAST_TAG..HEAD"
 else
