@@ -11,7 +11,7 @@ import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 // TODO: move seedData orchestration out of settings — belongs in core API (packs system)
-import { DEFAULT_COMPILED_DIR, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
+import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
 import { resetLmdbFiles } from '@abuddy/sdk/ears/internals';
@@ -86,7 +86,7 @@ export const settingsSystem = setup({
     resetAppActor: fromPromise(async () => {
       await resetLmdbFiles();
       createDefaultSettings();
-      seedData({ compiledDir: DEFAULT_COMPILED_DIR, verbose: true });
+      seedData({ compiledDir: getCompiledDir(), verbose: true });
       runMigrations();
     }),
   },

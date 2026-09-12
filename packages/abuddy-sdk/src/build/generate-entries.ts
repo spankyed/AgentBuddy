@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
-import { join, basename } from 'path';
+import { join } from 'path';
 import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
@@ -341,7 +341,8 @@ ${manifest.migrations ? `import { migrations } from '${toImportPath(manifest.mig
 ${stepsRegister ? `import { steps } from '${toImportPath(stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(manifest.blocks)}';` : ''}
-import { DEFAULT_COMPILED_DIR } from './seeders';
+import { getCompiledDir } from './seeders';
+export { setCompiledDir } from './seeders';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -367,7 +368,7 @@ ${earlySystemLine}
 ${manifest.boot?.createDefaultSettings ? '    createDefaultSettings,' : ''}
     seedManifest: {
       artifacts: [${artifactsList}],
-      compiledDir: DEFAULT_COMPILED_DIR,${seedPolicyLine}
+      get compiledDir() { return getCompiledDir(); },${seedPolicyLine}
     },
 ${manifest.boot?.shutdown ? '    shutdown: () => terminalService.killAll(),' : ''}
   },
@@ -708,17 +709,18 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       throw new Error(`Seed "${key}": unknown standard seed type and no "seeder" path provided`);
     }
 
-    const packDirName = basename(root);
     return `${HEADER}
-import path from 'path';
-import { existsSync } from 'fs';
 import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
 import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { EARS } from './ears';
 ${packImports.join('\n')}
 
-const _dirDist = path.resolve(import.meta.dirname, '..', '..', 'dist');
-export const DEFAULT_COMPILED_DIR = existsSync(_dirDist) ? _dirDist : path.resolve(process.cwd(), '..', '${packDirName}', 'dist');
+let _compiledDir = '';
+export function setCompiledDir(dir: string): void { _compiledDir = dir; }
+export function getCompiledDir(): string {
+  if (!_compiledDir) throw new Error('compiledDir not initialized — pack loader must call setCompiledDir()');
+  return _compiledDir;
+}
 
 ${registrations.join('\n')}
 

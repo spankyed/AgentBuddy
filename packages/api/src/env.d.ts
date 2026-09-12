@@ -2,6 +2,6 @@
 
 declare module 'virtual:built-in-pack-loaders' {
   import type { PackRegistration } from '@abuddy/sdk/packs';
-  const loaders: Record<string, () => Promise<{ registration: PackRegistration }>>;
+  const loaders: Record<string, () => Promise<{ registration: PackRegistration; setCompiledDir?: (dir: string) => void }>>;
   export default loaders;
 }

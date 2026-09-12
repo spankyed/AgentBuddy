@@ -2,26 +2,22 @@ import * as fs from 'fs';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
 import { getAppVersion } from '@abuddy/sdk/utils';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
-import { DEFAULT_COMPILED_DIR } from '@/__generated__/seeders';
+import { getCompiledDir } from '@/__generated__/seeders';
 
-const SETTINGS_PATH = seedPath(DEFAULT_COMPILED_DIR, 'settings');
-
-const loadJson = (): SettingsData => {
-  try {
-    return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
-  } catch (err) {
-    throw new Error(
-      `Missing or unreadable ${seedFile('settings')} at ${SETTINGS_PATH}. ` +
-      `Run \`npm run compile:settings\` before starting the backend. (${(err as Error).message})`
-    );
-  }
-};
-
-const baseSettings = loadJson();
 let _resolved: SettingsData | null = null;
 
 export function getDefaultSettings(): SettingsData {
   if (!_resolved) {
+    const settingsPath = seedPath(getCompiledDir(), 'settings');
+    let baseSettings: SettingsData;
+    try {
+      baseSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    } catch (err) {
+      throw new Error(
+        `Missing or unreadable ${seedFile('settings')} at ${settingsPath}. ` +
+        `Run \`npm run compile:settings\` before starting the backend. (${(err as Error).message})`
+      );
+    }
     _resolved = { ...baseSettings };
     _resolved.internal = { ...(baseSettings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
   }
