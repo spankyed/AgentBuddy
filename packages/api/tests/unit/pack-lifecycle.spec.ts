@@ -61,7 +61,7 @@ describe('pack full lifecycle: init → install → discover', () => {
     // Update manifest to declare a feature with the system
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));
     delete manifest.hostVersion;
-    manifest.plugins = [{
+    manifest.features = [{
       id: 'main',
       system: {
         entry: 'dist/system.cjs',

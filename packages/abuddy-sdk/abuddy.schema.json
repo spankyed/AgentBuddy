@@ -183,8 +183,7 @@
             "type": "object",
             "additionalProperties": {
               "type": "string"
-            },
-            "default": {}
+            }
           },
           "contributions": {
             "type": "string",

@@ -327,8 +327,8 @@ export function loadSingleExternalPack(
 
       const system = loadSystemFromCJS(plugin.system.entry, dir, plugin.id);
       if (system) {
-        if ('events' in (plugin.system as Record<string, unknown>) && (plugin.system as any).events?.incoming) {
-          for (const evt of (plugin.system as any).events.incoming) {
+        if (plugin.system.events?.incoming) {
+          for (const evt of plugin.system.events.incoming) {
             system.events.add(evt);
           }
         }

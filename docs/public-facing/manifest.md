@@ -151,6 +151,7 @@ When a seed value is an object instead of a string path:
 ```json
 {
   "fe": {
+    "entry": "dist/fe.js",
     "tiptapPlugins": "src/registries/tiptap-plugins.ts",
     "appExtensions": {
       "welcome": "src/extensions/Welcome.vue"

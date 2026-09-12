@@ -4,6 +4,7 @@ import * as os from 'os';
 import { createLogger } from '../logger';
 import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
 import type { PackManifest, PackPluginDefinition } from '../build/manifest';
+import { parseManifest } from '../build/validate';
 
 const logger = createLogger('pack-discovery');
 
@@ -121,12 +122,13 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
     }
 
     try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as PackManifest;
-      if (!manifest.id || !manifest.name) {
-        logger.warn(`Skipping ${entry.name}: invalid manifest (missing id or name)`);
+      const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      const validation = parseManifest(raw);
+      if (validation.errors.length > 0) {
+        logger.warn(`Skipping ${entry.name}: invalid manifest (${validation.errors[0]})`);
         continue;
       }
-      results.push({ manifest, dir: packDir });
+      results.push({ manifest: raw as PackManifest, dir: packDir });
     } catch (err) {
       logger.warn(`Skipping ${entry.name}: failed to parse abuddy.json`);
     }

@@ -305,7 +305,7 @@ export function generatePackFiles(
         if (f.plugin.isPinned) pluginParts.push(`isPinned: true`);
         parts.push(`    plugin: { ${pluginParts.join(', ')} }`);
       }
-      parts.push(`    services: [${Object.keys(f.services).map(s => `'${s}'`).join(', ')}]`);
+      parts.push(`    services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       return `  {\n${parts.join(',\n')},\n  }`;
     }).join(',\n');
 
@@ -571,7 +571,7 @@ ${perFeature}
     }
 
     for (const f of features) {
-      for (const [key, svcPath] of Object.entries(f.services)) {
+      for (const [key, svcPath] of Object.entries(f.services ?? {})) {
         addService(key, svcPath);
       }
     }

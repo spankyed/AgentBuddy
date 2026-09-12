@@ -45,7 +45,7 @@ function installTestPack() {
     id: TEST_PACK_ID,
     name: 'E2E Test Pack',
     version: '1.0.0',
-    plugins: [
+    features: [
       {
         id: 'hello',
         system: {
@@ -166,7 +166,7 @@ describe('E2E: pack loading pipeline', () => {
     setLoadedPacks([testPack]);
 
     // Verify the manifest has plugin entries that would appear in the FE registry
-    const pluginDefs = testPack.manifest.plugins!.filter(f => f.plugin);
+    const pluginDefs = (testPack.manifest.features ?? []).filter(f => f.plugin);
     expect(pluginDefs).toHaveLength(2);
     expect(pluginDefs[0].plugin!.label).toBe('Hello World');
     expect(pluginDefs[1].plugin!.label).toBe('Data View');

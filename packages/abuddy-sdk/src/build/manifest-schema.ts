@@ -64,7 +64,7 @@ export const FeatureEntrySchema = z.object({
   earlySystem: z.boolean().describe('Built-in packs only. Ignored for external packs.').optional(),
   system: SystemSchema.optional(),
   plugin: PluginSchema.optional(),
-  services: z.record(z.string(), z.string()).default({}),
+  services: z.record(z.string(), z.string()).optional(),
   contributions: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
   priority: z.number().int().optional(),
   entities: z.array(z.string()).optional(),
