@@ -38,6 +38,8 @@ export interface Document extends BaseEntity {
   content: ContentSection[]
   shortCode: DocumentShortCode
   displayOrder?: number
+  /** Free-form tags, stored directly on the document as a string array. */
+  tags?: string[]
   /** SHA256 hash of DSL source at last seed. Absent on user-created documents. */
   sourceHash?: string
 }
