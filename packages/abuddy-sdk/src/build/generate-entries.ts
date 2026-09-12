@@ -485,9 +485,19 @@ ${regProps.join('\n')}
       }
     }
 
+    const busIdEntries = systemFeatures
+      .map(f => {
+        const value = manifest.builtIn ? f.id : `${manifest.id}.${f.id}`;
+        return `  ${f.id}: '${value}'`;
+      })
+      .join(',\n');
+    const busIdBlock = systemFeatures.length
+      ? `\nexport const busId = {\n${busIdEntries},\n} as const;\n`
+      : '';
+
     return `${HEADER}
 ${ownExports}
-${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}`;
+${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}${busIdBlock}`;
   }
 
   function generateEventChannels(): string {
