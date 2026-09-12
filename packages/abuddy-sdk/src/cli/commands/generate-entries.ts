@@ -4,23 +4,19 @@ import { createHash } from 'node:crypto';
 import type { PackTypeManifest, PackSnapshot } from '../../build';
 import { generatePackFiles } from '../../build';
 import { findPackRoot, readManifest } from '../utils';
+import { resolveDeps } from './generate';
 
 const HASH_FILE = '.inputs-hash';
 const TEMPLATE_PATH = path.resolve(import.meta.dirname, '../../build/generate-entries.ts');
 
-function computeInputsHash(root: string): string {
+function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>): string {
   const hash = createHash('sha256');
   hash.update(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
   hash.update(fs.readFileSync(TEMPLATE_PATH, 'utf-8'));
-  const depsDir = path.join(root, '.abuddy', 'deps');
-  if (fs.existsSync(depsDir)) {
-    for (const depId of fs.readdirSync(depsDir).sort()) {
-      const snapPath = path.join(depsDir, depId, 'snapshot.json');
-      if (fs.existsSync(snapPath)) {
-        hash.update(depId);
-        hash.update(fs.readFileSync(snapPath, 'utf-8'));
-      }
-    }
+  // Generated flow helpers and types depend on every resolved dependency, wherever it came from
+  for (const depId of [...depSnapshots.keys()].sort()) {
+    hash.update(depId);
+    hash.update(JSON.stringify(depSnapshots.get(depId)));
   }
   return hash.digest('hex');
 }
@@ -36,7 +32,12 @@ export async function generateEntries(
   const hashPath = path.join(outDir, HASH_FILE);
   const force = _args.includes('--force');
 
-  const currentHash = computeInputsHash(root);
+  if (!depSnapshots) {
+    const resolved = await resolveDeps(root, readManifest(root).dependencies);
+    depTypes = resolved.depTypes;
+    depSnapshots = resolved.depSnapshots;
+  }
+  const currentHash = computeInputsHash(root, depSnapshots);
 
   if (!force && fs.existsSync(hashPath)) {
     const storedHash = fs.readFileSync(hashPath, 'utf-8').trim();

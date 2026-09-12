@@ -372,9 +372,7 @@ ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
     },
   },
 ${manifest.migrations ? '  migrations,' : ''}
-  features: [
-${featuresLiteral},
-  ],
+  features: [${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}],
 };
 `;
   }
@@ -885,8 +883,9 @@ export {};
   function emitTriggerTrackBuilder(step: StepEntry, isLocal: boolean): string | null {
     if (step.kind !== 'trigger') return null;
     if (!isLocal) return null;
-    const defFile = join(root, step.path, 'index.ts');
-    if (!existsSync(defFile)) return null;
+    // trackField lives with the build facets (build.ts); older layouts define it in index.ts
+    const defFile = ['build.ts', 'index.ts'].map(f => join(root, step.path, f)).find(f => existsSync(f));
+    if (!defFile) return null;
     const content = readFileSync(defFile, 'utf-8');
     const match = content.match(/trackField:\s*['"](\w+)['"]/);
     if (!match) return null;
