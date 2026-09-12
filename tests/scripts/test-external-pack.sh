@@ -8,9 +8,6 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PACK="$ROOT/tests/fixtures/external-pack"
 ABUDDY="$ROOT/node_modules/.bin/abuddy"
 
-# The CLI's shebang needs tsx on PATH
-export PATH="$ROOT/node_modules/.bin:$PATH"
-
 cd "$PACK"
 "$ABUDDY" validate
 "$ABUDDY" build

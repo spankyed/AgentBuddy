@@ -16,7 +16,7 @@ Moving `calendar` from `packages/default-setup` into `abuddy-external/example-pa
 What remains after the 2026-09-12 pass:
 
 - The suspected "live bug" (item 1) wasn't a platform bug. Test data accumulating across runs plus the month grid's chip cap hid the event; the round trip works. The test now asserts it for real.
-- **Waiting on decisions:** the CLI's `tsx` dependency (item 2), the pack E2E dependency on the monorepo (item 3), and five new findings (N1–N5), led by N1: a freshly scaffolded pack can't build.
+- **Waiting on decisions:** the pack E2E dependency on the monorepo (item 3) and five new findings (N1–N5), led by N1: a freshly scaffolded pack can't build. The CLI's `tsx` dependency (item 2) is resolved.
 - Guards, CI coverage, typecheck, baselines, cleanup and guardrails (items 4–10) are done.
 
 ---
@@ -26,7 +26,7 @@ What remains after the 2026-09-12 pass:
 | # | Item | Status |
 |---|---|---|
 | 1 | Calendar create round-trip | ✅ Resolved: not a platform bug; the test is fixed and the assertion restored |
-| 2 | CLI needs `tsx` on `PATH` | ⏸ Open, needs a decision |
+| 2 | CLI needs `tsx` on `PATH` | ✅ Resolved (option A) |
 | 3 | Pack E2E depends on the monorepo | ⏸ Open, needs a decision |
 | 4 | Fixture hides root causes | ✅ Resolved |
 | 5 | Silent inlining of unproxied SDK FE imports | ✅ Resolved (build now fails) |
@@ -67,18 +67,28 @@ The event didn't render because of two things together:
 
 **UX note (open, design):** at a one-chip capacity, a cell with two or more events shows no chips at all, only "N more". See N5.
 
-### 2. The `abuddy` CLI can't run from a pack without a `PATH` workaround — ⏸ decision needed
+### 2. The `abuddy` CLI can't run from a pack without a `PATH` workaround — ✅ resolved (option A)
 
-Re-verified on HEAD with a clean `PATH`: `env: tsx: No such file or directory`.
+**Before:** `bin` pointed at `src/cli/index.ts` with a `#!/usr/bin/env tsx` shebang, and `tsx` was only an SDK dev dependency. From a pack with a clean `PATH`, the CLI failed with `env: tsx: No such file or directory`.
 
-| Option | Change | Trade-offs |
-|---|---|---|
-| A | Move `tsx` to SDK `dependencies`; have `bin` point at a small JS launcher that runs the CLI through the SDK's own `tsx` | Small diff. Packs still run TypeScript at CLI start, with tsx's startup cost. |
-| B | Compile the CLI to JS during SDK build; `bin` gets a `#!/usr/bin/env node` shebang | No TS runner at runtime and faster startup. Adds an SDK build step and a `dist/` that has to stay in sync with `src/` for linked or dev use. |
+**Fix:**
+- `tsx` moved to the SDK's `dependencies`.
+- `bin` now points at `packages/abuddy-sdk/bin/abuddy.mjs`, a `#!/usr/bin/env node` launcher that registers the SDK's own tsx (`tsx/esm/api`) and imports `src/cli/index.ts` in-process.
+- The stale shebang is gone from `index.ts`.
+- The `PATH` export is gone from `tests/scripts/test-external-pack.sh`.
+
+`package-lock.json` was synced with `--package-lock-only`. That sync also dropped `nodemon` and its dependencies, which `28cf54754` had already removed from `package.json`.
+
+**Verification:** with `PATH` limited to node and `/usr/bin:/bin` (no `tsx` anywhere):
+- The global `abuddy --version` works, and so does the example pack's `./node_modules/.bin/abuddy validate`. The CLI runs; the pack itself reports a missing `settings.ts` for its `abuddy-external` feature config.
+- `tests/scripts/test-external-pack.sh` run directly on that `PATH` passes (2/2).
+- The example pack's `abuddy test` on that `PATH` gets past the CLI and fails at `sh: playwright: command not found`. That's item 3, not `tsx`.
+
+Existing installs need their `abuddy` bin link refreshed (`npm install`, or re-run `npm link` for a global link), because the old link targets `src/cli/index.ts`.
 
 ### 3. Pack E2E still depends on the monorepo — ⏸ decision needed
 
-Re-verified on HEAD: `abuddy test` requires `ABUDDY_ROOT`, and `@playwright/test` in the example pack is still a symlink into the monorepo.
+Re-verified on HEAD: `abuddy test` requires `ABUDDY_ROOT`, and `@playwright/test` in the example pack is still a symlink into the monorepo. With item 2 fixed, the example pack's `abuddy test` on a clean `PATH` now gets past the CLI and fails at `sh: playwright: command not found`: `test.ts` runs `npx playwright`, and the symlinked package has no `.bin` in the pack. It only worked before because the monorepo's `node_modules/.bin` was on `PATH`. The in-repo fixture passes on a clean `PATH`, because npx finds the repo's Playwright.
 
 This pass adds one more symptom of the linked-SDK setup. The SDK's `peerDependencies` (`xstate`, `vue`, `@xstate/vue`, `lucide-vue-next`, …) and its `zod` dependency don't get installed into a pack that uses `npm link`. As a result, all 35 remaining type errors in the example pack come from them. With those modules mapped to the monorepo's copies, the pack typechecks with **0 errors** (item 7).
 
