@@ -1,4 +1,4 @@
-import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
+import type { ElkNode, ElkExtendedEdge, ElkPort } from 'elkjs/lib/elk.bundled.js'
 import { NODE_DIMENSIONS, getDescriptor, computeExitCount, type LayoutNodeData } from '@abuddy/sdk/fe/components/node-dimensions'
 import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
 
@@ -41,7 +41,20 @@ export interface LayoutEdge {
   sourceHandle?: string
 }
 
-const elk = new ELK()
+/**
+ * elkjs is ~1.4 MB minified. It is loaded on first layout rather than at module
+ * scope so that importing LAYOUT_CONFIG (a plain constant used by edge
+ * rendering) does not pull the layout engine into the eager bundle.
+ */
+let elkInstance: InstanceType<typeof import('elkjs/lib/elk.bundled.js').default> | null = null
+
+async function getElk() {
+  if (!elkInstance) {
+    const { default: ELK } = await import('elkjs/lib/elk.bundled.js')
+    elkInstance = new ELK()
+  }
+  return elkInstance
+}
 
 /** Parse a handle string like "branch-2" or "exit-0" into its prefix and index.
  *  Unanchored so it matches handles with extra context (e.g. prefixed IDs). */
@@ -202,7 +215,7 @@ export async function calculateLayoutAsync(
     const positions: LayoutPositions = {}
 
     if (components.length <= 1) {
-      const graph = await elk.layout(
+      const graph = await (await getElk()).layout(
         buildElkGraph(input.nodes, filteredEdges, direction, triggerExitCounts)
       )
       for (const child of graph.children ?? []) {
@@ -217,7 +230,7 @@ export async function calculateLayoutAsync(
         const compEdges = filteredEdges.filter(
           e => compNodeIds.has(e.source) || compNodeIds.has(e.target)
         )
-        const graph = await elk.layout(
+        const graph = await (await getElk()).layout(
           buildElkGraph(comp, compEdges, direction, triggerExitCounts)
         )
         let maxBottom = 0
