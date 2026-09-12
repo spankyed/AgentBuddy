@@ -296,3 +296,24 @@ export const getAttributeStats = (kind: EARS.AttrKind) => {
   }
   return { entityCount: b.size, totalValues };
 };
+
+export function getSchemaStats() {
+  return {
+    entities: getAllEntityTypes().reduce((acc: Record<string, number>, type: string) => {
+      acc[type] = getEntitiesOfType(type as EARS.Entity).length;
+      return acc;
+    }, {}),
+    attributes: getAllAttributeKinds().reduce((acc: Record<string, number>, kind: EARS.AttrKind) => {
+      acc[kind as string] = getAttributeStats(kind).totalValues;
+      return acc;
+    }, {}),
+    relations: getAllRelationKinds().reduce((acc: Record<string, number>, kind: string) => {
+      acc[kind] = 0;
+      return acc;
+    }, {}),
+  };
+}
+
+export function isEntity(value: unknown): value is EARS.Entity {
+  return (Object.values(EARS.Entity) as string[]).includes(value as string);
+}

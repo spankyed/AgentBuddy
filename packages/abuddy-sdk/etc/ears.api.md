@@ -266,6 +266,13 @@ export const getEntitiesOfType: (t: EARS.Entity) => EARS.EntityId<string>[];
 export const getRoles: (id: EARS.EntityId) => string[];
 
 // @public (undocumented)
+export function getSchemaStats(): {
+    entities: Record<string, number>;
+    attributes: Record<string, number>;
+    relations: Record<string, number>;
+};
+
+// @public (undocumented)
 export function getTimestamp(): number;
 
 // @public (undocumented)
@@ -273,6 +280,9 @@ export const grantRole: (id: EARS.EntityId, role: string) => void;
 
 // @public (undocumented)
 export function hasIdCollision(providedId: string | undefined): boolean;
+
+// @public (undocumented)
+export function isEntity(value: unknown): value is EARS.Entity;
 
 // @public (undocumented)
 export function leaves(kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];

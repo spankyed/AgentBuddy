@@ -5,7 +5,8 @@ export { qx, b64Encode, b64Decode, type QxSeed } from './query';
 export { tx } from './transaction';
 export {
   createEntity, getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
-  getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRoles, grantRole, revokeRole,
+  getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats, isEntity,
+  getRoles, grantRole, revokeRole,
 } from './attribute-storage';
 export {
   repository, registerRepository, type Repository,
