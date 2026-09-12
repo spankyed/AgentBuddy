@@ -15,7 +15,6 @@ export {
   repoRemoveRelation as removeRelation,
   findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
   RepositoryError, RepositoryErrorCode,
-  queryHelpers, transactionHelpers,
   prepareEntity,
 } from './repository';
 export {

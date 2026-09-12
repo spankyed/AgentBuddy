@@ -9,7 +9,6 @@ import {
   findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, exists,
   RepositoryError, RepositoryErrorCode,
-  queryHelpers, transactionHelpers,
   getAttr,
 } from '@abuddy/sdk/ears';
 import { clearMemory, edgeStore, relationIndex } from '@abuddy/sdk/ears/internals';
@@ -113,12 +112,6 @@ describe('Tier 1 — EARS delegates', () => {
     const testQueries = { list: () => 'ok' };
     registerRepository('sdkTestQueries', testQueries);
     expect(repository.sdkTestQueries.list()).toBe('ok');
-  });
-
-  it('queryHelpers provides findById/findAll/findWhere', () => {
-    expect(typeof queryHelpers.findById).toBe('function');
-    expect(typeof queryHelpers.findAll).toBe('function');
-    expect(typeof queryHelpers.findWhere).toBe('function');
   });
 
   it('getAttr reads stored attributes', () => {

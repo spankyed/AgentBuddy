@@ -1,6 +1,3 @@
-import * as qh from './query-helpers';
-import * as th from './transaction-helpers';
-
 // --- Repository registry (real implementation) ---
 
 const entries: Record<string, any> = {};
@@ -44,21 +41,3 @@ export {
 } from './transaction-helpers';
 
 export { RepositoryError, RepositoryErrorCode } from './repository-errors';
-
-// STATUS: Unused — no external consumers currently import these namespaced objects.
-// Kept for backward compatibility; consumers use the individual functions directly.
-export const queryHelpers = {
-  findById: qh.findById,
-  findWhere: qh.findWhere,
-  findAll: qh.findAll,
-};
-
-export const transactionHelpers = {
-  prepareEntity: th.prepareEntity,
-  createEntityWithDefaults: th.createEntityWithDefaults,
-  updateEntity: th.updateEntity,
-  createRelation: th.createRelation,
-  removeRelation: th.removeRelation,
-  grantRole: th.grantRole,
-  revokeRole: th.revokeRole,
-};

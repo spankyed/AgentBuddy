@@ -383,13 +383,6 @@ export interface QueryBuilder<E extends string = string> {
     withRole(r: string): QueryBuilder<E>;
 }
 
-// @public (undocumented)
-export const queryHelpers: {
-    findById: typeof qh.findById;
-    findWhere: typeof qh.findWhere;
-    findAll: typeof qh.findAll;
-};
-
 // @public
 export function qx(): QueryBuilder<string>;
 
@@ -536,17 +529,6 @@ export interface TransactionBuilder {
 }
 
 // @public (undocumented)
-export const transactionHelpers: {
-    prepareEntity: typeof th.prepareEntity;
-    createEntityWithDefaults: typeof th.createEntityWithDefaults;
-    updateEntity: typeof th.updateEntity;
-    createRelation: typeof th.createRelation;
-    removeRelation: typeof th.removeRelation;
-    grantRole: typeof th.grantRole;
-    revokeRole: typeof th.revokeRole;
-};
-
-// @public (undocumented)
 export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): {
     readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
     readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
@@ -591,11 +573,6 @@ export function updateEntity(id: EARS.EntityId, updates: Record<string, any>, sk
 
 // @public (undocumented)
 export function wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
-
-// Warnings were encountered during analysis:
-//
-// dist/types/ears/repository.d.ts:11:5 - (ae-forgotten-export) The symbol "qh" needs to be exported by the entry point index.d.ts
-// dist/types/ears/repository.d.ts:16:5 - (ae-forgotten-export) The symbol "th" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
