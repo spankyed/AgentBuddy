@@ -44,6 +44,9 @@ jobs:
       - name: Unit tests (sdk)
         run: npm test --workspace @abuddy/sdk -- --reporter=verbose
 
+      - name: Unit tests (cli)
+        run: npm test --workspace @abuddy/cli -- --reporter=verbose
+
       - name: Unit tests (renderer)
         run: npm run test:unit --workspace @app/renderer -- --run
 

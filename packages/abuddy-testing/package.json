@@ -1,0 +1,25 @@
+{
+  "name": "@abuddy/testing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright E2E fixture for AgentBuddy and AgentBuddy packs",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@abuddy/sdk": "*"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

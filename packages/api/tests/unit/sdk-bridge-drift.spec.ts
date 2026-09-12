@@ -46,6 +46,8 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/sdk/build/discover', 'build-time only'],
   // Test-only, and pulls playwright — must never enter the api bundle.
   ['@abuddy/sdk/testing', 'test-only; would drag playwright into the bundle'],
+  // Metadata: tooling reads the SDK version from it, code never requires it.
+  ['@abuddy/sdk/package.json', 'package metadata, not code'],
 ]);
 
 const UNBRIDGED_BY_DESIGN = new Map([...UNBRIDGED_LEAVES, ...UNBRIDGED_BY_POLICY]);

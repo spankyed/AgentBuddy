@@ -24,7 +24,7 @@ function writeDist(dir: string) {
 
 describe('pack CLI: init', () => {
   it('scaffolds a valid pack directory structure', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
 
     const packName = 'test-pack';
     const packDir = path.join(tmpDir, packName);
@@ -64,7 +64,7 @@ describe('pack CLI: init', () => {
   });
 
   it('rejects invalid pack names', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
 
     const origCwd = process.cwd();
     process.chdir(tmpDir);
@@ -76,7 +76,7 @@ describe('pack CLI: init', () => {
   });
 
   it('rejects if directory already exists', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
 
     fs.mkdirSync(path.join(tmpDir, 'exists'));
 
@@ -92,7 +92,7 @@ describe('pack CLI: init', () => {
 
 describe('pack CLI: install', () => {
   it('install with no args returns without throwing (prints help)', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
     await expect(install([])).resolves.toBeUndefined();
   });
 
@@ -102,7 +102,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects manifest with invalid id format', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
 
     const badPack = path.join(tmpDir, 'bad-id-pack');
     fs.mkdirSync(badPack, { recursive: true });
@@ -117,7 +117,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects pack without dist directory', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
 
     const noDist = path.join(tmpDir, 'no-dist');
     fs.mkdirSync(noDist, { recursive: true });
@@ -131,7 +131,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects pack without abuddy.json', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
 
     const noManifest = path.join(tmpDir, 'no-manifest');
     fs.mkdirSync(noManifest, { recursive: true });

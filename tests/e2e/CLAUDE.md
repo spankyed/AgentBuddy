@@ -22,7 +22,7 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 ## How the fixture works
 
-The test infrastructure lives in `@abuddy/sdk/testing` (source: `packages/abuddy-sdk/src/testing/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
+The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
 
 ### Startup lifecycle
 
@@ -120,7 +120,7 @@ There are two ways to test external packs:
 
 ### 1. From the pack's own repo (preferred for pack developers)
 
-Pack developers can write and run E2E tests without touching the AgentBuddy repo. The fixture is available as `@abuddy/sdk/testing`. See `packages/abuddy-sdk/src/testing/CLAUDE.md` for the full external pack testing guide.
+Pack developers can write and run E2E tests without touching the AgentBuddy repo. The fixture is available as `@abuddy/testing`. See `packages/abuddy-testing/CLAUDE.md` for the full external pack testing guide.
 
 ```bash
 cd /path/to/my-pack
@@ -190,8 +190,8 @@ The renderer exposes on `window`:
 
 | File | Purpose |
 |------|---------|
-| `fixtures/app.ts` | Thin re-export from `@abuddy/sdk/testing` |
+| `fixtures/app.ts` | Thin re-export from `@abuddy/testing` |
 | `smoke.spec.ts` | Basic tests: app launches, reaches connected state, plugins load, default screenshot |
 | `navigation.spec.ts` | Navigate between plugins, screenshot each |
 | `scratch.spec.ts` | Ad-hoc test file (gitignored — create as needed) |
-| `packages/abuddy-sdk/src/testing/index.ts` | The actual fixture source (shared between monorepo and external packs) |
+| `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

@@ -42,7 +42,7 @@ const packsDir = () => path.join(tmpDir, 'packs');
 
 describe('pack full lifecycle: init → install → discover', () => {
   it('scaffolded pack can be installed and discovered by pack-loader', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
     const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
 
     // Step 1: Init

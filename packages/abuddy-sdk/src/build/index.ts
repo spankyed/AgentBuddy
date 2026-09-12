@@ -76,7 +76,7 @@ export type { ManifestValidation } from './validate';
 
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
-  ManifestSchema, FeatureEntrySchema,
+  ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
   BootConfigSchema, SeedEntryConfigSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema,
 } from './manifest-schema';
