@@ -175,6 +175,7 @@ export default /** @type import('electron-builder').Configuration */
     provider: 'github',
     owner: 'spankyed',
     repo: 'AgentBuddy',
-    releaseType: 'draft'
+    releaseType: isBeta ? 'prerelease' : 'draft',
+    ...(isBeta && { channel: 'beta' }),
   } : null
 });

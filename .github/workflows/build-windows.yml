@@ -2,13 +2,21 @@ name: Build Windows
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'beta-v*']
   workflow_dispatch:
     inputs:
       version:
         description: 'Version override (e.g. 0.1.0). Leave empty to use package.json version.'
         required: false
         type: string
+      channel:
+        description: 'Build channel (production or beta)'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - beta
 
 concurrency:
   group: release-win-${{ github.ref }}
@@ -30,11 +38,25 @@ jobs:
           node-version: 23
           cache: npm
 
-      - name: Validate version matches tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Detect channel
+        id: channel
         shell: bash
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$GITHUB_REF_NAME" == beta-v* ]] || [[ "${{ inputs.channel }}" == "beta" ]]; then
+            echo "is_beta=true" >> "$GITHUB_OUTPUT"
+            echo "product_name=AgentBuddy Beta" >> "$GITHUB_OUTPUT"
+            echo "tag_version=${GITHUB_REF_NAME#beta-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_beta=false" >> "$GITHUB_OUTPUT"
+            echo "product_name=AgentBuddy" >> "$GITHUB_OUTPUT"
+            echo "tag_version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate version matches tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          TAG_VERSION="${{ steps.channel.outputs.tag_version }}"
           PKG_VERSION=$(node -p "require('./package.json').version")
           echo "Tag version: $TAG_VERSION"
           echo "Package version: $PKG_VERSION"
@@ -47,7 +69,12 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run build-prod
+        run: |
+          BETA_FLAG=""
+          if [ "${{ steps.channel.outputs.is_beta }}" = "true" ]; then
+            BETA_FLAG="-- --beta"
+          fi
+          npm run build-prod $BETA_FLAG
 
       - name: Upload artifacts to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -55,9 +82,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          APP_NAME="${{ steps.channel.outputs.product_name }}"
+          PRERELEASE_FLAG=""
+          if [ "${{ steps.channel.outputs.is_beta }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
           # Wait briefly for the macOS workflow to create the release
           sleep 30
-          assets=(dist/AgentBuddy-*.exe)
+          assets=(dist/${APP_NAME}-*.exe)
 
           # Upload to existing release, or create if mac workflow hasn't yet
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
@@ -65,7 +97,8 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" \
               --generate-notes \
-              --title "AgentBuddy $GITHUB_REF_NAME" \
+              --title "${APP_NAME} $GITHUB_REF_NAME" \
+              $PRERELEASE_FLAG \
               "${assets[@]}" || {
                 status=$?
                 if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
