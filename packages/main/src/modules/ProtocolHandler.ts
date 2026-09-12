@@ -2,9 +2,13 @@ import {BrowserWindow} from 'electron';
 import type {AppModule} from '../AppModule.js';
 import type {ModuleContext} from '../ModuleContext.js';
 
+declare const __ABUDDY_CHANNEL__: string;
+
+const URL_SCHEME = __ABUDDY_CHANNEL__ === 'beta' ? 'abuddy-beta' : 'abuddy';
+
 class ProtocolHandler implements AppModule {
   enable({app}: ModuleContext): void {
-    app.setAsDefaultProtocolClient('abuddy');
+    app.setAsDefaultProtocolClient(URL_SCHEME);
 
     // macOS: URL opened while app is running
     app.on('open-url', (event, url) => {
@@ -14,7 +18,7 @@ class ProtocolHandler implements AppModule {
 
     // Windows/Linux: URL passed as argv in second-instance
     app.on('second-instance', (_event, argv) => {
-      const url = argv.find(a => a.startsWith('abuddy://'));
+      const url = argv.find(a => a.startsWith(`${URL_SCHEME}://`));
       if (url) this.#handleProtocolUrl(url);
     });
   }

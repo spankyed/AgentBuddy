@@ -1,6 +1,24 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackManifest } from '../build';
+import type { AppEnv } from '../packs/pack-discovery';
+
+const ENV_FLAGS = ['-d', '--dev', '-b', '--beta'] as const;
+
+export function parseTargetEnv(args: string[]): { env: AppEnv; args: string[] } {
+  const hasDev = args.includes('-d') || args.includes('--dev');
+  const hasBeta = args.includes('-b') || args.includes('--beta');
+  const filtered = args.filter(a => !(ENV_FLAGS as readonly string[]).includes(a));
+  const env: AppEnv = hasBeta ? 'beta' : hasDev ? 'development' : 'production';
+  return { env, args: filtered };
+}
+
+export function envLabel(env: AppEnv): string {
+  if (env === 'production') return '';
+  return ` (${env})`;
+}
+
+export const TARGET_ENV_USAGE = '-d, --dev    Target the dev environment\n  -b, --beta   Target the beta environment';
 
 export function findPackRoot(from: string): string {
   let dir = from;

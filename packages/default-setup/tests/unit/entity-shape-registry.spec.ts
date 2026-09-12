@@ -103,7 +103,7 @@ describe('EntityShapeRegistry — extensibility', () => {
     expectTypeOf<'Flow'>().toMatchTypeOf<Keys>();
     expectTypeOf<'Document'>().toMatchTypeOf<Keys>();
     expectTypeOf<'Prompt'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'CalendarEvent'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'Secret'>().toMatchTypeOf<Keys>();
     expectTypeOf<'Note'>().toMatchTypeOf<Keys>();
     expectTypeOf<'Message'>().toMatchTypeOf<Keys>();
   });

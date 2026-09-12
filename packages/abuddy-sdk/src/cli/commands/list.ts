@@ -1,14 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { parseTargetEnv, envLabel } from '../utils';
 
 export async function list(args: string[]) {
-  const dev = args.includes('-d') || args.includes('--dev');
-  const packsDir = getPacksDirForEnv(dev);
-  const env = dev ? ' (dev)' : '';
+  const { env } = parseTargetEnv(args);
+  const packsDir = getPacksDirForEnv(env);
+  const label = envLabel(env);
 
   if (!fs.existsSync(packsDir)) {
-    console.log(`No packs installed${env}.`);
+    console.log(`No packs installed${label}.`);
     return;
   }
 
@@ -16,11 +17,11 @@ export async function list(args: string[]) {
     .filter(e => e.isDirectory());
 
   if (entries.length === 0) {
-    console.log(`No packs installed${env}.`);
+    console.log(`No packs installed${label}.`);
     return;
   }
 
-  console.log(`Installed packs${env}:\n`);
+  console.log(`Installed packs${label}:\n`);
 
   for (const entry of entries) {
     const manifestPath = path.join(packsDir, entry.name, 'abuddy.json');

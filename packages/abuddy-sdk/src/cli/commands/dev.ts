@@ -8,7 +8,7 @@ import { installPackFromLocal } from '../../packs/pack-installer';
 
 function getDevApiUrl(): string | null {
   try {
-    const port = fs.readFileSync(getApiPortFile(true), 'utf-8').trim();
+    const port = fs.readFileSync(getApiPortFile('development'), 'utf-8').trim();
     return port ? `http://localhost:${port}` : null;
   } catch { return null; }
 }
@@ -35,7 +35,7 @@ export async function dev(_args: string[]) {
 
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
-  const packsDir = getPacksDirForEnv(true);
+  const packsDir = getPacksDirForEnv('development');
 
   console.log('Running initial build...\n');
   await build([]);

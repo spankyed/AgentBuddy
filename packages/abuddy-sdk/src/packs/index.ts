@@ -13,8 +13,9 @@ export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackCont
 export {
   discoverBuiltInPacks, discoverPacks,
   getPacksDir, getPacksDirForEnv, getApiPortFile, reconcileExternalRegistry,
+  getAppName, resolveAppEnv, resolveAppDataDir,
 } from './pack-discovery';
-export type { BuiltInPackInfo, PackManifest, PackPluginDefinition } from './pack-discovery';
+export type { BuiltInPackInfo, PackManifest, PackPluginDefinition, AppEnv } from './pack-discovery';
 
 // Registry (JSON file CRUD)
 export {

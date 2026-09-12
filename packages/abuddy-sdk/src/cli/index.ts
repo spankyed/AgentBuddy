@@ -16,9 +16,9 @@ Commands:
   build [--skip-generate]  Compile pack artifacts to dist/
   pack                Bundle dist/ into a .tgz for release
   validate            Check manifest and types
-  install <source> [-d]  Install a pack (path, URL, GitHub, or registry name)
-  uninstall <id> [-d]   Remove an installed pack
-  list [-d]             Show installed packs
+  install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
+  uninstall <id> [-d] [-b]   Remove an installed pack
+  list [-d] [-b]             Show installed packs
   dev                   Dev server with HMR (always targets dev environment)
   init-tests            Scaffold Playwright E2E test setup
   test [args...]        Run E2E tests (sets ABUDDY_ROOT + PACK_DIR automatically)

@@ -102,6 +102,7 @@ export const getEnvironment = (port: number, options?: { startupId?: string; log
     BUILT_IN_PACKS_DIR: app.isPackaged
       ? path.join(process.resourcesPath, 'app', 'packages')
       : path.join(app.getAppPath(), 'packages'),
+    ABUDDY_ENV: process.env.ABUDDY_ENV,
     ELECTRON_RUN_AS_NODE: '1',
   };
 };

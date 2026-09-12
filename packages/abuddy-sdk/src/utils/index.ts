@@ -72,14 +72,7 @@ export function asArr<T>(v: MaybeArr<T>): readonly T[] {
 export const entries = <T extends Record<string, unknown>>(obj: T) =>
   Object.entries(obj) as Array<[keyof T, T[keyof T]]>
 
-export function compareVersions(a: string, b: string): number {
-  const [ax, bx] = [a, b].map(v => v.split('.').map(Number));
-  for (let i = 0; i < Math.max(ax.length, bx.length); i++) {
-    const diff = (ax[i] ?? 0) - (bx[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
+export { compareVersions } from './compare-versions';
 
 // --- Rename / Remove Mapping ---
 

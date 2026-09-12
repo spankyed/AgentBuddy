@@ -5,6 +5,9 @@ import {defineConfig} from 'vite';
 import {viteStaticCopy} from 'vite-plugin-static-copy';
 
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
+  define: {
+    __ABUDDY_CHANNEL__: JSON.stringify(process.env.ABUDDY_ENV || ''),
+  },
   build: {
     ssr: true,
     sourcemap: mode === 'development' ? 'inline' : false,
