@@ -119,9 +119,15 @@ export interface EntityShapeRegistry {}
 /**
  * Resolves an entity type string to its shape from the registry,
  * falling back to `Record<string, any>` for unregistered types.
+ *
+ * The check is wrapped in tuples to make it NON-distributive. A naked
+ * conditional distributes over a union `E`, and because
+ * `keyof Record<string, any>` is `string | number`, `keyof` of a union with any
+ * unregistered arm collapses to roughly `keyof BaseEntity` — over-constraining
+ * every caller whose `E` is not a single registered literal.
  */
 export type EntityShape<E extends string> =
-  E extends keyof EntityShapeRegistry
+  [E] extends [keyof EntityShapeRegistry]
     ? EntityShapeRegistry[E] & BaseEntity
     : Record<string, any>;
 

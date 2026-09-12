@@ -45,17 +45,23 @@ describe('Typed QueryBuilder — qx() overloads', () => {
 
 // ─── ofType() narrows ──────────────────────────────────────────────────
 
-type InferOfType<Q, T extends string> = Q extends { ofType(t: T): infer R } ? R : never;
+// Asserted via an instantiation expression (`typeof b.ofType<'Thread'>`) rather
+// than a conditional type: `Q extends { ofType(t: T): infer R }` instantiates
+// the generic at its CONSTRAINT and infers QueryBuilder<string>, so it silently
+// passed whatever ofType actually returned. Purely type-level, so the declared
+// consts need no runtime value.
+declare const untypedBuilder: QueryBuilder;
+declare const actionBuilder: QueryBuilder<'Action'>;
 
 describe('Typed QueryBuilder — ofType() narrows', () => {
   it('ofType() narrows untyped builder to specific entity', () => {
-    type Result = InferOfType<QueryBuilder, 'Thread'>;
-    expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Thread'>>();
+    expectTypeOf<ReturnType<typeof untypedBuilder.ofType<'Thread'>>>()
+      .toEqualTypeOf<QueryBuilder<'Thread'>>();
   });
 
   it('ofType() narrows from one entity to a different entity', () => {
-    type Result = InferOfType<QueryBuilder<'Action'>, 'Thread'>;
-    expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Thread'>>();
+    expectTypeOf<ReturnType<typeof actionBuilder.ofType<'Thread'>>>()
+      .toEqualTypeOf<QueryBuilder<'Thread'>>();
   });
 });
 

@@ -5,7 +5,7 @@
  * host (api) provides at boot via initEARSRuntime(). The in-memory engine
  * and helpers import getters from here to access host-provided services.
  */
-import type { EARS } from '../types/entities';
+import type { EARS, EntityShape } from '../types/entities';
 
 // ─── PersistenceSink interface ─────────────────────────────────────────
 
@@ -56,7 +56,7 @@ export function getEntityTypeChecker(): (v: string) => boolean { return _isEntit
 export interface QueryBuilder<E extends string = string> {
   ofType<T extends string>(t: T): QueryBuilder<T>;
   inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E>;
-  where(k: string, v?: unknown): QueryBuilder<E>;
+  where<K extends keyof EntityShape<E> & string>(k: K, v?: EntityShape<E>[K]): QueryBuilder<E>;
   withRole(r: string): QueryBuilder<E>;
   relatedTo(target: EARS.EntityId): QueryBuilder<E>;
   related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E>;
@@ -65,14 +65,14 @@ export interface QueryBuilder<E extends string = string> {
   edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
   pick<A extends readonly string[]>(fields: A): any[];
   pickOne<A extends readonly string[]>(f: A): any;
-  pickAll(): any[];
+  pickAll(): EntityShape<E>[];
   linksPick<K extends string, A extends readonly string[]>(relKinds: K | readonly K[], fields: A, tgtType?: EARS.Entity | EARS.Entity[]): any[];
-  orderBy(field: string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
+  orderBy(field: keyof EntityShape<E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
   reverse(): QueryBuilder<E>;
   limit(n: number): QueryBuilder<E>;
   page(size: number, cursor?: string | null): { items: EARS.EntityId[]; nextCursor: string | null };
-  distinct(field?: string): QueryBuilder<E>;
-  groupBy(field: string): Map<unknown, QueryBuilder<E>>;
+  distinct(field?: keyof EntityShape<E> & string): QueryBuilder<E>;
+  groupBy(field: keyof EntityShape<E> & string): Map<unknown, QueryBuilder<E>>;
   ids(): EARS.EntityId[];
   id(): EARS.EntityId | null;
   count(): number;

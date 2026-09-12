@@ -118,7 +118,9 @@ export namespace EARS {
 }
 
 // @public
-export type EntityShape<E extends string> = E extends keyof EntityShapeRegistry ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
+export type EntityShape<E extends string> = [
+E
+] extends [keyof EntityShapeRegistry] ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
 
 // @public
 export interface EntityShapeRegistry {

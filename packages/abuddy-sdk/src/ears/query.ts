@@ -251,7 +251,7 @@ const qxImpl = (seed?: QxSeed) => {
         }
       });
       const result = new Map<unknown, ReturnType<typeof qx>>();
-      groups.forEach((ids, key) => result.set(key, qxImpl(ids)));
+      groups.forEach((ids, key) => result.set(key, qxImpl(ids) as unknown as ReturnType<typeof qx>));
       return result;
     },
 

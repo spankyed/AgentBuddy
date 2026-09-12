@@ -176,7 +176,9 @@ export interface EARSRuntimeDeps {
 }
 
 // @public
-export type EntityShape<E extends string> = E extends keyof EntityShapeRegistry ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
+export type EntityShape<E extends string> = [
+E
+] extends [keyof EntityShapeRegistry] ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
 
 // @public
 export interface EntityShapeRegistry {
@@ -322,7 +324,7 @@ export interface QueryBuilder<E extends string = string> {
     // (undocumented)
     count(): number;
     // (undocumented)
-    distinct(field?: string): QueryBuilder<E>;
+    distinct(field?: keyof EntityShape<E> & string): QueryBuilder<E>;
     // (undocumented)
     edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
     // (undocumented)
@@ -332,7 +334,7 @@ export interface QueryBuilder<E extends string = string> {
     // (undocumented)
     forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E>;
     // (undocumented)
-    groupBy(field: string): Map<unknown, QueryBuilder<E>>;
+    groupBy(field: keyof EntityShape<E> & string): Map<unknown, QueryBuilder<E>>;
     // (undocumented)
     id(): EARS.EntityId | null;
     // (undocumented)
@@ -357,7 +359,7 @@ export interface QueryBuilder<E extends string = string> {
     // (undocumented)
     ofType<T extends string>(t: T): QueryBuilder<T>;
     // (undocumented)
-    orderBy(field: string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
+    orderBy(field: keyof EntityShape<E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
     // (undocumented)
     page(size: number, cursor?: string | null): {
         items: EARS.EntityId[];
@@ -366,7 +368,7 @@ export interface QueryBuilder<E extends string = string> {
     // (undocumented)
     pick<A extends readonly string[]>(fields: A): any[];
     // (undocumented)
-    pickAll(): any[];
+    pickAll(): EntityShape<E>[];
     // (undocumented)
     pickOne<A extends readonly string[]>(f: A): any;
     // (undocumented)
@@ -378,7 +380,7 @@ export interface QueryBuilder<E extends string = string> {
     // (undocumented)
     reverse(): QueryBuilder<E>;
     // (undocumented)
-    where(k: string, v?: unknown): QueryBuilder<E>;
+    where<K extends keyof EntityShape<E> & string>(k: K, v?: EntityShape<E>[K]): QueryBuilder<E>;
     // (undocumented)
     withRole(r: string): QueryBuilder<E>;
 }
