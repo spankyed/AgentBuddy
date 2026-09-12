@@ -171,6 +171,10 @@ export async function action(params: Record<string, any>, services: Services, _z
       persistCodexState(services, threadId, { threadId: activeThreadId, cwd: result.cwd || sessionCwd, approvalMode, sandbox });
     }
 
+    if (!activeThreadId) {
+      throw new Error('Codex did not return a thread id from startThread/resumeThread');
+    }
+
     // Create stream consumer + register
     const { handlers } = createStreamConsumer(
       { services, threadId, codexThreadId: activeThreadId, text, phase },

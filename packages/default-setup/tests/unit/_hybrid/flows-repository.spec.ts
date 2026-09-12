@@ -1,4 +1,5 @@
-import { clearMemory, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { clearMemory } from '@abuddy/sdk/ears/internals';
 import { repository } from '@abuddy/sdk/ears';
 import '@/features/flows/be/repository';
 

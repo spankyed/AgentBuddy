@@ -5,7 +5,7 @@ import { nodeConfigs } from '@abuddy/sdk/fe/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
 export { BaseNode }
-export type { HandleConfig } from '@abuddy/sdk/fe/components/BaseNode.vue'
+export type { HandleConfig } from '@abuddy/sdk/fe/components/node-handles'
 
 export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
   get(_target, type: string | symbol) {

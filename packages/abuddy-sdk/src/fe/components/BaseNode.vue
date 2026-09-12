@@ -124,18 +124,14 @@ export default {
   name: 'BaseNode'
 }
 
-export interface HandleConfig {
-  id: string
-  label?: string
-  offsetY?: number
-  offsetPercent?: number
-}
+export type { HandleConfig } from './node-handles'
 </script>
 
 <script setup lang="ts">
 import { computed, inject, type Component } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
 import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-styles'
+import type { HandleConfig } from './node-handles'
 
 const AddHandle = inject<Component | null>('BaseNodeAddHandle', null)
 

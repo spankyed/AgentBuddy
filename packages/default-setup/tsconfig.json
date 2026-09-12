@@ -4,14 +4,19 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "strict": false,
+    // zod's z.infer degrades to all-optional without this, and boolean-literal
+    // discriminants stop narrowing. Both are load-bearing here.
+    "strictNullChecks": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node", "vitest/globals"],
     "paths": {
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/__generated__/*": ["./src/__generated__/*"],
+      "#generated/*": ["./src/__generated__/*"],
       "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
       "@/extensions/*": ["./src/extensions/*"]
@@ -21,8 +26,20 @@
     "src/**/*.ts", "tests/**/*.ts"
   ],
   "exclude": [
+    // Scaffolding samples for pack authors — illustrative, not compiled code.
     "src/**/*.example.ts",
     "src/_examples/**",
-    "src/defs/**"
+    // Monaco DSL type surfaces. Built separately by rollup-defs.config.mjs
+    // under tsconfig.defs.json, which has its own compiler settings.
+    "src/defs/**",
+    // Search-index implementation is dormant behind the SEARCH_INDEX_FF flag —
+    // every call site in library/be/system.ts is commented out. These three
+    // files import usearch / fastembed / openai, which are not installed
+    // anywhere in the monorepo, so they cannot typecheck. Drop these entries
+    // when the flag is turned on and the deps are added. The sibling
+    // search-index/types/** is still live and stays included.
+    "src/features/library/be/search-index/repository.ts",
+    "src/features/library/be/search-index/service.ts",
+    "src/features/library/be/search-index/config/fastembed-mapping.ts"
   ]
 }

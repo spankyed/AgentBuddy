@@ -10,7 +10,7 @@ import { relationIndex } from '@abuddy/sdk/ears/internals';
 export function generateSchemaInfo(): DatabaseSchemaInfo {
   // Get entity types directly from entityIndex - this includes ALL entities in the system
   const entityTypes = getAllEntityTypes();
-  const entities = entityTypes.map(type => ({ type }));
+  const entities = entityTypes.map(type => ({ type: type as EARS.Entity }));
   
   // Get all attribute kinds that are actually in use from the store
   const attributes = getAllAttributeKinds().map(kind => ({

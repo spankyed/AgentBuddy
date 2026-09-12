@@ -4,14 +4,11 @@ import * as crypto from 'crypto';
 import ts from 'typescript';
 import * as esbuild from 'esbuild';
 
-const DISALLOWED_NODE_PATTERNS = [
-  { pattern: /\brequire\s*\(/, label: 'require()' },
-  { pattern: /\bprocess\b/, label: 'process' },
-  { pattern: /\b__dirname\b/, label: '__dirname' },
-  { pattern: /\b__filename\b/, label: '__filename' },
-  { pattern: /\bBuffer\b/, label: 'Buffer' },
-  { pattern: /\bglobal\b/, label: 'global' },
-];
+const DISALLOWED_GLOBALS = new Set([
+  'require', 'process', '__dirname', '__filename', 'Buffer', 'global',
+]);
+
+const GLOBAL_LABELS: Record<string, string> = { require: 'require()' };
 
 export interface CompileConfig {
   sourceDir: string;
@@ -46,7 +43,7 @@ export interface CompileResult {
 /**
  * Bare specifiers that seed sources may import. These resolve to sandbox-safe
  * SDK source and are inlined into the compiled function body by esbuild; the
- * bundled output is still checked against DISALLOWED_NODE_PATTERNS.
+ * bundled output is still checked for Node-only global references.
  */
 const INLINABLE_PACKAGE_IMPORTS = [/^@abuddy\/sdk\/actions(\/|$)/];
 
@@ -116,14 +113,53 @@ export async function bundleFile(filePath: string): Promise<BundleResult> {
 
 // --- Validation ---
 
+/** True when the identifier is a value reference rather than a name that merely spells the same. */
+function isGlobalReference(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (!parent) return true;
+
+  // obj.process — a property, not the global
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false;
+  if (ts.isQualifiedName(parent) && parent.right === node) return false;
+
+  // { process: ... } and { process() {} } — a key, not the global
+  if ((ts.isPropertyAssignment(parent) || ts.isPropertySignature(parent) ||
+       ts.isMethodDeclaration(parent) || ts.isGetAccessorDeclaration(parent) ||
+       ts.isSetAccessorDeclaration(parent)) && parent.name === node) return false;
+
+  // A local declaration of that name shadows the global
+  if ((ts.isVariableDeclaration(parent) || ts.isParameter(parent) ||
+       ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) ||
+       ts.isClassDeclaration(parent) || ts.isClassExpression(parent) ||
+       ts.isBindingElement(parent)) && parent.name === node) return false;
+
+  return true;
+}
+
+/**
+ * Flags references to Node-only globals in the bundled output.
+ *
+ * Checks the AST rather than the raw text: the bundle keeps comments and
+ * string literals, so matching text flags prose such as "left over from a
+ * previous process" or a `description` that happens to use the word.
+ */
 function validateBundledOutput(bundledJs: string, filePath: string): string[] {
-  const errors: string[] = [];
-  for (const { pattern, label } of DISALLOWED_NODE_PATTERNS) {
-    if (pattern.test(bundledJs)) {
-      errors.push(`${filePath}: contains disallowed pattern: ${label}`);
+  const sourceFile = ts.createSourceFile(
+    'bundle.js', bundledJs, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS,
+  );
+
+  const found = new Set<string>();
+  function visit(node: ts.Node) {
+    if (ts.isIdentifier(node) && DISALLOWED_GLOBALS.has(node.text) && isGlobalReference(node)) {
+      found.add(node.text);
     }
+    ts.forEachChild(node, visit);
   }
-  return errors;
+  ts.forEachChild(sourceFile, visit);
+
+  return [...found].map(
+    name => `${filePath}: contains disallowed pattern: ${GLOBAL_LABELS[name] ?? name}`,
+  );
 }
 
 // --- TS AST Extraction ---

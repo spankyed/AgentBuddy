@@ -10,9 +10,9 @@ import {
   createEntityWithDefaults, updateEntity, exists,
   RepositoryError, RepositoryErrorCode,
   queryHelpers, transactionHelpers,
-  getAttr, clearMemory,
-  edgeStore, relationIndex,
+  getAttr,
 } from '@abuddy/sdk/ears';
+import { clearMemory, edgeStore, relationIndex } from '@abuddy/sdk/ears/internals';
 import { EARS } from '../../src/__generated__/ears';
 
 describe('SDK runtime — host module registry', () => {

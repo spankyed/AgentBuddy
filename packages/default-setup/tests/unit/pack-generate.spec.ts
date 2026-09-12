@@ -91,7 +91,7 @@ describe('abuddy generate-entries', () => {
     expect(output).toContain("export type AttrKind = import('@abuddy/sdk').EARS.AttrKind");
   });
 
-  it('emits BaseEntity interface and AllEntities compat export', async () => {
+  it('emits BaseEntity re-export and AllEntities compat export', async () => {
     writeManifest({
       id: 'test-pack',
       name: 'Test Pack',
@@ -103,9 +103,10 @@ describe('abuddy generate-entries', () => {
     await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
-    expect(output).toContain('export interface BaseEntity');
-    expect(output).toContain('id: EARS.EntityId');
-    expect(output).toContain('entityType: EARS.Entity');
+    // BaseEntity is re-exported from the SDK rather than redeclared per pack,
+    // so the shape stays in one place.
+    expect(output).toContain('export type BaseEntity');
+    expect(output).toContain("import('@abuddy/sdk').BaseEntity");
     expect(output).toContain('export const AllEntities = EARS.Entity');
     expect(output).toContain('export type AllEntities = EARS.Entity');
   });

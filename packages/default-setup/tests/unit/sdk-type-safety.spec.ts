@@ -14,10 +14,9 @@ import {
   qx, tx, createEntity,
   findById, findAll, findWhere, findFirst,
   createEntityWithDefaults,
-  filterSystemFields,
-  clearMemory,
-  type QueryBuilder, type TransactionBuilder, type Logger,
+  type QueryBuilder, type TransactionBuilder,
 } from '@abuddy/sdk/ears';
+import { clearMemory, filterSystemFields, type Logger } from '@abuddy/sdk/ears/internals';
 import { createLogger } from '@abuddy/sdk/logger';
 import {
   loadJSON,

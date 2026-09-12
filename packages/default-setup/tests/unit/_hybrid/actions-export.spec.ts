@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { clearMemory, repository } from '@abuddy/sdk/ears';
+import { repository } from '@abuddy/sdk/ears';
+import { clearMemory } from '@abuddy/sdk/ears/internals';
 import '@/features/actions/be/repository';
 import { exportActions } from '@/features/actions/be/repository/export-actions';
 import { actionFixtures } from './helpers/action-fixtures';

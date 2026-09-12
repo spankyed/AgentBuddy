@@ -206,7 +206,7 @@ export class FileSystemRepository {
       const stats = await fs.stat(validPath)
       
       if (stats.isDirectory()) {
-        await fs.rmdir(validPath, { recursive: true })
+        await fs.rm(validPath, { recursive: true, force: true })
       } else {
         await fs.unlink(validPath)
       }

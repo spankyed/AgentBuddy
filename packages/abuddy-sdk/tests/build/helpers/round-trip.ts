@@ -5,7 +5,7 @@ import { compile } from '../../../src/build/compilers/flow-compiler';
 import type { FlowEARS } from '../../../src/build/compilers/flow-compiler';
 import { exportFlowsToDSL } from '../../../src/build/compilers/flow-to-dsl';
 import { clearMemory } from '../../../src/ears/attribute-storage';
-import { tx } from '../../../src/ears/runtime';
+import { tx } from '../../../src/ears/index';
 import type { EARS } from '../../../src/types/entities';
 import type { FlowDSL } from '../../../src/build/compilers/flow-types';
 import { loadCompiledRows } from './load-compiled';
@@ -16,7 +16,7 @@ export function createRoundTrip(ears: FlowEARS, rootFlowRole: string) {
 
   return {
     beforeEach() {
-      setupInMemoryEARS();
+      setupInMemoryEARS(Object.values(ears.Entity));
       clearMemory();
       tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsl-rt-'));
     },

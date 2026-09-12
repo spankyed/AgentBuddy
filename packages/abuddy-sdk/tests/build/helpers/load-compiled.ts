@@ -1,4 +1,4 @@
-import { tx } from '../../../src/ears/runtime';
+import { tx } from '../../../src/ears/index';
 import type { EARS } from '../../../src/types/entities';
 import type { CompiledRows } from '../../../src/build/compilers/flow-compiler';
 

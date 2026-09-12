@@ -4,8 +4,6 @@
 
 ```ts
 
-// Warning: (ae-forgotten-export) The symbol "EARS" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function ancestors(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
 
@@ -14,6 +12,18 @@ export const b64Decode: (s: string) => number;
 
 // @public (undocumented)
 export const b64Encode: (n: number) => string;
+
+// @public (undocumented)
+export interface BaseEntity {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    entityType: EARS.Entity;
+    // (undocumented)
+    id: EARS.EntityId;
+    // (undocumented)
+    updatedAt?: number;
+}
 
 // @public (undocumented)
 export interface Blueprint {
@@ -45,17 +55,27 @@ export const bp: (entity: EARS.Entity) => {
 // @public (undocumented)
 export function countEntities(entityType: EARS.Entity): number;
 
-// @public (undocumented)
-export const createEntity: (t: EARS.Entity) => EARS.EntityId;
-
-// @public (undocumented)
-export function createEntityWithDefaults<T extends {
+// @public
+export interface CreatedEntityFields {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
     entityType: EARS.Entity;
-    shortCode?: string;
-    label?: string;
-}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId): T & {
+    // (undocumented)
     id: EARS.EntityId;
-};
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    shortCode: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public
+export const createEntity: <E extends EARS.Entity>(t: E) => EARS.EntityId<E extends keyof EntityShapeRegistry ? E : string>;
+
+// @public
+export function createEntityWithDefaults<T extends Record<string, any> = Record<string, any>>(entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId): T & CreatedEntityFields;
 
 // @public (undocumented)
 export function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
@@ -67,23 +87,118 @@ export function descendants(start: EARS.EntityId, relKind: EARS.RelKind): EARS.E
 export function destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void;
 
 // @public (undocumented)
+export namespace EARS {
+    const // (undocumented)
+    Entity: {
+        readonly Relation: "Relation";
+        readonly Node: "Node";
+    };
+    // (undocumented)
+    export interface AttributePayloads {
+        // (undocumented)
+        [key: string]: any;
+        // (undocumented)
+        [AttrKindValues.RelationDetails]: RelationDetail;
+        // (undocumented)
+        [AttrKindValues.Role]: RoleKind;
+    }
+    // (undocumented)
+    export type AttributeStore = Record<string, AttributeTypeMap>;
+    const // (undocumented)
+    RelKind: {
+        readonly INSTANCE_OF: "instance_of";
+        readonly Custom: <T extends string>(k: T) => T & RelKind;
+    };
+    // (undocumented)
+    export type AttributeType = AttrKind;
+    // (undocumented)
+    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
+    const // (undocumented)
+    RoleKind: {
+        readonly Custom: <T extends string>(k: T) => T & RoleKind;
+    };
+    // (undocumented)
+    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+    const // (undocumented)
+    AttrKindValues: {
+        readonly Role: "role";
+        readonly RelationDetails: "relationDetails";
+    };
+    const // (undocumented)
+    AttrKind: {
+        readonly Custom: <T extends string>(k: T) => T & AttrKind;
+        readonly Role: "role";
+        readonly RelationDetails: "relationDetails";
+    };
+    // (undocumented)
+    export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
+    // (undocumented)
+    export type Blueprint = {
+        entity: EARS.Entity;
+        attrs?: Record<string, unknown>;
+        roles?: EARS.RoleKind[];
+        uniqueRoles?: EARS.RoleKind[];
+        rels?: {
+            kind: EARS.RelKind;
+            target: Blueprint | EARS.EntityId;
+            info?: unknown;
+        }[];
+    };
+    // (undocumented)
+    export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
+    // (undocumented)
+    export type EntityId<E extends string = string> = `${string}-${string}` & {
+        readonly __entity?: E;
+    };
+    // (undocumented)
+    export interface RelationDetail {
+        // (undocumented)
+        info?: AttributeValue;
+        // (undocumented)
+        relationType: RelKind;
+        // (undocumented)
+        sourceEntity: EntityId;
+        // (undocumented)
+        targetEntity: EntityId;
+    }
+    // (undocumented)
+    export type RelKind = string & {};
+    // (undocumented)
+    export type RoleKind = string & {};
+}
+
+// @public (undocumented)
 export interface EARSRuntimeDeps {
     // (undocumented)
     isEntityType: (v: string) => boolean;
-    // Warning: (ae-forgotten-export) The symbol "PersistenceSink" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     persistence?: PersistenceSink;
+}
+
+// @public
+export type EntityShape<E extends string> = E extends keyof EntityShapeRegistry ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
+
+// @public
+export interface EntityShapeRegistry {
 }
 
 // @public (undocumented)
 export function exists(id: EARS.EntityId): boolean;
 
 // @public (undocumented)
+export function findAll<E extends EARS.Entity>(entityType: E): EntityShape<E>[];
+
+// @public (undocumented)
 export function findAll<T>(entityType: EARS.Entity): T[];
 
 // @public (undocumented)
+export function findById<E extends string>(id: EARS.EntityId<E>): EntityShape<E> | undefined;
+
+// @public (undocumented)
 export function findById<T>(id: EARS.EntityId): T | undefined;
+
+// @public (undocumented)
+export function findByIdRaw<E extends string>(id: EARS.EntityId<E>): EntityShape<E> | undefined;
 
 // @public (undocumented)
 export function findByIdRaw<T>(id: EARS.EntityId): T | undefined;
@@ -92,10 +207,16 @@ export function findByIdRaw<T>(id: EARS.EntityId): T | undefined;
 export function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
 
 // @public (undocumented)
+export function findFirst<E extends EARS.Entity>(entityType: E, field: string, value: any): EntityShape<E> | undefined;
+
+// @public (undocumented)
 export function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
 
 // @public (undocumented)
 export function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
+
+// @public (undocumented)
+export function findWhere<E extends EARS.Entity>(entityType: E, field: string, value: any): EntityShape<E>[];
 
 // @public (undocumented)
 export function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
@@ -159,6 +280,37 @@ export function linkSymmetric(a: EARS.EntityId, b: EARS.EntityId, kind: EARS.Rel
 
 // @public (undocumented)
 export function lowestCommonAncestor(a: EARS.EntityId, b: EARS.EntityId, treeKind: EARS.RelKind): EARS.EntityId | null;
+
+// @public (undocumented)
+export interface PersistenceSink {
+    // (undocumented)
+    close?(): void;
+    // (undocumented)
+    getErrorStats?(): {
+        errorCount: number;
+        lastError: any;
+    };
+    // (undocumented)
+    onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
+    // (undocumented)
+    onCreateEntity(entityId: string, entityType?: string): void;
+    // (undocumented)
+    onDestroyEntity(entityId: string): void;
+    // (undocumented)
+    onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
+    // (undocumented)
+    onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]): void;
+    // (undocumented)
+    onPutAttrArray?(kind: string, entityId: string, values: unknown[]): void;
+    // (undocumented)
+    onRemoveRelation(relId: string): void;
+    // (undocumented)
+    onUpdateRelation(relId: string, patch: {
+        src?: string;
+        tgt?: string;
+        info?: unknown;
+    }): void;
+}
 
 // @public (undocumented)
 export function prepareEntity<T extends {
@@ -238,90 +390,23 @@ export const queryHelpers: {
     findAll: typeof qh.findAll;
 };
 
+// @public
+export function qx(): QueryBuilder<string>;
+
 // @public (undocumented)
-export const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[]) => {
-    readonly ofType: (t: EARS.Entity) => /*elided*/ any;
-    readonly inIds: (sub: readonly EARS.EntityId[]) => /*elided*/ any;
-    readonly where: (k: EARS.AttrKind | string, v?: unknown) => /*elided*/ any;
-    readonly withRole: (r: string) => /*elided*/ any;
-    readonly relatedTo: (target: EARS.EntityId) => /*elided*/ any;
-    readonly related: (kind: string, other: EARS.EntityId, asSrc?: boolean) => /*elided*/ any;
-    readonly linksTo: (relKinds: MaybeArr<string>, tgtType?: MaybeArr<EARS.Entity>, asSrc?: boolean) => /*elided*/ any;
-    readonly links: <K extends string>(relKinds: K | readonly K[], tgtType?: MaybeArr<EARS.Entity>, asSrc?: boolean) => Array<{
-        relation: K;
-        id: EARS.EntityId;
-    }>;
-    readonly edgeIds: (kinds?: string | readonly string[], asSrc?: boolean) => EARS.EntityId[];
-    readonly pick: <A extends readonly string[]>(fields: A) => ({
-        id: EARS.EntityId;
-    } & { [K in A[number]]: unknown; })[];
-    readonly pickOne: (f: readonly string[]) => any;
-    readonly pickAll: () => ({
-        id: EARS.EntityId;
-    } & {
-        [x: string]: unknown;
-    })[];
-    readonly linksPick: <K extends string, A extends readonly string[]>(relKinds: K | readonly K[], fields: A, tgtType?: MaybeArr<EARS.Entity>) => any[];
-    readonly orderBy: (field: string, dir?: "asc" | "desc") => /*elided*/ any;
-    readonly reverse: () => /*elided*/ any;
-    readonly limit: (n: number) => /*elided*/ any;
-    readonly page: (size: number, cursor?: string | null) => {
-        readonly items: EARS.EntityId<string>[];
-        readonly nextCursor: string | null;
-    };
-    readonly distinct: (field?: string) => /*elided*/ any;
-    readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => EARS.EntityId<string>[];
-    readonly id: () => EARS.EntityId<string>;
-    readonly count: () => number;
-    readonly first: () => EARS.EntityId<string>;
-    readonly last: () => EARS.EntityId<string> | null;
-    readonly exists: () => boolean;
-    readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
-    readonly forEach: (fn: (i: EARS.EntityId) => void) => {
-        readonly ofType: (t: EARS.Entity) => /*elided*/ any;
-        readonly inIds: (sub: readonly EARS.EntityId[]) => /*elided*/ any;
-        readonly where: (k: EARS.AttrKind | string, v?: unknown) => /*elided*/ any;
-        readonly withRole: (r: string) => /*elided*/ any;
-        readonly relatedTo: (target: EARS.EntityId) => /*elided*/ any;
-        readonly related: (kind: string, other: EARS.EntityId, asSrc?: boolean) => /*elided*/ any;
-        readonly linksTo: (relKinds: MaybeArr<string>, tgtType?: MaybeArr<EARS.Entity>, asSrc?: boolean) => /*elided*/ any;
-        readonly links: <K extends string>(relKinds: K | readonly K[], tgtType?: MaybeArr<EARS.Entity>, asSrc?: boolean) => Array<{
-            relation: K;
-            id: EARS.EntityId;
-        }>;
-        readonly edgeIds: (kinds?: string | readonly string[], asSrc?: boolean) => EARS.EntityId[];
-        readonly pick: <A extends readonly string[]>(fields: A) => ({
-            id: EARS.EntityId;
-        } & { [K in A[number]]: unknown; })[];
-        readonly pickOne: (f: readonly string[]) => any;
-        readonly pickAll: () => ({
-            id: EARS.EntityId;
-        } & {
-            [x: string]: unknown;
-        })[];
-        readonly linksPick: <K extends string, A extends readonly string[]>(relKinds: K | readonly K[], fields: A, tgtType?: MaybeArr<EARS.Entity>) => any[];
-        readonly orderBy: (field: string, dir?: "asc" | "desc") => /*elided*/ any;
-        readonly reverse: () => /*elided*/ any;
-        readonly limit: (n: number) => /*elided*/ any;
-        readonly page: (size: number, cursor?: string | null) => {
-            readonly items: EARS.EntityId<string>[];
-            readonly nextCursor: string | null;
-        };
-        readonly distinct: (field?: string) => /*elided*/ any;
-        readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => EARS.EntityId<string>[];
-        readonly id: () => EARS.EntityId<string>;
-        readonly count: () => number;
-        readonly first: () => EARS.EntityId<string>;
-        readonly last: () => EARS.EntityId<string> | null;
-        readonly exists: () => boolean;
-        readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
-        readonly forEach: /*elided*/ any;
-        readonly reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => T;
-    };
-    readonly reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => T;
-};
+export function qx(seed: EARS.EntityId | readonly EARS.EntityId[]): QueryBuilder<string>;
+
+// @public (undocumented)
+export function qx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
+
+// @public (undocumented)
+export function qx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
+
+// @public (undocumented)
+export function qx(seed?: QxSeed): QueryBuilder<string>;
+
+// @public (undocumented)
+export type QxSeed = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[];
 
 // @public (undocumented)
 export function registerRepository(name: string, value: any): void;
@@ -515,7 +600,6 @@ export function wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: 
 
 // Warnings were encountered during analysis:
 //
-// dist/types/ears/query.d.ts:12:5 - (ae-forgotten-export) The symbol "MaybeArr" needs to be exported by the entry point index.d.ts
 // dist/types/ears/repository.d.ts:11:5 - (ae-forgotten-export) The symbol "qh" needs to be exported by the entry point index.d.ts
 // dist/types/ears/repository.d.ts:16:5 - (ae-forgotten-export) The symbol "th" needs to be exported by the entry point index.d.ts
 

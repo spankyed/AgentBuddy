@@ -1,7 +1,7 @@
 export {
   type EARSRuntimeDeps, type QueryBuilder, type TransactionBuilder, type SafeLinkOptions,
 } from './runtime';
-export { qx, b64Encode, b64Decode } from './query';
+export { qx, b64Encode, b64Decode, type QxSeed } from './query';
 export { tx } from './transaction';
 export {
   createEntity, getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelation,
@@ -21,6 +21,11 @@ export {
 export {
   wouldCreateCycle, getTimestamp, generateShortCode, generateLabelWithCount,
 } from './helpers';
+// Types that appear in the signatures above, so pack authors can name them.
+export type { CreatedEntityFields } from './transaction-helpers';
+export type { PersistenceSink } from './runtime';
+export { EARS } from '../types/entities';
+export type { EntityShape, EntityShapeRegistry, BaseEntity } from '../types/entities';
 export { bp, spawn, type Blueprint } from './blueprint';
 export {
   descendants, ancestors, rootParent, linkSymmetric,

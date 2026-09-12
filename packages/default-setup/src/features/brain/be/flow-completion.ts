@@ -2,6 +2,13 @@ import { stepRegistry } from '@abuddy/sdk/steps';
 
 export type TriggerDescriptor = {
   triggerType: string;
+  /**
+   * Carried by real trigger nodes but deliberately ignored here — persistence
+   * is decided by the step's trigger facet alone. Declared so callers (and the
+   * tests that pin this behaviour) can pass a whole node.
+   */
+  scope?: string;
+  eventType?: string;
 };
 
 type FlowCompletionContext = {

@@ -9,6 +9,7 @@ import {
 
 import { relationIndex } from './relation-index';
 import { EARS } from '../types/entities';
+import type { QueryBuilder } from './runtime';
 import { getEntityTypeChecker } from './runtime';
 
 type MaybeArr<T> = T | readonly T[];
@@ -43,13 +44,13 @@ export const b64Decode = (s: string) => {
 const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
 
-export const qx = (
-  seed?:
-    | EARS.EntityId
-    | EARS.Entity
-    | readonly EARS.Entity[]
-    | readonly EARS.EntityId[],
-) => {
+export type QxSeed =
+  | EARS.EntityId
+  | EARS.Entity
+  | readonly EARS.Entity[]
+  | readonly EARS.EntityId[];
+
+const qxImpl = (seed?: QxSeed) => {
   const resolveSeed = (): EARS.EntityId[] => {
     if (seed === undefined) return [...getAllEntities()];
     if (Array.isArray(seed)) {
@@ -68,7 +69,7 @@ export const qx = (
 
   let ids: EARS.EntityId[] = resolveSeed();
 
-  const setIds = (next: EARS.EntityId[]) => qx(next);
+  const setIds = (next: EARS.EntityId[]) => qxImpl(next);
 
   const self = {
     ofType: (t: EARS.Entity) => setIds(ids.filter(hasPrefix(t))),
@@ -116,7 +117,7 @@ export const qx = (
             if (i !== src) out.add(i);
           });
       }
-      return qx([...out]);
+      return qxImpl([...out]);
     },
 
     links: <K extends string>(
@@ -180,7 +181,7 @@ export const qx = (
       const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
       return self.links(relKinds, tgtType)
         .map(({ relation, id }) => {
-          const picked = qx(id).pickOne(fields);
+          const picked = qxImpl(id).pickOne(fields);
           if (!picked) return null;
           return {
             ...(manyKinds ? { relation } : {}),
@@ -250,7 +251,7 @@ export const qx = (
         }
       });
       const result = new Map<unknown, ReturnType<typeof qx>>();
-      groups.forEach((ids, key) => result.set(key, qx(ids)));
+      groups.forEach((ids, key) => result.set(key, qxImpl(ids)));
       return result;
     },
 
@@ -268,3 +269,21 @@ export const qx = (
 
   return self;
 };
+
+/**
+ * Seeded query entry point.
+ *
+ * Overloads exist so an entity type threads its name into `QueryBuilder<E>`
+ * (and from there into the shape registry), while id seeds stay untyped. The
+ * id overload precedes the entity-type one because `EntityId` is a template
+ * literal and `EARS.Entity` is an open string.
+ */
+export function qx(): QueryBuilder<string>;
+export function qx(seed: EARS.EntityId | readonly EARS.EntityId[]): QueryBuilder<string>;
+export function qx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
+export function qx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
+// Catch-all for seeds that may be undefined at the call site.
+export function qx(seed?: QxSeed): QueryBuilder<string>;
+export function qx(seed?: QxSeed): QueryBuilder<string> {
+  return qxImpl(seed) as unknown as QueryBuilder<string>;
+}

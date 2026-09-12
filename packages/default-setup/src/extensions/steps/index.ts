@@ -5,7 +5,7 @@ export { switchStep } from './switch';
 export { fireStep } from './fire';
 export { transformStep } from './transform';
 export { queryStep } from './query';
-export { flowStep } from './flow';
+export { flowStep } from './subflow';
 export { createStep } from './create';
 export { updateStep } from './update';
 export { keepAliveStep } from './keep-alive';

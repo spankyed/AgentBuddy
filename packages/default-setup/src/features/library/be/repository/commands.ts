@@ -93,7 +93,7 @@ export const libraryCommands = {
 
     // Find collections that contain this document
     const allCollections = qx(EARS.Entity.Collection).pickAll()
-    const collections = []
+    const collections: typeof allCollections = []
     for (const col of allCollections) {
       const docs = qx(col.id as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)

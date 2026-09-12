@@ -19,16 +19,27 @@ export function prepareEntity<T extends { entityType: EARS.Entity }>(
   } as Omit<T, 'id'>;
 }
 
-export function createEntityWithDefaults<T extends {
+/** Fields createEntityWithDefaults always writes, on top of the caller's data. */
+export interface CreatedEntityFields {
+  id: EARS.EntityId;
   entityType: EARS.Entity;
-  shortCode?: string;
-  label?: string;
-}>(
+  shortCode: string;
+  label: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * T is the caller's own attribute shape — it need not declare the fields this
+ * function fills in (entityType, shortCode, label, timestamps); those are added
+ * to the return type instead.
+ */
+export function createEntityWithDefaults<T extends Record<string, any> = Record<string, any>>(
   entityType: EARS.Entity,
   data: Partial<T>,
   prefix?: string,
   providedId?: EARS.EntityId,
-): T & { id: EARS.EntityId } {
+): T & CreatedEntityFields {
   const ts = getTimestamp();
   const shortCode = data.shortCode || generateShortCode(entityType, prefix || entityType.substring(0, 3).toUpperCase());
   const label = data.label || generateLabelWithCount(`New ${entityType}`, entityType);
@@ -46,7 +57,7 @@ export function createEntityWithDefaults<T extends {
     ? tx(providedId, true).batchPut(entity).id()
     : tx(entityType).batchPut(entity).id();
 
-  return { ...entity, id } as T & { id: EARS.EntityId };
+  return { ...entity, id } as unknown as T & CreatedEntityFields;
 }
 
 export function updateEntity(

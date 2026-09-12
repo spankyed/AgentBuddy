@@ -59,9 +59,9 @@ type InferFindById<E extends string> =
 describe('Branded EntityId — findById inference', () => {
   it('findById with branded EntityId<"Action"> returns EntityShape<"Action">', () => {
     type Result = InferFindById<'Action'>;
-    expectTypeOf<Result>().toHaveProperty('label');
-    expectTypeOf<Result>().toHaveProperty('actionFn');
-    expectTypeOf<Result>().toHaveProperty('id');
+    expectTypeOf<Result>().exclude<undefined>().toHaveProperty('label');
+    expectTypeOf<Result>().exclude<undefined>().toHaveProperty('actionFn');
+    expectTypeOf<Result>().exclude<undefined>().toHaveProperty('id');
   });
 
   it('findById overload: branded id narrows to EntityShape', () => {

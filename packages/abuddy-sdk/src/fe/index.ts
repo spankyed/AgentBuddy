@@ -1,4 +1,8 @@
-export type { RouteComponents } from './plugin'
+/// <reference path="./electron-api.d.ts" />
+// Types describing what a pack contributes — pack-facing, unlike the
+// registration functions in ./host.
+export type { Plugin, RouteComponents } from './plugin'
+export type { PackFERegistration } from './pack-store'
 export { pasteIntoElement } from './input-paste'
 export { useActorSystem } from './composables/useActorSystem'
 export { useApplicationActor } from './composables/useApplicationActor'

@@ -188,6 +188,7 @@ function makeMockStream() {
     lines,
     write(value: unknown) {
       writes.push(value)
+      return true
     },
     endInput() {
       endInputCalls++

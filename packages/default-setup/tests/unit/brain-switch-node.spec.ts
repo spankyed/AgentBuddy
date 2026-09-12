@@ -59,6 +59,12 @@ function makeContext(eventData: Record<string, unknown> = {}): ExecutionContext 
       data: eventData,
     },
     steps: [],
+    // The switch handler does not reach for runtime services; stubbed so the
+    // fixture satisfies ExecutionContext.
+    runtime: {
+      getFlowActor: () => undefined,
+      getAppServices: () => ({}),
+    },
   }
 }
 

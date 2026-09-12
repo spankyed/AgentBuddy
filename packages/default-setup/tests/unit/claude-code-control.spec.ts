@@ -132,7 +132,7 @@ describe('createControlRouter', () => {
 
   describe('dedupe', () => {
     it('does not re-dispatch a handler for a repeated request_id', async () => {
-      const handler = vi.fn(async () => ({ behavior: 'allow' }))
+      const handler = vi.fn(async () => ({ behavior: 'allow' as const, updatedInput: {} }))
       const router = createControlRouter({ onPermissionRequest: handler })
 
       const line = makeRequest('same-id', 'can_use_tool', {
