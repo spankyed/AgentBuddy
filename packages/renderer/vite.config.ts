@@ -23,11 +23,15 @@ function builtInPacksPlugin(): Plugin {
   const VIRTUAL_ID = 'virtual:built-in-packs';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
 
-  const feEntries = packs
-    .filter(p => p.entryPath && existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')))
-    .map(p => `  '${p.id}': () => import('@${p.id}/__generated__/pack-entry-fe'),`)
+  const eligiblePacks = packs
+    .filter(p => p.entryPath && existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')));
+  const staticImports = eligiblePacks
+    .map((p, i) => `import _pack${i} from '@${p.id}/__generated__/pack-entry-fe';`)
     .join('\n');
-  const virtualContent = `export default {\n${feEntries}\n};\n`;
+  const loaderEntries = eligiblePacks
+    .map((p, i) => `  '${p.id}': () => Promise.resolve({ default: _pack${i} }),`)
+    .join('\n');
+  const virtualContent = `${staticImports}\nexport default {\n${loaderEntries}\n};\n`;
 
   return {
     name: 'built-in-packs',
@@ -81,6 +85,9 @@ function hostDepsPlugin(): Plugin {
 
 export default defineConfig({
   base: './',
+  build: {
+    modulePreload: false,
+  },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },

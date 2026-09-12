@@ -123,6 +123,7 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
         try {
           const mod = withHostResolution(() => esmRequire(devEntry));
           if (mod.registration) {
+            mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
             registerPack(mod.registration);
             loaded.push(pack);
             logger.info(`Loaded built-in pack (dev): ${pack.id}`);
@@ -146,6 +147,7 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
         logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
       }
+      mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
       registerPack(mod.registration);
       loaded.push(pack);
       logger.info(`Loaded built-in pack: ${pack.id}`);
@@ -222,7 +224,15 @@ function loadSystemFromCJS(
   entry: string,
   packDir: string,
 ): { machine: import('xstate').AnyStateMachine; events: Set<string> } | null {
-  const fullPath = path.resolve(packDir, entry);
+  // Prefer compiled CJS in dist/systems/ (produced by `abuddy build`).
+  // Falls back to raw source for dev mode / backwards compat.
+  const baseName = path.basename(entry).replace(/\.[^.]+$/, '');
+  const featureId = entry.split('/').find((_s, i, parts) => parts[i + 1] === 'be') || baseName;
+  const compiledPath = path.resolve(packDir, 'dist', 'systems', `${featureId}.cjs`);
+  const fullPath = fs.existsSync(compiledPath)
+    ? compiledPath
+    : path.resolve(packDir, entry);
+
   if (!fullPath.startsWith(packDir + path.sep)) {
     logger.warn(`System entry escapes pack directory: ${entry}`);
     return null;
@@ -235,11 +245,13 @@ function loadSystemFromCJS(
   try {
     return withHostResolution(() => {
       const mod = esmRequire(fullPath);
-      const machine = mod.default || mod.system || mod.machine;
-      if (!machine) {
+      const raw = mod.default || mod.system || mod.machine;
+      if (!raw) {
         logger.warn(`No machine export found in ${entry}`);
         return null;
       }
+      // Unwrap SystemEntry pattern ({ spec, machine }) if present
+      const machine = raw.machine ?? raw;
       return { machine, events: new Set<string>(machine.events || []) };
     });
   } catch (err) {
@@ -279,14 +291,15 @@ export function loadSingleExternalPack(
 
   const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
 
-  if (manifest.plugins) {
-    for (const plugin of manifest.plugins) {
+  const pluginEntries = manifest.plugins ?? manifest.features;
+  if (pluginEntries) {
+    for (const plugin of pluginEntries) {
       if (!plugin.system?.entry) continue;
 
       const system = loadSystemFromCJS(plugin.system.entry, dir);
       if (system) {
-        if (plugin.system.events?.incoming) {
-          for (const evt of plugin.system.events.incoming) {
+        if ('events' in (plugin.system as Record<string, unknown>) && (plugin.system as any).events?.incoming) {
+          for (const evt of (plugin.system as any).events.incoming) {
             system.events.add(evt);
           }
         }
@@ -363,7 +376,8 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {
     const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => {
-      const pluginDef = pack.manifest.plugins?.find(p => p.id === featureId);
+      const entries = pack.manifest.plugins ?? pack.manifest.features;
+      const pluginDef = entries?.find(p => p.id === featureId);
       return {
         id: `${pack.manifest.id}.${featureId}`,
         machine: sys.machine,

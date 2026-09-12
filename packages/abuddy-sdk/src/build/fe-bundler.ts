@@ -32,7 +32,7 @@ function generateGlobalProxy(globalKey: string, namedExports: string[]): string 
   for (const name of namedExports) {
     lines.push(`export const ${name} = __m.${name};`);
   }
-  lines.push(`export default __m;`);
+  lines.push(`export default __m.default;`);
   return lines.join('\n');
 }
 

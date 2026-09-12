@@ -7,6 +7,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '../../build';
 import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
+import { bundlePackSystems } from '../../build/be-bundler';
 import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
@@ -95,6 +96,14 @@ export async function build(args: string[]) {
       for (const w of result.warnings) {
         console.log(`  ! ${w}`);
       }
+    }
+  }
+
+  // ── BE system compilation ────────────────────────────────────────────
+  if (!manifest.builtIn) {
+    const { compiled } = await bundlePackSystems(manifest, root, outputDir);
+    if (compiled.length > 0) {
+      console.log(`  systems: ${compiled.join(', ')}`);
     }
   }
 
