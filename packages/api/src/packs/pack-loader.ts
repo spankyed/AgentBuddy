@@ -30,6 +30,7 @@ import * as _sdkFramework from '@abuddy/sdk/framework';
 import * as _sdkHelpers from '@abuddy/sdk/helpers';
 import * as _sdkPacks from '@abuddy/sdk/packs';
 import * as _sdkUtils from '@abuddy/sdk/utils';
+import * as _sdkUtilsPure from '@abuddy/sdk/utils/pure';
 import * as _sdkRpc from '@abuddy/sdk/rpc';
 import * as _sdkIds from '@abuddy/sdk/ids';
 import * as _sdkLogger from '@abuddy/sdk/logger';
@@ -54,6 +55,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/helpers': _sdkHelpers,
   '@abuddy/sdk/packs': _sdkPacks,
   '@abuddy/sdk/utils': _sdkUtils,
+  '@abuddy/sdk/utils/pure': _sdkUtilsPure,
   '@abuddy/sdk/rpc': _sdkRpc,
   '@abuddy/sdk/ids': _sdkIds,
   '@abuddy/sdk/logger': _sdkLogger,
