@@ -58,7 +58,9 @@ export const ${camel}System = setup({
   },
 });
 
-export const ${camel}Entry: SystemEntry = { spec: ${camel}Spec, machine: ${camel}System };
+const ${camel}Entry: SystemEntry = { spec: ${camel}Spec, machine: ${camel}System };
+
+export default ${camel}Entry;
 `;
 
 const TYPES = (pascal: string) => `export interface ${pascal}ConnectedData {
@@ -177,7 +179,7 @@ export async function addFeature(args: string[], root: string) {
   addFeatureToManifest(manifest, {
     id: name,
     settings: `src/features/${name}/settings.ts`,
-    system: { entry: `src/features/${name}/be/system.ts`, exportName: `${camel}Entry` },
+    system: { entry: `src/features/${name}/be/system.ts` },
     plugin: { entry: `src/features/${name}/fe/plugin.ts`, label, icon },
     services: {},
   });

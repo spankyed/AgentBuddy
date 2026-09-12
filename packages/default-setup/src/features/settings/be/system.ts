@@ -452,4 +452,6 @@ export const settingsSystem = setup({
   },
 });
 
-export const settingsEntry: SystemEntry = { spec: settingsSpec, machine: settingsSystem };
+const settingsEntry: SystemEntry = { spec: settingsSpec, machine: settingsSystem };
+
+export default settingsEntry;

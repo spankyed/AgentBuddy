@@ -43,8 +43,8 @@ export interface PackFeatureEntry {
   typesEntry?: string;
   earlySystem?: boolean;
   system?: {
+    /** Backend system module; must default-export its SystemEntry. */
     entry: string;
-    exportName: string;
     outgoingEventsType?: string;
   };
   plugin?: {

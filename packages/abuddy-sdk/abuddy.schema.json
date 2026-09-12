@@ -4,7 +4,11 @@
   "title": "AgentBuddy Pack Manifest",
   "description": "Configuration manifest for an AgentBuddy pack. Declares metadata, features, entities, services, extensions, seeds, and build-time codegen inputs.",
   "type": "object",
-  "required": ["id", "name", "version"],
+  "required": [
+    "id",
+    "name",
+    "version"
+  ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -43,26 +47,37 @@
     },
     "dependencies": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references."
     },
     "permissions": {
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["ears", "llm", "filesystem", "network", "terminal"]
+        "enum": [
+          "ears",
+          "llm",
+          "filesystem",
+          "network",
+          "terminal"
+        ]
       },
       "description": "Capabilities this pack requires from the host."
     },
-
     "entities": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers."
     },
     "relKinds": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers."
     },
     "partitionPolicy": {
@@ -71,12 +86,16 @@
       "properties": {
         "excludedEntityTypes": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Entity types excluded from persistence (in-memory only)."
         },
         "secretEntityTypes": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Entity types routed to the secrets store."
         }
       },
@@ -86,59 +105,83 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": ["source", "type"],
+        "required": [
+          "source",
+          "type"
+        ],
         "additionalProperties": false,
         "properties": {
-          "source": { "type": "string", "description": "Source file path relative to pack root." },
-          "type": { "type": "string", "description": "Exported TypeScript type name for the entity's attributes." }
+          "source": {
+            "type": "string",
+            "description": "Source file path relative to pack root."
+          },
+          "type": {
+            "type": "string",
+            "description": "Exported TypeScript type name for the entity's attributes."
+          }
         }
       },
       "description": "Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries."
     },
-
     "features": {
       "type": "array",
-      "items": { "$ref": "#/$defs/PackFeatureEntry" },
+      "items": {
+        "$ref": "#/$defs/PackFeatureEntry"
+      },
       "description": "Feature definitions for built-in packs. Each feature bundles a backend system, frontend plugin, services, and settings."
     },
     "plugins": {
       "type": "array",
-      "items": { "$ref": "#/$defs/PackPluginDefinition" },
+      "items": {
+        "$ref": "#/$defs/PackPluginDefinition"
+      },
       "description": "Plugin definitions for external packs. Simpler alternative to features."
     },
     "defaultPlugin": {
       "type": "string",
       "description": "ID of the feature/plugin to show by default when the app starts."
     },
-
     "packServices": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Pack-level services (not tied to a specific feature). Keys are service names, values are source file paths."
     },
-
     "boot": {
       "$ref": "#/$defs/PackBootConfig",
-      "description": "Boot sequence configuration — early system, default settings, seed data, shutdown hooks."
+      "description": "Boot sequence configuration \u2014 early system, default settings, seed data, shutdown hooks."
     },
     "seedTypes": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Seed type names this pack provides data for."
     },
-
     "steps": {
       "oneOf": [
-        { "type": "string", "description": "Path to step registration module." },
+        {
+          "type": "string",
+          "description": "Path to step registration module."
+        },
         {
           "type": "object",
-          "required": ["register", "definitions"],
+          "required": [
+            "register",
+            "definitions"
+          ],
           "additionalProperties": false,
           "properties": {
-            "register": { "type": "string", "description": "Path to step registration module." },
+            "register": {
+              "type": "string",
+              "description": "Path to step registration module."
+            },
             "definitions": {
               "type": "array",
-              "items": { "$ref": "#/$defs/StepEntry" }
+              "items": {
+                "$ref": "#/$defs/StepEntry"
+              }
             }
           }
         }
@@ -157,7 +200,6 @@
       "type": "string",
       "description": "Path to migrations index module."
     },
-
     "fe": {
       "type": "object",
       "additionalProperties": false,
@@ -168,7 +210,9 @@
         },
         "appExtensions": {
           "type": "object",
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Named app extensions. Keys are extension names, values are paths to Vue components."
         },
         "styles": {
@@ -178,18 +222,21 @@
       },
       "description": "Frontend-specific pack configuration."
     },
-
     "dsl": {
       "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/DslEntry" },
+      "additionalProperties": {
+        "$ref": "#/$defs/DslEntry"
+      },
       "description": "DSL type definitions for Monaco editor intellisense. Keys are DSL names."
     }
   },
-
   "$defs": {
     "PackFeatureEntry": {
       "type": "object",
-      "required": ["id", "services"],
+      "required": [
+        "id",
+        "services"
+      ],
       "additionalProperties": true,
       "properties": {
         "id": {
@@ -214,30 +261,55 @@
         },
         "system": {
           "type": "object",
-          "required": ["entry", "exportName"],
+          "required": [
+            "entry"
+          ],
           "additionalProperties": false,
           "properties": {
-            "entry": { "type": "string", "description": "Path to backend system module." },
-            "exportName": { "type": "string", "description": "Named export from the system module." },
-            "outgoingEventsType": { "type": "string", "description": "TypeScript type name for outgoing events (for codegen)." }
+            "entry": {
+              "type": "string",
+              "description": "Path to backend system module (must default-export its SystemEntry)."
+            },
+            "outgoingEventsType": {
+              "type": "string",
+              "description": "TypeScript type name for outgoing events (for codegen)."
+            }
           },
           "description": "Backend system definition."
         },
         "plugin": {
           "type": "object",
-          "required": ["entry", "label", "icon"],
+          "required": [
+            "entry",
+            "label",
+            "icon"
+          ],
           "additionalProperties": false,
           "properties": {
-            "entry": { "type": "string", "description": "Path to frontend plugin module." },
-            "label": { "type": "string", "description": "Display label in the UI." },
-            "icon": { "type": "string", "description": "Lucide icon name." },
-            "isPinned": { "type": "boolean", "description": "Whether the plugin is pinned in the toolbar by default." }
+            "entry": {
+              "type": "string",
+              "description": "Path to frontend plugin module."
+            },
+            "label": {
+              "type": "string",
+              "description": "Display label in the UI."
+            },
+            "icon": {
+              "type": "string",
+              "description": "Lucide icon name."
+            },
+            "isPinned": {
+              "type": "boolean",
+              "description": "Whether the plugin is pinned in the toolbar by default."
+            }
           },
           "description": "Frontend plugin definition."
         },
         "services": {
           "type": "object",
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Feature-scoped services. Keys are service names, values are source file paths."
         },
         "contributions": {
@@ -246,26 +318,46 @@
         }
       }
     },
-
     "PackPluginDefinition": {
       "type": "object",
-      "required": ["id"],
+      "required": [
+        "id"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "priority": { "type": "integer", "description": "Plugin sort order (lower = earlier)." },
+        "id": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Plugin sort order (lower = earlier)."
+        },
         "system": {
           "type": "object",
-          "required": ["entry"],
+          "required": [
+            "entry"
+          ],
           "additionalProperties": false,
           "properties": {
-            "entry": { "type": "string" },
+            "entry": {
+              "type": "string"
+            },
             "events": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "incoming": { "type": "array", "items": { "type": "string" } },
-                "outgoing": { "type": "array", "items": { "type": "string" } }
+                "incoming": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "outgoing": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
@@ -273,18 +365,30 @@
         },
         "plugin": {
           "type": "object",
-          "required": ["entry", "label", "icon"],
+          "required": [
+            "entry",
+            "label",
+            "icon"
+          ],
           "additionalProperties": false,
           "properties": {
-            "entry": { "type": "string" },
-            "label": { "type": "string" },
-            "icon": { "type": "string" }
+            "entry": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "icon": {
+              "type": "string"
+            }
           },
           "description": "Frontend plugin for external packs."
         },
         "entities": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Entity types this plugin uses."
         },
         "settings": {
@@ -294,7 +398,6 @@
         }
       }
     },
-
     "PackBootConfig": {
       "type": "object",
       "additionalProperties": true,
@@ -311,8 +414,13 @@
           "type": "object",
           "additionalProperties": {
             "oneOf": [
-              { "type": "string", "description": "Path to seed data directory." },
-              { "$ref": "#/$defs/SeedEntryConfig" }
+              {
+                "type": "string",
+                "description": "Path to seed data directory."
+              },
+              {
+                "$ref": "#/$defs/SeedEntryConfig"
+              }
             ]
           },
           "description": "Seed data sources. Keys are seed type names."
@@ -323,12 +431,16 @@
           "properties": {
             "skipAtBoot": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Seed types to skip during normal boot (run only during onboarding)."
             },
             "skipAfterOnboarding": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Seed types to skip after onboarding is complete."
             }
           }
@@ -339,21 +451,34 @@
         }
       }
     },
-
     "SeedEntryConfig": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "path": { "type": "string", "description": "Path to seed data directory." },
-        "seeder": { "type": "string", "description": "Path to custom seeder module." },
-        "entityType": { "type": "string", "description": "Entity type for this seed data." },
-        "lookupField": { "type": "string", "description": "Attribute field used for deduplication." }
+        "path": {
+          "type": "string",
+          "description": "Path to seed data directory."
+        },
+        "seeder": {
+          "type": "string",
+          "description": "Path to custom seeder module."
+        },
+        "entityType": {
+          "type": "string",
+          "description": "Entity type for this seed data."
+        },
+        "lookupField": {
+          "type": "string",
+          "description": "Attribute field used for deduplication."
+        }
       }
     },
-
     "StepEntry": {
       "type": "object",
-      "required": ["type", "path"],
+      "required": [
+        "type",
+        "path"
+      ],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -366,7 +491,10 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["step", "trigger"],
+          "enum": [
+            "step",
+            "trigger"
+          ],
           "default": "step",
           "description": "Whether this is a regular step or a trigger (entry point)."
         },
@@ -376,7 +504,6 @@
         }
       }
     },
-
     "StepDSLMeta": {
       "type": "object",
       "additionalProperties": false,
@@ -396,10 +523,12 @@
         }
       }
     },
-
     "DslEntry": {
       "type": "object",
-      "required": ["entry", "targets"],
+      "required": [
+        "entry",
+        "targets"
+      ],
       "additionalProperties": false,
       "properties": {
         "entry": {
@@ -408,7 +537,12 @@
         },
         "targets": {
           "type": "array",
-          "items": { "type": "string", "enum": ["monaco"] },
+          "items": {
+            "type": "string",
+            "enum": [
+              "monaco"
+            ]
+          },
           "description": "Where these type definitions are used."
         },
         "prefix": {
@@ -417,7 +551,9 @@
         },
         "globals": {
           "type": "object",
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Global variables available in DSL files. Keys are variable names, values are TypeScript type expressions."
         }
       }

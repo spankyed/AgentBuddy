@@ -202,6 +202,16 @@ function toPascalCase(id: string): string {
   return id.replace(/(^|-)(\w)/g, (_, _sep, c) => c.toUpperCase());
 }
 
+/**
+ * Local binding for a feature's default-exported system entry. Systems are
+ * imported the same way plugins are — by default export — so the manifest does
+ * not carry an export name.
+ */
+function systemBinding(id: string): string {
+  const pascal = toPascalCase(id);
+  return `${pascal.charAt(0).toLowerCase()}${pascal.slice(1)}Entry`;
+}
+
 export interface GenerateEntriesOptions {
   packRoot: string;
   depTypes?: Map<string, PackTypeManifest>;
@@ -267,11 +277,11 @@ export function generatePackFiles(
     const orderedSystemFeatures = [...settingsFirst, ...rest];
 
     const systemImports = orderedSystemFeatures
-      .map(f => `import { ${f.system!.exportName} } from '${toImportPath(f.system!.entry)}';`)
+      .map(f => `import ${systemBinding(f.id)} from '${toImportPath(f.system!.entry)}';`)
       .join('\n');
 
     const systemEntries = orderedSystemFeatures
-      .map(f => f.system!.exportName)
+      .map(f => systemBinding(f.id))
       .join(', ');
 
     const designatedFeatures = orderedSystemFeatures.filter(f => f.designation);
@@ -283,7 +293,7 @@ export function generatePackFiles(
       : `toPackSystemDefs([${systemEntries}])`;
 
     const earlyImport = earlyFeature?.system
-      ? `import { ${earlyFeature.system.exportName} } from '${toImportPath(earlyFeature.system.entry)}';\n`
+      ? `import ${systemBinding(earlyFeature.id)} from '${toImportPath(earlyFeature.system.entry)}';\n`
       : '';
 
     const featuresLiteral = features.map(f => {
@@ -300,7 +310,7 @@ export function generatePackFiles(
     }).join(',\n');
 
     const earlySystemLine = earlyFeature?.system
-      ? `    earlySystem: ${earlyFeature.system.exportName}.machine,`
+      ? `    earlySystem: ${systemBinding(earlyFeature.id)}.machine,`
       : '';
 
     const bootImports: string[] = [];

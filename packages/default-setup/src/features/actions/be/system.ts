@@ -324,4 +324,6 @@ export const actionsSystem = setup({
   }
 );
 
-export const actionsEntry: SystemEntry = { spec: actionsSpec, machine: actionsSystem };
+const actionsEntry: SystemEntry = { spec: actionsSpec, machine: actionsSystem };
+
+export default actionsEntry;

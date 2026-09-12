@@ -494,4 +494,6 @@ export const flowsSystem = setup({
   }
 });
 
-export const flowsEntry: SystemEntry = { spec: flowsSpec, machine: flowsSystem };
+const flowsEntry: SystemEntry = { spec: flowsSpec, machine: flowsSystem };
+
+export default flowsEntry;

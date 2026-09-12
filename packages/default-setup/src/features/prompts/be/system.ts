@@ -317,4 +317,6 @@ export const promptsSystem = setup({
   }
 );
 
-export const promptsEntry: SystemEntry = { spec: promptsSpec, machine: promptsSystem };
+const promptsEntry: SystemEntry = { spec: promptsSpec, machine: promptsSystem };
+
+export default promptsEntry;

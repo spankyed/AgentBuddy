@@ -101,4 +101,6 @@ export const browserSystem = setup({
   },
 });
 
-export const browserEntry: SystemEntry = { spec: browserSpec, machine: browserSystem };
+const browserEntry: SystemEntry = { spec: browserSpec, machine: browserSystem };
+
+export default browserEntry;

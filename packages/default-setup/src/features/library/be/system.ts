@@ -714,4 +714,6 @@ export const librarySystem = setup({
   },
 })
 
-export const libraryEntry: SystemEntry = { spec: librarySpec, machine: librarySystem };
+const libraryEntry: SystemEntry = { spec: librarySpec, machine: librarySystem };
+
+export default libraryEntry;

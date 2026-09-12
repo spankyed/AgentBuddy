@@ -62,8 +62,7 @@
       "designation": "threads",
       "settings": "src/features/threads/settings.ts",
       "system": {
-        "entry": "src/features/threads/be/system.ts",
-        "exportName": "threadsEntry"
+        "entry": "src/features/threads/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/threads/fe/plugin.ts",
@@ -81,8 +80,7 @@
       "id": "code",
       "settings": "src/features/code/settings.ts",
       "system": {
-        "entry": "src/features/code/be/system.ts",
-        "exportName": "codeEntry"
+        "entry": "src/features/code/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/code/fe/plugin.ts",
@@ -98,8 +96,7 @@
       "id": "notes",
       "settings": "src/features/notes/settings.ts",
       "system": {
-        "entry": "src/features/notes/be/system.ts",
-        "exportName": "notesEntry"
+        "entry": "src/features/notes/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/notes/fe/plugin.ts",
@@ -113,8 +110,7 @@
       "id": "calendar",
       "settings": "src/features/calendar/settings.ts",
       "system": {
-        "entry": "src/features/calendar/be/system.ts",
-        "exportName": "calendarEntry"
+        "entry": "src/features/calendar/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/calendar/fe/plugin.ts",
@@ -128,8 +124,7 @@
       "designation": "browser",
       "settings": "src/features/browser/settings.ts",
       "system": {
-        "entry": "src/features/browser/be/system.ts",
-        "exportName": "browserEntry"
+        "entry": "src/features/browser/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/browser/fe/plugin.ts",
@@ -144,8 +139,7 @@
       "id": "library",
       "settings": "src/features/library/settings.ts",
       "system": {
-        "entry": "src/features/library/be/system.ts",
-        "exportName": "libraryEntry"
+        "entry": "src/features/library/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/library/fe/plugin.ts",
@@ -163,8 +157,7 @@
       "settings": "src/features/flows/settings.ts",
       "typesEntry": "src/features/flows/be/types",
       "system": {
-        "entry": "src/features/flows/be/system.ts",
-        "exportName": "flowsEntry"
+        "entry": "src/features/flows/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/flows/fe/plugin.ts",
@@ -179,7 +172,6 @@
       "settings": "src/features/actions/settings.ts",
       "system": {
         "entry": "src/features/actions/be/system.ts",
-        "exportName": "actionsEntry",
         "outgoingEventsType": "OutgoingActionEvents"
       },
       "plugin": {
@@ -197,7 +189,6 @@
       "settings": "src/features/prompts/settings.ts",
       "system": {
         "entry": "src/features/prompts/be/system.ts",
-        "exportName": "promptsEntry",
         "outgoingEventsType": "OutgoingPromptEvents"
       },
       "plugin": {
@@ -215,8 +206,7 @@
       "designation": "brain",
       "settings": "src/features/brain/settings.ts",
       "system": {
-        "entry": "src/features/brain/be/system.ts",
-        "exportName": "brainEntry"
+        "entry": "src/features/brain/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/brain/fe/plugin.ts",
@@ -233,8 +223,7 @@
       "id": "database",
       "settings": "src/features/database/settings.ts",
       "system": {
-        "entry": "src/features/database/be/system.ts",
-        "exportName": "databaseEntry"
+        "entry": "src/features/database/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/database/fe/plugin.ts",
@@ -251,8 +240,7 @@
       "designation": "logs",
       "settings": "src/features/logs/settings.ts",
       "system": {
-        "entry": "src/features/logs/be/system.ts",
-        "exportName": "logsEntry"
+        "entry": "src/features/logs/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/logs/fe/plugin.ts",
@@ -268,8 +256,7 @@
       "designation": "settings",
       "settings": "src/features/settings/settings.ts",
       "system": {
-        "entry": "src/features/settings/be/system.ts",
-        "exportName": "settingsEntry"
+        "entry": "src/features/settings/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/settings/fe/plugin.ts",

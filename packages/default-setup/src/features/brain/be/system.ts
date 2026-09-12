@@ -584,4 +584,6 @@ export const brainSystem = setup({
   }
 );
 
-export const brainEntry: SystemEntry = { spec: brainSpec, machine: brainSystem };
+const brainEntry: SystemEntry = { spec: brainSpec, machine: brainSystem };
+
+export default brainEntry;

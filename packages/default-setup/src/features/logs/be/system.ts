@@ -200,4 +200,6 @@ export const logsSystem = setup({
   },
 });
 
-export const logsEntry: SystemEntry = { spec: logsSpec, machine: logsSystem }; 
+const logsEntry: SystemEntry = { spec: logsSpec, machine: logsSystem };
+
+export default logsEntry;

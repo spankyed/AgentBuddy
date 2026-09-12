@@ -31,8 +31,10 @@ describe('core/lifecycle — shutdown hooks', () => {
 });
 
 describe('boot exports — source modules', () => {
-  it('exports logsEntry (early boot system)', async () => {
-    const { logsEntry } = await import('../../src/features/logs/be/system');
+  it('default-exports the logs entry (early boot system)', async () => {
+    // System modules default-export their SystemEntry, the same way plugin
+    // modules default-export their Plugin.
+    const { default: logsEntry } = await import('../../src/features/logs/be/system');
 
     expect(logsEntry).toBeDefined();
     expect(typeof logsEntry.machine.id).toBe('string');

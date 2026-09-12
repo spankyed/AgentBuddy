@@ -117,4 +117,6 @@ export const calendarSystem = setup({
   },
 });
 
-export const calendarEntry: SystemEntry = { spec: calendarSpec, machine: calendarSystem };
+const calendarEntry: SystemEntry = { spec: calendarSpec, machine: calendarSystem };
+
+export default calendarEntry;
