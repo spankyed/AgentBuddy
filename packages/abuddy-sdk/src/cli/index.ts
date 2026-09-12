@@ -13,7 +13,8 @@ Commands:
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
   build [--skip-generate]  Compile pack artifacts to dist/
-  pack                Bundle dist/ into a .tgz for release
+  pack                Bundle dist/ into a verified .tgz + .sha256
+  release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
   validate            Check manifest and types
   install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
   uninstall <id> [-d] [-b]   Remove an installed pack
@@ -39,6 +40,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'fetch-deps':        async () => (await import('./commands/fetch-deps')).fetchDeps,
   'build':      async () => (await import('./commands/build')).build,
   'pack':       async () => (await import('./commands/pack')).pack,
+  'release':    async () => (await import('./commands/release')).release,
   'validate':   async () => (await import('./commands/validate')).validate,
   'install':    async () => (await import('./commands/install')).install,
   'uninstall':  async () => (await import('./commands/uninstall')).uninstall,

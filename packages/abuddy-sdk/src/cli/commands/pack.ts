@@ -36,7 +36,7 @@ export interface PackResult {
   bundle: BundleInfo;
 }
 
-export async function packBundle(root: string, outDir: string): Promise<PackResult> {
+export async function packBundle(root: string, outDir: string, options: { version?: string } = {}): Promise<PackResult> {
   const manifest = readManifest(root);
   if (manifest.builtIn) {
     throw new Error('Built-in packs ship inside the app and are not packed.');
@@ -45,6 +45,7 @@ export async function packBundle(root: string, outDir: string): Promise<PackResu
   stageBundle(root, stageDir, {
     sdkVersion: findSdkVersion(path.dirname(new URL(import.meta.url).pathname)),
     source: gitSource(root),
+    version: options.version,
   });
   const bundle = verifyBundle(stageDir);
   const archive = await createBundleArchive(stageDir, outDir);

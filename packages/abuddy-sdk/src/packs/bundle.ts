@@ -104,7 +104,7 @@ export function resolveBundleManifest(source: PackManifest, bundleRoot: string):
 export function stageBundle(
   packRoot: string,
   stageDir: string,
-  options: { sdkVersion?: string; source?: BundleInfo['source'] } = {},
+  options: { sdkVersion?: string; source?: BundleInfo['source']; version?: string } = {},
 ): BundleInfo {
   if (!hasBuiltBundleSections(packRoot)) {
     throw new Error(`Pack at ${packRoot} is not built (missing dist/${BUNDLE_PATHS.runtimeEntry} or dist/${BUNDLE_PATHS.snapshot}). Run "abuddy build" first.`);
@@ -123,7 +123,7 @@ export function stageBundle(
     });
   }
 
-  const manifest = resolveBundleManifest(source, stageDir);
+  const manifest = resolveBundleManifest(options.version ? { ...source, version: options.version } : source, stageDir);
   fs.writeFileSync(path.join(stageDir, BUNDLE_PATHS.manifest), JSON.stringify(manifest, null, 2) + '\n');
 
   const files: Record<string, string> = {};

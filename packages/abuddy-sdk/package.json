@@ -161,6 +161,7 @@
     "zod-to-json-schema": "^3.25.0"
   },
   "dependencies": {
+    "@octokit/rest": "^21.1.1",
     "@types/fs-extra": "^11.0.4",
     "fs-extra": "^11.4.0",
     "semver": "^7.8.5",
