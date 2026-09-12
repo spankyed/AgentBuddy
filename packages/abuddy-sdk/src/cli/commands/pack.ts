@@ -1,48 +1,74 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import tar from 'tar';
+import { execFileSync } from 'node:child_process';
 import { findPackRoot, readManifest } from '../utils';
+import { findSdkVersion } from '../../build/shared-deps';
+import { createBundleArchive, stageBundle, verifyBundle, type BundleInfo } from '../../packs/bundle';
 
-const PACK_CONTENTS = ['abuddy.json', 'dist'];
+const HELP = `
+Usage: abuddy pack [--out <dir>]
 
-export async function pack(_args: string[]) {
-  const root = findPackRoot(process.cwd());
+Stage the built pack (dist/) into a verified bundle and write
+<id>-<version>.tgz plus <id>-<version>.tgz.sha256. Run "abuddy build" first
+("abuddy build --release" for publishable output).
+
+Options:
+  --out <dir>   Output directory (default: pack root)
+`.trim();
+
+function gitSource(root: string): BundleInfo['source'] | undefined {
+  const git = (...args: string[]) => {
+    try {
+      return execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const commit = git('rev-parse', 'HEAD');
+  if (!commit) return undefined;
+  return { commit, repo: git('remote', 'get-url', 'origin') };
+}
+
+export interface PackResult {
+  file: string;
+  sha256: string;
+  checksumFile: string;
+  bundle: BundleInfo;
+}
+
+export async function packBundle(root: string, outDir: string): Promise<PackResult> {
   const manifest = readManifest(root);
-
-  const missing = PACK_CONTENTS.filter(p => !fs.existsSync(path.join(root, p)));
-  if (missing.length > 0) {
-    throw new Error(`Missing: ${missing.join(', ')}. Run "abuddy build" first.`);
+  if (manifest.builtIn) {
+    throw new Error('Built-in packs ship inside the app and are not packed.');
   }
+  const stageDir = path.join(root, '.abuddy', 'bundle', manifest.id);
+  stageBundle(root, stageDir, {
+    sdkVersion: findSdkVersion(path.dirname(new URL(import.meta.url).pathname)),
+    source: gitSource(root),
+  });
+  const bundle = verifyBundle(stageDir);
+  const archive = await createBundleArchive(stageDir, outDir);
+  return { ...archive, bundle };
+}
 
-  if (!fs.existsSync(path.join(root, 'dist', 'snapshot.json'))) {
-    throw new Error('No dist/snapshot.json. Run "abuddy build" first.');
+export async function pack(args: string[]) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    return;
   }
+  const root = findPackRoot(process.cwd());
+  const outIndex = args.indexOf('--out');
+  const outDir = outIndex >= 0 && args[outIndex + 1] ? path.resolve(args[outIndex + 1]) : root;
 
-  const entries = [...PACK_CONTENTS];
-  if (fs.existsSync(path.join(root, 'defs'))) {
-    entries.push('defs');
-  }
+  const result = await packBundle(root, outDir);
+  const show = (p: string) => {
+    const rel = path.relative(process.cwd(), p);
+    return rel.startsWith('..') ? p : rel;
+  };
+  const sizeKB = (fs.statSync(result.file).size / 1024).toFixed(1);
+  const fileCount = Object.keys(result.bundle.files).length;
 
-  const filename = `${manifest.id}-${manifest.version}.tgz`;
-  const outputPath = path.join(root, filename);
-
-  await tar.create(
-    {
-      gzip: true,
-      file: outputPath,
-      cwd: root,
-      prefix: manifest.id,
-    },
-    entries,
-  );
-
-  const stats = fs.statSync(outputPath);
-  const sizeKB = (stats.size / 1024).toFixed(1);
-
-  console.log(`Packed ${filename} (${sizeKB} KB)`);
-  console.log(`\nContents:`);
-  for (const entry of entries) {
-    console.log(`  ${entry}/`);
-  }
-  console.log(`\nUpload this file as a GitHub release asset.`);
+  console.log(`Packed ${show(result.file)} (${sizeKB} KB, ${fileCount} files)`);
+  console.log(`  sha256: ${result.sha256}`);
+  console.log(`  checksum: ${show(result.checksumFile)}`);
 }

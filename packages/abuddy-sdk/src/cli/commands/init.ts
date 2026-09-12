@@ -15,7 +15,6 @@ const MANIFEST_TEMPLATE = (name: string) => {
     hostVersion: '>=0.3.0',
     entities: { [pascalName]: pascalName },
     relKinds: {},
-    fe: { entry: 'dist/fe.js', styles: 'dist/fe.css' },
     features: [],
     dependencies: { 'default-setup': '*' },
     permissions: [],
@@ -169,7 +168,6 @@ export async function init(args: string[]) {
   fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'features', name), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests', 'unit'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));

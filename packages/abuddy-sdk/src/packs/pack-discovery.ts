@@ -65,6 +65,8 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
+    // Hidden dirs are in-progress installs/replacements (see pack-installer placePack)
+    if (entry.name.startsWith('.')) continue;
     const packDir = path.join(packsDir, entry.name);
     const manifestPath = path.join(packDir, 'abuddy.json');
 

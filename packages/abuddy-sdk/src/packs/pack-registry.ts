@@ -24,6 +24,8 @@ export interface PackRegistryEntry {
   registeredAt: string;
   source?: string;
   availableVersion?: string;
+  /** Release tag for availableVersion, so updates install exactly what the check found. */
+  availableTag?: string;
   lastUpdateCheck?: string;
 }
 

@@ -7,7 +7,8 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '../../build';
 import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
-import { bundlePackSystems } from '../../build/be-bundler';
+import { bundlePackRuntime } from '../../build/be-bundler';
+import { BUNDLE_PATHS } from '../../packs/bundle';
 import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
@@ -33,7 +34,8 @@ export async function build(args: string[]) {
     await generateEntries([], undefined, depTypes, depSnapshots);
   }
 
-  console.log(`Building pack: ${manifest.name} v${manifest.version}`);
+  const release = args.includes('--release');
+  console.log(`Building pack: ${manifest.name} v${manifest.version}${release ? ' (release)' : ''}`);
 
   let packConfig: PackConfig | null = null;
   let featureSettingsPaths: Array<{ name: string; settingsPath: string }> | undefined;
@@ -52,20 +54,27 @@ export async function build(args: string[]) {
 
   const packDir = root;
   const outputDir = path.join(root, 'dist');
+  // External packs build into the bundle layout (runtime/, build/, types/). dist/ is pure
+  // output, so start clean: stale artifacts from an earlier build must never ship.
+  // Built-in packs keep their in-repo layout (dist/*.seed.json, dist/snapshot.json, dev-entry.cjs).
+  const external = !manifest.builtIn;
+  if (external) fs.rmSync(outputDir, { recursive: true, force: true });
+  const seedsOutputDir = external ? path.join(outputDir, BUNDLE_PATHS.seedsDir) : outputDir;
+  const snapshotPath = external ? path.join(outputDir, BUNDLE_PATHS.snapshot) : path.join(outputDir, 'snapshot.json');
 
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 
   if (packConfig) {
     const options: CompilePackOptions = {
       packDir,
-      outputDir,
+      outputDir: seedsOutputDir,
       packConfig,
       featureSettingsPaths,
     };
 
     result = await compilePack(options);
   } else {
-    fs.mkdirSync(outputDir, { recursive: true });
+    fs.mkdirSync(seedsOutputDir, { recursive: true });
   }
 
   const types: PackTypeManifest = {
@@ -83,7 +92,8 @@ export async function build(args: string[]) {
   }
   const sdkVersion = findSdkVersion(path.dirname(new URL(import.meta.url).pathname));
   const snapshot: PackSnapshot = { types, defs, manifest, sdkVersion };
-  fs.writeFileSync(path.join(outputDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
+  fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+  fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
 
   console.log(`\nBuild complete:`);
   if (result) {
@@ -99,33 +109,34 @@ export async function build(args: string[]) {
     }
   }
 
-  // ── BE system compilation ────────────────────────────────────────────
-  if (!manifest.builtIn) {
-    const { compiled, failed } = await bundlePackSystems(manifest, root, outputDir);
-    if (compiled.length > 0) {
-      console.log(`  systems: ${compiled.join(', ')}`);
-    }
-    if (failed.length > 0) {
-      // dist/systems may still hold a previous build of these; the loader would pick it up
-      console.error(`\nSystem compile failed: ${failed.join(', ')}`);
-      process.exitCode = 1;
-    }
+  if (!external) {
+    // Built-in packs' FE is compiled into the renderer (virtual:built-in-packs) and their
+    // backend into the API bundle, never loaded from dist/
+    console.log(`\nOutput: ${path.relative(process.cwd(), outputDir)}/`);
+    return;
+  }
+
+  // ── Backend runtime ──────────────────────────────────────────────────
+  const runtimeResult = await bundlePackRuntime(root, outputDir, { release });
+  if (runtimeResult.success) {
+    console.log(`  runtime: dist/${BUNDLE_PATHS.runtimeEntry}`);
+  } else {
+    console.error(`\nRuntime bundle failed: ${runtimeResult.error}`);
+    process.exitCode = 1;
   }
 
   // ── FE bundling ──────────────────────────────────────────────────────
-  // Built-in packs' FE is compiled into the renderer (virtual:built-in-packs), never loaded from dist/fe.js
-  const feEntry = args.includes('--skip-fe') || manifest.builtIn ? null : findFEEntry(root);
+  const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
   if (feEntry) {
-    const feResult = await bundlePackFE({ packDir: root, outputDir, entryPoint: feEntry });
+    const feOutputDir = path.join(outputDir, BUNDLE_PATHS.runtimeDir);
+    const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release });
     if (feResult.success) {
-      console.log(`  fe: dist/fe.js`);
-      const cssPath = path.join(outputDir, 'fe.css');
-      if (fs.existsSync(cssPath)) {
-        console.log(`  fe styles: dist/fe.css`);
+      console.log(`  fe: dist/${BUNDLE_PATHS.feEntry}`);
+      if (fs.existsSync(path.join(outputDir, BUNDLE_PATHS.feStyles))) {
+        console.log(`  fe styles: dist/${BUNDLE_PATHS.feStyles}`);
       }
     } else {
       console.error(`\nFE bundle failed: ${feResult.error}`);
-      // dist/fe.js is left from the previous build; don't let callers ship or test it
       process.exitCode = 1;
     }
   }

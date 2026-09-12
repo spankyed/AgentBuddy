@@ -213,6 +213,87 @@ describe('pack-loader', () => {
 
 });
 
+describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
+  function makeBundledPack(id: string, registrationSource: string, manifestExtra: Record<string, unknown> = {}) {
+    const packDir = path.join(tmpDir, 'packs', id);
+    fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
+    fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
+    fs.writeFileSync(path.join(packDir, 'bundle.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
+    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
+    return packDir;
+  }
+
+  const registration = (id: string, extra = '') => `
+    let compiledDir = null;
+    const machine = { id: 'widget', events: ['PING'], config: {} };
+    module.exports = {
+      setCompiledDir(dir) { compiledDir = dir; module.exports.compiledDirSeen = dir; },
+      registration: {
+        id: '${id}',
+        systems: [{ id: 'widget', machine, events: new Set(['PING']) }],
+        services: { hello: () => 'hi' },
+        ears: {
+          entities: { Widget: 'Widget' },
+          relKinds: {},
+          partitionPolicy: { excludedEntityTypes: [], secretEntityTypes: [] },
+        },
+        boot: {
+          onInit() {},
+          seedManifest: { artifacts: ['actions'], get compiledDir() { return compiledDir; } },
+        },
+        ${extra}
+      },
+    };
+  `;
+
+  it('loads systems, services and EARS from the runtime registration', () => {
+    const dir = makeBundledPack('bundled-pack', registration('bundled-pack'), {
+      features: [{ id: 'widget', system: { entry: 'src/x.ts', events: { incoming: ['EXTRA'] } } }],
+    });
+
+    const [pack] = loadExternalPacks();
+    expect(pack.manifest.id).toBe('bundled-pack');
+    expect([...pack.systems.keys()]).toEqual(['widget']);
+    expect([...pack.systems.get('widget')!.events].sort()).toEqual(['EXTRA', 'PING']);
+    expect(Object.keys(pack.services ?? {})).toEqual(['hello']);
+    expect(pack.ears?.entities).toEqual({ Widget: 'Widget' });
+    expect(pack.boot?.onInit).toBeTypeOf('function');
+
+    // seeds live under runtime/seeds for bundled packs
+    const mod = require(path.join(dir, 'runtime', 'index.cjs'));
+    expect(mod.compiledDirSeen).toBe(path.join(dir, 'runtime', 'seeds'));
+  });
+
+  it('strips the declarative boot seed and an empty partition policy', () => {
+    makeBundledPack('strip-pack', registration('strip-pack'));
+    const [pack] = loadExternalPacks();
+    expect(pack.boot?.seedManifest).toBeUndefined();
+    expect(pack.ears?.partitionPolicy).toBeUndefined();
+  });
+
+  it('refuses a runtime whose registration id does not match the manifest', () => {
+    makeBundledPack('real-id', registration('other-id'));
+    expect(loadExternalPacks()).toEqual([]);
+  });
+
+  it('refuses a bundle format this host does not support', () => {
+    const dir = makeBundledPack('future-format', registration('future-format'));
+    fs.writeFileSync(path.join(dir, 'bundle.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
+    expect(loadExternalPacks()).toEqual([]);
+  });
+
+  it('seeds from runtime/seeds', () => {
+    const dir = makeBundledPack('seed-bundle', registration('seed-bundle'));
+    fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'actions.seed.json'), '[]');
+    const packs = loadExternalPacks();
+    const seedFn = vi.fn(() => ({}));
+    seedPackData(packs, seedFn, () => ({}), () => {});
+    expect(seedFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
+  });
+});
+
 describe('seedPackData', () => {
   function makePackWithDist(
     packsDir: string,

@@ -3,10 +3,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import tar from 'tar';
 import { satisfies, rcompare, clean } from 'semver';
 import type { PackSnapshot } from '../../build';
 import { findPackRoot, readManifest } from '../utils';
+import { extractBundleArchive } from '../../packs/bundle';
 
 // ── Dependency value parsing ──
 
@@ -31,7 +31,14 @@ function parseDepValue(value: string): DepSource {
   return { github: null, filePath: null, range: value };
 }
 
-// ── Local cache ──
+// ── Artifact discovery ──
+
+/** A dependency's build-time artifacts: its snapshot, plus step build code when it ships any. */
+export interface DepArtifacts {
+  snapshot: PackSnapshot;
+  /** Directory with the dependency's build-time code (build/steps.build.mjs), if present. */
+  buildDir?: string;
+}
 
 function tryReadSnapshot(filePath: string): PackSnapshot | null {
   if (fs.existsSync(filePath)) {
@@ -40,21 +47,51 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
   return null;
 }
 
-function resolveFromLocal(root: string, depId: string): PackSnapshot | null {
-  return tryReadSnapshot(path.join(root, '.abuddy', 'deps', depId, 'snapshot.json'));
+/**
+ * Find artifacts in a pack directory in any layout: an installed or extracted bundle
+ * (types/, build/), an external pack source built in the bundle layout (dist/types,
+ * dist/build), or a built-in / pre-bundle pack (dist/snapshot.json).
+ */
+export function findDepArtifacts(dir: string): DepArtifacts | null {
+  const candidates = [
+    { snapshot: path.join(dir, 'types', 'snapshot.json'), build: path.join(dir, 'build') },
+    { snapshot: path.join(dir, 'dist', 'types', 'snapshot.json'), build: path.join(dir, 'dist', 'build') },
+    { snapshot: path.join(dir, 'dist', 'snapshot.json'), build: path.join(dir, 'dist', 'build') },
+    // .abuddy/deps/<id>/ cache
+    { snapshot: path.join(dir, 'snapshot.json'), build: path.join(dir, 'build') },
+  ];
+  for (const c of candidates) {
+    const snapshot = tryReadSnapshot(c.snapshot);
+    if (snapshot) return { snapshot, buildDir: fs.existsSync(c.build) ? c.build : undefined };
+  }
+  return null;
+}
+
+// ── Local cache ──
+
+function depCacheDir(root: string, depId: string): string {
+  return path.join(root, '.abuddy', 'deps', depId);
+}
+
+function resolveFromLocal(root: string, depId: string): DepArtifacts | null {
+  const dir = depCacheDir(root, depId);
+  const snapshot = tryReadSnapshot(path.join(dir, 'snapshot.json'));
+  if (!snapshot) return null;
+  const buildDir = path.join(dir, 'build');
+  return { snapshot, buildDir: fs.existsSync(buildDir) ? buildDir : undefined };
 }
 
 // ── Workspace resolution ──
 
-function resolveFromWorkspace(root: string, depId: string): PackSnapshot | null {
+function resolveFromWorkspace(root: string, depId: string): DepArtifacts | null {
   const candidates = [
-    path.resolve(root, '..', depId, 'dist', 'snapshot.json'),
-    path.resolve(root, '..', '..', 'packages', depId, 'dist', 'snapshot.json'),
-    path.resolve(root, '..', '..', depId, 'dist', 'snapshot.json'),
+    path.resolve(root, '..', depId),
+    path.resolve(root, '..', '..', 'packages', depId),
+    path.resolve(root, '..', '..', depId),
   ];
 
   for (const candidate of candidates) {
-    const result = tryReadSnapshot(candidate);
+    const result = findDepArtifacts(candidate);
     if (result) return result;
   }
   return null;
@@ -62,9 +99,8 @@ function resolveFromWorkspace(root: string, depId: string): PackSnapshot | null 
 
 // ── File path resolution ──
 
-function resolveFromFile(root: string, filePath: string): PackSnapshot | null {
-  const resolved = path.resolve(root, filePath);
-  return tryReadSnapshot(path.join(resolved, 'dist', 'snapshot.json'));
+function resolveFromFile(root: string, filePath: string): DepArtifacts | null {
+  return findDepArtifacts(path.resolve(root, filePath));
 }
 
 // ── GitHub release resolution ──
@@ -88,7 +124,7 @@ function tagToVersion(tag: string): string | null {
   return clean(tag.replace(/^v/, ''));
 }
 
-async function resolveFromGitHub(depId: string, repo: string, range: string): Promise<PackSnapshot | null> {
+async function resolveFromGitHub(root: string, depId: string, repo: string, range: string): Promise<DepArtifacts | null> {
   const url = `https://api.github.com/repos/${repo}/releases?per_page=100`;
 
   const res = await fetch(url, { headers: githubHeaders() });
@@ -118,37 +154,51 @@ async function resolveFromGitHub(depId: string, repo: string, range: string): Pr
     console.warn(`  Release ${release.tag_name} in ${repo} has no .tgz asset`);
     return null;
   }
+  const checksumAsset = release.assets.find(a => a.name === `${asset.name}.sha256`);
 
-  return downloadAndExtract(asset.url, depId, version);
+  return downloadAndExtract(root, asset, checksumAsset, depId, version);
 }
 
-async function downloadAndExtract(assetUrl: string, depId: string, version: string): Promise<PackSnapshot | null> {
+async function downloadAsset(assetUrl: string, dest: string): Promise<boolean> {
   const headers = { ...githubHeaders(), 'Accept': 'application/octet-stream' };
   const res = await fetch(assetUrl, { headers });
   if (!res.ok || !res.body) {
     console.warn(`  Failed to download asset (${res.status})`);
-    return null;
+    return false;
   }
+  const nodeStream = Readable.fromWeb(res.body as import('node:stream/web').ReadableStream);
+  await pipeline(nodeStream, fs.createWriteStream(dest));
+  return true;
+}
 
+async function downloadAndExtract(
+  root: string,
+  asset: { name: string; url: string },
+  checksumAsset: { name: string; url: string } | undefined,
+  depId: string,
+  version: string,
+): Promise<DepArtifacts | null> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fetch-'));
   try {
-    const nodeStream = Readable.fromWeb(res.body as import('node:stream/web').ReadableStream);
-    await pipeline(
-      nodeStream,
-      tar.extract({ cwd: tmpDir, strip: 1, filter: (p: string) => p.endsWith('snapshot.json') }),
-    );
+    const archive = path.join(tmpDir, asset.name);
+    if (!await downloadAsset(asset.url, archive)) return null;
 
-    const snapshotPath = path.join(tmpDir, 'dist', 'snapshot.json');
-    if (!fs.existsSync(snapshotPath)) {
-      const altPath = path.join(tmpDir, 'snapshot.json');
-      if (!fs.existsSync(altPath)) {
-        console.warn(`  No snapshot.json found in .tgz for ${depId}@${version}`);
-        return null;
-      }
-      return JSON.parse(fs.readFileSync(altPath, 'utf-8'));
+    let sha256: string | undefined;
+    if (checksumAsset) {
+      const checksumFile = path.join(tmpDir, checksumAsset.name);
+      if (!await downloadAsset(checksumAsset.url, checksumFile)) return null;
+      sha256 = fs.readFileSync(checksumFile, 'utf-8').trim().split(/\s+/)[0];
     }
 
-    return JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
+    const extracted = await extractBundleArchive(archive, path.join(tmpDir, 'extracted'), sha256);
+    const artifacts = findDepArtifacts(extracted);
+    if (!artifacts) {
+      console.warn(`  No snapshot found in ${asset.name} for ${depId}@${version}`);
+      return null;
+    }
+    // The temp dir is removed below; persist into the cache first
+    cacheDep(root, depId, artifacts);
+    return resolveFromLocal(root, depId);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -167,57 +217,65 @@ async function lookupRegistry(_depId: string): Promise<string | null> {
 
 // ── Cache ──
 
-function cacheDep(root: string, depId: string, snapshot: PackSnapshot): void {
-  const depDir = path.join(root, '.abuddy', 'deps', depId);
+function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
+  const depDir = depCacheDir(root, depId);
+  const { snapshot, buildDir } = artifacts;
   fs.mkdirSync(depDir, { recursive: true });
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
   const defsDir = path.join(depDir, 'defs');
-  if (fs.existsSync(defsDir)) {
-    fs.rmSync(defsDir, { recursive: true });
-  }
+  fs.rmSync(defsDir, { recursive: true, force: true });
   if (Object.keys(snapshot.defs).length > 0) {
     fs.mkdirSync(defsDir, { recursive: true });
     for (const [key, content] of Object.entries(snapshot.defs)) {
       fs.writeFileSync(path.join(defsDir, `${key}.d.ts`), content);
     }
   }
+
+  const cachedBuild = path.join(depDir, 'build');
+  if (buildDir && path.resolve(buildDir) !== path.resolve(cachedBuild)) {
+    fs.rmSync(cachedBuild, { recursive: true, force: true });
+    fs.cpSync(buildDir, cachedBuild, { recursive: true });
+  } else if (!buildDir) {
+    fs.rmSync(cachedBuild, { recursive: true, force: true });
+  }
 }
 
 // ── Resolution chain ──
 
-async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<{ snapshot: PackSnapshot; source: string } | null> {
+async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<(DepArtifacts & { source: string }) | null> {
   const { github, filePath, range } = parseDepValue(depValue);
 
   if (filePath) {
-    const snapshot = resolveFromFile(root, filePath);
-    if (snapshot) return { snapshot, source: `file:${path.resolve(root, filePath)}` };
-    console.warn(`  Warning: no snapshot at ${path.resolve(root, filePath, 'dist', 'snapshot.json')}`);
+    const found = resolveFromFile(root, filePath);
+    if (found) return { ...found, source: `file:${path.resolve(root, filePath)}` };
+    console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
     return null;
   }
 
   // Workspace first — always try, even with github: prefix (local dev)
   const workspace = resolveFromWorkspace(root, depId);
-  if (workspace) return { snapshot: workspace, source: 'workspace' };
+  if (workspace) return { ...workspace, source: 'workspace' };
 
   // GitHub release (explicit source)
   if (github) {
-    const snapshot = await resolveFromGitHub(depId, github, range);
-    if (snapshot) return { snapshot, source: `github:${github}@${snapshot.manifest.version}` };
+    const found = await resolveFromGitHub(root, depId, github, range);
+    if (found) return { ...found, source: `github:${github}@${found.snapshot.manifest.version}` };
     return null;
   }
 
   // Registry lookup → GitHub
   const registrySource = await lookupRegistry(depId);
   if (registrySource) {
-    const snapshot = await resolveFromGitHub(depId, registrySource, range);
-    if (snapshot) return { snapshot, source: `registry → github:${registrySource}@${snapshot.manifest.version}` };
+    const found = await resolveFromGitHub(root, depId, registrySource, range);
+    if (found) return { ...found, source: `registry → github:${registrySource}@${found.snapshot.manifest.version}` };
   }
 
   return null;
 }
 
-export async function resolveDep(root: string, depId: string, depValue: string, skipCache = false): Promise<PackSnapshot | null> {
+/** Resolve a dependency's artifacts (snapshot + optional build code), caching non-file deps. */
+export async function resolveDepArtifacts(root: string, depId: string, depValue: string, skipCache = false): Promise<DepArtifacts | null> {
   const isFileDep = depValue.startsWith('file:');
   if (!skipCache && !isFileDep) {
     const cached = resolveFromLocal(root, depId);
@@ -225,12 +283,14 @@ export async function resolveDep(root: string, depId: string, depValue: string, 
   }
 
   const result = await resolveFromUpstream(root, depId, depValue);
-  if (result) {
-    if (!isFileDep) cacheDep(root, depId, result.snapshot);
-    return result.snapshot;
-  }
+  if (!result) return null;
+  if (isFileDep) return { snapshot: result.snapshot, buildDir: result.buildDir };
+  cacheDep(root, depId, result);
+  return resolveFromLocal(root, depId);
+}
 
-  return null;
+export async function resolveDep(root: string, depId: string, depValue: string, skipCache = false): Promise<PackSnapshot | null> {
+  return (await resolveDepArtifacts(root, depId, depValue, skipCache))?.snapshot ?? null;
 }
 
 // ── Command ──
@@ -256,7 +316,7 @@ export async function fetchDeps(_args: string[]) {
     const depValue = deps[depId];
     const result = await resolveFromUpstream(root, depId, depValue);
     if (result) {
-      if (!depValue.startsWith('file:')) cacheDep(root, depId, result.snapshot);
+      if (!depValue.startsWith('file:')) cacheDep(root, depId, result);
       const entityCount = Object.keys(result.snapshot.types.entities).length;
       const relCount = Object.keys(result.snapshot.types.relKinds).length;
       const defCount = Object.keys(result.snapshot.defs).length;

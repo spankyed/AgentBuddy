@@ -1,26 +1,35 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getSharedBeDeps } from './shared-deps';
-import type { PackManifest } from './manifest';
+import { SHARED_DEPS } from './shared-deps';
 
-export async function bundlePackSystems(
-  manifest: PackManifest,
+export interface BundleRuntimeOptions {
+  /** Minify for release bundles; dev builds keep readable output with source maps. */
+  release?: boolean;
+}
+
+/**
+ * Bundle the pack's generated backend entry (src/__generated__/pack-entry.ts) into
+ * dist/runtime/index.cjs. It exports `registration` (systems, services, steps,
+ * artifacts, blocks, EARS, boot hooks, migrations) and `setCompiledDir`, the same
+ * contract built-in packs use. Host-provided packages and @abuddy/sdk stay external:
+ * the host loader resolves them to its own singletons.
+ */
+export async function bundlePackRuntime(
   packDir: string,
   outputDir: string,
-): Promise<{ compiled: string[]; failed: string[] }> {
-  const features = manifest.features ?? [];
-  const systemEntries = features
-    .filter(f => f.system?.entry)
-    .map(f => ({ id: f.id, entry: f.system!.entry }));
-
-  if (systemEntries.length === 0) return { compiled: [], failed: [] };
+  options: BundleRuntimeOptions = {},
+): Promise<{ success: boolean; error?: string }> {
+  const entryPath = path.join(packDir, 'src', '__generated__', 'pack-entry.ts');
+  if (!fs.existsSync(entryPath)) {
+    return { success: false, error: 'No src/__generated__/pack-entry.ts. Run "abuddy generate-entries" first.' };
+  }
 
   const esbuild = await import('esbuild');
-  const systemsDir = path.join(outputDir, 'systems');
-  fs.mkdirSync(systemsDir, { recursive: true });
+  const runtimeDir = path.join(outputDir, 'runtime');
+  fs.mkdirSync(runtimeDir, { recursive: true });
 
   const externals = [
-    ...getSharedBeDeps(),
+    ...Object.keys(SHARED_DEPS),
     '@abuddy/sdk',
     '@abuddy/sdk/*',
   ];
@@ -28,42 +37,43 @@ export async function bundlePackSystems(
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   const aliases = readTsconfigAliases(packDir);
   const subpathImports = readSubpathImports(packDir);
-  const resolvePlugins: import('esbuild').Plugin[] = [];
-  if (Object.keys(aliases).length > 0) resolvePlugins.push(makeAliasPlugin(aliases));
-  if (Object.keys(subpathImports).length > 0) resolvePlugins.push(makeSubpathPlugin(subpathImports, packDir));
+  const plugins: import('esbuild').Plugin[] = [stubFrontendAssetsPlugin()];
+  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
+  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
 
-  const compiled: string[] = [];
-  const failed: string[] = [];
-  for (const { id, entry } of systemEntries) {
-    const entryPath = path.resolve(packDir, entry);
-    if (!fs.existsSync(entryPath)) {
-      console.error(`Failed to compile system ${id}: entry not found at ${entry}`);
-      failed.push(id);
-      continue;
-    }
-
-    const outFile = path.join(systemsDir, `${id}.cjs`);
-    try {
-      await esbuild.build({
-        entryPoints: [entryPath],
-        bundle: true,
-        format: 'cjs',
-        platform: 'node',
-        target: 'node20',
-        outfile: outFile,
-        external: externals,
-        tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
-        plugins: resolvePlugins,
-        logLevel: 'warning',
-      });
-      compiled.push(id);
-    } catch (err) {
-      console.error(`Failed to compile system ${id}:`, err);
-      failed.push(id);
-    }
+  try {
+    await esbuild.build({
+      entryPoints: [entryPath],
+      bundle: true,
+      format: 'cjs',
+      platform: 'node',
+      target: 'node20',
+      outfile: path.join(runtimeDir, 'index.cjs'),
+      external: externals,
+      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+      plugins,
+      minify: options.release ?? false,
+      sourcemap: options.release ? false : true,
+      logLevel: 'silent',
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
+}
 
-  return { compiled, failed };
+/**
+ * Step and plugin definitions reference Vue components and styles for the renderer.
+ * The backend runtime never renders them, so they become empty modules.
+ */
+function stubFrontendAssetsPlugin(): import('esbuild').Plugin {
+  return {
+    name: 'stub-frontend-assets',
+    setup(build) {
+      build.onResolve({ filter: /\.(vue|css)$/ }, args => ({ path: args.path, namespace: 'frontend-stub' }));
+      build.onLoad({ filter: /.*/, namespace: 'frontend-stub' }, () => ({ contents: 'module.exports = {};', loader: 'js' }));
+    },
+  };
 }
 
 function readTsconfigAliases(packDir: string): Record<string, string> {

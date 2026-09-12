@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { LoadedPack } from './pack-loader';
+import { resolvePackSeedsDir } from '@abuddy/sdk/packs';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
 import { repository } from '@abuddy/sdk/ears';
@@ -46,7 +47,7 @@ export function seedPackData(
   let anySeeded = false;
 
   for (const pack of packs) {
-    const distDir = path.join(pack.dir, 'dist');
+    const distDir = resolvePackSeedsDir(pack.dir);
     if (!fs.existsSync(distDir)) continue;
 
     const currentHash = computePackSeedHash(distDir);

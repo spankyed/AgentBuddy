@@ -152,6 +152,8 @@ export interface BundleFEOptions {
   packDir: string;
   outputDir: string;
   entryPoint: string;
+  /** Minified, no source maps (release bundles). */
+  release?: boolean;
 }
 
 export function findFEEntry(packDir: string): string | null {
@@ -186,7 +188,7 @@ function readTsconfigAliases(packDir: string): Record<string, string> {
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
-  const { packDir, outputDir, entryPoint } = options;
+  const { packDir, outputDir, entryPoint, release = false } = options;
 
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
@@ -244,8 +246,8 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         },
         outDir: outputDir,
         emptyOutDir: false,
-        sourcemap: true,
-        minify: false,
+        sourcemap: !release,
+        minify: release,
         target: 'es2022',
         cssCodeSplit: false,
         rollupOptions: {

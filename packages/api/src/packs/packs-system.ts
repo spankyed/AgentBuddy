@@ -13,6 +13,7 @@ import {
   checkForUpdates,
 } from '@abuddy/sdk/packs';
 import { teardownPack, activatePack } from './pack-lifecycle';
+import { APP_VERSION } from '@/version';
 
 export type { PackInfo };
 
@@ -151,7 +152,7 @@ export const packsSystem = setup({
 
       const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
 
-      runInstall(packSlug, ev.source).then(result => {
+      runInstall(packSlug, ev.source, undefined, { hostVersion: APP_VERSION }).then(result => {
         modifyRegistry(entries => addToRegistry(entries, {
           id: result.id,
           name: result.name,
@@ -239,18 +240,21 @@ export const packsSystem = setup({
       _inFlightOps.add(packId);
 
       const sourceSlug = entry.source.split('@')[0];
-      console.log(`[packs] Update requested: ${packId} from ${sourceSlug}`);
+      // Install the release the update check found (it may be a beta prerelease); fall back to latest
+      const target = entry.availableTag ? `${sourceSlug}@${entry.availableTag}` : sourceSlug;
+      console.log(`[packs] Update requested: ${packId} from ${target}`);
 
       teardownPack(packId, system.get(bus));
       system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
 
-      installPackFromGitHub(sourceSlug).then(result => {
+      installPackFromGitHub(target, undefined, { hostVersion: APP_VERSION }).then(result => {
         modifyRegistry(reg =>
           reg.map(e => e.id === packId ? {
             ...e,
             version: result.version,
             dir: result.dir,
             availableVersion: undefined,
+            availableTag: undefined,
           } : e),
         );
 

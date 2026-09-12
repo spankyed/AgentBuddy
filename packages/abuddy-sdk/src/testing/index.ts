@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '../env';
+import { installPackFromLocal } from '../packs/pack-installer';
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -83,22 +84,6 @@ function resolveAbuddyBin(appRoot: string): string {
   const appBin = path.join(appRoot, 'node_modules', '.bin', 'abuddy');
   if (fs.existsSync(appBin)) return appBin;
   return 'abuddy';
-}
-
-function syncPackToDevDir(src: string, dest: string): void {
-  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      syncPackToDevDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
 }
 
 let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
@@ -209,8 +194,9 @@ export function createTest(options: CreateTestOptions = {}) {
             const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
             throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
           }
-          console.log(`[pack] Syncing ${manifest.id} to test packs directory...`);
-          syncPackToDevDir(packDir, path.join(testPacksDir, manifest.id));
+          // Install through the same bundle path users get (stage → verify → place)
+          console.log(`[pack] Installing ${manifest.id} into the test packs directory...`);
+          await installPackFromLocal(packDir, testPacksDir);
         } else {
           console.log(`[pack] abuddy dev is running for ${manifest.id}, skipping build/sync`);
         }

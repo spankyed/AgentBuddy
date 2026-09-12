@@ -2,10 +2,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
+import { satisfies } from 'semver';
 import { discoverBuiltInPacks } from './pack-discovery';
 import { resolveAppContext } from '../env';
 import { parseManifest } from '../build/validate';
 import type { PackManifest } from '../build/manifest';
+import {
+  BUNDLE_PATHS,
+  extractBundleArchive,
+  hasBuiltBundleSections,
+  isBundleDir,
+  stageBundle,
+  verifyBundle,
+  type BundleInfo,
+} from './bundle';
 
 const log = {
   info(...args: unknown[]) { console.log(...args); },
@@ -18,6 +28,15 @@ export interface InstallResult {
   version: string;
   dir: string;
   missingDependencies: string[];
+  /** Present for bundle installs; absent for legacy (pre-bundle) packs. */
+  bundle?: BundleInfo;
+}
+
+export interface InstallOptions {
+  /** Refuse packs whose manifest hostVersion this host doesn't satisfy (the app passes its version). */
+  hostVersion?: string;
+  /** Expected sha256 of a downloaded archive. */
+  sha256?: string;
 }
 
 function ensurePacksDir(targetDir?: string): string {
@@ -45,12 +64,7 @@ function extractZip(zipPath: string, destDir: string): void {
   execFileSync('unzip', ['-o', zipPath, '-d', destDir], { stdio: 'pipe' });
 }
 
-function extractTgz(tgzPath: string, destDir: string): void {
-  fs.mkdirSync(destDir, { recursive: true });
-  execFileSync('tar', ['-xzf', tgzPath, '-C', destDir], { stdio: 'pipe' });
-}
-
-function validateManifest(dir: string): PackManifest {
+function readValidManifest(dir: string): PackManifest {
   const manifestPath = path.join(dir, 'abuddy.json');
   if (!fs.existsSync(manifestPath)) {
     throw new Error('No abuddy.json found in pack source');
@@ -67,13 +81,14 @@ function validateManifest(dir: string): PackManifest {
   if (errors.length > 0) {
     throw new Error(`Invalid abuddy.json:\n${errors.map(e => `  - ${e}`).join('\n')}`);
   }
-
-  const distDir = path.join(dir, 'dist');
-  if (!fs.existsSync(distDir)) {
-    throw new Error('No dist/ directory found. Pack must be built before installing.');
-  }
-
   return raw as PackManifest;
+}
+
+function assertHostCompatible(manifest: PackManifest, hostVersion?: string): void {
+  if (!hostVersion || !manifest.hostVersion) return;
+  if (!satisfies(hostVersion, manifest.hostVersion, { includePrerelease: true })) {
+    throw new Error(`Pack ${manifest.id}@${manifest.version} requires AgentBuddy ${manifest.hostVersion}; this is ${hostVersion}`);
+  }
 }
 
 function findPackRoot(dir: string): string {
@@ -94,6 +109,8 @@ function getBuiltInPackIds(): Set<string> {
     for (const pack of discoverBuiltInPacks(builtInDir)) ids.add(pack.id);
     return ids;
   }
+  // Monorepo fallback when not running inside the app (CJS contexts only; ESM has no __dirname)
+  if (typeof __dirname === 'undefined') return ids;
   const packagesDir = path.resolve(__dirname, '..', '..', '..');
   try {
     for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
@@ -124,7 +141,62 @@ export function checkDependencies(
   return missing;
 }
 
-export async function installPackFromLocal(source: string, targetPacksDir?: string): Promise<InstallResult> {
+/** Replace <packsDir>/<id> with `sourceDir`'s contents without leaving a half-copied pack behind. */
+function placePack(sourceDir: string, packsDir: string, id: string): string {
+  const destDir = path.join(packsDir, id);
+  const incoming = fs.mkdtempSync(path.join(packsDir, `.${id}.installing-`));
+  try {
+    copyDir(sourceDir, incoming);
+    const previous = fs.existsSync(destDir) ? path.join(packsDir, `.${id}.previous-${process.pid}`) : null;
+    if (previous) fs.renameSync(destDir, previous);
+    fs.renameSync(incoming, destDir);
+    if (previous) fs.rmSync(previous, { recursive: true, force: true });
+    return destDir;
+  } catch (err) {
+    fs.rmSync(incoming, { recursive: true, force: true });
+    throw err;
+  }
+}
+
+/**
+ * Install from a directory that is one of:
+ * - a bundle (bundle.json): verified, then copied as-is
+ * - a pack source built in the bundle layout (dist/runtime, dist/types): staged into a bundle first
+ * - a legacy pre-bundle pack (abuddy.json + dist/): copied as-is, with a warning
+ */
+async function installFromDirectory(dir: string, packsDir: string, options: InstallOptions): Promise<InstallResult> {
+  const manifestSource = readValidManifest(dir);
+  assertHostCompatible(manifestSource, options.hostVersion);
+
+  let bundleDir = dir;
+  let stageRoot: string | undefined;
+  if (!isBundleDir(dir) && hasBuiltBundleSections(dir)) {
+    stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-stage-'));
+    bundleDir = path.join(stageRoot, manifestSource.id);
+    stageBundle(dir, bundleDir);
+  }
+
+  try {
+    let bundle: BundleInfo | undefined;
+    if (isBundleDir(bundleDir)) {
+      bundle = verifyBundle(bundleDir);
+    } else if (fs.existsSync(path.join(dir, 'dist'))) {
+      log.warn(`Installing ${manifestSource.id} in the pre-bundle layout (no ${BUNDLE_PATHS.info}); rebuild it with a current abuddy CLI`);
+    } else {
+      throw new Error('Pack is not built: no bundle.json or dist/ found. Run "abuddy build" first.');
+    }
+
+    const manifest = readValidManifest(bundleDir);
+    const destDir = placePack(bundleDir, packsDir, manifest.id);
+    const missingDependencies = checkDependencies(manifest, packsDir);
+    log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
+    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies, bundle };
+  } finally {
+    if (stageRoot) fs.rmSync(stageRoot, { recursive: true, force: true });
+  }
+}
+
+export async function installPackFromLocal(source: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
   const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
   const resolved = path.resolve(expanded);
   if (!fs.existsSync(resolved)) {
@@ -132,89 +204,49 @@ export async function installPackFromLocal(source: string, targetPacksDir?: stri
   }
 
   const packsDir = ensurePacksDir(targetPacksDir);
-  let sourceDir: string;
-  let cleanup: (() => void) | undefined;
-
-  const stat = fs.statSync(resolved);
-  if (stat.isDirectory()) {
-    sourceDir = resolved;
-  } else if (resolved.endsWith('.zip')) {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
-    extractZip(resolved, tmpDir);
-    sourceDir = findPackRoot(tmpDir);
-    cleanup = () => fs.rmSync(tmpDir, { recursive: true, force: true });
-  } else if (resolved.endsWith('.tgz') || resolved.endsWith('.tar.gz')) {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
-    extractTgz(resolved, tmpDir);
-    sourceDir = findPackRoot(tmpDir);
-    cleanup = () => fs.rmSync(tmpDir, { recursive: true, force: true });
-  } else {
-    throw new Error('Source must be a directory, .zip, or .tgz file');
+  if (fs.statSync(resolved).isDirectory()) {
+    return installFromDirectory(resolved, packsDir, options);
   }
 
-  try {
-    const manifest = validateManifest(sourceDir);
-    const destDir = path.join(packsDir, manifest.id);
-
-    if (fs.existsSync(destDir)) {
-      console.log(`Replacing existing pack ${manifest.id}`);
-      fs.rmSync(destDir, { recursive: true, force: true });
-    }
-
-    copyDir(sourceDir, destDir);
-    const missingDependencies = checkDependencies(
-      JSON.parse(fs.readFileSync(path.join(destDir, 'abuddy.json'), 'utf-8')),
-      packsDir,
-    );
-    log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
-
-    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies };
-  } finally {
-    cleanup?.();
-  }
-}
-
-export async function installPackFromUrl(url: string, targetPacksDir?: string): Promise<InstallResult> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
   try {
-    const filename = new URL(url).pathname.split('/').pop() || 'pack.tgz';
-    const downloadPath = path.join(tmpDir, filename);
-
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
-    const buffer = Buffer.from(await response.arrayBuffer());
-    fs.writeFileSync(downloadPath, buffer);
-
-    const extractDir = path.join(tmpDir, 'extracted');
-    if (filename.endsWith('.tgz') || filename.endsWith('.tar.gz')) {
-      extractTgz(downloadPath, extractDir);
-    } else if (filename.endsWith('.zip')) {
-      extractZip(downloadPath, extractDir);
+    let root: string;
+    if (resolved.endsWith('.tgz') || resolved.endsWith('.tar.gz')) {
+      root = await extractBundleArchive(resolved, tmpDir, options.sha256);
+    } else if (resolved.endsWith('.zip')) {
+      extractZip(resolved, tmpDir);
+      root = findPackRoot(tmpDir);
     } else {
-      throw new Error('URL must point to a .tgz or .zip file');
+      throw new Error('Source must be a directory, .zip, or .tgz file');
     }
-
-    const sourceDir = findPackRoot(extractDir);
-    const manifest = validateManifest(sourceDir);
-    const packsDir = ensurePacksDir(targetPacksDir);
-    const destDir = path.join(packsDir, manifest.id);
-
-    if (fs.existsSync(destDir)) {
-      fs.rmSync(destDir, { recursive: true, force: true });
-    }
-    copyDir(sourceDir, destDir);
-    const missingDependencies = checkDependencies(
-      JSON.parse(fs.readFileSync(path.join(destDir, 'abuddy.json'), 'utf-8')),
-      packsDir,
-    );
-    log.info(`Installed "${manifest.name}" v${manifest.version} from URL`);
-    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies };
+    return await installFromDirectory(root, packsDir, options);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
-export async function installPackFromGitHub(slug: string, targetPacksDir?: string): Promise<InstallResult> {
+export async function installPackFromUrl(url: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
+  try {
+    const filename = new URL(url).pathname.split('/').pop() || 'pack.tgz';
+    if (!/\.(tgz|tar\.gz|zip)$/.test(filename)) {
+      throw new Error('URL must point to a .tgz or .zip file');
+    }
+    const downloadPath = path.join(tmpDir, filename);
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    fs.writeFileSync(downloadPath, Buffer.from(await response.arrayBuffer()));
+
+    return await installPackFromLocal(downloadPath, targetPacksDir, options);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+interface GitHubAsset { name: string; browser_download_url: string }
+
+export async function installPackFromGitHub(slug: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
   const [ownerRepo, tag] = slug.split('@');
   const [owner, repo] = ownerRepo.split('/');
   if (!owner || !repo) {
@@ -233,26 +265,35 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
     throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
   }
 
-  const release = await response.json() as { assets: { name: string; browser_download_url: string }[] };
-  const tgzAsset = release.assets.find((a: any) => a.name.endsWith('.tgz'));
+  const release = await response.json() as { assets: GitHubAsset[] };
+  const tgzAsset = release.assets.find(a => a.name.endsWith('.tgz'));
   if (!tgzAsset) {
     throw new Error(`No .tgz asset found in release${tag ? ` ${tag}` : ' (latest)'}`);
   }
 
-  return installPackFromUrl(tgzAsset.browser_download_url, targetPacksDir);
+  // Releases published by `abuddy release` carry <archive>.sha256; older releases don't
+  let sha256 = options.sha256;
+  const checksumAsset = release.assets.find(a => a.name === `${tgzAsset.name}.sha256`);
+  if (!sha256 && checksumAsset) {
+    const res = await fetch(checksumAsset.browser_download_url);
+    if (!res.ok) throw new Error(`Failed to download ${checksumAsset.name}: ${res.status}`);
+    sha256 = (await res.text()).trim().split(/\s+/)[0];
+  }
+
+  return installPackFromUrl(tgzAsset.browser_download_url, targetPacksDir, { ...options, sha256 });
 }
 
-export async function installPack(packSlug: string, source?: string, targetPacksDir?: string): Promise<InstallResult> {
+export async function installPack(packSlug: string, source?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
   if (source === 'local') {
-    return installPackFromLocal(packSlug, targetPacksDir);
+    return installPackFromLocal(packSlug, targetPacksDir, options);
   }
   if (source === 'url') {
-    return installPackFromUrl(packSlug, targetPacksDir);
+    return installPackFromUrl(packSlug, targetPacksDir, options);
   }
   if (packSlug.startsWith('http://') || packSlug.startsWith('https://')) {
-    return installPackFromUrl(packSlug, targetPacksDir);
+    return installPackFromUrl(packSlug, targetPacksDir, options);
   }
-  return installPackFromGitHub(packSlug, targetPacksDir);
+  return installPackFromGitHub(packSlug, targetPacksDir, options);
 }
 
 export async function uninstallPack(packId: string, targetPacksDir?: string): Promise<void> {

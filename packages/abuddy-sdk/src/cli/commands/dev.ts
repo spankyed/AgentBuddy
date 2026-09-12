@@ -65,7 +65,7 @@ export async function dev(_args: string[]) {
         name: 'pack-entry-redirect',
         configureServer(srv) {
           srv.middlewares.use((req, _res, next) => {
-            if (req.url === '/dist/fe.js' || req.url === '/@id/fe') {
+            if (req.url === '/runtime/fe.js' || req.url === '/dist/fe.js' || req.url === '/@id/fe') {
               req.url = entryRelative;
             }
             next();
