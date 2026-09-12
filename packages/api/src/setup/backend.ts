@@ -29,10 +29,18 @@ export async function setupBackend(): Promise<void> {
   // ── Register host-level systems (before any pack loading) ──────────
   registerHostSystem('packs', packsSystem, packsEvents);
 
-  // ── Load built-in packs (discover → import directly) ───────────────
+  // ── Load packs (built-in async + external sync overlap) ────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  if (builtInDir) {
-    const builtInPackInfos = await loadBuiltInPacks(builtInDir);
+  const builtInPromise = builtInDir ? loadBuiltInPacks(builtInDir) : null;
+
+  // External pack work is sync — runs while built-in loading is in flight
+  let externalPacks = loadExternalPacks();
+  if (externalPacks.length > 0) {
+    externalPacks = registerExternalPacks(externalPacks);
+  }
+
+  if (builtInPromise) {
+    const builtInPackInfos = await builtInPromise;
     setBuiltInPacks(builtInPackInfos);
     setBuiltInPacksForRegistry(builtInPackInfos);
   }
@@ -46,12 +54,6 @@ export async function setupBackend(): Promise<void> {
   }
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
-
-  // ── Discover & register external packs (before hydration so EARS types are visible to policy)
-  let externalPacks = loadExternalPacks();
-  if (externalPacks.length > 0) {
-    externalPacks = registerExternalPacks(externalPacks);
-  }
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const info of getBuiltInPackInfos()) {

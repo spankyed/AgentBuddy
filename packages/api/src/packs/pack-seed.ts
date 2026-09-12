@@ -10,6 +10,19 @@ import { seedData, type SeedIncludeSet } from '@abuddy/sdk/utils';
 
 const logger = createLogger('pack-seed');
 
+function statFingerprint(files: { path: string }[]): string {
+  const parts: string[] = [];
+  for (const f of files) {
+    try {
+      const s = fs.statSync(f.path);
+      parts.push(`${f.path}:${s.mtimeMs}:${s.size}`);
+    } catch {
+      parts.push(`${f.path}:missing`);
+    }
+  }
+  return parts.join('|');
+}
+
 export function computePackSeedHash(distDir: string): string {
   const files = fs.readdirSync(distDir).filter(f => f.endsWith('.json')).sort();
   if (files.length === 0) return '';
@@ -100,11 +113,21 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
 export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
   const { artifacts, compiledDir, seedPolicy } = manifest;
   const repo = repository as any;
+  const internal = repo.settingsQueries.getInternalSettings();
+  const storedHash = internal.seedHash;
+
+  // Fast path: if file mtimes/sizes haven't changed, the hash is the same
+  const seedFiles = artifacts.map(name => ({ path: seedPath(compiledDir, name) }));
+  const fp = statFingerprint(seedFiles);
+  const storedFp = internal.seedStatFingerprint;
+  if (storedHash && storedFp === fp) {
+    logger.info('Boot seed skipped: files unchanged (mtime)');
+    return;
+  }
 
   const currentHash = computeManifestSeedHash(compiledDir, artifacts);
-  const storedHash = repo.settingsQueries.getInternalSettings().seedHash;
-
   if (storedHash === currentHash) {
+    repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
     logger.info('Boot seed skipped: data unchanged');
     return;
   }
@@ -112,5 +135,6 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
   const include = evaluateSeedPolicy(seedPolicy);
   seedData({ compiledDir, include });
   repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
+  repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
   logger.info('Boot seed completed');
 }

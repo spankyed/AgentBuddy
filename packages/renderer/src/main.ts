@@ -85,13 +85,15 @@ window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
 runFrontendMigrations();
 
-for (const [packId, loader] of Object.entries(builtInPacks)) {
-  try {
-    const mod = await loader();
-    if (mod.default) registerPackFE(mod.default);
-  } catch (err) {
-    console.error(`[boot] Failed to load built-in pack ${packId}:`, err);
-  }
+const packEntries = Object.entries(builtInPacks);
+const loadedMods = await Promise.all(
+  packEntries.map(async ([packId, loader]) => {
+    try { return await loader(); }
+    catch (err) { console.error(`[boot] Failed to load built-in pack ${packId}:`, err); return null; }
+  })
+);
+for (const mod of loadedMods) {
+  if (mod?.default) registerPackFE(mod.default);
 }
 
 // const { inspect } = createBrowserInspector();

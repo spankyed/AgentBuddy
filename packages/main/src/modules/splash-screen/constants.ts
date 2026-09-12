@@ -7,9 +7,9 @@ export const SPLASH_CONFIG = {
   TITLE: 'AgentBuddy-Splash',
   
   // Fade animation
-  FADE_STEP: 0.05,
+  FADE_STEP: 0.1,
   FADE_INTERVAL: 20, // ms
-  
+
   // Timing
-  CLOSE_DELAY: 200, // ms delay before closing splash after main window shows
+  CLOSE_DELAY: 100, // ms delay before closing splash after main window shows
 } as const;
