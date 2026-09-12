@@ -57,6 +57,7 @@
     "./logger": "./src/logger/index.ts",
     "./rpc": "./src/rpc/index.ts",
     "./utils": "./src/utils/index.ts",
+    "./utils/pure": "./src/utils/pure.ts",
     "./utils/compare-versions": "./src/utils/compare-versions.ts",
     "./services": "./src/services/index.ts",
     "./inference": "./src/services/inference.ts",

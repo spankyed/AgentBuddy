@@ -83,6 +83,10 @@ Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSyst
 - `@abuddy/sdk/ears/internals` — host-only: `initEARSRuntime`, `edgeStore`, `relationIndex`, `clearMemory`, etc.
 - `@abuddy/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
 - `@abuddy/sdk/fe/host` — host-only: `registerPackFE`, `getRegisteredPlugins`, etc.
+- `@abuddy/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
+- `@abuddy/sdk/utils/pure` — **environment-agnostic**: pure utilities only (`compareVersions`, `detectChanges`, `BinaryOperator`, `toMap`, `randomId`, etc.). Frontend/renderer code must import from this path (or a specific sub-path like `@abuddy/sdk/utils/compare-versions`), never from `@abuddy/sdk/utils`.
+
+When adding new utils, put pure functions in the appropriate file under `utils/` and re-export from `pure.ts`. Node-dependent code stays in the existing Node modules and is re-exported only from `index.ts`.
 
 When adding new EARS or FE exports, put them in the correct barrel. After changing pack-facing exports, run `npm run api:update` in `packages/abuddy-sdk` and commit the updated `etc/*.api.md` reports.
 

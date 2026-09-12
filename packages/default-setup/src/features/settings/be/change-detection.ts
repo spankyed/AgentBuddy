@@ -1,4 +1,4 @@
-export * from '@abuddy/sdk/utils';
+export * from '@abuddy/sdk/utils/pure';
 
 // Backward-compat wrappers with settings-specific types
 import { detectChanges } from '@abuddy/sdk/utils';
