@@ -88,7 +88,6 @@ DSL source files compiled to JSON at build time. Located in `src/seeds/`:
 - `library/` — internal docs (commands reference)
 - `notes/` — welcome note
 - `faqs/` — markdown FAQ files
-- `_examples/` — example DSL files
 - `default-settings.ts` — full default settings object
 
 Seed registration: `__generated__/seeders.ts` registers seeders for actions, prompts, flows, library, notes, and settings with the core seed framework. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged.

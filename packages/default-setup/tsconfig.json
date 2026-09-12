@@ -26,9 +26,6 @@
     "src/**/*.ts", "tests/**/*.ts"
   ],
   "exclude": [
-    // Scaffolding samples for pack authors — illustrative, not compiled code.
-    "src/**/*.example.ts",
-    "src/_examples/**",
     // Monaco DSL type surfaces. Built separately by rollup-defs.config.mjs
     // under tsconfig.defs.json, which has its own compiler settings.
     "src/defs/**",
