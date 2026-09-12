@@ -26,7 +26,6 @@
     "Settings": "Settings",
     "Secret": "Secret",
     "FAQ": "FAQ",
-    "CalendarEvent": "CalendarEvent",
     "BrowserTab": "BrowserTab",
     "BrowserBookmark": "BrowserBookmark",
     "Note": "Note",
@@ -104,19 +103,6 @@
         "icon": "NotebookText"
       },
       "contributions": "src/features/notes/fe/contributions",
-      "services": {}
-    },
-    {
-      "id": "calendar",
-      "settings": "src/features/calendar/settings.ts",
-      "system": {
-        "entry": "src/features/calendar/be/system.ts"
-      },
-      "plugin": {
-        "entry": "src/features/calendar/fe/plugin.ts",
-        "label": "Calendar",
-        "icon": "Calendar"
-      },
       "services": {}
     },
     {
@@ -321,10 +307,6 @@
     "Document": {
       "source": "src/features/library/be/types.ts",
       "type": "Document"
-    },
-    "CalendarEvent": {
-      "source": "src/features/calendar/be/types.ts",
-      "type": "CalendarEventEntity"
     },
     "Note": {
       "source": "src/features/notes/be/types.ts",
