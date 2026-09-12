@@ -44,6 +44,9 @@ jobs:
       - name: Unit tests (sdk)
         run: npm test --workspace @abuddy/sdk -- --reporter=verbose
 
+      - name: Unit tests (renderer)
+        run: npm run test:unit --workspace @app/renderer -- --run
+
   # Builds tests/fixtures/external-pack with the abuddy CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:

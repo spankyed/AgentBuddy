@@ -17,6 +17,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { loadExternalPacks, seedPackData, computePackSeedHash } from '@/packs/pack-loader';
 import { setLoadedPacks } from '@/packs/pack-api';
+import { rootEvents } from '@/core/router/bus-emitter';
 import { seedFile } from '@abuddy/sdk/build';
 
 let tmpDir: string;
@@ -195,19 +196,34 @@ describe('pack-loader', () => {
 
     it('handles system module with no recognizable export', () => {
       const packsDir = path.join(tmpDir, 'packs');
-      makePack(packsDir, 'no-export', {
+      // The manifest points at TypeScript source; the loader runs the compiled dist/systems/<id>.cjs
+      const packDir = makePack(packsDir, 'no-export', {
         id: 'no-export',
         name: 'No Export',
         version: '1.0.0',
         features: [{
           id: 'empty',
-          system: { entry: 'dist/system.cjs' },
+          system: { entry: 'src/features/empty/be/system.ts' },
         }],
-      }, 'module.exports = { someRandomThing: 42 };');
+      });
+      fs.mkdirSync(path.join(packDir, 'dist', 'systems'), { recursive: true });
+      fs.writeFileSync(path.join(packDir, 'dist', 'systems', 'empty.cjs'), 'module.exports = { someRandomThing: 42 };');
 
-      const result = loadExternalPacks();
-      expect(result).toHaveLength(1);
-      expect(result[0].systems.size).toBe(0);
+      const warnings: string[] = [];
+      const unsubscribe = rootEvents.onLog(event => {
+        if (event.level === 'warn' && event.source === 'pack-loader') warnings.push(event.message);
+      });
+      try {
+        const result = loadExternalPacks();
+        expect(result).toHaveLength(1);
+        expect(result[0].systems.size).toBe(0);
+        // Names the file actually loaded (the compiled .cjs) and what it did export
+        expect(warnings).toContain(
+          'No machine export found in dist/systems/empty.cjs: expected a default export (or `system`/`machine`), found someRandomThing',
+        );
+      } finally {
+        unsubscribe();
+      }
     });
   });
 
