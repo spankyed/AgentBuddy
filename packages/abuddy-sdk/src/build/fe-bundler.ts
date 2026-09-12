@@ -146,14 +146,45 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   const tsconfigAliases = readTsconfigAliases(packDir);
   const aliasEntries = Object.entries(tsconfigAliases).map(([find, replacement]) => ({ find, replacement }));
 
+  // Tailwind CSS: use pack's own config if present, otherwise generate one
+  let postcssPlugins: any[] = [];
+  try {
+    const tailwindcss = (await import('tailwindcss')).default;
+    const autoprefixer = (await import('autoprefixer')).default;
+    const packTwConfig = path.join(packDir, 'tailwind.config.ts');
+    const packTwConfigJs = path.join(packDir, 'tailwind.config.js');
+    const twConfig = fs.existsSync(packTwConfig) ? packTwConfig
+      : fs.existsSync(packTwConfigJs) ? packTwConfigJs
+      : {
+        content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}')],
+      };
+    postcssPlugins = [tailwindcss(twConfig), autoprefixer()];
+  } catch {}
+
+  // Inject @tailwind utilities so Tailwind generates classes found in templates
+  const tailwindInjectPlugin: VitePlugin = {
+    name: 'tailwind-inject',
+    resolveId(id) { if (id === 'virtual:tailwind-utils.css') return '\0virtual:tailwind-utils.css'; },
+    load(id) { if (id === '\0virtual:tailwind-utils.css') return '@tailwind utilities;'; },
+    transform(code, id) {
+      if (id === entryPoint || id === path.resolve(packDir, entryPoint)) {
+        return `import 'virtual:tailwind-utils.css';\n${code}`;
+      }
+    },
+  };
+
   try {
     await vite.build({
       root: packDir,
       configFile: false,
       plugins: [
+        tailwindInjectPlugin,
         packExternalsPlugin(packDir),
         vue(),
       ],
+      css: {
+        postcss: { plugins: postcssPlugins },
+      },
       resolve: {
         alias: aliasEntries,
       },
