@@ -112,8 +112,17 @@ declare module '../types/entities' {
   }
 }
 
-export interface TrackEntity extends TNodeEntity {
-  children: TrackEntity[];
+/**
+ * One track's execution, as a tree: a persisted TNode with its SPAWNED children
+ * hydrated in memory.
+ *
+ * Deliberately not named `TrackEntity` — `Track` is not a declared entity type,
+ * and in this codebase an `XEntity` suffix means "shape of a persisted EARS
+ * entity" (i.e. a key in EntityShapeRegistry). Not to be confused with `Track`
+ * in build/compilers/flow-types.ts, which is the static DSL track definition.
+ */
+export interface TrackTree extends TNodeEntity {
+  children: TrackTree[];
 }
 
 export interface ExecutionEvent {

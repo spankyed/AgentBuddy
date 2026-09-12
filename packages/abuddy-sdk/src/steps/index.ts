@@ -23,7 +23,7 @@ export type {
   EntityStatus,
   TNodeKind,
   TNodeEntity,
-  TrackEntity,
+  TrackTree,
   ExecutionEvent,
   StepRun,
   RuntimeServices,

@@ -85,7 +85,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 import TNodeListItem from '@abuddy/sdk/fe/components/TNodeListItem.vue'
-import type { TrackEntity } from '@/__generated__/types'
+import type { TrackTree } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
 
 const actorSystem = useActorSystem()
@@ -104,18 +104,18 @@ watch(flowTNodeId, () => {
   displayCount.value = PAGE_SIZE;
 });
 
-// Convert normalized tree back to TrackEntity[] format, reversed (newest first)
-const tNodeTree = computed((): TrackEntity[] => {
+// Convert normalized tree back to TrackTree[] format, reversed (newest first)
+const tNodeTree = computed((): TrackTree[] => {
   if (!normalizedTree.value) return [];
 
-  function buildNode(id: string): TrackEntity {
+  function buildNode(id: string): TrackTree {
     const node = normalizedTree.value!.byId[id];
     const childIds = normalizedTree.value!.childrenById[id] || [];
 
     return {
       ...node,
       children: childIds.map(childId => buildNode(childId))
-    } as TrackEntity;
+    } as TrackTree;
   }
 
   return normalizedTree.value.rootIds.slice().reverse().map(id => buildNode(id));

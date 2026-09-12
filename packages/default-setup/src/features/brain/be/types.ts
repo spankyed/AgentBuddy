@@ -6,14 +6,14 @@ export type {
   EntityStatus,
   TNodeKind,
   TNodeEntity,
-  TrackEntity,
+  TrackTree,
   ExecutionEvent,
   StepRun,
   RuntimeServices,
   ExecutionContext,
 } from '@abuddy/sdk/steps';
 
-import type { TimestampMs, TrackEntity, TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
+import type { TimestampMs, TrackTree, TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
 
 export type JsonPath = string;
 
@@ -30,7 +30,7 @@ export interface EventListenerEntity {
 
 export interface FlowTNodeData {
   flowTNodeId: EARS.EntityId;
-  tNodeTree: TrackEntity[];
+  tNodeTree: TrackTree[];
   possibleEvents: EventListenerEntity[];
   flowHierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }>;
 }

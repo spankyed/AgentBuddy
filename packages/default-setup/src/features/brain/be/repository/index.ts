@@ -4,7 +4,7 @@ import { edgeStore } from '@abuddy/sdk/ears/internals';
 import type {
   FlowTNodeData,
   TNodeEntity,
-  TrackEntity,
+  TrackTree,
   EventListenerEntity,
   TNodeUpdate,
   ExecutionContext
@@ -70,7 +70,7 @@ function spawnedChildIds(id: EARS.EntityId): EARS.EntityId<'TNode'>[] {
   ) as EARS.EntityId<'TNode'>[];
 }
 
-function buildSpawnedTree(nodeId: EARS.EntityId<'TNode'>): TrackEntity {
+function buildSpawnedTree(nodeId: EARS.EntityId<'TNode'>): TrackTree {
   const tnode = qx(nodeId).pickOne(TNODE_COLUMNS)!;
   const directChildIds = spawnedChildIds(nodeId);
   const children = directChildIds.map(childId => buildSpawnedTree(childId));
@@ -163,7 +163,7 @@ export const brainQueries = {
     return result[0] as unknown as NodeEntity | undefined;
   },
   
-  eventTracks: (flowTNodeId: EARS.EntityId<'TNode'>): TrackEntity[] => {
+  eventTracks: (flowTNodeId: EARS.EntityId<'TNode'>): TrackTree[] => {
     // Get the flow TNode
     const flowTNode = qx(flowTNodeId).pickOne(TNODE_COLUMNS)!;
     

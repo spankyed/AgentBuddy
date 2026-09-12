@@ -1,4 +1,4 @@
-import type { TNodeEntity, TrackEntity } from '@/__generated__/types';
+import type { TNodeEntity, TrackTree } from '@/__generated__/types';
 
 export interface NormalizedTNodeTree {
   byId: Record<string, TNodeEntity>;
@@ -6,14 +6,14 @@ export interface NormalizedTNodeTree {
   childrenById: Record<string, string[]>;
 }
 
-export function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
+export function normalizeTNodeTree(tree: TrackTree[]): NormalizedTNodeTree {
   const normalized: NormalizedTNodeTree = {
     byId: {},
     rootIds: [],
     childrenById: {}
   };
 
-  function processNode(node: TrackEntity, isRoot = false) {
+  function processNode(node: TrackTree, isRoot = false) {
     const { children, ...nodeWithoutChildren } = node;
     normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
 
@@ -38,15 +38,15 @@ export function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
   return normalized;
 }
 
-export function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
-  function buildNode(id: string): TrackEntity {
+export function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackTree[] {
+  function buildNode(id: string): TrackTree {
     const node = normalized.byId[id];
     const childIds = normalized.childrenById[id] || [];
 
     return {
       ...node,
       children: childIds.map(childId => buildNode(childId))
-    } as TrackEntity;
+    } as TrackTree;
   }
 
   return normalized.rootIds.map(id => buildNode(id));

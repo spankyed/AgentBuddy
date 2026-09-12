@@ -118,7 +118,7 @@
       <!-- Children nested inside parent container -->
       <div v-if="isExpanded && hasChildren(node)" class="tnode-children">
         <TNodeListItem
-          v-for="child in (node as TrackEntity).children"
+          v-for="child in (node as TrackTree).children"
           :key="child.id"
           :node="child"
           :depth="depth + 1"
@@ -135,12 +135,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { TrackEntity, TNodeEntity } from '../../steps/types';
+import type { TrackTree, TNodeEntity } from '../../steps/types';
 import DataRenderer from './DataRenderer.vue';
 import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from './node-styles';
 
 interface Props {
-  node: TNodeEntity | TrackEntity;
+  node: TNodeEntity | TrackTree;
   depth?: number;
   nodeDetails?: TNodeEntity;
   nodeDetailsMap?: Map<string, TNodeEntity>;
@@ -158,7 +158,7 @@ const emit = defineEmits<{
 
 const isExpanded = ref(false);
 
-const hasChildren = (node: TNodeEntity | TrackEntity): node is TrackEntity => {
+const hasChildren = (node: TNodeEntity | TrackTree): node is TrackTree => {
   return 'children' in node && Array.isArray(node.children) && node.children.length > 0;
 };
 

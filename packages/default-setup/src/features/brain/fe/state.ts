@@ -7,7 +7,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type {
   OutgoingBrainEvents,
 } from '@/__generated__/types'
-import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@/__generated__/types';
+import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackTree } from '@/__generated__/types';
 import { trpc } from '@abuddy/sdk/rpc';
 import {
   applyTNodeSpawn,
@@ -21,7 +21,7 @@ export type BrainState = ActorRefFrom<typeof brainState>
 
 export interface BrainContext {
   flowTNodeId?: string;
-  tNodeTree?: TrackEntity[];
+  tNodeTree?: TrackTree[];
   normalizedTree?: NormalizedTNodeTree;
   possibleEvents: EventListenerEntity[];
   flowHierarchy: Array<{ flowTNodeId: string; label: string }>;
@@ -74,7 +74,7 @@ const typeOf = safeEvents<BrainEvents>()
 
 function normalizeFlowTNodeData(data: FlowTNodeData): {
   normalizedTree?: NormalizedTNodeTree;
-  tNodeTree?: TrackEntity[];
+  tNodeTree?: TrackTree[];
 } {
   if (!data.tNodeTree) {
     return { normalizedTree: undefined, tNodeTree: undefined };

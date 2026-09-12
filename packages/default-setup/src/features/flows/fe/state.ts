@@ -18,7 +18,7 @@ import type {
   ModelCatalogEntry,
   ActionEntity,
   TNodeEntity,
-  TrackEntity,
+  TrackTree,
   OutgoingBrainEvents,
 } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'

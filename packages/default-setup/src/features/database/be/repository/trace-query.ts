@@ -1,6 +1,6 @@
 import { LmdbQuery, envs } from '@abuddy/sdk/ears/internals';
 import { EARS } from '@/__generated__/ears';
-import type { TNodeEntity, TrackEntity } from '@/__generated__/types';
+import type { TNodeEntity, TrackTree } from '@/__generated__/types';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('database:trace');
@@ -45,7 +45,7 @@ function buildTNodeEntity(
   nodeId: string,
   meta: any,
   includeChildren = false
-): TrackEntity | TNodeEntity | null {
+): TrackTree | TNodeEntity | null {
   if (!meta || meta.deletedAt) return null;
   
   const tNode: TNodeEntity = {
@@ -74,11 +74,11 @@ function buildTNodeEntity(
   // If includeChildren is true, recursively build children
   if (includeChildren) {
     const childIds = getDescendants(query, nodeId, EARS.RelKind.SPAWNED);
-    const children: TrackEntity[] = [];
+    const children: TrackTree[] = [];
     
     for (const childId of childIds) {
       const childMeta = query.getEntityMeta(childId);
-      const child = buildTNodeEntity(query, childId, childMeta, true) as TrackEntity;
+      const child = buildTNodeEntity(query, childId, childMeta, true) as TrackTree;
       if (child) {
         children.push(child);
       }
@@ -90,7 +90,7 @@ function buildTNodeEntity(
     return {
       ...tNode,
       children
-    } as TrackEntity;
+    } as TrackTree;
   }
   
   return tNode;
@@ -168,10 +168,10 @@ export function getFlowEvents(
   flowId: string, 
   offset = 0, 
   limit = 50
-): { events: TrackEntity[]; hasMore: boolean } {
+): { events: TrackTree[]; hasMore: boolean } {
   try {
     const query = new LmdbQuery(envs.volatileBackup);
-    const eventTracks: TrackEntity[] = [];
+    const eventTracks: TrackTree[] = [];
     
     // Find all TRACKED relations from this flow (flow TNode -> event TNodes)
     const relations = [...query.relations({ 
@@ -184,7 +184,7 @@ export function getFlowEvents(
     for (const { rel } of relations) {
       const eventId = rel.tgt;
       const eventMeta = query.getEntityMeta(eventId);
-      const eventTrack = buildTNodeEntity(query, eventId, eventMeta, true) as TrackEntity;
+      const eventTrack = buildTNodeEntity(query, eventId, eventMeta, true) as TrackTree;
       
       if (eventTrack) {
         eventTracks.push(eventTrack);

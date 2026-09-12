@@ -32,11 +32,11 @@ export default {
 </script>
 
 <script setup lang="ts">
-import type { TrackEntity } from '@/__generated__/types'
+import type { TrackTree } from '@/__generated__/types'
 import TNodeListItem from '@abuddy/sdk/fe/components/TNodeListItem.vue';
 
 interface Props {
-  tnodeTree?: TrackEntity[];
+  tnodeTree?: TrackTree[];
 }
 
 defineProps<Props>();
