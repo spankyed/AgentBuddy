@@ -406,7 +406,7 @@ function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Pa
     "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState", "context",
   ] as const;
 
-  const allThreads = (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
+  const allThreads = qx(EARS.Entity.Thread).pick(threadFields)
     .filter(t => !t.archived);
 
   const sortOrder = getConfiguredSortOrder();
@@ -422,7 +422,7 @@ function getArchivedThreads(): Partial<ThreadEntity>[] {
     "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState", "context",
   ] as const;
 
-  return (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
+  return qx(EARS.Entity.Thread).pick(threadFields)
     .filter(t => t.archived)
     .sort((a, b) => getSortTimestamp(b, getConfiguredSortOrder()) - getSortTimestamp(a, getConfiguredSortOrder()));
 }
@@ -582,7 +582,7 @@ export const chatQueries = {
 
     const pinnedThreads = (qx(EARS.Entity.Thread)
       .where('pinned', true)
-      .pick(["id", "shortCode", "topic", "archived"] as const) as Partial<ThreadEntity>[])
+      .pick(["id", "shortCode", "topic", "archived"] as const))
       .filter(t => !t.archived);
     const pinnedIds = new Set(pinnedThreads.map(t => t.id));
 

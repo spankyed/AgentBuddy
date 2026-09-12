@@ -467,14 +467,15 @@ export const brainCommands = {
   },
   
   createRootFlowTNode: (): {
-    rootFlow: FlowEntity;
+    // Only the fields the pick below actually selects — consumers read id/label.
+    rootFlow: Pick<FlowEntity, 'id' | 'label' | 'flowType' | 'createdAt'>;
     rootFlowTNode: TNodeEntity;
   } => {
     const rootId = ROOT_TNODE_ID;
 
     const rootFlow = qx(EARS.Entity.Flow)
       .withRole(ROOT_FLOW_ROLE)
-      .pickOne(["id", "label", "flowType", "createdAt"]) as FlowEntity | undefined;
+      .pickOne(["id", "label", "flowType", "createdAt"]);
 
     if (!rootFlow) {
       throw new Error(
@@ -493,7 +494,7 @@ export const brainCommands = {
       .batchPut({
         entityType: EARS.Entity.TNode,
         tNodeType: 'flow',
-        label: rootFlow.label!,
+        label: rootFlow.label,
         status: 'active',
         startedAt: now,
         createdAt: now,
@@ -505,7 +506,7 @@ export const brainCommands = {
       id: rootId,
       entityType: EARS.Entity.TNode,
       tNodeType: 'flow',
-      label: rootFlow.label!,
+      label: rootFlow.label,
       status: 'active',
       startedAt: now,
       createdAt: now,

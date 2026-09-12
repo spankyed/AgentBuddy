@@ -279,7 +279,10 @@ const qxImpl = (seed?: QxSeed) => {
  * literal and `EARS.Entity` is an open string.
  */
 export function qx(): QueryBuilder<string>;
-export function qx(seed: EARS.EntityId | readonly EARS.EntityId[]): QueryBuilder<string>;
+// A branded id carries its entity type, so it threads through like a type seed.
+// An unbranded `EARS.EntityId` is `EntityId<string>`, which yields QueryBuilder<string>.
+export function qx<E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E>;
+export function qx<E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
 export function qx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
 export function qx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
 // Catch-all for seeds that may be undefined at the call site.

@@ -252,11 +252,11 @@ export const flowsQueries = {
   connectedData: (): FlowsConnectedData => {
     const flows = qx(EARS.Entity.Flow)
       .orderBy('createdAt', 'desc')
-      .pick(FLOW_QUERY_FIELDS.LIST) as Partial<FlowEntity>[];
+      .pick(FLOW_QUERY_FIELDS.LIST);
 
     const rootFlow = qx(EARS.Entity.Flow)
       .withRole(FLOW_ROLES.ROOT_FLOW)
-      .pickOne(FLOW_QUERY_FIELDS.LIST) as Partial<FlowEntity> | undefined;
+      .pickOne(FLOW_QUERY_FIELDS.LIST) ?? undefined;
       
     const flowId = rootFlow?.id ?? 'Flow-1';
     const nodes = flowsQueries.flowNodes(flowId);

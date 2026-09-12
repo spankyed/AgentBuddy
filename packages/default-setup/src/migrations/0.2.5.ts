@@ -15,7 +15,7 @@ export const migration: PackMigration = {
 
       // Find claude-session artifact for this thread
       const artifacts = qx().relatedTo(thread.id).ofType(EARS.Entity.Artifact)
-        .pick(['artifactType', 'content'] as const) as Array<Pick<ArtifactEntity, 'artifactType' | 'content'>>;
+        .pick(['artifactType', 'content'] as const);
       const session = artifacts.find(a => a.artifactType === 'claude-session');
       const chatState = (session?.content as any)?.chatState;
 

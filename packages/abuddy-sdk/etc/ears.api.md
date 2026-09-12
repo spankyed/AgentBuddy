@@ -399,7 +399,10 @@ export interface QueryBuilder<E extends string = string> {
 export function qx(): QueryBuilder<string>;
 
 // @public (undocumented)
-export function qx(seed: EARS.EntityId | readonly EARS.EntityId[]): QueryBuilder<string>;
+export function qx<E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E>;
+
+// @public (undocumented)
+export function qx<E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
 
 // @public (undocumented)
 export function qx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
