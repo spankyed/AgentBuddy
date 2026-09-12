@@ -117,6 +117,40 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   return _packManifest;
 }
 
+// Recent Electron stdout/stderr per app, so fixture failures can report the root
+// cause (loader errors, crashes) without re-running under DEBUG_E2E.
+const OUTPUT_TAIL_LINES = 200;
+const outputTails = new WeakMap<ElectronApplication, string[]>();
+
+function captureOutput(app: ElectronApplication): void {
+  const tail: string[] = [];
+  outputTails.set(app, tail);
+  const onData = (data: Buffer) => {
+    for (const line of data.toString().split('\n')) {
+      if (!line.trim()) continue;
+      tail.push(line);
+      if (tail.length > OUTPUT_TAIL_LINES) tail.shift();
+    }
+  };
+  app.process().stdout?.on('data', onData);
+  app.process().stderr?.on('data', onData);
+}
+
+const ERROR_LINE = /error|exception|failed|cannot|not found|no machine export/i;
+
+function describeFailure(message: string, app: ElectronApplication, rendererErrors: string[] = []): Error {
+  const sections = [message];
+  if (rendererErrors.length > 0) {
+    sections.push('Renderer errors:\n' + rendererErrors.map(e => `  ${e}`).join('\n'));
+  }
+  const errorLines = (outputTails.get(app) ?? []).filter(l => ERROR_LINE.test(l)).slice(-30);
+  if (errorLines.length > 0) {
+    sections.push('Electron/API output (error lines):\n' + errorLines.map(l => `  ${l}`).join('\n'));
+  }
+  sections.push('Re-run with DEBUG_E2E=1 for full Electron output.');
+  return new Error(sections.join('\n\n'));
+}
+
 async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
   const deadline = Date.now() + 45_000;
 
@@ -144,7 +178,7 @@ async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
     }
   }
 
-  throw new Error('Main window with applicationState did not appear within timeout');
+  throw describeFailure('Main window with applicationState did not appear within timeout', electronApp);
 }
 
 export function createTest(options: CreateTestOptions = {}) {
@@ -164,15 +198,14 @@ export function createTest(options: CreateTestOptions = {}) {
         const devPacksDir = getPacksDirForEnv('development');
         const devSignal = path.join(devPacksDir, manifest.id, '.dev');
         if (!fs.existsSync(devSignal)) {
-          if (!fs.existsSync(path.join(packDir, 'dist'))) {
-            const abuddyBin = resolveAbuddyBin(appRoot);
-            console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
-            try {
-              execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
-            } catch (e: any) {
-              const stderr = e.stderr?.toString() || e.message;
-              throw new Error(`Pack build failed for ${manifest.id}:\n${stderr}`);
-            }
+          // Always rebuild: syncing an existing dist would silently test stale code
+          const abuddyBin = resolveAbuddyBin(appRoot);
+          console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
+          try {
+            execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
+          } catch (e: any) {
+            const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
+            throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
           }
           console.log(`[pack] Syncing ${manifest.id} to test packs directory...`);
           syncPackToDevDir(packDir, path.join(testPacksDir, manifest.id));
@@ -195,6 +228,7 @@ export function createTest(options: CreateTestOptions = {}) {
         },
       });
 
+      captureOutput(app);
       if (process.env.DEBUG_E2E) {
         app.process().stdout?.on('data', (data: Buffer) => {
           process.stdout.write(`[electron] ${data}`);
@@ -211,18 +245,36 @@ export function createTest(options: CreateTestOptions = {}) {
     appPage: async ({ electronApp }, use) => {
       const page = await findMainWindow(electronApp);
 
-      let packFeFailed = false;
-      const onPageError = (error: Error) => console.error('[page error]', error);
+      const rendererErrors: string[] = [];
+      let rejectPackFeFailed: (err: Error) => void = () => {};
+      const packFeFailed = new Promise<never>((_, reject) => { rejectPackFeFailed = reject; });
+      packFeFailed.catch(() => {}); // only observed while waiting for pack plugins
+      const onPageError = (error: Error) => {
+        console.error('[page error]', error);
+        rendererErrors.push(`[page error] ${error.stack ?? error.message}`);
+      };
       const onConsole = (msg: import('@playwright/test').ConsoleMessage) => {
         if (msg.type() === 'error') {
           console.error(`[console.error] ${msg.text()}`);
-          if (msg.text().includes('[pack-loader] Failed to load FE entry')) packFeFailed = true;
+          rendererErrors.push(`[console.error] ${msg.text()}`);
+          if (msg.text().includes('[pack-loader] Failed to load FE entry')) {
+            rejectPackFeFailed(describeFailure('Pack FE failed to load', electronApp, rendererErrors));
+          }
         }
       };
       page.on('pageerror', onPageError);
       page.on('console', onConsole);
 
-      await page.waitForFunction(() => {
+      const waitOrDescribe = async (what: string, wait: Promise<unknown>) => {
+        try {
+          await wait;
+        } catch (err) {
+          if (err instanceof Error && err.message.startsWith('Pack FE failed to load')) throw err;
+          throw describeFailure(`${what}: ${(err as Error).message.split('\n')[0]}`, electronApp, rendererErrors);
+        }
+      };
+
+      await waitOrDescribe('App did not reach connected state', page.waitForFunction(() => {
         const snap = (window as any).applicationState?.getSnapshot();
         if (!snap) return false;
         const val = snap.value;
@@ -231,7 +283,7 @@ export function createTest(options: CreateTestOptions = {}) {
           if ('onboarding' in val) return true;
         }
         return false;
-      }, null, { timeout: 45_000 });
+      }, null, { timeout: 45_000 }));
 
       const inOnboarding = await page.evaluate(() => {
         const snap = (window as any).applicationState?.getSnapshot();
@@ -249,18 +301,14 @@ export function createTest(options: CreateTestOptions = {}) {
         const manifest = getPackManifest();
         if (manifest && manifest.pluginIds.length > 0) {
           for (const pluginId of manifest.pluginIds) {
-            if (packFeFailed) {
-              console.warn(`[pack] Pack FE failed to load — skipping wait for "${pluginId}"`);
-              continue;
-            }
-            try {
-              await page.waitForFunction((id) => {
+            // Fail on the captured loader error as soon as it appears instead of timing out later
+            await waitOrDescribe(`Pack plugin "${pluginId}" did not load within 30s`, Promise.race([
+              packFeFailed,
+              page.waitForFunction((id) => {
                 const snap = (window as any).applicationState?.getSnapshot();
                 return snap?.context?.plugins?.some((p: any) => p.id === id);
-              }, pluginId, { timeout: 30_000 });
-            } catch {
-              console.warn(`[pack] Plugin "${pluginId}" did not load within 30s — pack FE may have failed`);
-            }
+              }, pluginId, { timeout: 30_000 }),
+            ]));
           }
         }
       }

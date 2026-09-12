@@ -62,9 +62,57 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     return [];
   }
 
+  // The SDK's host-module registry. Proxied SDK modules share the host's copy via
+  // window.__abuddy; an inlined copy has its own empty registry, so any inlined
+  // module calling getHostModule() throws "SDK host module ... not registered".
+  function resolveHostRegistryPath(): string | undefined {
+    try {
+      const req = createRequire(path.join(packDir, 'package.json'));
+      return fs.realpathSync(path.join(path.dirname(req.resolve('@abuddy/sdk/runtime')), 'host.ts'));
+    } catch {
+      return undefined;
+    }
+  }
+
   return {
     name: 'pack-externals',
     enforce: 'pre',
+
+    generateBundle(_options, bundle) {
+      const hostPath = resolveHostRegistryPath();
+      if (!hostPath) return;
+      const sdkRoot = path.dirname(path.dirname(hostPath));
+      // Only code that survives tree-shaking matters (e.g. generated files re-export BE modules)
+      const rendered = Object.values(bundle).some(
+        (out) => out.type === 'chunk' && (out.modules[hostPath]?.renderedLength ?? 0) > 0,
+      );
+      if (!rendered) return;
+      const hostId = hostPath;
+
+      // Walk importers back to the first pack-owned module to name the offending import
+      const chain = [hostId];
+      const seen = new Set(chain);
+      let current = hostId;
+      while (current.startsWith(sdkRoot)) {
+        const next = this.getModuleInfo(current)?.importers.find(i => !seen.has(i));
+        if (!next) break;
+        chain.push(next);
+        seen.add(next);
+        current = next;
+      }
+      const packRoot = fs.realpathSync(packDir);
+      const rel = (id: string) => id.startsWith(sdkRoot)
+        ? `@abuddy/sdk/${path.relative(sdkRoot, id)}`
+        : path.relative(packRoot, id);
+
+      this.error(
+        'Pack FE code inlines an @abuddy/sdk module that depends on the host module registry, ' +
+        'which would fail at runtime with "SDK host module ... not registered".\n' +
+        `  Import chain: ${chain.reverse().map(rel).join(' → ')}\n` +
+        `  Only these SDK modules are shared with the host in the renderer: ${Object.keys(sdkModules).join(', ')}.\n` +
+        '  Import from one of those instead, or add the module to SDK_FE_MODULES in @abuddy/sdk/build/shared-deps.',
+      );
+    },
 
     resolveId(source) {
       if (feDeps[source]) {

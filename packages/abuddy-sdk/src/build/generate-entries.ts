@@ -477,19 +477,33 @@ ${regProps.join('\n')}
       }
     }
 
+    const busIdBlock = systemFeatures.length
+      ? `\nexport { busId } from './bus-ids';\n`
+      : '';
+
+    return `${HEADER}
+${ownExports}
+${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}${busIdBlock}`;
+  }
+
+  // Kept import-free so frontend code can use it: importing busId via system-ids.ts
+  // would pull every backend system module into the pack's FE bundle.
+  function generateBusIds(): string {
+    const systemFeatures = (manifest.features ?? []).filter(f => f.system);
+    if (!systemFeatures.length) return '';
+
     const busIdEntries = systemFeatures
       .map(f => {
         const value = manifest.builtIn ? f.id : `${manifest.id}.${f.id}`;
         return `  ${f.id}: '${value}'`;
       })
       .join(',\n');
-    const busIdBlock = systemFeatures.length
-      ? `\nexport const busId = {\n${busIdEntries},\n} as const;\n`
-      : '';
 
     return `${HEADER}
-${ownExports}
-${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}${busIdBlock}`;
+export const busId = {
+${busIdEntries},
+} as const;
+`;
   }
 
   function generateEventChannels(): string {
@@ -977,6 +991,7 @@ ${registrations.join('\n\n')}
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/system-ids.ts', generateSystemIds()],
+    ['src/__generated__/bus-ids.ts', generateBusIds()],
     ['src/__generated__/event-channels.ts', generateEventChannels()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],

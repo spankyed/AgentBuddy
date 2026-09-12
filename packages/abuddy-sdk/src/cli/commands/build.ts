@@ -119,6 +119,8 @@ export async function build(args: string[]) {
       }
     } else {
       console.error(`\nFE bundle failed: ${feResult.error}`);
+      // dist/fe.js is left from the previous build; don't let callers ship or test it
+      process.exitCode = 1;
     }
   }
 
