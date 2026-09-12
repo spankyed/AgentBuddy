@@ -2,6 +2,7 @@ import { getHostModule } from '../runtime/host';
 import { repository } from '../ears';
 import { getRegisteredServices } from '../packs';
 import type { EARS, PluginEventRegistry, ServiceRegistry } from '../types/entities';
+import type { Logger } from '../ears/runtime';
 
 function lazyHost(name: string) {
   let m: any;
@@ -43,7 +44,25 @@ export function onIncoming(callback: (event: any) => void): () => void {
 let _logger: any;
 function logger() { return _logger ??= getHostModule('logger').createLogger('log-service'); }
 
-function resolveServices(): Record<string, unknown> {
+/**
+ * Ambient services the host supplies to every action, alongside the services a
+ * pack registers itself. Packs generate their `Services` type as
+ * `typeof featureServices & HostServices`, so this stays the single definition
+ * of what is injected.
+ */
+export interface HostServices {
+  logger: Logger;
+  emitter: {
+    sendToPlugin: typeof sendToPlugin;
+    sendToBrainSystem: typeof sendToBrainSystem;
+    sendToSystem: typeof sendToSystem;
+    onOutgoing: typeof onOutgoing;
+    onIncoming: typeof onIncoming;
+  };
+  repository: typeof repository;
+}
+
+function resolveServices(): HostServices & Record<string, unknown> {
   return {
     logger: logger(),
     emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
