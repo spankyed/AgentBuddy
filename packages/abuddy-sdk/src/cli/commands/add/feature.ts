@@ -1,6 +1,7 @@
+import { FEATURE_ID_PATTERN } from '../../../build/manifest-schema';
 import * as path from 'node:path';
 import { generateEntries } from '../generate-entries';
-import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
+import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
 const FEATURE_CONFIG = (name: string, designation?: string) => {
@@ -149,7 +150,10 @@ export async function addFeature(args: string[], root: string) {
   }
 
   const name = args[0];
-  validateName(name, 'Feature');
+  if (!name) throw new Error('Feature name is required');
+  if (!FEATURE_ID_PATTERN.test(name)) {
+    throw new Error(`Feature name "${name}" must start with a lowercase letter and contain only letters and digits (e.g. "notes" or "calendarEvents"); it is used as an identifier in generated code`);
+  }
 
   const label = parseFlag(args, '--label') || toLabel(name);
   const icon = parseFlag(args, '--icon') || 'Box';

@@ -57,8 +57,16 @@ const PluginSchema = z.object({
   isPinned: z.boolean().describe('Whether this plugin is pinned in the sidebar by default.').optional(),
 }).strict();
 
+/**
+ * Feature IDs become identifiers in generated code (system exports, busId keys,
+ * settings keys, emit targets), so they must be valid identifiers. Pack IDs only
+ * appear as strings and stay kebab-case.
+ */
+export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
+
 export const FeatureEntrySchema = z.object({
-  id: z.string().describe('Unique feature identifier.'),
+  id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
+    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code.'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),

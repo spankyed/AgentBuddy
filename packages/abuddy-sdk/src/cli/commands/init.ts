@@ -16,7 +16,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     entities: { [pascalName]: pascalName },
     relKinds: {},
     features: [],
-    dependencies: { 'default-setup': '*' },
+    dependencies: {},
     permissions: [],
     steps: { register: 'src/extensions/steps/register.ts', definitions: [] },
     boot: {
@@ -27,22 +27,6 @@ const MANIFEST_TEMPLATE = (name: string) => {
     },
   }, null, 2);
 };
-
-const FEATURE_CONFIG_TEMPLATE = (name: string) => `import type { FeatureConfig } from '@abuddy/sdk/build';
-
-export default {
-  name: '${name}',
-  settings: './settings.ts',
-} satisfies FeatureConfig;
-`;
-
-const SETTINGS_TEMPLATE = (id: string) => `export default {
-  plugins: {
-    _meta: { visibility: { ${id}: true } },
-    ${id}: {}
-  }
-}
-`;
 
 const TSCONFIG_TEMPLATE = JSON.stringify({
   compilerOptions: {
@@ -113,16 +97,6 @@ export const steps: StepDefinition[] = [
 ];
 `;
 
-const EXAMPLE_FLOW_TEMPLATE = `import type { FlowDSL } from '@abuddy/sdk/build';
-import { entry, on, keepAlive } from '#generated/flow-helpers';
-
-export default {
-  "Example Flow": [
-    entry([keepAlive()]),
-  ],
-} satisfies FlowDSL;
-`;
-
 const EXAMPLE_TEST_TEMPLATE = (name: string) => `import { describe, it, expect } from 'vitest';
 
 describe('${name}', () => {
@@ -131,6 +105,47 @@ describe('${name}', () => {
     expect(manifest.default.id).toBe('${name}');
   });
 });
+`;
+
+// Publishes the GitHub release when `abuddy release` pushes a v* tag
+export const RELEASE_WORKFLOW_TEMPLATE = `name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tag matches abuddy.json version
+        run: test "v$(node -p "require('./abuddy.json').version")" = "$GITHUB_REF_NAME"
+
+      - run: npx abuddy build --release
+
+      - run: npx abuddy pack --out .abuddy/release
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: .abuddy/release/*.tgz
+
+      - run: npx abuddy release publish --dir .abuddy/release
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
 `;
 
 const GITIGNORE_TEMPLATE = `node_modules/
@@ -166,22 +181,15 @@ export async function init(args: string[]) {
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'src', 'features', name), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests', 'unit'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
+  fs.mkdirSync(path.join(dir, '.github', 'workflows'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), RELEASE_WORKFLOW_TEMPLATE);
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
-  fs.writeFileSync(
-    path.join(dir, 'src', 'features', name, 'feature.config.ts'),
-    FEATURE_CONFIG_TEMPLATE(name),
-  );
-  fs.writeFileSync(
-    path.join(dir, 'src', 'features', name, 'settings.ts'),
-    SETTINGS_TEMPLATE(name),
-  );
   fs.writeFileSync(
     path.join(dir, 'vitest.config.ts'),
     VITEST_CONFIG_TEMPLATE,
@@ -189,10 +197,6 @@ export async function init(args: string[]) {
   fs.writeFileSync(
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
     STEPS_REGISTER_TEMPLATE,
-  );
-  fs.writeFileSync(
-    path.join(dir, 'src', 'seeds', 'flows', 'example-flow.ts'),
-    EXAMPLE_FLOW_TEMPLATE,
   );
   fs.writeFileSync(
     path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
@@ -211,5 +215,6 @@ export async function init(args: string[]) {
   console.log(`\nNext steps:`);
   console.log(`  cd ${name}`);
   console.log(`  npm install`);
+  console.log(`  abuddy add feature <name>`);
   console.log(`  abuddy build`);
 }

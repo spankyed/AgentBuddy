@@ -126,7 +126,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Unique feature identifier."
+            "pattern": "^[a-z][a-zA-Z0-9]*$",
+            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code."
           },
           "designation": {
             "type": "string",

@@ -7,21 +7,21 @@ import { findPackRoot, readManifest } from '../utils';
 
 async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<Map<string, PackSnapshot>> {
   const result = new Map<string, PackSnapshot>();
+  const unresolved: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
     const resolved = await resolveDep(root, depId, depValue);
     if (!resolved) {
-      if (depValue.startsWith('file:')) {
-        const depPath = path.resolve(root, depValue.slice('file:'.length).trim());
-        throw new Error(
-          `Dependency "${depId}" not found — no snapshot at ${depPath}/dist/snapshot.json\n` +
-          `  Build it first:\n` +
-          `    cd ${depPath} && abuddy build`,
-        );
-      }
-      console.warn(`  Warning: could not resolve dependency "${depId}" — try "abuddy fetch-deps"`);
+      unresolved.push(depValue.startsWith('file:')
+        ? `${depId}: no build output at ${path.resolve(root, depValue.slice('file:'.length).trim())} (run "abuddy build" there first)`
+        : `${depId} ("${depValue}"): not found in the installed app, a workspace, a GitHub release or the local cache`);
       continue;
     }
     result.set(depId, resolved);
+  }
+  // Generated types and flow helpers depend on every dependency; continuing would fail
+  // later with misleading errors (e.g. missing flow helper exports)
+  if (unresolved.length > 0) {
+    throw new Error(`Unresolved pack dependencies:\n${unresolved.map(u => `  - ${u}`).join('\n')}\nUse "file:<path>" or "github:<owner>/<repo> <range>" in abuddy.json dependencies.`);
   }
   return result;
 }

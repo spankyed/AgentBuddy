@@ -46,8 +46,9 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'actions'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'flows'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'feature.config.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'settings.ts'))).toBe(true);
+    // Features come from `abuddy add feature`; the pack id (kebab-case) is not a valid feature id
+    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName))).toBe(false);
+    expect(fs.existsSync(path.join(packDir, '.github', 'workflows', 'release.yml'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'vitest.config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'tests', 'unit', `${packName}.spec.ts`))).toBe(true);
