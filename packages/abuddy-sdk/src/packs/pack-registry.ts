@@ -22,6 +22,9 @@ export interface PackRegistryEntry {
   dir: string;
   enabled: boolean;
   registeredAt: string;
+  source?: string;
+  availableVersion?: string;
+  lastUpdateCheck?: string;
 }
 
 interface PackRegistryFile {

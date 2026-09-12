@@ -34,11 +34,15 @@ export type BusEvent =
 export type { SystemEvents };
 
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
+export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[] };
+export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; systemIds: string[] };
 
 export type BackendEvents =
   | BusEvent
   | SystemEvents
   | ReloadPackEvent
+  | TeardownPackEvent
+  | ActivatePackEvent
 
 export interface BusContext {
   threads: string[];
@@ -127,6 +131,25 @@ export const backendSystem = setup({
         try { system.get(id).send({ type: 'CLIENT_CONNECTED' }); } catch {}
       }
     }),
+    teardownPack: enqueueActions(({ enqueue, event }) => {
+      const { systemIds } = event as TeardownPackEvent;
+      for (const id of systemIds) {
+        (enqueue as any).stopChild(id);
+      }
+    }),
+    activatePack: enqueueActions(({ enqueue, event, system }) => {
+      const { systemIds } = event as ActivatePackEvent;
+      const machines = getRegisteredSystems();
+      for (const id of systemIds) {
+        const machine = machines.get(id);
+        if (machine) {
+          (enqueue as any).spawnChild(machine, { id, systemId: id });
+        }
+      }
+      for (const id of systemIds) {
+        try { system.get(id).send({ type: 'CLIENT_CONNECTED' }); } catch {}
+      }
+    }),
   }
 }).createMachine(
   {
@@ -158,6 +181,12 @@ export const backendSystem = setup({
           },
           RELOAD_PACK: {
             actions: 'reloadPack',
+          },
+          TEARDOWN_PACK: {
+            actions: 'teardownPack',
+          },
+          ACTIVATE_PACK: {
+            actions: 'activatePack',
           },
         }
       },

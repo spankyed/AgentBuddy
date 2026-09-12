@@ -29,3 +29,7 @@ export {
   uninstallPack, checkDependencies,
 } from './pack-installer';
 export type { InstallResult } from './pack-installer';
+
+// Updater
+export { checkForUpdates, getAvailableUpdates } from './pack-updater';
+export type { UpdateCheckResult } from './pack-updater';
