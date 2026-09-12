@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { getPacksDir, discoverBuiltInPacks } from './pack-discovery';
+import { parseManifest } from '../build/validate';
+import type { PackManifest } from '../build/manifest';
 
 const log = {
   info(...args: unknown[]) { console.log(...args); },
@@ -47,19 +49,22 @@ function extractTgz(tgzPath: string, destDir: string): void {
   execFileSync('tar', ['-xzf', tgzPath, '-C', destDir], { stdio: 'pipe' });
 }
 
-function validateManifest(dir: string): { id: string; name: string; version: string } {
+function validateManifest(dir: string): PackManifest {
   const manifestPath = path.join(dir, 'abuddy.json');
   if (!fs.existsSync(manifestPath)) {
     throw new Error('No abuddy.json found in pack source');
   }
 
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  if (!manifest.id || !manifest.name || !manifest.version) {
-    throw new Error('abuddy.json missing required fields: id, name, version');
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  } catch {
+    throw new Error('abuddy.json is not valid JSON');
   }
 
-  if (!/^[a-z][a-z0-9-]*$/.test(manifest.id)) {
-    throw new Error('abuddy.json: "id" must be lowercase alphanumeric with hyphens');
+  const { errors } = parseManifest(raw);
+  if (errors.length > 0) {
+    throw new Error(`Invalid abuddy.json: ${errors[0]}`);
   }
 
   const distDir = path.join(dir, 'dist');
@@ -67,7 +72,7 @@ function validateManifest(dir: string): { id: string; name: string; version: str
     throw new Error('No dist/ directory found. Pack must be built before installing.');
   }
 
-  return manifest;
+  return raw as PackManifest;
 }
 
 function findPackRoot(dir: string): string {

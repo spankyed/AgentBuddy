@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "tsc -p tsconfig.api-extractor.json",
+    "generate:schema": "tsx scripts/generate-schema.ts",
     "api:check": "npm run api:build && api-extractor run --config api-extractor.ears.json && api-extractor run --config api-extractor.types.json",
     "api:update": "npm run api:build && api-extractor run --config api-extractor.ears.json --local && api-extractor run --config api-extractor.types.json --local"
   },
@@ -155,7 +156,8 @@
     "typescript": "^5.8.3",
     "vite": "^7.0.0",
     "vitest": "^3.2.4",
-    "xstate": "^5.19.2"
+    "xstate": "^5.19.2",
+    "zod-to-json-schema": "^3.25.0"
   },
   "dependencies": {
     "@types/fs-extra": "^11.0.4",

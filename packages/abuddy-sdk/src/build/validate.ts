@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { ManifestSchema } from './manifest-schema';
 import type { FeatureConfig } from './types';
 
 export interface ManifestValidation {
@@ -8,55 +9,30 @@ export interface ManifestValidation {
   warnings: string[];
 }
 
+export function parseManifest(raw: unknown): ManifestValidation {
+  const result = ManifestSchema.safeParse(raw);
+  if (result.success) return { errors: [], warnings: [] };
+
+  const errors = result.error.issues.map(issue => {
+    const fieldPath = issue.path.length > 0 ? `"${issue.path.join('.')}"` : 'root';
+    return `abuddy.json ${fieldPath}: ${issue.message}`;
+  });
+  return { errors, warnings: [] };
+}
+
 export function validateManifest(manifestPath: string): ManifestValidation {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
   if (!fs.existsSync(manifestPath)) {
-    errors.push('Missing abuddy.json manifest');
-    return { errors, warnings };
+    return { errors: ['Missing abuddy.json manifest'], warnings: [] };
   }
 
-  let manifest: Record<string, unknown>;
+  let raw: unknown;
   try {
-    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   } catch {
-    errors.push('abuddy.json is not valid JSON');
-    return { errors, warnings };
+    return { errors: ['abuddy.json is not valid JSON'], warnings: [] };
   }
 
-  if (!manifest.id || typeof manifest.id !== 'string') {
-    errors.push('abuddy.json: missing or invalid "id" field');
-  } else if (!/^[a-z][a-z0-9-]*$/.test(manifest.id)) {
-    errors.push('abuddy.json: "id" must be lowercase alphanumeric with hyphens');
-  }
-
-  if (!manifest.name || typeof manifest.name !== 'string') {
-    errors.push('abuddy.json: missing or invalid "name" field');
-  }
-
-  if (!manifest.version || typeof manifest.version !== 'string') {
-    errors.push('abuddy.json: missing or invalid "version" field');
-  }
-
-  if (manifest.hostVersion && typeof manifest.hostVersion !== 'string') {
-    warnings.push('abuddy.json: "hostVersion" should be a semver range string');
-  }
-
-  if (manifest.seedTypes) {
-    if (!Array.isArray(manifest.seedTypes)) {
-      errors.push('abuddy.json: "seedTypes" must be an array');
-    }
-  }
-
-  const bootSeed = (manifest.boot as Record<string, unknown> | undefined)?.seed;
-  if (bootSeed) {
-    if (typeof bootSeed !== 'object' || Array.isArray(bootSeed)) {
-      errors.push('abuddy.json: "boot.seed" must be an object mapping seed types to paths');
-    }
-  }
-
-  return { errors, warnings };
+  return parseManifest(raw);
 }
 
 export async function validateFeatures(featuresDir: string): Promise<ManifestValidation> {

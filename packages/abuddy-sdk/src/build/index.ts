@@ -71,8 +71,15 @@ export { discoverBuiltInPacksForBuild } from './discover';
 export type { BuiltInPackBuildInfo } from './discover';
 
 // Pack validation
-export { validateManifest, validateFeatures } from './validate';
+export { validateManifest, validateFeatures, parseManifest } from './validate';
 export type { ManifestValidation } from './validate';
+
+// Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
+export {
+  ManifestSchema, FeatureEntrySchema, PluginDefinitionSchema,
+  BootConfigSchema, SeedEntryConfigSchema, StepEntrySchema, StepDSLMetaSchema,
+  DslEntrySchema, PackPermissionSchema,
+} from './manifest-schema';
 
 // FE bundler — not re-exported here (uses import.meta which some
 // consumer tsconfigs reject). Import directly from './fe-bundler'.

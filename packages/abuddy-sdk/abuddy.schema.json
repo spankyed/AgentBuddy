@@ -1,56 +1,38 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentbuddy.dev/schemas/abuddy.json",
-  "title": "AgentBuddy Pack Manifest",
-  "description": "Configuration manifest for an AgentBuddy pack. Declares metadata, features, entities, services, extensions, seeds, and build-time codegen inputs.",
   "type": "object",
-  "required": [
-    "id",
-    "name",
-    "version"
-  ],
-  "additionalProperties": false,
   "properties": {
     "$schema": {
-      "type": "string",
-      "description": "JSON Schema reference for editor validation."
+      "type": "string"
     },
     "id": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*$",
-      "description": "Unique pack identifier. Lowercase, alphanumeric with hyphens."
+      "pattern": "^[a-z][a-z0-9-]*$"
     },
     "name": {
       "type": "string",
-      "description": "Human-readable pack name."
+      "minLength": 1
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+",
-      "description": "Semver version string."
+      "pattern": "^\\d+\\.\\d+\\.\\d+"
     },
     "builtIn": {
-      "type": "boolean",
-      "description": "Whether this pack is bundled with the host app. Built-in packs are discovered at build time and loaded differently from external packs."
+      "type": "boolean"
     },
     "description": {
-      "type": "string",
-      "description": "Short description of the pack's purpose."
+      "type": "string"
     },
     "hostVersion": {
-      "type": "string",
-      "description": "Semver range for compatible host versions (e.g. \">=0.3.0\")."
+      "type": "string"
     },
     "license": {
-      "type": "string",
-      "description": "SPDX license identifier."
+      "type": "string"
     },
     "dependencies": {
       "type": "object",
       "additionalProperties": {
         "type": "string"
-      },
-      "description": "Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references."
+      }
     },
     "permissions": {
       "type": "array",
@@ -63,500 +45,432 @@
           "network",
           "terminal"
         ]
-      },
-      "description": "Capabilities this pack requires from the host."
+      }
     },
     "entities": {
       "type": "object",
       "additionalProperties": {
         "type": "string"
-      },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers."
+      }
     },
     "relKinds": {
       "type": "object",
       "additionalProperties": {
         "type": "string"
-      },
-      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers."
+      }
     },
     "partitionPolicy": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "excludedEntityTypes": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Entity types excluded from persistence (in-memory only)."
+          }
         },
         "secretEntityTypes": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Entity types routed to the secrets store."
+          }
         }
       },
-      "description": "Controls how entity types are persisted."
+      "additionalProperties": false,
+      "description": "Built-in packs only. Ignored for external packs."
     },
     "entityShapes": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
         "required": [
           "source",
           "type"
         ],
-        "additionalProperties": false,
-        "properties": {
-          "source": {
-            "type": "string",
-            "description": "Source file path relative to pack root."
-          },
-          "type": {
-            "type": "string",
-            "description": "Exported TypeScript type name for the entity's attributes."
-          }
-        }
-      },
-      "description": "Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries."
+        "additionalProperties": false
+      }
     },
     "features": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/PackFeatureEntry"
-      },
-      "description": "Feature definitions for built-in packs. Each feature bundles a backend system, frontend plugin, services, and settings."
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "designation": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "string"
+          },
+          "typesEntry": {
+            "type": "string"
+          },
+          "earlySystem": {
+            "type": "boolean",
+            "description": "Built-in packs only. Ignored for external packs."
+          },
+          "system": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "outgoingEventsType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entry"
+            ],
+            "additionalProperties": false
+          },
+          "plugin": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "isPinned": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "entry",
+              "label",
+              "icon"
+            ],
+            "additionalProperties": false
+          },
+          "services": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "contributions": {
+            "type": "string",
+            "description": "Built-in packs only. Ignored for external packs."
+          }
+        },
+        "required": [
+          "id",
+          "services"
+        ],
+        "additionalProperties": false
+      }
     },
     "plugins": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/PackPluginDefinition"
-      },
-      "description": "Plugin definitions for external packs. Simpler alternative to features."
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "designation": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "system": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "events": {
+                "type": "object",
+                "properties": {
+                  "incoming": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "outgoing": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "entry"
+            ],
+            "additionalProperties": false
+          },
+          "plugin": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "isPinned": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "entry",
+              "label",
+              "icon"
+            ],
+            "additionalProperties": false
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
     },
     "defaultPlugin": {
-      "type": "string",
-      "description": "ID of the feature/plugin to show by default when the app starts."
+      "type": "string"
     },
     "packServices": {
       "type": "object",
       "additionalProperties": {
         "type": "string"
-      },
-      "description": "Pack-level services (not tied to a specific feature). Keys are service names, values are source file paths."
+      }
     },
     "boot": {
-      "$ref": "#/$defs/PackBootConfig",
-      "description": "Boot sequence configuration \u2014 early system, default settings, seed data, shutdown hooks."
-    },
-    "seedTypes": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Seed type names this pack provides data for."
-    },
-    "steps": {
-      "oneOf": [
-        {
-          "type": "string",
-          "description": "Path to step registration module."
-        },
-        {
-          "type": "object",
-          "required": [
-            "register",
-            "definitions"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "register": {
-              "type": "string",
-              "description": "Path to step registration module."
-            },
-            "definitions": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/StepEntry"
-              }
-            }
-          }
-        }
-      ],
-      "description": "Flow step definitions. Either a path to a registration module, or an object with registration path and step definitions array."
-    },
-    "artifacts": {
-      "type": "string",
-      "description": "Path to artifact type registration module."
-    },
-    "blocks": {
-      "type": "string",
-      "description": "Path to message block registration module."
-    },
-    "migrations": {
-      "type": "string",
-      "description": "Path to migrations index module."
-    },
-    "fe": {
       "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "tiptapPlugins": {
-          "type": "string",
-          "description": "Path to tiptap plugin registration module."
-        },
-        "appExtensions": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Named app extensions. Keys are extension names, values are paths to Vue components."
-        },
-        "styles": {
-          "type": "string",
-          "description": "Path to a CSS file to include in the frontend bundle."
-        }
-      },
-      "description": "Frontend-specific pack configuration."
-    },
-    "dsl": {
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/$defs/DslEntry"
-      },
-      "description": "DSL type definitions for Monaco editor intellisense. Keys are DSL names."
-    }
-  },
-  "$defs": {
-    "PackFeatureEntry": {
-      "type": "object",
-      "required": [
-        "id",
-        "services"
-      ],
-      "additionalProperties": true,
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Feature identifier, used as system ID and plugin ID."
-        },
-        "designation": {
-          "type": "string",
-          "description": "Named designation for cross-pack feature discovery (e.g. \"threads\", \"browser\")."
-        },
-        "settings": {
-          "type": "string",
-          "description": "Path to feature settings module."
-        },
-        "typesEntry": {
-          "type": "string",
-          "description": "Path to shared types module (re-exported in generated type barrel)."
-        },
-        "earlySystem": {
-          "type": "boolean",
-          "description": "If true, this system starts before EARS hydration (for log capture during boot)."
-        },
-        "system": {
-          "type": "object",
-          "required": [
-            "entry"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "entry": {
-              "type": "string",
-              "description": "Path to backend system module (must default-export its SystemEntry)."
-            },
-            "outgoingEventsType": {
-              "type": "string",
-              "description": "TypeScript type name for outgoing events (for codegen)."
-            }
-          },
-          "description": "Backend system definition."
-        },
-        "plugin": {
-          "type": "object",
-          "required": [
-            "entry",
-            "label",
-            "icon"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "entry": {
-              "type": "string",
-              "description": "Path to frontend plugin module."
-            },
-            "label": {
-              "type": "string",
-              "description": "Display label in the UI."
-            },
-            "icon": {
-              "type": "string",
-              "description": "Lucide icon name."
-            },
-            "isPinned": {
-              "type": "boolean",
-              "description": "Whether the plugin is pinned in the toolbar by default."
-            }
-          },
-          "description": "Frontend plugin definition."
-        },
-        "services": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Feature-scoped services. Keys are service names, values are source file paths."
-        },
-        "contributions": {
-          "type": "string",
-          "description": "Path to tiptap contribution definitions (types, categories, item providers)."
-        }
-      }
-    },
-    "PackPluginDefinition": {
-      "type": "object",
-      "required": [
-        "id"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "integer",
-          "description": "Plugin sort order (lower = earlier)."
-        },
-        "system": {
-          "type": "object",
-          "required": [
-            "entry"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "entry": {
-              "type": "string"
-            },
-            "events": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "incoming": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "outgoing": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "description": "Backend system for external packs."
-        },
-        "plugin": {
-          "type": "object",
-          "required": [
-            "entry",
-            "label",
-            "icon"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "entry": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "icon": {
-              "type": "string"
-            }
-          },
-          "description": "Frontend plugin for external packs."
-        },
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Entity types this plugin uses."
-        },
-        "settings": {
-          "type": "object",
-          "additionalProperties": true,
-          "description": "Default settings for this plugin."
-        }
-      }
-    },
-    "PackBootConfig": {
-      "type": "object",
-      "additionalProperties": true,
       "properties": {
         "earlySystem": {
           "type": "string",
-          "description": "Path to system module that starts before EARS hydration."
+          "description": "Built-in packs only. Ignored for external packs."
         },
         "createDefaultSettings": {
-          "type": "string",
-          "description": "Path to module that creates default settings on first boot."
+          "type": "string"
+        },
+        "hooks": {
+          "type": "string"
         },
         "seed": {
           "type": "object",
           "additionalProperties": {
-            "oneOf": [
+            "anyOf": [
               {
-                "type": "string",
-                "description": "Path to seed data directory."
+                "type": "string"
               },
               {
-                "$ref": "#/$defs/SeedEntryConfig"
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "seeder": {
+                    "type": "string"
+                  },
+                  "entityType": {
+                    "type": "string"
+                  },
+                  "lookupField": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
               }
             ]
-          },
-          "description": "Seed data sources. Keys are seed type names."
+          }
         },
         "seedPolicy": {
           "type": "object",
-          "additionalProperties": false,
           "properties": {
             "skipAtBoot": {
               "type": "array",
               "items": {
                 "type": "string"
-              },
-              "description": "Seed types to skip during normal boot (run only during onboarding)."
+              }
             },
             "skipAfterOnboarding": {
               "type": "array",
               "items": {
                 "type": "string"
-              },
-              "description": "Seed types to skip after onboarding is complete."
+              }
             }
-          }
-        },
-        "shutdown": {
-          "type": "string",
-          "description": "Path to shutdown hook module."
+          },
+          "additionalProperties": false
         }
+      },
+      "additionalProperties": false
+    },
+    "seedTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     },
-    "SeedEntryConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "Path to seed data directory."
+    "steps": {
+      "anyOf": [
+        {
+          "type": "string"
         },
-        "seeder": {
-          "type": "string",
-          "description": "Path to custom seeder module."
-        },
-        "entityType": {
-          "type": "string",
-          "description": "Entity type for this seed data."
-        },
-        "lookupField": {
-          "type": "string",
-          "description": "Attribute field used for deduplication."
-        }
-      }
-    },
-    "StepEntry": {
-      "type": "object",
-      "required": [
-        "type",
-        "path"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Step type identifier (e.g. \"action\", \"llm\", \"switch\")."
-        },
-        "path": {
-          "type": "string",
-          "description": "Path to step definition directory."
-        },
-        "kind": {
-          "type": "string",
-          "enum": [
-            "step",
-            "trigger"
+        {
+          "type": "object",
+          "properties": {
+            "register": {
+              "type": "string"
+            },
+            "definitions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "step",
+                      "trigger"
+                    ]
+                  },
+                  "dsl": {
+                    "type": "object",
+                    "properties": {
+                      "primaryField": {
+                        "type": "string"
+                      },
+                      "defaultLabel": {
+                        "type": "string"
+                      },
+                      "custom": {
+                        "type": "boolean",
+                        "const": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "path"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "register",
+            "definitions"
           ],
-          "default": "step",
-          "description": "Whether this is a regular step or a trigger (entry point)."
-        },
-        "dsl": {
-          "$ref": "#/$defs/StepDSLMeta",
-          "description": "DSL configuration for flow compiler integration."
+          "additionalProperties": false
         }
-      }
+      ]
     },
-    "StepDSLMeta": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "primaryField": {
-          "type": "string",
-          "description": "Field name used as the primary value in DSL shorthand syntax."
-        },
-        "defaultLabel": {
-          "type": "string",
-          "description": "Default display label for this step type in the flow editor."
-        },
-        "custom": {
-          "type": "boolean",
-          "const": true,
-          "description": "If true, this step uses custom DSL compilation logic."
-        }
-      }
+    "artifacts": {
+      "type": "string"
     },
-    "DslEntry": {
+    "blocks": {
+      "type": "string"
+    },
+    "migrations": {
+      "type": "string"
+    },
+    "fe": {
       "type": "object",
-      "required": [
-        "entry",
-        "targets"
-      ],
-      "additionalProperties": false,
       "properties": {
         "entry": {
-          "type": "string",
-          "description": "Path to DSL type definition source file."
+          "type": "string"
         },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "monaco"
-            ]
-          },
-          "description": "Where these type definitions are used."
+        "tiptapPlugins": {
+          "type": "string"
         },
-        "prefix": {
-          "type": "string",
-          "description": "Filename prefix filter for matching DSL files (e.g. \"action:\")."
-        },
-        "globals": {
+        "appExtensions": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
-          },
-          "description": "Global variables available in DSL files. Keys are variable names, values are TypeScript type expressions."
+          }
+        },
+        "styles": {
+          "type": "string"
         }
+      },
+      "additionalProperties": false
+    },
+    "dsl": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "monaco"
+              ]
+            }
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "globals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "entry",
+          "targets"
+        ],
+        "additionalProperties": false
       }
     }
-  }
+  },
+  "required": [
+    "id",
+    "name",
+    "version"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentbuddy.dev/schemas/abuddy.json",
+  "$comment": "Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run generate:schema",
+  "title": "AgentBuddy Pack Manifest",
+  "description": "Configuration manifest for an AgentBuddy pack. Declares metadata, features, entities, services, extensions, seeds, and build-time codegen inputs."
 }
