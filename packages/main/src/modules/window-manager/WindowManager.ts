@@ -496,16 +496,14 @@ class WindowManager implements AppModule {
     return browserWindow;
   }
 
-  private waitForRendererReady(browserWindow: BrowserWindow): Promise<void> {
+  private waitForRendererReady(): Promise<void> {
     return new Promise<void>((resolve) => {
       const TIMEOUT = 15_000;
 
-      const onReady = (event: Electron.IpcMainEvent) => {
-        if (event.sender === browserWindow.webContents) {
-          clearTimeout(timer);
-          ipcMain.removeListener('renderer:ready', onReady);
-          resolve();
-        }
+      const onReady = () => {
+        clearTimeout(timer);
+        ipcMain.removeListener('renderer:ready', onReady);
+        resolve();
       };
 
       const timer = setTimeout(() => {
@@ -612,8 +610,11 @@ class WindowManager implements AppModule {
     );
 
     const isNewWindow = window === undefined;
+    let rendererReadyPromise: Promise<void> | undefined;
     if (isNewWindow) {
+      rendererReadyPromise = this.waitForRendererReady();
       window = await this.createWindow();
+      await rendererReadyPromise;
     }
 
     if (!show || !window) {
@@ -623,10 +624,6 @@ class WindowManager implements AppModule {
     // Handle window visibility
     if (window.isMinimized()) {
       window.restore();
-    }
-
-    if (isNewWindow) {
-      await this.waitForRendererReady(window);
     }
 
     if (process.env.PLAYWRIGHT_TEST !== 'true' || process.env.PLAYWRIGHT_VISIBLE === '1') {
