@@ -11,7 +11,7 @@ const HASH_FILE = '.inputs-hash';
 function codegenSource(): string {
   const sdkDir = sdkPackageDir();
   // Workspace source, then the published compiled output
-  for (const file of ['src/build/generate-entries.ts', 'dist/build/generate-entries.js']) {
+  for (const file of ['src/build/generate-entries.ts', 'build/generate-entries.js']) {
     const candidate = path.join(sdkDir, file);
     if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf-8');
   }

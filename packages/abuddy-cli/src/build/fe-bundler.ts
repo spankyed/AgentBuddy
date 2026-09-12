@@ -68,7 +68,10 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
   function resolveHostRegistryPath(): string | undefined {
     try {
       const req = createRequire(path.join(packDir, 'package.json'));
-      return fs.realpathSync(path.join(path.dirname(req.resolve('@abuddy/sdk/runtime')), 'host.ts'));
+      const runtimeDir = path.dirname(req.resolve('@abuddy/sdk/runtime'));
+      // Workspace source, or the published package's compiled module
+      const host = ['host.ts', 'host.js'].map(f => path.join(runtimeDir, f)).find(f => fs.existsSync(f));
+      return host && fs.realpathSync(host);
     } catch {
       return undefined;
     }

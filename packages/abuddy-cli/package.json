@@ -5,7 +5,7 @@
   "description": "AgentBuddy pack CLI: scaffold, build, test, pack and release packs",
   "type": "module",
   "bin": {
-    "abuddy": "./bin/abuddy.mjs"
+    "abuddy": "bin/abuddy.mjs"
   },
   "files": [
     "bin",
@@ -15,6 +15,7 @@
     "node": ">=20.6.0"
   },
   "scripts": {
+    "build:package": "tsx ../../scripts/bundle-package.ts .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

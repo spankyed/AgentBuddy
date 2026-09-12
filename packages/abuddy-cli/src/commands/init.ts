@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
-import { readManifest } from '../utils';
+import { cliVersion, readManifest, sdkVersion } from '../utils';
 
 const MANIFEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
@@ -73,9 +73,11 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     typecheck: 'tsc --noEmit',
   },
   dependencies: {
-    '@abuddy/sdk': '*',
+    '@abuddy/sdk': `^${sdkVersion() ?? cliVersion()}`,
   },
   devDependencies: {
+    // Pinned per project: a global, Homebrew or app-bundled `abuddy` hands off to this one
+    '@abuddy/cli': `^${cliVersion()}`,
     typescript: '^5.8.3',
     vitest: '^3.2.1',
   },

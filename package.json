@@ -56,6 +56,8 @@
     "typecheck:sdk": "npm run typecheck --workspace @abuddy/sdk && echo '✅ SDK type check passed'",
     "typecheck:cli": "npm run typecheck --workspace @abuddy/cli --workspace @abuddy/testing && echo '✅ CLI + testing type check passed'",
     "typecheck:pack": "npm run typecheck --workspace @app/default-setup && echo '✅ Default-setup pack type check passed'",
+    "packages:build": "npm run build:package -w @abuddy/sdk -w @abuddy/testing -w @abuddy/cli",
+    "packages:publish": "tsx scripts/publish-packages.ts",
     "rebuild:dev": "cd packages/api && npm rebuild",
     "db:cli": "cd packages/api && npm run db:cli",
     "db:exec": "cd packages/api && npm run db:exec",
@@ -66,6 +68,7 @@
     "public-release": "bash build/release/publish-release.sh"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@npmcli/map-workspaces": "4.0.2",
     "@playwright/test": "1.54.1",
     "@types/fs-extra": "^11.0.4",

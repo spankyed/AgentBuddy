@@ -49,6 +49,10 @@ export function sdkVersion(): string | undefined {
   }
 }
 
+export function cliVersion(): string {
+  return JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8')).version;
+}
+
 export function ensureSdkLink(cwd: string): void {
   const sdkRoot = sdkPackageDir();
   const linkPath = path.join(cwd, 'node_modules', '@abuddy', 'sdk');
