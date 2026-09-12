@@ -361,13 +361,6 @@
       },
       "additionalProperties": false
     },
-    "seedTypes": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Deprecated. Seed types are derived from boot.seed keys."
-    },
     "steps": {
       "anyOf": [
         {

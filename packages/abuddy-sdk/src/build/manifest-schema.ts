@@ -141,8 +141,6 @@ export const ManifestSchema = z.object({
   defaultPlugin: z.string().optional(),
   packServices: z.record(z.string(), z.string()).optional(),
   boot: BootConfigSchema.optional(),
-  seedTypes: z.array(z.string()).optional()
-    .describe('Deprecated. Seed types are derived from boot.seed keys.'),
   steps: StepsSchema.optional(),
   artifacts: z.string().optional(),
   blocks: z.string().optional(),

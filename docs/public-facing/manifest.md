@@ -31,7 +31,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `dsl` | `Record<string, DslEntry>` | no | DSL definitions for build-time compilation |
 | `plugins` | `PackPluginDefinition[]` | no | **Deprecated** — use `features` instead. Legacy plugin declarations. |
-| `seedTypes` | `string[]` | no | **Deprecated.** Seed types are derived from `boot.seed` keys. |
+
 
 ## Features
 
