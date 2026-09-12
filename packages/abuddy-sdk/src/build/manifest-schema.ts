@@ -90,6 +90,7 @@ const FEConfigSchema = z.object({
 
 const StepsSchema = z.object({
   register: z.string().describe('Path to the step registration barrel file.'),
+  build: z.string().describe('Path to a module exporting build-time step definitions only (validate/compile/decompile, trigger facets; no runtime or FE imports). Bundled to build/steps.build.mjs for dependent packs.').optional(),
   definitions: z.array(StepEntrySchema).describe('Step definitions for codegen.'),
 }).strict();
 

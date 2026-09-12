@@ -63,6 +63,50 @@ export async function bundlePackRuntime(
 }
 
 /**
+ * Bundle the pack's build-time step definitions (manifest steps.build) into
+ * dist/build/steps.build.mjs. Dependent packs' `abuddy build` imports it to validate
+ * and compile flows with this pack's real step code. @abuddy/sdk and host-shared
+ * packages stay external and resolve from the importing pack's node_modules.
+ */
+export async function bundlePackStepBuild(
+  packDir: string,
+  outputDir: string,
+  entry: string,
+  options: BundleRuntimeOptions = {},
+): Promise<{ success: boolean; error?: string }> {
+  const entryPath = path.resolve(packDir, entry);
+  if (!fs.existsSync(entryPath)) {
+    return { success: false, error: `steps.build entry not found: ${entry}` };
+  }
+  const esbuild = await import('esbuild');
+  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const aliases = readTsconfigAliases(packDir);
+  const subpathImports = readSubpathImports(packDir);
+  const plugins: import('esbuild').Plugin[] = [stubFrontendAssetsPlugin()];
+  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
+  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
+
+  try {
+    await esbuild.build({
+      entryPoints: [entryPath],
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      target: 'node20',
+      outfile: path.join(outputDir, 'build', 'steps.build.mjs'),
+      external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
+      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+      plugins,
+      minify: options.release ?? false,
+      logLevel: 'silent',
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Step and plugin definitions reference Vue components and styles for the renderer.
  * The backend runtime never renders them, so they become empty modules.
  */

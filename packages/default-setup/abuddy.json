@@ -342,6 +342,7 @@
   },
   "steps": {
     "register": "src/extensions/steps/register.ts",
+    "build": "src/extensions/steps/build.ts",
     "definitions": [
       {
         "type": "action",

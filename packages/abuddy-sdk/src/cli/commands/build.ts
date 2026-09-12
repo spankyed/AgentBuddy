@@ -7,7 +7,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '../../build';
 import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
-import { bundlePackRuntime } from '../../build/be-bundler';
+import { bundlePackRuntime, bundlePackStepBuild } from '../../build/be-bundler';
 import { BUNDLE_PATHS } from '../../packs/bundle';
 import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
@@ -106,6 +106,17 @@ export async function build(args: string[]) {
       for (const w of result.warnings) {
         console.log(`  ! ${w}`);
       }
+    }
+  }
+
+  // ── Step build facets (for dependents' flow validation) ─────────────
+  if (manifest.steps?.build) {
+    const stepBuild = await bundlePackStepBuild(root, outputDir, manifest.steps.build, { release });
+    if (stepBuild.success) {
+      console.log(`  step build: dist/${BUNDLE_PATHS.stepsBuild}`);
+    } else {
+      console.error(`\nStep build bundle failed: ${stepBuild.error}`);
+      process.exitCode = 1;
     }
   }
 

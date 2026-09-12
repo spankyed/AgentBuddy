@@ -126,7 +126,7 @@ describe('pack CLI: install', () => {
       version: '1.0.0',
     });
 
-    await expect(install([noDist])).rejects.toThrow(/No dist/);
+    await expect(install([noDist])).rejects.toThrow(/Pack is not built/);
   });
 
   it('rejects pack without abuddy.json', async () => {

@@ -1,46 +1,8 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
-import { EARS } from '@abuddy/sdk';
+import type { StepDefinition } from '@abuddy/sdk/steps';
+import { createStepBuild } from './build';
 import { createStepFE } from './fe';
 
-function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
-  return {
-    entity: {
-      id: nodeId,
-      entityType: EARS.Entity.Node,
-      createdAt: ts,
-      nodeType: 'create',
-      label: (node.label as string) || `Create ${node.entity}`,
-      description: node.description,
-      entityTypeTarget: node.entity as EARS.Entity,
-      final: node.final,
-    },
-    relations: [],
-  };
-}
-
-function validate(s: Record<string, unknown>, path: string, _ctx: StepValidationContext): StepValidationError[] {
-  const errors: StepValidationError[] = [];
-  if (!s.entity || typeof s.entity !== 'string') {
-    errors.push({ path, message: 'Create step must have an "entity" string (entity type)' });
-  }
-  return errors;
-}
-
-function getLabel(step: Record<string, unknown>, index: number): string {
-  if (typeof step.label === 'string') return step.label;
-  return `Create ${step.entity || index}`;
-}
-
-function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
-  const dsl: Record<string, unknown> = { type: 'create', entity: node.entityTypeTarget };
-  if (node.label) dsl.label = node.label;
-  if (node.description) dsl.description = node.description;
-  if (node.final) dsl.final = true;
-  return dsl;
-}
-
 export const createStep: StepDefinition = {
-  type: 'create',
-  build: { compile, validate, getLabel, decompile },
+  ...createStepBuild,
   fe: createStepFE.fe,
 };
