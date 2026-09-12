@@ -1,7 +1,482 @@
 {
+  "$schema": "../abuddy-sdk/abuddy.schema.json",
+  "id": "default-setup",
   "name": "Default Setup",
   "version": "0.1.0",
-  "description": "The official AgentBuddy starter pack — actions, prompts, flows, library docs, and default settings.",
-  "artifactTypes": ["actions", "prompts", "flows", "library", "notes", "settings"],
-  "license": "MIT"
+  "builtIn": true,
+  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, seed data, message blocks, and default settings.",
+  "hostVersion": ">=0.3.0",
+  "license": "MIT",
+  "entities": {
+    "Relation": "Relation",
+    "Agent": "Agent",
+    "Thread": "Thread",
+    "Message": "Message",
+    "Artifact": "Artifact",
+    "Brain": "Brain",
+    "Flow": "Flow",
+    "Node": "Node",
+    "TNode": "TNode",
+    "Document": "Document",
+    "Collection": "Collection",
+    "SearchIndex": "SearchIndex",
+    "IndexedDoc": "IndexedDoc",
+    "Terminal": "Terminal",
+    "Directory": "Directory",
+    "Settings": "Settings",
+    "Secret": "Secret",
+    "FAQ": "FAQ",
+    "BrowserTab": "BrowserTab",
+    "BrowserBookmark": "BrowserBookmark",
+    "Note": "Note",
+    "Action": "Action",
+    "Prompt": "Prompt"
+  },
+  "relKinds": {
+    "PARENT_OF": "parent_of",
+    "CONTAINS": "contains",
+    "REPLIED_TO": "replied_to",
+    "HAS": "has",
+    "BLOCKS": "blocks",
+    "DEPENDS_ON": "depends_on",
+    "RELATES_TO": "relates_to",
+    "DUPLICATES": "duplicates",
+    "TRANSITIONS_TO": "transitions_to",
+    "EMITS": "emits",
+    "INSTANCE_OF": "instance_of",
+    "SPAWNED": "spawned",
+    "TRACKED": "tracked"
+  },
+  "partitionPolicy": {
+    "excludedEntityTypes": [
+      "TNode"
+    ],
+    "secretEntityTypes": [
+      "Secret"
+    ]
+  },
+  "features": [
+    {
+      "id": "threads",
+      "designation": "threads",
+      "settings": "src/features/threads/settings.ts",
+      "system": {
+        "entry": "src/features/threads/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/threads/fe/plugin.ts",
+        "label": "Threads",
+        "icon": "BotMessageSquare"
+      },
+      "contributions": "src/features/threads/fe/contributions",
+      "services": {
+        "chat": "src/features/threads/be/services/chat",
+        "artifact": "src/features/threads/be/services/artifact",
+        "threads": "src/features/threads/be/services/threads"
+      }
+    },
+    {
+      "id": "code",
+      "settings": "src/features/code/settings.ts",
+      "system": {
+        "entry": "src/features/code/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/code/fe/plugin.ts",
+        "label": "Code",
+        "icon": "Code2"
+      },
+      "services": {
+        "cli": "src/features/code/be/services/cli",
+        "codex": "src/features/code/be/services/codex"
+      }
+    },
+    {
+      "id": "notes",
+      "settings": "src/features/notes/settings.ts",
+      "system": {
+        "entry": "src/features/notes/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/notes/fe/plugin.ts",
+        "label": "Notes",
+        "icon": "NotebookText"
+      },
+      "contributions": "src/features/notes/fe/contributions",
+      "services": {}
+    },
+    {
+      "id": "browser",
+      "designation": "browser",
+      "settings": "src/features/browser/settings.ts",
+      "system": {
+        "entry": "src/features/browser/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/browser/fe/plugin.ts",
+        "label": "Browser",
+        "icon": "Globe"
+      },
+      "services": {
+        "browser": "src/features/browser/be/services/browser"
+      }
+    },
+    {
+      "id": "library",
+      "settings": "src/features/library/settings.ts",
+      "system": {
+        "entry": "src/features/library/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/library/fe/plugin.ts",
+        "label": "Library",
+        "icon": "Library",
+        "isPinned": true
+      },
+      "contributions": "src/features/library/fe/contributions",
+      "services": {
+        "library": "src/features/library/be/services/library"
+      }
+    },
+    {
+      "id": "flows",
+      "settings": "src/features/flows/settings.ts",
+      "typesEntry": "src/features/flows/be/types",
+      "system": {
+        "entry": "src/features/flows/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/flows/fe/plugin.ts",
+        "label": "Flows",
+        "icon": "Network",
+        "isPinned": true
+      },
+      "services": {}
+    },
+    {
+      "id": "actions",
+      "settings": "src/features/actions/settings.ts",
+      "system": {
+        "entry": "src/features/actions/be/system.ts",
+        "outgoingEventsType": "OutgoingActionEvents"
+      },
+      "plugin": {
+        "entry": "src/features/actions/fe/plugin.ts",
+        "label": "Actions",
+        "icon": "Play",
+        "isPinned": true
+      },
+      "services": {
+        "action": "src/features/actions/be/services/action"
+      }
+    },
+    {
+      "id": "prompts",
+      "settings": "src/features/prompts/settings.ts",
+      "system": {
+        "entry": "src/features/prompts/be/system.ts",
+        "outgoingEventsType": "OutgoingPromptEvents"
+      },
+      "plugin": {
+        "entry": "src/features/prompts/fe/plugin.ts",
+        "label": "Prompts",
+        "icon": "Sparkle",
+        "isPinned": true
+      },
+      "services": {
+        "prompt": "src/features/prompts/be/services/prompt"
+      }
+    },
+    {
+      "id": "brain",
+      "designation": "brain",
+      "settings": "src/features/brain/settings.ts",
+      "system": {
+        "entry": "src/features/brain/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/brain/fe/plugin.ts",
+        "label": "Brain",
+        "icon": "Brain",
+        "isPinned": true
+      },
+      "services": {
+        "llm": "src/features/brain/be/services/llm",
+        "brain": "src/features/brain/be/services/brain"
+      }
+    },
+    {
+      "id": "database",
+      "settings": "src/features/database/settings.ts",
+      "system": {
+        "entry": "src/features/database/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/database/fe/plugin.ts",
+        "label": "Database",
+        "icon": "Database",
+        "isPinned": true
+      },
+      "services": {
+        "database": "src/features/database/be/services/database"
+      }
+    },
+    {
+      "id": "logs",
+      "designation": "logs",
+      "settings": "src/features/logs/settings.ts",
+      "system": {
+        "entry": "src/features/logs/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/logs/fe/plugin.ts",
+        "label": "Logs",
+        "icon": "ScrollText",
+        "isPinned": true
+      },
+      "services": {},
+      "earlySystem": true
+    },
+    {
+      "id": "settings",
+      "designation": "settings",
+      "settings": "src/features/settings/settings.ts",
+      "system": {
+        "entry": "src/features/settings/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/settings/fe/plugin.ts",
+        "label": "Settings",
+        "icon": "Settings"
+      },
+      "services": {
+        "settings": "src/features/settings/be/services/settings"
+      }
+    }
+  ],
+  "packServices": {
+    "textStream": "src/extensions/services/text-stream",
+    "filesystem": "src/extensions/services/filesystem",
+    "modelClient": "src/extensions/services/model-client",
+    "openaiAuth": "src/extensions/services/openai-auth"
+  },
+  "defaultPlugin": "threads",
+  "boot": {
+    "earlySystem": "src/features/logs/be/system.ts",
+    "hooks": "src/features/hooks.ts",
+    "seed": {
+      "actions": "src/seeds/actions",
+      "prompts": "src/seeds/prompts",
+      "flows": "src/seeds/flows",
+      "library": "src/seeds/library",
+      "notes": "src/seeds/notes",
+      "faqs": "src/seeds/faqs",
+      "settings": "src/seeds/default-settings.ts"
+    },
+    "seedPolicy": {
+      "skipAtBoot": [
+        "settings"
+      ],
+      "skipAfterOnboarding": [
+        "notes"
+      ]
+    }
+  },
+  "entityShapes": {
+    "Action": {
+      "source": "src/features/actions/be/types.ts",
+      "type": "ActionEntity"
+    },
+    "Prompt": {
+      "source": "src/features/prompts/be/types.ts",
+      "type": "PromptEntity"
+    },
+    "Thread": {
+      "source": "src/features/threads/be/types.ts",
+      "type": "ThreadEntity"
+    },
+    "Message": {
+      "source": "src/features/threads/be/types.ts",
+      "type": "MessageEntity"
+    },
+    "Flow": {
+      "source": "src/features/flows/be/types.ts",
+      "type": "FlowEntity"
+    },
+    "Document": {
+      "source": "src/features/library/be/types.ts",
+      "type": "Document"
+    },
+    "Note": {
+      "source": "src/features/notes/be/types.ts",
+      "type": "NoteEntity"
+    },
+    "Artifact": {
+      "source": "src/features/threads/be/types.ts",
+      "type": "ArtifactEntity"
+    },
+    "Collection": {
+      "source": "src/features/library/be/types.ts",
+      "type": "Collection"
+    },
+    "Secret": {
+      "source": "src/features/settings/be/secrets/types.ts",
+      "type": "SecretEntity"
+    },
+    "Terminal": {
+      "source": "src/features/code/be/repository/index.ts",
+      "type": "TerminalEntity"
+    },
+    "Settings": {
+      "source": "src/features/settings/be/types.ts",
+      "type": "SettingsEntity"
+    },
+    "BrowserTab": {
+      "source": "src/features/browser/be/types.ts",
+      "type": "BrowserTabEntity"
+    },
+    "BrowserBookmark": {
+      "source": "src/features/browser/be/types.ts",
+      "type": "BrowserBookmarkEntity"
+    }
+  },
+  "steps": {
+    "register": "src/extensions/steps/register.ts",
+    "definitions": [
+      {
+        "type": "action",
+        "path": "src/extensions/steps/action",
+        "dsl": {
+          "primaryField": "action"
+        }
+      },
+      {
+        "type": "llm",
+        "path": "src/extensions/steps/llm",
+        "dsl": {
+          "primaryField": "prompt"
+        }
+      },
+      {
+        "type": "fire",
+        "path": "src/extensions/steps/fire",
+        "dsl": {
+          "primaryField": "event"
+        }
+      },
+      {
+        "type": "subflow",
+        "path": "src/extensions/steps/subflow",
+        "dsl": {
+          "primaryField": "flow"
+        }
+      },
+      {
+        "type": "query",
+        "path": "src/extensions/steps/query",
+        "dsl": {
+          "primaryField": "prompt"
+        }
+      },
+      {
+        "type": "create",
+        "path": "src/extensions/steps/create",
+        "dsl": {
+          "primaryField": "entity"
+        }
+      },
+      {
+        "type": "update",
+        "path": "src/extensions/steps/update",
+        "dsl": {
+          "primaryField": "target"
+        }
+      },
+      {
+        "type": "transform",
+        "path": "src/extensions/steps/transform",
+        "dsl": {
+          "primaryField": "script"
+        }
+      },
+      {
+        "type": "keep_alive",
+        "path": "src/extensions/steps/keep-alive",
+        "dsl": {}
+      },
+      {
+        "type": "kill",
+        "path": "src/extensions/steps/kill",
+        "dsl": {
+          "defaultLabel": "Kill Flow"
+        }
+      },
+      {
+        "type": "switch",
+        "path": "src/extensions/steps/switch",
+        "dsl": {
+          "custom": true
+        }
+      },
+      {
+        "type": "schedule",
+        "path": "src/extensions/steps/schedule",
+        "kind": "trigger"
+      },
+      {
+        "type": "listener",
+        "path": "src/extensions/steps/listener",
+        "kind": "trigger"
+      }
+    ]
+  },
+  "artifacts": "src/extensions/artifacts/register.ts",
+  "blocks": "src/extensions/blocks/register.ts",
+  "fe": {
+    "tiptapPlugins": "src/extensions/tiptap/index.ts",
+    "appExtensions": {
+      "welcome": "src/extensions/Welcome.vue"
+    }
+  },
+  "migrations": "src/migrations/index.ts",
+  "dsl": {
+    "action": {
+      "entry": "src/defs/action.ts",
+      "targets": [
+        "monaco"
+      ],
+      "prefix": "action:",
+      "globals": {
+        "services": "typeof _dsl.services",
+        "z": "typeof _dsl.z",
+        "flowId": "string"
+      }
+    },
+    "prompt": {
+      "entry": "src/defs/prompt.ts",
+      "targets": [
+        "monaco"
+      ],
+      "prefix": "prompt:",
+      "globals": {
+        "usePrompt": "typeof _dsl.usePrompt"
+      }
+    },
+    "database": {
+      "entry": "src/defs/database.ts",
+      "targets": [
+        "monaco"
+      ],
+      "prefix": "database:",
+      "globals": {
+        "EARS": "typeof _dsl.EARS",
+        "qx": "typeof _dsl.qx",
+        "tx": "typeof _dsl.tx",
+        "bp": "typeof _dsl.bp",
+        "spawn": "typeof _dsl.spawn",
+        "getSchemaStats": "typeof _dsl.getSchemaStats",
+        "isEntity": "typeof _dsl.isEntity"
+      }
+    }
+  }
 }

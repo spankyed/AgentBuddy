@@ -4,7 +4,7 @@
  * choice blocks.
  */
 
-import { parseAskUserQuestionInput } from '../../src/actions/claude-code/_helpers/ask-user-question'
+import { parseAskUserQuestionInput } from '../../src/seeds/actions/claude-code/_helpers/ask-user-question'
 
 describe('parseAskUserQuestionInput', () => {
   // ─── Well-formed input ──────────────────────────────────────────

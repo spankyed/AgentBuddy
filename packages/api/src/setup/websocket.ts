@@ -1,3 +1,6 @@
+import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
@@ -5,31 +8,90 @@ import { createContext } from '@/core/router/context';
 import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
-import { terminalService } from '@/systems/code/services/terminal';
+import { runShutdownHooks } from '@abuddy/sdk/utils';
+import { getApiPortFile } from '@abuddy/sdk/packs';
+
+const reloadingPacks = new Set<string>();
+
+function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method === 'POST' && req.url === '/dev/reload') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { packId, builtIn } = JSON.parse(body);
+        if (!packId || typeof packId !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'packId required' }));
+          return;
+        }
+        if (reloadingPacks.has(packId)) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'reload already in progress' }));
+          return;
+        }
+        reloadingPacks.add(packId);
+        try {
+          if (builtIn) {
+            const { reloadBuiltInPack } = await import('@/packs/pack-reload');
+            await reloadBuiltInPack(packId, backendActor);
+          } else {
+            const { reloadExternalPack } = await import('@/packs/pack-reload');
+            await reloadExternalPack(packId, backendActor);
+          }
+        } finally {
+          reloadingPacks.delete(packId);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        logger.error('Pack reload failed:', err as Error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: (err as Error).message }));
+      }
+    });
+    return;
+  }
+
+  res.writeHead(404);
+  res.end();
+}
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
-  
-  // Create WebSocket server
-  const wss = new WebSocketServer({ 
-    port,
+
+  const httpServer = http.createServer(handleHttpRequest);
+
+  const wss = new WebSocketServer({
+    server: httpServer,
     verifyClient: WS_CONFIG.verifyClient
   });
 
-  // ! Log server startup (both to logger and console for main process) do not remove or modify
-  const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
-  console.log(message);
+  httpServer.listen(port, () => {
+    // ! Log server startup (both to logger and console for main process) do not remove or modify
+    const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
+    console.log(message);
+
+    if (process.env.NODE_ENV === 'development') {
+      const portFile = getApiPortFile();
+      try {
+        fs.mkdirSync(path.dirname(portFile), { recursive: true });
+        fs.writeFileSync(portFile, String(port));
+      } catch {}
+    }
+  });
 
   // Apply tRPC handler
-  const handler = applyWSSHandler({ 
-    wss, 
-    router: appRouter, 
-    createContext 
+  const handler = applyWSSHandler({
+    wss,
+    router: appRouter,
+    createContext
   });
 
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
-    terminalService.killAll();
+    runShutdownHooks();
+    try { fs.unlinkSync(getApiPortFile()); } catch {}
   });
 
   // Setup graceful shutdown
@@ -38,6 +100,7 @@ export function createWebSocketServer() {
     backendActor?.stop();
     handler.broadcastReconnectNotification();
     wss.close();
+    httpServer.close();
     // Exit explicitly so the 'exit' handler fires before Electron force-kills us
     process.exit(0);
   });

@@ -1,0 +1,17 @@
+{
+  "name": "@abuddy-pack/example-pack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "abuddy generate",
+    "build": "abuddy build",
+    "validate": "abuddy validate",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@abuddy/sdk": "*",
+    "typescript": "^5.8.3",
+    "zod": "^3.24.0"
+  }
+}

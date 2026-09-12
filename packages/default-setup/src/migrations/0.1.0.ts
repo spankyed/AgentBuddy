@@ -1,0 +1,20 @@
+import { repository } from '@abuddy/sdk/ears';
+
+export const migration = {
+  target: '0.1.0',
+  description: 'Migrate agent plugin settings to threads.chat',
+  up: () => {
+    const data = repository.settingsQueries.getSettings();
+    const agentSettings = data.plugins?.agent;
+    const existingChatSettings = (data.plugins as any)?.threads?.chat;
+
+    if (agentSettings && !existingChatSettings) {
+      repository.settingsCommands.updateSettings('plugin', 'threads', ['chat'], agentSettings);
+    }
+
+    // If lastActivePlugin was 'agent', update to 'threads'
+    if (data.plugins?._meta?.lastActivePlugin === 'agent') {
+      repository.settingsCommands.updateSettings('plugin', '_meta', ['lastActivePlugin'], 'threads');
+    }
+  },
+};

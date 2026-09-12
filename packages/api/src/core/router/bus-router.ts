@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { OutgoingSystemEvents } from '@/core/router/events';
 import type { IncomingSystemEvents } from '@/systems';
-import { eventValidationMap } from '@/systems';
+import { getEventValidationMap } from '@/systems';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/shared/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
@@ -11,23 +11,20 @@ import { rootEvents } from '@/core/router/bus-emitter';
 const logger = createLogger('app-events');
 
 function summarizeEventForLog(event: IncomingSystemEvents) {
-  if (event.systemId === 'browser' && event.type === 'SYNC_TABS' && 'tabs' in event && Array.isArray(event.tabs)) {
-    return {
-      ...event,
-      tabs: {
-        count: event.tabs.length,
-        sample: event.tabs.slice(0, 5).map(tab => ({
-          id: tab.id,
-          url: tab.url,
-          title: tab.title,
-          displayOrder: tab.displayOrder,
-          groupId: tab.groupId,
-        })),
-      },
-    };
+  const MAX_ARRAY_LOG_SIZE = 5;
+  const summary: Record<string, unknown> = {};
+  let truncated = false;
+
+  for (const [key, value] of Object.entries(event)) {
+    if (Array.isArray(value) && value.length > MAX_ARRAY_LOG_SIZE) {
+      summary[key] = { count: value.length, sample: value.slice(0, MAX_ARRAY_LOG_SIZE) };
+      truncated = true;
+    } else {
+      summary[key] = value;
+    }
   }
 
-  return event;
+  return truncated ? summary : event;
 }
 
 export const systemBusRouter = router({
@@ -36,7 +33,7 @@ export const systemBusRouter = router({
       typeof val === 'object' && val !== null && 'type' in val && 'systemId' in val
     ))
     .mutation(({ input }) => {
-      const validTypes = eventValidationMap.get(input.systemId);
+      const validTypes = getEventValidationMap().get(input.systemId);
       if (!validTypes) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown system: "${input.systemId}"` });
       }
@@ -48,18 +45,9 @@ export const systemBusRouter = router({
       rootEvents.emitIncoming(input);
     }),
   sub: procedure
-    // .input(z.object({ sessionId: z.string() }))
     .subscription(() =>
       observable<OutgoingSystemEvents>((emit) => {
-        // Subscribe to root event emitter for outgoing events
         const unsubscribe = rootEvents.onOutgoing((event) => {
-          const skipLogging = ['EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
-
-          if (!skipLogging) {
-            // logger.info(`← Outgoing: "${event.type}"`);
-            // logger.info(`← Outgoing: "${event.type}"`, { event });
-          }
-
           emit.next(event);
         });
 

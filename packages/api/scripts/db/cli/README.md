@@ -114,7 +114,7 @@ qx(EARS.Entity.Settings).pickAll()
 qx("Settings-123").pickOne()
 
 // Filter by attribute
-qx(EARS.Entity.Document).where("status", "published").pickAll()
+qx(EARS.Entity.Thread).where("status", "active").pickAll()
 
 // Get entity IDs only
 qx(EARS.Entity.Thread).ids()

@@ -1,4 +1,4 @@
-import codexFlow from '../../src/flows/codex-flow'
+import codexFlow from '../../src/seeds/flows/codex-flow'
 
 describe('codex flow routing', () => {
   const tracks = codexFlow['Codex'] as any[]
@@ -21,8 +21,15 @@ describe('codex flow routing', () => {
 
   it('routes Codex revert variants', () => {
     const revertTrack = tracks.find(track => track.event === 'thread.revert') as any
-    const pauseStep = revertTrack.exits[0][0]
-    const router = revertTrack.exits[0][1]
+    // First level is a gate branch: $.event.data.payload.agents.codex == true
+    const gate = revertTrack.exits[0][0]
+    expect(gate.type).toBe('switch')
+    expect(gate.conditions[0].if).toBe("$.event.data.payload.agents.codex == true")
+
+    // Inside the gate: pause step + kind router
+    const gateSteps = gate.conditions[0].steps
+    const pauseStep = gateSteps[0]
+    const router = gateSteps[1]
 
     expect(pauseStep.action).toBe('CDX: Pause Turn')
     expect(router.conditions.map((condition: any) => condition.if)).toEqual([

@@ -6,27 +6,25 @@
  *   npm run db:seed
  */
 
+import '@/setup/sdk-host-init';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { createDefaultSettings } from '@/systems/settings/repository';
-import { seedData } from '@/setup/seed/index';
+import { loadBuiltInPacks } from '@/core/packs/pack-loader';
+import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
+
+const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 async function run() {
+  await loadBuiltInPacks(packagesDir);
+
   console.log('Initializing database...');
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
-  createDefaultSettings();
+  for (const hooks of getBootHooks()) hooks.createDefaultSettings?.();
 
   console.log('Seeding compiled artifacts...\n');
-  const result = seedData({
-    verbose: true,
-    compiledDir: path.resolve(process.cwd(), 'packages/default-setup/dist'),
-  });
-
-  console.log('\nSeed summary:');
-  console.log(`  Actions  — created: ${result.actions.created}, skipped: ${result.actions.skipped}`);
-  console.log(`  Prompts  — created: ${result.prompts.created}, skipped: ${result.prompts.skipped}`);
-  console.log(`  Flows    — created: ${result.flows.created}, skipped: ${result.flows.skipped}`);
+  runRegisteredBootSeeds();
 
   closePersistence();
 }

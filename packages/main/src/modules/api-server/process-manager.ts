@@ -48,12 +48,11 @@ export class ProcessManager {
 
         // Log and broadcast stdout in development mode.
         if (isDev) {
-          // Log to main process console
-          console.log(`[API Server]: ${message.trim()}`);
-          
+          logInfo(`[API Server]: ${message.trim()}`);
+
           // Broadcast stdout to renderer in dev mode
-          broadcastEvent(API_EVENTS.LOG, { 
-            type: 'stdout', 
+          broadcastEvent(API_EVENTS.LOG, {
+            type: 'stdout',
             message,
             timestamp: new Date().toISOString()
           });

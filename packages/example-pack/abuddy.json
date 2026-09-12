@@ -1,0 +1,33 @@
+{
+  "id": "example-pack",
+  "name": "Example Pack",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "entities": {
+    "Bookmark": "bookmark"
+  },
+  "relKinds": {},
+  "seedTypes": ["actions", "flows"],
+  "fe": { "entry": "dist/fe.js" },
+  "dependencies": {
+    "default-setup": ">=0.1.0"
+  },
+  "plugins": [],
+  "permissions": [],
+  "steps": {
+    "register": "src/steps/register.ts",
+    "definitions": [
+      {
+        "type": "delay",
+        "path": "src/steps",
+        "dsl": { "primaryField": "duration" }
+      }
+    ]
+  },
+  "boot": {
+    "seed": {
+      "actions": "src/seeds/actions",
+      "flows": "src/seeds/flows"
+    }
+  }
+}

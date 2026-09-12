@@ -10,6 +10,7 @@ import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createApiServer} from './modules/api-server/ApiServer.js';
 import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
+import {createPackProtocol} from './modules/pack-protocol/index.js';
 import {createSpeechRecognition} from './modules/speech-recognition/index.js';
 import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
 import {createBrowserModule} from './modules/browser/index.js';
@@ -33,6 +34,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(createProtocolHandler())
     .init(hardwareAccelerationMode({enable: true}))
     .init(createMediaProtocol())  // Must register protocol schemes before app ready
+    .init(createPackProtocol())   // pack:// protocol for external pack assets
     .init(splashScreen)  // Show splash screen early
     .init(apiServer)
     .init(createSpeechRecognition())

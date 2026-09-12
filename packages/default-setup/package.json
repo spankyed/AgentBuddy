@@ -3,23 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#generated/*": "./src/__generated__/*"
+  },
   "scripts": {
-    "compile:actions": "tsx build/compile.ts actions",
-    "compile:prompts": "tsx build/compile.ts prompts",
-    "compile:flows": "tsx build/compile.ts flows",
-    "compile:library": "tsx build/compile.ts library",
-    "compile:notes": "tsx build/compile.ts notes",
-    "compile:settings": "tsx build/compile.ts settings",
-    "compile:faq": "tsx build/compile.ts faq",
-    "compile": "npm run compile:settings && npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes",
-    "sync:external": "bash scripts/sync-external.sh",
-    "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "abuddy generate-entries",
+    "generate:entries": "abuddy generate-entries",
+    "generate:defs": "npx rollup -c rollup-defs.config.mjs",
+    "build": "abuddy build",
+    "build:dev": "abuddy build --skip-fe"
+  },
+  "dependencies": {
+    "@abuddy/sdk": "*"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
+    "rollup": "^4.34.0",
+    "rollup-plugin-dts": "^6.2.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",

@@ -1,15 +1,17 @@
-import settings from '../../src/default-settings'
-import claudeCodeFlow from '../../src/flows/claude-code-flow'
-import { phaseTipPromptLabel } from '../../src/actions/claude-code/chat'
+import threadSettings from '../../src/features/threads/settings'
+import claudeCodeFlow from '../../src/seeds/flows/claude-code-flow'
+import { phaseTipPromptLabel } from '../../src/seeds/actions/claude-code/chat'
+
+const chat = threadSettings.plugins.threads.chat
 
 describe('mode name routing', () => {
   it('uses display names for default mode and phase settings', () => {
-    expect(settings.plugins.threads.chat.defaultMode).toBe('Claude Code')
-    expect(settings.plugins.threads.chat.defaultPhase).toBe('Plan')
+    expect(chat.defaultMode).toBe('Claude Code')
+    expect(chat.defaultPhase).toBe('Plan')
   })
 
   it('uses Default as the Codex default phase display name', () => {
-    const codexMode = settings.plugins.threads.chat.modes.find(mode => mode.id === 'codex')
+    const codexMode = chat.modes.find(mode => mode.id === 'codex')
     const defaultPhase = codexMode?.phases?.find(phase => phase.id === 'default')
 
     expect(defaultPhase?.name).toBe('Default')

@@ -1,34 +1,11 @@
-// plugins/types.ts
-import type { Component } from 'vue';
-import type { AnyStateMachine } from 'xstate';
-import type { PluginHotkeyDefinition } from '@/core/utils/hotkeys';
+export type { Plugin } from '@abuddy/sdk/fe/host';
+export type { RouteComponents } from '@abuddy/sdk/fe';
 
-type RouteName = string;
-export type RouteComponents = Record<RouteName, Component>;
-
-// Re-export hotkey utilities for backward compatibility
-export { 
+export {
   type HotkeyEvent,
   type HotkeysMap,
   type PluginHotkeyDefinition,
   matchesHotkey,
   processHotkeys,
   createHotkeyProcessor
-} from '@/core/utils/hotkeys';
-
-export interface Plugin {
-  id: string; // Toolbar key
-  label: string;
-  isPinned?: boolean;
-  state: AnyStateMachine; // XState definition – the host will spin up the actor lazily
-  icon?: Component;
-  /** UI fragments (omit one to fall back to Main) */
-  canvas?: Component | RouteComponents;
-  panel?: Component;
-  chat?: Component;
-  settings?: Component; // Settings component for plugin-specific configuration
-  hotkeys?: PluginHotkeyDefinition[];
-  options?: {
-    headerClass?: string; // Custom header class for the canvas area
-  };
-}
+} from '@abuddy/sdk/fe';

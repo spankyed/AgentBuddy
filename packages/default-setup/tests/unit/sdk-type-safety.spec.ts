@@ -1,0 +1,442 @@
+/**
+ * Type-safety verification tests for SDK delegates.
+ *
+ * These tests validate that recovered generic type parameters on SDK delegate
+ * functions actually infer types correctly. They use vitest's expectTypeOf()
+ * for compile-time type assertions — if a generic regresses to `any`, these
+ * tests will fail at typecheck time (not just at runtime).
+ *
+ * Runtime assertions verify that generics flow through the delegate chain
+ * correctly when backed by real host modules.
+ */
+import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
+import {
+  qx, tx, createEntity,
+  findById, findAll, findWhere, findFirst,
+  createEntityWithDefaults,
+  type QueryBuilder, type TransactionBuilder,
+} from '@abuddy/sdk/ears';
+import { clearMemory, filterSystemFields, type Logger } from '@abuddy/sdk/ears/internals';
+import { createLogger } from '@abuddy/sdk/logger';
+import {
+  loadJSON,
+  seedCollection, detectChanges,
+  toIdentifierSet,
+  type SeedCounts, type DiffResult,
+  type ChangeBlock,
+} from '@abuddy/sdk/utils';
+import {
+  breadcrumb, breadcrumbWithParams, breadcrumbList,
+  contextMenuFn,
+} from '@abuddy/sdk/fe';
+import { services } from '@abuddy/sdk/services';
+import type { ServiceRegistry } from '@abuddy/sdk/types';
+import { EARS } from '../../src/__generated__/ears';
+
+// Activate augmentations — external packs get these via their tsconfig includes
+import '@/__generated__/entity-shapes';
+import '@/__generated__/service-types';
+
+// ─── Compile-time type assertions ──────────────────────────────────────
+// These verify that generic functions return typed results, not `any`.
+// A regression to `(...args: any[]) => any` would cause these to fail
+// during `tsc --noEmit` or vitest typecheck mode.
+
+describe('Type inference — EARS runtime', () => {
+  it('qx() returns QueryBuilder, not any', () => {
+    expectTypeOf(qx).returns.toMatchTypeOf<QueryBuilder>();
+  });
+
+  it('tx() returns TransactionBuilder, not any', () => {
+    expectTypeOf(tx).returns.toMatchTypeOf<TransactionBuilder>();
+  });
+
+  it('createEntity() returns EARS.EntityId, not any', () => {
+    expectTypeOf(createEntity).returns.toMatchTypeOf<EARS.EntityId>();
+  });
+
+  it('QueryBuilder.ids() returns EntityId[], not any', () => {
+    const builder = {} as QueryBuilder;
+    expectTypeOf(builder.ids).returns.toMatchTypeOf<EARS.EntityId[]>();
+  });
+
+  it('QueryBuilder.count() returns number, not any', () => {
+    const builder = {} as QueryBuilder;
+    expectTypeOf(builder.count).returns.toMatchTypeOf<number>();
+  });
+
+  it('QueryBuilder.exists() returns boolean, not any', () => {
+    const builder = {} as QueryBuilder;
+    expectTypeOf(builder.exists).returns.toMatchTypeOf<boolean>();
+  });
+
+  it('QueryBuilder.first() returns EntityId | null', () => {
+    const builder = {} as QueryBuilder;
+    expectTypeOf(builder.first).returns.toMatchTypeOf<EARS.EntityId | null>();
+  });
+
+  it('QueryBuilder fluent methods return QueryBuilder', () => {
+    const builder = {} as QueryBuilder;
+    expectTypeOf(builder.ofType).returns.toMatchTypeOf<QueryBuilder>();
+    expectTypeOf(builder.where).returns.toMatchTypeOf<QueryBuilder>();
+    expectTypeOf(builder.orderBy).returns.toMatchTypeOf<QueryBuilder>();
+    expectTypeOf(builder.reverse).returns.toMatchTypeOf<QueryBuilder>();
+    expectTypeOf(builder.limit).returns.toMatchTypeOf<QueryBuilder>();
+    expectTypeOf(builder.distinct).returns.toMatchTypeOf<QueryBuilder>();
+  });
+
+  it('QueryBuilder.map() is generic over return type', () => {
+    const builder = {} as QueryBuilder;
+    expectTypeOf(builder.map<string>).returns.toMatchTypeOf<string[]>();
+    expectTypeOf(builder.map<number>).returns.toMatchTypeOf<number[]>();
+  });
+
+  it('TransactionBuilder fluent methods return TransactionBuilder', () => {
+    const builder = {} as TransactionBuilder;
+    expectTypeOf(builder.put).returns.toMatchTypeOf<TransactionBuilder>();
+    expectTypeOf(builder.batchPut).returns.toMatchTypeOf<TransactionBuilder>();
+    expectTypeOf(builder.link).returns.toMatchTypeOf<TransactionBuilder>();
+  });
+
+  it('TransactionBuilder.id() returns EntityId, not any', () => {
+    const builder = {} as TransactionBuilder;
+    expectTypeOf(builder.id).returns.toMatchTypeOf<EARS.EntityId>();
+  });
+});
+
+describe('Type inference — EARS repository generics', () => {
+  it('findById with branded EntityId infers shape from registry', () => {
+    const id = 'test-123' as EARS.EntityId<'Action'>;
+    const result = findById(id);
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('label');
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('actionFn');
+  });
+
+  it('findAll with registered entity infers shape from registry', () => {
+    const prompts = findAll('Prompt' as 'Prompt' & EARS.Entity);
+    expectTypeOf(prompts).items.toHaveProperty('label');
+    expectTypeOf(prompts).items.toHaveProperty('templateFn');
+  });
+
+  it('findWhere with registered entity infers shape from registry', () => {
+    const threads = findWhere('Thread' as 'Thread' & EARS.Entity, 'status', 'active');
+    expectTypeOf(threads).items.toHaveProperty('topic');
+    expectTypeOf(threads).items.toHaveProperty('status');
+  });
+
+  it('explicit generic still works for custom entities', () => {
+    type CustomItem = { foo: string; bar: number };
+    const items = findAll<CustomItem>('CustomItem' as EARS.Entity);
+    expectTypeOf(items).items.toHaveProperty('foo');
+    expectTypeOf(items).items.toHaveProperty('bar');
+  });
+
+  it('createEntityWithDefaults with registered entity validates shape', () => {
+    const result = createEntityWithDefaults(
+      'Action' as 'Action' & EARS.Entity,
+      { label: 'test', actionFn: 'fn()' },
+    );
+    expectTypeOf(result).toHaveProperty('id');
+    expectTypeOf(result).toHaveProperty('entityType');
+    expectTypeOf(result).toHaveProperty('label');
+    expectTypeOf(result).toHaveProperty('actionFn');
+  });
+
+  it('filterSystemFields<T> preserves generic shape', () => {
+    type Entity = { label: string; status: string; entityType: string };
+    expectTypeOf(filterSystemFields<Entity>).returns.toMatchTypeOf<Partial<Entity>>();
+  });
+});
+
+describe('Type inference — Logger', () => {
+  it('createLogger returns Logger with typed methods', () => {
+    expectTypeOf(createLogger).returns.toMatchTypeOf<Logger>();
+  });
+
+  it('Logger has standard log methods', () => {
+    const logger = {} as Logger;
+    expectTypeOf(logger.info).toBeFunction();
+    expectTypeOf(logger.warn).toBeFunction();
+    expectTypeOf(logger.error).toBeFunction();
+    expectTypeOf(logger.debug).toBeFunction();
+  });
+});
+
+describe('Type inference — Utility generics', () => {
+  it('loadJSON<T> returns T | null', () => {
+    type Config = { version: number; features: string[] };
+    expectTypeOf(loadJSON<Config>).returns.toMatchTypeOf<Config | null>();
+  });
+
+  it('detectChanges<T> infers T in callbacks and result', () => {
+    type Item = { name: string; slug: string };
+    const result = {} as ReturnType<typeof detectChanges<Item>>;
+    expectTypeOf(result).toMatchTypeOf<DiffResult<Item>>();
+  });
+
+  it('toIdentifierSet<T> accepts typed arrays', () => {
+    type Tag = { name: string; slug: string };
+    expectTypeOf(toIdentifierSet<Tag>).returns.toMatchTypeOf<Set<string>>();
+  });
+
+  it('ChangeBlock<T> is generic', () => {
+    type Action = { name: string };
+    type CB = ChangeBlock<Action>;
+    expectTypeOf<CB['removed']>().toMatchTypeOf<Array<Action | string> | undefined>();
+  });
+
+  it('SeedCounts has typed numeric fields', () => {
+    expectTypeOf<SeedCounts>().toHaveProperty('created');
+    expectTypeOf<SeedCounts>().toHaveProperty('updated');
+    expectTypeOf<SeedCounts>().toHaveProperty('skipped');
+  });
+});
+
+describe('Type inference — FE delegate generics', () => {
+  it('breadcrumb has correct return type signature', () => {
+    expectTypeOf(breadcrumb).returns.toHaveProperty('breadcrumb');
+  });
+
+  it('breadcrumbWithParams<C> has correct generic signature', () => {
+    type Ctx = { selectedId: string };
+    expectTypeOf(breadcrumbWithParams<Ctx>).returns.toHaveProperty('breadcrumb');
+  });
+
+  it('breadcrumbList<C> has correct generic signature', () => {
+    type Ctx = { items: string[] };
+    expectTypeOf(breadcrumbList<Ctx>).returns.toHaveProperty('breadcrumb');
+  });
+
+  it('contextMenuFn<C> has correct generic signature', () => {
+    type Ctx = { selectedAction: string };
+    expectTypeOf(contextMenuFn<Ctx>).parameter(0).toBeFunction();
+    expectTypeOf(contextMenuFn<Ctx>).returns.toHaveProperty('contextMenu');
+  });
+});
+
+// ─── Registry-augmented inference (no explicit generics) ─────────────
+// These verify that pack authors get types automatically when using
+// EntityShapeRegistry / ServiceRegistry augmentation, WITHOUT needing
+// explicit generic parameters like findAll<MyType>(...).
+
+describe('Registry-based inference — services', () => {
+  it('services proxy is not any', () => {
+    type S = typeof services;
+    expectTypeOf<S>().not.toBeAny();
+  });
+
+  it('services.prompt has usePrompt method', () => {
+    expectTypeOf(services.prompt).toHaveProperty('usePrompt');
+  });
+
+  it('services.settings has getAll method', () => {
+    expectTypeOf(services.settings).toHaveProperty('getAll');
+  });
+
+  it('services.llm has streamText', () => {
+    expectTypeOf(services.llm).toHaveProperty('streamText');
+  });
+
+  it('ServiceRegistry keyof includes all registered services', () => {
+    type Keys = keyof ServiceRegistry;
+    expectTypeOf<'llm'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'prompt'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'database'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'brain'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
+  });
+});
+
+describe('Registry-based inference — entity queries', () => {
+  it('findAll with registered entity key infers shape without generic', () => {
+    // Cast needed to match the overload's E extends keyof EntityShapeRegistry & string
+    const actions = findAll('Action' as 'Action' & EARS.Entity);
+    expectTypeOf(actions).items.toHaveProperty('label');
+    expectTypeOf(actions).items.toHaveProperty('actionFn');
+    expectTypeOf(actions).items.toHaveProperty('id');
+  });
+
+  it('findFirst with registered entity key infers shape without generic', () => {
+    const thread = findFirst('Thread' as 'Thread' & EARS.Entity, 'status', 'active');
+    expectTypeOf(thread).exclude<undefined>().toHaveProperty('topic');
+    expectTypeOf(thread).exclude<undefined>().toHaveProperty('status');
+  });
+
+  it('findById with branded EntityId infers shape without generic', () => {
+    const id = 'test-123' as EARS.EntityId<'Action'>;
+    const result = findById(id);
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('label');
+    expectTypeOf(result).exclude<undefined>().toHaveProperty('actionFn');
+  });
+
+  it('fallback generic overload still works for custom entities', () => {
+    type CustomEntity = { foo: string };
+    const items = findAll<CustomEntity>('CustomEntity' as EARS.Entity);
+    expectTypeOf(items).items.toHaveProperty('foo');
+  });
+});
+
+// ─── Runtime assertions ────────────────────────────────────────────────
+// These verify that generics flow through the actual delegate chain at runtime.
+
+describe('Generic flow — runtime verification', () => {
+  beforeEach(() => clearMemory());
+
+  it('findById<T> returns typed result with T properties', () => {
+    type ActionEntity = {
+      label: string;
+      actionFn: string;
+      category: string;
+      entityType: EARS.Entity;
+    };
+
+    const entity = createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'TypedAction', actionFn: 'fn()', category: 'test' } as any,
+      'ACT',
+    );
+
+    const found = findById<ActionEntity>(entity.id);
+    expect(found).toBeDefined();
+    expect(found!.label).toBe('TypedAction');
+    expect(found!.category).toBe('test');
+  });
+
+  it('findAll<T> returns typed array', () => {
+    type ActionEntity = { label: string; actionFn: string };
+
+    createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'A1', actionFn: 'fn1()' } as any,
+      'ACT',
+    );
+    createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'A2', actionFn: 'fn2()' } as any,
+      'ACT',
+    );
+
+    const all = findAll<ActionEntity>(EARS.Entity.Action as any);
+    expect(all).toHaveLength(2);
+    expect(all[0].label).toBeDefined();
+    expect(all[0].actionFn).toBeDefined();
+  });
+
+  it('findWhere<T> returns typed filtered results', () => {
+    type ActionEntity = { label: string; category: string };
+
+    createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'CatA', actionFn: 'fn()', category: 'alpha' } as any,
+      'ACT',
+    );
+    createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'CatB', actionFn: 'fn()', category: 'beta' } as any,
+      'ACT',
+    );
+
+    const results = findWhere<ActionEntity>(EARS.Entity.Action as any, 'category', 'alpha');
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe('CatA');
+    expect(results[0].category).toBe('alpha');
+  });
+
+  it('createEntityWithDefaults<T> returns T & { id, entityType }', () => {
+    type ActionData = { label: string; actionFn: string };
+
+    const entity = createEntityWithDefaults<ActionData>(
+      EARS.Entity.Action as any,
+      { label: 'Typed', actionFn: 'fn()' },
+      'ACT',
+    );
+
+    expect(entity.id).toMatch(/^Action-/);
+    expect(entity.label).toBe('Typed');
+    expect(entity.actionFn).toBe('fn()');
+    expect(entity.entityType).toBeDefined();
+  });
+
+  it('qx() fluent chain produces typed results', () => {
+    createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'Chain', actionFn: 'fn()' } as any,
+      'ACT',
+    );
+
+    const ids = qx(EARS.Entity.Action as any).ids();
+    expect(Array.isArray(ids)).toBe(true);
+    expect(ids.length).toBe(1);
+
+    const count = qx(EARS.Entity.Action as any).count();
+    expect(typeof count).toBe('number');
+    expect(count).toBe(1);
+
+    const exists = qx(EARS.Entity.Action as any).exists();
+    expect(typeof exists).toBe('boolean');
+    expect(exists).toBe(true);
+  });
+
+  it('qx().map() returns correctly typed array', () => {
+    const id = createEntityWithDefaults(
+      EARS.Entity.Action as any,
+      { label: 'MapTest', actionFn: 'fn()' } as any,
+      'ACT',
+    ).id;
+
+    const labels = qx(EARS.Entity.Action as any).map(
+      (entityId) => `prefix-${entityId}`
+    );
+    expect(labels).toHaveLength(1);
+    expect(labels[0]).toContain('prefix-Action-');
+  });
+
+  it('tx() fluent chain returns TransactionBuilder', () => {
+    const id = tx(EARS.Entity.Action as any)
+      .put('label', 'TxChain')
+      .put('status', 'active')
+      .id();
+
+    expect(id).toMatch(/^Action-/);
+    const label = qx(id).pickOne(['label'] as const);
+    expect(label).toBeDefined();
+  });
+
+  it('loadJSON<T> preserves generic type', () => {
+    type Config = { items: string[] };
+    const result = loadJSON<Config>('/nonexistent/path.json');
+    expect(result).toBeNull();
+  });
+
+  it('seedCollection<T> accepts typed options', () => {
+    type Item = { name: string; value: number };
+    expect(() => {
+      seedCollection<Item>({
+        file: '/nonexistent.json',
+        label: 'test',
+        getKey: (item) => item.name,
+        findExisting: () => undefined,
+        create: (item) => { void item.value; },
+        update: (_id, item) => { void item.name; },
+        log: () => {},
+      });
+    }).not.toThrow();
+  });
+
+  it('filterSystemFields<T> returns Partial<T>', () => {
+    type Entity = { label: string; status: string; entityType: string };
+    const input: Entity = { label: 'test', status: 'active', entityType: 'Action' };
+    const filtered = filterSystemFields(input);
+    expect(filtered).toBeDefined();
+    expect(typeof filtered).toBe('object');
+  });
+
+  it('createLogger returns Logger with callable methods', () => {
+    const logger = createLogger('type-test');
+    expect(typeof logger.info).toBe('function');
+    expect(typeof logger.warn).toBe('function');
+    expect(typeof logger.error).toBe('function');
+    expect(typeof logger.debug).toBe('function');
+  });
+});

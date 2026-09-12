@@ -1,8 +1,7 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
-import { safeEvents } from "@/core/types/safe-events";
-import { capitalizeFirstLetter } from "../utils";
-import Label from '@/core/components/design/label.vue';
-import type { ContextMenuItem, ContextMenuMeta } from '@/core/context-menu';
+import { safeEvents } from "@abuddy/sdk/fe";
+const capitalizeFirstLetter = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+import type { ContextMenuItem, ContextMenuMeta } from '@abuddy/sdk/fe';
 
 export interface BreadcrumbItem {
   label: string;

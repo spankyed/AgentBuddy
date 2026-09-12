@@ -119,8 +119,8 @@ npm run db:reset         # Reset database
 
 ## Development Notes
 
-- `npm start` sets `SKIP_DEFS_GEN=1`, builds the backend, and launches `packages/dev-mode.js`.
-- `npm run start:gen` performs the same startup path without skipping generated definition output.
+- `npm start` builds the backend and launches `packages/dev-mode.js`.
+- `npm run start:gen` also regenerates DSL type definitions (Monaco intellisense) before launching.
 - Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
 - Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.
 

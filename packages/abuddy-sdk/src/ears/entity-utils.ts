@@ -1,0 +1,41 @@
+import { EARS } from '../types/entities';
+import { qx } from './query';
+
+export function getTimestamp(): number {
+  return Date.now();
+}
+
+export function generateShortCode(entityType: EARS.Entity, prefix: string): string {
+  const count = qx(entityType).count() + 1;
+  return `${prefix}-${count}`;
+}
+
+export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string {
+  const count = qx(entityType).count() + 1;
+  return `${baseLabel} ${count}`;
+}
+
+export function isValidEntityId(id: string): id is EARS.EntityId {
+  return /^(Agent|Brain|Message|Thread|Tag|Relation|Artifact|Flow|Node|TNode|Prompt|Action|Document|Collection|Terminal)-/.test(id);
+}
+
+export function getEntityTypeFromId(id: EARS.EntityId): EARS.Entity | null {
+  const match = id.match(/^([^-]+)-/);
+  if (!match) return null;
+  const typeString = match[1];
+  return Object.values(EARS.Entity).find(e => e === typeString) || null;
+}
+
+export function filterSystemFields<T extends Record<string, any>>(
+  updates: T,
+  additionalExcludes: string[] = []
+): Partial<T> {
+  const systemFields = ['id', 'entityType', 'createdAt', ...additionalExcludes];
+  const filtered: Partial<T> = {};
+  Object.entries(updates).forEach(([key, value]) => {
+    if (!systemFields.includes(key) && value !== undefined) {
+      filtered[key as keyof T] = value;
+    }
+  });
+  return filtered;
+}

@@ -1,37 +1,46 @@
-import { action as handleRevert } from '../../src/actions/codex/handle-revert';
+import { action as handleRevert } from '../../src/seeds/actions/claude-code/handle-revert';
 
-function createServices(rollbackThread: any, sendBlockMessage = vi.fn()) {
+function createServices(viewSessionResult: unknown[] | Error = [], sendBlockMessage = vi.fn()) {
   const thread = {
     id: 'thread-1',
     context: {
-      codex: {
-        threadId: 'codex-thread-1',
-        turnId: 'turn-1',
-        activeMessageId: 'msg-active',
-        pendingApproval: { requestId: 1, method: 'item/commandExecution/requestApproval', approvalMessageId: 'approval-1' },
+      claudeCode: {
+        sessionId: 'session-1',
+        cwd: '/project',
         isRunning: true,
       },
     },
-    tags: [],
+    tags: ['claude-code'],
   };
 
   return {
-    codex: {
-      rollbackThread,
-      interruptTurn: vi.fn(),
-      unregisterConsumer: vi.fn(),
-      getHandle: vi.fn(() => undefined),
-      clearHandle: vi.fn(),
+    cli: {
+      claudeCode: {
+        getHandle: vi.fn(() => undefined),
+        clearHandle: vi.fn(),
+        viewSession: vi.fn(async () => {
+          if (viewSessionResult instanceof Error) throw viewSessionResult;
+          return viewSessionResult;
+        }),
+      },
     },
     repository: {
       threadQueries: {
         byId: vi.fn(() => thread),
       },
       threadCommands: {
-        update: vi.fn((_threadId, updates) => {
+        update: vi.fn((_threadId: string, updates: any) => {
           thread.context = updates.context;
           thread.tags = updates.tags ?? thread.tags;
         }),
+      },
+      chatQueries: {
+        threadData: vi.fn(() => ({
+          messages: [
+            { id: 'msg-1', sender: 'user', text: 'hello' },
+            { id: 'msg-2', sender: 'assistant', text: 'hi', context: { cliUuid: 'uuid-1' } },
+          ],
+        })),
       },
     },
     chat: {
@@ -44,63 +53,69 @@ function createServices(rollbackThread: any, sendBlockMessage = vi.fn()) {
     emitter: {
       sendToPlugin: vi.fn(),
     },
+    settings: {
+      updatePluginSetting: vi.fn(),
+    },
+    artifact: {
+      findOrCreateByType: vi.fn(() => ({ artifactId: 'art-1' })),
+    },
     logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
       warn: vi.fn(),
+      error: vi.fn(),
     },
   } as any;
 }
 
-describe('CDX: Handle Revert', () => {
-  it('clears stale Codex thread state when rollback says thread not found', async () => {
-    const services = createServices(vi.fn().mockRejectedValue(new Error('thread not found')));
+describe('CC: Handle Revert', () => {
+  it('reverts with valid cliUuid when viewSession confirms it', async () => {
+    const services = createServices([
+      { type: 'assistant', uuid: 'uuid-1' },
+    ]);
 
     const result = await handleRevert({
       threadId: 'thread-1',
-      messageId: 'msg-1',
-      deletedUserMessageCount: 1,
+      messageId: 'msg-2',
     }, services);
 
     expect(result).toMatchObject({
       success: true,
-      rolledBack: false,
-      staleCodexThread: true,
-      reason: 'codex thread not found',
+      cliUuid: 'uuid-1',
     });
-    expect(services.chat.sendBlockMessage).not.toHaveBeenCalled();
     expect(services.threads.updateChatState).toHaveBeenLastCalledWith('thread-1', 'idle');
-    expect(services.repository.threadCommands.update).toHaveBeenLastCalledWith('thread-1', expect.objectContaining({
-      context: expect.objectContaining({
-        codex: expect.objectContaining({
-          threadId: undefined,
-          turnId: undefined,
-          activeMessageId: undefined,
-          pendingApproval: undefined,
-          isRunning: false,
-        }),
-      }),
-    }));
   });
 
-  it('reports non-stale rollback failures without throwing if notification fails', async () => {
-    const services = createServices(
-      vi.fn().mockRejectedValue(new Error('rollback exploded')),
-      vi.fn(() => { throw new Error('Thread thread-1 not found'); }),
-    );
+  it('clears cliUuid when viewSession shows UUID not in session (post-compaction)', async () => {
+    const services = createServices([]);
 
     const result = await handleRevert({
       threadId: 'thread-1',
-      messageId: 'msg-1',
-      deletedUserMessageCount: 1,
+      messageId: 'msg-2',
     }, services);
 
     expect(result).toMatchObject({
-      success: false,
-      error: 'rollback exploded',
+      success: true,
+      cliUuid: undefined,
     });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith('thread-1', 'error');
-    expect(services.logger.warn).toHaveBeenCalledWith('[codex] failed to notify rollback failure', {
+    expect(services.threads.updateChatState).toHaveBeenLastCalledWith('thread-1', 'idle');
+  });
+
+  it('clears cliUuid when viewSession throws', async () => {
+    const services = createServices(new Error('JSONL not found'));
+
+    const result = await handleRevert({
       threadId: 'thread-1',
-      error: 'Thread thread-1 not found',
+      messageId: 'msg-2',
+    }, services);
+
+    expect(result).toMatchObject({
+      success: true,
+      cliUuid: undefined,
     });
+    expect(services.logger.warn).toHaveBeenCalledWith(
+      '[revert] could not validate cliUuid against session JSONL',
+      expect.objectContaining({ cliUuid: 'uuid-1' }),
+    );
   });
 });

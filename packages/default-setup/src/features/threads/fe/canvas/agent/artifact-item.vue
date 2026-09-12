@@ -1,0 +1,53 @@
+<template>
+  <div
+    class="rounded-md cursor-pointer transition-colors shrink-0 whitespace-nowrap"
+    :class="[
+      compact ? 'px-1.5 py-1 max-w-48' : 'px-2.5 py-1.5',
+      pillClasses
+    ]"
+    :title="artifact.title"
+    @click="$emit('select')"
+  >
+    <div class="flex items-center gap-1.5" :class="{ 'gap-2': !compact }">
+      <component :is="getIcon(artifact.type)" :size="compact ? 13 : 16" class="shrink-0" />
+      <span class="font-medium truncate" :class="compact ? 'text-xs' : 'text-sm'">{{ artifact.title }}</span>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import { FileText } from 'lucide-vue-next';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
+
+const props = defineProps<{
+  artifact: ArtifactItem;
+  isSelected: boolean;
+  compact?: boolean;
+}>();
+
+defineEmits<{
+  select: [];
+}>();
+
+const colorClasses: Record<string, { base: string; hover: string; text: string; selected: string }> = {
+  blue:    { base: 'bg-blue-500/15',    hover: 'hover:bg-blue-500/25',    text: 'text-blue-400',    selected: 'bg-blue-600 text-white' },
+  purple:  { base: 'bg-purple-500/15',  hover: 'hover:bg-purple-500/25',  text: 'text-purple-400',  selected: 'bg-purple-600 text-white' },
+  emerald: { base: 'bg-emerald-500/15', hover: 'hover:bg-emerald-500/25', text: 'text-emerald-400', selected: 'bg-emerald-600 text-white' },
+  amber:   { base: 'bg-amber-500/15',   hover: 'hover:bg-amber-500/25',   text: 'text-amber-400',   selected: 'bg-amber-600 text-white' },
+  red:     { base: 'bg-red-500/15',     hover: 'hover:bg-red-500/25',     text: 'text-red-400',     selected: 'bg-red-600 text-white' },
+  cyan:    { base: 'bg-cyan-500/15',    hover: 'hover:bg-cyan-500/25',    text: 'text-cyan-400',    selected: 'bg-cyan-600 text-white' },
+};
+
+const pillClasses = computed(() => {
+  const c = props.artifact.color && colorClasses[props.artifact.color];
+  if (props.isSelected) return c ? c.selected : 'bg-blue-600 text-white';
+  if (c) return `${c.base} ${c.text} ${c.hover}`;
+  return 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
+});
+
+function getIcon(type: string) {
+  return artifactRegistry.getIcon(type) || FileText;
+}
+</script>

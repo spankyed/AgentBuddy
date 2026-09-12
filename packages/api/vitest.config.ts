@@ -23,11 +23,10 @@ export default defineConfig(async () => {
     // ❶  there is **no** `tsconfig` option – remove it
   },
 
-  /* Optional manual alias fallback (not needed if plugin works) -------- */
-  // resolve: {
-  //   alias: {
-  //     '@': '/src',
-  //   },
-  // },
+  resolve: {
+    alias: [
+      { find: /^@\//, replacement: new URL('./src/', import.meta.url).pathname },
+    ],
+  },
   };
 });

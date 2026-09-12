@@ -67,11 +67,9 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
-import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
-import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
-import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
+import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue';
+import { useContextMenu, type MenuItem, useSettingsSaveStatus, getDesignated } from '@abuddy/sdk/fe';
 import { applicationState } from '@/main';
-import allPlugins from '@/plugins';
 
 const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
 
@@ -95,7 +93,7 @@ const pluginVisibility = useSelector(
 const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
 
 const togglePluginVisibility = (id: string) => {
-  if (id === 'settings') return; // Settings plugin cannot be hidden
+  if (id === getDesignated('settings')) return;
   updateSettings({
     entityType: 'plugin',
     label: '_meta',
@@ -104,13 +102,17 @@ const togglePluginVisibility = (id: string) => {
   });
 };
 
-const nonPinnedPlugins = allPlugins.filter(p => p.icon && !p.isPinned);
-const pinnedPlugins = allPlugins.filter(p => p.icon && p.isPinned);
-const sortedPlugins = [...nonPinnedPlugins, ...pinnedPlugins];
+const allPlugins = useSelector(applicationState, (state) => state.context.plugins);
+
+const sortedPlugins = computed(() => {
+  const nonPinned = allPlugins.value.filter(p => p.icon && !p.isPinned);
+  const pinned = allPlugins.value.filter(p => p.icon && p.isPinned);
+  return { sorted: [...nonPinned, ...pinned], separatorIndex: nonPinned.length > 0 && pinned.length > 0 ? nonPinned.length - 1 : -1 };
+});
 
 const visibilityMenuItems = computed<MenuItem[]>(() =>
-  sortedPlugins.map((plugin) => {
-    const locked = plugin.id === 'settings';
+  sortedPlugins.value.sorted.map((plugin) => {
+    const locked = plugin.id === getDesignated('settings');
     const visible = isVisible(plugin.id);
     const textClass = locked
       ? 'text-neutral-600 cursor-not-allowed'
@@ -128,12 +130,10 @@ const visibilityMenuItems = computed<MenuItem[]>(() =>
   }),
 );
 
-const separatorIndex = nonPinnedPlugins.length > 0 && pinnedPlugins.length > 0
-  ? nonPinnedPlugins.length - 1
-  : -1;
+const separatorIndex = computed(() => sortedPlugins.value.separatorIndex);
 
 const onContextMenu = (e: MouseEvent) => {
-  open(e, visibilityMenuItems.value.length + (separatorIndex >= 0 ? 1 : 0));
+  open(e, visibilityMenuItems.value.length + (separatorIndex.value >= 0 ? 1 : 0));
 };
 
 const onPluginContextMenu = (e: MouseEvent, plugin: Plugin) => {

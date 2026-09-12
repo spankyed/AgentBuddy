@@ -57,7 +57,7 @@ That only rebuilds `@app/api`. It does **not** run `compile`. So every dev launc
 ### Why it's hard to notice
 
 - **`git status` and `git diff` show source, not compiled output.** `dist/compiled-actions.json` is in `.gitignore`, so there's no "stale artifact" signal in the working tree.
-- **The "gen" in `start:gen` means something else.** `start:gen` regenerates api's TypeScript `.d.ts` defs (via `postbuild` → `generate:defs-types`). It does NOT regenerate the DSL JSON bundles. The naming is misleading — a developer reading `start:gen` reasonably assumes "full regeneration", but it only covers defs.
+- **The "gen" in `start:gen` means something else.** `start:gen` regenerates DSL type definitions (Monaco `.d.ts` via `generate:defs` in default-setup). It does NOT regenerate the DSL JSON bundles. The naming is misleading — a developer reading `start:gen` reasonably assumes "full regeneration", but it only covers defs.
 - **The first symptom is "my fix didn't work"**, which primes you to debug the fix itself — not the build step that silently dropped it.
 - **Three independent occurrences in one session reinforced the pattern**: each time the diagnosis was different (plan-mode system prompts, missing tool exposure, Zod union shape), so it wasn't obvious until the third instance that all three were masked by the same stale-compile problem.
 

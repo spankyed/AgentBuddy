@@ -1,13 +1,13 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
-import type { HotkeyEvent } from '@/core/utils/hotkeys';
-import { processHotkeys } from '@/core/utils/hotkeys';
-import type { ApplicationHotkeys } from '@app/api';
+import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
+import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import { trpc } from '@/core/trpc';
-import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
-import type { ContextMenuItem } from '@/core/context-menu';
 import { globalToast } from '@/core/toast';
+import { getDesignated } from '@abuddy/sdk/fe';
+import { stepRegistry } from '@abuddy/sdk/steps';
 
 interface BreadcrumbItem {
   label: string;
@@ -82,6 +82,8 @@ export type ApplicationEvent =
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
+  | { type: 'PACK_PLUGINS_LOADED'; plugins: Plugin[] }
+  | { type: 'PACK_PLUGINS_UNLOADED'; pluginIds: string[] }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
@@ -255,10 +257,8 @@ export const createApplicationState = () => setup({
       });
 
       const subscription = trpc.bus.sub.subscribe(
-        undefined, // sessionId is ignored now
+        undefined,
         {
-          // onConnectionStateChange(state) {
-          // },
           onError: (error: any) => {
             console.error('Error in subscription:', error);
             sendBack({ type: 'BACKEND_ERROR', error: String(error) });
@@ -310,6 +310,62 @@ export const createApplicationState = () => setup({
     updateHotkeys: assign(({ event }) => {
       const { hotkeys } = typeOf('APPLICATION_HOTKEYS', event);
       return { hotkeys };
+    }),
+
+    mergePackPlugins: enqueueActions(({ event, context, enqueue }) => {
+      const { plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
+      const existingIds = new Set(context.plugins.map(p => p.id));
+      const skipped = packPlugins.filter(p => existingIds.has(p.id));
+      if (skipped.length > 0) {
+        console.warn(`[pack-loader] Skipping plugins with duplicate IDs: ${skipped.map(p => p.id).join(', ')}`);
+      }
+      const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
+      if (newPlugins.length === 0) return;
+      stepRegistry.initComponents();
+      const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
+      const allPlugins = packsIdx >= 0
+        ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
+        : [...context.plugins, ...newPlugins];
+      const pluginVisibility = { ...context.pluginVisibility };
+      for (const p of newPlugins) pluginVisibility[p.id] = true;
+      enqueue.assign({
+        plugins: allPlugins,
+        visiblePlugins: allPlugins.filter(p => pluginVisibility[p.id] !== false),
+        pluginVisibility,
+      });
+      for (const plugin of newPlugins) {
+        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+      }
+    }),
+
+    removePackPlugins: enqueueActions(({ event, context, enqueue }) => {
+      const { pluginIds } = typeOf('PACK_PLUGINS_UNLOADED', event);
+      const removeSet = new Set(pluginIds);
+      if (removeSet.size === 0) return;
+
+      for (const id of pluginIds) {
+        (enqueue as any).stopChild(id);
+      }
+
+      const remaining = context.plugins.filter(p => !removeSet.has(p.id));
+      const pluginVisibility = { ...context.pluginVisibility };
+      for (const id of pluginIds) delete pluginVisibility[id];
+
+      const needsNavigate = removeSet.has(context.activePlugin.id);
+      const activePlugin = needsNavigate ? (remaining[0] ?? context.defaultPlugin) : context.activePlugin;
+
+      enqueue.assign({
+        plugins: remaining,
+        visiblePlugins: remaining.filter(p => pluginVisibility[p.id] !== false),
+        pluginVisibility,
+        activePlugin,
+      });
+
+      if (needsNavigate) {
+        enqueue(({ system }) => {
+          system.get(activePlugin.id)?.send({ type: 'PLUGIN_ACTIVATED' });
+        });
+      }
     }),
 
     updatePluginVisibility: assign(({ event, context }) => {
@@ -479,7 +535,7 @@ export const createApplicationState = () => setup({
 
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
-            systemId: 'settings',
+            systemId: getDesignated('settings') as any,
             type: 'UPDATE_SETTINGS',
             entityType: 'plugin',
             label: '_meta',
@@ -579,7 +635,7 @@ export const createApplicationState = () => setup({
       };
     }),
     closeDevLetter: ({ self }) => {
-      self.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
+      self.send({ type: 'SELECT_PLUGIN', pluginId: getDesignated('threads') });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({
@@ -766,6 +822,12 @@ export const createApplicationState = () => setup({
   on: {
     APPLICATION_HOTKEYS: {
       actions: 'updateHotkeys'
+    },
+    PACK_PLUGINS_LOADED: {
+      actions: 'mergePackPlugins'
+    },
+    PACK_PLUGINS_UNLOADED: {
+      actions: 'removePackPlugins'
     },
     PLUGIN_VISIBILITY_UPDATED: {
       actions: 'updatePluginVisibility'

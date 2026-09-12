@@ -27,9 +27,11 @@ npm run build:be         # Build backend only
 npm run build            # Build all workspaces
 npm run build-prod       # Full production build (build/build.sh)
 
-npm run typecheck        # Type check everything (FE + BE)
+npm run typecheck        # Type check everything (FE + BE + SDK + default-setup pack)
 npm run typecheck:fe     # Frontend only (vue-tsc)
 npm run typecheck:be     # Backend only (tsc --noEmit)
+npm run typecheck:sdk    # @abuddy/sdk only
+npm run typecheck:pack   # @app/default-setup only
 npm run test-build       # Verify FE + BE compile
 
 npm test                 # Playwright E2E tests
@@ -37,7 +39,28 @@ npm run compile          # Compile all DSLs (actions, prompts, flows, library) f
 
 npm run db:cli           # Database CLI
 npm run db:reset         # Reset database
+
+# SDK API surface (run from packages/abuddy-sdk)
+npm run api:check        # CI: fails if pack-facing API changed without updating reports
+npm run api:update       # Dev: regenerate etc/ears.api.md and etc/types.api.md
 ```
+
+### E2E visual testing
+
+Playwright tests launch the full Electron app and interact via `window.applicationState` (the XState actor). Use to visually verify UI changes.
+
+```bash
+npm test                              # Run all E2E tests
+npx playwright test smoke             # Run just smoke tests
+npx playwright test tests/e2e/scratch # Run ad-hoc scratch test (gitignored)
+DEBUG_E2E=1 npm test                  # With Electron stdout/stderr logging
+```
+
+Screenshots save to `tests/screenshots/` (gitignored). The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, `waitForState(check)`, and `waitForPlugin(pluginId)`.
+
+The fixture source is `@abuddy/sdk/testing` (`packages/abuddy-sdk/src/testing/index.ts`), re-exported by `tests/e2e/fixtures/app.ts`. It launches Electron, finds the main window via `window.applicationState`, bypasses onboarding, and provides the `AppHelper` API. External packs share the same fixture — `abuddy init-tests` scaffolds tests in a pack repo, then `abuddy test` runs them. Set `PACK_DIR=/path/to/pack` to sync/build a pack and wait for its plugins.
+
+For full fixture lifecycle, API reference, and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`. For external pack testing details, see `packages/abuddy-sdk/src/testing/CLAUDE.md`.
 
 ## Architecture
 
@@ -50,7 +73,18 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 - **System → System**: `system.get(otherSystemId).send({ type })`
 - **⚠️ `sendToPlugin` wraps events with `pluginId`** — never use `pluginId` as a field name inside event payloads sent via `sendToPlugin()`, it gets overwritten by the transport layer. Use `targetId` or similar instead.
 
-Systems define `IncomingSystemEvents` (Zod-validated), `SystemInternalEvents`, and `OutgoingSystemEvents`. See `packages/api/src/systems/CLAUDE.md` for the full pattern.
+Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSystemEvents`. System code lives in `packages/default-setup/src/features/<name>/be/system.ts`. The bus actor and systems registry live in `packages/api/src/systems.ts`.
+
+### SDK barrel split
+
+`@abuddy/sdk` separates pack-facing API from host-internal symbols. External packs import from the public barrels; host code (api, renderer) uses the internal paths.
+
+- `@abuddy/sdk/ears` — pack-facing: `qx`, `tx`, `repository`, `findById`, `grantRole`, etc.
+- `@abuddy/sdk/ears/internals` — host-only: `initEARSRuntime`, `edgeStore`, `relationIndex`, `clearMemory`, etc.
+- `@abuddy/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
+- `@abuddy/sdk/fe/host` — host-only: `registerPackFE`, `getRegisteredPlugins`, etc.
+
+When adding new EARS or FE exports, put them in the correct barrel. After changing pack-facing exports, run `npm run api:update` in `packages/abuddy-sdk` and commit the updated `etc/*.api.md` reports.
 
 ### Data layer (EARS)
 
@@ -62,7 +96,7 @@ Custom entity-attribute-relation graph database backed by LMDB. All data lives i
 
 ### Frontend plugin system
 
-Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. See `packages/renderer/src/plugins/CLAUDE.md` for the full pattern.
+Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin code lives in `packages/default-setup/src/features/<name>/fe/`. The plugin registry is at `packages/default-setup/src/registries/plugins.ts`.
 
 ### Key patterns
 

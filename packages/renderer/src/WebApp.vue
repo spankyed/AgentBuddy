@@ -70,7 +70,7 @@
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
             <component v-if="activePlugin.panel" :is="activePlugin.panel" />
-            <BrainInspectPanel v-else-if="inspectMode" />
+            <component v-else-if="inspectMode && fallbackPanel" :is="fallbackPanel" />
         </InspectionPanel>
     </div>
     </div>
@@ -87,11 +87,11 @@ import ChatArea from '@/core/components/layout/chat-area.vue'
 import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
-import { navigateToPlugin } from '@/core/utils/navigate'
+import { navigateToPlugin } from '@abuddy/sdk/fe'
 import Router from '@/core/components/layout/router.vue'
-import BrainInspectPanel from '@/plugins/brain/panel.vue'
-import type { ContextMenuItem } from '@/core/context-menu'
-import ToastNotification from '@/core/components/design/ToastNotification.vue'
+import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
+import type { ContextMenuItem } from '@abuddy/sdk/fe'
+import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue'
 import { registerGlobalToast } from '@/core/toast'
 
 const send = applicationState.send
@@ -111,10 +111,15 @@ const panelSizes = useSelector(applicationState, (state) => state.context.panelS
 const chatMaximized = useSelector(applicationState, (state) => state.context.panelSizes.chatMaximized ?? false)
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
-const brainActor = applicationState.system.get('brain')
+const allPlugins = useSelector(applicationState, (state) => state.context.plugins)
+const brainActor = applicationState.system.get(getDesignated('brain'))
 const inspectMode = useSelector(brainActor, (state: any) =>
   state.context.inspectEnabled ?? false
 )
+const fallbackPanel = computed(() => {
+  if (!hasDesignation('brain')) return null
+  return allPlugins.value.find(p => p.id === getDesignated('brain'))?.panel
+})
 
 const currentPluginId = computed(() =>
   toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
@@ -183,7 +188,7 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
-    navigateToPlugin('settings', [
+    navigateToPlugin(getDesignated('settings'), [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])

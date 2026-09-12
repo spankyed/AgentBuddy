@@ -27,7 +27,7 @@ describe('resolveCliPath', () => {
       callback(Object.assign(new Error('not found'), { code: 'ENOENT' }))
     })
 
-    const { resolveCliPath } = await import('@/core/shared/resolve-cli')
+    const { resolveCliPath } = await import('@abuddy/sdk/utils')
 
     await expect(resolveCliPath(provider)).resolves.toBe(executable)
   })

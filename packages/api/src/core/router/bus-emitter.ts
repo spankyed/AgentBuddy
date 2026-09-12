@@ -38,7 +38,6 @@ class RootEventEmitter extends EventEmitter {
   // System bus events
   emitIncoming(event: IncomingSystemEvents) {
     this.emit('incoming', event);
-    // this.emit('incoming', event);
   }
 
   emitOutgoing(event: OutgoingSystemEvents) {

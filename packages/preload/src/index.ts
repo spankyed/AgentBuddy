@@ -206,6 +206,16 @@ const browser = {
   getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,
 };
 
+// Protocol action listener (abuddy:// deep link handling)
+const protocolAction = {
+  onAction: (callback: (data: { action: string; params: Record<string, string> }) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, data: { action: string; params: Record<string, string> }) =>
+      callback(data);
+    ipcRenderer.on('protocol-action', handler);
+    return () => { ipcRenderer.removeListener('protocol-action', handler); };
+  },
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
@@ -220,6 +230,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   apiPort,
   startupId,
   browser,
+  protocolAction,
+  rendererReady: () => ipcRenderer.send('renderer:ready'),
 });
 
 // Export the tRPC client and connection status

@@ -88,7 +88,11 @@ The `services` object provides access to all backend modules:
 
 ## Don'ts
 
-- **No bare package imports** — you cannot import from `node_modules` (e.g. `import { x } from 'lodash'`). Relative path imports are allowed (e.g. `../shared/utils`, `./helper`) as long as imported files only use `import type` (no value imports)
+- **No bare package imports** — you cannot import from `node_modules` (e.g. `import { x } from 'lodash'`).
+  Relative path imports are allowed (e.g. `../shared/utils`, `./helper`) and are bundled transitively.
+  Two exceptions to the bare-import rule: type-only imports (`import type`), which are erased before
+  bundling, and `@abuddy/sdk/actions` — an allowlisted sandbox-safe module whose source is inlined into
+  the compiled body (see `INLINABLE_PACKAGE_IMPORTS` in `abuddy-sdk/src/build/compile-utils.ts`)
 - **No `require()`** — the function body cannot load modules at runtime
 - **No Node.js globals** — `process`, `fs`, `__dirname`, `__filename`, `Buffer`, `global` are not available
 - **No module-scoped state** — everything inside the `action` function is the function body; anything outside is stripped
@@ -149,10 +153,11 @@ return { greeting: `Hello, ${name}!` };
 
 ### Constraints
 
-- **Helper files must be self-contained** — no imports (except `import type`) within helper files
+- **Helper files may import other helpers** — relative imports are bundled transitively and inlined
 - **No Node.js globals** in helper files — same restrictions as action files
-- **No bare package imports** — cannot import from `node_modules`
-- Missing files or exports are treated as **compile errors** (the action is skipped)
+- **No bare package imports** — cannot import from `node_modules`, except `import type` and the
+  allowlisted `@abuddy/sdk/actions` module
+- Missing files or exports are **compile errors** — the pack build fails and names the offending source
 - Files in `src/actions/` without `export const meta` are treated as helpers and skipped during compilation
 
 ## Metadata Reference

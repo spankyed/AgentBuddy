@@ -10,7 +10,7 @@
  * - openThreadChatAndRefreshRecent called AFTER state persistence (race fix)
  */
 
-import { action as handleFork } from '../../src/actions/claude-code/handle-fork';
+import { action as handleFork } from '../../src/seeds/actions/claude-code/handle-fork';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,12 +88,8 @@ function createServices(opts: {
           viewSession: viewSessionMock,
         },
       },
-      chat: {
-        openThreadChatAndRefreshRecent: openThreadChatMock,
-      },
     } as any,
     viewSessionMock,
-    openThreadChatMock,
     callOrder,
   };
 }
@@ -376,13 +372,13 @@ describe('CC: Handle Fork — stress tests', () => {
 
   // ── 8. No source session state ──────────────────────────────────────────────
 
-  it('returns copied:false and still opens the thread when source has no session', async () => {
+  it('returns copied:false when source has no session', async () => {
     const threads = new Map<string, MockThread>([
       ['source', { id: 'source', context: {}, tags: [] }],
       ['new', { id: 'new', context: {}, tags: [] }],
     ]);
 
-    const { services, openThreadChatMock } = createServices({
+    const { services } = createServices({
       threads,
       messages: new Map(),
     });
@@ -393,7 +389,6 @@ describe('CC: Handle Fork — stress tests', () => {
     );
 
     expect(result).toMatchObject({ success: true, copied: false });
-    expect(openThreadChatMock).toHaveBeenCalledWith('new');
   });
 
   // ── 9. Missing sourceMessageId ──────────────────────────────────────────────
@@ -422,9 +417,9 @@ describe('CC: Handle Fork — stress tests', () => {
     });
   });
 
-  // ── 10. openThreadChatAndRefreshRecent called AFTER state persistence ──────
+  // ── 10. State persisted before result returned ──────────────────────────────
 
-  it('persists state before opening the thread chat (race fix)', async () => {
+  it('persists state on the new thread before returning', async () => {
     const threads = new Map<string, MockThread>([
       ['source', { id: 'source', context: { claudeCode: { sessionId: 'S1', cwd: '/p' } }, tags: [] }],
       ['new', { id: 'new', context: {}, tags: [] }],
@@ -446,10 +441,16 @@ describe('CC: Handle Fork — stress tests', () => {
       services,
     );
 
-    // persistState (via threadCommands.update) must come before openThreadChat
+    // persistState (via threadCommands.update) must have been called
     const persistIndex = callOrder.indexOf('persistState');
-    const openIndex = callOrder.indexOf('openThreadChat');
     expect(persistIndex).toBeGreaterThanOrEqual(0);
-    expect(openIndex).toBeGreaterThan(persistIndex);
+
+    // State should be on the new thread
+    const state = getState(threads, 'new');
+    expect(state).toMatchObject({
+      sessionId: 'S1',
+      cwd: '/p',
+      forkFrom: { sessionId: 'S1', cliUuid: 'U1' },
+    });
   });
 });

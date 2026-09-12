@@ -1,0 +1,84 @@
+import type { Simplify } from './type-helpers';
+import type { PluginEventRegistry } from '../types/entities';
+
+type ExtractEvent<
+  TEvent extends { type: string },
+  TType extends TEvent['type'],
+> = Extract<TEvent, { type: TType }>;
+
+/**
+ * Usage:
+ * ```ts
+ * const typeOf = safeEvents<MyUnion>();
+ * const msg = typeOf(['A', 'B'], evt);   // evt is now narrowed
+ * ```
+ */
+export function safeEvents<TEvent extends { type: string }>() {
+  return function<
+    TTypes extends
+      | TEvent['type']
+      | readonly TEvent['type'][]
+  >(
+    expected: TTypes,
+    event: TEvent
+  ): ExtractEvent<
+    TEvent,
+    TTypes extends readonly TEvent['type'][] ? TTypes[number] : TTypes
+  > {
+    const expectedArr: readonly TEvent['type'][] = Array.isArray(expected)
+      ? expected
+      : [expected];
+
+    if (!expectedArr.includes(event.type as TEvent['type'])) {
+      throw new Error(
+        `Expected type ${expectedArr.join(' | ')}, got ${event.type}`
+      );
+    }
+    return event as any;
+  };
+}
+
+/**
+ * Generic emit — wraps an event with pluginId for the bus.
+ * Each system uses this with its own outgoing type for per-system type safety.
+ * The global OutgoingSystemEvents union is assembled in api/src/systems/index.ts.
+ */
+export function emit<P extends keyof PluginEventRegistry & string>(
+  pluginId: P,
+  event: PluginEventRegistry[P]
+): { type: 'OUTGOING'; event: PluginEventRegistry[P] & { pluginId: P } };
+
+export function emit<E extends { type: string }>(
+  pluginId: string,
+  event: E
+): { type: 'OUTGOING'; event: E & { pluginId: string } };
+
+export function emit(pluginId: string, event: { type: string }) {
+  return {
+    type: 'OUTGOING' as const,
+    event: { ...event, pluginId },
+  };
+}
+
+export function sendParentSafe<TEvent extends { type: string }>() {
+  return <Type extends TEvent['type']>(
+    payload: Extract<TEvent, { type: Type }>
+  ) => {
+    const { sendParent } = require('xstate');
+    return sendParent(payload);
+  };
+}
+
+export function getActor(system: any, id: string) {
+  const actor = system.get(id);
+  if (!actor) throw new Error(`Actor with id '${id}' not found in the system`);
+  return actor;
+}
+
+export function getBus(system: any) {
+  const busActor = system.get('bus');
+  if (!busActor) throw new Error("Bus actor not found in the system");
+  return busActor;
+}
+
+export type { Simplify };

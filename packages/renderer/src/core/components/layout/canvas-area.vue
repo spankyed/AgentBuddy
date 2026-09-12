@@ -82,8 +82,8 @@ import {
   DropdownMenuSeparator,
 } from 'reka-ui'
 import PluginMenuItems from './PluginMenuItems.vue'
-import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
-import type { ContextMenuItem as ContextMenuItemType } from '@/core/context-menu'
+import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
+import type { ContextMenuItem as ContextMenuItemType } from '@abuddy/sdk/fe'
 
 const menuOpen = ref(false)
 useTrackedMenuOpen(menuOpen)

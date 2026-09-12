@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "composite": false,
+    "baseUrl": ".",
+    "paths": {
+      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
+      "@abuddy/sdk/inference": ["../abuddy-sdk/src/services/inference.ts"],
+      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
+      "@/__generated__/*": ["./src/__generated__/*"],
+      "@/features/*": ["./src/features/*"],
+      "@/extensions/*": ["./src/extensions/*"]
+    }
+  },
+  "include": [
+    "src/defs/**/*.ts"
+  ]
+}

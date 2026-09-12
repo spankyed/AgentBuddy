@@ -23,8 +23,10 @@ Each migration file exports a `Migration` with:
 
 ```ts
 // 0.X.Y.ts
-import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { repository } from '@/repository';
 import type { Migration } from './index';
+
+const { settingsQueries, settingsCommands } = repository;
 
 export const migration: Migration = {
   target: '0.X.Y',

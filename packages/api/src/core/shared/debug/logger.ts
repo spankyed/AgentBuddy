@@ -1,8 +1,15 @@
-import type { LogLevel, LogEntry } from '../../../systems/logs/types';
 import { rootEvents } from '../../router/bus-emitter';
 import { originalConsole } from './log-capture';
 
-export type LogEvent = Omit<LogEntry, 'id' | 'timestamp'>
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export type LogEvent = {
+  level: LogLevel;
+  message: string;
+  source?: string;
+  meta?: Record<string, any>;
+  stack?: string;
+}
 
 // Safely stringify objects that might contain circular references
 function safeStringify(obj: any): any {
@@ -67,7 +74,11 @@ class Logger {
 
     // Still log to console for debugging
     const prefix = this.source ? `[${this.source}]` : '';
-    originalConsole[level](prefix, message, meta);
+    if (meta !== undefined) {
+      originalConsole[level](prefix, message, meta);
+    } else {
+      originalConsole[level](prefix, message);
+    }
   }
 
   debug(message: string, meta?: Record<string, any>) {

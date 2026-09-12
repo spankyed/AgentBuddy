@@ -7,9 +7,10 @@
  *   npm run db:import -- --path /path/to/backup --force
  */
 
+import '@/setup/sdk-host-init';
 import * as fs from 'fs-extra';
 import * as path from 'node:path';
-import { importDatabase, getBackupInfo } from '@/systems/database/backup';
+import { importDatabase, getBackupInfo } from '@abuddy/sdk/backup';
 import { clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { createLogger } from '@/core/helpers/debug/logger';

@@ -1,31 +1,37 @@
 #!/usr/bin/env tsx
 /**
  * Script: Export entities as clean JSON with metadata
- * 
+ *
  * Usage:
  *   # Export all Settings
  *   npm run db:export Settings > settings.json
- *   
+ *
  *   # Export specific entity type
  *   npm run db:export Thread > threads.json
- *   
+ *
  *   # Export all entities
  *   npm run db:export > all-data.json
- *   
+ *
  *   # Export specific entity by ID
  *   npm run db:export -- --id Settings-123 > entity.json
- *   
+ *
  *   # Export without metadata (raw data only)
  *   npm run db:export -- --raw Settings > settings.json
  */
 
-import { qx } from '@/core/ears/helpers/query';
+import '@/setup/sdk-host-init';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { qx } from '@abuddy/sdk/ears';
 import { EARS } from '@/core/types';
-import { getAllEntities, getEntitiesOfType, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/helpers/paths';
+import { getAllEntities, getEntitiesOfType, getAllEntityTypes, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/shared/paths';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { createDefaultSettings } from '@/systems/settings/repository';
+import { loadBuiltInPacks } from '@/core/packs/pack-loader';
+import { getBootHooks, getRegisteredEntityTypes } from '@/core/packs/pack-registration';
 import * as os from 'node:os';
+
+const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 // Suppress all console output except our final JSON
 const originalLog = console.log;
@@ -41,15 +47,17 @@ process.stderr.write = () => true;
 
 async function exportJSON() {
   try {
+    await loadBuiltInPacks(packagesDir);
+
     // Initialize database first (silently)
-    await hydrateSharded({ 
-      envs, 
-      policy, 
-      shardedPersistence: persistence 
+    await hydrateSharded({
+      envs,
+      policy,
+      shardedPersistence: persistence
     });
-    
-    // Initialize default settings if they don't exist
-    createDefaultSettings();
+
+    // Initialize packs (ensure default data exists)
+    for (const hooks of getBootHooks()) hooks.onInit?.();
 
     const args = process.argv.slice(2);
     let data: any;
@@ -74,9 +82,9 @@ async function exportJSON() {
       data = qx(args[1]).pickOne();
       exportType = 'single';
       entityFilter = args[1];
-    } else if (args[0] in EARS.Entity) {
-      // Export by entity type
-      data = qx(EARS.Entity[args[0] as keyof typeof EARS.Entity]).pickAll();
+    } else if (getRegisteredEntityTypes().has(args[0])) {
+      // Export by entity type (registered pack entity)
+      data = qx(args[0] as EARS.Entity).pickAll();
       exportType = 'type';
       entityFilter = args[0];
     } else {
@@ -120,7 +128,7 @@ async function exportJSON() {
 
     // Add statistics for full exports
     if (exportType === 'all') {
-      for (const entityType of Object.values(EARS.Entity)) {
+      for (const entityType of getAllEntityTypes()) {
         const count = getEntitiesOfType(entityType).length;
         if (count > 0) {
           metadata.exportMetadata.statistics[entityType] = count;
@@ -137,7 +145,7 @@ async function exportJSON() {
     // Restore stdout and output the JSON with metadata
     process.stdout.write = originalWrite;
     process.stdout.write(JSON.stringify(metadata, null, 2));
-    
+
     // Clean shutdown
     closePersistence();
     process.exit(0);

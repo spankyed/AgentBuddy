@@ -4,9 +4,16 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import plugins, { defaultPlugin } from '@/plugins';
+import builtInPacks from 'virtual:built-in-packs';
+import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/sdk/fe/host';
+import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
+import { trpc } from '@/core/trpc';
+import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
+import { loadPackPlugins, loadPackFEEntry, loadPackStyles } from '@/packs/pack-loader';
+import 'virtual:host-deps';
+import { registerHostModule } from '@abuddy/sdk/runtime';
 
 declare const __APP_VERSION__: string;
 
@@ -14,6 +21,7 @@ declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createApplicationState>>;
     __showErrorPage?: (title: string, detail: string) => void;
+    __disableOnboardingUI?: () => void;
     appVersion: string;
   }
 }
@@ -77,7 +85,19 @@ window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
 runFrontendMigrations();
 
+for (const [packId, loader] of Object.entries(builtInPacks)) {
+  try {
+    const mod = await loader();
+    if (mod.default) registerPackFE(mod.default);
+  } catch (err) {
+    console.error(`[boot] Failed to load built-in pack ${packId}:`, err);
+  }
+}
+
 // const { inspect } = createBrowserInspector();
+
+const plugins = [...getRegisteredPlugins(), packsPlugin];
+const defaultPlugin = getRegisteredDefaultPlugin();
 
 export const applicationState = createActor(createApplicationState(), {
   systemId: application,
@@ -92,6 +112,13 @@ export const applicationState = createActor(createApplicationState(), {
 
 window.applicationState = applicationState;
 
+window.__disableOnboardingUI = () => {
+  applicationState.send({ type: 'ONBOARDING_COMPLETE' });
+  console.log('Onboarding UI hiding disabled');
+};
+
+registerHostModule('application', applicationState);
+
 applicationState.subscribe({
   error: (error: unknown) => {
     console.error('Application State Error:', error);
@@ -100,6 +127,16 @@ applicationState.subscribe({
       'Something went wrong',
       error instanceof Error ? error.stack || error.message : String(error)
     );
+  }
+});
+
+// Listen for deep link protocol actions (abuddy://install?pack=...)
+window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
+  if (action === 'install') {
+    const request = handleProtocolInstall(params);
+    if (request) {
+      requestPackInstall(request);
+    }
   }
 });
 
@@ -114,4 +151,45 @@ app.config.errorHandler = (err, _instance, info) => {
   );
 };
 
+app.provide('actorSystem', applicationState.system);
+app.provide('applicationActor', applicationState);
 app.mount('#app');
+
+window.electronAPI?.rendererReady?.();
+
+// Load external pack FE contributions after boot
+trpc.packs.registry.query().then(async (registry) => {
+  const externalPacks = registry.filter(p => !p.builtIn);
+  if (!externalPacks.length) return;
+  for (const pack of externalPacks) {
+    const packBaseUrl = `pack://${pack.id}`;
+
+    if (pack.feStyles) {
+      await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
+    }
+
+    if (pack.feEntry) {
+      const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
+      if (registration) {
+        registerPackFE(registration);
+        const plugins = registration.plugins ?? [];
+        if (plugins.length > 0) {
+          applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+        }
+      }
+      continue;
+    }
+
+    if (!pack.plugins.length) continue;
+    const plugins = await loadPackPlugins(
+      pack.plugins.map(p => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon, designation: p.designation })),
+      packBaseUrl,
+    );
+    if (plugins.length > 0) {
+      registerPackFE({ plugins });
+      applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+    }
+  }
+}).catch(err => {
+  console.warn('[pack-loader] Failed to load pack registry:', err);
+});

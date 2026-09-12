@@ -1,0 +1,21 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+  "mainEntryPointFilePath": "./dist/types/ears/index.d.ts",
+  "apiReport": {
+    "enabled": true,
+    "reportFolder": "./etc/",
+    "reportFileName": "ears.api.md"
+  },
+  "docModel": { "enabled": false },
+  "dtsRollup": { "enabled": false },
+  "tsdocMetadata": { "enabled": false },
+  "compiler": {
+    "tsconfigFilePath": "./tsconfig.api-extractor.json"
+  },
+  "projectFolder": ".",
+  "messages": {
+    "extractorMessageReporting": {
+      "ae-missing-release-tag": { "logLevel": "none" }
+    }
+  }
+}

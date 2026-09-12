@@ -1,4 +1,6 @@
 node_modules/
 dist/
+src/__generated__/
+.abuddy/
 .env
 .DS_Store
