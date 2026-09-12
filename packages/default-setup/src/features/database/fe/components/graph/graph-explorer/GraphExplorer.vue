@@ -1,3 +1,7 @@
+<!--
+  [GRAPH_EXPLORER_FF] PARKED — reached only from ../canvas-graph.vue, which
+  nothing imports. See that file's header before changing anything here.
+-->
 <template>
   <div class="flex flex-col h-full graph-explorer">
     <!-- Header with Controls -->

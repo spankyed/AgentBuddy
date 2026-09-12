@@ -1,3 +1,19 @@
+<!--
+  [GRAPH_EXPLORER_FF] PARKED — not wired into the app.
+
+  Nothing imports this file. The database plugin renders `../../canvas.vue`
+  (see database/fe/plugin.ts), so this subtree is unreachable: it contributes
+  zero bytes to the bundle and @antv/g6 is never bundled.
+
+  It is left as real (not commented-out) code deliberately — it currently
+  typechecks clean, which is what makes it revivable. Commenting it out would
+  drop it from `tsc` and let it rot.
+
+  Sole consumer of @antv/g6, declared in packages/renderer/package.json.
+
+  To revive: render <CanvasGraph /> from database/fe/canvas.vue, and declare
+  @antv/g6 in the package that imports it.
+-->
 <template>
   <div class="flex w-full h-full overflow-hidden bg-neutral-900 dark:bg-gray-900">
     <!-- Schema Panel -->
