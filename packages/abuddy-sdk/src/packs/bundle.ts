@@ -201,3 +201,31 @@ export async function extractBundleArchive(archive: string, destDir: string, exp
   if (dirs.length !== 1) throw new Error(`Pack archive ${path.basename(archive)} must contain exactly one top-level directory`);
   return path.join(destDir, dirs[0].name);
 }
+
+/**
+ * Publish a built-in pack's build-time artifacts (dist/snapshot.json → types/snapshot.json,
+ * dist/build/ → build/) so pack authors' `abuddy build` can resolve it as a dependency from
+ * the installed app. Returns false when the destination was already current.
+ */
+export function publishHostPackArtifacts(builtInPackDir: string, destDir: string): boolean {
+  const snapshot = path.join(builtInPackDir, 'dist', 'snapshot.json');
+  if (!fs.existsSync(snapshot)) return false;
+  const buildDir = path.join(builtInPackDir, 'dist', 'build');
+
+  const sources = [snapshot, ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : [])];
+  const fingerprint = sources.map(f => `${path.relative(builtInPackDir, f)}:${sha256File(f)}`).join('\n');
+  const fingerprintFile = path.join(destDir, '.fingerprint');
+  if (fs.existsSync(fingerprintFile) && fs.readFileSync(fingerprintFile, 'utf-8') === fingerprint) return false;
+
+  const staging = `${destDir}.publishing-${process.pid}`;
+  fs.rmSync(staging, { recursive: true, force: true });
+  fs.mkdirSync(path.join(staging, BUNDLE_PATHS.typesDir), { recursive: true });
+  fs.copyFileSync(snapshot, path.join(staging, BUNDLE_PATHS.snapshot));
+  if (fs.existsSync(buildDir)) fs.cpSync(buildDir, path.join(staging, BUNDLE_PATHS.buildDir), { recursive: true });
+  fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);
+  fs.rmSync(destDir, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(destDir), { recursive: true });
+  fs.renameSync(staging, destDir);
+  return true;
+}
+

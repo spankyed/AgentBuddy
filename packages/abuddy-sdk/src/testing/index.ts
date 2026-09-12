@@ -104,6 +104,16 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
 
 const E2E_VIEWPORT = { width: 1400, height: 900 };
 
+/** The pack's recorded install/seed error in the test app's pack registry, if any. */
+function readPackLastError(packId: string): string | undefined {
+  try {
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test' }).registryFile, 'utf-8'));
+    return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
+  } catch {
+    return undefined;
+  }
+}
+
 // Recent Electron stdout/stderr per app, so fixture failures can report the root
 // cause (loader errors, crashes) without re-running under DEBUG_E2E.
 const OUTPUT_TAIL_LINES = 200;
@@ -292,6 +302,11 @@ export function createTest(options: CreateTestOptions = {}) {
 
       if (process.env.PACK_DIR) {
         const manifest = getPackManifest();
+        // Seeding runs before the backend accepts connections, so its outcome is final by now
+        const seedError = manifest && readPackLastError(manifest.id);
+        if (seedError) {
+          throw describeFailure(`Pack ${manifest!.id} failed to seed its data:\n${seedError}`, electronApp, rendererErrors);
+        }
         if (manifest && manifest.pluginIds.length > 0) {
           for (const pluginId of manifest.pluginIds) {
             // Fail on the captured loader error as soon as it appears instead of timing out later

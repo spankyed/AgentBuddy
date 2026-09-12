@@ -6,6 +6,8 @@ export interface SeedCounts {
   created: number;
   updated: number;
   skipped: number;
+  /** Items that could not be seeded (e.g. flows failing validation). Non-empty means the seed failed. */
+  errors?: string[];
 }
 
 export type SeedIncludeSet = true | ReadonlySet<string>;

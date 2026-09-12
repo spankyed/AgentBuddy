@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { LoadedPack } from './pack-loader';
-import { resolvePackSeedsDir } from '@abuddy/sdk/packs';
+import { resolvePackSeedsDir, modifyRegistry } from '@abuddy/sdk/packs';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
 import { repository } from '@abuddy/sdk/ears';
@@ -35,15 +35,46 @@ export function computePackSeedHash(distDir: string): string {
   return hash.digest('hex').slice(0, 16);
 }
 
+export interface PackSeedFailure {
+  packId: string;
+  errors: string[];
+}
+
+function seedErrors(result: Record<string, { errors?: string[] }> | undefined): string[] {
+  return Object.entries(result ?? {}).flatMap(([key, counts]) => (counts?.errors ?? []).map(e => `${key}: ${e}`));
+}
+
+/** Record each seeded pack's outcome on its registry entry (the pack install state owner). */
+function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
+  if (outcomes.size === 0) return;
+  try {
+    modifyRegistry(entries => entries.map(e => {
+      if (!outcomes.has(e.id)) return e;
+      const lastError = outcomes.get(e.id);
+      const { lastError: _previous, ...rest } = e;
+      return lastError ? { ...rest, lastError } : rest;
+    }));
+  } catch (err) {
+    logger.warn('Failed to record pack seed outcome in the registry:', err as Error);
+  }
+}
+
+/**
+ * Seed external packs whose compiled data changed. A pack whose seed reports errors
+ * (e.g. an invalid flow) is a failed seed: its hash isn't stored, so it retries next
+ * time, and the error is recorded as the registry entry's lastError.
+ */
 export function seedPackData(
   packs: LoadedPack[],
   seedFn: (options: { compiledDir: string; mode?: any; verbose?: boolean }) => Record<string, any>,
   getStoredHashes: () => Record<string, string>,
   setStoredHashes: (hashes: Record<string, string>) => void,
   options?: { cleanupStaleHashes?: boolean },
-): void {
+): PackSeedFailure[] {
   const storedHashes = getStoredHashes();
   const updatedHashes = { ...storedHashes };
+  const failures: PackSeedFailure[] = [];
+  const outcomes = new Map<string, string | undefined>();
   let anySeeded = false;
 
   for (const pack of packs) {
@@ -59,14 +90,22 @@ export function seedPackData(
     }
 
     logger.info(`Seeding data artifacts for pack: ${pack.manifest.id}`);
+    let errors: string[];
     try {
-      seedFn({ compiledDir: distDir, mode: 'replace-on-collision' });
-      updatedHashes[pack.manifest.id] = currentHash;
-      anySeeded = true;
-      logger.info(`Pack seeded: ${pack.manifest.id}`);
+      errors = seedErrors(seedFn({ compiledDir: distDir, mode: 'replace-on-collision' }));
     } catch (err) {
-      logger.error(`Failed to seed pack ${pack.manifest.id}:`, err as Error);
+      errors = [err instanceof Error ? err.message : String(err)];
     }
+    if (errors.length > 0) {
+      logger.error(`Failed to seed pack ${pack.manifest.id}:\n  ${errors.join('\n  ')}`);
+      failures.push({ packId: pack.manifest.id, errors });
+      outcomes.set(pack.manifest.id, errors.join('\n'));
+      continue;
+    }
+    updatedHashes[pack.manifest.id] = currentHash;
+    anySeeded = true;
+    outcomes.set(pack.manifest.id, undefined);
+    logger.info(`Pack seeded: ${pack.manifest.id}`);
   }
 
   if (options?.cleanupStaleHashes) {
@@ -79,6 +118,8 @@ export function seedPackData(
   if (anySeeded || Object.keys(updatedHashes).length !== Object.keys(storedHashes).length) {
     setStoredHashes(updatedHashes);
   }
+  recordSeedOutcome(outcomes);
+  return failures;
 }
 
 function computeManifestSeedHash(compiledDir: string, artifacts: string[]): string {

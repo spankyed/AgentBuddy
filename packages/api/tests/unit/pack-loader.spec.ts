@@ -294,6 +294,60 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   });
 });
 
+describe('seedPackData: failures', () => {
+  function installedPack(id: string) {
+    const dir = path.join(tmpDir, 'packs', id);
+    fs.mkdirSync(path.join(dir, 'runtime', 'seeds'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), '');
+    fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'flows.seed.json'), '{}');
+    return { manifest: { id, name: id, version: '1.0.0' }, dir, systems: new Map() } as any;
+  }
+  function registryEntry(id: string) {
+    const registry = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pack-registry.json'), 'utf-8'));
+    return registry.packs.find((p: any) => p.id === id);
+  }
+  function writeRegistry(ids: string[]) {
+    fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
+      packs: ids.map(id => ({ id, name: id, version: '1.0.0', dir: '', enabled: true, registeredAt: '' })),
+    }));
+  }
+
+  it('treats seed errors as a failure: no stored hash, lastError recorded', () => {
+    const pack = installedPack('bad-flows');
+    writeRegistry(['bad-flows']);
+    const setHashes = vi.fn();
+
+    const failures = seedPackData(
+      [pack],
+      () => ({ flows: { created: 0, updated: 0, skipped: 0, errors: ['Flow "X" is invalid: missing event'] } }),
+      () => ({}),
+      setHashes,
+    );
+
+    expect(failures).toEqual([{ packId: 'bad-flows', errors: ['flows: Flow "X" is invalid: missing event'] }]);
+    expect(setHashes).not.toHaveBeenCalled();
+    expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
+  });
+
+  it('records a thrown seeder as a failure too', () => {
+    const pack = installedPack('throws');
+    writeRegistry(['throws']);
+    const failures = seedPackData([pack], () => { throw new Error('boom'); }, () => ({}), () => {});
+    expect(failures).toEqual([{ packId: 'throws', errors: ['boom'] }]);
+    expect(registryEntry('throws').lastError).toBe('boom');
+  });
+
+  it('clears lastError after a successful seed', () => {
+    const pack = installedPack('recovered');
+    fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
+      packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, registeredAt: '', lastError: 'old failure' }],
+    }));
+    const failures = seedPackData([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }), () => ({}), () => {});
+    expect(failures).toEqual([]);
+    expect(registryEntry('recovered')).not.toHaveProperty('lastError');
+  });
+});
+
 describe('seedPackData', () => {
   function makePackWithDist(
     packsDir: string,

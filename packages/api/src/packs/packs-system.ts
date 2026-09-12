@@ -164,6 +164,18 @@ export const packsSystem = setup({
 
         activatePack(result.id, system.get(bus), { seed: true });
 
+        // Seeding records failures (e.g. invalid flows) on the registry entry
+        const seedError = readPackRegistry().find(e => e.id === result.id)?.lastError;
+        if (seedError) {
+          system.get(bus).send(emit(packs, {
+            type: 'PACK_INSTALL_FAILED' as const,
+            packSlug,
+            error: `${result.name} was installed but its data failed to seed:\n${seedError}`,
+          }));
+          emitPacksList(system);
+          return;
+        }
+
         system.get(bus).send(emit(packs, {
           type: 'PACK_INSTALL_COMPLETE' as const,
           packSlug,
@@ -259,6 +271,17 @@ export const packsSystem = setup({
         );
 
         activatePack(packId, system.get(bus), { seed: true });
+
+        const seedError = readPackRegistry().find(e => e.id === packId)?.lastError;
+        if (seedError) {
+          system.get(bus).send(emit(packs, {
+            type: 'PACK_UPDATE_FAILED' as const,
+            packId,
+            error: `Updated to ${result.version} but its data failed to seed:\n${seedError}`,
+          }));
+          emitPacksList(system);
+          return;
+        }
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_UPDATE_COMPLETE' as const,

@@ -26,6 +26,8 @@ export interface PackRegistryEntry {
   availableVersion?: string;
   /** Release tag for availableVersion, so updates install exactly what the check found. */
   availableTag?: string;
+  /** Why the pack's last install or boot seed failed; cleared on the next successful seed. */
+  lastError?: string;
   lastUpdateCheck?: string;
 }
 

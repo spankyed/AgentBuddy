@@ -10,6 +10,7 @@ import { findFEEntry, bundlePackFE } from '../../build/fe-bundler';
 import { bundlePackRuntime, bundlePackStepBuild } from '../../build/be-bundler';
 import { BUNDLE_PATHS } from '../../packs/bundle';
 import { generate, resolveDeps } from './generate';
+import { resolveDepArtifacts } from './fetch-deps';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest } from '../utils';
 import { findSdkVersion } from '../../build/shared-deps';
@@ -40,9 +41,18 @@ export async function build(args: string[]) {
   let packConfig: PackConfig | null = null;
   let featureSettingsPaths: Array<{ name: string; settingsPath: string }> | undefined;
 
+  // Dependencies' step build code, so this pack's flows validate against real step definitions
+  const dependencyStepModules: string[] = [];
+  for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
+    const artifacts = await resolveDepArtifacts(root, depId, depValue);
+    if (!artifacts) throw new Error(`Dependency "${depId}" could not be resolved`);
+    const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
+    if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
+  }
+
   const seeds = manifest.boot?.seed;
   if (seeds && Object.keys(seeds).length > 0) {
-    packConfig = await buildPackConfigFromManifest(manifest, root);
+    packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules });
     featureSettingsPaths = resolveFeatureSettingsFromManifest(manifest, root);
   } else {
     packConfig = await loadPackConfig(root);

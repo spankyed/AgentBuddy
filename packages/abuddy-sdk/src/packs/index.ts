@@ -38,6 +38,7 @@ export {
   stageBundle, verifyBundle, readBundleInfo, isBundleDir, hasBuiltBundleSections,
   resolveBundleManifest, resolvePackSeedsDir,
   createBundleArchive, extractBundleArchive, bundleArchiveName, sha256File,
+  publishHostPackArtifacts,
 } from './bundle';
 export type { BundleInfo } from './bundle';
 export { findLatestRelease } from './pack-updater';

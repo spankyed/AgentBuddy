@@ -14,20 +14,37 @@ function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   return null;
 }
 
+export interface PackConfigOptions {
+  /**
+   * Dependencies' build/steps.build.mjs modules. Registered before this pack's own
+   * steps so flows can use dependency steps and are validated with their real code.
+   */
+  dependencyStepModules?: string[];
+}
+
 export async function buildPackConfigFromManifest(
   manifest: PackManifest,
   packDir: string,
+  options: PackConfigOptions = {},
 ): Promise<PackConfig> {
   const config: PackConfig = {
     name: manifest.id,
     ...(manifest.boot?.seed as Record<string, string> | undefined),
     async setup() {
+      for (const modulePath of options.dependencyStepModules ?? []) {
+        const mod = await import(pathToFileURL(modulePath).href);
+        const items = findExportedArray(mod);
+        if (!items) throw new Error(`${modulePath} does not export a step definition array`);
+        for (const item of items) stepRegistry.register(item as never);
+      }
+
       const registrations: Array<{
         path: string | undefined;
         register: (item: any) => void;
         label: string;
       }> = [
-        { path: manifest.steps?.register, register: (s) => stepRegistry.register(s), label: 'steps' },
+        // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI
+        { path: manifest.steps?.build ?? manifest.steps?.register, register: (s) => stepRegistry.register(s), label: 'steps' },
         { path: manifest.artifacts, register: (a) => artifactRegistry.register(a), label: 'artifacts' },
         { path: manifest.blocks, register: (b) => blockRegistry.register(b), label: 'blocks' },
       ];

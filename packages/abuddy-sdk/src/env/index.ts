@@ -30,6 +30,8 @@ export interface AppContext {
   appName: string;
   userDataDir: string;
   packsDir: string;
+  /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
+  hostPacksDir: string;
   registryFile: string;
   apiPortFile: string;
   urlScheme: string;
@@ -72,6 +74,7 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
     appName,
     userDataDir,
     packsDir: path.join(userDataDir, 'packs'),
+    hostPacksDir: path.join(userDataDir, 'host-packs'),
     registryFile: path.join(userDataDir, 'pack-registry.json'),
     apiPortFile: path.join(userDataDir, 'api-port'),
     urlScheme: env === 'beta' ? 'abuddy-beta' : 'abuddy',

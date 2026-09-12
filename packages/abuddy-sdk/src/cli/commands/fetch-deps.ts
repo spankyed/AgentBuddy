@@ -7,6 +7,7 @@ import { satisfies, rcompare, clean } from 'semver';
 import type { PackSnapshot } from '../../build';
 import { findPackRoot, readManifest } from '../utils';
 import { extractBundleArchive } from '../../packs/bundle';
+import { resolveAppContext, type AppEnv } from '../../env';
 
 // ── Dependency value parsing ──
 
@@ -93,6 +94,17 @@ function resolveFromWorkspace(root: string, depId: string): DepArtifacts | null 
   for (const candidate of candidates) {
     const result = findDepArtifacts(candidate);
     if (result) return result;
+  }
+  return null;
+}
+
+// ── Installed app resolution ──
+
+/** Built-in packs published by an installed AgentBuddy (any channel) into its data dir at boot. */
+function resolveFromInstalledApp(depId: string): (DepArtifacts & { env: AppEnv }) | null {
+  for (const env of ['production', 'beta', 'development', 'test'] as const) {
+    const found = findDepArtifacts(path.join(resolveAppContext({ env }).hostPacksDir, depId));
+    if (found) return { ...found, env };
   }
   return null;
 }
@@ -256,6 +268,9 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
   // Workspace first — always try, even with github: prefix (local dev)
   const workspace = resolveFromWorkspace(root, depId);
   if (workspace) return { ...workspace, source: 'workspace' };
+
+  const installed = resolveFromInstalledApp(depId);
+  if (installed) return { snapshot: installed.snapshot, buildDir: installed.buildDir, source: `installed app (${installed.env})` };
 
   // GitHub release (explicit source)
   if (github) {
