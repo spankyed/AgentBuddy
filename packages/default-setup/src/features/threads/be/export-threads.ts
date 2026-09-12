@@ -28,7 +28,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
         EARS.RelKind.CONTAINS,
         ['id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse', 'responseTimestamp', 'forkable', 'references', 'isCommand', 'command', 'deleted'] as const,
         EARS.Entity.Message,
-      ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[]
+      ) ?? []).filter(m => !m.deleted) as Partial<MessageEntity>[]
 
     const linkedThreads = repository.threadQueries.linkedThreads(thread.id)
 

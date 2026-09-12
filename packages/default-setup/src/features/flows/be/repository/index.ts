@@ -75,8 +75,8 @@ export const FLOW_DEFAULTS = {
 } as const;
 
 export const FLOW_QUERY_FIELDS = {
-  LIST: ["id", "label", "flowType", "status", "createdAt"] as const,
-  DETAIL: ["id", "label", "description", "flowType", "status", "createdAt", "updatedAt"] as const,
+  LIST: ["id", "label", "flowType", "createdAt"] as const,
+  DETAIL: ["id", "label", "description", "flowType", "createdAt", "updatedAt"] as const,
 } as const;
 
 // Helper functions for node relations (driven by step registry)

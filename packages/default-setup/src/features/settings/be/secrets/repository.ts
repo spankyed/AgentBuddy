@@ -17,9 +17,8 @@ export const secretsQueries = {
     if (!secret) return null;
     
     return {
-      id,
+      ...secret,
       entityType: EARS.Entity.Secret,
-      ...secret
     } as SecretEntity;
   },
 

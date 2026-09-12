@@ -29,7 +29,7 @@ export const libraryQueries = {
       return documents.filter((doc): doc is DocumentDTO => doc !== null)
     }
 
-    const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
+    const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
       // Tags are now stored as string array on documents
@@ -374,8 +374,8 @@ export const libraryQueries = {
         collectionId: collection?.id,
         collectionPath,
         displayOrder: doc.displayOrder as number || 0,
-        createdAt: doc.createdAt as string,
-        updatedAt: doc.updatedAt as string,
+        createdAt: new Date(doc.createdAt).toISOString(),
+        updatedAt: new Date(doc.updatedAt ?? doc.createdAt).toISOString(),
       }
     })
 

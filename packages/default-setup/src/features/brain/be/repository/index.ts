@@ -474,7 +474,7 @@ export const brainCommands = {
 
     const rootFlow = qx(EARS.Entity.Flow)
       .withRole(ROOT_FLOW_ROLE)
-      .pickOne(["id", "label", "flowType", "status", "createdAt"]) as FlowEntity | undefined;
+      .pickOne(["id", "label", "flowType", "createdAt"]) as FlowEntity | undefined;
 
     if (!rootFlow) {
       throw new Error(

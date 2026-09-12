@@ -238,6 +238,8 @@ export interface ThreadEntity extends BaseEntity {
 }
 
 export interface ArtifactEntity extends BaseEntity {
+  /** Optional display colour, set when the artifact is created. */
+  color?: string;
   entityType: EARS.Entity.Artifact;
   title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types

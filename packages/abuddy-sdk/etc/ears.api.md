@@ -350,8 +350,14 @@ export interface QueryBuilder<E extends string = string> {
         relation: K;
         id: EARS.EntityId;
     }>;
+    linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(relKinds: readonly [K, K, ...K[]], fields: A, tgtType?: T | T[]): ({
+        id: EARS.EntityId;
+        relation: K;
+    } & Pick<EntityShape<T>, A[number]>)[];
     // (undocumented)
-    linksPick<K extends string, A extends readonly string[]>(relKinds: K | readonly K[], fields: A, tgtType?: EARS.Entity | EARS.Entity[]): any[];
+    linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(relKinds: K | readonly [K], fields: A, tgtType?: T | T[]): ({
+        id: EARS.EntityId;
+    } & Pick<EntityShape<T>, A[number]>)[];
     // (undocumented)
     linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): QueryBuilder<E>;
     // (undocumented)
@@ -366,11 +372,15 @@ export interface QueryBuilder<E extends string = string> {
         nextCursor: string | null;
     };
     // (undocumented)
-    pick<A extends readonly string[]>(fields: A): any[];
+    pick<A extends readonly (keyof EntityShape<E> & string)[]>(fields: A): ({
+        id: EARS.EntityId;
+    } & Pick<EntityShape<E>, A[number]>)[];
     // (undocumented)
     pickAll(): EntityShape<E>[];
     // (undocumented)
-    pickOne<A extends readonly string[]>(f: A): any;
+    pickOne<A extends readonly (keyof EntityShape<E> & string)[]>(f: A): ({
+        id: EARS.EntityId;
+    } & Pick<EntityShape<E>, A[number]>) | null;
     // (undocumented)
     reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
     // (undocumented)

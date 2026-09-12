@@ -63,10 +63,31 @@ export interface QueryBuilder<E extends string = string> {
   linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): QueryBuilder<E>;
   links<K extends string>(relKinds: K | readonly K[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId }>;
   edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
-  pick<A extends readonly string[]>(fields: A): any[];
-  pickOne<A extends readonly string[]>(f: A): any;
+  pick<A extends readonly (keyof EntityShape<E> & string)[]>(
+    fields: A,
+  ): ({ id: EARS.EntityId } & Pick<EntityShape<E>, A[number]>)[];
+  pickOne<A extends readonly (keyof EntityShape<E> & string)[]>(
+    f: A,
+  ): ({ id: EARS.EntityId } & Pick<EntityShape<E>, A[number]>) | null;
   pickAll(): EntityShape<E>[];
-  linksPick<K extends string, A extends readonly string[]>(relKinds: K | readonly K[], fields: A, tgtType?: EARS.Entity | EARS.Entity[]): any[];
+  /**
+   * Fields here describe the relation's TARGET entity, not `E`, so they are
+   * checked against `tgtType`. With `tgtType` omitted the target is unknown and
+   * the field list is unconstrained.
+   *
+   * Two overloads because the implementation only tags rows with `relation`
+   * when more than one relation kind is requested.
+   */
+  linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(
+    relKinds: readonly [K, K, ...K[]],
+    fields: A,
+    tgtType?: T | T[],
+  ): ({ id: EARS.EntityId; relation: K } & Pick<EntityShape<T>, A[number]>)[];
+  linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(
+    relKinds: K | readonly [K],
+    fields: A,
+    tgtType?: T | T[],
+  ): ({ id: EARS.EntityId } & Pick<EntityShape<T>, A[number]>)[];
   orderBy(field: keyof EntityShape<E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
   reverse(): QueryBuilder<E>;
   limit(n: number): QueryBuilder<E>;

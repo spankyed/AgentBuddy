@@ -73,7 +73,7 @@ export const threadQueries = {
     qx(threadId)
       .linksPick(
         ["parent_of", "blocks", "blocked_by", "duplicates"],
-        ["shortCode", "topic", "status"] as const,
+        ["shortCode", "topic", "status", "timestamp"] as const,
         EARS.Entity.Thread,
       ),
   
@@ -109,8 +109,8 @@ export const threadQueries = {
   kanbanItems: () => {
     // Get all threads and transform them into kanban work items
     const allThreads = (qx(EARS.Entity.Thread)
-      .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode', 'archived'] as const) as any[])
-      .filter((t: any) => !t.archived)
+      .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode', 'archived'] as const))
+      .filter(t => !t.archived)
     
     // Sort threads by most recent update (fallback to createdAt)
     const sortedThreads = allThreads.sort((a, b) => {
@@ -492,8 +492,8 @@ function getThreadFields(threadId: EARS.EntityId): AgentThreadData | null {
 function getAllThreadMessages(threadId: EARS.EntityId): Partial<MessageEntity>[] {
   return (qx(threadId)
     .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
-    .filter((m: any) => !m.deleted)
-    .sort((a: any, b: any) => {
+    .filter(m => !m.deleted)
+    .sort((a, b) => {
       if (a.status === 'queued' && b.status !== 'queued') return 1;
       if (b.status === 'queued' && a.status !== 'queued') return -1;
       return 0;
@@ -507,10 +507,10 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
 } {
   const allMessages = (qx(threadId)
     .linksPick(EARS.RelKind.CONTAINS, messagePickFields, EARS.Entity.Message) ?? [])
-    .filter((m: any) => !m.deleted);
+    .filter(m => !m.deleted);
 
-  const queued = allMessages.filter((m: any) => m.status === 'queued');
-  const regular = allMessages.filter((m: any) => m.status !== 'queued');
+  const queued = allMessages.filter(m => m.status === 'queued');
+  const regular = allMessages.filter(m => m.status !== 'queued');
 
   // Reverse to get newest-first for paging, then slice
   const reversed = [...regular].reverse();
@@ -854,7 +854,7 @@ export const chatCommands = {
     // Collect eligible messages: exclude markers and already-compacted messages
     const allMessages = threadQueries.messages(threadId);
     const eligible = allMessages.filter(
-      (m: any) => m.sender !== 'marker' && !m.compacted && m.id
+      m => m.sender !== 'marker' && !m.compacted && m.id
     );
 
     const timestamp = Date.now();
@@ -949,8 +949,8 @@ export const chatCommands = {
     const messages = qx(threadId)
       .linksPick(EARS.RelKind.CONTAINS, ["id", "deleted"] as const, EARS.Entity.Message) ?? [];
 
-    const nonDeleted = messages.filter((m: any) => !m.deleted);
-    const targetIndex = nonDeleted.findIndex((m: any) => m.id === messageId);
+    const nonDeleted = messages.filter(m => !m.deleted);
+    const targetIndex = nonDeleted.findIndex(m => m.id === messageId);
 
     if (targetIndex === -1) {
       throw new RepositoryError(`Message ${messageId} not found in thread ${threadId}`, RepositoryErrorCode.NOT_FOUND);
