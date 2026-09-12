@@ -9,6 +9,8 @@
  * imported and registered here, executed in version order.
  */
 
+import { compareVersions } from '@abuddy/sdk/utils/compare-versions';
+
 declare const __APP_VERSION__: string;
 
 export interface FrontendMigration {
@@ -28,7 +30,7 @@ export function runFrontendMigrations(): void {
   const current = localStorage.getItem(VERSION_KEY) || '0.0.0';
 
   for (const m of migrations) {
-    if (m.target > current) {
+    if (compareVersions(m.target, current) > 0) {
       console.log(`[frontend-migration] Running ${m.target}: ${m.description}`);
       m.up();
     }
