@@ -2,6 +2,7 @@ import { test as base, _electron, type ElectronApplication, type Page } from '@p
 export { expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '../env';
@@ -105,9 +106,9 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
 const E2E_VIEWPORT = { width: 1400, height: 900 };
 
 /** The pack's recorded install/seed error in the test app's pack registry, if any. */
-function readPackLastError(packId: string): string | undefined {
+function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test' }).registryFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).registryFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;
@@ -117,6 +118,9 @@ function readPackLastError(packId: string): string | undefined {
 // Recent Electron stdout/stderr per app, so fixture failures can report the root
 // cause (loader errors, crashes) without re-running under DEBUG_E2E.
 const OUTPUT_TAIL_LINES = 200;
+// Launch time per app, to report how long boot to a connected renderer took (once per worker)
+const launchStartedAt = new WeakMap<ElectronApplication, number>();
+const userDataDirs = new WeakMap<ElectronApplication, string>();
 const outputTails = new WeakMap<ElectronApplication, string[]>();
 
 function captureOutput(app: ElectronApplication): void {
@@ -187,35 +191,33 @@ export function createTest(options: CreateTestOptions = {}) {
     { electronApp: ElectronApplication }
   >({
     electronApp: [async ({}, use) => {
+      // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
+      // between runs or from other packs, and nothing touches the developer's abuddy-test dir
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-e2e-'));
       if (process.env.PACK_DIR) {
         const packDir = path.resolve(process.env.PACK_DIR);
         const manifest = getPackManifest();
         if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-        const testPacksDir = resolveAppContext({ env: 'test' }).packsDir;
-        const devPacksDir = resolveAppContext({ env: 'development' }).packsDir;
-        const devSignal = path.join(devPacksDir, manifest.id, '.dev');
-        if (!fs.existsSync(devSignal)) {
-          // Always rebuild: syncing an existing dist would silently test stale code
-          const abuddyBin = resolveAbuddyBin(appRoot);
-          console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
-          try {
-            execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
-          } catch (e: any) {
-            const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
-            throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
-          }
-          // Install through the same bundle path users get (stage → verify → place)
-          console.log(`[pack] Installing ${manifest.id} into the test packs directory...`);
-          await installPackFromLocal(packDir, testPacksDir);
-        } else {
-          console.log(`[pack] abuddy dev is running for ${manifest.id}, skipping build/sync`);
+        // Always rebuild: installing an existing dist would silently test stale code
+        const abuddyBin = resolveAbuddyBin(appRoot);
+        console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
+        try {
+          execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
+        } catch (e: any) {
+          const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
+          throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
         }
+        // Install through the same bundle path users get (stage → verify → place)
+        const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
+        console.log(`[pack] Installing ${manifest.id} into an isolated test data dir...`);
+        await installPackFromLocal(packDir, packsDir);
       }
 
       // Resolve electron binary from the monorepo so external packs don't need electron installed locally
       const appRequire = createRequire(path.join(appRoot, 'package.json'));
       const electronPath = appRequire('electron') as unknown as string;
 
+      const launchStart = Date.now();
       const app = await _electron.launch({
         executablePath: electronPath,
         args: [path.join(appRoot, '.')],
@@ -223,9 +225,12 @@ export function createTest(options: CreateTestOptions = {}) {
         env: {
           ...process.env,
           PLAYWRIGHT_TEST: 'true',
+          ABUDDY_USER_DATA_DIR: userDataDir,
         },
       });
 
+      launchStartedAt.set(app, launchStart);
+      userDataDirs.set(app, userDataDir);
       captureOutput(app);
       if (process.env.DEBUG_E2E) {
         app.process().stdout?.on('data', (data: Buffer) => {
@@ -238,6 +243,11 @@ export function createTest(options: CreateTestOptions = {}) {
 
       await use(app);
       await app.close();
+      if (process.env.E2E_KEEP_DATA) {
+        console.log(`[e2e] kept test data dir: ${userDataDir}`);
+      } else {
+        fs.rmSync(userDataDir, { recursive: true, force: true });
+      }
     }, { scope: 'worker' }],
 
     appPage: async ({ electronApp }, use) => {
@@ -288,6 +298,12 @@ export function createTest(options: CreateTestOptions = {}) {
         return false;
       }, null, { timeout: 45_000 }));
 
+      const startedAt = launchStartedAt.get(electronApp);
+      if (startedAt !== undefined) {
+        launchStartedAt.delete(electronApp);
+        console.log(`[e2e] app connected ${Date.now() - startedAt}ms after launch`);
+      }
+
       const inOnboarding = await page.evaluate(() => {
         const snap = (window as any).applicationState?.getSnapshot();
         return snap && typeof snap.value === 'object' && 'onboarding' in snap.value;
@@ -303,7 +319,7 @@ export function createTest(options: CreateTestOptions = {}) {
       if (process.env.PACK_DIR) {
         const manifest = getPackManifest();
         // Seeding runs before the backend accepts connections, so its outcome is final by now
-        const seedError = manifest && readPackLastError(manifest.id);
+        const seedError = manifest && readPackLastError(manifest.id, userDataDirs.get(electronApp)!);
         if (seedError) {
           throw describeFailure(`Pack ${manifest!.id} failed to seed its data:\n${seedError}`, electronApp, rendererErrors);
         }
