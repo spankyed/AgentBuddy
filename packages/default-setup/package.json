@@ -16,7 +16,8 @@
     "build:dev": "abuddy build --skip-fe"
   },
   "dependencies": {
-    "@abuddy/sdk": "*"
+    "@abuddy/sdk": "*",
+    "elkjs": "^0.9.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

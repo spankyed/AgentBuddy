@@ -13,6 +13,10 @@ export default defineConfig(async () => {
       include: [
         'tests/unit/**/*.spec.ts',
         'tests/integration/**/*.spec.ts',
+        // Colocated tests next to the code they cover. Without this they are
+        // silently never run.
+        'src/**/*.test.ts',
+        'src/**/*.spec.ts',
       ],
       testTimeout: 120_000,
       setupFiles: ['./tests/setup.ts'],
