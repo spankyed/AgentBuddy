@@ -313,13 +313,9 @@ export function generatePackFiles(
       ? `    earlySystem: ${systemBinding(earlyFeature.id)}.machine,`
       : '';
 
-    const bootImports: string[] = [];
-    if (manifest.boot?.createDefaultSettings) {
-      bootImports.push(`import { createDefaultSettings } from '${toImportPath(manifest.boot.createDefaultSettings)}';`);
-    }
-    if (manifest.boot?.shutdown) {
-      bootImports.push(`import { shutdown } from '${toImportPath(manifest.boot.shutdown)}';`);
-    }
+    const hooksImport = manifest.boot?.hooks
+      ? `import * as _hooks from '${toImportPath(manifest.boot.hooks)}';`
+      : '';
 
     const seed = manifest.boot?.seed ?? {};
     const seedKeys = Object.keys(seed).filter(k => k !== 'settings' && k !== 'faqs');
@@ -335,7 +331,7 @@ ${systemImports}
 ${earlyImport}
 import { featureServices } from './services';
 import { EARS } from './ears';
-${bootImports.join('\n')}
+${hooksImport}
 import './seeders';
 ${manifest.migrations ? `import { migrations } from '${toImportPath(manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(stepsRegister)}';` : ''}
@@ -365,12 +361,11 @@ ${manifest.blocks ? '  blocks,' : ''}
   },
   boot: {
 ${earlySystemLine}
-${manifest.boot?.createDefaultSettings ? '    createDefaultSettings,' : ''}
+${manifest.boot?.hooks ? '    ..._hooks,' : ''}
     seedManifest: {
       artifacts: [${artifactsList}],
       get compiledDir() { return getCompiledDir(); },${seedPolicyLine}
     },
-${manifest.boot?.shutdown ? '    shutdown,' : ''}
   },
 ${manifest.migrations ? '  migrations,' : ''}
   features: [

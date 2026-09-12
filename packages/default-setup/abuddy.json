@@ -263,7 +263,7 @@
   "defaultPlugin": "threads",
   "boot": {
     "earlySystem": "src/features/logs/be/system.ts",
-    "createDefaultSettings": "src/features/settings/be/repository",
+    "hooks": "src/hooks.ts",
     "seed": {
       "actions": "src/seeds/actions",
       "prompts": "src/seeds/prompts",
@@ -273,7 +273,6 @@
       "faqs": "src/seeds/faqs",
       "settings": "src/seeds/default-settings.ts"
     },
-    "shutdown": "src/features/code/be/services/terminal.ts",
     "seedPolicy": {
       "skipAtBoot": [
         "settings"

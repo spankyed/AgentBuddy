@@ -60,10 +60,9 @@ export interface PackFeatureEntry {
 
 export interface PackBootConfig {
   earlySystem?: string;
-  createDefaultSettings?: string;
+  hooks?: string;
   seed?: Record<string, string | SeedEntryConfig>;
   seedPolicy?: { skipAtBoot?: string[]; skipAfterOnboarding?: string[] };
-  shutdown?: string;
   [key: string]: unknown;
 }
 
