@@ -9,6 +9,15 @@ set -e  # Exit on error
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR/.."
 
+# Channel detection (--beta flag)
+CHANNEL="production"
+for arg in "$@"; do
+  if [[ "$arg" == "--beta" ]]; then
+    CHANNEL="beta"
+    export ABUDDY_ENV=beta
+  fi
+done
+
 # Platform detection
 IS_MAC=false; IS_WIN=false
 if [[ "$OSTYPE" == "darwin"* ]]; then IS_MAC=true
@@ -27,8 +36,15 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+CHANNEL_LABEL="Production"
+APP_NAME="AgentBuddy"
+if [[ "$CHANNEL" == "beta" ]]; then
+  CHANNEL_LABEL="Beta"
+  APP_NAME="AgentBuddy Beta"
+fi
+
 echo "=========================================="
-echo "🚀 AgentBuddy Production Build"
+echo "🚀 AgentBuddy ${CHANNEL_LABEL} Build"
 echo "=========================================="
 echo ""
 
@@ -103,7 +119,7 @@ if $IS_MAC; then
   # Selectively rebuild only node-pty against Electron (lmdb uses NAPI prebuilds)
   npx electron-rebuild --only node-pty
   npx electron-builder build --config electron-builder.mjs --mac --arm64
-  validate_api_package "dist/mac-arm64/AgentBuddy.app/Contents/Resources/app"
+  validate_api_package "dist/mac-arm64/${APP_NAME}.app/Contents/Resources/app"
 elif $IS_WIN; then
   echo "  Platform: Windows (unsigned)"
   # Selectively rebuild only node-pty against Electron (lmdb uses NAPI prebuilds)
@@ -123,7 +139,7 @@ echo ""
 # Step 7: Verify signing (macOS only)
 if $IS_MAC && [ -n "$APPLE_TEAM_ID" ]; then
   echo -e "${BLUE}[7/7]${NC} Verifying code signing..."
-  APP_BUNDLE="dist/mac-arm64/AgentBuddy.app"
+  APP_BUNDLE="dist/mac-arm64/${APP_NAME}.app"
 
   if codesign --verify --deep --strict "$APP_BUNDLE" 2>/dev/null; then
     echo -e "${GREEN}✓${NC} Code signature valid"
@@ -150,14 +166,14 @@ echo "=========================================="
 echo ""
 echo "📁 Output:"
 if $IS_MAC; then
-  echo "  • App: dist/mac-arm64/AgentBuddy.app"
-  echo "  • DMG: dist/AgentBuddy-*.dmg"
-  echo "  • ZIP: dist/AgentBuddy-*.zip"
+  echo "  • App: dist/mac-arm64/${APP_NAME}.app"
+  echo "  • DMG: dist/${APP_NAME}-*.dmg"
+  echo "  • ZIP: dist/${APP_NAME}-*.zip"
 elif $IS_WIN; then
-  echo "  • Installer: dist/AgentBuddy-*.exe"
+  echo "  • Installer: dist/${APP_NAME}-*.exe"
 else
-  echo "  • AppImage: dist/AgentBuddy-*.AppImage"
-  echo "  • Deb: dist/AgentBuddy-*.deb"
+  echo "  • AppImage: dist/${APP_NAME}-*.AppImage"
+  echo "  • Deb: dist/${APP_NAME}-*.deb"
 fi
 echo ""
 echo "📦 Next steps:"

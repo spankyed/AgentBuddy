@@ -1,6 +1,6 @@
 /**
- * E2E test: exercises the real pack loading pipeline against an actual
- * pack installed in ~/.agentbuddy/packs/. The test installs a fresh test
+ * E2E test: exercises the real pack loading pipeline against the
+ * platform-correct app data directory. The test installs a fresh test
  * pack, runs the full boot-sequence functions, and verifies the system
  * loads, registers, and could serve plugins to the FE via tRPC.
  *
@@ -26,7 +26,15 @@ import * as os from 'os';
 import { loadExternalPacks, type LoadedPack } from '@/packs/pack-loader';
 import { setLoadedPacks } from '@/packs/pack-api';
 
-const REAL_PACKS_DIR = path.join(os.homedir(), '.agentbuddy', 'packs');
+function resolveDefaultPacksDir(): string {
+  const home = os.homedir();
+  switch (process.platform) {
+    case 'darwin': return path.join(home, 'Library', 'Application Support', 'abuddy', 'packs');
+    case 'win32': return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'abuddy', 'packs');
+    default: return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'abuddy', 'packs');
+  }
+}
+const REAL_PACKS_DIR = resolveDefaultPacksDir();
 const TEST_PACK_ID = 'e2e-test-pack';
 const TEST_PACK_DIR = path.join(REAL_PACKS_DIR, TEST_PACK_ID);
 
@@ -101,7 +109,7 @@ function cleanupTestPack() {
   }
 }
 
-// Remove USER_DATA_PATH so we hit the real ~/.agentbuddy/packs/ directory
+// Remove USER_DATA_PATH so getPacksDir() falls back to resolveAppDataDir('production')
 let origUDP: string | undefined;
 
 beforeAll(() => {
@@ -121,7 +129,7 @@ afterAll(() => {
 describe('E2E: pack loading pipeline', () => {
   let packs: LoadedPack[];
 
-  it('discovers the test pack from ~/.agentbuddy/packs/', () => {
+  it('discovers the test pack from the platform packs directory', () => {
     packs = loadExternalPacks();
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID);
     expect(testPack).toBeDefined();

@@ -4,17 +4,26 @@ set -euo pipefail
 PRIVATE_REPO="spankyed/AgentBuddy"
 PUBLIC_REPO="spankyed/AgentBuddy-releases"
 
+# Channel detection
+TAG_PATTERN="v*"
+for arg in "$@"; do
+  if [[ "$arg" == "--beta" ]]; then
+    TAG_PATTERN="beta-v*"
+    shift
+    break
+  fi
+done
 
-# Use provided tag or fetch latest
+# Use provided tag or fetch latest matching the channel pattern
 if [[ -n "${1:-}" ]]; then
   TAG="$1"
 else
-  TAG=$(gh release list --repo "$PRIVATE_REPO" --limit 1 --json tagName -q '.[0].tagName')
+  TAG=$(gh release list --repo "$PRIVATE_REPO" --limit 20 --json tagName -q "[.[].tagName | select(test(\"^${TAG_PATTERN//\*/.*}\$\"))][0]")
   if [[ -z "$TAG" ]]; then
-    echo "No releases found on $PRIVATE_REPO. Nothing to publish."
+    echo "No releases matching ${TAG_PATTERN} found on $PRIVATE_REPO. Nothing to publish."
     exit 0
   fi
-  echo "No tag specified, using latest: $TAG"
+  echo "No tag specified, using latest matching ${TAG_PATTERN}: $TAG"
 fi
 
 # Check if release already exists on public repo
@@ -36,12 +45,19 @@ trap 'rm -rf "$TMPDIR"' EXIT
 echo "Downloading assets..."
 gh release download "$TAG" --repo "$PRIVATE_REPO" --dir "$TMPDIR"
 
+# Mark beta releases as prerelease on the public repo
+PRERELEASE_FLAG=""
+if [[ "$TAG" == beta-* ]]; then
+  PRERELEASE_FLAG="--prerelease"
+fi
+
 # Create release on public repo
 echo "Creating public release..."
 gh release create "$TAG" \
   --repo "$PUBLIC_REPO" \
   --title "$TITLE" \
   --notes "$BODY" \
+  $PRERELEASE_FLAG \
   "$TMPDIR"/*
 
 echo ""

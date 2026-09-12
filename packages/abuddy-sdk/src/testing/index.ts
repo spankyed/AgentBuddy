@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
-import { getPacksDirForEnv, resolveAppDataDir, TEST_APP_NAME } from '../packs/pack-discovery';
+import { getPacksDirForEnv } from '../packs/pack-discovery';
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -160,8 +160,8 @@ export function createTest(options: CreateTestOptions = {}) {
         const packDir = path.resolve(process.env.PACK_DIR);
         const manifest = getPackManifest();
         if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-        const testPacksDir = path.join(resolveAppDataDir(TEST_APP_NAME), 'packs');
-        const devPacksDir = getPacksDirForEnv(true);
+        const testPacksDir = getPacksDirForEnv('test');
+        const devPacksDir = getPacksDirForEnv('development');
         const devSignal = path.join(devPacksDir, manifest.id, '.dev');
         if (!fs.existsSync(devSignal)) {
           if (!fs.existsSync(path.join(packDir, 'dist'))) {

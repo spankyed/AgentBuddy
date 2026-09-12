@@ -26,18 +26,29 @@ NC='\033[0m'
 BUMP_TYPE="patch"
 DRY_RUN=false
 SKIP_MIGRATION_CHECK=false
+CHANNEL="production"
 
 for arg in "$@"; do
   case "$arg" in
     patch|minor|major) BUMP_TYPE="$arg" ;;
     --dry-run) DRY_RUN=true ;;
     --skip-migration-check) SKIP_MIGRATION_CHECK=true ;;
-    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run] [--skip-migration-check]"; exit 1 ;;
+    --beta) CHANNEL="beta" ;;
+    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]"; exit 1 ;;
   esac
 done
 
+IS_BETA=false
+TAG_PREFIX="v"
+CHANNEL_LABEL=""
+if [[ "$CHANNEL" == "beta" ]]; then
+  IS_BETA=true
+  TAG_PREFIX="beta-v"
+  CHANNEL_LABEL=" (Beta)"
+fi
+
 echo "=========================================="
-echo "🚀 AgentBuddy Release"
+echo "🚀 AgentBuddy Release${CHANNEL_LABEL}"
 echo "=========================================="
 echo ""
 
@@ -69,11 +80,15 @@ NEW_VERSION=$(node -p "require('./package.json').version")
 
 echo "  $CURRENT_VERSION → $NEW_VERSION"
 
+TAG_NAME="${TAG_PREFIX}${NEW_VERSION}"
+
 if [ "$DRY_RUN" = true ]; then
   # Check migration status for dry-run output
-  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+  LAST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null || echo "")
   MIGRATION_STATUS="no settings changes"
-  if [ -n "$LAST_TAG" ]; then
+  if [ "$IS_BETA" = true ]; then
+    MIGRATION_STATUS="skipped (beta shares production migrations)"
+  elif [ -n "$LAST_TAG" ]; then
     SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
     if [ -n "$SETTINGS_CHANGED" ]; then
       MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
@@ -93,8 +108,8 @@ if [ "$DRY_RUN" = true ]; then
   echo -e "${YELLOW}[DRY RUN] Would create:${NC}"
   echo "  - Version bump: $CURRENT_VERSION → $NEW_VERSION"
   echo "  - Migration check: $MIGRATION_STATUS"
-  echo "  - Commit: chore(release): v$NEW_VERSION"
-  echo "  - Tag: v$NEW_VERSION"
+  echo "  - Commit: chore(release): ${TAG_NAME}"
+  echo "  - Tag: ${TAG_NAME}"
   echo "  - Push to origin (triggers CI build)"
   echo ""
   if [[ "$MIGRATION_STATUS" == *"NO migration"* ]]; then
@@ -110,27 +125,31 @@ echo ""
 
 # Step 4: Check if default-settings.ts changed and requires a migration
 echo -e "${BLUE}[4/6]${NC} Checking for settings migration..."
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-if [ "$SKIP_MIGRATION_CHECK" = true ]; then
+if [ "$IS_BETA" = true ]; then
+  echo -e "${GREEN}✓${NC} Beta release — shares production migration chain, skipping check"
+elif [ "$SKIP_MIGRATION_CHECK" = true ]; then
   echo -e "${YELLOW}⊘${NC} Migration check skipped (--skip-migration-check)"
-elif [ -z "$LAST_TAG" ]; then
-  echo -e "${GREEN}✓${NC} No previous release tag found, skipping check"
 else
-  SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
-  if [ -n "$SETTINGS_CHANGED" ]; then
-    MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
-    if [ ! -f "$MIGRATION_FILE" ]; then
-      echo -e "${RED}✗ default-settings.ts has changed since $LAST_TAG but no migration found at:${NC}"
-      echo "    $MIGRATION_FILE"
-      echo ""
-      echo -e "  Create a migration for v$NEW_VERSION or re-run with ${YELLOW}npm run release:no-migrate${NC}"
-      # Revert version bump
-      npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
-      exit 1
-    fi
-    echo -e "${GREEN}✓${NC} Settings changed — migration found at $MIGRATION_FILE"
+  LAST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null || echo "")
+  if [ -z "$LAST_TAG" ]; then
+    echo -e "${GREEN}✓${NC} No previous release tag found, skipping check"
   else
-    echo -e "${GREEN}✓${NC} No settings changes since $LAST_TAG"
+    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
+    if [ -n "$SETTINGS_CHANGED" ]; then
+      MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
+      if [ ! -f "$MIGRATION_FILE" ]; then
+        echo -e "${RED}✗ default-settings.ts has changed since $LAST_TAG but no migration found at:${NC}"
+        echo "    $MIGRATION_FILE"
+        echo ""
+        echo -e "  Create a migration for v$NEW_VERSION or re-run with ${YELLOW}npm run release:no-migrate${NC}"
+        # Revert version bump
+        npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
+        exit 1
+      fi
+      echo -e "${GREEN}✓${NC} Settings changed — migration found at $MIGRATION_FILE"
+    else
+      echo -e "${GREEN}✓${NC} No settings changes since $LAST_TAG"
+    fi
   fi
 fi
 echo ""
@@ -138,7 +157,8 @@ echo ""
 # Step 5: Generate changelog
 echo -e "${BLUE}[5/6]${NC} Generating changelog..."
 
-# LAST_TAG already computed in step 4
+# Find last tag for this channel
+LAST_TAG=$(git describe --tags --abbrev=0 --match "${TAG_PREFIX}*" 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
   RANGE="$LAST_TAG..HEAD"
 else
@@ -146,7 +166,7 @@ else
 fi
 
 # Build changelog entry from conventional commits
-CHANGELOG_ENTRY="## v$NEW_VERSION ($(date +%Y-%m-%d))"$'\n'
+CHANGELOG_ENTRY="## ${TAG_NAME} ($(date +%Y-%m-%d))"$'\n'
 
 # Group commits by type
 FEATURES=$(git log "$RANGE" --oneline --grep="^feat" --format="- %s" 2>/dev/null | sed 's/^- feat[:(]/- /' | sed 's/^- )/- /')
@@ -182,18 +202,18 @@ echo ""
 echo -e "${BLUE}[6/6]${NC} Creating release commit and tag..."
 
 git add package.json package-lock.json CHANGELOG.md
-git commit -m "chore(release): v$NEW_VERSION"
-git tag "v$NEW_VERSION"
+git commit -m "chore(release): ${TAG_NAME}"
+git tag "${TAG_NAME}"
 
 echo ""
 echo -e "  Pushing to origin..."
-git push origin HEAD "v$NEW_VERSION"
+git push origin HEAD "${TAG_NAME}"
 
-echo -e "${GREEN}✓${NC} Release v$NEW_VERSION pushed"
+echo -e "${GREEN}✓${NC} Release ${TAG_NAME} pushed"
 echo ""
 
 echo "=========================================="
-echo "✅ Release v$NEW_VERSION Complete!"
+echo "✅ Release ${TAG_NAME} Complete!"
 echo "=========================================="
 echo ""
 echo "📦 CI will build, sign, and publish the release automatically."

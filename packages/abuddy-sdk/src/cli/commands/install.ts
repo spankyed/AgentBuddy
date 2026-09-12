@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { installPack, installPackFromLocal } from '../../packs/pack-installer';
 import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 
 function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
   if (input.startsWith('http://') || input.startsWith('https://')) return 'url';
@@ -18,13 +19,12 @@ async function resolveFromRegistry(name: string): Promise<string> {
 }
 
 export async function install(args: string[]) {
-  const dev = args.includes('-d') || args.includes('--dev');
-  const filtered = args.filter(a => a !== '-d' && a !== '--dev');
+  const { env, args: filtered } = parseTargetEnv(args);
   const source = filtered[0];
 
   if (!source || source === '--help' || source === '-h') {
     console.log(`
-Usage: abuddy install <source> [-d|--dev]
+Usage: abuddy install <source> [-d|--dev] [-b|--beta]
 
 Source can be:
   ./path/to/pack        Local directory
@@ -35,12 +35,12 @@ Source can be:
   pack-name             Registry name (abuddy.com)
 
 Options:
-  -d, --dev    Install to the dev environment instead of prod
+  ${TARGET_ENV_USAGE}
 `.trim());
     return;
   }
 
-  const packsDir = getPacksDirForEnv(dev);
+  const packsDir = getPacksDirForEnv(env);
   const kind = detectSource(source);
 
   let resolvedSource = source;
@@ -57,8 +57,7 @@ Options:
     console.warn(`  Install them first for full functionality.`);
   }
 
-  const env = dev ? ' (dev)' : '';
-  console.log(`\nInstalled "${result.name}" v${result.version}${env}`);
+  console.log(`\nInstalled "${result.name}" v${result.version}${envLabel(env)}`);
   console.log(`  Location: ${result.dir}`);
   console.log(`\nRestart AgentBuddy to load the pack.`);
 }

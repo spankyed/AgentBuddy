@@ -57,11 +57,28 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
 
 // ── External pack discovery ─────────────────────────────────────────
 
-export const APP_NAME = 'abuddy';
-export const DEV_APP_NAME = 'abuddy-dev';
-export const TEST_APP_NAME = 'abuddy-test';
+export type AppEnv = 'production' | 'development' | 'test' | 'beta';
 
-export function resolveAppDataDir(appName: string): string {
+const APP_NAMES: Record<AppEnv, string> = {
+  production:  'abuddy',
+  beta:        'abuddy-beta',
+  development: 'abuddy-dev',
+  test:        'abuddy-test',
+};
+
+export function getAppName(env: AppEnv): string {
+  return APP_NAMES[env];
+}
+
+export function resolveAppEnv(): AppEnv {
+  if (process.env.PLAYWRIGHT_TEST === 'true') return 'test';
+  if (process.env.ABUDDY_ENV === 'beta') return 'beta';
+  if (process.env.NODE_ENV === 'development') return 'development';
+  return 'production';
+}
+
+export function resolveAppDataDir(appNameOrEnv: string | AppEnv): string {
+  const appName = APP_NAMES[appNameOrEnv as AppEnv] ?? appNameOrEnv;
   const home = os.homedir();
   switch (process.platform) {
     case 'darwin':
@@ -74,17 +91,17 @@ export function resolveAppDataDir(appName: string): string {
 }
 
 export function getPacksDir(): string {
-  const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
+  const userDataPath = process.env.USER_DATA_PATH || resolveAppDataDir('production');
   return path.join(userDataPath, 'packs');
 }
 
-export function getApiPortFile(dev?: boolean): string {
-  const isDev = dev ?? process.env.NODE_ENV === 'development';
-  return path.join(resolveAppDataDir(isDev ? DEV_APP_NAME : APP_NAME), 'api-port');
+export function getApiPortFile(env?: AppEnv): string {
+  const resolved = env ?? resolveAppEnv();
+  return path.join(resolveAppDataDir(resolved), 'api-port');
 }
 
-export function getPacksDirForEnv(dev: boolean): string {
-  return path.join(resolveAppDataDir(dev ? DEV_APP_NAME : APP_NAME), 'packs');
+export function getPacksDirForEnv(env: AppEnv): string {
+  return path.join(resolveAppDataDir(env), 'packs');
 }
 
 export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {

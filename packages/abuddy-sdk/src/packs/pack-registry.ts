@@ -10,8 +10,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import { createLogger } from '../logger';
+import { resolveAppDataDir } from './pack-discovery';
 
 const logger = createLogger('pack-registry');
 
@@ -32,7 +32,7 @@ interface PackRegistryFile {
 }
 
 function getRegistryPath(): string {
-  const userDataPath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.agentbuddy');
+  const userDataPath = process.env.USER_DATA_PATH || resolveAppDataDir('production');
   return path.join(userDataPath, 'pack-registry.json');
 }
 

@@ -3,7 +3,15 @@ import pkg from './package.json' with {type: 'json'};
 /**
  * Electron Builder Configuration
  * Native module rebuilding is handled by build.sh script
+ *
+ * Set ABUDDY_ENV=beta to build the beta channel app (separate appId + productName
+ * so it installs alongside the production app).
  */
+
+const isBeta = process.env.ABUDDY_ENV === 'beta';
+const appId = isBeta ? 'com.agentbuddy.beta' : 'com.agentbuddy.app';
+const productName = isBeta ? 'AgentBuddy Beta' : 'AgentBuddy';
+const urlScheme = isBeta ? 'abuddy-beta' : 'abuddy';
 
 // Exclude prebuilds for platforms we're not targeting
 const excludePrebuilds = {
@@ -20,8 +28,8 @@ const speechResources = process.platform === 'win32'
 export default /** @type import('electron-builder').Configuration */
 ({
   // Basic configuration
-  appId: 'com.agentbuddy.app',
-  productName: 'AgentBuddy',
+  appId,
+  productName,
   directories: {
     output: 'dist',
     buildResources: 'build/resources',
@@ -45,8 +53,8 @@ export default /** @type import('electron-builder').Configuration */
       NSDesktopFolderUsageDescription: 'AgentBuddy may need access to your Desktop when selecting files.',
       NSNetworkVolumesUsageDescription: 'AgentBuddy may need to access network volumes to locate development tools.',
       CFBundleURLTypes: [{
-        CFBundleURLName: 'AgentBuddy Protocol',
-        CFBundleURLSchemes: ['abuddy'],
+        CFBundleURLName: `${productName} Protocol`,
+        CFBundleURLSchemes: [urlScheme],
       }],
     },
     notarize: !!process.env.APPLE_TEAM_ID,
