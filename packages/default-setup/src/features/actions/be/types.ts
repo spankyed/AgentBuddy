@@ -15,6 +15,10 @@ export interface ActionEntity {
   sourceHash?: string;
   createdAt: number;
   updatedAt: number;
+  /** Soft-delete marker, written by the repository rather than removing the row. */
+  deleted?: boolean;
+  /** Epoch ms at which the soft delete happened. */
+  deletedAt?: number;
 }
 
 export interface ActionsStartupData {
