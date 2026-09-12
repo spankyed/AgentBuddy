@@ -256,13 +256,9 @@ export function generatePackFiles(
     return feature.typesEntry ?? `src/features/${feature.id}/be/types`;
   }
 
-  const stepsRegister = typeof manifest.steps === 'string'
-    ? manifest.steps
-    : manifest.steps?.register;
+  const stepsRegister = manifest.steps?.register;
 
-  const stepDefinitions: StepEntry[] = (typeof manifest.steps === 'object' && manifest.steps !== null)
-    ? manifest.steps.definitions
-    : [];
+  const stepDefinitions: StepEntry[] = manifest.steps?.definitions ?? [];
 
   // ── Backend entry ──────────────────────────────────────────────
 

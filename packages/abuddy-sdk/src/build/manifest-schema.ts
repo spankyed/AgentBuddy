@@ -88,13 +88,10 @@ const FEConfigSchema = z.object({
   styles: z.string().describe('Path to a CSS file to include in the frontend bundle.').optional(),
 }).strict().describe('Frontend-specific pack configuration.');
 
-const StepsSchema = z.union([
-  z.string().describe('Deprecated shorthand — use the object form with register + definitions.'),
-  z.object({
-    register: z.string().describe('Path to the step registration barrel file.'),
-    definitions: z.array(StepEntrySchema).describe('Step definitions for codegen.'),
-  }).strict(),
-]);
+const StepsSchema = z.object({
+  register: z.string().describe('Path to the step registration barrel file.'),
+  definitions: z.array(StepEntrySchema).describe('Step definitions for codegen.'),
+}).strict();
 
 // ── Main manifest schema ────────────────────────────────────────────
 

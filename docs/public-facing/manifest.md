@@ -16,7 +16,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `license` | `string` | no | SPDX license identifier |
 | `builtIn` | `boolean` | no | `true` for the built-in pack only |
 | `features` | `PackFeatureEntry[]` | no | Feature declarations (system + plugin bundles) |
-| `steps` | `string \| { register, definitions[] }` | no | Flow step registration |
+| `steps` | `{ register, definitions[] }` | no | Flow step registration |
 | `artifacts` | `string` | no | Path to artifact registration file |
 | `blocks` | `string` | no | Path to block registration file |
 | `migrations` | `string` | no | Path to migrations index file |
@@ -79,7 +79,7 @@ A feature can have just a system (backend-only), just a plugin (frontend-only), 
 
 ## Steps
 
-Flow step definitions should use the structured object form. The string shorthand (`"steps": "path"`) is deprecated.
+Flow step definitions use the structured object form.
 
 ```json
 {

@@ -315,76 +315,68 @@
       "description": "Boot sequence configuration."
     },
     "steps": {
-      "anyOf": [
-        {
+      "type": "object",
+      "properties": {
+        "register": {
           "type": "string",
-          "description": "Deprecated shorthand — use the object form with register + definitions."
+          "description": "Path to the step registration barrel file."
         },
-        {
-          "type": "object",
-          "properties": {
-            "register": {
-              "type": "string",
-              "description": "Path to the step registration barrel file."
-            },
-            "definitions": {
-              "type": "array",
-              "items": {
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Step type identifier."
+              },
+              "path": {
+                "type": "string",
+                "description": "Directory containing the step definition."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "step",
+                  "trigger"
+                ],
+                "description": "Whether this is a regular step or a trigger."
+              },
+              "dsl": {
                 "type": "object",
                 "properties": {
-                  "type": {
+                  "primaryField": {
                     "type": "string",
-                    "description": "Step type identifier."
+                    "description": "The field whose value becomes the step label in the flow editor."
                   },
-                  "path": {
+                  "defaultLabel": {
                     "type": "string",
-                    "description": "Directory containing the step definition."
+                    "description": "Fallback label when primaryField is empty."
                   },
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "step",
-                      "trigger"
-                    ],
-                    "description": "Whether this is a regular step or a trigger."
-                  },
-                  "dsl": {
-                    "type": "object",
-                    "properties": {
-                      "primaryField": {
-                        "type": "string",
-                        "description": "The field whose value becomes the step label in the flow editor."
-                      },
-                      "defaultLabel": {
-                        "type": "string",
-                        "description": "Fallback label when primaryField is empty."
-                      },
-                      "custom": {
-                        "type": "boolean",
-                        "const": true,
-                        "description": "Marks the step as a custom (non-built-in) type."
-                      }
-                    },
-                    "additionalProperties": false,
-                    "description": "DSL configuration for flow-helper generation."
+                  "custom": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "Marks the step as a custom (non-built-in) type."
                   }
                 },
-                "required": [
-                  "type",
-                  "path"
-                ],
-                "additionalProperties": false
-              },
-              "description": "Step definitions for codegen."
-            }
+                "additionalProperties": false,
+                "description": "DSL configuration for flow-helper generation."
+              }
+            },
+            "required": [
+              "type",
+              "path"
+            ],
+            "additionalProperties": false
           },
-          "required": [
-            "register",
-            "definitions"
-          ],
-          "additionalProperties": false
+          "description": "Step definitions for codegen."
         }
+      },
+      "required": [
+        "register",
+        "definitions"
       ],
+      "additionalProperties": false,
       "description": "Flow step definitions."
     },
     "artifacts": {

@@ -17,8 +17,8 @@ export function addFeature(manifest: PackManifest, entry: PackFeatureEntry): voi
 }
 
 export function addStepDefinition(manifest: PackManifest, entry: { type: string; path: string; kind?: 'step' | 'trigger' }): void {
-  if (!manifest.steps || typeof manifest.steps === 'string') {
-    manifest.steps = { register: manifest.steps as string || 'src/extensions/steps/register.ts', definitions: [] };
+  if (!manifest.steps) {
+    manifest.steps = { register: 'src/extensions/steps/register.ts', definitions: [] };
   }
   if (manifest.steps.definitions.some(d => d.type === entry.type)) {
     throw new Error(`Step "${entry.type}" already exists in manifest`);

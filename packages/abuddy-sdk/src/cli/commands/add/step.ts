@@ -106,9 +106,7 @@ export async function addStep(args: string[], root: string) {
 
   const manifest = readManifest(root);
   const stepsConfig = manifest.steps;
-  const registerPath = typeof stepsConfig === 'string'
-    ? stepsConfig
-    : stepsConfig?.register;
+  const registerPath = stepsConfig?.register;
 
   if (registerPath) {
     const exportName = `${camel}Step`;
