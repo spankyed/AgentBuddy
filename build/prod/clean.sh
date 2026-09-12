@@ -32,7 +32,11 @@ echo ""
 
 # Kill running instances of this channel only
 echo "Stopping any running ${PRODUCT_NAME} instances..."
-pkill -xf "${PRODUCT_NAME}" 2>/dev/null || true
+if [ "$PRODUCT_NAME" = "AgentBuddy" ]; then
+  pkill -f "AgentBuddy\.app" 2>/dev/null || true
+else
+  pkill -f "AgentBuddy Beta" 2>/dev/null || true
+fi
 sleep 1
 echo -e "${GREEN}✓${NC} Processes stopped"
 echo ""
@@ -93,5 +97,5 @@ else
 fi
 
 echo ""
-echo "✅ All ${CHANNEL_LABEL,,} data cleaned."
+echo "✅ All $(echo "$CHANNEL_LABEL" | tr '[:upper:]' '[:lower:]') data cleaned."
 echo ""
