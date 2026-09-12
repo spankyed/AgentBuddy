@@ -4,6 +4,11 @@
     "$schema": {
       "type": "string"
     },
+    "$manifestVersion": {
+      "type": "number",
+      "const": 1,
+      "description": "Schema version. Enables future format evolution."
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"
@@ -126,6 +131,24 @@
               },
               "outgoingEventsType": {
                 "type": "string"
+              },
+              "events": {
+                "type": "object",
+                "properties": {
+                  "incoming": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "outgoing": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [
@@ -160,16 +183,25 @@
             "type": "object",
             "additionalProperties": {
               "type": "string"
-            }
+            },
+            "default": {}
           },
           "contributions": {
             "type": "string",
             "description": "Built-in packs only. Ignored for external packs."
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "id",
-          "services"
+          "id"
         ],
         "additionalProperties": false
       }
@@ -256,7 +288,8 @@
           "id"
         ],
         "additionalProperties": false
-      }
+      },
+      "description": "Deprecated — use features instead."
     },
     "defaultPlugin": {
       "type": "string"
@@ -333,12 +366,14 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "Deprecated. Seed types are derived from boot.seed keys."
     },
     "steps": {
       "anyOf": [
         {
-          "type": "string"
+          "type": "string",
+          "description": "Deprecated shorthand — use the object form with register + definitions."
         },
         {
           "type": "object",

@@ -317,7 +317,10 @@ export function loadSingleExternalPack(
 
   const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
 
-  const pluginEntries = manifest.plugins ?? manifest.features;
+  if (manifest.plugins && !manifest.features) {
+    logger.warn(`Pack ${manifest.id}: "plugins" is deprecated in abuddy.json — use "features" instead`);
+  }
+  const pluginEntries = manifest.features ?? manifest.plugins;
   if (pluginEntries) {
     for (const plugin of pluginEntries) {
       if (!plugin.system?.entry) continue;
@@ -402,7 +405,7 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {
     const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => {
-      const entries = pack.manifest.plugins ?? pack.manifest.features;
+      const entries = pack.manifest.features ?? pack.manifest.plugins;
       const pluginDef = entries?.find(p => p.id === featureId);
       return {
         id: `${pack.manifest.id}.${featureId}`,

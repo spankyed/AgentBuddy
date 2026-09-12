@@ -18,7 +18,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     features: [],
     dependencies: { 'default-setup': '*' },
     permissions: [],
-    steps: 'src/extensions/steps/register.ts',
+    steps: { register: 'src/extensions/steps/register.ts', definitions: [] },
     boot: {
       seed: {
         actions: 'src/seeds/actions',

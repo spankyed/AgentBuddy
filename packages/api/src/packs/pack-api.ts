@@ -44,23 +44,29 @@ export interface PackBundleEntry {
 
 function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
   return packs
-    .filter(p => p.manifest.fe?.entry || p.manifest.fe?.styles || p.manifest.plugins?.some(d => d.plugin))
-    .map(p => ({
-      id: p.manifest.id,
-      name: p.manifest.name,
-      version: p.manifest.version,
-      feEntry: p.manifest.fe?.entry,
-      feStyles: p.manifest.fe?.styles,
-      plugins: (p.manifest.plugins ?? [])
-        .filter(d => d.plugin)
-        .map(d => ({
-          id: d.id,
-          entry: d.plugin!.entry,
-          label: d.plugin!.label,
-          icon: d.plugin!.icon,
-          designation: d.designation,
-        })),
-    }));
+    .filter(p => {
+      const entries = p.manifest.features ?? p.manifest.plugins;
+      return p.manifest.fe?.entry || p.manifest.fe?.styles || entries?.some(d => d.plugin);
+    })
+    .map(p => {
+      const entries = p.manifest.features ?? p.manifest.plugins ?? [];
+      return {
+        id: p.manifest.id,
+        name: p.manifest.name,
+        version: p.manifest.version,
+        feEntry: p.manifest.fe?.entry,
+        feStyles: p.manifest.fe?.styles,
+        plugins: entries
+          .filter(d => d.plugin)
+          .map(d => ({
+            id: d.id,
+            entry: d.plugin!.entry,
+            label: d.plugin!.label,
+            icon: d.plugin!.icon,
+            designation: d.designation,
+          })),
+      };
+    });
 }
 
 function toBuiltInRegistryEntries(packs: BuiltInPackInfo[]): PackBundleEntry[] {

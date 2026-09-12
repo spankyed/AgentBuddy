@@ -40,9 +40,13 @@ export const BootConfigSchema = z.object({
   }).strict().optional(),
 }).strict();
 
-const FeatureSystemSchema = z.object({
+const SystemSchema = z.object({
   entry: z.string(),
   outgoingEventsType: z.string().optional(),
+  events: z.object({
+    incoming: z.array(z.string()).optional(),
+    outgoing: z.array(z.string()).optional(),
+  }).strict().optional(),
 }).strict();
 
 const PluginSchema = z.object({
@@ -58,12 +62,15 @@ export const FeatureEntrySchema = z.object({
   settings: z.string().optional(),
   typesEntry: z.string().optional(),
   earlySystem: z.boolean().describe('Built-in packs only. Ignored for external packs.').optional(),
-  system: FeatureSystemSchema.optional(),
+  system: SystemSchema.optional(),
   plugin: PluginSchema.optional(),
-  services: z.record(z.string(), z.string()),
+  services: z.record(z.string(), z.string()).default({}),
   contributions: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
+  priority: z.number().int().optional(),
+  entities: z.array(z.string()).optional(),
 }).strict();
 
+// Deprecated — use features instead. Kept for backward compatibility with external packs.
 const PluginSystemSchema = z.object({
   entry: z.string(),
   events: z.object({
@@ -102,7 +109,7 @@ const FEConfigSchema = z.object({
 }).strict();
 
 const StepsSchema = z.union([
-  z.string(),
+  z.string().describe('Deprecated shorthand — use the object form with register + definitions.'),
   z.object({
     register: z.string(),
     definitions: z.array(StepEntrySchema),
@@ -113,6 +120,8 @@ const StepsSchema = z.union([
 
 export const ManifestSchema = z.object({
   $schema: z.string().optional(),
+  $manifestVersion: z.literal(1).optional()
+    .describe('Schema version. Enables future format evolution.'),
   id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be lowercase alphanumeric with hyphens'),
   name: z.string().min(1),
   version: z.string().regex(/^\d+\.\d+\.\d+/, 'Must be a semver version string'),
@@ -127,11 +136,13 @@ export const ManifestSchema = z.object({
   partitionPolicy: PartitionPolicySchema.optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema).optional(),
   features: z.array(FeatureEntrySchema).optional(),
-  plugins: z.array(PluginDefinitionSchema).optional(),
+  plugins: z.array(PluginDefinitionSchema).optional()
+    .describe('Deprecated — use features instead.'),
   defaultPlugin: z.string().optional(),
   packServices: z.record(z.string(), z.string()).optional(),
   boot: BootConfigSchema.optional(),
-  seedTypes: z.array(z.string()).optional(),
+  seedTypes: z.array(z.string()).optional()
+    .describe('Deprecated. Seed types are derived from boot.seed keys.'),
   steps: StepsSchema.optional(),
   artifacts: z.string().optional(),
   blocks: z.string().optional(),

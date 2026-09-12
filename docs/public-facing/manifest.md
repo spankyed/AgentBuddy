@@ -6,6 +6,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `$manifestVersion` | `1` | no | Schema version. Enables future format evolution. |
 | `id` | `string` | yes | Unique pack identifier (kebab-case) |
 | `name` | `string` | yes | Human-readable display name |
 | `version` | `string` | yes | Semver version (e.g. `"0.1.0"`) |
@@ -29,7 +30,8 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `partitionPolicy` | `object` | no | EARS persistence routing (built-in only) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `dsl` | `Record<string, DslEntry>` | no | DSL definitions for build-time compilation |
-| `seedTypes` | `string[]` | no | Seed type identifiers |
+| `plugins` | `PackPluginDefinition[]` | no | **Deprecated** — use `features` instead. Legacy plugin declarations. |
+| `seedTypes` | `string[]` | no | **Deprecated.** Seed types are derived from `boot.seed` keys. |
 
 ## Features
 
@@ -65,18 +67,20 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `id` | `string` | yes | Unique feature identifier |
 | `designation` | `string` | no | Links the system to an EARS designation |
 | `settings` | `string` | no | Path to default settings file |
-| `system` | `{ entry, outgoingEventsType? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`, the same way a plugin module default-exports its `Plugin`. |
+| `system` | `{ entry, outgoingEventsType?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`. `events` declares `incoming`/`outgoing` event arrays for runtime routing. |
 | `plugin` | `{ entry, label, icon, isPinned? }` | no | Frontend plugin definition |
-| `services` | `Record<string, string>` | yes | Service modules (`key` -> `path`) |
+| `services` | `Record<string, string>` | no | Service modules (`key` -> `path`). Defaults to `{}`. |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
 | `earlySystem` | `boolean` | no | Run before EARS hydration (built-in only) |
 | `contributions` | `string` | no | Path to contribution type providers |
+| `priority` | `integer` | no | Load order priority (lower runs first) |
+| `entities` | `string[]` | no | Entity types this feature manages |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 
 ## Steps
 
-Flow step definitions can be declared as a simple path or a structured object:
+Flow step definitions should use the structured object form. The string shorthand (`"steps": "path"`) is deprecated.
 
 ```json
 {
@@ -118,7 +122,7 @@ The `boot` object configures hooks that run during app startup:
       "skipAtBoot": ["flows"],
       "skipAfterOnboarding": ["onboarding"]
     },
-    "shutdown": "src/shutdown.ts"
+    "hooks": "src/hooks.ts"
   }
 }
 ```
@@ -129,7 +133,7 @@ The `boot` object configures hooks that run during app startup:
 | `createDefaultSettings` | `string` | Module that ensures default settings exist |
 | `seed` | `Record<string, string \| SeedEntryConfig>` | Seed data sources (actions, prompts, flows, etc.) |
 | `seedPolicy` | `object` | Controls which seed types to skip at boot or after onboarding |
-| `shutdown` | `string` | Module called on app shutdown |
+| `hooks` | `string` | Module providing lifecycle hooks (e.g. shutdown) |
 
 ### SeedEntryConfig
 

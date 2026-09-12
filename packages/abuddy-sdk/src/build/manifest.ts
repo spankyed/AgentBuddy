@@ -20,8 +20,8 @@ export type PackPluginDefinition = z.infer<typeof PluginDefinitionSchema>;
 export type DslEntry = z.infer<typeof DslEntrySchema>;
 export type PackPermission = z.infer<typeof PackPermissionSchema>;
 
-export type PackSystemEntry = NonNullable<PackPluginDefinition['system']>;
-export type PackPluginEntry = NonNullable<PackPluginDefinition['plugin']>;
+export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
+export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
 // Not part of abuddy.json — used for dist/snapshot.json and build-time type exchange.
 export interface PackTypeManifest {
