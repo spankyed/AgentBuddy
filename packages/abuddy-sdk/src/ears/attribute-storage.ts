@@ -106,6 +106,27 @@ function makeMutator() {
 export const { put: putAttr, add: addAttr, merge: mergeAttr, drop: dropAttr, dropIf, update: updateAttr } =
   makeMutator();
 
+export function bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) {
+  const b = bucket(kind);
+  let list = b.get(id);
+  if (!list) {
+    list = [];
+    b.set(id, list);
+    const et = entType(id);
+    (entityIndex.get(et) ?? (entityIndex.set(et, new Set()), entityIndex.get(et))!).add(id);
+  }
+  while (list.length < idx) list.push(null as any);
+  if (list.length === idx) {
+    list.push(val as EARS.AttributeValue);
+  } else {
+    const cur = list[idx];
+    list[idx] =
+      cur && isPlainObject(cur) && isPlainObject(val)
+        ? { ...cur, ...val }
+        : (val as EARS.AttributeValue);
+  }
+}
+
 export const grantRole  = (id: EARS.EntityId, role: string) =>
   addAttr(id, EARS.AttrKind.Role, role);
 export const revokeRole = (id: EARS.EntityId, role: string) =>

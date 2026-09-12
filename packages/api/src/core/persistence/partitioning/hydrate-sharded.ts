@@ -2,7 +2,9 @@ import { EARS } from '@abuddy/sdk';
 import type { PartitionPolicy, Partition } from '@abuddy/sdk/persistence';
 import type { makeShardedPersistence } from '@abuddy/sdk/persistence';
 import { LmdbDbs } from '../lmdb/envs';
-import { mergeAttr, putAttr, addToIndex } from '@abuddy/sdk/ears/internals';
+import { bulkLoadAttr, addToIndex } from '@abuddy/sdk/ears/internals';
+
+const SEP = '\x1F';
 
 function dec(e: { t: string; v: any }): unknown {
   if (!e) return null;
@@ -13,12 +15,12 @@ function dec(e: { t: string; v: any }): unknown {
 export async function hydrateSharded(params: {
   envs: Record<Partition, LmdbDbs>;
   policy: PartitionPolicy;
-  includeVolatile?: boolean;  // default false - whether to hydrate volatile backup
-  shardedPersistence?: ReturnType<typeof makeShardedPersistence>;  // optional: seed metadata caches
+  includeVolatile?: boolean;
+  skipTombstoneScan?: boolean;
+  shardedPersistence?: ReturnType<typeof makeShardedPersistence>;
 }) {
-  const { envs, policy, includeVolatile = false, shardedPersistence } = params;
-  
-  // Determine which partitions to hydrate based on policy and override flag
+  const { envs, policy, includeVolatile = false, skipTombstoneScan = false, shardedPersistence } = params;
+
   const partitionsToHydrate: Partition[] = [];
   if (policy.hydrate.has('primary')) {
     partitionsToHydrate.push('primary');
@@ -34,32 +36,33 @@ export async function hydrateSharded(params: {
 
   for (const partition of partitionsToHydrate) {
     const env = envs[partition];
-    
-    // First, load all tombstoned entities for this partition
-    const tombstoned = new Set<string>();
-    for (const { key, value } of env.entities.getRange()) {
-      if (value?.deletedAt) {
-        tombstoned.add(String(key));
-      }
-    }
 
-    if (tombstoned.size > 0) {
-      console.log(`[LMDB] Filtering ${tombstoned.size} tombstoned entities in ${partition} partition`);
+    let tombstoned: Set<string> | null = null;
+    if (!skipTombstoneScan) {
+      tombstoned = new Set<string>();
+      for (const { key, value } of env.entities.getRange()) {
+        if (value?.deletedAt) {
+          tombstoned.add(String(key));
+        }
+      }
+      if (tombstoned.size > 0) {
+        console.log(`[LMDB] Filtering ${tombstoned.size} tombstoned entities in ${partition} partition`);
+      }
     }
 
     // Hydrate attributes
     let attrCount = 0;
     for (const { key, value } of env.attrs.getRange()) {
-      const [kind, entityId, idxStr] = String(key).split('\x1F');
-      
-      // Skip attributes for tombstoned entities
-      if (tombstoned.has(entityId)) {
-        continue;
-      }
-      
-      const idx = Number(idxStr);
-      const val = dec(value);
-      mergeAttr(entityId as EARS.EntityId, kind as EARS.AttrKind, val, idx);
+      const keyStr = String(key);
+      const sep1 = keyStr.indexOf(SEP);
+      const sep2 = keyStr.indexOf(SEP, sep1 + 1);
+      const kind = keyStr.substring(0, sep1);
+      const entityId = keyStr.substring(sep1 + 1, sep2);
+
+      if (tombstoned?.has(entityId)) continue;
+
+      const idx = Number(keyStr.substring(sep2 + 1));
+      bulkLoadAttr(entityId as EARS.EntityId, kind as EARS.AttrKind, dec(value), idx);
       attrCount++;
     }
 
@@ -67,14 +70,9 @@ export async function hydrateSharded(params: {
     let relCount = 0;
     for (const { key: relId, value: r } of env.relations.getRange()) {
       const relIdStr = String(relId);
-      
-      // Skip relations that involve tombstoned entities
-      // (Relations themselves are deleted, not tombstoned)
-      if (tombstoned.has(r.src) || tombstoned.has(r.tgt)) {
-        continue;
-      }
-      
-      // Validate relation data before processing
+
+      if (tombstoned && (tombstoned.has(r.src) || tombstoned.has(r.tgt))) continue;
+
       if (!r.src || typeof r.src !== 'string' || r.src.length === 0) {
         console.warn(`[Hydrate] Skipping relation with invalid src: relId=${relIdStr}, src=${r.src}`);
         continue;
@@ -87,13 +85,12 @@ export async function hydrateSharded(params: {
         console.warn(`[Hydrate] Skipping relation with invalid kind: relId=${relIdStr}, kind=${r.kind}`);
         continue;
       }
-      
-      // Seed relation metadata cache if shardedPersistence is provided
+
       if (shardedPersistence) {
         shardedPersistence.seedRelationMetadata(relIdStr, r.kind, r.src, r.tgt);
       }
-      
-      putAttr(
+
+      bulkLoadAttr(
         relIdStr as EARS.EntityId,
         EARS.AttrKind.RelationDetails,
         {

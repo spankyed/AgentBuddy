@@ -69,7 +69,7 @@ export async function setupBackend(): Promise<void> {
   }
 
   // ── Hydrate (policy now sees all entity types from all packs)
-  await hydrateSharded({ envs, policy, shardedPersistence: persistence });
+  await hydrateSharded({ envs, policy, shardedPersistence: persistence, skipTombstoneScan: true });
 
   // ── Initialize ALL packs (built-in + external)
   for (const hooks of getBootHooks()) {

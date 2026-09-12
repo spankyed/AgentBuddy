@@ -4,6 +4,7 @@ export {
 } from './runtime';
 export {
   putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
+  bulkLoadAttr,
   addRelation, updateRelation,
   getAllEntities,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
