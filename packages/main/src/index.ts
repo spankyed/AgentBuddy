@@ -73,7 +73,7 @@ export async function initApp(initConfig: AppInitConfig) {
             'https://console.mistral.ai',
             'https://dashboard.cohere.com',
             // XState visualization
-            'https://stately.ai',
+            // 'https://stately.ai',
           ]
           : [],
       )),
