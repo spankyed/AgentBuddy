@@ -18,12 +18,12 @@ function deepMerge(defaults: any, stored: any): any {
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
-const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
+const SETTINGS_ID = 'Settings-app' as EARS.EntityId<'Settings'>;
 
 // Get or create the single settings entity
 const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
   // Always query first
-  const existing = qx(SETTINGS_ID).pickOne(['data']) as { data?: any };
+  const existing = qx(SETTINGS_ID).pickOne(['data']);
 
   // If doesn't exist at all, create it
   if (!existing) {

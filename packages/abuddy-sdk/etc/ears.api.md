@@ -358,8 +358,9 @@ export interface QueryBuilder<E extends string = string> {
     linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(relKinds: K | readonly [K], fields: A, tgtType?: T | T[]): ({
         id: EARS.EntityId;
     } & Pick<EntityShape<T>, A[number]>)[];
+    linksTo<T extends EARS.Entity>(relKinds: string | readonly string[], tgtType: T | readonly T[], asSrc?: boolean): QueryBuilder<T>;
     // (undocumented)
-    linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): QueryBuilder<E>;
+    linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | readonly EARS.Entity[], asSrc?: boolean): QueryBuilder<string>;
     // (undocumented)
     map<T>(fn: (id: EARS.EntityId) => T): T[];
     // (undocumented)

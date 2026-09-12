@@ -87,7 +87,7 @@ export const migration: PackMigration = {
       if (!tags.includes('claude-code')) continue;
 
       const artifacts = qx().relatedTo(thread.id).ofType(EARS.Entity.Artifact)
-        .pick(['id', 'artifactType', 'content'] as const) as Array<Pick<ArtifactEntity, 'id' | 'artifactType' | 'content'>>;
+        .pick(['id', 'artifactType', 'content'] as const);
       const session = artifacts.find(a => a.artifactType === 'claude-session');
       if (!session) continue;
 

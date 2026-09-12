@@ -51,6 +51,7 @@ describe('Typed QueryBuilder — qx() overloads', () => {
 // passed whatever ofType actually returned. Purely type-level, so the declared
 // consts need no runtime value.
 declare const untypedBuilder: QueryBuilder;
+declare const threadBuilder: QueryBuilder<'Thread'>;
 declare const actionBuilder: QueryBuilder<'Action'>;
 
 describe('Typed QueryBuilder — ofType() narrows', () => {
@@ -108,9 +109,11 @@ describe('Typed QueryBuilder — fluent chaining preserves type', () => {
     expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Message'>>();
   });
 
-  it('linksTo() preserves entity type', () => {
-    type Result = ReturnType<QueryBuilder<'Thread'>['linksTo']>;
-    expectTypeOf<Result>().toEqualTypeOf<QueryBuilder<'Thread'>>();
+  // linksTo navigates to related entities (relatedTo/related filter in place),
+  // so the result holds the TARGET type, not the type being queried from.
+  it('linksTo() narrows to the target entity type', () => {
+    expectTypeOf<ReturnType<typeof threadBuilder.linksTo<'Message'>>>()
+      .toEqualTypeOf<QueryBuilder<'Message'>>();
   });
 
   it('forEach() preserves entity type', () => {

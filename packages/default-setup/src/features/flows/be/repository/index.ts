@@ -264,7 +264,7 @@ export const flowsQueries = {
 
     const selectedFlow = qx(EARS.Entity.Flow)
       .withRole(FLOW_ROLES.ROOT_FLOW)
-      .pickOne(["id"]) as { id: EARS.EntityId } | undefined;
+      .pickOne(["id"]);
 
     return {
       graph: {
@@ -375,7 +375,7 @@ export const flowsCommands = {
     options?: { sourceHandle?: string; targetHandle?: string }
   ): { relId: EARS.EntityId } => {
     // Validate: target node must accept inputs (trigger nodes don't)
-    const targetAttrs = qx(targetId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
+    const targetAttrs = qx(targetId).pickOne(['nodeType'] as const) ?? undefined;
     const isTargetTrigger = targetAttrs?.nodeType && stepRegistry.isTrigger(targetAttrs.nodeType);
     if (isTargetTrigger) {
       throw new RepositoryError(
@@ -397,7 +397,7 @@ export const flowsCommands = {
     }
 
     // Validate: source handle must not already have an outgoing edge (except trigger nodes)
-    const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
+    const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) ?? undefined;
     const isTrigger = sourceAttrs?.nodeType && stepRegistry.isTrigger(sourceAttrs.nodeType);
     if (!isTrigger) {
       const handleOccupied = existingEdges.some((rel: any) => {

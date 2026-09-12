@@ -60,7 +60,22 @@ export interface QueryBuilder<E extends string = string> {
   withRole(r: string): QueryBuilder<E>;
   relatedTo(target: EARS.EntityId): QueryBuilder<E>;
   related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E>;
-  linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): QueryBuilder<E>;
+  /**
+   * Navigates to the entities related to the current set — unlike `relatedTo`
+   * and `related`, which filter it. The result therefore holds `tgtType`
+   * entities, not `E`; with `tgtType` omitted the target is unknown.
+   */
+  linksTo<T extends EARS.Entity>(
+    relKinds: string | readonly string[],
+    tgtType: T | readonly T[],
+    asSrc?: boolean,
+  ): QueryBuilder<T>;
+  // Target absent or not statically known — the resulting entity type is unknown.
+  linksTo(
+    relKinds: string | readonly string[],
+    tgtType?: EARS.Entity | readonly EARS.Entity[],
+    asSrc?: boolean,
+  ): QueryBuilder<string>;
   links<K extends string>(relKinds: K | readonly K[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId }>;
   edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
   pick<A extends readonly (keyof EntityShape<E> & string)[]>(

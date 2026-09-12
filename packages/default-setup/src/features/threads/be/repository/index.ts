@@ -38,7 +38,7 @@ function findArtifactByThreadAndType(
     .filter(({ artifactType: t }) => t === artifactType);
   const first = candidates[0];
   if (!first?.id) return undefined;
-  return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
+  return qx([first.id as EARS.EntityId<'Artifact'>]).pickAll()[0];
 }
 
 // Queries
@@ -66,7 +66,7 @@ export const threadQueries = {
   messages: (threadId: EARS.EntityId) => 
     qx(threadId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
-      .pick(["text", "sender", "timestamp", "compacted", "isCommand"] as const) as Partial<MessageEntity>[],
+      .pick(["text", "sender", "timestamp", "compacted", "isCommand"] as const),
   
   // Get linked threads
   linkedThreads: (threadId: EARS.EntityId) =>
@@ -889,7 +889,7 @@ export const chatCommands = {
 
     const messageIds = (qx(markerId)
       .linksTo(EARS.RelKind.Custom('compacts'), EARS.Entity.Message)
-      .pick([] as const) ?? []).map((m: any) => m.id) as EARS.EntityId[];
+      .pick([] as const) ?? []).map(m => m.id);
 
     for (const msgId of messageIds) {
       tx(msgId).put('compacted', compacted);

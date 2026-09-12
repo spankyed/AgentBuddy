@@ -19,7 +19,7 @@ export const migration: PackMigration = {
       if (!context.codex) continue;
 
       const artifacts = qx().relatedTo(thread.id).ofType(EARS.Entity.Artifact)
-        .pick(['id', 'artifactType', 'title', 'content'] as const) as Array<Pick<ArtifactEntity, 'id' | 'artifactType' | 'title' | 'content'>>;
+        .pick(['id', 'artifactType', 'title', 'content'] as const);
       const hasCodexSession = artifacts.some(a => a.artifactType === 'codex-session');
       if (hasCodexSession) continue;
 

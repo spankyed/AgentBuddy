@@ -36,6 +36,7 @@ const ROOT_FLOW_ROLE = EARS.RoleKind.Custom("root_flow");
 // Common column selections for TNode queries
 const TNODE_COLUMNS = [
   "id", 
+  "entityType", 
   "tNodeType", 
   "label", 
   "status", 
@@ -50,9 +51,19 @@ const TNODE_COLUMNS = [
   "blueprint"
 ] as const;
 
-function buildSpawnedTree(nodeId: EARS.EntityId): TrackEntity {
-  const tnode = qx(nodeId).pickOne(TNODE_COLUMNS) as TNodeEntity;
-  const directChildIds = uniqueEntityIds(qx(nodeId).linksTo(EARS.RelKind.SPAWNED).ids());
+/**
+ * SPAWNED edges always point at TNodes, so the resulting ids are TNode ids.
+ * `.ids()` deliberately drops the brand, hence the one assertion here.
+ */
+function spawnedChildIds(id: EARS.EntityId): EARS.EntityId<'TNode'>[] {
+  return uniqueEntityIds(
+    qx(id).linksTo(EARS.RelKind.SPAWNED, EARS.Entity.TNode).ids(),
+  ) as EARS.EntityId<'TNode'>[];
+}
+
+function buildSpawnedTree(nodeId: EARS.EntityId<'TNode'>): TrackEntity {
+  const tnode = qx(nodeId).pickOne(TNODE_COLUMNS)!;
+  const directChildIds = spawnedChildIds(nodeId);
   const children = directChildIds.map(childId => buildSpawnedTree(childId));
   return { ...tnode, children };
 }
@@ -80,10 +91,10 @@ export const brainQueries = {
   rootFlowTNode: () =>
     qx(EARS.Entity.TNode)
       .withRole(ROOT_TRACE_NODE_ROLE)
-      .first() as EARS.EntityId | undefined,
+      .first() as EARS.EntityId<'TNode'> | undefined,
 
-  tNodeById: (id: EARS.EntityId) => {
-    return qx(id).pickOne(TNODE_COLUMNS) as TNodeEntity | null;
+  tNodeById: (id: EARS.EntityId<'TNode'>) => {
+    return qx(id).pickOne(TNODE_COLUMNS);
   },
 
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
@@ -143,9 +154,9 @@ export const brainQueries = {
     return result[0] as unknown as NodeEntity | undefined;
   },
   
-  eventTracks: (flowTNodeId: EARS.EntityId): TrackEntity[] => {
+  eventTracks: (flowTNodeId: EARS.EntityId<'TNode'>): TrackEntity[] => {
     // Get the flow TNode
-    const flowTNode = qx(flowTNodeId).pickOne(TNODE_COLUMNS) as TNodeEntity;
+    const flowTNode = qx(flowTNodeId).pickOne(TNODE_COLUMNS)!;
     
     if (!isFlowTNode(flowTNode)) {
       throw new Error(`TNode ${flowTNodeId} is not a flow type (found: ${flowTNode?.tNodeType || 'none'})`);
@@ -154,12 +165,12 @@ export const brainQueries = {
     // Get all event TNodes tracked by this flow
     const eventTNodes = uniqueNodesById(
       qx(flowTNodeId)
-        .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode]) as TNodeEntity[]
+        .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode])
     );
     
     // For each event, build a hierarchical tree of spawned children
     const eventTracks = eventTNodes.map(eventTNode => {
-      const directChildIds = uniqueEntityIds(qx(eventTNode.id!).linksTo(EARS.RelKind.SPAWNED).ids());
+      const directChildIds = spawnedChildIds(eventTNode.id!);
       const children = directChildIds.map(childId => buildSpawnedTree(childId));
       return { ...eventTNode, children };
     });
@@ -210,12 +221,12 @@ export const brainQueries = {
    * Builds flow hierarchy from current flow back to root
    * Returns array ordered from root → current flow
    */
-  buildFlowHierarchy: (flowTNodeId: EARS.EntityId): Array<{ flowTNodeId: EARS.EntityId; label: string }> => {
+  buildFlowHierarchy: (flowTNodeId: EARS.EntityId<'TNode'>): Array<{ flowTNodeId: EARS.EntityId; label: string }> => {
     const hierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }> = [];
-    let currentId: EARS.EntityId | undefined = flowTNodeId;
+    let currentId: EARS.EntityId<'TNode'> | undefined = flowTNodeId;
 
     while (currentId) {
-      const node = qx(currentId).pickOne(['label', 'nodeAttributes']) as Pick<TNodeEntity, 'label' | 'nodeAttributes'> | null;
+      const node = qx(currentId).pickOne(['label', 'nodeAttributes']);
       if (!node) break;
 
       hierarchy.unshift({ flowTNodeId: currentId, label: node.label || 'Unknown Flow' });
@@ -225,8 +236,8 @@ export const brainQueries = {
     return hierarchy;
   },
 
-  extendedTNodeData: (tNodeId: EARS.EntityId): FlowTNodeData => {
-    const tNode = qx(tNodeId).pickOne(["tNodeType"]) as Pick<TNodeEntity, 'tNodeType'> | null;
+  extendedTNodeData: (tNodeId: EARS.EntityId<'TNode'>): FlowTNodeData => {
+    const tNode = qx(tNodeId).pickOne(["tNodeType"]);
 
     if (!isFlowTNode(tNode as TNodeEntity)) {
       throw new Error(
@@ -321,8 +332,8 @@ export const brainCommands = {
     }
 
     // Get the referenced flow
-    const flow = qx(flowStepNode.flowRef as EARS.EntityId)
-      .pickOne(["id", "label"]) as Partial<FlowEntity> | undefined;
+    const flow = qx(flowStepNode.flowRef as EARS.EntityId<'Flow'>)
+      .pickOne(["id", "label"]) ?? undefined;
 
     if (!flow) {
       throw new Error(
@@ -540,7 +551,7 @@ export const brainCommands = {
     const truncatedResult = truncateResult(result);
     
     // Get current nodeAttributes
-    const tNode = qx(tNodeId).pickOne(['nodeAttributes']) as Pick<TNodeEntity, 'nodeAttributes'> | null;
+    const tNode = qx(tNodeId).pickOne(['nodeAttributes']);
     
     if (tNode) {
       // Merge truncated result into existing nodeAttributes

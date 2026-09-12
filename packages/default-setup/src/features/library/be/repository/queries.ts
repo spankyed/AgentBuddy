@@ -199,7 +199,7 @@ export const libraryQueries = {
     
     if (folderId === null) {
       // Root directory - get documents not in any collection
-      documents = qx(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id as EARS.EntityId))
+      documents = qx(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id))
     } else {
       // Get documents in this collection
       documents = qx(folderId)
