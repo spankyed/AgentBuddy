@@ -31,6 +31,7 @@ import * as _sdkHelpers from '@abuddy/sdk/helpers';
 import * as _sdkPacks from '@abuddy/sdk/packs';
 import * as _sdkUtils from '@abuddy/sdk/utils';
 import * as _sdkUtilsPure from '@abuddy/sdk/utils/pure';
+import * as _sdkPersistence from '@abuddy/sdk/persistence';
 import * as _sdkRpc from '@abuddy/sdk/rpc';
 import * as _sdkIds from '@abuddy/sdk/ids';
 import * as _sdkLogger from '@abuddy/sdk/logger';
@@ -56,6 +57,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/packs': _sdkPacks,
   '@abuddy/sdk/utils': _sdkUtils,
   '@abuddy/sdk/utils/pure': _sdkUtilsPure,
+  '@abuddy/sdk/persistence': _sdkPersistence,
   '@abuddy/sdk/rpc': _sdkRpc,
   '@abuddy/sdk/ids': _sdkIds,
   '@abuddy/sdk/logger': _sdkLogger,
@@ -71,6 +73,21 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/inference': _sdkInference,
   '@abuddy/sdk/runtime': _sdkTemplates,
 };
+
+/**
+ * The @abuddy/sdk specifiers bridged to host singletons.
+ *
+ * Exported for the drift guard in tests/unit/sdk-bridge-drift.spec.ts. A pack
+ * importing an @abuddy/sdk subpath that is missing here does NOT fail loudly:
+ * the require falls through to real Node resolution, which type-strips the
+ * SDK's .ts source and then dies on its extensionless relative imports
+ * (ERR_MODULE_NOT_FOUND). loadBuiltInPacks catches that and silently falls
+ * back to the prebuilt bundle, so the app still boots with dev hot-reload
+ * quietly broken. The guard makes a new SDK export fail a test instead.
+ */
+export function getBridgedSdkSpecifiers(): readonly string[] {
+  return Object.keys(SDK_BRIDGE);
+}
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;
