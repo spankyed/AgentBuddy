@@ -91,6 +91,7 @@ export async function setupBackend(): Promise<void> {
       seedData,
       () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
       (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+      { cleanupStaleHashes: true },
     );
     setLoadedPacks(externalPacks);
   }

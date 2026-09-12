@@ -50,6 +50,7 @@ export function teardownPack(
 export function activatePack(
   packId: string,
   busActor: import('xstate').AnyActorRef,
+  options?: { seed?: boolean },
 ): boolean {
   const packsDir = getPacksDir();
   const packDir = path.join(packsDir, packId);
@@ -90,12 +91,14 @@ export function activatePack(
   }
   pack.boot?.onInit?.();
 
-  seedPackData(
-    [pack],
-    seedData,
-    () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
-    (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
-  );
+  if (options?.seed) {
+    seedPackData(
+      [pack],
+      seedData,
+      () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
+      (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+    );
+  }
 
   updateLoadedPack(pack);
 

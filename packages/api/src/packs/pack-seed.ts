@@ -26,6 +26,7 @@ export function seedPackData(
   seedFn: (options: { compiledDir: string; mode?: any; verbose?: boolean }) => Record<string, any>,
   getStoredHashes: () => Record<string, string>,
   setStoredHashes: (hashes: Record<string, string>) => void,
+  options?: { cleanupStaleHashes?: boolean },
 ): void {
   const storedHashes = getStoredHashes();
   const updatedHashes = { ...storedHashes };
@@ -54,9 +55,11 @@ export function seedPackData(
     }
   }
 
-  const installedIds = new Set(packs.map(p => p.manifest.id));
-  for (const id of Object.keys(updatedHashes)) {
-    if (!installedIds.has(id)) delete updatedHashes[id];
+  if (options?.cleanupStaleHashes) {
+    const installedIds = new Set(packs.map(p => p.manifest.id));
+    for (const id of Object.keys(updatedHashes)) {
+      if (!installedIds.has(id)) delete updatedHashes[id];
+    }
   }
 
   if (anySeeded || Object.keys(updatedHashes).length !== Object.keys(storedHashes).length) {

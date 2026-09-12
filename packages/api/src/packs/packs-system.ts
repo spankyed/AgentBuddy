@@ -164,7 +164,7 @@ export const packsSystem = setup({
           source: isGitHub ? packSlug : undefined,
         }));
 
-        activatePack(result.id, system.get(bus));
+        activatePack(result.id, system.get(bus), { seed: true });
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_INSTALL_COMPLETE' as const,
@@ -257,7 +257,7 @@ export const packsSystem = setup({
           } : e),
         );
 
-        activatePack(packId, system.get(bus));
+        activatePack(packId, system.get(bus), { seed: true });
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_UPDATE_COMPLETE' as const,
