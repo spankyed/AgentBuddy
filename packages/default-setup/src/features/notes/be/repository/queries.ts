@@ -80,13 +80,13 @@ export const noteQueries = {
     qx(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
 
   trashedDTOs: (): NoteDTO[] => {
-    const all = qx(EARS.Entity.Note).pickAll() as unknown as NoteEntity[];
+    const all = qx(EARS.Entity.Note).pickAll();
     return all.filter(n => n.deleted).map(toDTO);
   },
 
   expiredSoftDeleted: (maxAgeDays: number): NoteEntity[] => {
     const cutoff = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
-    const all = qx(EARS.Entity.Note).pickAll() as unknown as NoteEntity[];
+    const all = qx(EARS.Entity.Note).pickAll();
     return all.filter(n => n.deleted && n.deletedAt && n.deletedAt < cutoff);
   },
 

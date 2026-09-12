@@ -737,7 +737,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
       );
       for (const [entity, { type: typeName }] of Object.entries(shapes)) {
         seenEntities.add(entity);
-        allEntries.push(`    '${entity}': Attrs<${typeName}>;`);
+        allEntries.push(`    '${entity}': ${typeName};`);
       }
     }
 
@@ -773,7 +773,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
         const defsImportPath = `../../.abuddy/deps/${depId}/defs/${fileKey}`;
         if (!depByPath.has(defsImportPath)) depByPath.set(defsImportPath, new Set());
         depByPath.get(defsImportPath)!.add(typeName);
-        allEntries.push(`    '${entity}': Attrs<${typeName}>;`);
+        allEntries.push(`    '${entity}': ${typeName};`);
       }
       allImports.push(
         ...Array.from(depByPath.entries())
@@ -784,10 +784,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
     if (allEntries.length === 0) return '';
 
     return `${HEADER}
-import type { BaseEntity } from '@abuddy/sdk/types';
 ${allImports.join('\n')}
-
-type Attrs<T> = Omit<T, keyof BaseEntity>;
 
 declare module '@abuddy/sdk/types' {
   interface EntityShapeRegistry {
