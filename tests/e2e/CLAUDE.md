@@ -19,7 +19,6 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 - **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name, single-instance lock and data dir (`~/Library/Application Support/abuddy-test/`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
 - **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/issues/postmortem-external-pack-calendar-extraction.md, item 1).
 - **The test data dir persists across runs.** Anything a test creates accumulates; assert on unique values and clean up what you create.
-- **`abuddy` may be a shell alias** for opening the installed app. Call `node_modules/.bin/abuddy` by path.
 
 ## How the fixture works
 

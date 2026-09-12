@@ -120,6 +120,12 @@ Remove an installed pack by ID. Restart the app after uninstalling.
 
 Show all installed packs.
 
+### App
+
+#### `abuddy open [-b]`
+
+Open the installed AgentBuddy app, or bring it to the front if it's running. Pass `-b` for AgentBuddy Beta. macOS only.
+
 ### Cleanup
 
 #### `abuddy clean`

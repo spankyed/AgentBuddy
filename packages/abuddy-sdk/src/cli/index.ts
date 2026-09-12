@@ -22,6 +22,7 @@ Commands:
   dev                   Dev server with HMR (always targets dev environment)
   init-tests            Scaffold Playwright E2E test setup
   test [args...]        Run E2E tests (sets ABUDDY_ROOT + PACK_DIR automatically)
+  open [-b]           Open the installed AgentBuddy app
   info                Show pack summary
   doctor              Run health checks
   clean               Remove build artifacts
@@ -46,6 +47,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'dev':        async () => (await import('./commands/dev')).dev,
   'init-tests': async () => (await import('./commands/init-tests')).initTests,
   'test':       async () => (await import('./commands/test')).test,
+  'open':       async () => (await import('./commands/open')).open,
   'info':       async () => (await import('./commands/info')).info,
   'doctor':     async () => (await import('./commands/doctor')).doctor,
   'clean':      async () => (await import('./commands/clean')).clean,

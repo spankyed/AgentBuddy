@@ -179,7 +179,6 @@ Update baselines with `-u`.
 - E2E runs alongside dev and prod in the `abuddy-test` namespace.
 - Investigate failing assertions before changing them.
 - Test data persists across runs.
-- `abuddy` may be a shell alias.
 
 Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild, fail-fast, calendar plugin ID).
 
