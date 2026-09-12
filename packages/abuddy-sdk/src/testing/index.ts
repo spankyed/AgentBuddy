@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
-import { getPacksDirForEnv } from '../packs/pack-discovery';
+import { resolveAppContext } from '../env';
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -117,6 +117,8 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   return _packManifest;
 }
 
+const E2E_VIEWPORT = { width: 1400, height: 900 };
+
 // Recent Electron stdout/stderr per app, so fixture failures can report the root
 // cause (loader errors, crashes) without re-running under DEBUG_E2E.
 const OUTPUT_TAIL_LINES = 200;
@@ -194,8 +196,8 @@ export function createTest(options: CreateTestOptions = {}) {
         const packDir = path.resolve(process.env.PACK_DIR);
         const manifest = getPackManifest();
         if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-        const testPacksDir = getPacksDirForEnv('test');
-        const devPacksDir = getPacksDirForEnv('development');
+        const testPacksDir = resolveAppContext({ env: 'test' }).packsDir;
+        const devPacksDir = resolveAppContext({ env: 'development' }).packsDir;
         const devSignal = path.join(devPacksDir, manifest.id, '.dev');
         if (!fs.existsSync(devSignal)) {
           // Always rebuild: syncing an existing dist would silently test stale code
@@ -244,6 +246,9 @@ export function createTest(options: CreateTestOptions = {}) {
 
     appPage: async ({ electronApp }, use) => {
       const page = await findMainWindow(electronApp);
+      // The main window's default size depends on how main was built (dev vs production mode);
+      // pin the viewport so layout and screenshot baselines are the same everywhere
+      await page.setViewportSize(E2E_VIEWPORT);
 
       const rendererErrors: string[] = [];
       let rejectPackFeFailed: (err: Error) => void = () => {};

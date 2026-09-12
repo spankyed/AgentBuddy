@@ -6,10 +6,11 @@ import { closePersistence, reinitializeLmdb } from '../ears/internals';
 
 const logger = createLogger('database:backup');
 
+// Resolved per call: paths depend on the app environment, which isn't known at import time
 const DATABASE_PATHS = {
-  lmdb: getLmdbPath(),
-  volatileLmdb: getVolatileLmdbPath(),
-  secretsLmdb: getSecretsLmdbPath(),
+  lmdb: getLmdbPath,
+  volatileLmdb: getVolatileLmdbPath,
+  secretsLmdb: getSecretsLmdbPath,
 } as const;
 
 export async function exportDatabase(
@@ -38,7 +39,7 @@ export async function exportDatabase(
   });
 
   for (const dbName of databases) {
-    const sourcePath = DATABASE_PATHS[dbName];
+    const sourcePath = DATABASE_PATHS[dbName]();
     if (await fs.pathExists(sourcePath)) {
       await fs.copy(sourcePath, path.join(fullBackupPath, dbName));
       logger.info(`Backed up ${dbName}`);
@@ -64,7 +65,7 @@ export async function importDatabase(backupPath: string) {
 
   await fs.ensureDir(tempBackupPath);
   for (const dbName of metadata.databases) {
-    const sourcePath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
+    const sourcePath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS]();
     if (await fs.pathExists(sourcePath)) {
       await fs.copy(sourcePath, path.join(tempBackupPath, dbName));
     }
@@ -83,7 +84,7 @@ export async function importDatabase(backupPath: string) {
 
     for (const dbName of metadata.databases) {
       const backupDbPath = path.join(backupPath, dbName);
-      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
+      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS]();
 
       if (await fs.pathExists(backupDbPath)) {
         await fs.remove(targetPath);
@@ -108,7 +109,7 @@ export async function importDatabase(backupPath: string) {
 
     for (const dbName of metadata.databases) {
       const tempDbPath = path.join(tempBackupPath, dbName);
-      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
+      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS]();
       if (await fs.pathExists(tempDbPath)) {
         await fs.remove(targetPath);
         await fs.copy(tempDbPath, targetPath);

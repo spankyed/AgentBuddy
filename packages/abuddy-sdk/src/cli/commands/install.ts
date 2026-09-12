@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { installPack, installPackFromLocal } from '../../packs/pack-installer';
-import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { resolveAppContext } from '../../env';
 import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 
 function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
@@ -40,7 +40,7 @@ Options:
     return;
   }
 
-  const packsDir = getPacksDirForEnv(env);
+  const { packsDir } = resolveAppContext({ env });
   const kind = detectSource(source);
 
   let resolvedSource = source;

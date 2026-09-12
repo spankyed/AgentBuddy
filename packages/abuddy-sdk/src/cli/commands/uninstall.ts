@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { resolveAppContext } from '../../env';
 import { uninstallPack } from '../../packs/pack-installer';
 import { parseTargetEnv, envLabel } from '../utils';
 
@@ -12,7 +12,7 @@ export async function uninstall(args: string[]) {
     throw new Error('Usage: abuddy uninstall <pack-id> [-d|--dev] [-b|--beta]');
   }
 
-  const packsDir = getPacksDirForEnv(env);
+  const { packsDir } = resolveAppContext({ env });
   const manifestPath = path.join(packsDir, packId, 'abuddy.json');
   let name = packId;
   if (fs.existsSync(manifestPath)) {

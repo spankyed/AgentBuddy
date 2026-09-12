@@ -2,6 +2,7 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import {getAppContext} from '../../app-context.js';
 
 // API Server Configuration
 export const API_CONFIG = {
@@ -97,12 +98,12 @@ export const getEnvironment = (port: number, options?: { startupId?: string; log
     API_PORT: port.toString(),
     AGENTBUDDY_STARTUP_ID: options?.startupId,
     AGENTBUDDY_LOG_DIR: options?.logDir,
-    DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
-    USER_DATA_PATH: app.getPath('userData'),
     BUILT_IN_PACKS_DIR: app.isPackaged
       ? path.join(process.resourcesPath, 'app', 'packages')
       : path.join(app.getAppPath(), 'packages'),
-    ABUDDY_ENV: process.env.ABUDDY_ENV,
+    // Identity for the API process; resolveAppContext() there reads these
+    ABUDDY_ENV: getAppContext().env,
+    ABUDDY_USER_DATA_DIR: getAppContext().userDataDir,
     ELECTRON_RUN_AS_NODE: '1',
   };
 };

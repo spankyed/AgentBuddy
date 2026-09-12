@@ -57,53 +57,6 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
 
 // ── External pack discovery ─────────────────────────────────────────
 
-export type AppEnv = 'production' | 'development' | 'test' | 'beta';
-
-const APP_NAMES: Record<AppEnv, string> = {
-  production:  'abuddy',
-  beta:        'abuddy-beta',
-  development: 'abuddy-dev',
-  test:        'abuddy-test',
-};
-
-export function getAppName(env: AppEnv): string {
-  return APP_NAMES[env];
-}
-
-export function resolveAppEnv(): AppEnv {
-  if (process.env.PLAYWRIGHT_TEST === 'true') return 'test';
-  if (process.env.ABUDDY_ENV === 'beta') return 'beta';
-  if (process.env.NODE_ENV === 'development') return 'development';
-  return 'production';
-}
-
-export function resolveAppDataDir(appNameOrEnv: string | AppEnv): string {
-  const appName = APP_NAMES[appNameOrEnv as AppEnv] ?? appNameOrEnv;
-  const home = os.homedir();
-  switch (process.platform) {
-    case 'darwin':
-      return path.join(home, 'Library', 'Application Support', appName);
-    case 'win32':
-      return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), appName);
-    default:
-      return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), appName);
-  }
-}
-
-export function getPacksDir(): string {
-  const userDataPath = process.env.USER_DATA_PATH || resolveAppDataDir('production');
-  return path.join(userDataPath, 'packs');
-}
-
-export function getApiPortFile(env?: AppEnv): string {
-  const resolved = env ?? resolveAppEnv();
-  return path.join(resolveAppDataDir(resolved), 'api-port');
-}
-
-export function getPacksDirForEnv(env: AppEnv): string {
-  return path.join(resolveAppDataDir(env), 'packs');
-}
-
 export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {
   if (!fs.existsSync(packsDir)) return [];
 

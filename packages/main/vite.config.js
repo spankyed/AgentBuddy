@@ -8,6 +8,10 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
   define: {
     __ABUDDY_CHANNEL__: JSON.stringify(process.env.ABUDDY_ENV || ''),
   },
+  // Bundle SDK source into main: packaged builds strip .ts files, so it can't be imported at runtime
+  ssr: {
+    noExternal: [/^@abuddy\/sdk/],
+  },
   build: {
     ssr: true,
     sourcemap: mode === 'development' ? 'inline' : false,

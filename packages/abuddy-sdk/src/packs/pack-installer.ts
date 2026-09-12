@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
-import { getPacksDir, discoverBuiltInPacks } from './pack-discovery';
+import { discoverBuiltInPacks } from './pack-discovery';
+import { resolveAppContext } from '../env';
 import { parseManifest } from '../build/validate';
 import type { PackManifest } from '../build/manifest';
 
@@ -20,7 +21,7 @@ export interface InstallResult {
 }
 
 function ensurePacksDir(targetDir?: string): string {
-  const dir = targetDir ?? getPacksDir();
+  const dir = targetDir ?? resolveAppContext().packsDir;
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -255,7 +256,7 @@ export async function installPack(packSlug: string, source?: string, targetPacks
 }
 
 export async function uninstallPack(packId: string, targetPacksDir?: string): Promise<void> {
-  const packsDir = targetPacksDir ?? getPacksDir();
+  const packsDir = targetPacksDir ?? resolveAppContext().packsDir;
   const packDir = path.join(packsDir, packId);
 
   if (!fs.existsSync(packDir)) {

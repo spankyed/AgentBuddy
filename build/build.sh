@@ -11,6 +11,9 @@ cd "$SCRIPT_DIR/.."
 
 # Channel detection (--beta flag)
 CHANNEL="production"
+# Every packaged build is stamped with its channel (baked into main as __ABUDDY_CHANNEL__);
+# an unstamped packaged app refuses to start rather than guessing
+export ABUDDY_ENV=production
 for arg in "$@"; do
   if [[ "$arg" == "--beta" ]]; then
     CHANNEL="beta"

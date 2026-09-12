@@ -16,21 +16,27 @@ registerHostModule('logger', {
 
 let tmpDir: string;
 let origCwd: string;
-let origUDP: string | undefined;
+let origEnv: { env?: string; userDataDir?: string };
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-lifecycle-'));
   origCwd = process.cwd();
-  origUDP = process.env.USER_DATA_PATH;
-  process.env.USER_DATA_PATH = tmpDir;
+  origEnv = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
+  process.env.ABUDDY_ENV = 'test';
+  process.env.ABUDDY_USER_DATA_DIR = tmpDir;
 });
 
 afterEach(() => {
   process.chdir(origCwd);
-  if (origUDP === undefined) delete process.env.USER_DATA_PATH;
-  else process.env.USER_DATA_PATH = origUDP;
+  restoreEnv('ABUDDY_ENV', origEnv.env);
+  restoreEnv('ABUDDY_USER_DATA_DIR', origEnv.userDataDir);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
 
 const packsDir = () => path.join(tmpDir, 'packs');
 
@@ -83,7 +89,7 @@ describe('pack full lifecycle: init → install → discover', () => {
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'dist', 'system.cjs'))).toBe(true);
 
-    // Step 4: Discover via pack-loader (uses USER_DATA_PATH → tmpDir)
+    // Step 4: Discover via pack-loader (uses ABUDDY_USER_DATA_DIR → tmpDir)
     const { loadExternalPacks } = await import('@/packs/pack-loader');
 
     const packs = loadExternalPacks();

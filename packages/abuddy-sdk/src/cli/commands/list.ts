@@ -1,11 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getPacksDirForEnv } from '../../packs/pack-discovery';
+import { resolveAppContext } from '../../env';
 import { parseTargetEnv, envLabel } from '../utils';
 
 export async function list(args: string[]) {
   const { env } = parseTargetEnv(args);
-  const packsDir = getPacksDirForEnv(env);
+  const { packsDir } = resolveAppContext({ env });
   const label = envLabel(env);
 
   if (!fs.existsSync(packsDir)) {

@@ -160,7 +160,8 @@ Screenshot output location depends on context:
 |----------|-------------|
 | `ABUDDY_ROOT` | Path to the AgentBuddy monorepo. Required for external packs; auto-detected inside the monorepo. |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/sync and plugin waiting. |
-| `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. Crashes on uncaught errors and runs headless (suppresses window display and splash screen). |
+| `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
+| `ABUDDY_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@abuddy/sdk/env`. |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |
 
 ## Running tests
@@ -198,7 +199,8 @@ When running directly, you must also ensure `@abuddy/sdk` is resolvable from you
 
 - **Electron binary resolution**: The fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from the monorepo's `node_modules`, then passes the binary path as `executablePath` to Playwright. This decouples the test runner's dependency tree from the Electron binary — packs don't need `electron` installed.
 - **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
-- **Dev/prod packs directory alignment**: The fixture syncs to `getPacksDirForEnv(true)` → `~/Library/Application Support/abuddy-dev/packs/`. The Electron app's `PackProtocol` uses `app.getPath('userData') + '/packs'`. These match because `SingleInstanceApp.ts` appends `-dev` to the app name when `app.isPackaged === false` (always true when running from source), which shifts `userData` to the `-dev` directory.
+- **Test packs directory alignment**: The fixture syncs to `resolveAppContext({ env: 'test' }).packsDir` (`~/Library/Application Support/abuddy-test/packs/`). The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@abuddy/sdk/env`) and passes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to the API process, so both sides always agree.
+- **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm start` builds and `npm run build`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `abuddy.json` once per process, cached at module scope. Plugin IDs are extracted from `features[].plugin.id` with fallback to `features[].id`.
 - **`.dev` signal file**: Written by `abuddy dev` at `{devPacksDir}/{packId}/.dev` containing `{ port, pid }`. Its presence means the pack is being served by Vite's HMR dev server via the `pack://` protocol — no need for the fixture to build or sync files.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that checks for `.dev` and proxies to the Vite dev server if present, otherwise serves files from disk.

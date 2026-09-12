@@ -109,6 +109,14 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 - Use `breadcrumb()` / `breadcrumbWithParams()` for plugin navigation
 - Frontend components should be "dumb" — emit events up to root components which forward to the plugin state machine
 
+### App environment
+
+Environment identity and data paths come from one resolver, `@abuddy/sdk/env` (`resolveAppContext()`). Don't read `NODE_ENV`, `PLAYWRIGHT_TEST` or platform paths to decide which data dir to use.
+
+- The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel stamped by `build/build.sh` (`production` | `beta`; an unstamped packaged build refuses to start); source runs → `ABUDDY_ENV` if set, else `development`. It passes `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` to the API process.
+- Anything started without them throws instead of falling back to production. Manual API boots must pass both, pointing at a copy of user data: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node dist/server.js`
+- CLI commands pass `{ env }` explicitly (`install`/`uninstall`/`list`/`open` default to production; `-d`/`-b` select dev/beta).
+
 ### Migrations
 
 Settings migrations live in `packages/api/src/setup/migrations/`. Each file exports a `Migration` with a `target` version and an `up()` function.

@@ -206,8 +206,8 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 
 | # | Status on HEAD |
 |---|---|
-| F2 | **Still applies.** `packages/api/tests/integration/pack-e2e.spec.ts:32` hardcodes `~/Library/Application Support/abuddy/packs` and deletes `USER_DATA_PATH` (`:117`). No `RUN_INTEGRATION` gate exists, despite `vitest.config.ts:21`. |
-| F3 | **Still applies; needs your decision.** `getPacksDir()` still falls back to `resolveAppDataDir('production')` (`pack-discovery.ts:94`). |
+| F2 | ✅ **Resolved.** `pack-e2e.spec.ts` now runs against a temp dir via `ABUDDY_ENV=test` + `ABUDDY_USER_DATA_DIR`; the hardcoded production packs path and `USER_DATA_PATH` handling are gone. The app-wide resolver makes a test without an environment throw instead of reaching real app data. |
+| F3 | ✅ **Resolved.** Environment and data paths now come from one resolver, `@abuddy/sdk/env` (`resolveAppContext`): explicit input, then `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR`, otherwise it throws. The Electron main process infers the environment once (`packages/main/src/app-context.ts`: Playwright → test; packaged → build-stamped channel, unstamped refuses to start; source run → `ABUDDY_ENV` or development) and passes it to the API process. `build/build.sh` now stamps production builds too. `getPacksDir`, `getPacksDirForEnv`, `getApiPortFile`, `resolveAppEnv`, `resolveAppDataDir` and `USER_DATA_PATH` are removed; `tests/env/identity-guard.spec.ts` fails if they return. |
 | F4 | **Still applies.** `UNBRIDGED_BY_DESIGN` still mixes the policy-only `actions`, which has extensionless relative re-exports, with the true leaves. |
 | F5 | **Still applies.** Nothing asserts that the leaf entries have no imports. |
 | F6 | **Still applies.** `startsWith('@abuddy/sdk/fe')` has no `/` boundary (`sdk-bridge-drift.spec.ts:58,79`). |

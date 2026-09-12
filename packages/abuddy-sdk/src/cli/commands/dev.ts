@@ -3,12 +3,12 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../../build/fe-bundler';
-import { getPacksDirForEnv, getApiPortFile } from '../../packs/pack-discovery';
+import { resolveAppContext } from '../../env';
 import { installPackFromLocal } from '../../packs/pack-installer';
 
 function getDevApiUrl(): string | null {
   try {
-    const port = fs.readFileSync(getApiPortFile('development'), 'utf-8').trim();
+    const port = fs.readFileSync(resolveAppContext({ env: 'development' }).apiPortFile, 'utf-8').trim();
     return port ? `http://localhost:${port}` : null;
   } catch { return null; }
 }
@@ -35,7 +35,7 @@ export async function dev(_args: string[]) {
 
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
-  const packsDir = getPacksDirForEnv('development');
+  const { packsDir } = resolveAppContext({ env: 'development' });
 
   console.log('Running initial build...\n');
   await build([]);

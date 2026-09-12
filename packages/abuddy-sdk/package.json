@@ -19,6 +19,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./designations": "./src/designations/index.ts",
+    "./env": "./src/env/index.ts",
     "./framework": "./src/framework/index.ts",
     "./helpers": "./src/helpers/index.ts",
     "./types": "./src/types/index.ts",

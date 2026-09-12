@@ -9,7 +9,7 @@ import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
 import { runShutdownHooks } from '@abuddy/sdk/utils';
-import { getApiPortFile } from '@abuddy/sdk/packs';
+import { resolveAppContext } from '@abuddy/sdk/env';
 
 const reloadingPacks = new Set<string>();
 
@@ -73,7 +73,7 @@ export function createWebSocketServer() {
     console.log(message);
 
     if (process.env.NODE_ENV === 'development') {
-      const portFile = getApiPortFile();
+      const portFile = resolveAppContext().apiPortFile;
       try {
         fs.mkdirSync(path.dirname(portFile), { recursive: true });
         fs.writeFileSync(portFile, String(port));
@@ -91,7 +91,7 @@ export function createWebSocketServer() {
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
     runShutdownHooks();
-    try { fs.unlinkSync(getApiPortFile()); } catch {}
+    try { fs.unlinkSync(resolveAppContext().apiPortFile); } catch {}
   });
 
   // Setup graceful shutdown

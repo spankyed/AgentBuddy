@@ -113,7 +113,8 @@ export async function build(args: string[]) {
   }
 
   // ── FE bundling ──────────────────────────────────────────────────────
-  const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
+  // Built-in packs' FE is compiled into the renderer (virtual:built-in-packs), never loaded from dist/fe.js
+  const feEntry = args.includes('--skip-fe') || manifest.builtIn ? null : findFEEntry(root);
   if (feEntry) {
     const feResult = await bundlePackFE({ packDir: root, outputDir, entryPoint: feEntry });
     if (feResult.success) {

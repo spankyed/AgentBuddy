@@ -17,14 +17,11 @@ import {createBrowserModule} from './modules/browser/index.js';
 import {createProtocolHandler} from './modules/ProtocolHandler.js';
 import {app} from 'electron';
 import {initializeMainLogCapture} from './modules/api-server/logger.js';
+import {initAppContext} from './app-context.js';
 
-
-declare const __ABUDDY_CHANNEL__: string;
 
 export async function initApp(initConfig: AppInitConfig) {
-  if (__ABUDDY_CHANNEL__) {
-    process.env.ABUDDY_ENV = __ABUDDY_CHANNEL__;
-  }
+  initAppContext();
   initializeMainLogCapture();
 
   // Disable Chromium media features that trigger macOS Apple Music permission prompt

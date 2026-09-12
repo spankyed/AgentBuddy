@@ -1,8 +1,6 @@
 import * as path from 'path'
 import * as fs from 'fs'
-
-const userDataPath = process.env.USER_DATA_PATH || process.cwd()
-const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH
+import { resolveAppContext } from '../env'
 
 const DATA_DIRS = {
   modelsCache:  'models-cache',
@@ -15,7 +13,7 @@ const DATA_DIRS = {
 
 // === Public API ===
 
-export const getUserDataPath = (): string => userDataPath
+export const getUserDataPath = (): string => resolveAppContext().userDataDir
 export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
 export const getModelsCachePath = (): string => resolvePath('modelsCache')
 export const getLmdbPath = (): string => resolvePath('lmdb')
@@ -43,7 +41,10 @@ export const getIndexMappingsPath = (indexId: string): string =>
 
 export function resolvePath(key: keyof typeof DATA_DIRS): string {
   const name = DATA_DIRS[key]
-  return isProd ? path.join(userDataPath, name) : path.join(userDataPath, '.data', name)
+  // Existing on-disk layout: packaged builds store data at the root of the data dir,
+  // source runs (NODE_ENV=development) under .data/
+  const userDataDir = getUserDataPath()
+  return process.env.NODE_ENV === 'production' ? path.join(userDataDir, name) : path.join(userDataDir, '.data', name)
 }
 
 export function createExportDir(parentDir: string, systemName: string): string {

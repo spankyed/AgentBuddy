@@ -1,8 +1,9 @@
 /**
- * E2E test: exercises the real pack loading pipeline against the
- * platform-correct app data directory. The test installs a fresh test
- * pack, runs the full boot-sequence functions, and verifies the system
- * loads, registers, and could serve plugins to the FE via tRPC.
+ * E2E test: exercises the real pack loading pipeline against an isolated
+ * test data directory (resolved through @abuddy/sdk/env, never the user's
+ * real app data). The test installs a fresh test pack, runs the full
+ * boot-sequence functions, and verifies the system loads, registers, and
+ * could serve plugins to the FE via tRPC.
  *
  * Cleans up after itself.
  */
@@ -26,17 +27,9 @@ import * as os from 'os';
 import { loadExternalPacks, type LoadedPack } from '@/packs/pack-loader';
 import { setLoadedPacks } from '@/packs/pack-api';
 
-function resolveDefaultPacksDir(): string {
-  const home = os.homedir();
-  switch (process.platform) {
-    case 'darwin': return path.join(home, 'Library', 'Application Support', 'abuddy', 'packs');
-    case 'win32': return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'abuddy', 'packs');
-    default: return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'abuddy', 'packs');
-  }
-}
-const REAL_PACKS_DIR = resolveDefaultPacksDir();
+const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
 const TEST_PACK_ID = 'e2e-test-pack';
-const TEST_PACK_DIR = path.join(REAL_PACKS_DIR, TEST_PACK_ID);
+const TEST_PACK_DIR = path.join(USER_DATA_DIR, 'packs', TEST_PACK_ID);
 
 function installTestPack() {
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'dist'), { recursive: true });
@@ -109,27 +102,28 @@ function cleanupTestPack() {
   }
 }
 
-// Remove USER_DATA_PATH so getPacksDir() falls back to resolveAppDataDir('production')
-let origUDP: string | undefined;
+let origEnv: { env?: string; userDataDir?: string };
 
 beforeAll(() => {
-  origUDP = process.env.USER_DATA_PATH;
-  delete process.env.USER_DATA_PATH;
-  cleanupTestPack();
+  origEnv = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
+  process.env.ABUDDY_ENV = 'test';
+  process.env.ABUDDY_USER_DATA_DIR = USER_DATA_DIR;
   installTestPack();
 });
 
 afterAll(() => {
   cleanupTestPack();
-  if (origUDP !== undefined) {
-    process.env.USER_DATA_PATH = origUDP;
+  fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
+  for (const [key, value] of [['ABUDDY_ENV', origEnv.env], ['ABUDDY_USER_DATA_DIR', origEnv.userDataDir]] as const) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
   }
 });
 
 describe('E2E: pack loading pipeline', () => {
   let packs: LoadedPack[];
 
-  it('discovers the test pack from the platform packs directory', () => {
+  it('discovers the test pack from the resolved packs directory', () => {
     packs = loadExternalPacks();
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID);
     expect(testPack).toBeDefined();

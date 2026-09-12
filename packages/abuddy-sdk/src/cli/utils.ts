@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackManifest } from '../build';
-import type { AppEnv } from '../packs/pack-discovery';
+import type { AppEnv } from '../env';
 
 const ENV_FLAGS = ['-d', '--dev', '-b', '--beta'] as const;
 

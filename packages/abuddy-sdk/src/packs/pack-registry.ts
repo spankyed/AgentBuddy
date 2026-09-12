@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '../logger';
-import { resolveAppDataDir } from './pack-discovery';
+import { resolveAppContext } from '../env';
 
 const logger = createLogger('pack-registry');
 
@@ -32,8 +32,7 @@ interface PackRegistryFile {
 }
 
 function getRegistryPath(): string {
-  const userDataPath = process.env.USER_DATA_PATH || resolveAppDataDir('production');
-  return path.join(userDataPath, 'pack-registry.json');
+  return resolveAppContext().registryFile;
 }
 
 export function readPackRegistry(): PackRegistryEntry[] {

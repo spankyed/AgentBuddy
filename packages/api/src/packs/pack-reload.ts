@@ -5,8 +5,8 @@ import {
   registerPack,
   unregisterPack,
   getPackContributions,
-  getPacksDir,
 } from '@abuddy/sdk/packs';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
 import { registerShutdownHook, runShutdownHooksForKey } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
@@ -79,7 +79,7 @@ export async function reloadExternalPack(
   packId: string,
   backendActor: import('xstate').AnyActorRef,
 ): Promise<void> {
-  const packsDir = getPacksDir();
+  const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
 
   if (!fs.existsSync(packDir)) {

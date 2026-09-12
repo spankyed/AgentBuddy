@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.js';
 import type { ModuleContext } from '../../ModuleContext.js';
+import { getAppContext } from '../../app-context.js';
 
 const MIME_TYPES: Record<string, string> = {
   '.js': 'application/javascript',
@@ -15,9 +16,6 @@ const MIME_TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-function getPacksDir(): string {
-  return path.join(app.getPath('userData'), 'packs');
-}
 
 class PackProtocol implements AppModule {
   enable(_ctx: ModuleContext): void {
@@ -37,7 +35,7 @@ class PackProtocol implements AppModule {
         const packId = url.hostname;
         const filePath = decodeURIComponent(url.pathname);
 
-        const packsDir = getPacksDir();
+        const {packsDir} = getAppContext();
 
         const devSignalPath = path.join(packsDir, packId, '.dev');
         if (fs.existsSync(devSignalPath)) {

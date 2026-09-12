@@ -8,10 +8,10 @@ import {
   registerPack,
   discoverBuiltInPacks,
   type BuiltInPackInfo,
-  getPacksDir,
   discoverPacks,
   reconcileExternalRegistry,
 } from '@abuddy/sdk/packs';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/build';
 
@@ -44,6 +44,7 @@ import * as _sdkBlocks from '@abuddy/sdk/blocks';
 import * as _sdkBuild from '@abuddy/sdk/build';
 import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
+import * as _sdkEnv from '@abuddy/sdk/env';
 // @ts-expect-error — resolved by esbuild, not tsc
 import * as _sdkInference from '@abuddy/sdk/inference';
 import * as _sdkTemplates from '@abuddy/sdk/runtime';
@@ -70,6 +71,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/build': _sdkBuild,
   '@abuddy/sdk/types': _sdkTypes,
   '@abuddy/sdk/designations': _sdkDesignations,
+  '@abuddy/sdk/env': _sdkEnv,
   '@abuddy/sdk/inference': _sdkInference,
   '@abuddy/sdk/runtime': _sdkTemplates,
 };
@@ -381,7 +383,7 @@ export function clearPackRequireCache(packDir: string): void {
 }
 
 export function loadExternalPacks(): LoadedPack[] {
-  const packsDir = getPacksDir();
+  const { packsDir } = resolveAppContext();
   const discovered = discoverPacks(packsDir);
   const enabled = reconcileExternalRegistry(discovered);
 

@@ -20,7 +20,7 @@ import { setLoadedPacks } from '@/packs/pack-api';
 import { seedFile } from '@abuddy/sdk/build';
 
 let tmpDir: string;
-let origUserDataPath: string | undefined;
+let origEnv: { env?: string; userDataDir?: string };
 
 function makePack(
   packsDir: string,
@@ -39,15 +39,15 @@ function makePack(
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-loader-test-'));
-  origUserDataPath = process.env.USER_DATA_PATH;
-  process.env.USER_DATA_PATH = tmpDir;
+  origEnv = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
+  process.env.ABUDDY_ENV = 'test';
+  process.env.ABUDDY_USER_DATA_DIR = tmpDir;
 });
 
 afterEach(() => {
-  if (origUserDataPath === undefined) {
-    delete process.env.USER_DATA_PATH;
-  } else {
-    process.env.USER_DATA_PATH = origUserDataPath;
+  for (const [key, value] of [['ABUDDY_ENV', origEnv.env], ['ABUDDY_USER_DATA_DIR', origEnv.userDataDir]] as const) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -55,7 +55,7 @@ afterEach(() => {
 describe('pack-loader', () => {
   describe('loadExternalPacks', () => {
     it('returns empty array when packs dir does not exist', () => {
-      process.env.USER_DATA_PATH = path.join(tmpDir, 'nonexistent');
+      process.env.ABUDDY_USER_DATA_DIR = path.join(tmpDir, 'nonexistent');
       const result = loadExternalPacks();
       expect(result).toEqual([]);
     });

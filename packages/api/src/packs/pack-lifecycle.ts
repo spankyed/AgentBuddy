@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@/core/shared/debug/logger';
-import { unregisterPack, getPackContributions, getPacksDir } from '@abuddy/sdk/packs';
+import { unregisterPack, getPackContributions } from '@abuddy/sdk/packs';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackManifest } from '@abuddy/sdk/packs';
 import { registerShutdownHook, runShutdownHooksForKey, seedData } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
@@ -33,7 +34,7 @@ export function teardownPack(
   invalidateEventValidationMap();
   invalidatePartitionPolicy();
 
-  const packDir = path.join(getPacksDir(), packId);
+  const packDir = path.join(resolveAppContext().packsDir, packId);
   if (fs.existsSync(packDir)) {
     clearPackRequireCache(packDir);
   }
@@ -52,7 +53,7 @@ export function activatePack(
   busActor: import('xstate').AnyActorRef,
   options?: { seed?: boolean },
 ): boolean {
-  const packsDir = getPacksDir();
+  const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
 
   if (!fs.existsSync(packDir)) {
