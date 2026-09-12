@@ -79,6 +79,7 @@
     "@tiptap/starter-kit": "^3.20.1",
     "@tiptap/vue-3": "^3.20.1",
     "@vue-flow/core": "^1.0.0",
+    "@xstate/vue": "^4.0.2",
     "ai": "^4.0.0",
     "elkjs": "^0.9.0",
     "lowlight": "^3.3.0",
@@ -86,7 +87,9 @@
     "monaco-editor": "^0.55.1",
     "reka-ui": "^2.2.1",
     "tiptap-markdown": "^0.9.0",
-    "vue": "^3.0.0"
+    "vue": "^3.0.0",
+    "xstate": "^5.19.2",
+    "zod": "^3.24.0"
   },
   "peerDependenciesMeta": {
     "vue": {
