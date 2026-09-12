@@ -7,9 +7,8 @@ import '@/__generated__/event-channels';
 // ─── PluginEventRegistry augmentation ──────────────────────────────────
 
 describe('PluginEventRegistry — augmented keys', () => {
-  it('registry includes all 13 plugin IDs', () => {
+  it('registry includes all 12 plugin IDs', () => {
     type Keys = keyof PluginEventRegistry;
-    expectTypeOf<'calendar'>().toMatchTypeOf<Keys>();
     expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
     expectTypeOf<'code'>().toMatchTypeOf<Keys>();
     expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
@@ -33,16 +32,6 @@ describe('PluginEventRegistry — augmented keys', () => {
 // ─── PluginEventRegistry event shapes ──────────────────────────────────
 
 describe('PluginEventRegistry — event shapes', () => {
-  it('calendar events include CALENDAR_CONNECTED', () => {
-    type CalendarEvents = PluginEventRegistry['calendar'];
-    expectTypeOf<Extract<CalendarEvents, { type: 'CALENDAR_CONNECTED' }>>().not.toBeNever();
-  });
-
-  it('calendar events include CALENDAR_EVENT_CREATED', () => {
-    type CalendarEvents = PluginEventRegistry['calendar'];
-    expectTypeOf<Extract<CalendarEvents, { type: 'CALENDAR_EVENT_CREATED' }>>().not.toBeNever();
-  });
-
   it('threads events include THREAD_CONNECTED', () => {
     type ThreadEvents = PluginEventRegistry['threads'];
     expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CONNECTED' }>>().not.toBeNever();
@@ -79,9 +68,9 @@ describe('Typed emit() — constrained by PluginEventRegistry', () => {
   });
 
   it('emit constrained overload narrows event param for registered plugin', () => {
-    type CalendarEvent = PluginEventRegistry['calendar'];
-    type EmitCalendar = (pluginId: 'calendar', event: CalendarEvent) => any;
-    const typedEmit: EmitCalendar = emit;
+    type ThreadEvent = PluginEventRegistry['threads'];
+    type EmitThreads = (pluginId: 'threads', event: ThreadEvent) => any;
+    const typedEmit: EmitThreads = emit;
     expectTypeOf(typedEmit).toBeFunction();
   });
 });
@@ -91,7 +80,7 @@ describe('Typed emit() — constrained by PluginEventRegistry', () => {
 describe('PluginEventRegistry — extensibility', () => {
   it('registry is open for declaration merging', () => {
     type Keys = keyof PluginEventRegistry;
-    type HasCalendar = 'calendar' extends Keys ? true : false;
-    expectTypeOf<HasCalendar>().toEqualTypeOf<true>();
+    type HasThreads = 'threads' extends Keys ? true : false;
+    expectTypeOf<HasThreads>().toEqualTypeOf<true>();
   });
 });
