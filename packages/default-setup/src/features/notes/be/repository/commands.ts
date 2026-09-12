@@ -319,7 +319,7 @@ export const noteCommands = {
     // Clean up incoming REFERENCES (other notes pointing to this one)
     const referencingIds = qx(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
     for (const refId of referencingIds) {
-      tx(refId).unlinkIf(REFERENCES, id);
+      removeRelation(refId, REFERENCES, id);
     }
 
     // Destroy the entity
