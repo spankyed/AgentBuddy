@@ -16,7 +16,7 @@ Moving `calendar` from `packages/default-setup` into `abuddy-external/example-pa
 What remains after the 2026-09-12 pass:
 
 - The suspected "live bug" (item 1) wasn't a platform bug. Test data accumulating across runs plus the month grid's chip cap hid the event; the round trip works. The test now asserts it for real.
-- **Waiting on decisions:** the pack E2E dependency on the monorepo (item 3) and five new findings (N1–N5), led by N1: a freshly scaffolded pack can't build. The CLI's `tsx` dependency (item 2) is resolved.
+- **Waiting on decisions:** the pack E2E dependency on the monorepo (item 3) and four new findings (N1–N4), led by N1: a freshly scaffolded pack can't build. The CLI's `tsx` dependency (item 2) is resolved.
 - Guards, CI coverage, typecheck, baselines, cleanup and guardrails (items 4–10) are done.
 
 ---
@@ -35,7 +35,7 @@ What remains after the 2026-09-12 pass:
 | 8 | No visual baselines | ✅ Resolved |
 | 9 | Cleanup | ✅ Resolved |
 | 10 | Agent guardrails | ✅ Resolved |
-| N1–N5 | New findings from this pass | ⏸ Open (see below) |
+| N1–N5 | New findings from this pass | ⏸ N1–N4 open; N5 resolved (see below) |
 
 Verification for the whole pass:
 - `npm run typecheck`: all 4 legs pass.
@@ -65,7 +65,7 @@ The event didn't render because of two things together:
 
 **Found while debugging:** the fixture synced an existing `dist/` without rebuilding, so the first probe ran a build from 05:31 (fixed under item 4).
 
-**UX note (open, design):** at a one-chip capacity, a cell with two or more events shows no chips at all, only "N more". See N5.
+**UX note:** at a one-chip capacity, a cell with two or more events used to show no chips at all, only "N more". Fixed as N5.
 
 ### 2. The `abuddy` CLI can't run from a pack without a `PATH` workaround — ✅ resolved (option A)
 
@@ -200,7 +200,7 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 | N2 | **`abuddy add feature` accepts hyphenated IDs, but the generated TS is invalid** (`settings.ts`: `{ notes-lite: true }`; `system-ids.ts`: `export { notes-lite }`). The manifest schema allows any string. | `add feature notes-lite` → `abuddy build`: `Expected "}" but found "-"` | Decision: restrict IDs to identifiers, or quote and camel-case them throughout codegen. |
 | N3 | **The test packs dir isn't isolated per pack.** Every pack installed in `abuddy-test/packs` loads in every E2E run, and the `abuddy-test` data dir persists across runs. | A stale mutated `abuddy-external` build broke the fixture's run until re-synced; accumulated events caused item 1. Fail-fast is now scoped to the pack under test. | Options include a per-run temp user-data dir for pack E2E. |
 | N4 | **The fixture's `.dev` check looks in the dev packs dir, but the test app reads the test packs dir.** While `abuddy dev` runs, the fixture skips build and sync, so tests use whatever was last synced to `abuddy-test/packs`. | Code reading: `testing/index.ts` (`devSignal` under `getPacksDirForEnv('development')`) vs sync target `getPacksDirForEnv('test')` | Not reproduced by a run. |
-| N5 | **Month grid shows zero chips when a cell fits one row and holds two or more events.** | `MonthGrid.vue` `visibleCount`: capacity 1 → `capacity - 1 = 0` | Example-pack UX; design choice. |
+| N5 | ✅ **Resolved.** Month grid showed zero chips when a cell fits one row and holds two or more events. | `MonthGrid.vue` `visibleCount`: capacity 1 → `capacity - 1 = 0` | Single-row cells now render the first event's chip with an inline `+N`. New example-pack E2E test *overflowing month cell still shows an event* passes, and fails when the old rendering is forced. |
 
 ### Secondary review findings (`~/.claude/plans/fix-4-ticklish-crown.md`), re-checked on HEAD
 
