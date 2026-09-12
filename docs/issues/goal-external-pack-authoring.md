@@ -23,7 +23,7 @@ Finished when:
   suggested commit message as text.
 
 Never, regardless of the spec:
-- git add, commit, push, or tag (don't touch the index; report stale staged files).
+- push or tag. Commit as you go in logical chunks (conventional commit messages, no Claude Code attribution/Co-Authored-By/session lines); stage only the files each commit covers.
 - Publish externally: no `npm publish`, real GitHub releases, or Homebrew pushes
   (use dry runs, `npm pack`, mocked GitHub API). Write CI workflows, don't trigger.
 - Broad pkill/killall on Electron or node.
@@ -118,7 +118,7 @@ No `ABUDDY_ROOT`, no symlinks, no PATH edits.
 
 ## Constraints
 
-- NEVER git add, commit, push, or create tags. The user commits. Something outside the session may stage files; don't touch the index, just report stale staged content.
+- Commit as you go, in logical chunks, with conventional commit messages and no Claude Code attribution (no Co-Authored-By or Claude-Session lines). Never push or create tags. Something outside the session may stage files: check `git diff --cached` before each commit and only commit what that commit covers.
 - Never publish anything externally: no `npm publish` (use `--dry-run` and `npm pack`), no real GitHub releases (use `--dry-run` or a mocked GitHub API in tests), no Homebrew tap pushes. CI workflows may be written, not triggered.
 - Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `abuddy-test` namespace.
 - Don't launch the app outside the test environment (`npm start`, packaged builds) without isolating `ABUDDY_USER_DATA_DIR` to a temp or copied dir.
