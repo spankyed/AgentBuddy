@@ -37,8 +37,8 @@ export async function loadPackFEEntry(
   entry: string,
   packBaseUrl: string,
 ): Promise<PackFERegistration | null> {
+  const url = `${packBaseUrl}/${entry}`;
   try {
-    const url = `${packBaseUrl}/${entry}`;
     const mod = await import(/* @vite-ignore */ url);
     const registration = mod.default || mod;
     if (!registration || typeof registration !== 'object') {
@@ -47,7 +47,8 @@ export async function loadPackFEEntry(
     }
     return registration as PackFERegistration;
   } catch (err) {
-    console.error(`[pack-loader] Failed to load FE entry ${entry}:`, err);
+    // The pack:// URL names the pack; the E2E fixture matches on it
+    console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
     return null;
   }
 }

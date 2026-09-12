@@ -1,0 +1,38 @@
+{
+  "$schema": "../../../packages/abuddy-sdk/abuddy.schema.json",
+  "id": "e2e-fixture",
+  "name": "E2E Fixture",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "entities": {
+    "Memo": "Memo"
+  },
+  "entityShapes": {
+    "Memo": {
+      "source": "src/features/memos/be/types.ts",
+      "type": "MemoEntity"
+    }
+  },
+  "relKinds": {},
+  "fe": {
+    "entry": "dist/fe.js",
+    "styles": "dist/fe.css"
+  },
+  "features": [
+    {
+      "id": "memos",
+      "settings": "src/features/memos/settings.ts",
+      "system": {
+        "entry": "src/features/memos/be/system.ts"
+      },
+      "plugin": {
+        "entry": "src/features/memos/fe/plugin.ts",
+        "label": "Memos",
+        "icon": "StickyNote"
+      },
+      "services": {}
+    }
+  ],
+  "dependencies": {},
+  "permissions": []
+}

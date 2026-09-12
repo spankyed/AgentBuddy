@@ -13,6 +13,14 @@ DEBUG_E2E=1 npm test                  # Electron process output to terminal
 
 Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
+## Rules for agents
+
+- **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod AgentBuddy alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
+- **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name, single-instance lock and data dir (`~/Library/Application Support/abuddy-test/`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
+- **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/issues/postmortem-external-pack-calendar-extraction.md, item 1).
+- **The test data dir persists across runs.** Anything a test creates accumulates; assert on unique values and clean up what you create.
+- **`abuddy` may be a shell alias** for opening the installed app. Call `node_modules/.bin/abuddy` by path.
+
 ## How the fixture works
 
 The test infrastructure lives in `@abuddy/sdk/testing` (source: `packages/abuddy-sdk/src/testing/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
@@ -26,7 +34,7 @@ When a test worker starts, the fixture runs this sequence:
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
    - Check for a `.dev` signal file in the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`). If present, `abuddy dev` is running — skip build/sync
-   - If no `.dev` signal: build the pack if `dist/` doesn't exist (using the `abuddy build` CLI binary), then sync the pack files to the dev packs directory (recursive copy, skipping symlinks, `node_modules`, and `.git`)
+   - If no `.dev` signal: always rebuild the pack (using the `abuddy build` CLI binary), then sync the pack files to the test packs directory (`~/Library/Application Support/abuddy-test/packs/`; recursive copy, skipping symlinks, `node_modules`, and `.git`)
 
 3. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` (so external packs don't need `electron` installed), then launches with `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` and `PLAYWRIGHT_TEST=true`. The Electron app starts the same as dev mode but headless (no window display or splash screen) and with error handling set to crash immediately on uncaught exceptions.
 
@@ -34,7 +42,7 @@ When a test worker starts, the fixture runs this sequence:
 
 5. **Wait for connected state** — `page.waitForFunction()` checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or `{ onboarding: ... }`. If onboarding is detected, calls `window.__disableOnboardingUI()` then waits for `running.connected`.
 
-6. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. A `console.error` listener watches for `[pack-loader] Failed to load FE entry` messages and sets a `packFeFailed` flag to bail early instead of waiting 30s.
+6. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a plugin that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
 
 7. **Provide the `appPage` and `app` fixtures** to the test.
 
@@ -75,7 +83,7 @@ await appPage.waitForSelector('.loaded-indicator');
 
 ## Plugin IDs
 
-Available for `app.navigate()`: `threads` (default), `code`, `notes`, `calendar`, `browser`, `library`, `flows`, `actions`, `prompts`, `brain`, `database`, `logs`, `settings`.
+Available for `app.navigate()`: `threads` (default), `code`, `notes`, `browser`, `library`, `flows`, `actions`, `prompts`, `brain`, `database`, `logs`, `settings`.
 
 ## Writing tests
 
@@ -142,12 +150,12 @@ PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/smoke
 2. **Check for `abuddy dev`** — looks for a `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`
    - **If `.dev` exists** (`abuddy dev` is running): skips build/sync entirely — the pack is already installed and served by the Vite dev server via the `pack://` protocol
    - **If no `.dev`**: continues to step 3
-3. **Build** (if no `dist/`): runs `abuddy build` in the pack directory
-4. **Sync** — copies the pack files (excluding `node_modules`, `.git`, symlinks) to the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/`)
+3. **Build**: always runs `abuddy build` in the pack directory (fails the run if the build fails)
+4. **Sync** — copies the pack files (excluding `node_modules`, `.git`, symlinks) to the test packs directory (`~/Library/Application Support/abuddy-test/packs/{packId}/`)
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
-6. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Bails early if `[pack-loader] Failed to load FE entry` is logged.
+6. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
-If the pack's frontend fails to load at runtime, the fixture logs a warning and continues — the test still runs so you can inspect the error.
+The in-repo fixture pack at `tests/fixtures/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
 
 ### Finding plugin IDs
 

@@ -257,7 +257,9 @@ export function createTest(options: CreateTestOptions = {}) {
         if (msg.type() === 'error') {
           console.error(`[console.error] ${msg.text()}`);
           rendererErrors.push(`[console.error] ${msg.text()}`);
-          if (msg.text().includes('[pack-loader] Failed to load FE entry')) {
+          // Only the pack under test fails fast; other installed packs' errors are just reported
+          const packId = getPackManifest()?.id;
+          if (packId && msg.text().includes(`[pack-loader] Failed to load FE entry pack://${packId}/`)) {
             rejectPackFeFailed(describeFailure('Pack FE failed to load', electronApp, rendererErrors));
           }
         }

@@ -101,9 +101,14 @@ export async function build(args: string[]) {
 
   // ── BE system compilation ────────────────────────────────────────────
   if (!manifest.builtIn) {
-    const { compiled } = await bundlePackSystems(manifest, root, outputDir);
+    const { compiled, failed } = await bundlePackSystems(manifest, root, outputDir);
     if (compiled.length > 0) {
       console.log(`  systems: ${compiled.join(', ')}`);
+    }
+    if (failed.length > 0) {
+      // dist/systems may still hold a previous build of these; the loader would pick it up
+      console.error(`\nSystem compile failed: ${failed.join(', ')}`);
+      process.exitCode = 1;
     }
   }
 

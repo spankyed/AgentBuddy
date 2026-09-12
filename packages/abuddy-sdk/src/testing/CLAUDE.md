@@ -84,7 +84,7 @@ Once resolved, `validateAppRoot()` checks that the directory contains the requir
    - Parse `abuddy.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
    - Check for `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`
      - If `.dev` exists: `abuddy dev` is running, skip build/sync entirely
-     - If no `.dev`: build the pack (if no `dist/`), then copy pack files to the dev packs directory
+     - If no `.dev`: always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), then copy pack files to the test packs directory
    - Build uses the `abuddy build` CLI binary, resolved from: pack's local `node_modules/.bin/abuddy` first, then the host app's binary, then `abuddy` on PATH
    - Sync copies files recursively, skipping symlinks, `node_modules`, and `.git` (matches the SDK's `copyDir` pattern from `pack-installer.ts`)
 
@@ -98,7 +98,7 @@ Once resolved, `validateAppRoot()` checks that the directory contains the requir
 
 5. **Wait for connected state** — checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or onboarding state. Bypasses onboarding via `window.__disableOnboardingUI()` if detected.
 
-6. **Pack plugin waiting** (if `PACK_DIR` is set) — for each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. A `console.error` listener detects `[pack-loader] Failed to load FE entry` messages and bails early instead of timing out at 30s.
+6. **Pack plugin waiting** (if `PACK_DIR` is set) — for each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. A `console.error` listener detects `[pack-loader] Failed to load FE entry pack://<packId>/...` for the pack under test and fails the test immediately with the captured renderer and Electron/API errors, instead of timing out. A plugin that never registers also fails with those errors attached.
 
 ### Test setup (`app` fixture, per test)
 

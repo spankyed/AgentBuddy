@@ -55,9 +55,22 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
     skipLibCheck: true,
     noEmit: true,
     types: ['node'],
+    // Mirrors package.json "imports": TypeScript doesn't add extensions to subpath import targets
+    paths: {
+      '#generated/*': ['./src/__generated__/*'],
+    },
   },
   include: ['src/**/*.ts', 'tests/**/*.ts', '.abuddy/generated/**/*.ts', '.abuddy/deps/**/*.d.ts'],
 }, null, 2);
+
+const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so single-file components resolve to a generic
+// component here. Checking inside SFCs needs vue-tsc.
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue';
+  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>;
+  export default component;
+}
+`;
 
 const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   name: `@abuddy-pack/${name}`,
@@ -162,6 +175,7 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
+  fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'src', 'features', name, 'feature.config.ts'),
     FEATURE_CONFIG_TEMPLATE(name),

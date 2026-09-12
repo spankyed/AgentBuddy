@@ -141,6 +141,7 @@ Only registered barrel subpaths are externalized. Deep imports like `@abuddy/sdk
 | `pack-entry-fe.ts` | FE registration: plugins, step/artifact/block FE, tiptap, app extensions |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types) |
 | `system-ids.ts` | Re-exports system ID constants from each feature |
+| `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
 | `event-channels.ts` | `PluginEventRegistry` type augmentation (plugin ID -> event types) |
 | `types.ts` | Type barrel: outgoing events + per-feature types |
 | `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` |

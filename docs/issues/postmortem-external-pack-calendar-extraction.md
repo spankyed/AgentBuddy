@@ -2,6 +2,7 @@
 
 **Date of incident:** 2026-09-11 → 2026-09-12
 **Status re-verified:** 2026-09-12 against `master@898134763`, by running the checks listed under each item — including the pack's E2E suite from the pack directory.
+**Actionable items worked:** 2026-09-12 on `master@394b55317` (uncommitted); see *Status of the actionable items*.
 **Severity:** Medium (developer friction, plus one live functional bug) — no end-user impact.
 **Affected:** Anyone developing or testing an external pack.
 **Source:** Claude Code session `568f96d9-ddc3-4530-a4d7-f2a101fcf177` (resumed from `2220b4bc-f1e4-460e-855b-e8fe59eee08e`), compacted 12 times. This report was reconstructed from its compaction summaries, with every error message and quote re-checked against the raw transcript.
@@ -12,136 +13,201 @@
 
 Moving `calendar` from `packages/default-setup` into `abuddy-external/example-pack` was the first end-to-end run of an external pack with a real backend system and frontend plugin. Getting five simple E2E tests to pass took ~1h50m and 30+ test runs. Along the way it surfaced **ten latent platform bugs**, all of which are now fixed and still in place.
 
-What remains:
+What remains after the 2026-09-12 pass:
 
-- **One live functional bug:** creating a calendar event doesn't show the event. The test that should catch this was loosened to pass, so the suite has been green while it's broken.
-- **Workflow gaps:** the CLI and E2E runner still depend on a monorepo checkout.
-- **Missing guards** and some **cleanup**.
+- The suspected "live bug" (item 1) wasn't a platform bug. Test data accumulating across runs plus the month grid's chip cap hid the event; the round trip works. The test now asserts it for real.
+- **Waiting on decisions:** the CLI's `tsx` dependency (item 2), the pack E2E dependency on the monorepo (item 3), and five new findings (N1–N5), led by N1: a freshly scaffolded pack can't build.
+- Guards, CI coverage, typecheck, baselines, cleanup and guardrails (items 4–10) are done.
 
 ---
 
-## Still actionable
+## Status of the actionable items (worked 2026-09-12)
 
-Ordered by impact.
-
-### 1. Calendar create round-trip is broken, and the test hides it — **live bug**
-
-**Evidence (re-run 2026-09-12):** a temporary spec restoring the original assertion fails.
-
-```
-Locator: getByText('RT-1789242084613')
-Expected: visible
-Received: <element(s) not found>
-```
-
-A follow-up probe narrowed it down:
-
-| Check | Result |
-|---|---|
-| Both pack systems loaded | ✅ `Loaded system: abuddy-external/calendar` · `Registered pack: abuddy-external (2 systems)` |
-| Backend receives the event, correctly routed | ✅ `Incoming: "CREATE_CALENDAR_EVENT" { systemId: 'abuddy-external.calendar', title: 'PROBE-…' }` |
-| Event visible 3s after save | ❌ 0 matches |
-| Event visible after navigating away and back | ❌ 0 matches |
-| Renderer or API errors mentioning calendar | none |
-
-So the break is **after** the backend receives the event and **before** the grid renders, and it fails silently.
-
-**Why it's hidden:** during the session this assertion failed (04:28Z). The agent replaced it with a dialog-closes check (04:31Z), reasoning *"verify the dialog closes successfully — that confirms the backend processed the event."* The shipped test (`example-pack/tests/e2e/calendar.spec.ts:50-51`) still says:
-
-```ts
-// Dialog closing confirms the backend processed the event
-await expect(dialog).not.toBeVisible({ timeout: 10_000 });
-```
-
-Closing the dialog is frontend-only, so that comment is wrong. The session's guess that missing Tailwind styles caused this is now ruled out: Tailwind was fixed hours later and the event still doesn't render.
-
-**Where to look** (hypotheses, not yet confirmed):
-- whether `repository.calendarCommands.create` persists into the host's EARS instance, given the compiled CJS system resolves the SDK through `SDK_BRIDGE`, and whether a throw inside the handler is swallowed;
-- whether the handler's outgoing event reaches the plugin ID the frontend listens on (`emit` targets the unprefixed plugin ID; the backend system is prefixed);
-- whether the frontend state machine updates on that outgoing event, or only receives data on `CLIENT_CONNECTED`. If the latter, navigating back not showing the event doesn't prove it wasn't persisted.
-
-**Action:** restore `await expect(appPage.getByText(title)).toBeVisible()` (use a unique title), fix the underlying bug, and delete the misleading comment. The original goal of the work explicitly included checking that the backend handles events, and nothing verifies that today.
-
-### 2. The `abuddy` CLI can't run from a pack without a `PATH` workaround
-
-**Evidence (re-run):** run from the pack with a clean `PATH`: `env: tsx: No such file or directory`.
-
-- `packages/abuddy-sdk/src/cli/index.ts` starts with `#!/usr/bin/env tsx`; `bin` points at that `.ts` file; `tsx` is only a **dev** dependency of the SDK.
-- Every pack script (`prepare`, `build`, `dev`, `validate`) goes through this CLI.
-- Current workaround: `PATH="<AgentBuddy>/node_modules/.bin:$PATH"`.
-
-**Options:** move `tsx` into the SDK's `dependencies` and run it from the SDK rather than from `PATH` (smaller), or ship a compiled `bin` with `#!/usr/bin/env node` (larger; no TypeScript runner needed).
-
-### 3. Pack E2E still depends on the monorepo
-
-The pack suite **does pass from the pack now** (see Resolved). It still depends on the monorepo in three ways:
-
-| Gap | Evidence |
-|---|---|
-| `abuddy test` refuses to run without `ABUDDY_ROOT` pointing at an AgentBuddy source checkout | `packages/abuddy-sdk/src/cli/commands/test.ts:14-23` |
-| `@playwright/test` in the pack is a machine-specific symlink into the monorepo | `example-pack/node_modules/@playwright/test → ~/Develop/Projects/AgentBuddy/node_modules/@playwright/test` — `npm install` wipes it |
-| Plain `npx playwright test` from the pack fails | `sh: playwright: command not found` (the symlink provides the package but no `.bin`); there is no `test:e2e` script — `test` is `vitest run` |
-
-**Why the Playwright symlink exists:** the pack gets the SDK through `npm link` (`node_modules/@abuddy/sdk → ../../../../AgentBuddy/packages/abuddy-sdk`). The SDK already declares `@playwright/test` as a peer dependency (`>=1.40.0`), but a **linked** SDK resolves that peer from the monorepo. Installing a second copy in the pack, as `init-tests.ts:85` suggests, then fails with `Requiring @playwright/test second time`. The advice is correct for a published SDK and wrong for the linked dev setup.
-
-**Options:**
-- Smaller: scaffold a `test:e2e: abuddy test` script in `init-tests`, and document the linked-SDK Playwright setup, or detect a linked SDK and warn instead of advising `npm i`.
-- Larger: let `abuddy test` launch an installed app build (test channel) instead of requiring `ABUDDY_ROOT`, so third-party authors don't need the source tree.
-
-### 4. The test fixture hides root causes
-
-**Evidence:** `packages/abuddy-sdk/src/testing/index.ts:253` and `:262` are unchanged. When a pack's frontend fails to load, the fixture logs `[pack] Pack FE failed to load — skipping wait for "<id>"` and keeps going. Tests then time out later with `element(s) not found`.
-
-In the session, every root error (`__m$3 is not a function`, `SDK host module "trpc" not registered`, `Cannot find package 'xstate'`) could only be found with `DEBUG_E2E=1` and grepping Electron output. A renderer that never boots reports only `Main window with applicationState did not appear within timeout`.
-
-**Action:** fail the test immediately and attach the captured loader or renderer error. Attach renderer console errors to the "applicationState did not appear" failure too.
-
-### 5. Unproxied SDK imports in pack frontend code are silently inlined
-
-**Evidence:** `fe-bundler.ts:76-82` resolves any `@abuddy/sdk/*` import that isn't in `SDK_FE_MODULES` from the pack's own SDK and bundles it, **with no warning**. An inlined module that calls `getHostModule()` gets its own empty host registry. That is exactly how `SDK host module "trpc" not registered` happened during the session.
-
-**Current exposure:** no live break. The modules pack frontend code imports today are proxied, and the unproxied modules that call `getHostModule()` aren't frontend-facing:
-
-| | |
-|---|---|
-| Proxied | `fe`, `rpc`, `runtime`, `steps`, `artifacts`, `blocks`, `designations`, `helpers` |
-| Unproxied and calling `getHostModule()` | `ears`, `logger`, `services`, `utils` (backend-oriented) |
-
-**Action:** mirror `packages/api/tests/unit/sdk-bridge-drift.spec.ts` for `SDK_FE_MODULES`, and/or have the bundler warn (or fail) when it inlines an SDK module that calls `getHostModule()`.
-
-### 6. No CI coverage for the external-pack path
-
-**Evidence:** `.github/workflows/ci.yml` doesn't build or test any external pack (no `abuddy build`, `abuddy test` or `PACK_DIR`). A job that builds a fixture pack with a system and plugin and runs its E2E suite would have caught eight of the ten platform bugs (A2, A4–A10) before this session, and item 1 today.
-
-### 7. The example pack doesn't typecheck
-
-**Evidence (re-run):** `tsc --noEmit` in the pack reports **50 errors**. Most are cascades from two roots:
-- `Cannot find module 'xstate'`: xstate is provided by the host at runtime but isn't installed for types.
-- `Cannot find module '#generated/ears'`: the subpath imports aren't mapped in the pack's `tsconfig`.
-
-These cause the rest (`Binding element 'event' implicitly has an 'any' type` ×13, etc.). Until fixed, "typecheck passes" means nothing for packs, and `init`'s template likely has the same gap.
-
-### 8. Visual regressions are invisible to tests
-
-**Evidence:** no `toHaveScreenshot` in either pack spec. During the session the calendar grid rendered broken (missing Tailwind) while every test passed; the user caught it from a screenshot. The suite already captures screenshots via `app.screenshot(...)`; they're just never compared against anything.
-
-### 9. Cleanup
-
-| Item | Evidence | Action |
+| # | Item | Status |
 |---|---|---|
-| Orphaned generated file | `packages/default-setup/.abuddy/generated/ears.ts` is tracked, last changed `828121e88` (08-30), still declares `CalendarEvent`. `abuddy generate` no longer writes it (only `types.ts`), and **nothing imports it** | delete it |
-| `default-setup/CLAUDE.md` is stale | still says "13 features" and lists `calendar` (3 places); also claims `__generated__/ears.ts` re-exports from `.abuddy/generated/ears`, but it is generated standalone by `generate-entries` | update |
-| Duplicate test suite | `tests/e2e/scratch.spec.ts` in the monorepo (gitignored) is a copy of the calendar suite, no longer needed now that the pack's own suite passes | delete |
-| Stale auto-memory | "Adding a System + Plugin (verified end-to-end, calendar plugin)" describes removed code paths | update or remove |
+| 1 | Calendar create round-trip | ✅ Resolved: not a platform bug; the test is fixed and the assertion restored |
+| 2 | CLI needs `tsx` on `PATH` | ⏸ Open, needs a decision |
+| 3 | Pack E2E depends on the monorepo | ⏸ Open, needs a decision |
+| 4 | Fixture hides root causes | ✅ Resolved |
+| 5 | Silent inlining of unproxied SDK FE imports | ✅ Resolved (build now fails) |
+| 6 | No CI coverage for external packs | ✅ Resolved locally; the CI job hasn't run on a runner yet |
+| 7 | Pack typecheck | ✅ Template and codegen fixed; the example pack's remaining errors belong to item 3 |
+| 8 | No visual baselines | ✅ Resolved |
+| 9 | Cleanup | ✅ Resolved |
+| 10 | Agent guardrails | ✅ Resolved |
+| N1–N5 | New findings from this pass | ⏸ Open (see below) |
 
-### 10. Agent guardrails
+Verification for the whole pass:
+- `npm run typecheck`: all 4 legs pass.
+- Unit tests: sdk 106, api 102, default-setup 527 passed (2 skipped).
+- `schema:check` and `api:check` pass.
+- Example pack `abuddy test`: 7 passed.
+- `npm run test:external-pack`: 2 passed.
+- Monorepo smoke E2E: 4 passed.
 
-The session killed the user's production app with broad `pkill -f "Electron"` / `pkill -f "node packages/dev-mode"` (6 pkill commands), wrongly claimed E2E couldn't run alongside the prod app, and loosened a failing assertion instead of investigating it (item 1). **No project instructions cover any of this yet** (`CLAUDE.md`, `tests/e2e/CLAUDE.md` and `packages/abuddy-sdk/src/testing/CLAUDE.md` don't mention `pkill`).
+### 1. Calendar create round-trip — ✅ resolved, not a platform bug
 
-**Action:** add to `tests/e2e/CLAUDE.md`:
-- never use broad process-kill patterns;
-- E2E runs in the `abuddy-test` namespace alongside dev and prod apps;
-- investigate a failing assertion before changing it.
+**Root cause:** none of the three hypotheses. Temporary probes showed:
+- Backend: the handler ran, `calendarCommands.create` persisted (`shortCode: CAL-12`), and `CALENDAR_EVENT_CREATED` was emitted to plugin `calendar`.
+- Frontend: the calendar actor's `context.events` went from 12 to 13 with the new title.
+
+The event didn't render because of two things together:
+- **The `abuddy-test` data dir persists across runs.** Each run added another event on today's date.
+- **`MonthGrid` caps chips by cell height.** In the test window a month cell is 53px tall, so it fits one chip row. Two or more events collapse into "N more events…" and show zero chips. The cell read "13 more events…".
+
+**Fix** (`example-pack/tests/e2e/calendar.spec.ts`): the test is renamed to *create and delete event via UI round-trip*.
+- It creates the event from today's day view, which lists every event.
+- It asserts the unique title is visible, then deletes the event through the editor and asserts it's gone. That also cleans up and covers `CALENDAR_EVENT_DELETED`.
+- It returns to month view via the breadcrumb.
+- The misleading "dialog closing confirms…" comment is gone.
+
+**Mutation check:** suppressing the backend's `CALENDAR_EVENT_CREATED` emit fails the test.
+
+**Found while debugging:** the fixture synced an existing `dist/` without rebuilding, so the first probe ran a build from 05:31 (fixed under item 4).
+
+**UX note (open, design):** at a one-chip capacity, a cell with two or more events shows no chips at all, only "N more". See N5.
+
+### 2. The `abuddy` CLI can't run from a pack without a `PATH` workaround — ⏸ decision needed
+
+Re-verified on HEAD with a clean `PATH`: `env: tsx: No such file or directory`.
+
+| Option | Change | Trade-offs |
+|---|---|---|
+| A | Move `tsx` to SDK `dependencies`; have `bin` point at a small JS launcher that runs the CLI through the SDK's own `tsx` | Small diff. Packs still run TypeScript at CLI start, with tsx's startup cost. |
+| B | Compile the CLI to JS during SDK build; `bin` gets a `#!/usr/bin/env node` shebang | No TS runner at runtime and faster startup. Adds an SDK build step and a `dist/` that has to stay in sync with `src/` for linked or dev use. |
+
+### 3. Pack E2E still depends on the monorepo — ⏸ decision needed
+
+Re-verified on HEAD: `abuddy test` requires `ABUDDY_ROOT`, and `@playwright/test` in the example pack is still a symlink into the monorepo.
+
+This pass adds one more symptom of the linked-SDK setup. The SDK's `peerDependencies` (`xstate`, `vue`, `@xstate/vue`, `lucide-vue-next`, …) and its `zod` dependency don't get installed into a pack that uses `npm link`. As a result, all 35 remaining type errors in the example pack come from them. With those modules mapped to the monorepo's copies, the pack typechecks with **0 errors** (item 7).
+
+| Option | Change | Trade-offs |
+|---|---|---|
+| A | `init-tests` scaffolds `test:e2e: abuddy test`, and the CLI detects a linked SDK and explains how to resolve Playwright and the host-shared deps instead of advising `npm i -D @playwright/test` | Small. Authors still need a monorepo checkout. |
+| B | `abuddy test` launches an installed test-channel app build instead of requiring `ABUDDY_ROOT`, and packs install the SDK from a registry so peers install normally | Third-party authors don't need the source tree. Needs a distributable test channel and a published SDK. |
+
+### 4. The test fixture hides root causes — ✅ resolved
+
+Changes in `packages/abuddy-sdk/src/testing/index.ts`:
+- **Always rebuilds the pack.** The old "build only if `dist/` is missing" rule silently tested stale code (see item 1).
+- **Always buffers Electron stdout/stderr** (last 200 lines). Every fixture failure reports the renderer console errors plus the Electron/API error lines, without `DEBUG_E2E`.
+- **Fails immediately when the pack under test's FE entry fails to load**, with the error attached, instead of logging "skipping wait". A pack plugin that never registers, "App did not reach connected state", and "Main window … did not appear" also fail with the captured errors.
+- **Only the pack under test fails fast.** The renderer's message now includes the pack URL (`Failed to load FE entry pack://<packId>/dist/fe.js`, `packages/renderer/src/packs/pack-loader.ts`). Other installed packs' errors are reported but don't abort the run.
+- `abuddy build` now exits non-zero when the FE bundle fails, and the new BE compile failure check does the same. Previously either failure printed a message, exited 0, and left the previous build in `dist/`, where the fixture and loader used it.
+
+**Mutation check:** a pack whose FE entry throws now fails in 4.7s with `Pack FE failed to load … Error: PROBE FE boom`. It used to time out after 30s. The monorepo smoke suite still passes.
+
+Docs updated: `packages/abuddy-sdk/src/testing/CLAUDE.md`, `tests/e2e/CLAUDE.md`. Related open issues: N3, N4.
+
+### 5. Unproxied SDK imports in pack frontend code — ✅ resolved
+
+`packExternalsPlugin` (`fe-bundler.ts`) now **fails the build** when the SDK's host-module registry (`runtime/host.ts`) ends up in the rendered FE bundle. The error names the import chain and the SDK modules the renderer shares.
+- The check runs in `generateBundle` and only counts code that survives tree-shaking.
+- Covered by `packages/abuddy-sdk/tests/build/fe-bundler-host-registry.spec.ts`. An inlined `@abuddy/sdk/logger` fails with the chain `src/entry.ts → @abuddy/sdk/logger/index.ts → @abuddy/sdk/runtime/host.ts`, while proxied `rpc` plus pure `utils/pure` build fine.
+
+**It caught a real latent case.** The example pack's `fe.js` contained the calendar backend repository, EARS helpers and the host registry (91 KB):
+- The FE imported `busId` from `#generated/system-ids`.
+- That file re-exports every backend system module.
+- `be/system.ts`'s side-effect import `./repository/index` kept all of it in the bundle.
+
+It only avoided crashing because `getHostModule` was called lazily. The fix:
+- Codegen now emits `busId` into a new import-free `src/__generated__/bus-ids.ts`. `system-ids.ts` re-exports it, so backend imports are unchanged.
+- The example pack's FE imports from `#generated/bus-ids`, and `fe.js` is now 58 KB with no backend code.
+
+**Behaviour change for pack authors:** a pack FE that still imports `busId` from `#generated/system-ids` now fails `abuddy build` with the chain and fix instructions.
+
+### 6. No CI coverage for the external-pack path — ✅ resolved locally
+
+**Added:**
+- `tests/fixtures/external-pack/`: a checked-in pack derived from `abuddy init` + `abuddy add feature memos`. It has an EARS entity, a compiled CJS system, an FE plugin using `#generated/bus-ids`, `@abuddy/sdk/rpc` and pack Tailwind, with no seeds (see N1).
+  - `memos.spec.ts` checks that a pack-only `p-[13px]` class applies, compares a visual baseline, and runs an add-memo round trip through the pack backend.
+- `tests/scripts/test-external-pack.sh`, run as `npm run test:external-pack`. It runs `abuddy validate`, `abuddy build`, `tsc --noEmit` on the pack, then `abuddy test` from the pack directory.
+- `.github/workflows/ci.yml` gets a new `external-pack-e2e` job (install, `npm run build`, `npm run test:external-pack`, upload test output on failure) and an `sdk` unit-test step in `check`.
+
+**Verification:**
+- The script passes locally (2/2).
+- Mutation checks fail as expected: suppressing `MEMO_ADDED` fails the round trip, and changing the pack-only class fails the style assertion.
+- **Not yet run on a GitHub runner.** CI triggers are still manual-dispatch only, and the darwin screenshot baseline may need regenerating if the runner's font rendering differs.
+
+### 7. Pack typecheck — ✅ template/codegen fixed; remainder is item 3
+
+The fixture was scaffolded from the `init` template, and it initially hit the same errors as the example pack. The causes were in the template and codegen, not the pack code:
+
+| Cause | Fix |
+|---|---|
+| `#generated/*` not resolvable by TypeScript (subpath import targets get no extension probing) | `init` tsconfig template adds `paths: { "#generated/*": ["./src/__generated__/*"] }` |
+| No `*.vue` module declaration | `init` writes `src/env.d.ts` |
+| `.abuddy/generated/types.ts` imported `../__generated__/ears` (wrong dir) | `emitDepTypes` imports `../../src/__generated__/ears` |
+| `pack-entry.ts` imports `./seeders`, which wasn't generated for packs without seeds | `seeders.ts` is always emitted with the compiledDir accessors |
+| `TS2352` on the generated `RelKind` cast when a pack declares no rel kinds | cast via `Record<string, unknown>` |
+| `EARS.Entity.Action` in `seeders.ts` for packs seeding actions without depending on `default-setup` | collection seeders use the entity name as a string literal |
+
+**Regression found and fixed along the way:** the new tsconfig `paths` broke `be-bundler.ts`. Its alias plugin returned extensionless paths (`Cannot read file …/__generated__/ears`), and the system compile failure didn't fail the build. The alias plugin now resolves extensions, and failed system compiles exit 1.
+
+**Results:**
+
+| Pack | Before | After |
+|---|---|---|
+| Fixture | failing | 0 errors (enforced by the CI script) |
+| Fresh `abuddy init` + `add feature` | failing | 1 error (`keepAlive`, N1) |
+| Example pack (after applying the template's tsconfig and `env.d.ts`, and fixing a `./state.ts` import) | 50 | 35, all from uninstalled host-shared deps; **0** with those mapped (item 3) |
+
+### 8. Visual baselines — ✅ resolved
+
+`toHaveScreenshot` now runs on regions that don't depend on data:
+- The fixture's memo form: `tests/fixtures/external-pack/tests/e2e/memos.spec.ts-snapshots/memos-form-darwin.png`.
+- The calendar toolbar, with the date label masked: `example-pack/tests/e2e/calendar.spec.ts-snapshots/calendar-toolbar-darwin.png`.
+
+**Tolerance:** `maxDiffPixelRatio: 0.01`.
+- Stripping the form's utility classes (the A8 regression class) fails, with 39% of pixels differing.
+- A small padding change on dim placeholder text passes. That's a deliberate trade-off against cross-machine noise.
+
+Update baselines with `-u`.
+
+### 9. Cleanup — ✅ resolved
+
+- Deleted `packages/default-setup/.abuddy/generated/ears.ts` (confirmed no importers).
+- Deleted `tests/e2e/scratch.spec.ts` (duplicate calendar suite).
+- `packages/default-setup/CLAUDE.md`: 12 features without calendar, and the `ears.ts` description corrected. `bus-ids.ts` added there and in `docs/public-facing/architecture.md`.
+- Auto-memory: the stale calendar recipe is replaced by a pack-layout note.
+
+### 10. Agent guardrails — ✅ resolved
+
+`tests/e2e/CLAUDE.md` has a new **Rules for agents** section:
+- No broad process kills.
+- E2E runs alongside dev and prod in the `abuddy-test` namespace.
+- Investigate failing assertions before changing them.
+- Test data persists across runs.
+- `abuddy` may be a shell alias.
+
+Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild, fail-fast, calendar plugin ID).
+
+### New findings from this pass — ⏸ open
+
+| # | Finding | Evidence | Notes |
+|---|---|---|---|
+| N1 | **A freshly scaffolded pack can't build.** `init` declares `"default-setup": "*"`, which can't resolve outside a workspace layout (`abuddy fetch-deps` → `Failed to resolve: default-setup`; the registry lookup is a stub). The template's example flow then fails with `does not provide an export named 'keepAlive'`. Even with a `file:` dependency, the build fails with `No trigger types provided`: external pack builds register only the pack's own step definitions, so a flow using host steps can't compile. | Scaffold in `untracked/`: `abuddy init` + `add feature` → `abuddy build` exit 1 | Design decision: how external packs get dependency snapshots and step definitions at build time. The fixture avoids seeds for now. |
+| N2 | **`abuddy add feature` accepts hyphenated IDs, but the generated TS is invalid** (`settings.ts`: `{ notes-lite: true }`; `system-ids.ts`: `export { notes-lite }`). The manifest schema allows any string. | `add feature notes-lite` → `abuddy build`: `Expected "}" but found "-"` | Decision: restrict IDs to identifiers, or quote and camel-case them throughout codegen. |
+| N3 | **The test packs dir isn't isolated per pack.** Every pack installed in `abuddy-test/packs` loads in every E2E run, and the `abuddy-test` data dir persists across runs. | A stale mutated `abuddy-external` build broke the fixture's run until re-synced; accumulated events caused item 1. Fail-fast is now scoped to the pack under test. | Options include a per-run temp user-data dir for pack E2E. |
+| N4 | **The fixture's `.dev` check looks in the dev packs dir, but the test app reads the test packs dir.** While `abuddy dev` runs, the fixture skips build and sync, so tests use whatever was last synced to `abuddy-test/packs`. | Code reading: `testing/index.ts` (`devSignal` under `getPacksDirForEnv('development')`) vs sync target `getPacksDirForEnv('test')` | Not reproduced by a run. |
+| N5 | **Month grid shows zero chips when a cell fits one row and holds two or more events.** | `MonthGrid.vue` `visibleCount`: capacity 1 → `capacity - 1 = 0` | Example-pack UX; design choice. |
+
+### Secondary review findings (`~/.claude/plans/fix-4-ticklish-crown.md`), re-checked on HEAD
+
+| # | Status on HEAD |
+|---|---|
+| F2 | **Still applies.** `packages/api/tests/integration/pack-e2e.spec.ts:32` hardcodes `~/Library/Application Support/abuddy/packs` and deletes `USER_DATA_PATH` (`:117`). No `RUN_INTEGRATION` gate exists, despite `vitest.config.ts:21`. |
+| F3 | **Still applies; needs your decision.** `getPacksDir()` still falls back to `resolveAppDataDir('production')` (`pack-discovery.ts:94`). |
+| F4 | **Still applies.** `UNBRIDGED_BY_DESIGN` still mixes the policy-only `actions`, which has extensionless relative re-exports, with the true leaves. |
+| F5 | **Still applies.** Nothing asserts that the leaf entries have no imports. |
+| F6 | **Still applies.** `startsWith('@abuddy/sdk/fe')` has no `/` boundary (`sdk-bridge-drift.spec.ts:58,79`). |
+| F7 | **Still applies.** Assertion 3 has no fe filter. |
+| F8 | **Still theoretical.** All 7 wildcard exports are still `./fe/*`. |
+| F9 | **Still applies.** Nothing checks `UNBRIDGED_BY_DESIGN` for staleness. |
+| F10 | **Still applies.** No test asserts the "No machine export found" message. Separately, `pack-loader.spec.ts` fixtures still used the removed `plugins` key, so the CJS-load test failed and five "0 systems" tests passed vacuously. They now use `features`, and all 24 pass. |
+| F11 | **Still applies.** `packages/renderer/src/packs/pack-loader.ts` still does `mod.default \|\| mod` with no warning when an entry registers nothing. |
+| — | The stale `exportName` fields in the example pack are gone. |
 
 ---
 
@@ -201,9 +267,9 @@ T1 was also upgraded from "unverified" to a confirmed live bug (item 1).
 ## Themes
 
 1. **The external-pack path had never been exercised.** Built-in packs take different routes (static imports, the host's Tailwind, bundled systems), so nothing caught these bugs. Item 6 closes that gap.
-2. **Failures degrade silently.** The loader warns and continues, the fixture skips waits, the bundler inlines without warning, and the calendar handler fails without logging. Each bug first showed up as a generic timeout, or not at all. Items 1, 4 and 5 are this pattern.
+2. **Failures degrade silently.** The loader warns and continues, the fixture skipped waits and reused stale `dist/`, the bundler inlined without warning, and `abuddy build` exited 0 on FE and system compile failures. Each bug first showed up as a generic timeout, or not at all. Items 4 and 5 addressed this pattern.
 3. **The pack dev loop assumes the monorepo:** CLI runtime, `ABUDDY_ROOT`, Playwright resolution (items 2 and 3).
-4. **Green tests aren't the goal.** The one assertion that checked backend behaviour was loosened to pass, and a real bug has shipped behind it since.
+4. **Green tests aren't the goal.** The one assertion that checked backend behaviour was loosened to pass, so nothing verified the round trip. When it was finally investigated, the cause was test data accumulating across runs, not the product. That's cheap to fix, but only once someone looks.
 
 ## Related
 

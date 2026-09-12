@@ -7,13 +7,13 @@ export async function bundlePackSystems(
   manifest: PackManifest,
   packDir: string,
   outputDir: string,
-): Promise<{ compiled: string[] }> {
+): Promise<{ compiled: string[]; failed: string[] }> {
   const features = manifest.features ?? [];
   const systemEntries = features
     .filter(f => f.system?.entry)
     .map(f => ({ id: f.id, entry: f.system!.entry }));
 
-  if (systemEntries.length === 0) return { compiled: [] };
+  if (systemEntries.length === 0) return { compiled: [], failed: [] };
 
   const esbuild = await import('esbuild');
   const systemsDir = path.join(outputDir, 'systems');
@@ -33,9 +33,14 @@ export async function bundlePackSystems(
   if (Object.keys(subpathImports).length > 0) resolvePlugins.push(makeSubpathPlugin(subpathImports, packDir));
 
   const compiled: string[] = [];
+  const failed: string[] = [];
   for (const { id, entry } of systemEntries) {
     const entryPath = path.resolve(packDir, entry);
-    if (!fs.existsSync(entryPath)) continue;
+    if (!fs.existsSync(entryPath)) {
+      console.error(`Failed to compile system ${id}: entry not found at ${entry}`);
+      failed.push(id);
+      continue;
+    }
 
     const outFile = path.join(systemsDir, `${id}.cjs`);
     try {
@@ -54,10 +59,11 @@ export async function bundlePackSystems(
       compiled.push(id);
     } catch (err) {
       console.error(`Failed to compile system ${id}:`, err);
+      failed.push(id);
     }
   }
 
-  return { compiled };
+  return { compiled, failed };
 }
 
 function readTsconfigAliases(packDir: string): Record<string, string> {
@@ -141,7 +147,8 @@ function makeAliasPlugin(aliases: Record<string, string>): import('esbuild').Plu
         const filter = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`);
         build.onResolve({ filter }, args => {
           const rest = args.path.slice(prefix.length + 1);
-          return { path: path.resolve(target, rest) };
+          const resolved = resolveWithExtensions(path.resolve(target, rest));
+          return resolved ? { path: resolved } : undefined;
         });
       }
     },
