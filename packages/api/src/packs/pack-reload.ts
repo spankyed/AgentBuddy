@@ -33,8 +33,8 @@ const logger = createLogger('pack-reload');
 
 interface ReloadResult {
   newSystemIds: string[];
-  shutdown?: () => void;
-  createDefaultSettings?: () => void;
+  onShutdown?: () => void;
+  onInit?: () => void;
   afterRegister?: () => void;
 }
 
@@ -62,10 +62,10 @@ async function reloadPack(
   const result = loadFresh();
   if (!result) return;
 
-  if (result.shutdown) {
-    registerShutdownHook(result.shutdown, packId);
+  if (result.onShutdown) {
+    registerShutdownHook(result.onShutdown, packId);
   }
-  result.createDefaultSettings?.();
+  result.onInit?.();
   result.afterRegister?.();
 
   const systemIds = [...new Set([...oldSystemIds, ...result.newSystemIds])];
@@ -107,8 +107,8 @@ export async function reloadExternalPack(
 
     return {
       newSystemIds: Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`),
-      shutdown: pack.boot?.shutdown,
-      createDefaultSettings: pack.boot?.createDefaultSettings,
+      onShutdown: pack.boot?.onShutdown,
+      onInit: pack.boot?.onInit,
       afterRegister: () => {
         seedPackData(
           [pack],
@@ -145,8 +145,8 @@ export async function reloadBuiltInPack(
 
     return {
       newSystemIds: (mod.registration.systems as PackSystemDef[]).map(s => s.id),
-      shutdown: mod.registration.boot?.shutdown,
-      createDefaultSettings: mod.registration.boot?.createDefaultSettings,
+      onShutdown: mod.registration.boot?.onShutdown,
+      onInit: mod.registration.boot?.onInit,
     };
   }, path.join(packInfo.dir, 'dist'));
 }

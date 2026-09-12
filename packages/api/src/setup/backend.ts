@@ -56,22 +56,22 @@ export async function setupBackend(): Promise<void> {
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const info of getBuiltInPackInfos()) {
     const hooks = getPackBootHooks(info.id);
-    if (hooks?.shutdown) {
-      registerShutdownHook(hooks.shutdown, info.id);
+    if (hooks?.onShutdown) {
+      registerShutdownHook(hooks.onShutdown, info.id);
     }
   }
   for (const pack of externalPacks) {
-    if (pack.boot?.shutdown) {
-      registerShutdownHook(pack.boot.shutdown, pack.manifest.id);
+    if (pack.boot?.onShutdown) {
+      registerShutdownHook(pack.boot.onShutdown, pack.manifest.id);
     }
   }
 
   // ── Hydrate (policy now sees all entity types from all packs)
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
 
-  // ── Default settings for ALL packs (built-in + external)
+  // ── Initialize ALL packs (built-in + external)
   for (const hooks of getBootHooks()) {
-    hooks.createDefaultSettings?.();
+    hooks.onInit?.();
   }
 
   // ── Host migrations ─────────────────────────────────────────────────

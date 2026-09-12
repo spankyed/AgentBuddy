@@ -56,8 +56,8 @@ async function exportJSON() {
       shardedPersistence: persistence
     });
 
-    // Initialize default settings if they don't exist
-    for (const hooks of getBootHooks()) hooks.createDefaultSettings?.();
+    // Initialize packs (ensure default data exists)
+    for (const hooks of getBootHooks()) hooks.onInit?.();
 
     const args = process.argv.slice(2);
     let data: any;

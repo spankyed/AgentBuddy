@@ -295,10 +295,10 @@ export function getPackContributions(packId: string): PackContributions | null {
 
   const bootHooks: string[] = [];
   if (reg.boot?.earlySystem) bootHooks.push('earlySystem');
-  if (reg.boot?.createDefaultSettings) bootHooks.push('createDefaultSettings');
+  if (reg.boot?.onInit) bootHooks.push('onInit');
   if (reg.boot?.seedManifest) bootHooks.push('seedManifest');
   else if (reg.boot?.seed) bootHooks.push('seed');
-  if (reg.boot?.shutdown) bootHooks.push('shutdown');
+  if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
 
   return {
     systems: reg.systems.map(s => s.id),

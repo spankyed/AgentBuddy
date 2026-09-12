@@ -28,8 +28,8 @@ async function run() {
   console.log('Resetting database — wiping all LMDB data...');
   await resetLmdbFiles();
 
-  console.log('Recreating default settings...');
-  for (const hooks of getBootHooks()) hooks.createDefaultSettings?.();
+  console.log('Initializing packs...');
+  for (const hooks of getBootHooks()) hooks.onInit?.();
 
   console.log('Database reset complete.');
   closePersistence();

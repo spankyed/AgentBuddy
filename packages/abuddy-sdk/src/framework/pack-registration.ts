@@ -28,8 +28,8 @@ export interface PackSeedManifest {
 
 export interface PackBootHooks {
   earlySystem?: AnyStateMachine;
-  createDefaultSettings?: () => void;
-  shutdown?: () => void;
+  onInit?: () => void;
+  onShutdown?: () => void;
   seed?: () => void;
   seedManifest?: PackSeedManifest;
 }

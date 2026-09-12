@@ -85,10 +85,10 @@ export function activatePack(
     return false;
   }
 
-  if (pack.boot?.shutdown) {
-    registerShutdownHook(pack.boot.shutdown, packId);
+  if (pack.boot?.onShutdown) {
+    registerShutdownHook(pack.boot.onShutdown, packId);
   }
-  pack.boot?.createDefaultSettings?.();
+  pack.boot?.onInit?.();
 
   seedPackData(
     [pack],
