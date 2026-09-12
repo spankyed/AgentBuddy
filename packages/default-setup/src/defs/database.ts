@@ -17,7 +17,7 @@ import {
 
 export {
   getEntitiesOfType, getAllEntityTypes, getAttr, getAttrs,
-  removeRelation, destroyEntity, prepareEntity,
+  createRelation, removeRelation, removeRelationById, destroyEntity, prepareEntity,
   getAll, getAllAttributeKinds, getAttributeStats, getAllRelationKinds,
   getRoles, grantRole, revokeRole,
 } from '@abuddy/sdk/ears';

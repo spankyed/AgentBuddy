@@ -36,7 +36,8 @@ destroyEntity(id)     delete an entity
 createEntityWithDefaults(type, attrs)   create with auto-generated fields
 updateEntity(id, attrs)                 update entity attributes
 createRelation(sourceId, kind, targetId)   create a relation
-removeRelation(relationId)                 remove a relation
+removeRelation(sourceId, kind, targetId?)  remove matching relation(s)
+removeRelationById(relationId)             remove one relation by its own id
 
 QUERY API (qx) — use to find entities before mutating:
 

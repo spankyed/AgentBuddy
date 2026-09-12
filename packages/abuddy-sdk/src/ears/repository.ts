@@ -41,7 +41,6 @@ export {
 export {
   prepareEntity, createEntityWithDefaults, updateEntity,
   createRelation as repoCreateRelation, removeRelation as repoRemoveRelation,
-  grantRole as repoGrantRole, revokeRole as repoRevokeRole,
 } from './transaction-helpers';
 
 export { RepositoryError, RepositoryErrorCode } from './repository-errors';

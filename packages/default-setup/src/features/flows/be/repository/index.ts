@@ -1,4 +1,4 @@
-import { registerRepository, RepositoryError, RepositoryErrorCode, qx, tx, getAttr, removeRelation, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
+import { registerRepository, RepositoryError, RepositoryErrorCode, qx, tx, getAttr, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
 import { edgeStore, filterSystemFields } from '@abuddy/sdk/ears/internals';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -544,7 +544,7 @@ export const flowsCommands = {
       });
       
       // Remove all edges
-      edgesToRemove.forEach(edgeId => removeRelation(edgeId));
+      edgesToRemove.forEach(edgeId => removeRelationById(edgeId));
       
       // Remove the CONTAINS relationship from flow to node
       const containsRelIds = edgeStore.relIds({
@@ -552,7 +552,7 @@ export const flowsCommands = {
         relationType: EARS.RelKind.CONTAINS,
         targetEntity: nodeId,
       });
-      containsRelIds.forEach((relId: any) => removeRelation(relId));
+      containsRelIds.forEach((relId: any) => removeRelationById(relId));
 
       // Remove INSTANCE_OF relationships (for action/llm nodes)
       const instanceOfTargets = qx(nodeId)
@@ -565,7 +565,7 @@ export const flowsCommands = {
           relationType: EARS.RelKind.INSTANCE_OF,
           targetEntity: targetId,
         });
-        instanceOfRelIds.forEach((relId: any) => removeRelation(relId));
+        instanceOfRelIds.forEach((relId: any) => removeRelationById(relId));
       });
       
       // Finally, delete the node entity
@@ -574,7 +574,7 @@ export const flowsCommands = {
   
   deleteEdge: (edgeId: EARS.EntityId): void => {
     // Directly remove the relation using its ID
-    removeRelation(edgeId);
+    removeRelationById(edgeId);
   },
   
   updateEdge: (
@@ -585,7 +585,7 @@ export const flowsCommands = {
     newTarget: EARS.EntityId
   ): { newRelId: EARS.EntityId } => {
     // First remove the old relation
-    removeRelation(edgeId);
+    removeRelationById(edgeId);
     
     // Then create a new relation with the new connections
     tx(newSource).link(EARS.RelKind.TRANSITIONS_TO, newTarget);
@@ -649,7 +649,7 @@ export const flowsCommands = {
     });
     remainingRelations.forEach((relId: any) => {
       try {
-        removeRelation(relId);
+        removeRelationById(relId);
       } catch (error) {
         logger.warn('Error removing relation during flow deletion', { relId, error });
       }

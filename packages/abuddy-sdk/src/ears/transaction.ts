@@ -2,7 +2,7 @@ import {
   destroyEntity,
   putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
   grantRole, revokeRole,
-  addRelation, updateRelation, removeRelation,
+  addRelation, updateRelation, removeRelationById,
   createEntity,
   getRoles,
 } from './attribute-storage';
@@ -91,7 +91,7 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false)
       updateRelation(rel, u.sourceEntity, u.targetEntity, u.info);
       return self;
     },
-    unlink: (rel: EARS.EntityId) => (removeRelation(rel), self),
+    unlink: (rel: EARS.EntityId) => (removeRelationById(rel), self),
 
     linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => {
       preventSelfLoop(t);

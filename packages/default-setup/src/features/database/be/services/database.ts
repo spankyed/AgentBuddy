@@ -12,6 +12,7 @@ export {
   updateEntity,
   createRelation,
   removeRelation,
+  removeRelationById,
   grantRole,
   revokeRole,
 } from '@abuddy/sdk/ears';

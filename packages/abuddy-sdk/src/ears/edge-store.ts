@@ -3,7 +3,7 @@ import {
   getAttr,
   addRelation,
   updateRelation,
-  removeRelation,
+  removeRelationById,
 } from './attribute-storage';
 import { EARS } from '../types/entities';
 
@@ -52,7 +52,7 @@ export const edgeStore = {
     ),
 
   unlink: (w: Partial<EARS.RelationDetail>) =>
-    matchIds(w).forEach(removeRelation),
+    matchIds(w).forEach(removeRelationById),
 
   linkOne: (
     src: EARS.EntityId,

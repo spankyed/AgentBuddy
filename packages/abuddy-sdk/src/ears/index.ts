@@ -4,7 +4,7 @@ export {
 export { qx, b64Encode, b64Decode, type QxSeed } from './query';
 export { tx } from './transaction';
 export {
-  createEntity, getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelation,
+  createEntity, getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
   getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRoles, grantRole, revokeRole,
 } from './attribute-storage';
 export {
@@ -12,7 +12,7 @@ export {
   findById, findByIdRaw, findAll, findWhere, hasIdCollision,
   createEntityWithDefaults, updateEntity, exists,
   repoCreateRelation as createRelation,
-  repoRemoveRelation, repoGrantRole, repoRevokeRole,
+  repoRemoveRelation as removeRelation,
   findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
   RepositoryError, RepositoryErrorCode,
   queryHelpers, transactionHelpers,

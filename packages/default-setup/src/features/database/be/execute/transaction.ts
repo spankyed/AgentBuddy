@@ -2,7 +2,7 @@ import { EARS } from '@/__generated__/ears';
 import {
   qx, tx, getAttr, getAttrs, getEntitiesOfType, destroyEntity,
   getAll, getRoles, grantRole, revokeRole,
-  prepareEntity, createEntityWithDefaults, updateEntity, createRelation, removeRelation,
+  prepareEntity, createEntityWithDefaults, updateEntity, createRelation, removeRelation, removeRelationById,
 } from '@abuddy/sdk/ears';
 import {
   getAllEntities,
@@ -54,6 +54,7 @@ export async function executeTransaction(code: string): Promise<any> {
       'updateEntity',
       'createRelation',
       'removeRelation',
+      'removeRelationById',
       'grantRole',
       'revokeRole',
       functionBody
@@ -82,6 +83,7 @@ export async function executeTransaction(code: string): Promise<any> {
       updateEntity,
       createRelation,
       removeRelation,
+      removeRelationById,
       grantRole,
       revokeRole
     );

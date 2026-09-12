@@ -168,7 +168,9 @@ export function updateRelation(
   getPersistence().onUpdateRelation(relId, patch);
 }
 
-export const removeRelation = (relId: EARS.EntityId) => {
+/** Removes one relation by its own id. See transaction-helpers.removeRelation
+ *  for the source/kind/target form that pairs with createRelation. */
+export const removeRelationById = (relId: EARS.EntityId) => {
   const d = getAttr(
     relId,
     EARS.AttrKind.RelationDetails,
@@ -265,7 +267,7 @@ export function destroyEntity(id: EARS.EntityId, skipPersistence = false) {
   for (const k of Object.keys(relationIndex)) {
     const { bySource, byTarget } = relationIndex[k];
     const relIds = [...(bySource[id] ?? []), ...(byTarget[id] ?? [])];
-    relIds.forEach(removeRelation);
+    relIds.forEach(removeRelationById);
     delete bySource[id];
     delete byTarget[id];
   }

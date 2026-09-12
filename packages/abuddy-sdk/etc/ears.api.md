@@ -412,16 +412,10 @@ export type QxSeed = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | read
 export function registerRepository(name: string, value: any): void;
 
 // @public (undocumented)
-export const removeRelation: (relId: EARS.EntityId) => void;
+export function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
 
-// @public (undocumented)
-export function repoGrantRole(entityId: EARS.EntityId, role: string): void;
-
-// @public (undocumented)
-export function repoRemoveRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-
-// @public (undocumented)
-export function repoRevokeRole(entityId: EARS.EntityId, role: string): void;
+// @public
+export const removeRelationById: (relId: EARS.EntityId) => void;
 
 // @public (undocumented)
 export type Repository = typeof repository;
