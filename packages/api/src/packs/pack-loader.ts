@@ -263,7 +263,17 @@ function loadSystemFromCJS(
       const mod = esmRequire(fullPath);
       const raw = mod.default || mod.system || mod.machine;
       if (!raw) {
-        logger.warn(`No machine export found in ${entry}`);
+        // Name the file actually loaded — that is the compiled
+        // dist/systems/<id>.cjs when present, NOT the `entry` .ts path — and
+        // list what it did export. A named-only export (`export const fooEntry`
+        // with no `export default`) is the usual cause, and reporting `entry`
+        // alone makes it look like a missing build artifact instead.
+        const found = Object.keys(mod).filter((k) => k !== '__esModule');
+        logger.warn(
+          `No machine export found in ${path.relative(packDir, fullPath)}: ` +
+          `expected a default export (or \`system\`/\`machine\`), found ` +
+          `${found.length ? found.join(', ') : 'no exports'}`,
+        );
         return null;
       }
       // Unwrap SystemEntry pattern ({ spec, machine }) if present
