@@ -90,6 +90,8 @@ echo ""
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
 npm run build
+# The CLI the app bundles (Resources/cli/abuddy runs it)
+npm run build:package -w @abuddy/cli
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 

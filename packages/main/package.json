@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
+    "@abuddy/cli": "*",
     "@abuddy/sdk": "*",
     "@app/api": "*",
     "@app/preload": "*",

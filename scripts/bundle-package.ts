@@ -119,6 +119,8 @@ const manifest = {
   name: pkg.name,
   version: pkg.version,
   description: pkg.description,
+  license: 'MIT',
+  repository: { type: 'git', url: 'git+https://github.com/spankyed/AgentBuddy.git', directory: `packages/${path.basename(pkgDir)}` },
   type: 'module',
   engines: pkg.engines,
   ...config.manifest,

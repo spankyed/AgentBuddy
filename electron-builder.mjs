@@ -168,6 +168,10 @@ export default /** @type import('electron-builder').Configuration */
     //   filter: ['**/*']
     // }
     ...speechResources,
+    // `abuddy` launcher for "Install 'abuddy' command in PATH"; runs packages/abuddy-cli/dist/package
+    ...(process.platform === 'darwin'
+      ? [{ from: 'packages/abuddy-cli/bin/app-launcher.sh', to: 'cli/abuddy' }]
+      : []),
   ],
   
   // Publishing: enable with PUBLISH_TO_GITHUB=true

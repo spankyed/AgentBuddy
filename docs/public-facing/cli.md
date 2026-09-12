@@ -2,6 +2,14 @@
 
 The `abuddy` CLI manages the full pack lifecycle: scaffolding, code generation, building, validation, distribution, and installation.
 
+## Installing
+
+- From the app (macOS): **AgentBuddy → Install 'abuddy' command in PATH**. It links `/usr/local/bin/abuddy` (`abuddy-beta` for AgentBuddy Beta) to the CLI bundled with the app, which runs on the app's own Node runtime.
+- `npm i -g @abuddy/cli`
+- Homebrew: `build/homebrew/abuddy.rb`
+
+Packs pin `@abuddy/cli` in `devDependencies`. Any `abuddy` run inside a pack hands off to that pinned version.
+
 ## Commands
 
 ### Scaffolding

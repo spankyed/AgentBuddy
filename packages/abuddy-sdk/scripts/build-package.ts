@@ -137,6 +137,8 @@ async function main(): Promise<void> {
     name: pkg.name,
     version: pkg.version,
     description: 'Pack-facing API and types for AgentBuddy packs',
+    license: 'MIT',
+    repository: { type: 'git', url: 'git+https://github.com/spankyed/AgentBuddy.git', directory: 'packages/abuddy-sdk' },
     type: 'module',
     exports: { ...publicExports(pkg.exports), './abuddy.schema.json': './abuddy.schema.json' },
     dependencies,

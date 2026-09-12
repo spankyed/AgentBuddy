@@ -1,6 +1,7 @@
 import {Menu, app} from 'electron';
 import type {AppModule} from '../AppModule.js';
 import type {ModuleContext} from '../ModuleContext.js';
+import {cliCommandName, installCliCommand} from './cli-command.js';
 
 /**
  * On macOS, override the default application menu so that Cmd+Q
@@ -20,6 +21,16 @@ class MacOSAppMenu implements AppModule {
         submenu: [
           {role: 'about'},
           {type: 'separator'},
+          // Only packaged apps bundle the CLI; source runs use the workspace `abuddy`
+          ...(electronApp.isPackaged
+            ? [
+                {
+                  label: `Install '${cliCommandName()}' command in PATH`,
+                  click: () => void installCliCommand(),
+                },
+                {type: 'separator'} as const,
+              ]
+            : []),
           {role: 'services'},
           {type: 'separator'},
           {

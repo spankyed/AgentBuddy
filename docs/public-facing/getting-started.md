@@ -4,9 +4,24 @@ A **pack** is a self-contained extension for AgentBuddy. It can contribute backe
 
 ## Prerequisites
 
-- Node.js >= 23.0.0
-- AgentBuddy installed and running
-- The `abuddy` CLI (ships with `@abuddy/sdk`)
+- Node.js >= 20.6
+- AgentBuddy installed
+- The `abuddy` CLI, from any of:
+  - the app: **AgentBuddy → Install 'abuddy' command in PATH** (macOS; AgentBuddy Beta installs `abuddy-beta`)
+  - npm: `npm i -g @abuddy/cli`
+  - Homebrew: the formula in `build/homebrew/abuddy.rb`
+
+Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` version the pack pins in its `devDependencies`, so every pack builds with the CLI it was written against.
+
+## Packages
+
+| Package | What it is |
+|---|---|
+| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod, tiptap, …) are peer dependencies. |
+| `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
+| `@abuddy/testing` | The Playwright fixture for pack E2E tests (`@playwright/test` is a peer). |
+
+The three are released together with the same version.
 
 ## Create a pack
 
@@ -14,6 +29,8 @@ A **pack** is a self-contained extension for AgentBuddy. It can contribute backe
 abuddy init my-pack
 cd my-pack
 npm install
+abuddy add feature notes --label Notes
+abuddy build
 ```
 
 This scaffolds:
@@ -21,45 +38,31 @@ This scaffolds:
 ```
 my-pack/
   abuddy.json              # Pack manifest — the single source of truth
-  package.json             # Node package with #generated/* subpath import
+  package.json             # depends on @abuddy/sdk, pins @abuddy/cli
   tsconfig.json
   vitest.config.ts
   .gitignore
+  .github/workflows/
+    release.yml            # Publishes a GitHub release when `abuddy release` pushes a tag
   src/
-    features/
-      my-pack/             # Default feature
-        feature.config.ts
-        settings.ts
-        be/
-          system.ts         # Backend XState machine (via `abuddy add feature`)
-        fe/
-          plugin.ts         # Frontend plugin definition
-          state.ts          # Frontend XState machine
-          canvas/
-            list.vue
+    env.d.ts
+    features/              # `abuddy add feature <id>` adds features/<id>/{be,fe}
     extensions/
       steps/
         register.ts         # Step registration barrel
     seeds/
       actions/
       flows/
-        example-flow.ts     # Starter flow using DSL helpers
     __generated__/          # Auto-generated from manifest — never edit
-      pack-entry.ts
-      pack-entry-fe.ts
-      ears.ts
-      services.ts
-      flow-helpers.ts
-      ...
   .abuddy/
     generated/              # EARS types from deps
-    deps/                   # Cached dependency snapshots
+    deps/                   # Cached dependency snapshots and step build code
   tests/
     unit/
       my-pack.spec.ts
 ```
 
-The generated manifest declares `"default-setup": "*"` as a dependency — this gives your pack access to the built-in entity types, relation kinds, and step definitions. The init command resolves dependencies then runs `abuddy generate` and `abuddy generate-entries` to bootstrap the generated files.
+The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `abuddy.json`. `abuddy build` resolves each dependency from a local path, the installed AgentBuddy app, or a GitHub release, and validates your flows with the dependency's real step code.
 
 ## The dev loop
 
@@ -73,9 +76,10 @@ The build pipeline:
 
 1. `abuddy generate` — resolves dependencies and generates EARS type definitions
 2. `abuddy generate-entries` — reads `abuddy.json` and generates all files in `src/__generated__/`
-3. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to JSON in `dist/`
-4. Snapshot — writes `dist/snapshot.json` (types, defs, manifest) for downstream packs
-5. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/fe.js` via Vite
+3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations) and `dist/build/steps.build.mjs` (step build code for packs that depend on yours)
+4. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to `dist/runtime/seeds/`
+5. Snapshot — writes `dist/types/snapshot.json` (types, defs, manifest) for downstream packs
+6. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
 
 ## Build and distribute
 
@@ -83,9 +87,9 @@ The build pipeline:
 # Compile the pack
 abuddy build
 
-# Bundle into a .tgz archive
+# Bundle into a verified .tgz archive (bundle.json lists a sha256 per file)
 abuddy pack
-# Creates my-pack-0.1.0.tgz
+# Creates my-pack-0.1.0.tgz and my-pack-0.1.0.tgz.sha256
 
 # Install into AgentBuddy
 abuddy install ./my-pack-0.1.0.tgz
@@ -100,6 +104,8 @@ abuddy install github:user/repo    # GitHub release
 ```
 
 After installing, **restart the app** for the pack to load.
+
+To release a version, run `abuddy release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the bundle without bumping, committing or publishing anything, and `--local` publishes from your machine instead of CI.
 
 ## Verify it works
 
@@ -120,7 +126,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 - **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build.
 - **Host dependencies** — packs share `vue`, `xstate`, `lucide-vue-next`, and SDK modules with the host app via `window.__abuddy` globals. The build pipeline externalizes these automatically.
 - **Seeds** — actions, prompts, and flows are compiled to JSON and executed in a sandboxed runtime. No bare Node.js imports allowed.
-- **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/fe.js`. This is handled automatically.
+- **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.
 
 ## Constraints
 
