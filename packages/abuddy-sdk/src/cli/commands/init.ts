@@ -8,6 +8,7 @@ import { readManifest } from '../utils';
 const MANIFEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
   return JSON.stringify({
+    $schema: './node_modules/@abuddy/sdk/abuddy.schema.json',
     id: name,
     name: name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
     version: '0.1.0',
