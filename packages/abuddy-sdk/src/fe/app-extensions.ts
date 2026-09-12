@@ -6,6 +6,10 @@ export function registerAppExtension(slot: string, component: Component): void {
   extensions.set(slot, component);
 }
 
+export function unregisterAppExtension(slot: string): void {
+  extensions.delete(slot);
+}
+
 export function getAppExtension(slot: string): Component | undefined {
   return extensions.get(slot);
 }

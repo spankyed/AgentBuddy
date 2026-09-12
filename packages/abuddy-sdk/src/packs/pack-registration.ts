@@ -285,6 +285,8 @@ export interface PackInfo {
   features: PackFeatureDef[];
   dir?: string;
   registeredAt?: string;
+  source?: string;
+  availableVersion?: string;
 }
 
 export function getPackContributions(packId: string): PackContributions | null {

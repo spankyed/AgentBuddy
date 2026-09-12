@@ -21,6 +21,12 @@
           <span class="text-xs text-neutral-500">{{ pack.id }}</span>
           <span class="text-neutral-700">&middot;</span>
           <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+          <template v-if="pack.availableVersion">
+            <span class="text-neutral-700">&middot;</span>
+            <span class="px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded">
+              v{{ pack.availableVersion }} available
+            </span>
+          </template>
         </div>
       </div>
     </div>
@@ -44,6 +50,14 @@
               class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"
               :class="pack.enabled ? 'translate-x-4' : 'translate-x-0'"
             />
+          </button>
+          <button
+            v-if="pack.availableVersion"
+            class="px-2.5 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+            :disabled="updating"
+            @click="$emit('update', pack.id)"
+          >
+            {{ updating ? 'Updating...' : 'Update' }}
           </button>
           <button
             class="text-neutral-500 hover:text-red-400 transition-colors text-xs"
@@ -254,12 +268,13 @@ import { ArrowLeft, Shield } from 'lucide-vue-next';
 import type { PackInfo } from '../state';
 import SectionHeader from './SectionHeader.vue';
 
-const props = defineProps<{ pack: PackInfo }>();
+const props = defineProps<{ pack: PackInfo; updating?: boolean }>();
 
 defineEmits<{
   back: [];
   toggle: [packId: string];
   uninstall: [packId: string];
+  update: [packId: string];
 }>();
 
 const entityEntries = computed(() => Object.entries(props.pack.entities));

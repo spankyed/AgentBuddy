@@ -1,16 +1,5 @@
 <template>
   <div class="packs-canvas flex flex-col h-full p-6 overflow-y-auto">
-    <!-- Restart banner -->
-    <div v-if="pendingChanges" class="mb-4 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
-      <span class="text-amber-400 text-sm">Changes require a restart to take effect.</span>
-      <button
-        class="ml-4 px-3 py-1 text-xs font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded transition-colors"
-        @click="restartApp"
-      >
-        Restart Now
-      </button>
-    </div>
-
     <!-- Error banner -->
     <div v-if="error" class="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between">
       <span class="text-red-400 text-sm">{{ error }}</span>
@@ -27,9 +16,11 @@
     <PackDetail
       v-if="selectedPack"
       :pack="selectedPack"
+      :updating="updatingPackId === selectedPack.id"
       @back="actor.send({ type: 'UI.BACK' })"
       @toggle="(id) => actor.send({ type: 'UI.TOGGLE_ENABLED', packId: id })"
       @uninstall="(id) => actor.send({ type: 'UI.CONFIRM_UNINSTALL', packId: id })"
+      @update="(id) => actor.send({ type: 'UI.UPDATE', packId: id })"
     />
 
     <!-- List view -->
@@ -60,7 +51,16 @@
       <div class="mb-6">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-medium text-neutral-400">External</h3>
-          <span v-if="externalPacks.length > 0" class="text-xs text-neutral-600">{{ externalPacks.length }} {{ externalPacks.length === 1 ? 'pack' : 'packs' }}</span>
+          <div class="flex items-center gap-3">
+            <button
+              v-if="externalPacks.length > 0"
+              class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+              @click="actor.send({ type: 'UI.CHECK_UPDATES' })"
+            >
+              Check for updates
+            </button>
+            <span v-if="externalPacks.length > 0" class="text-xs text-neutral-600">{{ externalPacks.length }} {{ externalPacks.length === 1 ? 'pack' : 'packs' }}</span>
+          </div>
         </div>
 
         <div v-if="externalPacks.length === 0" class="py-12 text-center border border-dashed border-neutral-700/50 rounded-lg">
@@ -104,6 +104,11 @@
                 <div class="flex items-center gap-2">
                   <span class="text-sm text-neutral-200">{{ pack.name }}</span>
                   <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+                  <span
+                    v-if="pack.availableVersion"
+                    class="w-2 h-2 rounded-full bg-emerald-400"
+                    :title="`v${pack.availableVersion} available`"
+                  />
                 </div>
                 <div class="flex items-center gap-1.5 mt-1">
                   <span class="text-xs text-neutral-500">{{ pack.id }}</span>
@@ -203,7 +208,7 @@ const selectedPack = computed(() => {
 });
 const installing = useSelector(actor, s => s.context.installing);
 const confirmingUninstall = useSelector(actor, s => s.context.confirmingUninstall);
-const pendingChanges = useSelector(actor, s => s.context.pendingChanges);
+const updatingPackId = useSelector(actor, s => s.context.updatingPackId);
 const error = useSelector(actor, s => s.context.error);
 
 const installInput = ref('');
@@ -245,7 +250,5 @@ function dismissError() {
   actor.send({ type: 'UI.DISMISS_ERROR' });
 }
 
-function restartApp() {
-  window.electronAPI?.apiStatus?.relaunch();
-}
+
 </script>

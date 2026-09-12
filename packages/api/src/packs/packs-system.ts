@@ -8,13 +8,16 @@ import {
   readPackRegistry, modifyRegistry, addToRegistry, removeFromRegistry,
   type PackRegistryEntry, type PackInfo, type BuiltInPackInfo,
   installPack as runInstall, uninstallPack as runUninstall,
+  installPackFromGitHub,
   getPackContributions, type PackContributions,
+  checkForUpdates,
 } from '@abuddy/sdk/packs';
-import { removeLoadedPack } from './pack-api';
+import { teardownPack, activatePack } from './pack-lifecycle';
 
 export type { PackInfo };
 
 let _builtInPacks: BuiltInPackInfo[] = [];
+const _inFlightOps = new Set<string>();
 
 export function setBuiltInPacks(packs: BuiltInPackInfo[] | undefined): void {
   _builtInPacks = packs ?? [];
@@ -24,6 +27,8 @@ type IncomingPacksEvents =
   | { type: 'INSTALL_PACK'; packSlug: string; source?: string }
   | { type: 'UNINSTALL_PACK'; packId: string }
   | { type: 'TOGGLE_PACK_ENABLED'; packId: string }
+  | { type: 'UPDATE_PACK'; packId: string }
+  | { type: 'CHECK_FOR_UPDATES' }
   | { type: 'GET_INSTALLED_PACKS' }
 
 type OutgoingPacksEvents =
@@ -34,6 +39,10 @@ type OutgoingPacksEvents =
   | { type: 'PACK_UNINSTALL_COMPLETE'; packId: string }
   | { type: 'PACK_UNINSTALL_FAILED'; packId: string; error: string }
   | { type: 'PACK_ENABLED_CHANGED'; packId: string; enabled: boolean }
+  | { type: 'PACK_ACTIVATED'; packId: string }
+  | { type: 'PACK_DEACTIVATED'; packId: string }
+  | { type: 'PACK_UPDATE_COMPLETE'; packId: string; version: string }
+  | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
 
 export const packsSpec = defineSystem('packs')<IncomingPacksEvents, OutgoingPacksEvents>();
 export const packs = packsSpec.id;
@@ -96,6 +105,8 @@ function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
       permissions: manifest?.permissions ?? [],
       dir: e.dir,
       registeredAt: e.registeredAt,
+      source: e.source,
+      availableVersion: e.availableVersion,
     }, contrib);
   });
 }
@@ -141,6 +152,8 @@ export const packsSystem = setup({
 
       system.get(bus).send(emit(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug }));
 
+      const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
+
       runInstall(packSlug, ev.source).then(result => {
         modifyRegistry(entries => addToRegistry(entries, {
           id: result.id,
@@ -148,7 +161,10 @@ export const packsSystem = setup({
           version: result.version,
           dir: result.dir,
           enabled: true,
+          source: isGitHub ? packSlug : undefined,
         }));
+
+        activatePack(result.id, system.get(bus));
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_INSTALL_COMPLETE' as const,
@@ -157,6 +173,7 @@ export const packsSystem = setup({
           packName: result.name,
           version: result.version,
         }));
+        system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId: result.id }));
         emitPacksList(system);
       }).catch(err => {
         const message = err instanceof Error ? err.message : String(err);
@@ -172,11 +189,19 @@ export const packsSystem = setup({
     uninstallPack: ({ system, event }) => {
       const ev = packsSpec.typeOf('UNINSTALL_PACK', event);
       const packId = ev.packId;
+
+      if (_inFlightOps.has(packId)) {
+        console.warn(`[packs] Operation already in progress for ${packId}, skipping uninstall`);
+        return;
+      }
+      _inFlightOps.add(packId);
       console.log(`[packs] Uninstall requested: ${packId}`);
+
+      teardownPack(packId, system.get(bus));
+      system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
 
       runUninstall(packId).then(() => {
         modifyRegistry(entries => removeFromRegistry(entries, packId));
-        removeLoadedPack(packId);
 
         system.get(bus).send(emit(packs, {
           type: 'PACK_UNINSTALL_COMPLETE' as const,
@@ -191,26 +216,115 @@ export const packsSystem = setup({
           packId,
           error: message,
         }));
+      }).finally(() => {
+        _inFlightOps.delete(packId);
+      });
+    },
+
+    updatePack: ({ system, event }) => {
+      const ev = packsSpec.typeOf('UPDATE_PACK', event);
+      const packId = ev.packId;
+      const entries = readPackRegistry();
+      const entry = entries.find(e => e.id === packId);
+      if (!entry?.source) {
+        system.get(bus).send(emit(packs, {
+          type: 'PACK_UPDATE_FAILED' as const,
+          packId,
+          error: 'Pack has no update source',
+        }));
+        return;
+      }
+
+      if (_inFlightOps.has(packId)) {
+        console.warn(`[packs] Operation already in progress for ${packId}, skipping update`);
+        return;
+      }
+      _inFlightOps.add(packId);
+
+      const sourceSlug = entry.source.split('@')[0];
+      console.log(`[packs] Update requested: ${packId} from ${sourceSlug}`);
+
+      teardownPack(packId, system.get(bus));
+      system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
+
+      installPackFromGitHub(sourceSlug).then(result => {
+        modifyRegistry(reg =>
+          reg.map(e => e.id === packId ? {
+            ...e,
+            version: result.version,
+            dir: result.dir,
+            availableVersion: undefined,
+          } : e),
+        );
+
+        activatePack(packId, system.get(bus));
+
+        system.get(bus).send(emit(packs, {
+          type: 'PACK_UPDATE_COMPLETE' as const,
+          packId,
+          version: result.version,
+        }));
+        system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
+        emitPacksList(system);
+      }).catch(err => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[packs] Update failed for ${packId}:`, message);
+        if (activatePack(packId, system.get(bus))) {
+          system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
+        }
+        system.get(bus).send(emit(packs, {
+          type: 'PACK_UPDATE_FAILED' as const,
+          packId,
+          error: message,
+        }));
+        emitPacksList(system);
+      }).finally(() => {
+        _inFlightOps.delete(packId);
+      });
+    },
+
+    checkForPackUpdates: ({ system }) => {
+      checkForUpdates().then(() => {
+        emitPacksList(system);
+      }).catch(err => {
+        console.error('[packs] Update check failed:', err);
       });
     },
 
     togglePackEnabled: ({ system, event }) => {
       const ev = packsSpec.typeOf('TOGGLE_PACK_ENABLED', event);
+      const packId = ev.packId;
+
+      if (_inFlightOps.has(packId)) {
+        console.warn(`[packs] Operation already in progress for ${packId}, skipping toggle`);
+        return;
+      }
+
       const current = readPackRegistry();
-      const entry = current.find(e => e.id === ev.packId);
+      const entry = current.find(e => e.id === packId);
       if (!entry) {
-        console.warn(`[packs] Pack not found: ${ev.packId}`);
+        console.warn(`[packs] Pack not found: ${packId}`);
         return;
       }
       const newEnabled = !entry.enabled;
+
+      if (!newEnabled) {
+        teardownPack(packId, system.get(bus));
+        system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
+      } else {
+        activatePack(packId, system.get(bus));
+        system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
+      }
+
       modifyRegistry(entries =>
-        entries.map(e => e.id === ev.packId ? { ...e, enabled: newEnabled } : e),
+        entries.map(e => e.id === packId ? { ...e, enabled: newEnabled } : e),
       );
       system.get(bus).send(emit(packs, {
         type: 'PACK_ENABLED_CHANGED' as const,
-        packId: ev.packId,
+        packId,
         enabled: newEnabled,
       }));
+      emitPacksList(system);
     },
   },
 }).createMachine({
@@ -235,6 +349,12 @@ export const packsSystem = setup({
         TOGGLE_PACK_ENABLED: {
           actions: 'togglePackEnabled',
         },
+        UPDATE_PACK: {
+          actions: 'updatePack',
+        },
+        CHECK_FOR_UPDATES: {
+          actions: 'checkForPackUpdates',
+        },
       },
     },
   },
@@ -246,4 +366,6 @@ export const packsEvents = new Set([
   'UNINSTALL_PACK',
   'TOGGLE_PACK_ENABLED',
   'GET_INSTALLED_PACKS',
+  'UPDATE_PACK',
+  'CHECK_FOR_UPDATES',
 ]);

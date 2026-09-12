@@ -175,3 +175,142 @@ describe('pack full lifecycle: init → install → discover', () => {
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);
   });
 });
+
+describe('registry source and update tracking', () => {
+  it('stores source field in registry when GitHub slug is used', async () => {
+    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../abuddy-sdk/src/packs/pack-registry');
+
+    modifyRegistry(entries => addToRegistry(entries, {
+      id: 'github-pack',
+      name: 'GitHub Pack',
+      version: '1.0.0',
+      dir: path.join(packsDir(), 'github-pack'),
+      enabled: true,
+      source: 'owner/repo',
+    }));
+
+    const entries = readPackRegistry();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe('owner/repo');
+    expect(entries[0].availableVersion).toBeUndefined();
+    expect(entries[0].lastUpdateCheck).toBeUndefined();
+  });
+
+  it('stores availableVersion and lastUpdateCheck after update check', async () => {
+    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../abuddy-sdk/src/packs/pack-registry');
+
+    modifyRegistry(entries => addToRegistry(entries, {
+      id: 'versioned-pack',
+      name: 'Versioned Pack',
+      version: '1.0.0',
+      dir: path.join(packsDir(), 'versioned-pack'),
+      enabled: true,
+      source: 'owner/versioned',
+    }));
+
+    const now = new Date().toISOString();
+    modifyRegistry(entries =>
+      entries.map(e => e.id === 'versioned-pack'
+        ? { ...e, availableVersion: '2.0.0', lastUpdateCheck: now }
+        : e,
+      ),
+    );
+
+    const entries = readPackRegistry();
+    const pack = entries.find(e => e.id === 'versioned-pack')!;
+    expect(pack.availableVersion).toBe('2.0.0');
+    expect(pack.lastUpdateCheck).toBe(now);
+  });
+
+  it('getAvailableUpdates returns packs with newer versions', async () => {
+    const { modifyRegistry, addToRegistry } = await import('../../../abuddy-sdk/src/packs/pack-registry');
+    const { getAvailableUpdates } = await import('../../../abuddy-sdk/src/packs/pack-updater');
+
+    modifyRegistry(entries => {
+      let updated = addToRegistry(entries, {
+        id: 'has-update',
+        name: 'Has Update',
+        version: '1.0.0',
+        dir: path.join(packsDir(), 'has-update'),
+        enabled: true,
+        source: 'owner/has-update',
+      });
+      updated = addToRegistry(updated, {
+        id: 'no-update',
+        name: 'No Update',
+        version: '2.0.0',
+        dir: path.join(packsDir(), 'no-update'),
+        enabled: true,
+        source: 'owner/no-update',
+      });
+      return updated;
+    });
+
+    modifyRegistry(entries =>
+      entries.map(e => {
+        if (e.id === 'has-update') return { ...e, availableVersion: '2.0.0' };
+        if (e.id === 'no-update') return { ...e, availableVersion: '1.0.0' };
+        return e;
+      }),
+    );
+
+    const updates = getAvailableUpdates();
+    expect(updates).toHaveLength(1);
+    expect(updates[0].packId).toBe('has-update');
+    expect(updates[0].currentVersion).toBe('1.0.0');
+    expect(updates[0].availableVersion).toBe('2.0.0');
+  });
+});
+
+describe('FE pack deregistration', () => {
+  it('unregisterPackFE removes contributions and returns removed plugins', async () => {
+    const { registerPackFE, unregisterPackFE } = await import('../../../abuddy-sdk/src/fe/pack-store');
+
+    const testPlugin = { id: 'test-plugin', label: 'Test', icon: 'Zap', state: {} as any, canvas: {} as any };
+    registerPackFE({ plugins: [testPlugin] }, 'test-pack');
+
+    const removed = unregisterPackFE('test-pack');
+    expect(removed).toHaveLength(1);
+    expect(removed[0].id).toBe('test-plugin');
+
+    // Calling again should return empty
+    const removedAgain = unregisterPackFE('test-pack');
+    expect(removedAgain).toHaveLength(0);
+  });
+
+  it('unregisterPackFE handles pack with no contributions gracefully', async () => {
+    const { unregisterPackFE } = await import('../../../abuddy-sdk/src/fe/pack-store');
+
+    const removed = unregisterPackFE('nonexistent-pack');
+    expect(removed).toHaveLength(0);
+  });
+});
+
+describe('pack-registration teardown', () => {
+  it('registerPack then unregisterPack cleans up SDK registries', async () => {
+    const {
+      registerPack, unregisterPack, getPackContributions,
+    } = await import('../../../abuddy-sdk/src/packs/pack-registration');
+
+    const packId = 'teardown-test-pack';
+    registerPack({
+      id: packId,
+      systems: [],
+      steps: [],
+      artifacts: [],
+      blocks: [],
+    });
+
+    expect(getPackContributions(packId)).not.toBeNull();
+
+    unregisterPack(packId);
+
+    expect(getPackContributions(packId)).toBeNull();
+  });
+
+  it('unregisterPack throws for unknown pack', async () => {
+    const { unregisterPack } = await import('../../../abuddy-sdk/src/packs/pack-registration');
+
+    expect(() => unregisterPack('nonexistent')).toThrow('Pack "nonexistent" is not registered');
+  });
+});
