@@ -86,8 +86,14 @@ function readSubpathImports(packDir: string): Record<string, string> {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
     const pkgImports: Record<string, string> = pkg.imports ?? {};
     for (const [pattern, target] of Object.entries(pkgImports)) {
-      if (typeof target !== 'string') continue;
-      imports[pattern] = target;
+      if (typeof target === 'string') {
+        imports[pattern] = target;
+      } else if (typeof target === 'object' && target !== null) {
+        const resolved = (target as Record<string, string>).default
+          ?? (target as Record<string, string>).require
+          ?? (target as Record<string, string>).node;
+        if (typeof resolved === 'string') imports[pattern] = resolved;
+      }
     }
   } catch {}
   return imports;

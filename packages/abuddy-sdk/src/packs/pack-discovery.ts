@@ -59,6 +59,7 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
 
 export const APP_NAME = 'abuddy';
 export const DEV_APP_NAME = 'abuddy-dev';
+export const TEST_APP_NAME = 'abuddy-test';
 
 export function resolveAppDataDir(appName: string): string {
   const home = os.homedir();

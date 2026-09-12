@@ -223,11 +223,8 @@ export function withHostResolution<T>(fn: () => T): T {
 function loadSystemFromCJS(
   entry: string,
   packDir: string,
+  featureId: string,
 ): { machine: import('xstate').AnyStateMachine; events: Set<string> } | null {
-  // Prefer compiled CJS in dist/systems/ (produced by `abuddy build`).
-  // Falls back to raw source for dev mode / backwards compat.
-  const baseName = path.basename(entry).replace(/\.[^.]+$/, '');
-  const featureId = entry.split('/').find((_s, i, parts) => parts[i + 1] === 'be') || baseName;
   const compiledPath = path.resolve(packDir, 'dist', 'systems', `${featureId}.cjs`);
   const fullPath = fs.existsSync(compiledPath)
     ? compiledPath
@@ -296,7 +293,7 @@ export function loadSingleExternalPack(
     for (const plugin of pluginEntries) {
       if (!plugin.system?.entry) continue;
 
-      const system = loadSystemFromCJS(plugin.system.entry, dir);
+      const system = loadSystemFromCJS(plugin.system.entry, dir, plugin.id);
       if (system) {
         if ('events' in (plugin.system as Record<string, unknown>) && (plugin.system as any).events?.incoming) {
           for (const evt of (plugin.system as any).events.incoming) {

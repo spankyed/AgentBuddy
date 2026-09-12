@@ -20,7 +20,7 @@ function parseNamedExports(source: string): string[] {
     }
   }
 
-  for (const match of cleaned.matchAll(/export\s+(?:const|let|var|function|class)\s+(\w+)/g)) {
+  for (const match of cleaned.matchAll(/export\s+(?:async\s+)?(?:const|let|var|function|class)\s+(\w+)/g)) {
     exports.push(match[1]);
   }
 

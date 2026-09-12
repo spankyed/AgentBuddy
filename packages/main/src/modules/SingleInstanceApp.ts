@@ -3,8 +3,10 @@ import * as Electron from 'electron';
 
 class SingleInstanceApp implements AppModule {
   enable({app}: {app: Electron.App}): void {
-    // Separate lock namespace so dev and production can coexist
-    if (!app.isPackaged) {
+    // Separate lock namespace so dev, production, and test can coexist
+    if (process.env.PLAYWRIGHT_TEST === 'true') {
+      app.setName(`${app.getName()}-test`);
+    } else if (!app.isPackaged) {
       app.setName(`${app.getName()}-dev`);
     }
 
