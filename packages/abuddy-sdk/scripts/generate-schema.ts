@@ -16,5 +16,16 @@ Object.assign(jsonSchema, {
 });
 
 const outPath = path.resolve(import.meta.dirname, '..', 'abuddy.schema.json');
-fs.writeFileSync(outPath, JSON.stringify(jsonSchema, null, 2) + '\n');
-console.log(`Wrote ${outPath}`);
+const generated = JSON.stringify(jsonSchema, null, 2) + '\n';
+
+if (process.argv.includes('--check')) {
+  const existing = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf-8') : '';
+  if (existing !== generated) {
+    console.error('abuddy.schema.json is out of date. Run: npm run generate:schema');
+    process.exit(1);
+  }
+  console.log('abuddy.schema.json is up to date.');
+} else {
+  fs.writeFileSync(outPath, generated);
+  console.log(`Wrote ${outPath}`);
+}

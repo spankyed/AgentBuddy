@@ -64,7 +64,7 @@ function validateManifest(dir: string): PackManifest {
 
   const { errors } = parseManifest(raw);
   if (errors.length > 0) {
-    throw new Error(`Invalid abuddy.json: ${errors[0]}`);
+    throw new Error(`Invalid abuddy.json:\n${errors.map(e => `  - ${e}`).join('\n')}`);
   }
 
   const distDir = path.join(dir, 'dist');

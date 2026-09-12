@@ -32,6 +32,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Schema drift check
+        run: npm run schema:check --workspace @abuddy/sdk
+
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose
 
