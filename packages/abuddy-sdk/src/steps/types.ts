@@ -102,6 +102,16 @@ export interface TNodeEntity extends BaseEntity {
   };
 }
 
+/**
+ * TNode's shape is fully owned by the SDK, so it is registered here rather than
+ * in each pack's manifest. Mirrors how packs augment NodeEntityRegistry.
+ */
+declare module '../types/entities' {
+  interface EntityShapeRegistry {
+    'TNode': TNodeEntity;
+  }
+}
+
 export interface TrackEntity extends TNodeEntity {
   children: TrackEntity[];
 }
