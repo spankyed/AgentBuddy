@@ -318,7 +318,7 @@ export function generatePackFiles(
       bootImports.push(`import { createDefaultSettings } from '${toImportPath(manifest.boot.createDefaultSettings)}';`);
     }
     if (manifest.boot?.shutdown) {
-      bootImports.push(`import { terminalService } from '${toImportPath(manifest.boot.shutdown)}';`);
+      bootImports.push(`import { shutdown } from '${toImportPath(manifest.boot.shutdown)}';`);
     }
 
     const seed = manifest.boot?.seed ?? {};
@@ -370,7 +370,7 @@ ${manifest.boot?.createDefaultSettings ? '    createDefaultSettings,' : ''}
       artifacts: [${artifactsList}],
       get compiledDir() { return getCompiledDir(); },${seedPolicyLine}
     },
-${manifest.boot?.shutdown ? '    shutdown: () => terminalService.killAll(),' : ''}
+${manifest.boot?.shutdown ? '    shutdown,' : ''}
   },
 ${manifest.migrations ? '  migrations,' : ''}
   features: [

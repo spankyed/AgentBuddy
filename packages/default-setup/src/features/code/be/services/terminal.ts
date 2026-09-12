@@ -417,3 +417,5 @@ class TerminalService {
 }
 
 export const terminalService = new TerminalService()
+
+export const shutdown = () => terminalService.killAll();
