@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import {
   compilePack,
   buildPackConfigFromManifest,
+  parseManifest,
   resolveFeatureSettingsFromManifest,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '@abuddy/sdk/build';
@@ -27,6 +28,19 @@ async function loadPackConfig(root: string): Promise<PackConfig | null> {
 export async function build(args: string[]) {
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
+  // The installer rejects an invalid manifest; don't build (or let CI publish) one
+  const { errors: manifestErrors } = parseManifest(manifest);
+  if (manifestErrors.length > 0) {
+    throw new Error(`abuddy.json is invalid:\n${manifestErrors.map(e => `  - ${e}`).join('\n')}`);
+  }
+
+  const outputDir = path.join(root, 'dist');
+  // External packs build into the bundle layout (runtime/, build/, types/). dist/ is pure
+  // output, so clear it before anything can fail: a failed build must never leave an older
+  // build behind for `abuddy pack` or the test fixture to ship.
+  // Built-in packs keep their in-repo layout (dist/*.seed.json, dist/snapshot.json, dev-entry.cjs).
+  const external = !manifest.builtIn;
+  if (external) fs.rmSync(outputDir, { recursive: true, force: true });
 
   if (!args.includes('--skip-generate')) {
     const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
@@ -62,12 +76,6 @@ export async function build(args: string[]) {
   }
 
   const packDir = root;
-  const outputDir = path.join(root, 'dist');
-  // External packs build into the bundle layout (runtime/, build/, types/). dist/ is pure
-  // output, so start clean: stale artifacts from an earlier build must never ship.
-  // Built-in packs keep their in-repo layout (dist/*.seed.json, dist/snapshot.json, dev-entry.cjs).
-  const external = !manifest.builtIn;
-  if (external) fs.rmSync(outputDir, { recursive: true, force: true });
   const seedsOutputDir = external ? path.join(outputDir, BUNDLE_PATHS.seedsDir) : outputDir;
   const snapshotPath = external ? path.join(outputDir, BUNDLE_PATHS.snapshot) : path.join(outputDir, 'snapshot.json');
 

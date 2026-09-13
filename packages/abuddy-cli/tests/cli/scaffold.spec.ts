@@ -113,6 +113,23 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(unit.output).toMatch(/tests\/unit\/demo-pack\.spec\.ts/);
   }, 120_000);
 
+  it('refuses to build or pack a manifest the installer would reject', () => {
+    const manifestPath = path.join(pack, 'abuddy.json');
+    const original = fs.readFileSync(manifestPath, 'utf-8');
+    const manifest = JSON.parse(original);
+    manifest.features[0].id = 'notes_v2';
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    try {
+      for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')]]) {
+        const result = run('node', [CLI, ...args], pack);
+        expect(result.code, args.join(' ')).not.toBe(0);
+        expect(result.output).toMatch(/abuddy\.json is invalid/);
+      }
+    } finally {
+      fs.writeFileSync(manifestPath, original);
+    }
+  }, 120_000);
+
   it('fails the build on an unresolvable dependency', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
@@ -122,5 +139,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const build = run('node', [CLI, 'build'], pack);
     expect(build.code).not.toBe(0);
     expect(build.output).toMatch(/Unresolved pack dependencies:[\s\S]*nonexistent-pack/);
+    // The failed build left no earlier output behind for abuddy pack to ship
+    expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
+    expect(run('node', [CLI, 'pack', '--out', path.join(tmp, 'stale-out')], pack).code).not.toBe(0);
   }, 120_000);
 });
