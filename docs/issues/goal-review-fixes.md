@@ -162,6 +162,8 @@ Final.
 
 **Done when:** those tests pass and are mutation-checked; startup numbers are recorded in this doc.
 
+**Startup (recorded).** Smoke fixture "app connected N ms after launch", five warm runs each (the first, cold run of a session excluded): before Phase 3 1540, 1528, 1612, 1574 ms (median 1557); after (every `@tiptap/pm` and `@tiptap/vue-3` subpath exposed too) 1591, 1476, 1605, 1507, 1474 ms (median 1507). No regression, so `@abuddy/ui` modules stay eager (Decision 20).
+
 ### Phase 4 — Type contract (T1–T10, Decisions 14–18)
 
 - `pack-types.d.ts` in the build and snapshot; aliased dependency imports; `sendsTo`, `HostPluginEvents` and receiver-keyed `PackEvents`; manifest `repositories` and `#generated/repository`; the `any` removals and typed factory additions; dependency `Services` and collision checks.
