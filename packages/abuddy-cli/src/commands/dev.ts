@@ -14,7 +14,7 @@ function getDevApiUrl(): string | null {
 }
 
 /** Installs into the dev data dir, checking hostVersion against the dev app that last used it. */
-function installToDev(root: string) {
+export function installToDev(root: string) {
   const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
   return installPackFromLocal(root, packsDir, { hostVersion: readHostVersion(userDataDir) });
 }
