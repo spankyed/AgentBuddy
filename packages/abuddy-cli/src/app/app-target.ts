@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { createInterface } from 'node:readline';
 import envPaths from 'env-paths';
@@ -27,10 +28,16 @@ const configFile = (dirs: CliDirs) => path.join(dirs.config, 'config.json');
 
 export function readAppChoice(dirs: CliDirs): AppChoice | undefined {
   try {
-    return JSON.parse(fs.readFileSync(configFile(dirs), 'utf-8')).app;
-  } catch {
-    return undefined;
-  }
+    const app = JSON.parse(fs.readFileSync(configFile(dirs), 'utf-8')).app;
+    // Anything else (hand-edited, older format) counts as no choice: ask again
+    if (app && typeof app === 'object' && (typeof app.source === 'string' || app.beta === true)) return app;
+  } catch {}
+  return undefined;
+}
+
+/** `~/AgentBuddy` → the home directory's AgentBuddy. */
+export function expandHome(input: string): string {
+  return input === '~' || input.startsWith('~/') ? path.join(os.homedir(), input.slice(1)) : input;
 }
 
 export function saveAppChoice(dirs: CliDirs, app: AppChoice): void {
@@ -54,7 +61,7 @@ export function sourceAppProblems(root: string): string[] {
 }
 
 function sourceTarget(root: string, from: string): AppTarget {
-  const resolved = path.resolve(root);
+  const resolved = path.resolve(expandHome(root));
   const problems = sourceAppProblems(resolved);
   if (problems.length > 0) {
     throw new Error(`${from} (${resolved}) can't be used:\n${problems.map(p => `  - ${p}`).join('\n')}`);
@@ -196,7 +203,12 @@ export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTar
   }
 
   const choice = await (options.prompt ? askForApp(options.prompt, dirs) : withTerminalPrompt(prompt => askForApp(prompt, dirs)));
-  return 'beta' in choice ? packaged() : { kind: 'source', root: choice.source };
+  if ('source' in choice) return { kind: 'source', root: choice.source };
+  // Saved only once a beta is actually available here, so a failed first choice asks again next run
+  const app = await packaged();
+  saveAppChoice(dirs, choice);
+  console.log(`Saved to ${configFile(dirs)}`);
+  return app;
 }
 
 async function askForApp(prompt: (question: string) => Promise<string>, dirs: CliDirs): Promise<AppChoice> {
@@ -205,13 +217,9 @@ async function askForApp(prompt: (question: string) => Promise<string>, dirs: Cl
   console.log('  2) The newest AgentBuddy Beta build (downloaded and cached)');
   for (;;) {
     const answer = await prompt('Choose 1 or 2: ');
-    if (answer === '2') {
-      saveAppChoice(dirs, { beta: true });
-      console.log(`Saved to ${configFile(dirs)}`);
-      return { beta: true };
-    }
+    if (answer === '2') return { beta: true };
     if (answer === '1') {
-      const root = path.resolve(await prompt('Path to the AgentBuddy checkout: '));
+      const root = path.resolve(expandHome(await prompt('Path to the AgentBuddy checkout: ')));
       const problems = sourceAppProblems(root);
       if (problems.length > 0) {
         console.log(`${root} can't be used:\n${problems.map(p => `  - ${p}`).join('\n')}`);

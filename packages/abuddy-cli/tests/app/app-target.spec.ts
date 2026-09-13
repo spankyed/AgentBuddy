@@ -120,6 +120,30 @@ describe('resolveTestApp', () => {
     await expect(resolve({ interactive: true, prompt: noPrompt })).resolves.toEqual({ kind: 'source', root: good });
   });
 
+  it("doesn't save a first-run beta choice that can't be satisfied, so the next run asks again", async () => {
+    const unavailable = vi.fn(async () => { throw new Error('No AgentBuddy Beta release satisfies'); });
+    await expect(resolve({ interactive: true, prompt: async () => '2', betaApp: unavailable })).rejects.toThrow(/No AgentBuddy Beta/);
+    expect(readAppChoice(dirs)).toBeUndefined();
+  });
+
+  it('treats a malformed saved choice as none and expands ~ in checkout paths', async () => {
+    fs.mkdirSync(dirs.config, { recursive: true });
+    fs.writeFileSync(path.join(dirs.config, 'config.json'), JSON.stringify({ app: 'beta' }));
+    expect(readAppChoice(dirs)).toBeUndefined();
+    await expect(resolve()).rejects.toThrow(/No AgentBuddy app to test against/);
+
+    const home = os.homedir();
+    const checkout = fs.mkdtempSync(path.join(home, '.abuddy-app-target-'));
+    try {
+      for (const dir of ['packages/main/dist', 'packages/renderer/dist', 'node_modules/electron']) fs.mkdirSync(path.join(checkout, dir), { recursive: true });
+      fs.writeFileSync(path.join(checkout, 'packages', 'entry-point.mjs'), '');
+      await expect(resolve({ flags: { appRoot: `~/${path.basename(checkout)}`, args: [] } }))
+        .resolves.toEqual({ kind: 'source', root: checkout });
+    } finally {
+      fs.rmSync(checkout, { recursive: true, force: true });
+    }
+  });
+
   it('saves a first-run beta choice', async () => {
     await expect(resolve({ interactive: true, prompt: async () => '2' })).resolves.toMatchObject({ kind: 'packaged' });
     expect(readAppChoice(dirs)).toEqual({ beta: true });

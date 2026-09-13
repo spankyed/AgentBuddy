@@ -139,8 +139,11 @@ export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedAp
     if (!fs.existsSync(packagedExecutable(extracted))) {
       throw new Error(`${release.zip.name} does not contain ${PRODUCT_NAME}.app`);
     }
-    fs.rmSync(appDir, { recursive: true, force: true });
-    fs.renameSync(extracted, appDir);
+    // Another run may have finished the same download meanwhile; keep the app it may be using
+    if (!fs.existsSync(executable)) {
+      fs.rmSync(appDir, { recursive: true, force: true });
+      fs.renameSync(extracted, appDir);
+    }
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
   }
