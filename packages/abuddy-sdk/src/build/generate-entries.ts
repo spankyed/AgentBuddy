@@ -235,7 +235,9 @@ export function generatePackFiles(
 
   function resolveServiceImport(key: string, manifestPath: string) {
     const base = join(root, manifestPath);
-    const fullPath = existsSync(base + '.ts') ? base + '.ts'
+    // abuddy add service writes the file path itself (src/extensions/services/<name>.ts)
+    const fullPath = base.endsWith('.ts') && existsSync(base) ? base
+      : existsSync(base + '.ts') ? base + '.ts'
       : existsSync(join(base, 'index.ts')) ? join(base, 'index.ts')
       : null;
     if (!fullPath) {

@@ -14,23 +14,37 @@ Example:
   abuddy add step my-trigger --trigger
 `.trim();
 
-const INDEX = (type: string, camel: string, pascal: string) => `import type { StepDefinition } from '@abuddy/sdk/steps';
-import type { ${pascal}DSLNode, ${pascal}CompiledNode } from './types';
+// Build-time facet: no FE or runtime imports, so it can ship in build/steps.build.mjs
+const BUILD = (type: string, camel: string, pascal: string) => `import type { StepDefinition, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
+import { EARS } from '@abuddy/sdk';
+import type { ${pascal}DSLNode } from './types';
+
+export const ${camel}StepBuild: StepDefinition = {
+  type: '${type}',
+  build: {
+    compile(node, nodeId, ts): StepCompileResult {
+      const step = node as unknown as ${pascal}DSLNode;
+      return {
+        entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: '${type}', label: step.label ?? '${toLabel(type)}' },
+        relations: [],
+      };
+    },
+    validate(): StepValidationError[] {
+      return [];
+    },
+    getLabel(node, index) {
+      return typeof node.label === 'string' ? node.label : \`${toLabel(type)} \${index}\`;
+    },
+  },
+};
+`;
+
+const INDEX = (camel: string) => `import type { StepDefinition } from '@abuddy/sdk/steps';
+import { ${camel}StepBuild } from './build';
 import { ${camel}StepFE } from './fe';
 
 export const ${camel}Step: StepDefinition = {
-  type: '${type}',
-  build: {
-    compile(node: ${pascal}DSLNode) {
-      return { type: '${type}' } as ${pascal}CompiledNode;
-    },
-    validate(node: ${pascal}DSLNode) {
-      return [];
-    },
-    getLabel(node: ${pascal}DSLNode) {
-      return '${toLabel(type)}';
-    },
-  },
+  ...${camel}StepBuild,
   fe: ${camel}StepFE.fe,
 };
 `;
@@ -59,6 +73,7 @@ export const ${camel}StepFE: StepDefinition = {
 
 const TYPES = (pascal: string, type: string) => `export interface ${pascal}DSLNode {
   type: '${type}';
+  label?: string;
 }
 
 export interface ${pascal}CompiledNode {
@@ -94,7 +109,8 @@ export async function addStep(args: string[], root: string) {
 
   const created: string[] = [];
   const files: [string, string][] = [
-    [path.join(stepDir, 'index.ts'), INDEX(type, camel, pascal)],
+    [path.join(stepDir, 'build.ts'), BUILD(type, camel, pascal)],
+    [path.join(stepDir, 'index.ts'), INDEX(camel)],
     [path.join(stepDir, 'fe.ts'), FE(type, camel)],
     [path.join(stepDir, 'types.ts'), TYPES(pascal, type)],
     [path.join(stepDir, 'form.vue'), FORM_VUE(pascal)],
@@ -123,6 +139,14 @@ export async function addStep(args: string[], root: string) {
       path.join(root, feRegisterPath),
       `import { ${feExportName} } from './${type}/fe';`,
       `  ${feExportName},\n`,
+    );
+  }
+
+  if (stepsConfig?.build) {
+    updateRegisterArray(
+      path.join(root, stepsConfig.build),
+      `import { ${camel}StepBuild } from './${type}/build';`,
+      `  ${camel}StepBuild,\n`,
     );
   }
 

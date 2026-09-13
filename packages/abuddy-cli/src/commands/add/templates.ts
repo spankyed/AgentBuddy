@@ -47,6 +47,14 @@ export function hasFlag(args: string[], flag: string): boolean {
   return args.includes(flag);
 }
 
+/** Insert `line` after the file's last top-level import (or at the top when it has none). */
+function insertAfterLastImport(content: string, line: string): string {
+  const imports = [...content.matchAll(/^import [^\n]*\n/gm)];
+  const last = imports[imports.length - 1];
+  const at = last ? last.index! + last[0].length : 0;
+  return content.slice(0, at) + line + '\n' + content.slice(at);
+}
+
 export function updateRegisterArray(
   filePath: string,
   importLine: string,
@@ -57,12 +65,7 @@ export function updateRegisterArray(
 
   if (content.includes(arrayEntry.trim().split('\n')[0])) return false;
 
-  const lastImportIdx = content.lastIndexOf('\nimport ');
-  if (lastImportIdx === -1) return false;
-  if (importLine) {
-    const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
-    content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
-  }
+  if (importLine) content = insertAfterLastImport(content, importLine);
 
   const arrayCloseIdx = content.lastIndexOf('];');
   if (arrayCloseIdx === -1) return false;
@@ -83,10 +86,7 @@ export function updateComponentMap(
 
   if (content.includes(`'${mapKey}'`) || content.includes(`"${mapKey}"`)) return false;
 
-  const lastImportIdx = content.lastIndexOf('\nimport ');
-  if (lastImportIdx === -1) return false;
-  const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
-  content = content.slice(0, endOfLastImport + 1) + importLine + '\n' + content.slice(endOfLastImport + 1);
+  content = insertAfterLastImport(content, importLine);
 
   const mapCloseIdx = content.lastIndexOf('};');
   if (mapCloseIdx === -1) return false;

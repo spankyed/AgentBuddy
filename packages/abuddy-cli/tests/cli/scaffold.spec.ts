@@ -78,6 +78,22 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(verifyBundle(extracted).id).toBe('demo-pack');
   }, 240_000);
 
+  it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
+    expect(run('node', [CLI, 'add', 'step', 'ping'], pack).code).toBe(0);
+    expect(run('node', [CLI, 'add', 'service', 'cache'], pack).code).toBe(0);
+    const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
+    expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping';[\s\S]*\[[\s\S]*pingStep,/);
+    expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build';[\s\S]*\[[\s\S]*pingStepBuild,/);
+
+    const build = run('node', [CLI, 'build'], pack);
+    expect(build.code, build.output).toBe(0);
+    const stepsBuild = await import(path.join(pack, 'dist', 'build', 'steps.build.mjs'));
+    expect(stepsBuild.steps.map((step: { type: string }) => step.type)).toEqual(['ping']);
+
+    const tsc = run(TSC, ['--noEmit'], pack);
+    expect(tsc.code, tsc.output).toBe(0);
+  }, 240_000);
+
   it('keeps unit tests runnable after init-tests adds Playwright specs', () => {
     expect(run('node', [CLI, 'init-tests'], pack).code).toBe(0);
     expect(fs.existsSync(path.join(pack, 'tests', 'e2e', 'smoke.spec.ts'))).toBe(true);

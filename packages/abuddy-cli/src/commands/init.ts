@@ -18,7 +18,7 @@ const MANIFEST_TEMPLATE = (name: string) => {
     features: [],
     dependencies: {},
     permissions: [],
-    steps: { register: 'src/extensions/steps/register.ts', definitions: [] },
+    steps: { register: 'src/extensions/steps/register.ts', build: 'src/extensions/steps/build.ts', definitions: [] },
     boot: {
       seed: {
         actions: 'src/seeds/actions',
@@ -92,6 +92,14 @@ export default defineConfig({
     include: ['tests/unit/**/*.spec.ts'],
   },
 });
+`;
+
+// Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs
+// that depend on this one validate their flows with this pack's step code
+const STEPS_BUILD_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
+
+export const steps: StepDefinition[] = [
+];
 `;
 
 const STEPS_REGISTER_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
@@ -205,6 +213,7 @@ export async function init(args: string[]) {
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
     STEPS_REGISTER_TEMPLATE,
   );
+  fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
     EXAMPLE_TEST_TEMPLATE(name),
