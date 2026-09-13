@@ -2,6 +2,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack-registry.js';
 import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { isHostCompatible } from './pack-installer.js';
 
 const logger = createLogger('pack-updater');
 
@@ -19,13 +20,27 @@ export interface ReleaseCandidate {
   tag: string;
 }
 
+/** The hostVersion range in a release's abuddy.json at its tag, or undefined when it can't be read. */
+async function releaseHostRange(owner: string, repo: string, tag: string): Promise<string | undefined> {
+  try {
+    const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(tag)}/abuddy.json`);
+    if (!response.ok) return undefined;
+    const manifest = await response.json() as { hostVersion?: unknown };
+    return typeof manifest.hostVersion === 'string' ? manifest.hostVersion : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Highest semver release in a GitHub repo. Prereleases (e.g. 1.2.0-beta.1) are only
- * considered for the beta channel; drafts and non-semver tags are ignored.
+ * considered for the beta channel; drafts and non-semver tags are ignored. With a
+ * hostVersion, releases whose manifest requires a different AgentBuddy are skipped (a release
+ * whose manifest can't be read is kept; the installer checks it again).
  */
 export async function findLatestRelease(
   slug: string,
-  options: { includePrerelease?: boolean } = {},
+  options: { includePrerelease?: boolean; hostVersion?: string } = {},
 ): Promise<ReleaseCandidate | null> {
   const [ownerRepo] = slug.split('@');
   const [owner, repo] = ownerRepo.split('/');
@@ -45,7 +60,11 @@ export async function findLatestRelease(
       .filter((r): r is ReleaseCandidate => r.version !== null)
       .filter(r => options.includePrerelease || semver.prerelease(r.version) === null)
       .sort((a, b) => semver.rcompare(a.version, b.version));
-    return candidates[0] ?? null;
+    if (!options.hostVersion) return candidates[0] ?? null;
+    for (const candidate of candidates) {
+      if (isHostCompatible(await releaseHostRange(owner, repo, candidate.tag), options.hostVersion)) return candidate;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -59,7 +78,8 @@ function updateChannelIncludesPrereleases(): boolean {
   }
 }
 
-export async function checkForUpdates(): Promise<UpdateCheckResult[]> {
+/** Checks each installed pack's source for a newer release this AgentBuddy (hostVersion) can run. */
+export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {
   const entries = readPackRegistry();
   const updatable = entries.filter(e => e.source && e.enabled);
 
@@ -86,7 +106,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult[]> {
       }
     }
 
-    const latest = await findLatestRelease(entry.source!, { includePrerelease });
+    const latest = await findLatestRelease(entry.source!, { includePrerelease, hostVersion: options.hostVersion });
     const latestVersion = latest && isNewer(latest.version, entry.version) ? latest.version : undefined;
     updatedEntries.set(entry.id, {
       lastUpdateCheck: new Date().toISOString(),

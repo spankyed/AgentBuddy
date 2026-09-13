@@ -304,7 +304,7 @@ export const packsSystem = setup({
     },
 
     checkForPackUpdates: ({ system }) => {
-      checkForUpdates().then(() => {
+      checkForUpdates({ hostVersion: APP_VERSION }).then(() => {
         emitPacksList(system);
       }).catch(err => {
         console.error('[packs] Update check failed:', err);

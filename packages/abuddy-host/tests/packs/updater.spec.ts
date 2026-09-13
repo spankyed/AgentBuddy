@@ -36,4 +36,34 @@ describe('findLatestRelease', () => {
     expect(await findLatestRelease('acme/pack')).toBeNull();
     expect(await findLatestRelease('not-a-slug')).toBeNull();
   });
+
+  describe('with a hostVersion', () => {
+    /** Releases API plus each tag's abuddy.json (a missing entry is a 404). */
+    function mockReleasesWithManifests(manifests: Record<string, { hostVersion?: string }>) {
+      const fetchMock = vi.fn(async (url: string) => {
+        if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify(releases), { status: 200 });
+        const tag = url.match(/\/acme\/pack\/([^/]+)\/abuddy\.json$/)?.[1];
+        const manifest = tag && manifests[decodeURIComponent(tag)];
+        return manifest ? new Response(JSON.stringify(manifest), { status: 200 }) : new Response('Not Found', { status: 404 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      return fetchMock;
+    }
+
+    it('skips releases whose manifest requires a different AgentBuddy', async () => {
+      const fetchMock = mockReleasesWithManifests({ 'v1.9.1': { hostVersion: '>=0.5.0' }, 'v1.2.0': { hostVersion: '>=0.3.0' } });
+      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toEqual({ version: '1.2.0', tag: 'v1.2.0' });
+      expect(fetchMock).toHaveBeenCalledWith('https://raw.githubusercontent.com/acme/pack/v1.9.1/abuddy.json');
+    });
+
+    it('keeps a release whose manifest has no hostVersion or cannot be read', async () => {
+      mockReleasesWithManifests({});
+      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toEqual({ version: '1.9.1', tag: 'v1.9.1' });
+    });
+
+    it('returns null when no release supports this AgentBuddy', async () => {
+      mockReleasesWithManifests({ 'v1.9.1': { hostVersion: '>=1.0.0' }, 'v1.2.0': { hostVersion: '>=1.0.0' } });
+      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toBeNull();
+    });
+  });
 });
