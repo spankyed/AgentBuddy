@@ -44,7 +44,7 @@ export namespace EARS {
     // (undocumented)
     export interface AttributePayloads {
         // (undocumented)
-        [key: string]: any;
+        [key: string]: unknown;
         // (undocumented)
         [AttrKindValues.RelationDetails]: RelationDetail;
         // (undocumented)
@@ -66,7 +66,7 @@ export namespace EARS {
         readonly Custom: <T extends string>(k: T) => T & RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -179,44 +179,7 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }
 
 // @public (undocumented)
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): {
-    readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
-    readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly merge: (k: EARS.AttrKind, v: unknown, i?: number) => /*elided*/ any;
-    readonly drop: (k: EARS.AttrKind, i?: number) => /*elided*/ any;
-    readonly dropIf: (k: EARS.AttrKind, c: unknown) => /*elided*/ any;
-    readonly update: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly updateBatch: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly grant: (r: string) => /*elided*/ any;
-    readonly revoke: (r: string) => /*elided*/ any;
-    readonly ensure: (r: string, scope?: readonly EARS.EntityId[]) => /*elided*/ any;
-    readonly link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly relPatch: (rel: EARS.EntityId, u: {
-        sourceEntity?: EARS.EntityId;
-        targetEntity?: EARS.EntityId;
-        info?: unknown;
-    }) => /*elided*/ any;
-    readonly unlink: (rel: EARS.EntityId) => /*elided*/ any;
-    readonly linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => /*elided*/ any;
-    readonly patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: {
-        newTarget: EARS.EntityId;
-        newInfo?: unknown;
-    }) => /*elided*/ any;
-    readonly unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => /*elided*/ any;
-    readonly unlinkWhere: (c?: {
-        kind?: EARS.RelKind;
-        target?: EARS.EntityId;
-    }) => /*elided*/ any;
-    readonly define: (def: {
-        attributes?: Record<string, unknown>;
-        links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
-        roles?: string | string[];
-    }) => /*elided*/ any;
-    readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => EARS.EntityId<string>;
-};
+export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;
 
 // (No @packageDocumentation comment for this package)
 

@@ -2,7 +2,7 @@ import { rootEvents } from '../rpc/index.ts';
 import { createLogger } from '../logger/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
-import { repository } from '../ears/repository.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import type { EARS } from '../types/entities.ts';
 import type { StepRuntimeError } from './types.ts';
 
@@ -43,7 +43,7 @@ export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeErr
 
   if (runtimeError.tNodeId) {
     try {
-      repository.brainCommands.updateTNodeResult(runtimeError.tNodeId as EARS.EntityId, {
+      builtinRepository.brainCommands.updateTNodeResult(runtimeError.tNodeId as EARS.EntityId, {
         error: {
           message: runtimeError.message,
           source: runtimeError.source,

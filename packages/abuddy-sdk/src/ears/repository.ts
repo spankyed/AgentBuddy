@@ -1,12 +1,17 @@
 // --- Repository registry (real implementation) ---
 
-const entries: Record<string, any> = {};
+const entries: Record<string, unknown> = {};
 
-export function registerRepository(name: string, value: any): void {
+/** Registers a repository under a name. Packs declare theirs in abuddy.json (`features[].repositories`). */
+export function registerRepository(name: string, value: unknown): void {
   entries[name] = value;
 }
 
-export const repository = /*#__PURE__*/ new Proxy({} as Record<string, any>, {
+/**
+ * Every registered repository, for host code. Packs use the `repository` from their
+ * `#generated/repository`, typed with their own and their dependencies' repositories.
+ */
+export const repository: Record<string, unknown> = /*#__PURE__*/ new Proxy({} as Record<string, unknown>, {
   get(_, prop) {
     if (typeof prop === 'symbol') return undefined;
     const value = entries[prop];
@@ -17,7 +22,7 @@ export const repository = /*#__PURE__*/ new Proxy({} as Record<string, any>, {
     }
     return value;
   },
-}) as any;
+});
 
 export type Repository = typeof repository;
 

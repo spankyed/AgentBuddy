@@ -46,7 +46,7 @@ export namespace EARS {
     // (undocumented)
     export interface AttributePayloads {
         // (undocumented)
-        [key: string]: any;
+        [key: string]: unknown;
         // (undocumented)
         [AttrKindValues.RelationDetails]: RelationDetail;
         // (undocumented)
@@ -68,7 +68,7 @@ export namespace EARS {
         readonly Custom: <T extends string>(k: T) => T & RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";

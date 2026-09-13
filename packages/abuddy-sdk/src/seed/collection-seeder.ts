@@ -1,4 +1,5 @@
-import { createEntityWithDefaults, updateEntity, destroyEntity } from '../ears/index.ts';
+import { destroyEntity } from '../ears/index.ts';
+import { createEntityWithDefaults, updateEntity } from '../ears/transaction-helpers.ts';
 import { findWhere, findAll, findById } from '../ears/query-helpers.ts';
 import { seedCollection, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';

@@ -1,11 +1,11 @@
-import { repository } from '@abuddy/sdk/ears';
+import { settingsRepository } from '@/core/settings-repository';
 import { APP_VERSION } from '@/version';
 import { compareVersions } from '@abuddy/sdk/utils';
 import { getRegisteredMigrations } from '@abuddy/host/packs';
 import type { LoadedPack } from '@/packs/pack-loader';
 
 export function runMigrations(): void {
-  const current = repository.settingsQueries.getInternalSettings().version || '0.0.0';
+  const current = settingsRepository.settingsQueries.getInternalSettings().version || '0.0.0';
   const migrations = getRegisteredMigrations().sort((a, b) => compareVersions(a.target, b.target));
 
   for (const m of migrations) {
@@ -21,12 +21,12 @@ export function runMigrations(): void {
   }
 
   if (current !== APP_VERSION) {
-    repository.settingsCommands.updateSettings('internal', null, ['version'], APP_VERSION);
+    settingsRepository.settingsCommands.updateSettings('internal', null, ['version'], APP_VERSION);
   }
 }
 
 export function runPackMigrations(packs: LoadedPack[]): void {
-  const stored = repository.settingsQueries.getInternalSettings().packVersions ?? {};
+  const stored = settingsRepository.settingsQueries.getInternalSettings().packVersions ?? {};
   const updated = { ...stored };
   let anyChanged = false;
 
@@ -63,6 +63,6 @@ export function runPackMigrations(packs: LoadedPack[]): void {
   }
 
   if (anyChanged) {
-    repository.settingsCommands.updateSettings('internal', null, ['packVersions'], updated);
+    settingsRepository.settingsCommands.updateSettings('internal', null, ['packVersions'], updated);
   }
 }

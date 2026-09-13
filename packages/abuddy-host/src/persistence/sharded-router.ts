@@ -1,7 +1,7 @@
 import { EARS } from '@abuddy/sdk/types';
 import type { PersistenceSink } from './base-sink.ts';
 import type { PartitionPolicy, Partition } from './policy.ts';
-import { getAttr } from '@abuddy/sdk/ears';
+import { getAttr } from '@abuddy/sdk/ears/internals';
 
 const entTypeOf = (id: string): EARS.Entity => {
   if (typeof id !== 'string' || id.length === 0) {

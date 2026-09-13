@@ -3,6 +3,7 @@ import { repository } from '../ears/index.ts';
 import type { EARS } from '../types/entities.ts';
 import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.ts';
 import type { Logger } from '../ears/runtime.ts';
+import type { ApplicationHotkeys } from '../types/index.ts';
 
 function lazyHost(name: string) {
   let m: any;
@@ -35,28 +36,39 @@ export function defineEvents<M extends PluginEvents>(): TypedEvents<M> {
   return { emit, sendToPlugin } as unknown as TypedEvents<M>;
 }
 
+/**
+ * Events the host app's own plugins receive from pack systems. A pack system declares a send
+ * to one with `features[].system.sendsTo` in abuddy.json; `#generated/events` includes this map.
+ */
+export type HostPluginEvents = {
+  application:
+    | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
+    | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
+    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
+};
+
 export function sendToBrainSystem(event: {
   eventType: string;
-  payload?: any;
+  payload?: unknown;
   targetFlowId?: EARS.EntityId;
 }): void {
   emitter().sendToBrainSystem(event);
 }
 
-export function sendToSystem(systemId: string, event: { type: string; [key: string]: any }): void {
+export function sendToSystem(systemId: string, event: { type: string; [key: string]: unknown }): void {
   emitter().sendToSystem(systemId, event);
 }
 
-export function onOutgoing(callback: (event: any) => void): () => void {
+export function onOutgoing(callback: (event: { type: string; [key: string]: unknown }) => void): () => void {
   return emitter().onOutgoing(callback);
 }
 
-export function onIncoming(callback: (event: any) => void): () => void {
+export function onIncoming(callback: (event: { type: string; [key: string]: unknown }) => void): () => void {
   return emitter().onIncoming(callback);
 }
 
 // --- Services aggregator ---
-let _logger: any;
+let _logger: Logger | undefined;
 function logger() { return _logger ??= getHostModule('logger').createLogger('log-service'); }
 
 /**
@@ -88,14 +100,14 @@ function resolveServices(): HostServices & Record<string, unknown> {
 
 /**
  * Host services plus every registered pack service. Untyped beyond HostServices: a pack's
- * `#generated/services` exports `services` typed with its own feature services.
+ * `#generated/services` exports `services` typed with its own and its dependencies' services.
  */
-export const services: HostServices & Record<string, any> = new Proxy({} as any, {
+export const services: HostServices & Record<string, unknown> = new Proxy({} as HostServices & Record<string, unknown>, {
   get(_, prop: string) { return resolveServices()[prop]; },
   ownKeys() { return Reflect.ownKeys(resolveServices()); },
   getOwnPropertyDescriptor(_, prop) {
     const s = resolveServices();
-    if (prop in s) return { configurable: true, enumerable: true, value: (s as any)[prop] };
+    if (prop in s) return { configurable: true, enumerable: true, value: s[prop as string] };
   },
 });
 

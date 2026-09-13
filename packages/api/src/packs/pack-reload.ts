@@ -22,7 +22,7 @@ import {
 import { seedPackData } from './pack-seed';
 import { updateLoadedPack } from './pack-api';
 import { seedData } from '@abuddy/sdk/utils';
-import { repository } from '@abuddy/sdk/ears';
+import { settingsRepository } from '@/core/settings-repository';
 import type { PackManifest } from '@abuddy/host/packs';
 
 const esmRequire = Module.createRequire(import.meta.url);
@@ -111,8 +111,8 @@ export async function reloadExternalPack(
         seedPackData(
           [pack],
           seedData,
-          () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
-          (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+          () => settingsRepository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
+          (hashes) => settingsRepository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
         );
         updateLoadedPack(pack);
       },

@@ -4,7 +4,7 @@ import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 import type { SystemEvents } from '@abuddy/sdk/framework';
 import { safeEvents } from '@/core/shared/actor-helpers';
 import { rootEvents } from '@/core/router/bus-emitter';
-import { repository } from '@abuddy/sdk/ears';
+import { settingsRepository } from '@/core/settings-repository';
 import { bus } from '@/core/system-ids';
 import { getDesignated, hasDesignation } from '@abuddy/sdk';
 
@@ -98,7 +98,7 @@ export const backendSystem = setup({
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
 
-      const internalSettings = repository.settingsQueries.getInternalSettings();
+      const internalSettings = settingsRepository.settingsQueries.getInternalSettings();
       system.get(bus).send({
         type: 'OUTGOING',
         event: {

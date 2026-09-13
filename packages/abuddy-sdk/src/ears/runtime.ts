@@ -19,7 +19,7 @@ export interface PersistenceSink {
   onUpdateRelation(relId: string, patch: { src?: string; tgt?: string; info?: unknown }): void;
   onRemoveRelation(relId: string): void;
   close?(): void;
-  getErrorStats?(): { errorCount: number; lastError: any };
+  getErrorStats?(): { errorCount: number; lastError: unknown };
 }
 
 const noopSink: PersistenceSink = {

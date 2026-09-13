@@ -21,4 +21,9 @@ export { _flushEarlyRegistrations } from './repository.ts';
 // Untyped query helpers for host code; packs get them typed from defineEars (see ./typed)
 export { qx } from './query.ts';
 export { createEntity } from './attribute-storage.ts';
-export { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers.ts';
+export {
+  findById, findByIdRaw, findAll, findWhere, findFirst,
+  findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
+} from './query-helpers.ts';
+export { getAttr, getAttrs } from './attribute-storage.ts';
+export { createEntityWithDefaults, updateEntity } from './transaction-helpers.ts';

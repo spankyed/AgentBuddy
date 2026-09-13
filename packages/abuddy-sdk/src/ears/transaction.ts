@@ -11,9 +11,9 @@ import { edgeStore } from './edge-store.ts';
 import { qx } from './query.ts';
 import { EARS } from '../types/entities.ts';
 import { wouldCreateCycle, linkSymmetric } from './graph.ts';
-import { getEntityTypeChecker, type SafeLinkOptions } from './runtime.ts';
+import { getEntityTypeChecker, type SafeLinkOptions, type TransactionBuilder } from './runtime.ts';
 
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false) {
+export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false): TransactionBuilder {
   const isEntityType = getEntityTypeChecker()(typeOrId);
 
   const id: EARS.EntityId = isEntityType && !useProvidedId

@@ -3,7 +3,7 @@ import { promisify } from 'util'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { repository } from '../ears/index.ts'
+import { builtinRepository } from '../ears/builtin-repositories.ts'
 
 const execFileAsync = promisify(execFile)
 
@@ -176,7 +176,7 @@ export async function testCli(
 
 /** Convenience: read stored path from settings and resolve. Used by CLI service modules. */
 export async function resolveForService(cli: CliName): Promise<string> {
-  const settings = repository.settingsQueries.getSettings()
+  const settings = builtinRepository.settingsQueries.getSettings()
   const storedPath = settings.general.secrets.cliPaths?.[cli]
   return resolveCliPath(cli, storedPath)
 }

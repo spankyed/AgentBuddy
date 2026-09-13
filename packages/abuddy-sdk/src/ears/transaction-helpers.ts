@@ -34,7 +34,7 @@ export interface CreatedEntityFields {
  * function fills in (entityType, shortCode, label, timestamps); those are added
  * to the return type instead.
  */
-export function createEntityWithDefaults<T extends Record<string, any> = Record<string, any>>(
+export function createEntityWithDefaults<T extends Record<string, unknown> = Record<string, unknown>>(
   entityType: EARS.Entity,
   data: Partial<T>,
   prefix?: string,
@@ -62,7 +62,7 @@ export function createEntityWithDefaults<T extends Record<string, any> = Record<
 
 export function updateEntity(
   id: EARS.EntityId,
-  updates: Record<string, any>,
+  updates: Record<string, unknown>,
   skipTimestamp?: boolean
 ): void {
   const transaction = tx(id);

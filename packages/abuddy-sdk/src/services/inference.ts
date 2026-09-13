@@ -3,7 +3,7 @@ import type { CoreMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
-import { repository } from '../ears/repository.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import type { EARS } from '../types/entities.ts';
 
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
@@ -24,10 +24,10 @@ export function resolveProvider(provider: string): ProviderName {
 
 function getApiKeyFromStore(baseProvider: ProviderName): string {
   try {
-    const settings = repository.settingsQueries.getGeneralSettings();
+    const settings = builtinRepository.settingsQueries.getGeneralSettings();
     const secretId = settings.secrets?.[baseProvider] as EARS.EntityId | undefined;
     if (secretId) {
-      const secret = repository.secretsQueries.getSecret(secretId);
+      const secret = builtinRepository.secretsQueries.getSecret(secretId);
       if (secret?.encryptedValue) return secret.encryptedValue;
     }
   } catch { /* settings not available — fall through to env */ }

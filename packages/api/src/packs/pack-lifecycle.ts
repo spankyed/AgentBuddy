@@ -10,7 +10,7 @@ import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './pack-loader';
 import { seedPackData } from './pack-seed';
 import { updateLoadedPack, removeLoadedPack } from './pack-api';
-import { repository } from '@abuddy/sdk/ears';
+import { settingsRepository } from '@/core/settings-repository';
 
 const logger = createLogger('pack-lifecycle');
 
@@ -96,8 +96,8 @@ export function activatePack(
     seedPackData(
       [pack],
       seedData,
-      () => repository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
-      (hashes) => repository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+      () => settingsRepository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
+      (hashes) => settingsRepository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
     );
   }
 

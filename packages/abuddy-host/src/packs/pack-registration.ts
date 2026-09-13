@@ -6,12 +6,19 @@
  */
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
+import type { HostServices } from '@abuddy/sdk/services';
 import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
+
+/** Services the host supplies itself; a pack service with one of these names would replace it */
+const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository'] as const satisfies readonly (keyof HostServices)[];
+// Fails to compile when HostServices gains a service this list doesn't name
+const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
+void _allHostServicesNamed;
 
 const registrations = new Map<string, PackRegistration>();
 const hostSystems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
@@ -54,6 +61,11 @@ export function registerPack(registration: PackRegistration): void {
   }
 
   if (registration.services) {
+    for (const key of Object.keys(registration.services)) {
+      if ((HOST_SERVICE_NAMES as readonly string[]).includes(key)) {
+        throw new Error(`Service collision: key "${key}" — pack "${registration.id}" vs the host's own "${key}" service`);
+      }
+    }
     for (const [existingId, existing] of registrations) {
       if (!existing.services) continue;
       for (const key of Object.keys(registration.services)) {

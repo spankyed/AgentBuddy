@@ -8,6 +8,20 @@
 export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
 
 // @public
+export type HostPluginEvents = {
+    application: {
+        type: 'APPLICATION_HOTKEYS';
+        hotkeys: ApplicationHotkeys;
+    } | {
+        type: 'APPLICATION_RESTORE_LAST_PLUGIN';
+        lastActivePluginId: string;
+    } | {
+        type: 'PLUGIN_VISIBILITY_UPDATED';
+        pluginVisibility: Record<string, boolean>;
+    };
+};
+
+// @public
 export interface HostServices {
     // (undocumented)
     emitter: {
@@ -24,10 +38,16 @@ export interface HostServices {
 }
 
 // @public (undocumented)
-export function onIncoming(callback: (event: any) => void): () => void;
+export function onIncoming(callback: (event: {
+    type: string;
+    [key: string]: unknown;
+}) => void): () => void;
 
 // @public (undocumented)
-export function onOutgoing(callback: (event: any) => void): () => void;
+export function onOutgoing(callback: (event: {
+    type: string;
+    [key: string]: unknown;
+}) => void): () => void;
 
 // @public (undocumented)
 export function registerThreadTeardown(fn: (threadId: string) => void): void;
@@ -38,7 +58,7 @@ export function runThreadTeardown(threadId: string): void;
 // @public (undocumented)
 export function sendToBrainSystem(event: {
     eventType: string;
-    payload?: any;
+    payload?: unknown;
     targetFlowId?: EARS.EntityId;
 }): void;
 
@@ -51,11 +71,11 @@ export function sendToPlugin(pluginId: string, event: {
 // @public (undocumented)
 export function sendToSystem(systemId: string, event: {
     type: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }): void;
 
 // @public
-export const services: HostServices & Record<string, any>;
+export const services: HostServices & Record<string, unknown>;
 
 // @public (undocumented)
 export interface TypedEvents<M extends PluginEvents> {

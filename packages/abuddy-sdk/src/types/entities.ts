@@ -68,12 +68,11 @@ export namespace EARS {
   export interface AttributePayloads {
     [AttrKindValues.Role]            : RoleKind;
     [AttrKindValues.RelationDetails] : RelationDetail;
-    // biome-ignore lint/suspicious/noExplicitAny: fallback for user buckets
-    [key: string]                    : any;
+    [key: string]                    : unknown;
   }
 
   // biome-ignore lint/suspicious/noExplicitAny: generic fallback
-  export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+  export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
 
   export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
 

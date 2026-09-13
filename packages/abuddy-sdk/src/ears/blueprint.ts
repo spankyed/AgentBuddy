@@ -13,7 +13,16 @@ export interface Blueprint {
   }>;
 }
 
-export const bp = (entity: EARS.Entity) => {
+/** Fluent builder for a Blueprint */
+export interface BlueprintBuilder {
+  attr(k: string, v: unknown): BlueprintBuilder;
+  grant(r: EARS.RoleKind): BlueprintBuilder;
+  ensure(r: EARS.RoleKind): BlueprintBuilder;
+  link(kind: EARS.RelKind, target: Blueprint | EARS.EntityId, info?: unknown): BlueprintBuilder;
+  build(): Blueprint;
+}
+
+export const bp = (entity: EARS.Entity): BlueprintBuilder => {
   const b: Blueprint = { entity };
 
   return {

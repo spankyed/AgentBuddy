@@ -4,17 +4,17 @@ export type {
 export { b64Encode, b64Decode, type QxSeed } from './query.ts';
 export { tx } from './transaction.ts';
 export {
-  getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
+  getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
   getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats, isEntity,
   getRoles, grantRole, revokeRole,
 } from './attribute-storage.ts';
 export {
   repository, registerRepository, type Repository,
   hasIdCollision,
-  createEntityWithDefaults, updateEntity, exists,
+  exists,
   repoCreateRelation as createRelation,
   repoRemoveRelation as removeRelation,
-  findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
+  countEntities,
   RepositoryError, RepositoryErrorCode,
   prepareEntity,
 } from './repository.ts';
@@ -29,8 +29,10 @@ export type { EntityShapes, ShapeOf, BaseEntity } from '../types/entities.ts';
 export {
   defineEars,
   type TypedEars, type TypedQx, type TypedFindById, type TypedFindAll, type TypedFindWhere, type TypedFindFirst, type TypedCreateEntity,
+  type TypedGetAttr, type TypedGetAttrs, type TypedFindWithFields, type TypedFindByIdWithFields, type TypedFindWithRole,
+  type TypedFindFirstWithRole, type TypedCreateEntityWithDefaults, type TypedUpdateEntity,
 } from './typed.ts';
-export { bp, spawn, type Blueprint } from './blueprint.ts';
+export { bp, spawn, type Blueprint, type BlueprintBuilder } from './blueprint.ts';
 export {
   descendants, ancestors, rootParent, linkSymmetric,
   topoSort, shortestPath, leaves, lowestCommonAncestor,

@@ -43,14 +43,22 @@ export interface Blueprint {
     uniqueRoles?: EARS.RoleKind[];
 }
 
-// @public (undocumented)
-export const bp: (entity: EARS.Entity) => {
-    attr(k: string, v: unknown): /*elided*/ any;
-    grant(r: EARS.RoleKind): /*elided*/ any;
-    ensure(r: EARS.RoleKind): /*elided*/ any;
-    link(kind: EARS.RelKind, target: Blueprint | EARS.EntityId, info?: unknown): /*elided*/ any;
+// @public
+export interface BlueprintBuilder {
+    // (undocumented)
+    attr(k: string, v: unknown): BlueprintBuilder;
+    // (undocumented)
     build(): Blueprint;
-};
+    // (undocumented)
+    ensure(r: EARS.RoleKind): BlueprintBuilder;
+    // (undocumented)
+    grant(r: EARS.RoleKind): BlueprintBuilder;
+    // (undocumented)
+    link(kind: EARS.RelKind, target: Blueprint | EARS.EntityId, info?: unknown): BlueprintBuilder;
+}
+
+// @public (undocumented)
+export const bp: (entity: EARS.Entity) => BlueprintBuilder;
 
 // @public (undocumented)
 export function countEntities(entityType: EARS.Entity): number;
@@ -70,9 +78,6 @@ export interface CreatedEntityFields {
     // (undocumented)
     updatedAt: number;
 }
-
-// @public
-export function createEntityWithDefaults<T extends Record<string, any> = Record<string, any>>(entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId): T & CreatedEntityFields;
 
 // @public (undocumented)
 export function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
@@ -96,7 +101,7 @@ export namespace EARS {
     // (undocumented)
     export interface AttributePayloads {
         // (undocumented)
-        [key: string]: any;
+        [key: string]: unknown;
         // (undocumented)
         [AttrKindValues.RelationDetails]: RelationDetail;
         // (undocumented)
@@ -118,7 +123,7 @@ export namespace EARS {
         readonly Custom: <T extends string>(k: T) => T & RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -184,18 +189,6 @@ export type EntityShapes = {
 export function exists(id: EARS.EntityId): boolean;
 
 // @public (undocumented)
-export function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-
-// @public (undocumented)
-export function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-
-// @public (undocumented)
-export function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-
-// @public (undocumented)
-export function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-
-// @public (undocumented)
 export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string;
 
 // @public (undocumented)
@@ -214,16 +207,10 @@ export const getAllEntityTypes: () => EARS.Entity[];
 export const getAllRelationKinds: () => string[];
 
 // @public (undocumented)
-export const getAttr: (id: EARS.EntityId, k: EARS.AttrKind, i?: number) => any;
-
-// @public (undocumented)
 export const getAttributeStats: (kind: EARS.AttrKind) => {
     entityCount: number;
     totalValues: number;
 };
-
-// @public (undocumented)
-export const getAttrs: (id: EARS.EntityId, k: EARS.AttrKind) => any[];
 
 // @public (undocumented)
 export const getEntitiesOfType: (t: EARS.Entity) => EARS.EntityId<string>[];
@@ -266,7 +253,7 @@ export interface PersistenceSink {
     // (undocumented)
     getErrorStats?(): {
         errorCount: number;
-        lastError: any;
+        lastError: unknown;
     };
     // (undocumented)
     onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
@@ -375,8 +362,8 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
 // @public (undocumented)
 export type QxSeed = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[];
 
-// @public (undocumented)
-export function registerRepository(name: string, value: any): void;
+// @public
+export function registerRepository(name: string, value: unknown): void;
 
 // @public (undocumented)
 export function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
@@ -387,16 +374,16 @@ export const removeRelationById: (relId: EARS.EntityId) => void;
 // @public (undocumented)
 export type Repository = typeof repository;
 
-// @public (undocumented)
-export const repository: any;
+// @public
+export const repository: Record<string, unknown>;
 
 // @public (undocumented)
 export class RepositoryError extends Error {
-    constructor(message: string, code?: RepositoryErrorCode, details?: any | undefined);
+    constructor(message: string, code?: RepositoryErrorCode, details?: unknown | undefined);
     // (undocumented)
     code: RepositoryErrorCode;
     // (undocumented)
-    details?: any | undefined;
+    details?: unknown | undefined;
 }
 
 // @public (undocumented)
@@ -508,52 +495,20 @@ export interface TransactionBuilder {
 }
 
 // @public (undocumented)
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): {
-    readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
-    readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly merge: (k: EARS.AttrKind, v: unknown, i?: number) => /*elided*/ any;
-    readonly drop: (k: EARS.AttrKind, i?: number) => /*elided*/ any;
-    readonly dropIf: (k: EARS.AttrKind, c: unknown) => /*elided*/ any;
-    readonly update: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly updateBatch: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly grant: (r: string) => /*elided*/ any;
-    readonly revoke: (r: string) => /*elided*/ any;
-    readonly ensure: (r: string, scope?: readonly EARS.EntityId[]) => /*elided*/ any;
-    readonly link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly relPatch: (rel: EARS.EntityId, u: {
-        sourceEntity?: EARS.EntityId;
-        targetEntity?: EARS.EntityId;
-        info?: unknown;
-    }) => /*elided*/ any;
-    readonly unlink: (rel: EARS.EntityId) => /*elided*/ any;
-    readonly linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => /*elided*/ any;
-    readonly patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: {
-        newTarget: EARS.EntityId;
-        newInfo?: unknown;
-    }) => /*elided*/ any;
-    readonly unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => /*elided*/ any;
-    readonly unlinkWhere: (c?: {
-        kind?: EARS.RelKind;
-        target?: EARS.EntityId;
-    }) => /*elided*/ any;
-    readonly define: (def: {
-        attributes?: Record<string, unknown>;
-        links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
-        roles?: string | string[];
-    }) => /*elided*/ any;
-    readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => EARS.EntityId<string>;
-};
+export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;
 
 // @public
 export type TypedCreateEntity<S extends EntityShapes> = <E extends EARS.Entity>(t: E) => EARS.EntityId<E extends keyof S ? E : string>;
+
+// @public
+export type TypedCreateEntityWithDefaults<S extends EntityShapes> = <E extends EARS.Entity>(entityType: E, data: Partial<ShapeOf<S, E>>, prefix?: string, providedId?: EARS.EntityId) => ShapeOf<S, E> & CreatedEntityFields;
 
 // @public (undocumented)
 export interface TypedEars<S extends EntityShapes> {
     // (undocumented)
     createEntity: TypedCreateEntity<S>;
+    // (undocumented)
+    createEntityWithDefaults: TypedCreateEntityWithDefaults<S>;
     // (undocumented)
     findAll: TypedFindAll<S>;
     // (undocumented)
@@ -561,11 +516,25 @@ export interface TypedEars<S extends EntityShapes> {
     // (undocumented)
     findByIdRaw: TypedFindById<S>;
     // (undocumented)
+    findByIdWithFields: TypedFindByIdWithFields<S>;
+    // (undocumented)
     findFirst: TypedFindFirst<S>;
+    // (undocumented)
+    findFirstWithRole: TypedFindFirstWithRole<S>;
     // (undocumented)
     findWhere: TypedFindWhere<S>;
     // (undocumented)
+    findWithFields: TypedFindWithFields<S>;
+    // (undocumented)
+    findWithRole: TypedFindWithRole<S>;
+    // (undocumented)
+    getAttr: TypedGetAttr<S>;
+    // (undocumented)
+    getAttrs: TypedGetAttrs<S>;
+    // (undocumented)
     qx: TypedQx<S>;
+    // (undocumented)
+    updateEntity: TypedUpdateEntity<S>;
 }
 
 // @public (undocumented)
@@ -585,6 +554,9 @@ export interface TypedFindById<S extends EntityShapes> {
 }
 
 // @public (undocumented)
+export type TypedFindByIdWithFields<S extends EntityShapes> = <E extends string, K extends keyof ShapeOf<S, E> & string>(id: EARS.EntityId<E>, fields: readonly K[]) => Pick<ShapeOf<S, E>, K> | undefined;
+
+// @public (undocumented)
 export interface TypedFindFirst<S extends EntityShapes> {
     // (undocumented)
     <E extends EARS.Entity>(entityType: E, field: string, value: unknown): ShapeOf<S, E> | undefined;
@@ -593,11 +565,36 @@ export interface TypedFindFirst<S extends EntityShapes> {
 }
 
 // @public (undocumented)
+export type TypedFindFirstWithRole<S extends EntityShapes> = <E extends EARS.Entity>(entityType: E, role: string) => ShapeOf<S, E> | undefined;
+
+// @public (undocumented)
 export interface TypedFindWhere<S extends EntityShapes> {
     // (undocumented)
     <E extends EARS.Entity>(entityType: E, field: string, value: unknown): ShapeOf<S, E>[];
     // (undocumented)
     <T>(entityType: EARS.Entity, field: string, value: unknown): T[];
+}
+
+// @public (undocumented)
+export type TypedFindWithFields<S extends EntityShapes> = <E extends EARS.Entity, K extends keyof ShapeOf<S, E> & string>(entityType: E, fields: readonly K[]) => Pick<ShapeOf<S, E>, K>[];
+
+// @public (undocumented)
+export type TypedFindWithRole<S extends EntityShapes> = <E extends EARS.Entity>(entityType: E, role: string) => ShapeOf<S, E>[];
+
+// @public
+export interface TypedGetAttr<S extends EntityShapes> {
+    // (undocumented)
+    <E extends string, K extends keyof ShapeOf<S, E> & string>(id: EARS.EntityId<E>, field: K, index?: number): ShapeOf<S, E>[K] | null;
+    // (undocumented)
+    (id: EARS.EntityId, field: string, index?: number): unknown;
+}
+
+// @public
+export interface TypedGetAttrs<S extends EntityShapes> {
+    // (undocumented)
+    <E extends string, K extends keyof ShapeOf<S, E> & string>(id: EARS.EntityId<E>, field: K): ShapeOf<S, E>[K][];
+    // (undocumented)
+    (id: EARS.EntityId, field: string): unknown[];
 }
 
 // @public (undocumented)
@@ -616,8 +613,13 @@ export interface TypedQx<S extends EntityShapes> {
     (seed?: QxSeed): QueryBuilder<string, S>;
 }
 
-// @public (undocumented)
-export function updateEntity(id: EARS.EntityId, updates: Record<string, any>, skipTimestamp?: boolean): void;
+// @public
+export interface TypedUpdateEntity<S extends EntityShapes> {
+    // (undocumented)
+    <E extends string>(id: EARS.EntityId<E>, updates: {
+        [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] | null;
+    }, skipTimestamp?: boolean): void;
+}
 
 // @public (undocumented)
 export function wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
