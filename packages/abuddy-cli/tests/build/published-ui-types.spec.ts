@@ -32,8 +32,8 @@ function typecheck(dir: string, moduleResolution: 'node16' | 'bundler'): { code:
   ].join('\n'));
   fs.writeFileSync(path.join(dir, 'index.ts'), [
     "import { h } from 'vue';",
-    "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor.vue';",
-    "import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor.vue';",
+    "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';",
+    "import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';",
     "import { useDebounceFn } from '@abuddy/ui/composables/useDebounce';",
     "import { tiptapPluginRegistry } from '@abuddy/sdk/fe';",
     "export const editor = h(TiptapEditor, { mode: 'editor', modelValue: 'text' });",

@@ -133,7 +133,7 @@ Only registered barrel subpaths are externalized. Other SDK modules resolve and 
 
 ### `@abuddy/ui`
 
-Components, editors and UI composables (`@abuddy/ui/design/button.vue`, `@abuddy/ui/components/tiptap/TiptapEditor.vue`, `@abuddy/ui/composables/useDebounce`) come from the separate `@abuddy/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. Each module ships with declarations, so component props typecheck with plain `tsc`. `@abuddy/ui` modules bundle into your pack's `fe.js`, and their `@abuddy/sdk/fe` imports resolve to the host's shared copy.
+Components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`) come from the separate `@abuddy/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. Each module ships with declarations, so component props typecheck with plain `tsc`. `@abuddy/ui` modules bundle into your pack's `fe.js`, and their `@abuddy/sdk/fe` imports resolve to the host's shared copy.
 
 ## Generated files
 

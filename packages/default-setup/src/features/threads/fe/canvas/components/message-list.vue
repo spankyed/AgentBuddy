@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
-import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 
 interface Message {
   sender?: 'user' | 'assistant' | 'system' | 'marker'

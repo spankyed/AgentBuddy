@@ -99,7 +99,7 @@ import { Workflow, Search, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@/__generated__/types'
 import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
-import Button from '@abuddy/ui/design/button.vue'
+import Button from '@abuddy/ui/design/button'
 
 interface Props {
   flows: Partial<FlowEntity>[]

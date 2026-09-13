@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor.vue';
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
 
 defineProps<{
   code: string;

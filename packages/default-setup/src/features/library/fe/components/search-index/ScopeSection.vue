@@ -156,7 +156,7 @@
 import { ref, computed, watch } from 'vue'
 import { Folder, FileText, X, Plus, ChevronRight } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import type { SearchIndexFormData } from '../../types/search-index'
 import type { EARS } from '@/__generated__/types'
 

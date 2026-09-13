@@ -311,7 +311,7 @@ import {
   ContextMenuPortal,
   ContextMenuSeparator,
 } from 'reka-ui'
-import Button from '@abuddy/ui/design/button.vue'
+import Button from '@abuddy/ui/design/button'
 import ConfirmDialog from './ConfirmDialog.vue'
 import BrokenSymlinkView from './BrokenSymlinkView.vue'
 import TableHeader from './TableHeader.vue'

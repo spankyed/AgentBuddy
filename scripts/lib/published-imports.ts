@@ -12,8 +12,11 @@ const packageName = (specifier: string) =>
 /** Package name → files importing it, across a package's shipped modules. */
 export class BareImports {
   private readonly imports = new Map<string, Set<string>>();
+  private readonly srcDir: string;
 
-  constructor(private readonly srcDir: string) {}
+  constructor(srcDir: string) {
+    this.srcDir = srcDir;
+  }
 
   /** Records a module's bare imports without bundling it (relative imports stay external). */
   async fromModule(contents: string, loader: 'js' | 'ts', resolveDir: string, importer: string): Promise<void> {

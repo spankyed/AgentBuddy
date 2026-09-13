@@ -1,4 +1,4 @@
-import type ToastNotification from '@abuddy/ui/design/ToastNotification.vue';
+import type ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 type ToastApi = InstanceType<typeof ToastNotification>;
 type QueuedToast = {

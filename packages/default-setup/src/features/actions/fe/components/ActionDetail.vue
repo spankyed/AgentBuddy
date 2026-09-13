@@ -114,12 +114,12 @@
 import { computed } from 'vue';
 import type { ActionEntity, ActionParameter, Category } from '@/__generated__/types';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader.vue';
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue';
+import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
-import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';

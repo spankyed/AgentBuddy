@@ -117,8 +117,8 @@ import NodePalette from './components/NodePalette.vue'
 import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
-import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog.vue'
-import ToastNotification from '@abuddy/ui/design/ToastNotification.vue'
+import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
+import ToastNotification from '@abuddy/ui/design/ToastNotification'
 
 const actorSystem = useActorSystem()
 

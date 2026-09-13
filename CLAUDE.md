@@ -87,7 +87,7 @@ Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSyst
 - `@abuddy/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
 - `@abuddy/host/fe` — host-only: `registerPackFE`, `getRegisteredPlugins`, app extensions.
 - `@abuddy/host/packs`, `/persistence`, `/backup`, `/build/discover`, `/build/shared-deps` — pack registry, discovery, installer and updater; persistence partitioning; backups; build-time pack discovery and host-shared dependency lists.
-- `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/*.vue`, `@abuddy/ui/components/tiptap/TiptapEditor.vue`, `@abuddy/ui/composables/useDebounce`). Contracts and host-shared state (`useActorSystem`, menu state, tiptap plugin and DSL registries) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
+- `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/*.vue`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`). Contracts and host-shared state (`useActorSystem`, menu state, tiptap plugin and DSL registries) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
 - `@abuddy/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
 - `@abuddy/sdk/utils/pure` — **environment-agnostic**: pure utilities only (`compareVersions`, `detectChanges`, `BinaryOperator`, `toMap`, `randomId`, etc.). Frontend/renderer code must import from this path (or a specific sub-path like `@abuddy/sdk/utils/compare-versions`), never from `@abuddy/sdk/utils`.
 

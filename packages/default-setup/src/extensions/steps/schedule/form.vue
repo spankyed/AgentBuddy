@@ -207,7 +207,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { NodeEntity } from '@/__generated__/types'
-import BaseForm from '@abuddy/ui/components/BaseForm.vue'
+import BaseForm from '@abuddy/ui/components/BaseForm'
 import { validateCronExpression } from '@abuddy/sdk/cron'
 
 type Frequency = 'every_second' | 'every_minute' | 'hourly' | 'daily' | 'weekly' | 'monthly'

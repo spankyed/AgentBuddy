@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import type { editor, IDisposable } from 'monaco-editor'
-import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor.vue'
+import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor'
 import { getLanguageFromPath } from '@abuddy/ui/components/monaco-config'
 import type { CodeContent } from '@/__generated__/types'
 

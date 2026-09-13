@@ -642,9 +642,9 @@ import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
 import RevertDialog from '@/features/code/fe/features/commit/RevertDialog.vue'
 import CommitLogSection from '@/features/code/fe/features/commit/CommitLogSection.vue'
-import ToastNotification from '@abuddy/ui/design/ToastNotification.vue'
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup.vue'
-import PanelResizer from '@abuddy/ui/layout/panel-resizer.vue'
+import ToastNotification from '@abuddy/ui/design/ToastNotification'
+import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
+import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
 
 // Get actors

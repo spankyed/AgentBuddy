@@ -228,4 +228,6 @@ watch(() => props.disabled, (disabled) => {
 defineExpose({ editor })
 </script>
 
-<style src="./tiptap-theme.css"></style>
+<style>
+@import "./tiptap-theme.css";
+</style>

@@ -60,7 +60,7 @@
 import { computed, ref } from 'vue'
 import { FilePlus2, FileMinus2, FilePenLine, ArrowRightLeft } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor.vue'
+import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor'
 import { getLanguageFromPath } from '@abuddy/ui/components/monaco-config'
 
 interface DiffFile {

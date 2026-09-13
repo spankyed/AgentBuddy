@@ -82,7 +82,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 
 interface BrowserSettings {
   openLinksInApp: boolean

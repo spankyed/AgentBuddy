@@ -45,7 +45,7 @@
 import { computed } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 import type { FieldContent } from '@/__generated__/types'
-import Autocomplete from '@abuddy/ui/design/Autocomplete.vue'
+import Autocomplete from '@abuddy/ui/design/Autocomplete'
 
 const props = defineProps<{
   content: FieldContent

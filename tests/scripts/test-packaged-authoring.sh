@@ -60,8 +60,8 @@ ABUDDY="$PACK/node_modules/.bin/abuddy"
 npm pkg set "dependencies.@abuddy/ui=file:$UI_TGZ"
 npm install --silent
 cat > src/features/notes/fe/editors.ts <<'TS'
-import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor.vue';
-import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor.vue';
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
 
 export const editors = { TiptapEditor, SimpleMonacoEditor };
 TS

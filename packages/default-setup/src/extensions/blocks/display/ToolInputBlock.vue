@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { FileCode } from 'lucide-vue-next'
-import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor.vue'
+import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor'
 
 const props = withDefaults(defineProps<{
   toolName: string

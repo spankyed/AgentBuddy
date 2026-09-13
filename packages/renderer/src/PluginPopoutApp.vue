@@ -47,7 +47,7 @@ import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import PopoutTitlebar from '@/core/components/layout/PopoutTitlebar.vue'
 import Router from '@/core/components/layout/router.vue'
-import ToastNotification from '@abuddy/ui/design/ToastNotification.vue'
+import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/core/toast'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
 

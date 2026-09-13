@@ -139,7 +139,7 @@ import {
   DropdownMenuPortal,
 } from 'reka-ui'
 import type { AgentMode } from '@/__generated__/types'
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup.vue'
+import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu'
 
 const props = defineProps<{

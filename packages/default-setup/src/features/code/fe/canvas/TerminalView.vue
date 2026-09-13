@@ -46,8 +46,8 @@
 <script setup lang="ts">
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob.vue'
-import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot.vue'
+import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
+import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
 import {
   ContextMenuTrigger,
   ContextMenuContent,

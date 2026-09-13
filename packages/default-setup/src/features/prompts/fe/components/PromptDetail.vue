@@ -106,13 +106,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader.vue';
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue';
+import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection';
 import type { PromptEntity, TemplateInput, Category } from '@/__generated__/types';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
-import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useActorSystem } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import { navigateToPlugin } from '@abuddy/sdk/fe';

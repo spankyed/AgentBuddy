@@ -47,7 +47,7 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id as databaseId, type DatabaseState } from '../../state'
 import { Loader2 } from 'lucide-vue-next'
-import TNodeListItem from '@abuddy/ui/components/TNodeListItem.vue'
+import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
 
 const actorSystem = useActorSystem()
 

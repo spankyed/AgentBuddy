@@ -195,7 +195,7 @@
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
 

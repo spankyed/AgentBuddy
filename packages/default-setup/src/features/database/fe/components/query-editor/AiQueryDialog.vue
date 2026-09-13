@@ -34,8 +34,8 @@
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
-import Dialog from '@abuddy/ui/design/dialog.vue';
-import Button from '@abuddy/ui/design/button.vue';
+import Dialog from '@abuddy/ui/design/dialog';
+import Button from '@abuddy/ui/design/button';
 import { id, type DatabaseState } from '../../state';
 
 const actorSystem = useActorSystem()

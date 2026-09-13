@@ -685,9 +685,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue'
-import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput.vue'
-import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
+import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'

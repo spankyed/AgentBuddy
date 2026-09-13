@@ -53,7 +53,7 @@ import PullRequestPanel from '@/features/code/fe/features/pull-request/PullReque
 import ActionsPanel from '@/features/code/fe/features/actions/ActionsPanel.vue'
 import PromptsPanel from '@/features/code/fe/features/prompts/PromptsPanel.vue'
 import PanelTerminalSection from '@/features/code/fe/features/terminal/PanelTerminalSection.vue'
-import PanelResizer from '@abuddy/ui/layout/panel-resizer.vue'
+import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 
 const actorSystem = useActorSystem()
 

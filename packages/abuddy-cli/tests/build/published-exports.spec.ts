@@ -15,12 +15,12 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-/** Export subpaths a consumer imports as code: not metadata, and not the source-only host hook. */
-function codeExports(name: string): string[] {
+/** Export subpaths a consumer imports as code (not metadata, and not the source-only host hook), and whether each is a component. */
+function codeExports(name: string): { specifier: string; component: boolean }[] {
   const manifest = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8'));
   return Object.entries(manifest.exports as Record<string, unknown>)
     .filter(([key, target]) => !key.endsWith('.json') && typeof target === 'object' && target !== null && 'types' in target)
-    .map(([key]) => `@abuddy/${name}${key.slice(1)}`);
+    .map(([key, target]) => ({ specifier: `@abuddy/${name}${key.slice(1)}`, component: JSON.stringify((target as { types: unknown }).types).includes('.d.vue.ts') }));
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
@@ -38,7 +38,7 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
       include: ['exports.ts'],
     }));
     fs.writeFileSync(path.join(consumer!, 'exports.ts'), specifiers
-      .map((specifier, i) => (specifier.endsWith('.vue')
+      .map(({ specifier, component }, i) => (component
         ? `import C${i} from '${specifier}';\nexport { C${i} };`
         : `export * as m${i} from '${specifier}';`))
       .join('\n'));

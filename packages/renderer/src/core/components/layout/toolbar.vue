@@ -67,7 +67,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
-import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup.vue';
+import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup';
 import { useSettingsSaveStatus, getDesignated } from '@abuddy/sdk/fe';
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
