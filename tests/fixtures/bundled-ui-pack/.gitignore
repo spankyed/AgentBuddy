@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.abuddy/
+src/__generated__/
+*.tgz
+
+# Test output
+tests/screenshots/
+tests/results/

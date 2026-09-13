@@ -1,35 +1,31 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import type { Plugin as VitePlugin } from 'vite';
+import type { Plugin as VitePlugin, Rollup } from 'vite';
+import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { sourceConditions } from '@abuddy/sdk/build';
 import { getSharedFeDeps, getSdkFeModules, getUiFeModules } from '@abuddy/host/build/shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
-function parseNamedExports(source: string): string[] {
-  const exports: string[] = [];
-  const cleaned = source.replace(/export\s+type\s*\{[^}]*\}/g, '');
-
-  for (const match of cleaned.matchAll(/export\s*\{([^}]+)\}/g)) {
-    for (const item of match[1].split(',')) {
-      const trimmed = item.trim();
-      if (!trimmed || trimmed.startsWith('type ')) continue;
-      const asMatch = trimmed.match(/\w+\s+as\s+(\w+)/);
-      const name = asMatch ? asMatch[1] : trimmed.split(/\s/)[0];
-      if (name !== 'default') exports.push(name);
-    }
+/**
+ * A module that re-exports a host global. The host may be older than the pack's @abuddy/* packages:
+ * a missing module fails with a message naming the fix, and a missing @abuddy/* export warns once.
+ * (Third-party globals are discovered from their Node build, whose names can differ.)
+ */
+function generateGlobalProxy(specifier: string, globalKey: string, namedExports: string[], { warnMissing = true } = {}): string {
+  const hint = "update AgentBuddy or check the pack's hostVersion";
+  const lines = [
+    `const __m = window.__abuddy?.[${JSON.stringify(globalKey)}];`,
+    `if (!__m) throw new Error(${JSON.stringify(`${specifier} isn't provided by this AgentBuddy; ${hint}`)});`,
+  ];
+  if (warnMissing && namedExports.length > 0) {
+    lines.push(
+      `for (const __name of ${JSON.stringify(namedExports)}) {`,
+      `  if (!(__name in __m)) console.warn(\`${specifier} in this AgentBuddy has no export "\${__name}"; ${hint}\`);`,
+      '}',
+    );
   }
-
-  for (const match of cleaned.matchAll(/export\s+(?:async\s+)?(?:const|let|var|function|class)\s+(\w+)/g)) {
-    exports.push(match[1]);
-  }
-
-  return [...new Set(exports)];
-}
-
-function generateGlobalProxy(globalKey: string, namedExports: string[]): string {
-  const lines = [`const __m = window.__abuddy[${JSON.stringify(globalKey)}];`];
   for (const name of namedExports) {
     lines.push(`export const ${name} = __m.${name};`);
   }
@@ -44,6 +40,19 @@ function bundlesUi(packDir: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Tailwind content globs for the @abuddy/ui a pack bundles: its source when linked to a checkout, else its build */
+function uiTailwindContent(packDir: string): string[] {
+  let uiDir: string;
+  try {
+    uiDir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/ui/package.json')));
+  } catch {
+    return [];
+  }
+  return sourceConditions(packDir).length > 0 && fs.existsSync(path.join(uiDir, 'src'))
+    ? [path.join(uiDir, 'src/**/*.{vue,ts}')]
+    : [path.join(uiDir, 'dist/**/*.js')];
 }
 
 export function packExternalsPlugin(packDir: string): VitePlugin {
@@ -75,16 +84,29 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     return file && fs.existsSync(file) ? fs.realpathSync(file) : undefined;
   }
 
-  async function discoverSourceExports(ctx: ResolveContext, specifier: string): Promise<string[]> {
-    const sourcePath = await resolveSdkFile(ctx, specifier);
-    if (!sourcePath) return [];
-    const source = fs.readFileSync(sourcePath, 'utf-8');
-    // A component's entry module re-exports its SFC (`export * from './button.vue'`)
-    const reexported = [...source.matchAll(/export\s*\*\s*from\s*['"](\.{1,2}\/[^'"]+\.vue)['"]/g)]
-      .map((match) => path.resolve(path.dirname(sourcePath), match[1]))
-      .filter((file) => fs.existsSync(file))
-      .flatMap((file) => parseNamedExports(fs.readFileSync(file, 'utf-8')));
-    return [...new Set([...parseNamedExports(source), ...reexported])];
+  /**
+   * Named exports of a module as the build compiles it (SFCs through the Vue plugin, TypeScript
+   * through esbuild), following `export * from` re-exports.
+   */
+  async function discoverModuleExports(ctx: Rollup.PluginContext, id: string, seen = new Set<string>()): Promise<string[]> {
+    if (seen.has(id)) return [];
+    seen.add(id);
+    const { code } = await ctx.load({ id });
+    if (code === null) return [];
+    await initModuleLexer;
+    const [imports, exports] = parseModule(code, id);
+    const names = exports.map((e) => e.n).filter((n) => n !== 'default');
+    for (const imp of imports) {
+      if (!imp.n || !/^export\s*\*\s*from\b/.test(code.slice(imp.ss, imp.se))) continue;
+      const resolved = await ctx.resolve(imp.n, id, { skipSelf: true });
+      if (resolved && !resolved.external) names.push(...await discoverModuleExports(ctx, resolved.id, seen));
+    }
+    return [...new Set(names)];
+  }
+
+  async function discoverSharedExports(ctx: Rollup.PluginContext, specifier: string): Promise<string[]> {
+    const resolved = await ctx.resolve(specifier, packImporter, { skipSelf: true });
+    return resolved && !resolved.external ? discoverModuleExports(ctx, resolved.id) : [];
   }
 
   // The SDK's host-module registry. Proxied SDK modules share the host's copy via
@@ -186,12 +208,12 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
 
       const hostDep = feDeps[specifier];
       if (hostDep) {
-        return generateGlobalProxy(hostDep.globalKey, discoverRuntimeExports(specifier));
+        return generateGlobalProxy(specifier, hostDep.globalKey, discoverRuntimeExports(specifier), { warnMissing: false });
       }
 
       const sharedMod = sdkModules[specifier] ?? uiModules[specifier];
       if (sharedMod) {
-        return generateGlobalProxy(sharedMod.globalKey, await discoverSourceExports(this, specifier));
+        return generateGlobalProxy(specifier, sharedMod.globalKey, await discoverSharedExports(this, specifier));
       }
     },
   };
@@ -245,28 +267,36 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   const tsconfigAliases = readTsconfigAliases(packDir);
   const aliasEntries = Object.entries(tsconfigAliases).map(([find, replacement]) => ({ find, replacement }));
 
-  // Tailwind CSS: use pack's own config if present, otherwise generate one
+  // Tailwind CSS: use pack's own config if present, otherwise generate one. A pack that bundles
+  // @abuddy/ui also generates the classes its components use.
   let postcssPlugins: any[] = [];
   try {
     const tailwindcss = (await import('tailwindcss')).default;
     const autoprefixer = (await import('autoprefixer')).default;
-    const packTwConfig = path.join(packDir, 'tailwind.config.ts');
-    const packTwConfigJs = path.join(packDir, 'tailwind.config.js');
-    const twConfig = fs.existsSync(packTwConfig) ? packTwConfig
-      : fs.existsSync(packTwConfigJs) ? packTwConfigJs
-      : {
-        content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}')],
-      };
+    const uiContent = bundlesUi(packDir) ? uiTailwindContent(packDir) : [];
+    const packTwConfig = [path.join(packDir, 'tailwind.config.ts'), path.join(packDir, 'tailwind.config.js')].find((f) => fs.existsSync(f));
+    let twConfig: any = { content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}'), ...uiContent] };
+    if (packTwConfig) {
+      twConfig = packTwConfig;
+      if (uiContent.length > 0) {
+        const loadConfig = (await import('tailwindcss/loadConfig.js')).default;
+        const config = loadConfig(packTwConfig);
+        const content = Array.isArray(config.content) ? { files: config.content } : config.content;
+        twConfig = { ...config, content: { ...content, files: [...content.files, ...uiContent] } };
+      }
+    }
     postcssPlugins = [tailwindcss(twConfig), autoprefixer()];
   } catch {}
 
-  // Inject @tailwind utilities so Tailwind generates classes found in templates
+  // Inject @tailwind utilities so Tailwind generates classes found in templates. Vite's module ids
+  // are real paths (a pack under a symlinked dir, like macOS's /var, has others)
+  const entryFile = fs.realpathSync(path.resolve(packDir, entryPoint));
   const tailwindInjectPlugin: VitePlugin = {
     name: 'tailwind-inject',
     resolveId(id) { if (id === 'virtual:tailwind-utils.css') return '\0virtual:tailwind-utils.css'; },
     load(id) { if (id === '\0virtual:tailwind-utils.css') return '@tailwind utilities;'; },
     transform(code, id) {
-      if (id === entryPoint || id === path.resolve(packDir, entryPoint)) {
+      if (id === entryFile || id === entryPoint || id === path.resolve(packDir, entryPoint)) {
         return `import 'virtual:tailwind-utils.css';\n${code}`;
       }
     },

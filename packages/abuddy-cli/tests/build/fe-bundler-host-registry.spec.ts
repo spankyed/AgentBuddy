@@ -72,8 +72,8 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy["@abuddy/ui/components/tiptap/TiptapEditor"]');
-    expect(output).toContain('window.__abuddy["@abuddy/ui/composables/useDebounce"]');
+    expect(output).toContain('window.__abuddy?.["@abuddy/ui/components/tiptap/TiptapEditor"]');
+    expect(output).toContain('window.__abuddy?.["@abuddy/ui/composables/useDebounce"]');
     // No UI code: the editor's extensions, its styles or the debounce implementation
     expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
   }, 60_000);
@@ -90,8 +90,46 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy["sdkFe"]');
+    expect(output).toContain('window.__abuddy?.["sdkFe"]');
     expect(output).toContain('createEditorClickHandler');
+  }, 60_000);
+
+  it("uses the host's ProseMirror and tiptap menus when a pack bundles @abuddy/ui", async () => {
+    const { packDir, entry } = makePack(layout,
+      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      { fe: { bundleUi: true } },
+    );
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy?.["@tiptap/pm/state"]');
+    expect(output).toContain('window.__abuddy?.["@tiptap/vue-3/menus"]');
+    // prosemirror-model's own code (its content-expression error) isn't inlined
+    expect(output).not.toContain('Invalid content for node');
+  }, 60_000);
+
+  it.each([
+    { bundleUi: true, packConfig: false, generated: true },
+    { bundleUi: true, packConfig: true, generated: true },
+    { bundleUi: false, packConfig: false, generated: false },
+  ])('generates the Tailwind classes @abuddy/ui components use (bundleUi: $bundleUi, own tailwind config: $packConfig)', async ({ bundleUi, packConfig, generated }) => {
+    const { packDir, entry } = makePack(layout,
+      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      { fe: { bundleUi } },
+    );
+    if (packConfig) {
+      fs.writeFileSync(path.join(packDir, 'tailwind.config.js'), `export default { content: ['${packDir}/src/**/*.ts'] };\n`);
+    }
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    const css = fs.readdirSync(path.join(packDir, 'dist')).filter((f) => f.endsWith('.css'))
+      .map((f) => fs.readFileSync(path.join(packDir, 'dist', f), 'utf-8')).join('\n');
+    // A class only @abuddy/ui templates use (TiptapSearchBar's input), not the pack's
+    expect(css.includes('.placeholder-neutral-500::')).toBe(generated);
   }, 60_000);
 
   it('compiles no @abuddy/ui SFC when a pack bundles @abuddy/ui', async () => {
@@ -139,6 +177,6 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy["sdkRpc"]');
+    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy?.["sdkRpc"]');
   }, 60_000);
 });

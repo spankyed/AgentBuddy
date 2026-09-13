@@ -63,8 +63,10 @@ function hostDepsPlugin(): Plugin {
   const feDeps = getSharedFeDeps();
   const sdkModules = getSdkFeModules();
 
-  const depsImportLines = Object.entries(feDeps)
-    .map(([pkg, { globalKey }]) => `import * as ${globalKey} from '${pkg}';`)
+  // Aliases share a global (prosemirror-model and @tiptap/pm/model): import each once
+  const depGlobals = [...new Map(Object.entries(feDeps).map(([specifier, { globalKey }]) => [globalKey, specifier])).entries()];
+  const depsImportLines = depGlobals
+    .map(([, specifier], i) => `import * as dep${i} from '${specifier}';`)
     .join('\n');
   const sdkImportLines = Object.entries(sdkModules)
     .map(([pkg, { globalKey }]) => `import * as ${globalKey} from '${pkg}';`)
@@ -73,7 +75,7 @@ function hostDepsPlugin(): Plugin {
   const uiModules = Object.keys(getUiFeModules(fileURLToPath(new URL('.', import.meta.url))));
   const uiImportLines = uiModules.map((specifier, i) => `import * as ui${i} from '${specifier}';`).join('\n');
   const allKeys = [
-    ...Object.values(feDeps).map(d => d.globalKey),
+    ...depGlobals.map(([globalKey], i) => `${JSON.stringify(globalKey)}: dep${i}`),
     ...Object.values(sdkModules).map(d => d.globalKey),
     ...uiModules.map((specifier, i) => `${JSON.stringify(specifier)}: ui${i}`),
   ].join(', ');

@@ -21,10 +21,38 @@ export const SHARED_DEPS: Record<string, SharedDep> = {
   '@vue-flow/core':       { globalKey: 'vueFlowCore',      target: 'fe' },
 };
 
+/**
+ * Packages the host shares with every subpath they export, keyed by specifier. A pack that bundles
+ * @abuddy/ui (fe.bundleUi) imports ProseMirror and tiptap's Vue menus through these; sharing them
+ * keeps one ProseMirror in the app, the host's.
+ */
+export const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
+
+/** Exported code subpaths of an installed package (`@tiptap/pm/state`, …) */
+function exportedSubpaths(name: string): string[] {
+  const require = createRequire(import.meta.url);
+  const manifestPath = (require.resolve.paths(name) ?? [])
+    .map((dir) => path.join(dir, name, 'package.json'))
+    .find((file) => fs.existsSync(file));
+  if (!manifestPath) return [];
+  const exports: Record<string, unknown> = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).exports ?? {};
+  return Object.keys(exports)
+    .filter((key) => key.startsWith('./') && !key.endsWith('.json') && !key.includes('*'))
+    .map((key) => `${name}${key.slice(1)}`);
+}
+
 export function getSharedFeDeps(): Record<string, SharedDep & { globalKey: string }> {
-  return Object.fromEntries(
+  const deps = Object.fromEntries(
     Object.entries(SHARED_DEPS).filter(([, d]) => d.target !== 'be' && d.globalKey),
   ) as Record<string, SharedDep & { globalKey: string }>;
+  for (const specifier of SHARED_SUBPATH_PACKAGES.flatMap(exportedSubpaths)) {
+    deps[specifier] ??= { globalKey: specifier, target: 'fe' };
+    // @tiptap/pm/<name> is `export * from 'prosemirror-<name>'`: libraries importing ProseMirror
+    // directly (tiptap-markdown → prosemirror-markdown) get the same module
+    const pmModule = specifier.match(/^@tiptap\/pm\/(.+)$/)?.[1];
+    if (pmModule) deps[`prosemirror-${pmModule}`] ??= { globalKey: specifier, target: 'fe' };
+  }
+  return deps;
 }
 
 export interface SdkFeModule {

@@ -2,8 +2,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as hostMonacoConfig from '@abuddy/ui/components/monaco-config';
+import * as hostSdkFe from '@abuddy/sdk/fe';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { REPO_ROOT } from '../helpers/published-packages';
 
@@ -17,7 +18,10 @@ afterEach(() => {
   delete (globalThis as { window?: unknown }).window;
 });
 
-async function buildPack(manifest: Record<string, unknown>): Promise<Record<string, unknown>> {
+/** What the renderer puts on window.__abuddy (virtual:host-deps) */
+const HOST_GLOBALS: Record<string, unknown> = { '@abuddy/ui/components/monaco-config': hostMonacoConfig, sdkFe: hostSdkFe };
+
+async function buildPack(manifest: Record<string, unknown>, host: Record<string, unknown> = HOST_GLOBALS): Promise<Record<string, unknown>> {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-shared-ui-'));
   tmpDirs.push(packDir);
   fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'shared-ui-pack', type: 'module' }));
@@ -29,12 +33,7 @@ async function buildPack(manifest: Record<string, unknown>): Promise<Record<stri
 
   const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
   expect(result.error).toBeUndefined();
-  // What the renderer puts on window.__abuddy (virtual:host-deps)
-  (globalThis as { window?: unknown }).window = {
-    __abuddy: new Proxy({ '@abuddy/ui/components/monaco-config': hostMonacoConfig }, {
-      get: (target, key) => (target as Record<string | symbol, unknown>)[key] ?? {},
-    }),
-  };
+  (globalThis as { window?: unknown }).window = { __abuddy: host };
   return import(pathToFileURL(path.join(packDir, 'dist', 'fe.js')).href);
 }
 
@@ -49,5 +48,25 @@ describe('pack FE code and @abuddy/ui state', () => {
     const pack = await buildPack({ fe: { bundleUi: true } });
     expect(typeof pack.getMonacoState).toBe('function');
     expect(pack.getMonacoState).not.toBe(hostMonacoConfig.getMonacoState);
+  }, 60_000);
+
+  it("fails with a clear message on a host that doesn't provide the module", async () => {
+    await expect(buildPack({}, {})).rejects.toThrow(
+      "@abuddy/ui/components/monaco-config isn't provided by this AgentBuddy; update AgentBuddy or check the pack's hostVersion",
+    );
+  }, 60_000);
+
+  it('warns once per export an older host lacks', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { getMonacoState: _, ...older } = hostMonacoConfig;
+      const pack = await buildPack({}, { ...HOST_GLOBALS, '@abuddy/ui/components/monaco-config': older });
+      expect(pack.getMonacoState).toBeUndefined();
+      expect(warn.mock.calls).toEqual([[
+        '@abuddy/ui/components/monaco-config in this AgentBuddy has no export "getMonacoState"; update AgentBuddy or check the pack\'s hostVersion',
+      ]]);
+    } finally {
+      warn.mockRestore();
+    }
   }, 60_000);
 });
