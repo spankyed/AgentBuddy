@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports), as the
+    // Playwright runner does under `npm test`; without it editors would read a stale dist
+    "customConditions": ["@abuddy/source"],
+    "allowImportingTsExtensions": true,
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["e2e/**/*.ts", "../playwright.config.ts"]
+}

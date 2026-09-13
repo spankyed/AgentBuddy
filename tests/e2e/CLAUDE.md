@@ -6,8 +6,8 @@ Playwright tests that launch the full Electron app, interact with the XState app
 
 ```bash
 npm test                              # All tests
-npx playwright test smoke             # Single file
-npx playwright test -g "screenshot"   # By test name grep
+npm test -- smoke                    # Single file
+npm test -- -g "screenshot"          # By test name grep
 DEBUG_E2E=1 npm test                  # Electron process output to terminal
 ```
 
@@ -110,7 +110,7 @@ test('check something', async ({ app, appPage }) => {
 });
 ```
 
-Run with: `npx playwright test tests/e2e/scratch`
+Run with: `npm test -- tests/e2e/scratch`
 
 Create it fresh each time you need to visually verify something. Delete when done.
 
@@ -136,10 +136,10 @@ Set `PACK_DIR` to test an external pack using the monorepo's test runner. No set
 
 ```bash
 # Run against a scratch test
-PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
+PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
 
 # Run against any test file
-PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/smoke
+PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 ```
 
 #### What happens when `PACK_DIR` is set

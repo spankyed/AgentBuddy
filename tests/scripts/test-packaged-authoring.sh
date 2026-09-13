@@ -17,8 +17,7 @@ if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK"' EXIT; else echo "Work dir
 step() { printf '\n==> %s\n' "$*"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-# npm scripts in the checkout resolve workspace source (.npmrc); outside authors don't
-unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR NODE_OPTIONS npm_config_node_options
+unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
 # The CLI keeps its saved app choice and downloads under the user's home; use a fresh one.
 # Keep npm's cache so installs don't re-download everything.
 export npm_config_cache="$(npm config get cache)"
