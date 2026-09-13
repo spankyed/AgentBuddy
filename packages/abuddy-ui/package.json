@@ -48,11 +48,6 @@
       "types": "./dist/components/JsonSchemaEditor.d.ts",
       "default": "./dist/components/JsonSchemaEditor.js"
     },
-    "./components/JsonViewerDialog": {
-      "@abuddy/source": "./src/components/JsonViewerDialog.ts",
-      "types": "./dist/components/JsonViewerDialog.d.ts",
-      "default": "./dist/components/JsonViewerDialog.js"
-    },
     "./components/KeyboardShortcutInput": {
       "@abuddy/source": "./src/components/KeyboardShortcutInput.ts",
       "types": "./dist/components/KeyboardShortcutInput.d.ts",
@@ -103,50 +98,15 @@
       "types": "./dist/components/node-styles.d.ts",
       "default": "./dist/components/node-styles.js"
     },
-    "./components/tiptap/TiptapBlockMenu": {
-      "@abuddy/source": "./src/components/tiptap/TiptapBlockMenu.ts",
-      "types": "./dist/components/tiptap/TiptapBlockMenu.d.ts",
-      "default": "./dist/components/tiptap/TiptapBlockMenu.js"
-    },
-    "./components/tiptap/TiptapBubbleMenu": {
-      "@abuddy/source": "./src/components/tiptap/TiptapBubbleMenu.ts",
-      "types": "./dist/components/tiptap/TiptapBubbleMenu.d.ts",
-      "default": "./dist/components/tiptap/TiptapBubbleMenu.js"
-    },
     "./components/tiptap/TiptapEditor": {
       "@abuddy/source": "./src/components/tiptap/TiptapEditor.ts",
       "types": "./dist/components/tiptap/TiptapEditor.d.ts",
       "default": "./dist/components/tiptap/TiptapEditor.js"
     },
-    "./components/tiptap/TiptapImageBubbleMenu": {
-      "@abuddy/source": "./src/components/tiptap/TiptapImageBubbleMenu.ts",
-      "types": "./dist/components/tiptap/TiptapImageBubbleMenu.d.ts",
-      "default": "./dist/components/tiptap/TiptapImageBubbleMenu.js"
-    },
     "./components/tiptap/TiptapSearchBar": {
       "@abuddy/source": "./src/components/tiptap/TiptapSearchBar.ts",
       "types": "./dist/components/tiptap/TiptapSearchBar.d.ts",
       "default": "./dist/components/tiptap/TiptapSearchBar.js"
-    },
-    "./components/tiptap/bubble-menu/BubbleMenuColorSelector": {
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuColorSelector.ts",
-      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuColorSelector.d.ts",
-      "default": "./dist/components/tiptap/bubble-menu/BubbleMenuColorSelector.js"
-    },
-    "./components/tiptap/bubble-menu/BubbleMenuLinkInput": {
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuLinkInput.ts",
-      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuLinkInput.d.ts",
-      "default": "./dist/components/tiptap/bubble-menu/BubbleMenuLinkInput.js"
-    },
-    "./components/tiptap/bubble-menu/BubbleMenuNodeSelector": {
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuNodeSelector.ts",
-      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuNodeSelector.d.ts",
-      "default": "./dist/components/tiptap/bubble-menu/BubbleMenuNodeSelector.js"
-    },
-    "./components/tiptap/bubble-menu/BubbleMenuToolbar": {
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuToolbar.ts",
-      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuToolbar.d.ts",
-      "default": "./dist/components/tiptap/bubble-menu/BubbleMenuToolbar.js"
     },
     "./components/tiptap/composables/createEditorClickHandler": {
       "@abuddy/source": "./src/components/tiptap/composables/createEditorClickHandler.ts",
@@ -328,11 +288,6 @@
       "types": "./dist/design/DirectorySelect.d.ts",
       "default": "./dist/design/DirectorySelect.js"
     },
-    "./design/DirectorySelector": {
-      "@abuddy/source": "./src/design/DirectorySelector.ts",
-      "types": "./dist/design/DirectorySelector.d.ts",
-      "default": "./dist/design/DirectorySelector.js"
-    },
     "./design/EmojiPicker": {
       "@abuddy/source": "./src/design/EmojiPicker.ts",
       "types": "./dist/design/EmojiPicker.d.ts",
@@ -373,11 +328,6 @@
       "types": "./dist/design/TrackedContextMenuRoot.d.ts",
       "default": "./dist/design/TrackedContextMenuRoot.js"
     },
-    "./design/back-button": {
-      "@abuddy/source": "./src/design/back-button.ts",
-      "types": "./dist/design/back-button.d.ts",
-      "default": "./dist/design/back-button.js"
-    },
     "./design/button": {
       "@abuddy/source": "./src/design/button.ts",
       "types": "./dist/design/button.d.ts",
@@ -388,25 +338,10 @@
       "types": "./dist/design/dialog.d.ts",
       "default": "./dist/design/dialog.js"
     },
-    "./design/label": {
-      "@abuddy/source": "./src/design/label.ts",
-      "types": "./dist/design/label.d.ts",
-      "default": "./dist/design/label.js"
-    },
-    "./design/pagination": {
-      "@abuddy/source": "./src/design/pagination.ts",
-      "types": "./dist/design/pagination.d.ts",
-      "default": "./dist/design/pagination.js"
-    },
     "./design/tag-input": {
       "@abuddy/source": "./src/design/tag-input.ts",
       "types": "./dist/design/tag-input.d.ts",
       "default": "./dist/design/tag-input.js"
-    },
-    "./design/toggle-button": {
-      "@abuddy/source": "./src/design/toggle-button.ts",
-      "types": "./dist/design/toggle-button.d.ts",
-      "default": "./dist/design/toggle-button.js"
     },
     "./layout/panel-resizer": {
       "@abuddy/source": "./src/layout/panel-resizer.ts",

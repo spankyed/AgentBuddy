@@ -26,7 +26,10 @@ function codeExports(name: string): string[] {
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
   it.each(['node16', 'bundler'] as const)('all resolve to declarations under moduleResolution %s', (moduleResolution) => {
     const specifiers = [...codeExports('sdk'), ...codeExports('ui')];
-    expect(specifiers.length).toBeGreaterThan(100);
+    // Every UI export and every SDK export but its source-only host hook, package.json and the schema
+    const exportCount = (name: string) => Object.keys(JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8')).exports).length;
+    expect(specifiers).toHaveLength(exportCount('sdk') - 3 + exportCount('ui') - 1);
+    expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/sdk/ears', '@abuddy/ui/components/tiptap/TiptapEditor']));
     fs.writeFileSync(path.join(consumer!, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
     fs.writeFileSync(path.join(consumer!, 'tsconfig.json'), JSON.stringify({
       compilerOptions: {
