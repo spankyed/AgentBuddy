@@ -9,7 +9,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { qx } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears/internals';
 import { EARS } from '@/core/types';
 import { getAllEntities, getEntitiesOfType } from '@/core/ears/attribute-storage';
 

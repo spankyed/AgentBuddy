@@ -139,14 +139,12 @@ Only registered barrel subpaths are externalized. Deep imports like `@abuddy/sdk
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, steps, artifacts, blocks, EARS, boot hooks |
 | `pack-entry-fe.ts` | FE registration: plugins, step/artifact/block FE, tiptap, app extensions |
-| `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types) |
+| `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `system-ids.ts` | Re-exports system ID constants from each feature |
 | `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
-| `event-channels.ts` | `PluginEventRegistry` type augmentation (plugin ID -> event types) |
+| `events.ts` | `PackEvents` (plugin ID -> outgoing event types) and the typed `emit`/`sendToPlugin` facade |
 | `types.ts` | Type barrel: outgoing events + per-feature types |
-| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` |
-| `service-types.ts` | `ServiceRegistry` type augmentation |
-| `entity-shapes.ts` | `EntityShapeRegistry` type augmentation |
+| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` and the typed `services` proxy |
 | `contributions.ts` | Contribution type aggregation |
 | `seeders.ts` | Seeder registration with compiled data paths |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition |

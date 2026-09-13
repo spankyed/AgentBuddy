@@ -6,7 +6,8 @@
  *   npm run db:script scripts/db/cleanup-settings.ts
  */
 
-import { qx, tx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/sdk/ears/internals';
 import { EARS } from '@/core/types';
 
 async function cleanupSettings() {

@@ -3,10 +3,9 @@ import { expectTypeOf } from 'vitest';
 import type { BaseEntity } from '@abuddy/sdk/types';
 import type { PackShapes, EntityShape } from '@/__generated__/ears';
 
-// ─── PackShapes augmentation ────────────────────────────────
-// These tests verify that the declaration merging in entity-shapes.ts
-// correctly augments the SDK's PackShapes, and that
-// EntityShape<E> resolves to the right type.
+// ─── PackShapes ─────────────────────────────────────────────
+// These tests verify that the generated PackShapes in __generated__/ears.ts
+// maps entity types to their shapes, and that EntityShape<E> resolves to the right type.
 
 describe('PackShapes — augmented types', () => {
   it('registry has Action with label and actionFn', () => {

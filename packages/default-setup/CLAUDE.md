@@ -14,12 +14,10 @@ src/
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
     system-ids.ts          # System ID re-exports from each system
     bus-ids.ts             # busId map (bus-routable system IDs); import-free, safe for FE code
-    event-channels.ts      # PluginEventRegistry module augmentation
+    events.ts              # PackEvents + typed emit/sendToPlugin facade
     types.ts               # Type barrel (outgoing events + per-feature types)
     services.ts            # Service aggregation (featureServices object)
-    service-types.ts       # ServiceRegistry module augmentation
     contributions.ts       # Contribution types, categories, item providers (tiptap references)
-    entity-shapes.ts       # Maps entity type strings to attribute interfaces
     seeders.ts             # Seed registration for all seed types
     step-types.ts          # Step type augmentation
     flow-helpers.ts        # Flow helper utilities
@@ -75,9 +73,10 @@ The model client (`extensions/services/model-client/`) handles LLM streaming, to
 
 Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers all entity types and relation kinds, plus partition policy (TNode excluded from persistence, Secret routed to secrets store).
 
-Type augmentations:
-- `__generated__/entity-shapes.ts` — maps entity type strings to attribute interfaces (`EntityShapeRegistry`)
-- `__generated__/event-channels.ts` — maps plugin IDs to outgoing event types (`PluginEventRegistry`)
+Typed facades (no module augmentation):
+- `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface) and the typed `qx`/`find*`/`createEntity` helpers built with `defineEars`
+- `__generated__/events.ts` — `PackEvents` (plugin ID → outgoing event types) and typed `emit`/`sendToPlugin` built with `defineEvents`
+- `__generated__/services.ts` — the `services` proxy typed as `Services`
 
 ## Seeds
 

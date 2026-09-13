@@ -107,9 +107,7 @@ The 15 generated files split into two categories with different virtualization t
 - `system-ids.ts` — re-exports system IDs from each feature's system file
 - `services.ts` — aggregates service exports from feature service modules
 - `types.ts` — type barrel from each feature's types file
-- `event-channels.ts` — PluginEventRegistry module augmentation
-- `service-types.ts` — ServiceRegistry module augmentation
-- `entity-shapes.ts` — entity shape registry
+- `events.ts` — `PackEvents` and the typed `emit`/`sendToPlugin` facade
 - `step-types.ts` — step type registry
 - `contributions.ts` — pack contributions barrel
 - `seeders.ts` — seeder aggregation

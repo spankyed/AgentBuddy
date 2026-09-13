@@ -208,7 +208,7 @@ describe('Type inference — FE delegate generics', () => {
 
 // ─── Registry-augmented inference (no explicit generics) ─────────────
 // These verify that pack authors get types automatically when using
-// EntityShapeRegistry / Services augmentation, WITHOUT needing
+// the generated PackShapes / Services facades, WITHOUT needing
 // explicit generic parameters like findAll<MyType>(...).
 
 describe('Registry-based inference — services', () => {
@@ -242,7 +242,7 @@ describe('Registry-based inference — services', () => {
 
 describe('Registry-based inference — entity queries', () => {
   it('findAll with registered entity key infers shape without generic', () => {
-    // Cast needed to match the overload's E extends keyof EntityShapeRegistry & string
+    // Cast needed to match the overload's E extends keyof PackShapes & string
     const actions = findAll('Action' as 'Action' & EARS.Entity);
     expectTypeOf(actions).items.toHaveProperty('label');
     expectTypeOf(actions).items.toHaveProperty('actionFn');
