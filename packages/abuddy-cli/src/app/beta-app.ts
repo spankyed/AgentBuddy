@@ -58,22 +58,26 @@ async function httpDownload(url: string): Promise<Readable> {
   return Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 }
 
-/** Newest beta release whose version satisfies hostVersion and that ships a zip with its checksum. */
+/**
+ * Newest beta release whose app satisfies hostVersion and that ships a zip with its checksum.
+ * The app version comes from the zip name: a beta promoted from a production release
+ * (v<version>-beta.0, see build/release/beta-tag.sh) contains the production app, and the
+ * app's installer checks hostVersion against that version, not the tag's.
+ */
 export function pickBetaRelease(releases: Release[], hostVersion: string): BetaRelease | null {
+  const zipPattern = new RegExp(`^${BETA_ARTIFACT_PREFIX}-(.+)-mac-arm64\\.zip$`);
   const candidates = releases
     .filter(r => !r.draft && r.prerelease)
     .map(r => ({ release: r, version: semver.valid(r.tag_name.replace(/^v/, '')) }))
     .filter((c): c is { release: Release; version: string } => c.version !== null && semver.prerelease(c.version)?.[0] === 'beta')
-    .filter(c => semver.satisfies(c.version, hostVersion, { includePrerelease: true }))
     .sort((a, b) => semver.rcompare(a.version, b.version));
 
-  // A beta promoted from a production release (v<version>-beta.0, see build/release/beta-tag.sh)
-  // carries the production version in its file name, so match any version
-  const zipPattern = new RegExp(`^${BETA_ARTIFACT_PREFIX}-.+-mac-arm64\\.zip$`);
   for (const { release, version } of candidates) {
     const zip = release.assets.find(a => zipPattern.test(a.name));
     const checksum = zip && release.assets.find(a => a.name === `${zip.name}.sha256`);
-    if (zip && checksum) return { version, zip, checksum };
+    if (!zip || !checksum) continue;
+    const appVersion = semver.valid(zip.name.match(zipPattern)![1]) ?? version;
+    if (semver.satisfies(appVersion, hostVersion, { includePrerelease: true })) return { version, zip, checksum };
   }
   return null;
 }

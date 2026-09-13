@@ -17,6 +17,10 @@ const release = (version: string, { prerelease = true, checksum = true, fileVers
 });
 
 describe('pickBetaRelease', () => {
+  it("checks hostVersion against the app version in a beta's zip name", () => {
+    expect(pickBetaRelease([release('0.4.2-beta.3')], '>=0.4.2')).toBeNull();
+  });
+
   it('picks the newest beta that satisfies hostVersion and ships a checksum', () => {
     const releases = [
       release('0.5.1-beta.1'), // too new for the range (0.5.0-beta.x still sorts below 0.5.0)
@@ -31,7 +35,8 @@ describe('pickBetaRelease', () => {
   });
 
   it('accepts a beta promoted from a production build, named with the production version', () => {
-    const promoted = pickBetaRelease([release('0.4.2-beta.0', { fileVersion: '0.4.2' })], '>=0.4.0');
+    // The zip holds the 0.4.2 production app, which a pack requiring >=0.4.2 installs into
+    const promoted = pickBetaRelease([release('0.4.2-beta.0', { fileVersion: '0.4.2' })], '>=0.4.2');
     expect(promoted?.version).toBe('0.4.2-beta.0');
     expect(promoted?.zip.name).toBe('AgentBuddy-Beta-0.4.2-mac-arm64.zip');
     expect(promoted?.checksum.name).toBe('AgentBuddy-Beta-0.4.2-mac-arm64.zip.sha256');
