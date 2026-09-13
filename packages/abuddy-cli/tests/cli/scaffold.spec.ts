@@ -94,6 +94,16 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(tsc.code, tsc.output).toBe(0);
   }, 240_000);
 
+  it('regenerates entries when a source file codegen reads changes, not only the manifest', () => {
+    const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');
+    fs.writeFileSync(servicePath, 'export const cacheService = {};\n');
+
+    const generate = run('node', [CLI, 'generate-entries'], pack);
+    expect(generate.output).not.toMatch(/inputs unchanged/);
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService \}/);
+    expect(run('node', [CLI, 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
+  }, 120_000);
+
   it('keeps unit tests runnable after init-tests adds Playwright specs', () => {
     expect(run('node', [CLI, 'init-tests'], pack).code).toBe(0);
     expect(fs.existsSync(path.join(pack, 'tests', 'e2e', 'smoke.spec.ts'))).toBe(true);

@@ -18,10 +18,30 @@ function codegenSource(): string {
   return sdkVersion() ?? '';
 }
 
+/**
+ * Pack sources codegen reads besides the manifest: service export shapes, step build.ts /
+ * index.ts / types.ts, which *-fe.ts and export-types.ts files exist, and so on. Hashing all
+ * of src/ (not __generated__) is simpler than tracking each read and never misses one.
+ */
+function sourceFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) sourceFiles(full, out);
+    else if (/\.(ts|tsx|js|mjs|vue|json)$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
 function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>): string {
   const hash = createHash('sha256');
   hash.update(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
   hash.update(codegenSource());
+  const srcDir = path.join(root, 'src');
+  for (const file of fs.existsSync(srcDir) ? sourceFiles(srcDir) : []) {
+    hash.update(path.relative(root, file));
+    hash.update(fs.readFileSync(file));
+  }
   // Generated flow helpers and types depend on every resolved dependency, wherever it came from
   for (const depId of [...depSnapshots.keys()].sort()) {
     hash.update(depId);
