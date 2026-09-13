@@ -141,7 +141,7 @@ To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abud
 
 ## Generated files
 
-`generate-entries` reads `abuddy.json` and produces up to 15 files in `src/__generated__/`. These are regenerated on every build — never edit them.
+`generate-entries` reads `abuddy.json` and produces up to 18 files in `src/__generated__/`, plus one per dependency. These are regenerated on every build — never edit them.
 
 | File | Contents |
 |---|---|
@@ -150,9 +150,13 @@ To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abud
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `system-ids.ts` | Re-exports system ID constants from each feature |
 | `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
-| `events.ts` | `PackEvents` (plugin ID -> outgoing event types) and the typed `emit`/`sendToPlugin` facade |
+| `events.ts` | `PackEvents` (plugin ID -> the events it receives from this pack's systems, its dependencies' and the host's plugins) and the typed `emit`/`sendToPlugin` facade |
 | `types.ts` | Type barrel: outgoing events + per-feature types |
-| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` and the typed `services` proxy |
+| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services) |
+| `repository.ts` | `repository`, typed with the repositories declared in `features[].repositories` and dependencies' |
+| `repositories.ts` | Registers this pack's repositories; `pack-entry.ts` imports it first |
+| `pack-types.ts` | The facade types `abuddy build` bundles into `dist/types/pack-types.d.ts` for dependents |
+| `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot |
 | `contributions.ts` | Contribution type aggregation |
 | `seeders.ts` | Seeder registration with compiled data paths |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition |

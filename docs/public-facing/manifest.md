@@ -68,9 +68,10 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `id` | `string` | yes | Unique feature identifier |
 | `designation` | `string` | no | Links the system to an EARS designation |
 | `settings` | `string` | no | Path to default settings file |
-| `system` | `{ entry, outgoingEventsType?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`. `events` declares `incoming`/`outgoing` event arrays for runtime routing. |
+| `system` | `{ entry, outgoingEventsType?, sendsTo?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`. `sendsTo` lists plugins it sends events to besides its own feature's (other features of the pack, dependency plugins, or `application`); each one's `emit` type then accepts this system's outgoing events. `events` declares `incoming`/`outgoing` event arrays for runtime routing. |
 | `plugin` | `{ entry, label, icon, isPinned? }` | no | Frontend plugin definition |
 | `services` | `Record<string, string>` | no | Service modules (`key` -> `path`) |
+| `repositories` | `Record<string, string>` | no | Repository objects (`name` -> `path#exportName`), registered by the generated pack entry and typed on `repository` from `#generated/repository` |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
 | `earlySystem` | `boolean` | no | Run before EARS hydration (built-in only) |
 | `contributions` | `string` | no | Path to contribution type providers |

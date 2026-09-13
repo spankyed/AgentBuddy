@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findJsSpecifiers } from '../../../../scripts/check-import-specifiers.ts';
+import { findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -74,5 +74,25 @@ describe('findJsSpecifiers', () => {
     fs.symlinkSync(path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), link);
     const output = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
     expect(output).toMatch(/Relative import specifiers name \.ts sources/);
+  });
+});
+
+describe('findRawPackHelpers', () => {
+  it.each([
+    ["import { emit } from '@abuddy/sdk/helpers';", 'emit from @abuddy/sdk/helpers'],
+    ["import { emit as emitToPlugin } from '@abuddy/sdk/helpers';", 'emit from @abuddy/sdk/helpers'],
+    ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
+    ["import { registerRepository, tx } from '@abuddy/sdk/ears';", 'registerRepository from @abuddy/sdk/ears'],
+    // A CLI template writes this as pack source
+    ["const SYSTEM = `import { emit } from '@abuddy/sdk/helpers';`;", 'emit from @abuddy/sdk/helpers'],
+  ])('flags %s', (code, problem) => {
+    write('pack/feature.ts', code);
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
+  });
+
+  it('allows the generated facades, other helpers and generated files', () => {
+    write('pack/feature.ts', "import { emit } from '#generated/events';\nimport { getActor } from '@abuddy/sdk/helpers';\nimport { tx } from '@abuddy/sdk/ears';\n");
+    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/sdk/ears';\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
   });
 });

@@ -57,13 +57,22 @@ There is no fixed interface — the shape is pack-specific. Services are typical
 
 ### Generated aggregation
 
-`generate-entries` creates `__generated__/services.ts` which:
+`generate-entries` creates `__generated__/services.ts` (import it as `#generated/services`), which:
 
 1. Imports all feature and pack-level services
 2. Exports a `featureServices` object aggregating them
-3. Exports `Services`, `Z`, and `EntityId` types
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, and `repository` typed with your repositories)
+4. Exports `services`, the host's services proxy typed as `Services`
 
-Actions access services via the `services` parameter. Systems can import services directly.
+```typescript
+import { services } from '#generated/services';
+
+services.cache.get('key');              // this pack's service
+services.llm.streamText(/* … */);       // a dependency's service
+services.repository.bookmarkQueries;    // repositories (see below)
+```
+
+Actions access services via the `services` parameter. Service names are global across installed packs: the host refuses to register a pack whose service name another pack or the host already uses.
 
 ---
 
@@ -97,38 +106,49 @@ EARS.RelKind.TAGGED_WITH  // "tagged_with"
 
 ### Queries and transactions
 
-EARS queries and transactions are **synchronous** — do not `await` them.
+EARS queries (`qx`) and transactions (`tx`) are **synchronous** — do not `await` them.
 
 ```typescript
-import { repository } from '@abuddy/sdk/ears';
+import { EARS, qx, createEntityWithDefaults } from '#generated/ears';
+import { tx } from '@abuddy/sdk/ears';
 
-// Query (synchronous)
-const bookmarks = qx(() =>
-  repository.bookmarkQueries.getAll()
-);
-
-// Transaction (synchronous)
-tx(() => {
-  repository.bookmarkCommands.create({ url, title });
-});
+const bookmarks = qx(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
+const id = tx(EARS.Entity.Bookmark).batchPut({ url, title }).id();
+const created = createEntityWithDefaults(EARS.Entity.Bookmark, { url, title }, 'BKM');
 ```
 
 ### Repository pattern
 
-Each feature can have a `repository/` directory with query and command modules:
+Each feature can keep its reads and writes in repository objects:
 
 ```
 src/features/bookmarks/be/repository/
-  index.ts       # Register repository (side-effect import)
-  queries.ts     # Read operations
-  commands.ts    # Write operations
+  queries.ts     # export const bookmarkQueries = { … }
+  commands.ts    # export const bookmarkCommands = { … }
 ```
 
-Register the repository via a side-effect import in the system file:
+Declare them in the feature's `repositories` (name → `path#exportName`):
+
+```json
+{
+  "features": [
+    {
+      "id": "bookmarks",
+      "repositories": {
+        "bookmarkQueries": "src/features/bookmarks/be/repository/queries.ts#bookmarkQueries",
+        "bookmarkCommands": "src/features/bookmarks/be/repository/commands.ts#bookmarkCommands"
+      }
+    }
+  ]
+}
+```
+
+The generated pack entry registers them before any system starts. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
 
 ```typescript
-// system.ts
-import './repository/index';  // register repository
+import { repository } from '#generated/repository';
+
+repository.bookmarkCommands.create({ url, title });
 ```
 
 ### Entity shapes
@@ -147,9 +167,11 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours plus your dependencies') type the query helpers that
-`#generated/ears` exports. Import `qx`, `findById`, `findAll`, `findWhere`, `findFirst`
-and `createEntity` from there. `@abuddy/sdk/ears` doesn't export untyped versions.
-Queries seeded with a declared entity type are checked against its shape:
+`#generated/ears` exports: `qx`, `findById`, `findAll`, `findWhere`, `findFirst`,
+`findWithFields`, `findWithRole`, `createEntity`, `createEntityWithDefaults`, `updateEntity`,
+`getAttr` and `getAttrs`. `@abuddy/sdk/ears` doesn't export untyped versions. A shape the
+build can't find (a wrong `source` or `type`) fails the build. Queries seeded with a declared
+entity type are checked against its shape:
 
 ```ts
 import { EARS, qx } from '#generated/ears';
@@ -160,13 +182,14 @@ qx(EARS.Entity.Bookmark).pickAll()[0].title   // typed, no cast needed
 qx(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are included
 ```
 
-`where`, `orderBy`, `distinct`, `groupBy` and `pickAll` all narrow this way. Entity
-types **without** a declared shape read as `BaseEntity & Record<string, unknown>`: every
-field is there, but you have to narrow a value before using it. The same goes for
-builders seeded by id or with no seed (`qx(someId)`, `qx()`), since those can't know
-the entity type. `pick`/`pickOne`/`linksPick` are deliberately not
-narrowed: their field lists are often computed, and `linksPick`'s fields describe the
-relation's *target* entity rather than the one being queried.
+`where`, `orderBy`, `distinct`, `groupBy`, `pickAll`, `pick` and `pickOne` all narrow this way
+(`pick`/`pickOne` take only declared fields and return exactly those), and `linksPick`
+narrows its fields to the relation's *target* entity type. Entity types **without** a
+declared shape read as `BaseEntity & Record<string, unknown>`: every field is there, but
+you have to narrow a value before using it. An id carries its entity type when it comes
+from a typed helper (`createEntity(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
+so builders seeded with it (`qx(id)`, `findById(id)`, `updateEntity(id, …)`) are typed too;
+unbranded ids (`EARS.EntityId`) and `qx()` with no seed read as undeclared.
 
 Declare every attribute you actually write. A field written at runtime but missing from
 the interface (a soft-delete marker, say) becomes a compile error at its read sites.

@@ -82,11 +82,57 @@ export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[]
   return problems;
 }
 
+/** Pack sources and the pack templates the CLI writes, which use the generated facades */
+export const PACK_SOURCE_DIRS = [
+  'packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+  'packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts',
+];
+
+/** Helpers packs get typed from #generated/events and #generated/repository instead */
+const RAW_PACK_HELPERS: Record<string, string[]> = {
+  '@abuddy/sdk/helpers': ['emit', 'sendToPlugin'],
+  '@abuddy/sdk/services': ['emit', 'sendToPlugin'],
+  '@abuddy/sdk/ears': ['registerRepository'],
+};
+
+/**
+ * `file:line: name from module` for each untyped event helper or repository registration a pack
+ * source imports (also inside template strings, which the CLI writes as pack source). Generated
+ * files are exempt.
+ */
+export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  const problems: string[] = [];
+  const files = dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+  }).filter((file) => !file.split(path.sep).includes('__generated__'));
+  const importPattern = /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
+  for (const file of files) {
+    const code = fs.readFileSync(file, 'utf-8');
+    for (const match of code.matchAll(importPattern)) {
+      const names = RAW_PACK_HELPERS[match[2]];
+      if (!names) continue;
+      const imported = match[1].split(',').map((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]);
+      for (const name of imported.filter((n) => names.includes(n))) {
+        const line = code.slice(0, match.index).split('\n').length;
+        problems.push(`${path.relative(root, file)}:${line}: ${name} from ${match[2]}`);
+      }
+    }
+  }
+  return problems;
+}
+
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const problems = findJsSpecifiers();
   if (problems.length > 0) {
     console.error(`Relative imports must name the TypeScript source (tsc and tsdown emit .js):\n  ${problems.join('\n  ')}`);
+    process.exit(1);
+  }
+  const rawHelpers = findRawPackHelpers();
+  if (rawHelpers.length > 0) {
+    console.error(`Pack code uses the typed facades: emit and sendToPlugin from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
     process.exit(1);
   }
   console.log('Relative import specifiers name .ts sources');
