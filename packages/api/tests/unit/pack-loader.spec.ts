@@ -328,21 +328,74 @@ describe('seedPackData: failures', () => {
     }));
   }
 
-  it('treats seed errors as a failure: no stored hash, lastError recorded', () => {
+  const failingSeed = () => ({ flows: { created: 0, updated: 0, skipped: 0, errors: ['Flow "X" is invalid: missing event'] } });
+
+  it('treats seed errors as a failure and records lastError', () => {
     const pack = installedPack('bad-flows');
     writeRegistry(['bad-flows']);
-    const setHashes = vi.fn();
 
-    const failures = seedPackData(
-      [pack],
-      () => ({ flows: { created: 0, updated: 0, skipped: 0, errors: ['Flow "X" is invalid: missing event'] } }),
-      () => ({}),
-      setHashes,
-    );
+    const failures = seedPackData([pack], failingSeed, () => ({}), () => {});
 
     expect(failures).toEqual([{ packId: 'bad-flows', errors: ['flows: Flow "X" is invalid: missing event'] }]);
-    expect(setHashes).not.toHaveBeenCalled();
     expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
+  });
+
+  it("doesn't re-import unchanged failing seed data on every boot, and keeps its lastError", () => {
+    const pack = installedPack('bad-flows');
+    writeRegistry(['bad-flows']);
+    let stored: Record<string, string> = {};
+    const seedFn = vi.fn(failingSeed);
+
+    seedPackData([pack], seedFn, () => stored, (h) => { stored = h; });
+    seedPackData([pack], seedFn, () => stored, (h) => { stored = h; });
+
+    expect(seedFn).toHaveBeenCalledTimes(1);
+    expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
+  });
+
+  it('re-seeds data that matches an earlier successful seed after a failed one (rollback)', () => {
+    const pack = installedPack('rollback');
+    writeRegistry(['rollback']);
+    const seedsDir = path.join(pack.dir, 'runtime', 'seeds');
+    let stored: Record<string, string> = {};
+    const seedFn = vi.fn(() => ({}));
+
+    seedPackData([pack], seedFn, () => stored, (h) => { stored = h; }); // v1 seeds
+    fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{"v2": {}}');
+    seedPackData([pack], failingSeed, () => stored, (h) => { stored = h; }); // v2 fails
+    fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{}');
+    seedPackData([pack], seedFn, () => stored, (h) => { stored = h; }); // back to v1's data
+
+    expect(seedFn).toHaveBeenCalledTimes(2);
+    expect(registryEntry('rollback')).not.toHaveProperty('lastError');
+  });
+
+  it("clears an earlier version's lastError when the pack no longer has seed data", () => {
+    const pack = installedPack('no-more-seeds');
+    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
+      packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, registeredAt: '', lastError: 'v1.0.0 failure' }],
+    }));
+
+    seedPackData([pack], vi.fn(), () => ({}), () => {});
+
+    expect(registryEntry('no-more-seeds')).not.toHaveProperty('lastError');
+  });
+
+  it("never runs the host-owned settings seeder for a pack (it resets the user's settings)", async () => {
+    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
+    const pack = installedPack('with-settings');
+    writeRegistry(['with-settings']);
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'settings.seed.json'), '{"plugins": {}}');
+    const settingsSeed = vi.fn(() => ({ created: 0, updated: 1, skipped: 0 }));
+    const actionsSeed = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
+    registerSeeder({ key: 'settings', seed: settingsSeed });
+    registerSeeder({ key: 'actions', seed: actionsSeed });
+
+    seedPackData([pack], seedData, () => ({}), () => {});
+
+    expect(actionsSeed).toHaveBeenCalledOnce();
+    expect(settingsSeed).not.toHaveBeenCalled();
   });
 
   it('records a thrown seeder as a failure too', () => {
@@ -408,6 +461,7 @@ describe('seedPackData', () => {
     expect(seedFn).toHaveBeenCalledWith({
       compiledDir: path.join(pack.dir, 'dist'),
       mode: 'replace-on-collision',
+      include: { settings: new Set() },
     });
   });
 
@@ -507,7 +561,8 @@ describe('seedPackData', () => {
     );
 
     expect(seedFn).toHaveBeenCalledTimes(2);
-    expect(savedHashes['fail-pack']).toBeUndefined();
+    // A failed seed's hash is stored too, so the same failing data isn't retried every boot
+    expect(savedHashes['fail-pack']).toBeTruthy();
     expect(savedHashes['ok-pack']).toBeTruthy();
   });
 });

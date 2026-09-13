@@ -60,13 +60,21 @@ function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
 }
 
 /**
+ * Seed sections the host owns. The settings seeder resets the whole settings entity to the
+ * host's defaults (it never reads a pack's settings file), so running it for a pack would
+ * wipe the user's settings.
+ */
+const HOST_OWNED_SEED_SECTIONS: Record<string, SeedIncludeSet> = { settings: new Set() };
+
+/**
  * Seed external packs whose compiled data changed. A pack whose seed reports errors
- * (e.g. an invalid flow) is a failed seed: its hash isn't stored, so it retries next
- * time, and the error is recorded as the registry entry's lastError.
+ * (e.g. an invalid flow) is a failed seed: the error is recorded as the registry entry's
+ * lastError. Its hash is stored like a successful seed's, so the same failing data isn't
+ * re-imported on every boot; it's retried when the pack's seed data changes.
  */
 export function seedPackData(
   packs: LoadedPack[],
-  seedFn: (options: { compiledDir: string; mode?: any; verbose?: boolean }) => Record<string, any>,
+  seedFn: (options: { compiledDir: string; mode?: any; include?: Record<string, SeedIncludeSet | undefined>; verbose?: boolean }) => Record<string, any>,
   getStoredHashes: () => Record<string, string>,
   setStoredHashes: (hashes: Record<string, string>) => void,
   options?: { cleanupStaleHashes?: boolean },
@@ -79,10 +87,12 @@ export function seedPackData(
 
   for (const pack of packs) {
     const distDir = resolvePackSeedsDir(pack.dir);
-    if (!fs.existsSync(distDir)) continue;
-
-    const currentHash = computePackSeedHash(distDir);
-    if (!currentHash) continue;
+    const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
+    if (!currentHash) {
+      // Nothing to seed: an error from an earlier version's seed no longer applies
+      outcomes.set(pack.manifest.id, undefined);
+      continue;
+    }
 
     if (storedHashes[pack.manifest.id] === currentHash) {
       logger.info(`Pack seed skipped (unchanged): ${pack.manifest.id}`);
@@ -92,18 +102,18 @@ export function seedPackData(
     logger.info(`Seeding data artifacts for pack: ${pack.manifest.id}`);
     let errors: string[];
     try {
-      errors = seedErrors(seedFn({ compiledDir: distDir, mode: 'replace-on-collision' }));
+      errors = seedErrors(seedFn({ compiledDir: distDir, mode: 'replace-on-collision', include: HOST_OWNED_SEED_SECTIONS }));
     } catch (err) {
       errors = [err instanceof Error ? err.message : String(err)];
     }
+    updatedHashes[pack.manifest.id] = currentHash;
+    anySeeded = true;
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${pack.manifest.id}:\n  ${errors.join('\n  ')}`);
       failures.push({ packId: pack.manifest.id, errors });
       outcomes.set(pack.manifest.id, errors.join('\n'));
       continue;
     }
-    updatedHashes[pack.manifest.id] = currentHash;
-    anySeeded = true;
     outcomes.set(pack.manifest.id, undefined);
     logger.info(`Pack seeded: ${pack.manifest.id}`);
   }
