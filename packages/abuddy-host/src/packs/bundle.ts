@@ -19,6 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
 import type { PackManifest } from '@abuddy/sdk/build';
+import { stagingDirName } from './staging.ts';
 
 export const BUNDLE_FORMAT_VERSION = 1;
 
@@ -218,7 +219,7 @@ export function publishHostPackArtifacts(builtInPackDir: string, destDir: string
   if (fs.existsSync(fingerprintFile) && fs.readFileSync(fingerprintFile, 'utf-8') === fingerprint) return false;
 
   // Hidden, so a crash mid-publish never leaves a directory that looks like a pack id
-  const staging = path.join(path.dirname(destDir), `.${path.basename(destDir)}.publishing-${process.pid}`);
+  const staging = path.join(path.dirname(destDir), stagingDirName(path.basename(destDir), 'publishing'));
   fs.rmSync(staging, { recursive: true, force: true });
   fs.mkdirSync(path.join(staging, BUNDLE_PATHS.typesDir), { recursive: true });
   fs.copyFileSync(snapshot, path.join(staging, BUNDLE_PATHS.snapshot));

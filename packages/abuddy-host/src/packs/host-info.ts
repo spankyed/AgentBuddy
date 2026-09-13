@@ -10,7 +10,11 @@ const hostInfoFile = (userDataDir: string) => path.join(userDataDir, 'host.json'
 export function recordHostVersion(userDataDir: string, version: string): void {
   if (readHostVersion(userDataDir) === version) return;
   fs.mkdirSync(userDataDir, { recursive: true });
-  fs.writeFileSync(hostInfoFile(userDataDir), JSON.stringify({ version }, null, 2) + '\n');
+  // Written aside and renamed, so a crash never leaves a truncated host.json
+  const file = hostInfoFile(userDataDir);
+  const temp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify({ version }, null, 2) + '\n');
+  fs.renameSync(temp, file);
 }
 
 /** The AgentBuddy version that last started with this data dir, if one has. */

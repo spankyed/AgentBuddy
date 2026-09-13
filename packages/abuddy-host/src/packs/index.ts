@@ -25,10 +25,11 @@ export type { PackRegistryEntry } from './pack-registry.ts';
 // Installer
 export {
   installPack, installPackFromLocal, installPackFromUrl, installPackFromGitHub,
-  uninstallPack, checkDependencies, isHostCompatible, sweepStaleStagingDirs,
+  uninstallPack, checkDependencies, isHostCompatible,
 } from './pack-installer.ts';
 export type { InstallResult } from './pack-installer.ts';
 export { recordHostVersion, readHostVersion } from './host-info.ts';
+export { recoverStagingDirs, prepareHostDataDirs, stagingDirName, type StagingRecovery } from './staging.ts';
 
 // Updater
 export { checkForUpdates, getAvailableUpdates } from './pack-updater.ts';

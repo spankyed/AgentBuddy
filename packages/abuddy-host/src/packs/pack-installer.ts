@@ -4,6 +4,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { satisfies } from 'semver';
 import { discoverBuiltInPacks } from './pack-discovery.ts';
+import { stagingDirName } from './staging.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseManifest } from '@abuddy/sdk/build';
 import type { PackManifest } from '@abuddy/sdk/build';
@@ -156,7 +157,7 @@ function placePack(sourceDir: string, packsDir: string, id: string): string {
   const incoming = fs.mkdtempSync(path.join(packsDir, `.${id}.installing-${process.pid}-`));
   try {
     copyDir(sourceDir, incoming);
-    const previous = fs.existsSync(destDir) ? path.join(packsDir, `.${id}.previous-${process.pid}`) : null;
+    const previous = fs.existsSync(destDir) ? path.join(packsDir, stagingDirName(id, 'previous')) : null;
     if (previous) fs.renameSync(destDir, previous);
     try {
       fs.renameSync(incoming, destDir);
@@ -323,39 +324,4 @@ export async function uninstallPack(packId: string, targetPacksDir?: string): Pr
   log.info(`Uninstalled pack "${packId}"`);
 }
 
-const STAGING_DIR = /^\.[^/]+\.(installing|previous|publishing)-(\d+)?/;
-/** Staging dirs from before their names carried a PID are swept once they're this old. */
-const UNOWNED_STAGING_MAX_AGE_MS = 60 * 60 * 1000;
-
-function processIsRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    // EPERM: the process exists but belongs to someone else
-    return (err as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
-
-/**
- * Removes install, backup and publish staging dirs (`.<id>.installing-<pid>-*`, `.<id>.previous-<pid>`,
- * `.<id>.publishing-<pid>`) that a crashed or killed process left in `dir`. A dir whose process is
- * still running is another install in progress and stays.
- */
-export function sweepStaleStagingDirs(dir: string, now = Date.now()): string[] {
-  if (!fs.existsSync(dir)) return [];
-  const removed: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const match = entry.isDirectory() ? STAGING_DIR.exec(entry.name) : null;
-    if (!match) continue;
-    const full = path.join(dir, entry.name);
-    const stale = match[2]
-      ? Number(match[2]) !== process.pid && !processIsRunning(Number(match[2]))
-      : now - fs.statSync(full).mtimeMs > UNOWNED_STAGING_MAX_AGE_MS;
-    if (!stale) continue;
-    fs.rmSync(full, { recursive: true, force: true });
-    removed.push(entry.name);
-  }
-  return removed;
-}
 
