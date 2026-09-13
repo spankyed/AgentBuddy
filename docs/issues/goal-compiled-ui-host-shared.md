@@ -85,6 +85,25 @@ Pick the tool that passes 1–3. If both pass, pick the one with fewer config li
 1. The renderer exposes every UI export on `window.__abuddy`. Record the renderer's main chunk size before and after (`npm run build -w @app/renderer`); the difference must be under 5%, since the renderer already imports most components statically.
 2. A pack importing `@abuddy/ui/components/tiptap/TiptapEditor` and `@abuddy/ui/composables/useDebounce` builds with no UI code in its `fe.js` (grep), renders the editor in E2E, and shares the host's `monaco-config` state.
 
+### Spike results (2026-09-13)
+
+Tools: Vite 7.0.6 with `@vitejs/plugin-vue`; tsdown 0.21.10 (rolldown 1.0.0-rc.17) with unplugin-vue 7.2.0 and `@tsdown/css` 0.21.10. Both builds took entries from the exports map and kept dependencies and peers external.
+
+**A. Build tool: tsdown.**
+
+| Check | Vite library mode + `preserveModules` | tsdown (bundled entries, shared chunks) |
+|---|---|---|
+| 1. Shared modules once | ✅ `registeredDslLibs = new Set()` only in `components/monaco-config.js` | ✅ only in `components/monaco-config.js` (per-file `unbundle` mode too) |
+| 2. Layout, declarations | Two files per component (`X.js` re-exporting `X.vue.js`). Not taken further. | One `X.js` per export (82 JS incl. 2 shared chunks). With vue-tsc declarations in the real package: attw exit 0, `publint --strict` "All good!", `published-ui-types` 2/2, `published-exports` 2/2. |
+| 3. CSS | ❌ One `ui.css` no module imports; with `cssCodeSplit: true`, 17 component CSS files and still no imports. Needs a third-party CSS-injection plugin. | ✅ With `css: { inject: true }` each component imports its CSS (15 imports, 14 files). Two findings: unplugin-vue under tsdown can't resolve `<style src="./tiptap-theme.css">` (ENOENT; it resolves from the working directory), so `TiptapEditor.vue` uses `<style>@import "./tiptap-theme.css";</style>`; and the `@import` is only inlined with the `postcss` transformer (tsdown loads `postcss-import` for it). The default left `@import "./tiptap-theme.css"` in the emitted CSS, which a pack build then failed on, so `transformer: 'postcss'` is explicit and a dist test rejects unresolved relative `@import`s. |
+| 4. Time, size | 2 s, 788 KB (127 JS, 1 CSS) | ~1 s compile; the package's `dist/` is 916 KB with declarations (82 JS, 14 CSS, 80 declarations) |
+
+tsdown passes 1–3; Vite fails 3.
+
+**B. Host sharing: passes.**
+1. The renderer main chunk went from 4,389,492 to 4,423,287 bytes (+0.77%, limit 5%) when `virtual:host-deps` imported all 80 UI exports. JS chunks went from 42 to 39: `BaseForm`, `BaseNode` and `TipSection`, previously lazy step-form chunks, moved into the main chunk. Baseline: the last build of the same renderer code before the change.
+2. A pack importing `TiptapEditor` and `useDebounce` builds a `fe.js` holding only `window.__abuddy["@abuddy/ui/…"]` proxies (no `createExtensions`, `ProseMirror` or debounce code), in the workspace and the published layout. The fixture pack renders the host's `TiptapEditor` in E2E (`memos.spec.ts`), and a test loads a built pack against the host's `monaco-config` module and gets the same function objects.
+
 ### Phase 1 — Compile `@abuddy/ui`
 
 - Build with the tool from Phase 0 (`packages/abuddy-ui/scripts/build-package.ts`). Keep the undeclared-import guard and `assertExportTargetsBuilt`.
