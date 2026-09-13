@@ -128,7 +128,8 @@ function getBuiltInPackIds(packsDir: string): Set<string> {
   if (!fs.existsSync(hostPacksDir)) return new Set();
   return new Set(
     fs.readdirSync(hostPacksDir, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
+      // Hidden dirs are publishes in progress (publishHostPackArtifacts)
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
       .map(entry => entry.name),
   );
 }
@@ -157,7 +158,13 @@ function placePack(sourceDir: string, packsDir: string, id: string): string {
     copyDir(sourceDir, incoming);
     const previous = fs.existsSync(destDir) ? path.join(packsDir, `.${id}.previous-${process.pid}`) : null;
     if (previous) fs.renameSync(destDir, previous);
-    fs.renameSync(incoming, destDir);
+    try {
+      fs.renameSync(incoming, destDir);
+    } catch (err) {
+      // Put the installed version back rather than leaving the pack missing
+      if (previous && !fs.existsSync(destDir)) fs.renameSync(previous, destDir);
+      throw err;
+    }
     if (previous) fs.rmSync(previous, { recursive: true, force: true });
     return destDir;
   } catch (err) {

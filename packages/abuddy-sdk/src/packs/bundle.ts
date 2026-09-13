@@ -217,7 +217,8 @@ export function publishHostPackArtifacts(builtInPackDir: string, destDir: string
   const fingerprintFile = path.join(destDir, '.fingerprint');
   if (fs.existsSync(fingerprintFile) && fs.readFileSync(fingerprintFile, 'utf-8') === fingerprint) return false;
 
-  const staging = `${destDir}.publishing-${process.pid}`;
+  // Hidden, so a crash mid-publish never leaves a directory that looks like a pack id
+  const staging = path.join(path.dirname(destDir), `.${path.basename(destDir)}.publishing-${process.pid}`);
   fs.rmSync(staging, { recursive: true, force: true });
   fs.mkdirSync(path.join(staging, BUNDLE_PATHS.typesDir), { recursive: true });
   fs.copyFileSync(snapshot, path.join(staging, BUNDLE_PATHS.snapshot));

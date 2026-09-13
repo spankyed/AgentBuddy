@@ -30,6 +30,20 @@ describe('checkDependencies', () => {
     expect(checkDependencies(manifest, packsDir)).toEqual(['other-pack']);
   });
 
+  it('publishes built-in packs through a hidden staging dir, which never counts as a pack', async () => {
+    const { publishHostPackArtifacts } = await import('../../src/packs/bundle');
+    const source = path.join(userData, 'app', 'default-setup');
+    fs.mkdirSync(path.join(source, 'dist'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'dist', 'snapshot.json'), '{}');
+    // An earlier publish that crashed between staging and rename
+    fs.mkdirSync(path.join(userData, 'host-packs', '.default-setup.publishing-1'), { recursive: true });
+
+    publishHostPackArtifacts(source, path.join(userData, 'host-packs', 'default-setup'));
+
+    expect(fs.readdirSync(path.join(userData, 'host-packs')).filter(name => !name.startsWith('.'))).toEqual(['default-setup']);
+    expect(checkDependencies({ dependencies: { '.default-setup.publishing-1': '*' } }, packsDir)).toEqual(['.default-setup.publishing-1']);
+  });
+
   it('treats installed packs as present', () => {
     fs.mkdirSync(path.join(packsDir, 'other-pack'));
     fs.writeFileSync(path.join(packsDir, 'other-pack', 'abuddy.json'), '{}');
