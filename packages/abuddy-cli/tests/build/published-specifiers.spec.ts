@@ -9,13 +9,13 @@ import { PACKAGES_BUILT, REPO_ROOT } from '../helpers/published-packages';
  * and testing bundles that inline @abuddy/host).
  */
 const OUTPUTS = ['packages/abuddy-sdk/dist', 'packages/abuddy-ui/dist', 'packages/abuddy-cli/dist/package/dist', 'packages/abuddy-testing/dist/package/dist'];
-const RELATIVE_TS = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)["']\.{1,2}\/[^"']+\.ts["']/;
+const RELATIVE_TS = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["']\.{1,2}\/[^"']+\.(?:ts|tsx|mts|cts)["']/;
 
 describe.skipIf(!PACKAGES_BUILT)('published JS', () => {
   it.each(OUTPUTS)('has no relative .ts specifier in %s', (output) => {
     const dir = path.join(REPO_ROOT, output);
     const offenders = fs.readdirSync(dir, { recursive: true, encoding: 'utf-8' })
-      .filter((file) => /\.(m?js)$/.test(file))
+      .filter((file) => /\.(js|mjs|cjs)$/.test(file))
       .filter((file) => RELATIVE_TS.test(fs.readFileSync(path.join(dir, file), 'utf-8')));
     expect(offenders).toEqual([]);
   });

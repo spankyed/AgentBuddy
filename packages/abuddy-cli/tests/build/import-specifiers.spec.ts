@@ -1,0 +1,78 @@
+import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { findJsSpecifiers } from '../../../../scripts/check-import-specifiers.ts';
+import { REPO_ROOT } from '../helpers/published-packages';
+
+/** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
+let root: string;
+beforeEach(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-specifiers-'));
+  for (const [file, content] of Object.entries({
+    'query.ts': 'export const q = 1;',
+    'view.tsx': 'export const v = 1;',
+    'module.mts': 'export const m = 1;',
+    'common.cts': 'export const c = 1;',
+    'declared.d.ts': 'export declare const d: number;',
+  })) write(file, content);
+});
+afterEach(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+function write(file: string, content: string): void {
+  fs.mkdirSync(path.dirname(path.join(root, 'src', file)), { recursive: true });
+  fs.writeFileSync(path.join(root, 'src', file), content);
+}
+
+function problems(file: string, content: string): string[] {
+  write(file, content);
+  return findJsSpecifiers(['src'], root);
+}
+
+describe('findJsSpecifiers', () => {
+  it.each([
+    ['import', "import { q } from './query.js';"],
+    ['side-effect import', "import './query.js';"],
+    ['re-export', "export * from './query.js';"],
+    ['dynamic import', "export const load = () => import('./query.js');"],
+    ['import type', "export type Q = typeof import('./query.js');"],
+    ['import-equals', "import q = require('./query.js');"],
+    ['require', "const q = require('./query.js');"],
+    ['require.resolve', "const q = require.resolve('./query.js');"],
+    ['vi.mock', "vi.mock('./query.js', () => ({}));"],
+    ['vi.importActual', "await vi.importActual('./query.js');"],
+    ['a .tsx target', "import { v } from './view.js';"],
+    ['a .mts target', "import { m } from './module.mjs';"],
+    ['a .cts target', "import { c } from './common.cjs';"],
+  ])('flags: %s', (_form, code) => {
+    expect(problems('consumer.ts', code)).toEqual([expect.stringMatching(/^src\/consumer\.ts:1: \.\//)]);
+  });
+
+  it.each(['consumer.tsx', 'consumer.mts', 'consumer.cts'])('checks %s files', (file) => {
+    expect(problems(file, "import { q } from './query.js';")).toHaveLength(1);
+  });
+
+  it('checks .vue script blocks with their line numbers', () => {
+    expect(problems('Widget.vue', "<template><div /></template>\n<script setup lang=\"ts\">\nimport { q } from './query.js';\n</script>\n"))
+      .toEqual(['src/Widget.vue:3: ./query.js']);
+  });
+
+  it('allows .ts specifiers, declaration-only modules and packages', () => {
+    expect(problems('consumer.ts', [
+      "import { q } from './query.ts';",
+      "import type { d } from './declared.js';",
+      "import { x } from 'some-package/x.js';",
+      "vi.mock('./missing.js');",
+    ].join('\n'))).toEqual([]);
+  });
+
+  it('runs as a script through a symlinked path', () => {
+    const link = path.join(root, 'check.ts');
+    fs.symlinkSync(path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), link);
+    const output = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
+    expect(output).toMatch(/Relative import specifiers name \.ts sources/);
+  });
+});
