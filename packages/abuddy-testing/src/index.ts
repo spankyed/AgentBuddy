@@ -7,6 +7,7 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal } from '@abuddy/sdk/packs';
+import { appLaunchEnv } from './launch-env';
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -238,11 +239,7 @@ export function createTest(options: CreateTestOptions = {}) {
       const launchStart = Date.now();
       const app = await _electron.launch({
         ...launch,
-        env: {
-          ...process.env,
-          PLAYWRIGHT_TEST: 'true',
-          ABUDDY_USER_DATA_DIR: userDataDir,
-        },
+        env: appLaunchEnv(process.env, userDataDir),
       });
 
       launchStartedAt.set(app, launchStart);

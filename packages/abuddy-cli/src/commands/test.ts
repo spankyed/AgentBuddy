@@ -15,6 +15,8 @@ hostVersion, downloaded and cached), ABUDDY_ROOT, or the app you chose on first 
 export function fixtureEnv(app: AppTarget, packDir: string | undefined, base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
   delete env.ABUDDY_ROOT;
+  // ELECTRON_RUN_AS_NODE (app-bundled launcher) stays: the runner and its workers run on
+  // process.execPath. The fixture drops it for the app it launches (appLaunchEnv).
   delete env.ABUDDY_APP_EXECUTABLE;
   if (app.kind === 'source') env.ABUDDY_ROOT = app.root;
   else env.ABUDDY_APP_EXECUTABLE = app.executable;

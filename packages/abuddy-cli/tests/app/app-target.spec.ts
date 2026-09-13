@@ -13,6 +13,7 @@ import {
 import { fixtureEnv } from '../../src/commands/test';
 import { cliBin } from '../../src/utils';
 import { packagedExecutable } from '../../src/app/beta-app';
+import { appLaunchEnv } from '../../../abuddy-testing/src/launch-env';
 
 let tmp: string;
 let dirs: CliDirs;
@@ -145,13 +146,23 @@ describe('configuredAppPackagesDir', () => {
   });
 });
 
+describe('appLaunchEnv (@abuddy/testing)', () => {
+  it("doesn't pass the app-bundled launcher's ELECTRON_RUN_AS_NODE to the app under test", () => {
+    expect(appLaunchEnv({ ELECTRON_RUN_AS_NODE: '1', HOME: '/home' }, '/tmp/data')).toEqual({
+      HOME: '/home',
+      PLAYWRIGHT_TEST: 'true',
+      ABUDDY_USER_DATA_DIR: '/tmp/data',
+    });
+  });
+});
+
 describe('fixtureEnv', () => {
   it('points the fixture at exactly one app', () => {
-    const base = { ABUDDY_ROOT: '/stale', ABUDDY_APP_EXECUTABLE: '/stale-exe', HOME: '/home' };
+    const base = { ABUDDY_ROOT: '/stale', ABUDDY_APP_EXECUTABLE: '/stale-exe', ELECTRON_RUN_AS_NODE: '1', HOME: '/home' };
     expect(fixtureEnv({ kind: 'packaged', executable: '/exe', version: '1.0.0-beta.0' }, '/pack', base))
-      .toEqual({ ABUDDY_APP_EXECUTABLE: '/exe', PACK_DIR: '/pack', ABUDDY_CLI: cliBin(), HOME: '/home' });
+      .toEqual({ ABUDDY_APP_EXECUTABLE: '/exe', PACK_DIR: '/pack', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
-      .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin(), HOME: '/home' });
+      .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fs.existsSync(cliBin())).toBe(true);
   });
 });
