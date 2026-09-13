@@ -52,7 +52,7 @@ jobs:
         with:
           title: 'chore: version packages'
           commit: 'chore: version packages'
-          version: npx changeset version
+          version: npm run packages:version
           publish: npm run packages:publish -- ${{ !inputs.publish && '--dry-run' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

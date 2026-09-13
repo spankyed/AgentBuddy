@@ -2,10 +2,10 @@ name: CI
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [master]
-  # pull_request:
-  #   branches: [master]
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -65,6 +65,9 @@ jobs:
       # publint and arethetypeswrong on every packed package (@abuddy/cli ships no types, so attw skips it)
       - name: Validate packed packages
         run: npm run packages:check
+
+      - name: Publish dry run
+        run: npm run packages:publish -- --dry-run
 
       - name: Unit tests (cli)
         run: npm test --workspace @abuddy/cli -- --reporter=verbose
