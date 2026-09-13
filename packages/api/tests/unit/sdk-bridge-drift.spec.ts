@@ -108,10 +108,11 @@ describe('SDK bridge drift', () => {
     expect(stale, 'SDK_BRIDGE references specifiers absent from the SDK exports map').toEqual([]);
   });
 
-  // dist/ is gitignored, so this only runs after default-setup has been built.
-  // The export-map assertions above are the build-independent safety net.
+  // dist/ is gitignored, so this only runs after default-setup has been built. CI builds it
+  // and sets REQUIRE_DEV_ENTRY, since the policy-only entries above rely on this check.
   it('bridges every SDK specifier the built dev entry actually imports', () => {
     if (!fs.existsSync(DEV_ENTRY)) {
+      if (process.env.REQUIRE_DEV_ENTRY) throw new Error(`${DEV_ENTRY} is required (REQUIRE_DEV_ENTRY) but not built`);
       // eslint-disable-next-line no-console
       console.warn(`[sdk-bridge-drift] skipped: ${DEV_ENTRY} not built`);
       return;

@@ -38,8 +38,13 @@ jobs:
       - name: Schema drift check
         run: npm run schema:check --workspace @abuddy/sdk
 
+      - name: Build default-setup dev entry (for the SDK bridge drift check)
+        run: node packages/default-setup/dev-build.mjs
+
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose
+        env:
+          REQUIRE_DEV_ENTRY: '1'
 
       - name: Unit tests (default-setup)
         run: npm test --workspace @app/default-setup -- --reporter=verbose
