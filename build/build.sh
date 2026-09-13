@@ -174,13 +174,13 @@ echo ""
 echo "📁 Output:"
 if $IS_MAC; then
   echo "  • App: dist/mac-arm64/${APP_NAME}.app"
-  echo "  • DMG: dist/${APP_NAME}-*.dmg"
-  echo "  • ZIP: dist/${APP_NAME}-*.zip"
+  echo "  • DMG: dist/${APP_NAME// /-}-*.dmg"
+  echo "  • ZIP: dist/${APP_NAME// /-}-*.zip"
 elif $IS_WIN; then
-  echo "  • Installer: dist/${APP_NAME}-*.exe"
+  echo "  • Installer: dist/${APP_NAME// /-}-*.exe"
 else
-  echo "  • AppImage: dist/${APP_NAME}-*.AppImage"
-  echo "  • Deb: dist/${APP_NAME}-*.deb"
+  echo "  • AppImage: dist/${APP_NAME// /-}-*.AppImage"
+  echo "  • Deb: dist/${APP_NAME// /-}-*.deb"
 fi
 echo ""
 echo "📦 Next steps:"

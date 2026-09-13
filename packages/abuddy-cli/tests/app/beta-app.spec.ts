@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureBetaApp, packagedExecutable, pickBetaRelease } from '../../src/app/beta-app';
 
 const asset = (name: string) => ({ name, browser_download_url: `https://example.test/${encodeURIComponent(name)}` });
-const zipName = (version: string) => `AgentBuddy Beta-${version}-mac-arm64.zip`;
+const zipName = (version: string) => `AgentBuddy-Beta-${version}-mac-arm64.zip`;
 const release = (version: string, { prerelease = true, checksum = true, fileVersion = version } = {}) => ({
   tag_name: `v${version}`,
   prerelease,
@@ -32,8 +32,26 @@ describe('pickBetaRelease', () => {
   it('accepts a beta promoted from a production build, named with the production version', () => {
     const promoted = pickBetaRelease([release('0.4.2-beta.0', { fileVersion: '0.4.2' })], '>=0.4.0');
     expect(promoted?.version).toBe('0.4.2-beta.0');
-    expect(promoted?.zip.name).toBe('AgentBuddy Beta-0.4.2-mac-arm64.zip');
-    expect(promoted?.checksum.name).toBe('AgentBuddy Beta-0.4.2-mac-arm64.zip.sha256');
+    expect(promoted?.zip.name).toBe('AgentBuddy-Beta-0.4.2-mac-arm64.zip');
+    expect(promoted?.checksum.name).toBe('AgentBuddy-Beta-0.4.2-mac-arm64.zip.sha256');
+  });
+});
+
+describe('beta release file names', () => {
+  it('match what electron-builder.mjs names the AgentBuddy Beta zip, with only characters GitHub keeps', async () => {
+    vi.stubEnv('ABUDDY_ENV', 'beta');
+    vi.resetModules();
+    const config = (await import('../../../../electron-builder.mjs')).default as { artifactName: string };
+    vi.unstubAllEnvs();
+
+    const version = '0.4.0-beta.1';
+    const name = config.artifactName
+      .replace('${version}', version).replace('${os}', 'mac').replace('${arch}', 'arm64').replace('${ext}', 'zip');
+
+    // GitHub rewrites any other character in release asset names (spaces become dots)
+    expect(name).toMatch(/^[0-9A-Za-z._-]+$/);
+    const release = { tag_name: `v${version}`, prerelease: true, assets: [asset(name), asset(`${name}.sha256`)] };
+    expect(pickBetaRelease([release], '>=0.3.0')?.zip.name).toBe(name);
   });
 });
 
@@ -93,7 +111,7 @@ describe.skipIf(process.platform !== 'darwin' || process.arch !== 'arm64')('ensu
   it('rejects a download whose checksum does not match and caches nothing', async () => {
     files[`${zipName('0.4.0-beta.1')}.sha256`] = Buffer.from(`${'0'.repeat(64)}  ${zipName('0.4.0-beta.1')}\n`);
 
-    await expect(ensureBetaApp(options())).rejects.toThrow(/Checksum mismatch for AgentBuddy Beta-0\.4\.0-beta\.1-mac-arm64\.zip/);
+    await expect(ensureBetaApp(options())).rejects.toThrow(/Checksum mismatch for AgentBuddy-Beta-0\.4\.0-beta\.1-mac-arm64\.zip/);
     expect(fs.readdirSync(path.join(tmp, 'cache', 'apps', 'beta'))).toEqual([]);
   });
 

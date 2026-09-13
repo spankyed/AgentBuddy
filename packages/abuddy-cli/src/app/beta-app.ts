@@ -11,6 +11,8 @@ import semver from 'semver';
 /** Public releases of the desktop app (build/release/publish-release.sh copies them here). */
 export const APP_RELEASES_REPO = { owner: 'spankyed', repo: 'AgentBuddy-releases' };
 const PRODUCT_NAME = 'AgentBuddy Beta';
+/** Release file names use the product name without spaces (electron-builder.mjs artifactName). */
+export const BETA_ARTIFACT_PREFIX = 'AgentBuddy-Beta';
 
 interface ReleaseAsset {
   name: string;
@@ -67,7 +69,7 @@ export function pickBetaRelease(releases: Release[], hostVersion: string): BetaR
 
   // A beta promoted from a production release (v<version>-beta.0, see build/release/beta-tag.sh)
   // carries the production version in its file name, so match any version
-  const zipPattern = new RegExp(`^${PRODUCT_NAME}-.+-mac-arm64\\.zip$`);
+  const zipPattern = new RegExp(`^${BETA_ARTIFACT_PREFIX}-.+-mac-arm64\\.zip$`);
   for (const { release, version } of candidates) {
     const zip = release.assets.find(a => zipPattern.test(a.name));
     const checksum = zip && release.assets.find(a => a.name === `${zip.name}.sha256`);

@@ -45,9 +45,11 @@ jobs:
           if [[ "$TAG_VERSION" == *-beta* ]] || [[ "${{ inputs.channel }}" == "beta" ]]; then
             echo "is_beta=true" >> "$GITHUB_OUTPUT"
             echo "product_name=AgentBuddy Beta" >> "$GITHUB_OUTPUT"
+            echo "artifact_prefix=AgentBuddy-Beta" >> "$GITHUB_OUTPUT"
           else
             echo "is_beta=false" >> "$GITHUB_OUTPUT"
             echo "product_name=AgentBuddy" >> "$GITHUB_OUTPUT"
+            echo "artifact_prefix=AgentBuddy" >> "$GITHUB_OUTPUT"
           fi
           echo "tag_version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
 
@@ -115,10 +117,12 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
           # `abuddy test --app beta` verifies downloads against these
-          for file in dist/"${APP_NAME}"-*.dmg dist/"${APP_NAME}"-*.zip; do
+          # electron-builder.mjs artifactName: the product name without spaces
+          PREFIX="${{ steps.channel.outputs.artifact_prefix }}"
+          for file in dist/"${PREFIX}"-*.dmg dist/"${PREFIX}"-*.zip; do
             (cd dist && shasum -a 256 "$(basename "$file")" > "$(basename "$file").sha256")
           done
-          assets=(dist/"${APP_NAME}"-*.dmg dist/"${APP_NAME}"-*.zip dist/"${APP_NAME}"-*.sha256)
+          assets=(dist/"${PREFIX}"-*.dmg dist/"${PREFIX}"-*.zip dist/"${PREFIX}"-*.sha256)
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
