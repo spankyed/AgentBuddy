@@ -159,6 +159,22 @@ async function main(): Promise<void> {
     { stdio: 'inherit' },
   );
 
+  // tsc keeps extensionless relative specifiers in declarations, which moduleResolution
+  // node16/nodenext consumers can't resolve; point them at the emitted .js like the JS output
+  for (const file of walk(outDir).filter((f) => f.endsWith('.d.ts'))) {
+    const source = fs.readFileSync(file, 'utf-8');
+    const rewritten = source.replace(/(\bfrom\s*|\bimport\s*\(\s*)(['"])(\.{1,2}\/[^'"]*)\2/g, (match, prefix, quote, specifier, offset: number) => {
+      if (/\.(js|vue|css|json)$/.test(specifier)) return match;
+      const line = source.slice(source.lastIndexOf('\n', offset) + 1, offset);
+      if (/^\s*(\*|\/\/)/.test(line)) return match; // doc comment example
+      const target = path.resolve(path.dirname(file), specifier);
+      if (fs.existsSync(`${target}.d.ts`)) return `${prefix}${quote}${specifier}.js${quote}`;
+      if (fs.existsSync(path.join(target, 'index.d.ts'))) return `${prefix}${quote}${specifier}/index.js${quote}`;
+      throw new Error(`Unresolvable import ${specifier} in ${path.relative(outDir, file)}`);
+    });
+    if (rewritten !== source) fs.writeFileSync(file, rewritten);
+  }
+
   fs.copyFileSync(path.join(pkgDir, 'abuddy.schema.json'), path.join(outDir, 'abuddy.schema.json'));
 
   const dependencies = Object.fromEntries(
