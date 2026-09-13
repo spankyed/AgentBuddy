@@ -3,7 +3,7 @@ export { expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal } from '@abuddy/sdk/packs';
@@ -19,9 +19,15 @@ export interface AppHelper {
 }
 
 export interface CreateTestOptions {
+  /** A built AgentBuddy checkout to launch from source */
   appRoot?: string;
+  /** A packaged AgentBuddy executable (e.g. AgentBuddy Beta.app/Contents/MacOS/AgentBuddy Beta) */
+  appExecutable?: string;
   screenshotDir?: string;
 }
+
+/** How the fixture launches AgentBuddy: from a checkout's sources, or a packaged build. */
+type AppLaunch = { kind: 'source'; root: string } | { kind: 'packaged'; executable: string };
 
 function isValidAppRoot(dir: string): boolean {
   return fs.existsSync(path.join(dir, 'packages', 'entry-point.mjs'));
@@ -35,41 +41,43 @@ function validateAppRoot(dir: string): void {
   if (!fs.existsSync(path.join(dir, 'packages', 'renderer', 'dist'))) missing.push('packages/renderer/dist (run npm run build)');
   if (missing.length > 0) {
     throw new Error(
-      `ABUDDY_ROOT (${dir}) is missing required files:\n` +
+      `AgentBuddy checkout ${dir} is missing required files:\n` +
       missing.map(m => `  - ${m}`).join('\n') +
       '\n\nThe AgentBuddy monorepo must be cloned, installed, and built before E2E tests can run.',
     );
   }
 }
 
-function resolveAppRoot(override?: string): string {
-  if (override) {
-    const resolved = path.resolve(override);
-    validateAppRoot(resolved);
-    return resolved;
-  }
-  if (process.env.ABUDDY_ROOT) {
-    const resolved = path.resolve(process.env.ABUDDY_ROOT);
-    validateAppRoot(resolved);
-    return resolved;
-  }
+function sourceApp(dir: string): AppLaunch {
+  const root = path.resolve(dir);
+  validateAppRoot(root);
+  return { kind: 'source', root };
+}
 
-  // Auto-detect: walk up from SDK package looking for packages/entry-point.mjs
+function packagedApp(executable: string): AppLaunch {
+  if (!fs.existsSync(executable)) throw new Error(`AgentBuddy executable not found: ${executable}`);
+  return { kind: 'packaged', executable };
+}
+
+function resolveApp(options: CreateTestOptions): AppLaunch {
+  if (options.appExecutable) return packagedApp(options.appExecutable);
+  if (options.appRoot) return sourceApp(options.appRoot);
+  // Set by `abuddy test` for a downloaded app build
+  if (process.env.ABUDDY_APP_EXECUTABLE) return packagedApp(process.env.ABUDDY_APP_EXECUTABLE);
+  if (process.env.ABUDDY_ROOT) return sourceApp(process.env.ABUDDY_ROOT);
+
+  // Auto-detect: walk up from this package looking for packages/entry-point.mjs (inside the monorepo)
   let dir = path.resolve(import.meta.dirname, '..', '..');
   for (let i = 0; i < 10; i++) {
-    if (isValidAppRoot(dir)) {
-      validateAppRoot(dir);
-      return dir;
-    }
+    if (isValidAppRoot(dir)) return sourceApp(dir);
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
 
   throw new Error(
-    'Could not find AgentBuddy root. Set ABUDDY_ROOT env var to the AgentBuddy monorepo directory.\n\n' +
-    'E2E tests require a local clone of the AgentBuddy repo with dependencies installed and packages built:\n' +
-    '  git clone <agentbuddy-repo> && cd AgentBuddy && npm install && npm run build',
+    'Could not find an AgentBuddy app to test against. Run the tests with `abuddy test`, which ' +
+    'resolves one (--app-root <path>, --app beta, or your saved choice), or set ABUDDY_ROOT to a built AgentBuddy checkout.',
   );
 }
 
@@ -79,12 +87,17 @@ function resolveScreenshotDir(override?: string): string {
   return path.join(process.cwd(), 'tests', 'screenshots');
 }
 
-function resolveAbuddyBin(appRoot: string): string {
-  const localBin = path.join(process.cwd(), 'node_modules', '.bin', 'abuddy');
-  if (fs.existsSync(localBin)) return localBin;
-  const appBin = path.join(appRoot, 'node_modules', '.bin', 'abuddy');
-  if (fs.existsSync(appBin)) return appBin;
-  return 'abuddy';
+/** The abuddy CLI bin that builds the pack under test. */
+function resolveAbuddyBin(app: AppLaunch, packDir: string): string {
+  // `abuddy test` passes itself, so the build uses the same CLI as the test run
+  if (process.env.ABUDDY_CLI) return process.env.ABUDDY_CLI;
+  const bases = [path.join(packDir, 'package.json'), ...(app.kind === 'source' ? [path.join(app.root, 'package.json')] : [])];
+  for (const base of bases) {
+    try {
+      return path.join(path.dirname(createRequire(base).resolve('@abuddy/cli/package.json')), 'bin', 'abuddy.mjs');
+    } catch {}
+  }
+  throw new Error('Could not find the abuddy CLI to build the pack. Install it in the pack (npm i -D @abuddy/cli) or run the tests with `abuddy test`.');
 }
 
 let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
@@ -183,7 +196,7 @@ async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
 }
 
 export function createTest(options: CreateTestOptions = {}) {
-  const appRoot = resolveAppRoot(options.appRoot);
+  const appLaunch = resolveApp(options);
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
 
   const test = base.extend<
@@ -199,10 +212,10 @@ export function createTest(options: CreateTestOptions = {}) {
         const manifest = getPackManifest();
         if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
         // Always rebuild: installing an existing dist would silently test stale code
-        const abuddyBin = resolveAbuddyBin(appRoot);
+        const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
         console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
         try {
-          execSync(`${abuddyBin} build`, { cwd: packDir, stdio: 'pipe' });
+          execFileSync(process.execPath, [abuddyBin, 'build'], { cwd: packDir, stdio: 'pipe' });
         } catch (e: any) {
           const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
           throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
@@ -213,15 +226,18 @@ export function createTest(options: CreateTestOptions = {}) {
         await installPackFromLocal(packDir, packsDir);
       }
 
-      // Resolve electron binary from the monorepo so external packs don't need electron installed locally
-      const appRequire = createRequire(path.join(appRoot, 'package.json'));
-      const electronPath = appRequire('electron') as unknown as string;
+      // A checkout runs its sources with its own electron, so packs don't need electron installed
+      const launch = appLaunch.kind === 'source'
+        ? {
+          executablePath: createRequire(path.join(appLaunch.root, 'package.json'))('electron') as unknown as string,
+          args: [path.join(appLaunch.root, '.')],
+          cwd: appLaunch.root,
+        }
+        : { executablePath: appLaunch.executable, args: [] };
 
       const launchStart = Date.now();
       const app = await _electron.launch({
-        executablePath: electronPath,
-        args: [path.join(appRoot, '.')],
-        cwd: appRoot,
+        ...launch,
         env: {
           ...process.env,
           PLAYWRIGHT_TEST: 'true',
@@ -422,6 +438,6 @@ export function createTest(options: CreateTestOptions = {}) {
   return { test, expect: base.expect };
 }
 
-// Direct exports — auto-resolve appRoot from ABUDDY_ROOT env var or by walking up from SDK location
+// Direct exports — the app comes from `abuddy test` (ABUDDY_APP_EXECUTABLE / ABUDDY_ROOT) or the enclosing monorepo
 const _default = createTest();
 export const test = _default.test;

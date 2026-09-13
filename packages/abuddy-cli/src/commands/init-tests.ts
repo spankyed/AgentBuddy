@@ -1,6 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { ensureSdkLink } from '../utils';
+import { cliVersion } from '../utils';
+
+// The Playwright version @abuddy/testing is tested with
+const PLAYWRIGHT_RANGE = '^1.54.1';
 
 const PLAYWRIGHT_CONFIG = `import { defineConfig } from '@playwright/test';
 
@@ -79,20 +82,13 @@ export async function initTests(_args: string[]): Promise<void> {
   const pkgPath = path.join(cwd, 'package.json');
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    const hasPlaywright = pkg.devDependencies?.['@playwright/test'] || pkg.dependencies?.['@playwright/test'];
-    if (!hasPlaywright) {
-      console.log('\nNext step: install Playwright');
-      console.log('  npm i -D @playwright/test');
+    const wanted: Record<string, string> = { '@abuddy/testing': `^${cliVersion()}`, '@playwright/test': PLAYWRIGHT_RANGE };
+    const missing = Object.keys(wanted).filter(name => !pkg.devDependencies?.[name] && !pkg.dependencies?.[name]);
+    if (missing.length > 0) {
+      pkg.devDependencies = { ...pkg.devDependencies, ...Object.fromEntries(missing.map(name => [name, wanted[name]])) };
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+      console.log(`Added ${missing.join(', ')} to devDependencies. Run: npm install`);
     }
-  }
-
-  ensureSdkLink(cwd);
-  console.log('Linked @abuddy/sdk into node_modules');
-
-  if (!process.env.ABUDDY_ROOT) {
-    console.log('\nPrerequisite: a local clone of the AgentBuddy monorepo (installed + built).');
-    console.log('Set ABUDDY_ROOT to point to it:');
-    console.log('  export ABUDDY_ROOT=/path/to/AgentBuddy');
   }
 
   console.log('\nTo run tests:');

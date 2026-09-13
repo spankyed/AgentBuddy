@@ -22,59 +22,45 @@ All test files (`smoke.spec.ts`, `navigation.spec.ts`) import from `./fixtures/a
 
 ### How external packs use it
 
-External packs import directly:
+External packs add `@abuddy/testing` and `@playwright/test` as devDependencies (`abuddy init-tests` does this) and import directly:
 ```ts
 import { test, expect } from '@abuddy/testing';
 ```
-
-The `abuddy init-tests` and `abuddy test` commands automatically symlink the SDK into the pack's `node_modules/@abuddy/sdk`, so the import resolves through Node's standard module resolution.
-
-## Prerequisites
-
-E2E tests launch the full Electron app from source. This requires a **local clone of the AgentBuddy monorepo** with dependencies installed and packages built:
-
-```bash
-git clone <agentbuddy-repo> /path/to/AgentBuddy
-cd /path/to/AgentBuddy && npm install && npm run build
-```
-
-The fixture resolves the Electron binary from the monorepo's `node_modules/electron` — external packs do **not** need `electron` as a dependency.
 
 ## Setup for external packs
 
 ```bash
 cd /path/to/my-pack
-abuddy init-tests                  # scaffolds playwright.config.ts + tests/e2e/smoke.spec.ts, links SDK
-npm i -D @playwright/test          # install Playwright
-export ABUDDY_ROOT=/path/to/AgentBuddy  # add to .env or shell profile
-abuddy test                        # run tests
+abuddy init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @abuddy/testing + @playwright/test
+npm install
+abuddy test          # first run asks which app to test against
 ```
 
-The `init-tests` CLI command (source: `packages/abuddy-cli/src/commands/init-tests.ts`):
-- Reads the pack's `abuddy.json` to extract the first plugin ID
-- Creates `playwright.config.ts` with `testDir: 'tests/e2e'`, `timeout: 60_000`, `workers: 1`
-- Creates `tests/e2e/smoke.spec.ts` with `waitForPlugin()` and `navigate()` pre-filled for the detected plugin
-- Symlinks `@abuddy/sdk` into the pack's `node_modules` so `import ... from '@abuddy/testing'` resolves
-- Appends `tests/screenshots/`, `tests/results/` to `.gitignore`
-- Warns if `ABUDDY_ROOT` is not set
+No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
 
-The `test` CLI command (source: `packages/abuddy-cli/src/commands/test.ts`):
-- Validates `ABUDDY_ROOT` is set and points to a valid monorepo
-- Ensures the SDK symlink in `node_modules/@abuddy/sdk` (re-creates if `npm install` removed it)
-- Passes through `ABUDDY_ROOT` and auto-sets `PACK_DIR` to current directory
-- Passes all args through to `npx playwright test`
+## Which app the tests run in
+
+`abuddy test` (source: `packages/abuddy-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
+
+1. `--app-root <path>` — a local AgentBuddy checkout (installed and built)
+2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy-releases`) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
+3. `ABUDDY_ROOT` — a local checkout
+4. The saved choice in the CLI config (`~/Library/Preferences/abuddy-cli/config.json` on macOS)
+5. First run in an interactive terminal: asks for a checkout path or the beta download and saves the answer
+
+Without a TTY (CI, or `CI` set) it never prompts and fails with those options.
+
+It then runs the Playwright CLI that the pack's `@abuddy/testing` resolves (never `npx playwright`), so the runner and the fixture share one `@playwright/test`. It passes the fixture:
+
+- `ABUDDY_ROOT` (checkout) or `ABUDDY_APP_EXECUTABLE` (packaged app, e.g. `AgentBuddy Beta.app/Contents/MacOS/AgentBuddy Beta`)
+- `PACK_DIR` — the pack directory
+- `ABUDDY_CLI` — its own bin, which the fixture uses to build the pack
+
+Every non-Playwright arg is forwarded (`abuddy test -g "renders"`, `abuddy test smoke`).
 
 ## How the fixture finds AgentBuddy
 
-`resolveAppRoot()` determines where the Electron app source lives, in this priority order:
-
-1. **`options.appRoot`** — explicit path passed to `createTest()`. Used for custom setups.
-2. **`ABUDDY_ROOT` env var** — set by the pack developer. This is the primary mechanism for external packs.
-3. **Auto-detection** — walks up from the SDK package directory (`import.meta.dirname`) looking for `packages/entry-point.mjs`. This only works inside the monorepo. When the SDK is installed standalone (e.g. via Homebrew), `ABUDDY_ROOT` is required.
-
-If none of these resolve, the fixture throws with a clear message telling the developer to set `ABUDDY_ROOT`.
-
-Once resolved, `validateAppRoot()` checks that the directory contains the required files (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`). If anything is missing, the error lists exactly what's needed — a stale or incomplete checkout gets a clear diagnostic instead of an opaque Electron crash later.
+The fixture launches, in priority order: `createTest({ appExecutable })`, `createTest({ appRoot })`, `ABUDDY_APP_EXECUTABLE`, `ABUDDY_ROOT`, then the monorepo enclosing `@abuddy/testing` (auto-detected by walking up to `packages/entry-point.mjs`). A checkout is validated first (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) so a stale or unbuilt checkout gets a clear list of what's missing.
 
 ## Fixture lifecycle
 
@@ -86,10 +72,10 @@ Once resolved, `validateAppRoot()` checks that the directory contains the requir
    - Parse `abuddy.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
    - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently)
    - Install it into the worker's data dir with `installPackFromLocal()` — the same stage → verify → place bundle path users get
-   - Build uses the `abuddy build` CLI binary, resolved from: pack's local `node_modules/.bin/abuddy` first, then the host app's binary, then `abuddy` on PATH
+   - Build uses `ABUDDY_CLI` (set by `abuddy test`), else the `@abuddy/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
    - After the app connects, the fixture fails the test if the pack's registry entry has a `lastError` (its data failed to seed)
 
-2. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` via `createRequire`, then calls `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` with `PLAYWRIGHT_TEST=true`. This ensures external packs don't need `electron` installed locally.
+2. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` and calls `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })`; for a packaged app, launches its executable directly. Both get `PLAYWRIGHT_TEST=true`, which makes the app use the `test` environment (a packaged beta included). Packs never need `electron` installed.
 
 3. **Debug logging** (if `DEBUG_E2E=1`): pipes Electron's stdout/stderr to the test terminal with `[electron]` prefix
 
@@ -159,7 +145,9 @@ Screenshot output location depends on context:
 
 | Variable | Description |
 |----------|-------------|
-| `ABUDDY_ROOT` | Path to the AgentBuddy monorepo. Required for external packs; auto-detected inside the monorepo. |
+| `ABUDDY_ROOT` | A built AgentBuddy checkout to launch. Set by `abuddy test` for checkouts; auto-detected inside the monorepo. |
+| `ABUDDY_APP_EXECUTABLE` | A packaged AgentBuddy executable to launch. Set by `abuddy test --app beta`. |
+| `ABUDDY_CLI` | The abuddy bin that builds the pack. Set by `abuddy test`. |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
@@ -168,38 +156,23 @@ Screenshot output location depends on context:
 
 ## Running tests
 
-### With `abuddy test` (recommended for external packs)
-
-`abuddy test` sets `ABUDDY_ROOT` and `PACK_DIR` for you and forwards all args to Playwright:
-
 ```bash
-abuddy test                    # run all tests
-abuddy test -g "renders"       # grep by test name
-abuddy test smoke              # run a specific file
+abuddy test                          # the saved app (asks on first run)
+abuddy test --app-root ~/AgentBuddy  # a local checkout
+abuddy test --app beta               # the newest matching AgentBuddy Beta
+abuddy test -g "renders"             # Playwright args are forwarded
 ```
 
-Requires `ABUDDY_ROOT` in your environment (add to shell profile).
-
-### With `npx playwright test` directly
-
-You can skip the `abuddy` wrapper and run Playwright yourself. Set the env vars manually:
+From the AgentBuddy monorepo, run Playwright directly (the app is auto-detected):
 
 ```bash
-# From an external pack directory
-ABUDDY_ROOT=/path/to/AgentBuddy PACK_DIR=. npx playwright test
-
-# From the AgentBuddy monorepo (ABUDDY_ROOT auto-detected, no PACK_DIR needed)
-npx playwright test
-
-# Testing an external pack from the monorepo
+npx playwright test                                   # monorepo E2E
 PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/scratch
 ```
 
-When running directly, you must also ensure `@abuddy/sdk` is resolvable from your pack's `node_modules` — either by running `abuddy init-tests` first (which creates a symlink) or by linking it manually.
-
 ## Key implementation details
 
-- **Electron binary resolution**: The fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from the monorepo's `node_modules`, then passes the binary path as `executablePath` to Playwright. This decouples the test runner's dependency tree from the Electron binary — packs don't need `electron` installed.
+- **Electron binary resolution**: for a checkout the fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from its `node_modules`; a packaged app is its own executable. Packs don't need `electron` installed.
 - **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
 - **Data dir alignment**: The fixture installs into `resolveAppContext({ env: 'test', userDataDir }).packsDir` for the worker's temp dir and passes that dir as `ABUDDY_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@abuddy/sdk/env`) and passes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to the API process, so both sides always agree.
 - **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm start` builds and `npm run build`/CI.

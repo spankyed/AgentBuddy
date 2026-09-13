@@ -49,28 +49,11 @@ export function sdkVersion(): string | undefined {
   }
 }
 
-export function cliVersion(): string {
-  return JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8')).version;
+/** This CLI's bin (from src/ in the workspace, dist/ when published). */
+export function cliBin(): string {
+  return path.join(import.meta.dirname, '..', 'bin', 'abuddy.mjs');
 }
 
-export function ensureSdkLink(cwd: string): void {
-  const sdkRoot = sdkPackageDir();
-  const linkPath = path.join(cwd, 'node_modules', '@abuddy', 'sdk');
-
-  try {
-    const stat = fs.lstatSync(linkPath);
-    if (!stat.isSymbolicLink()) return;
-    const target = fs.realpathSync(linkPath);
-    if (target === fs.realpathSync(sdkRoot)) return;
-    fs.unlinkSync(linkPath);
-  } catch (err: any) {
-    if (err?.code !== 'ENOENT') {
-      // Broken symlink: lstat succeeds but realpathSync fails
-      try { fs.unlinkSync(linkPath); } catch {}
-    }
-  }
-
-  if (fs.existsSync(linkPath)) return;
-  fs.mkdirSync(path.join(cwd, 'node_modules', '@abuddy'), { recursive: true });
-  fs.symlinkSync(sdkRoot, linkPath, 'dir');
+export function cliVersion(): string {
+  return JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8')).version;
 }

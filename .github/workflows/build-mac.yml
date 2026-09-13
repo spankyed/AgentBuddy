@@ -58,7 +58,9 @@ jobs:
           PKG_VERSION=$(node -p "require('./package.json').version")
           echo "Tag version: $TAG_VERSION"
           echo "Package version: $PKG_VERSION"
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+          # release.sh tags v<version>-beta.0 on a production release that had no beta
+          # (beta-before-production rule); that tag builds the same version as AgentBuddy Beta
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ] && [ "$TAG_VERSION" != "${PKG_VERSION}-beta.0" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json ($PKG_VERSION)"
             exit 1
           fi
@@ -112,7 +114,11 @@ jobs:
           if [ "${{ steps.channel.outputs.is_beta }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          assets=(dist/${APP_NAME}-*.dmg dist/${APP_NAME}-*.zip)
+          # `abuddy test --app beta` verifies downloads against these
+          for file in dist/"${APP_NAME}"-*.dmg dist/"${APP_NAME}"-*.zip; do
+            (cd dist && shasum -a 256 "$(basename "$file")" > "$(basename "$file").sha256")
+          done
+          assets=(dist/"${APP_NAME}"-*.dmg dist/"${APP_NAME}"-*.zip dist/"${APP_NAME}"-*.sha256)
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber

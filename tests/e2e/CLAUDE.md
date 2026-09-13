@@ -120,14 +120,14 @@ There are two ways to test external packs:
 
 ### 1. From the pack's own repo (preferred for pack developers)
 
-Pack developers can write and run E2E tests without touching the AgentBuddy repo. The fixture is available as `@abuddy/testing`. See `packages/abuddy-testing/CLAUDE.md` for the full external pack testing guide.
+Pack developers can write and run E2E tests without the AgentBuddy repo. The fixture is `@abuddy/testing`. See `packages/abuddy-testing/CLAUDE.md` for the full guide.
 
 ```bash
 cd /path/to/my-pack
-abuddy init-tests                                        # scaffold config + sample test, link SDK
-npm i -D @playwright/test
-export ABUDDY_ROOT=/path/to/AgentBuddy                   # add to shell profile
-abuddy test                                              # run tests
+abuddy init-tests          # scaffold config + sample test, add @abuddy/testing + @playwright/test
+npm install
+abuddy test                # first run: choose a local checkout or the AgentBuddy Beta download
+abuddy test --app beta     # CI: never prompts, use --app beta or --app-root <path>
 ```
 
 ### 2. From this repo (quick iteration)
@@ -172,7 +172,8 @@ The renderer exposes on `window`:
 | `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
-| `ABUDDY_ROOT=/path/to/AgentBuddy` | Path to the AgentBuddy monorepo (auto-detected inside the monorepo) |
+| `ABUDDY_ROOT=/path/to/AgentBuddy` | A built AgentBuddy checkout to launch (auto-detected inside the monorepo) |
+| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --app beta`) |
 
 ## Key events for sendEvent()
 

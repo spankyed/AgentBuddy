@@ -12,4 +12,4 @@ cd "$PACK"
 "$ABUDDY" validate
 "$ABUDDY" build
 "$ROOT/node_modules/.bin/tsc" --noEmit -p "$PACK"
-ABUDDY_ROOT="$ROOT" "$ABUDDY" test "$@"
+"$ABUDDY" test --app-root "$ROOT" "$@"

@@ -15,6 +15,7 @@ set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR/../.."
+source "$SCRIPT_DIR/beta-tag.sh"
 
 # Colors
 GREEN='\033[0;32m'
@@ -63,6 +64,8 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 echo -e "${GREEN}✓${NC} Working tree clean"
+# The beta-before-production rule reads existing beta tags
+git fetch --tags --quiet origin
 echo ""
 
 # Step 2: Run typecheck
@@ -94,8 +97,12 @@ fi
 
 NEW_VERSION=$(node -p "require('./package.json').version")
 TAG_NAME="v${NEW_VERSION}"
+BETA_TAG_NAME="$(beta_tag_for_release "$NEW_VERSION")"
 
 echo "  $CURRENT_VERSION → $NEW_VERSION"
+if [ -n "$BETA_TAG_NAME" ]; then
+  echo "  No beta was released for $NEW_VERSION: also tagging $BETA_TAG_NAME so this build is published as the current beta"
+fi
 
 if [ "$DRY_RUN" = true ]; then
   # Check migration status for dry-run output
@@ -127,6 +134,9 @@ if [ "$DRY_RUN" = true ]; then
   echo "  - Migration check: $MIGRATION_STATUS"
   echo "  - Commit: chore(release): ${TAG_NAME}"
   echo "  - Tag: ${TAG_NAME}"
+  if [ -n "$BETA_TAG_NAME" ]; then
+    echo "  - Tag: ${BETA_TAG_NAME} (no beta for ${NEW_VERSION} yet; CI publishes this build as the current beta)"
+  fi
   echo "  - Push to origin (triggers CI build)"
   echo ""
   if [[ "$MIGRATION_STATUS" == *"NO migration"* ]]; then
@@ -222,10 +232,13 @@ echo -e "${BLUE}[6/6]${NC} Creating release commit and tag..."
 git add package.json package-lock.json CHANGELOG.md
 git commit -m "chore(release): ${TAG_NAME}"
 git tag "${TAG_NAME}"
+if [ -n "$BETA_TAG_NAME" ]; then
+  git tag "${BETA_TAG_NAME}"
+fi
 
 echo ""
 echo -e "  Pushing to origin..."
-git push origin HEAD "${TAG_NAME}"
+git push origin HEAD "${TAG_NAME}" ${BETA_TAG_NAME:+"${BETA_TAG_NAME}"}
 
 echo -e "${GREEN}✓${NC} Release ${TAG_NAME} pushed"
 echo ""

@@ -21,7 +21,7 @@ Commands:
   list [-d] [-b]             Show installed packs
   dev                   Dev server with HMR (always targets dev environment)
   init-tests            Scaffold Playwright E2E test setup
-  test [args...]        Run E2E tests (sets ABUDDY_ROOT + PACK_DIR automatically)
+  test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
   info                Show pack summary
   doctor              Run health checks
