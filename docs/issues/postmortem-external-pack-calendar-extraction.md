@@ -260,7 +260,7 @@ Branch `AS/external-pack-authoring`. The spec is `docs/issues/goal-external-pack
 **Still open:**
 - The CI jobs (`check`, `external-pack-e2e` with the packaged authoring step, `publish-packages.yml`) haven't run on a runner; triggers are manual.
 - No AgentBuddy Beta build with checksums is published yet, so `--app beta` is verified with mocked releases and a local zip only.
-- A local unsigned `electron-builder --dir` package was missing `nanoid` and the API failed to boot. The installed 0.3.14 app has it, and removing this branch's `@abuddy/cli` dependency from `@app/main` doesn't change it. Launching a packaged app from the fixture was exercised up to that point, but not to a passing test. Worth checking with a real `build/build.sh` build before the first beta.
+- ~~Packaged app API failed to boot~~ ✅ Fixed. electron-builder 26.0.12's dependency collector dropped 112 declared dependencies (e.g. `nanoid`); upgraded to 26.15.3 (`e06b8ee4c`), and `build.sh` now runs `build/prod/verify-node-modules.mjs`. Runtime discovery also required `src/__generated__/pack-entry`, which packaged apps don't ship, so no built-in packs loaded (`1b482dd9c`). The fixture pack's E2E now passes 2/2 against an unsigned `--dir` package launched through `ABUDDY_APP_EXECUTABLE`.
 - "Install 'abuddy' command in PATH" (`packages/main/src/modules/cli-command.ts`) wasn't clicked in a packaged app. The launcher it links is covered by `app-launcher.spec.ts`, and the bundled CLI ran from a packaged app dir with no Node on `PATH`.
 
 ---
