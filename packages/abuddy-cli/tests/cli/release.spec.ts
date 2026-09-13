@@ -67,12 +67,25 @@ describe('preflight', () => {
     'git remote get-url origin': 'git@github.com:acme/demo-pack.git',
   };
 
-  it('passes a clean default-branch repo with a token for --local', async () => {
-    const root = builtPack();
+  const withWorkflow = (root: string) => {
     fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
     fs.writeFileSync(path.join(root, '.github', 'workflows', 'release.yml'), '');
-    const result = await preflight(root, { local: true, run: fakeGit(cleanRepo), env: { GITHUB_TOKEN: 't' } });
+    return root;
+  };
+
+  it('passes a clean default-branch repo with a token for --local', async () => {
+    const result = await preflight(builtPack(), { local: true, run: fakeGit(cleanRepo), env: { GITHUB_TOKEN: 't' } });
     expect(result).toEqual({ errors: [], warnings: [] });
+  });
+
+  it('passes a clean default-branch repo whose release workflow publishes the tag', async () => {
+    const result = await preflight(withWorkflow(builtPack()), { local: false, run: fakeGit(cleanRepo), env: {} });
+    expect(result).toEqual({ errors: [], warnings: [] });
+  });
+
+  it('refuses --local when the release workflow would publish the pushed tag too', async () => {
+    const { errors } = await preflight(withWorkflow(builtPack()), { local: true, run: fakeGit(cleanRepo), env: { GITHUB_TOKEN: 't' } });
+    expect(errors).toEqual([expect.stringMatching(/release\.yml also publishes when the tag is pushed/)]);
   });
 
   it('reports every problem at once', async () => {

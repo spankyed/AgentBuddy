@@ -47,6 +47,13 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(workflow).toMatch(/ABUDDY_APP: beta/);
   });
 
+  it("explains instead of writing a flow the scaffold can't build (no dependency provides steps)", () => {
+    const result = run('node', [CLI, 'add', 'flow', 'heartbeat'], pack);
+    expect(result.code).not.toBe(0);
+    expect(result.output).toMatch(/"dependencies": \{ "default-setup": "\*" \}/);
+    expect(fs.existsSync(path.join(pack, 'src', 'seeds', 'flows', 'heartbeat.ts'))).toBe(false);
+  });
+
   it('rejects a feature id that is not an identifier', () => {
     const result = run('node', [CLI, 'add', 'feature', 'my-notes'], pack);
     expect(result.code).not.toBe(0);

@@ -86,10 +86,15 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
     try { git('remote', 'get-url', 'origin'); } catch { errors.push('no "origin" remote to push the release tag to'); }
   }
 
+  const hasWorkflow = fs.existsSync(path.join(root, '.github', 'workflows', 'release.yml'));
   if (options.local && !(env.GITHUB_TOKEN || env.GH_TOKEN)) {
     errors.push('--local publishing needs GITHUB_TOKEN or GH_TOKEN');
   }
-  if (!options.local && !fs.existsSync(path.join(root, '.github', 'workflows', 'release.yml'))) {
+  if (options.local && hasWorkflow) {
+    // The pushed tag triggers the workflow, so publishing locally too would create the release twice
+    errors.push('--local publishes from this machine, but .github/workflows/release.yml also publishes when the tag is pushed; release without --local, or remove the workflow');
+  }
+  if (!options.local && !hasWorkflow) {
     warnings.push('no .github/workflows/release.yml — pushing the tag will not publish anything (use --local, or run "abuddy init" to scaffold the workflow)');
   }
   return { errors, warnings };
