@@ -121,13 +121,13 @@
 
 <script lang="ts">
 import type { NodeProps } from '@vue-flow/core'
-import type { HandleConfig } from './node-handles.js'
+import type { HandleConfig } from './node-handles.ts'
 
 export default {
   name: 'BaseNode'
 }
 
-export type { HandleConfig } from './node-handles.js'
+export type { HandleConfig } from './node-handles.ts'
 
 export interface BaseNodeData {
   label: string
@@ -154,7 +154,7 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
 <script setup lang="ts">
 import { computed, inject, type Component } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-styles.js'
+import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-styles.ts'
 
 const AddHandle = inject<Component | null>('BaseNodeAddHandle', null)
 

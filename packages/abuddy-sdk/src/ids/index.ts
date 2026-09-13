@@ -1,1 +1,1 @@
-export { bus } from './system-ids.js';
+export { bus } from './system-ids.ts';

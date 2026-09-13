@@ -1,4 +1,4 @@
-import type { ExportedItem, ContentSection } from './compile-library.js';
+import type { ExportedItem, ContentSection } from './compile-library.ts';
 
 export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ');

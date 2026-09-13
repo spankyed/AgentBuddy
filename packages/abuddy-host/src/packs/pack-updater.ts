@@ -1,8 +1,8 @@
 import { createLogger } from '@abuddy/sdk/logger';
-import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack-registry.js';
+import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack-registry.ts';
 import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { isHostCompatible } from './pack-installer.js';
+import { isHostCompatible } from './pack-installer.ts';
 
 const logger = createLogger('pack-updater');
 

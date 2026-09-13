@@ -1,19 +1,19 @@
 // Framework
-export { defineSystem, type SystemSpec, type SystemEvents } from './framework/index.js';
+export { defineSystem, type SystemSpec, type SystemEvents } from './framework/index.ts';
 
 // Helpers
-export { safeEvents, emit } from './helpers/index.js';
-export type { Simplify } from './helpers/index.js';
+export { safeEvents, emit } from './helpers/index.ts';
+export type { Simplify } from './helpers/index.ts';
 
 // Types
-export { EARS, type BaseEntity } from './types/index.js';
+export { EARS, type BaseEntity } from './types/index.ts';
 
 // Designations
-export { registerDesignations, getDesignated, hasDesignation } from './designations/index.js';
-export type { Designations } from './designations/index.js';
+export { registerDesignations, getDesignated, hasDesignation } from './designations/index.ts';
+export type { Designations } from './designations/index.ts';
 
 // System IDs
-export { bus } from './ids/index.js';
+export { bus } from './ids/index.ts';
 
 // EARS runtime (pack-facing)
-export { tx, defineEars, type EARSRuntimeDeps } from './ears/index.js';
+export { tx, defineEars, type EARSRuntimeDeps } from './ears/index.ts';

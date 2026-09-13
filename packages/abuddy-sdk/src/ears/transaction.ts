@@ -5,13 +5,13 @@ import {
   addRelation, updateRelation, removeRelationById,
   createEntity,
   getRoles,
-} from './attribute-storage.js';
+} from './attribute-storage.ts';
 
-import { edgeStore } from './edge-store.js';
-import { qx } from './query.js';
-import { EARS } from '../types/entities.js';
-import { wouldCreateCycle, linkSymmetric } from './graph.js';
-import { getEntityTypeChecker, type SafeLinkOptions } from './runtime.js';
+import { edgeStore } from './edge-store.ts';
+import { qx } from './query.ts';
+import { EARS } from '../types/entities.ts';
+import { wouldCreateCycle, linkSymmetric } from './graph.ts';
+import { getEntityTypeChecker, type SafeLinkOptions } from './runtime.ts';
 
 export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false) {
   const isEntityType = getEntityTypeChecker()(typeOrId);

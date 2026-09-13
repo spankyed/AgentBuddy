@@ -4,7 +4,7 @@
 export {
   initEARSRuntime, setPersistence, getPersistence, getEntityTypeChecker,
   type PersistenceSink, type Logger,
-} from './runtime.js';
+} from './runtime.ts';
 export {
   putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
   bulkLoadAttr,
@@ -13,12 +13,12 @@ export {
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
   queryEntitiesByRole,
   clearMemory,
-} from './attribute-storage.js';
-export { edgeStore } from './edge-store.js';
-export { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index.js';
-export { filterSystemFields } from './helpers.js';
-export { _flushEarlyRegistrations } from './repository.js';
+} from './attribute-storage.ts';
+export { edgeStore } from './edge-store.ts';
+export { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index.ts';
+export { filterSystemFields } from './helpers.ts';
+export { _flushEarlyRegistrations } from './repository.ts';
 // Untyped query helpers for host code; packs get them typed from defineEars (see ./typed)
-export { qx } from './query.js';
-export { createEntity } from './attribute-storage.js';
-export { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers.js';
+export { qx } from './query.ts';
+export { createEntity } from './attribute-storage.ts';
+export { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers.ts';

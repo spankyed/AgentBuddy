@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
-import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry.js';
+import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 const logger = createLogger('pack-discovery');

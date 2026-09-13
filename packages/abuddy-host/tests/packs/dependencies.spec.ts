@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { checkDependencies } from '../../src/packs/pack-installer.js';
+import { checkDependencies } from '../../src/packs/pack-installer.ts';
 
 let userData: string;
 let packsDir: string;
@@ -31,7 +31,7 @@ describe('checkDependencies', () => {
   });
 
   it('publishes built-in packs through a hidden staging dir, which never counts as a pack', async () => {
-    const { publishHostPackArtifacts } = await import('../../src/packs/bundle.js');
+    const { publishHostPackArtifacts } = await import('../../src/packs/bundle.ts');
     const source = path.join(userData, 'app', 'default-setup');
     fs.mkdirSync(path.join(source, 'dist'), { recursive: true });
     fs.writeFileSync(path.join(source, 'dist', 'snapshot.json'), '{}');

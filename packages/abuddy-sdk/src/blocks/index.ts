@@ -1,2 +1,2 @@
-export type { BlockDefinition, BlockFEFacet, BlockBEFacet, ButtonConfig, ButtonGroupResponse, ButtonVariant } from './types.js';
-export { blockRegistry } from './registry.js';
+export type { BlockDefinition, BlockFEFacet, BlockBEFacet, ButtonConfig, ButtonGroupResponse, ButtonVariant } from './types.ts';
+export { blockRegistry } from './registry.ts';

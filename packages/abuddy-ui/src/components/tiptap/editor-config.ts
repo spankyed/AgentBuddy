@@ -1,4 +1,4 @@
-import type { TiptapMode, TiptapVariant } from './extensions.js'
+import type { TiptapMode, TiptapVariant } from './extensions.ts'
 
 export interface EditorConfig {
   editable: boolean

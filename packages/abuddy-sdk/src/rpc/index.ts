@@ -1,4 +1,4 @@
-import { getHostModule } from '../runtime/host.js';
+import { getHostModule } from '../runtime/host.ts';
 
 let _trpcMod: any;
 function trpcMod() {

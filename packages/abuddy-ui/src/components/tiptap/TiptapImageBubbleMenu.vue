@@ -64,7 +64,7 @@ import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import { Eye, Clipboard, Maximize2, Trash2 } from 'lucide-vue-next'
 import { NodeSelection } from '@tiptap/pm/state'
-import { getWidthFromSrc, setSrcWidth } from './resizable-image.js'
+import { getWidthFromSrc, setSrcWidth } from './resizable-image.ts'
 
 const props = defineProps<{ editor: Editor }>()
 

@@ -1,2 +1,2 @@
-export type { ArtifactDefinition, ArtifactFEFacet, ArtifactItem } from './types.js';
-export { artifactRegistry } from './registry.js';
+export type { ArtifactDefinition, ArtifactFEFacet, ArtifactItem } from './types.ts';
+export { artifactRegistry } from './registry.ts';

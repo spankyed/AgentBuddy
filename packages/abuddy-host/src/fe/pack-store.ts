@@ -4,7 +4,7 @@ import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/design
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { registerAppExtension, unregisterAppExtension } from './app-extensions.js';
+import { registerAppExtension, unregisterAppExtension } from './app-extensions.ts';
 
 interface PackFEContributions {
   pluginIds: string[];

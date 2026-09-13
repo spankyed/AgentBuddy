@@ -7,43 +7,43 @@ export {
   notesCompiler,
   faqCompiler,
   settingsCompiler,
-} from './standard.js';
+} from './standard.ts';
 
 // Build utilities used by compilers (useful for custom compilers too)
-export { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.js';
-export { compileLibraryFromDir, copyLibraryMedia } from './compile-library.js';
-export { compileNotesFromDir, copyNotesMedia } from './compile-notes.js';
-export { compileFaqFromDir } from './compile-faq.js';
-export { loadSettingsFromFile, deepMerge } from './compile-settings.js';
-export { countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections } from './library-utils.js';
+export { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
+export { compileLibraryFromDir, copyLibraryMedia } from './compile-library.ts';
+export { compileNotesFromDir, copyNotesMedia } from './compile-notes.ts';
+export { compileFaqFromDir } from './compile-faq.ts';
+export { loadSettingsFromFile, deepMerge } from './compile-settings.ts';
+export { countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections } from './library-utils.ts';
 
 // Flow types + utilities
-export type { FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode } from './flow-types.js';
-export { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.js';
-export { validate as validateFlowDSL } from './flow-dsl-validator.js';
+export type { FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode } from './flow-types.ts';
+export { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
+export { validate as validateFlowDSL } from './flow-dsl-validator.ts';
 
 // Flow compiler
-export { compile as compileFlowDSL } from './flow-compiler.js';
-export type { FlowEARS, CompiledRows } from './flow-compiler.js';
+export { compile as compileFlowDSL } from './flow-compiler.ts';
+export type { FlowEARS, CompiledRows } from './flow-compiler.ts';
 
 // Flow-to-DSL export (decompiler)
-export { exportFlowsToDSL } from './flow-to-dsl.js';
-export type { ExportFlowsOptions } from './flow-to-dsl.js';
+export { exportFlowsToDSL } from './flow-to-dsl.ts';
+export type { ExportFlowsOptions } from './flow-to-dsl.ts';
 
 // Flow infrastructure types (base entities + compiler output)
 export type {
   FlowEntity, NodeBase, EdgeEntity,
   CompilerContext, CompiledFlow, CompiledEntity, CompiledRelation, CompiledRole,
-} from './flow-entities.js';
+} from './flow-entities.ts';
 
 // Library output types
 export type {
   ContentSection, ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
   ExportedLibrary,
-} from './compile-library.js';
+} from './compile-library.ts';
 
 // Notes output types
-export type { ExportedNote, ExportedNotes } from './compile-notes.js';
+export type { ExportedNote, ExportedNotes } from './compile-notes.ts';
 
 // FAQ output types
-export type { CompiledFAQ } from './compile-faq.js';
+export type { CompiledFAQ } from './compile-faq.ts';

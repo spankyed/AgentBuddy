@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { ref, toRef, onMounted, onUnmounted } from 'vue'
-import type { MenuItem } from '../composables/useContextMenu.js'
+import type { MenuItem } from '../composables/useContextMenu.ts'
 import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
 
 const props = withDefaults(defineProps<{

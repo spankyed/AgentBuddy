@@ -1,20 +1,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileSourceDir } from '../compile-utils.js';
-import { seedFile } from '../manifest.js';
-import type { SeedCompiler, CompilationContext, ValidationResult } from '../seed-compiler.js';
-import type { CompiledEntry } from '../compile-utils.js';
-import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.js';
-import { compileLibraryFromDir, copyLibraryMedia } from './compile-library.js';
-import { compileNotesFromDir, copyNotesMedia } from './compile-notes.js';
-import { compileFaqFromDir } from './compile-faq.js';
-import { loadSettingsFromFile, deepMerge } from './compile-settings.js';
-import type { FlowDSL } from './flow-types.js';
-import { stepRegistry } from '../../steps/registry.js';
-import type { CompiledFAQ } from './compile-faq.js';
-import type { ExportedLibrary } from './compile-library.js';
-import type { ExportedNotes } from './compile-notes.js';
-import { countDocs } from './library-utils.js';
+import { compileSourceDir } from '../compile-utils.ts';
+import { seedFile } from '../manifest.ts';
+import type { SeedCompiler, CompilationContext, ValidationResult } from '../seed-compiler.ts';
+import type { CompiledEntry } from '../compile-utils.ts';
+import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
+import { compileLibraryFromDir, copyLibraryMedia } from './compile-library.ts';
+import { compileNotesFromDir, copyNotesMedia } from './compile-notes.ts';
+import { compileFaqFromDir } from './compile-faq.ts';
+import { loadSettingsFromFile, deepMerge } from './compile-settings.ts';
+import type { FlowDSL } from './flow-types.ts';
+import { stepRegistry } from '../../steps/registry.ts';
+import type { CompiledFAQ } from './compile-faq.ts';
+import type { ExportedLibrary } from './compile-library.ts';
+import type { ExportedNotes } from './compile-notes.ts';
+import { countDocs } from './library-utils.ts';
 
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');

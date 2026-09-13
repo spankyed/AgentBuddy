@@ -1,8 +1,8 @@
-import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index.js';
-import { EARS } from '../types/entities.js';
+import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index.ts';
+import { EARS } from '../types/entities.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
-import { randomId } from '../utils/random-id.js';
-import { getPersistence } from './runtime.js';
+import { randomId } from '../utils/random-id.ts';
+import { getPersistence } from './runtime.ts';
 
 const isPlainObject = (val: unknown): val is Record<string, unknown> =>
   typeof val === 'object' && val !== null && !Array.isArray(val);

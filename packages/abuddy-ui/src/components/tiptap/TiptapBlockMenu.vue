@@ -56,7 +56,7 @@
 import { ref, reactive, computed, watch, nextTick, inject, onMounted, onBeforeUnmount } from 'vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@abuddy/sdk/fe'
 import type { Editor } from '@tiptap/vue-3'
-import { useBlockHandle } from './composables/useBlockHandle.js'
+import { useBlockHandle } from './composables/useBlockHandle.ts'
 import {
   Plus,
   GripVertical,

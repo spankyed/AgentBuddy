@@ -1,7 +1,7 @@
-import { repository, hasIdCollision } from '../ears/index.js';
-import { findWhere } from '../ears/query-helpers.js';
-import { qx } from '../ears/query.js';
-import type { ExportedNote, ExportedNotes } from '../build/compilers/compile-notes.js';
+import { repository, hasIdCollision } from '../ears/index.ts';
+import { findWhere } from '../ears/query-helpers.ts';
+import { qx } from '../ears/query.ts';
+import type { ExportedNote, ExportedNotes } from '../build/compilers/compile-notes.ts';
 
 export interface NotesEARS {
   Entity: Record<string, any>;

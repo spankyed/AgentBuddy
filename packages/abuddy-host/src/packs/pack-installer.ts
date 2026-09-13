@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { satisfies } from 'semver';
-import { discoverBuiltInPacks } from './pack-discovery.js';
+import { discoverBuiltInPacks } from './pack-discovery.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseManifest } from '@abuddy/sdk/build';
 import type { PackManifest } from '@abuddy/sdk/build';
@@ -15,7 +15,7 @@ import {
   stageBundle,
   verifyBundle,
   type BundleInfo,
-} from './bundle.js';
+} from './bundle.ts';
 
 const log = {
   info(...args: unknown[]) { console.log(...args); },

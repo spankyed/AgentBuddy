@@ -1,4 +1,4 @@
-import type { BlockDefinition } from './types.js';
+import type { BlockDefinition } from './types.ts';
 
 class BlockRegistry {
   private blocks = new Map<string, BlockDefinition>();

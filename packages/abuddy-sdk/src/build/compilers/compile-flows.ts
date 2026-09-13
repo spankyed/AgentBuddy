@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pathToFileURL } from 'url';
-import type { FlowDSL, FlowConfig, ValidationResult } from './flow-types.js';
-import { isFlowConfig } from './flow-types.js';
-import { validate } from './flow-dsl-validator.js';
+import type { FlowDSL, FlowConfig, ValidationResult } from './flow-types.ts';
+import { isFlowConfig } from './flow-types.ts';
+import { validate } from './flow-dsl-validator.ts';
 
 export interface FlowCompileResult {
   merged: Record<string, object>;
@@ -62,7 +62,7 @@ export function validateFlows(
   merged: FlowDSL,
   actionLabels: string[],
   promptLabels: string[],
-  options?: { steps?: import('../../steps/types.js').StepDefinition[] },
+  options?: { steps?: import('../../steps/types.ts').StepDefinition[] },
 ): ValidationResult {
   return validate(merged, { actions: actionLabels, prompts: promptLabels, steps: options?.steps });
 }

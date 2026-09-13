@@ -1,8 +1,8 @@
-import { repository } from '../ears/index.js';
-import { findAll } from '../ears/query-helpers.js';
-import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.js';
-import { seedPath } from '../build/manifest.js';
-import { importNotesFromData, type NotesEARS } from './import-notes.js';
+import { repository } from '../ears/index.ts';
+import { findAll } from '../ears/query-helpers.ts';
+import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
+import { seedPath } from '../build/manifest.ts';
+import { importNotesFromData, type NotesEARS } from './import-notes.ts';
 
 export function createNotesSeeder(ears: NotesEARS): Seeder {
   const repo = repository as any;

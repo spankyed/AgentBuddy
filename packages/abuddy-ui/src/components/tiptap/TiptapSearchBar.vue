@@ -42,7 +42,7 @@
 import { ref, nextTick, onBeforeUnmount } from 'vue'
 import { ChevronUp, ChevronDown, X } from 'lucide-vue-next'
 import type { Editor } from '@tiptap/core'
-import { searchPluginKey } from './extensions/search-plugin.js'
+import { searchPluginKey } from './extensions/search-plugin.ts'
 
 const props = defineProps<{
   editor: Editor

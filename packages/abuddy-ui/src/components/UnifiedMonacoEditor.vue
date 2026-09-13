@@ -60,7 +60,7 @@ import {
   clearDslParamsType,
   type InitializeMonacoOptions,
   type EditorAction
-} from './monaco-config.js'
+} from './monaco-config.ts'
 
 // Props interface
 export interface UnifiedMonacoEditorProps {

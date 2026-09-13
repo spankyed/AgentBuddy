@@ -1,4 +1,4 @@
-import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet, TriggerFacet } from './types.js';
+import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet, TriggerFacet } from './types.ts';
 
 class StepRegistry {
   private steps = new Map<string, StepDefinition>();

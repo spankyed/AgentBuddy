@@ -2,6 +2,7 @@
   "compilerOptions": {
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
     "customConditions": ["@abuddy/source"],
+    "allowImportingTsExtensions": true,
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",

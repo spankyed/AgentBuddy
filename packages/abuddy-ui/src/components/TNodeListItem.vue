@@ -137,7 +137,7 @@ import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 import type { TrackTree, TNodeEntity } from '@abuddy/sdk/steps';
 import DataRenderer from './DataRenderer.vue';
-import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from './node-styles.js';
+import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getPaletteGradientClasses, getNodeStatusClasses } from './node-styles.ts';
 
 interface Props {
   node: TNodeEntity | TrackTree;

@@ -76,7 +76,7 @@ import {
   isJsonObject,
   isJsonArray,
   formatJsonValue
-} from '../utils/json-detection.js';
+} from '../utils/json-detection.ts';
 
 interface Props {
   value: any;

@@ -10,8 +10,8 @@ import {
   sha256File,
   stageBundle,
   verifyBundle,
-} from '../../src/packs/bundle.js';
-import { installPackFromLocal } from '../../src/packs/pack-installer.js';
+} from '../../src/packs/bundle.ts';
+import { installPackFromLocal } from '../../src/packs/pack-installer.ts';
 
 let tmp: string;
 

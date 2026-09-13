@@ -1,4 +1,4 @@
-import type { ArtifactDefinition } from './types.js';
+import type { ArtifactDefinition } from './types.ts';
 
 class ArtifactRegistry {
   private artifacts = new Map<string, ArtifactDefinition>();

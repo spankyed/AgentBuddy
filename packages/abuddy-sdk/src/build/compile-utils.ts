@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import ts from 'typescript';
 import * as esbuild from 'esbuild';
-import { sourceConditions } from './source-conditions.js';
+import { sourceConditions } from './source-conditions.ts';
 
 const DISALLOWED_GLOBALS = new Set([
   'require', 'process', '__dirname', '__filename', 'Buffer', 'global',

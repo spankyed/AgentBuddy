@@ -6,7 +6,7 @@
  * each step definition in the pack.
  */
 
-import type { BaseEntity, EARS } from '../../types/entities.js';
+import type { BaseEntity, EARS } from '../../types/entities.ts';
 
 /*─────────────────────────────────────────────────────────────────
  * Base entity shapes

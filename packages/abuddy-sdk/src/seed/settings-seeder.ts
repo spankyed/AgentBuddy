@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import { repository } from '../ears/index.js';
-import type { Seeder, SeederContext, SeedCounts } from '../utils/index.js';
-import { seedPath } from '../build/manifest.js';
+import { repository } from '../ears/index.ts';
+import type { Seeder, SeederContext, SeedCounts } from '../utils/index.ts';
+import { seedPath } from '../build/manifest.ts';
 
 export function createSettingsSeeder(): Seeder {
   const repo = repository as any;

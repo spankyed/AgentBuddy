@@ -1,13 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.js';
+import type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.ts';
 import {
   actionsCompiler, promptsCompiler, flowsCompiler,
   libraryCompiler, notesCompiler, faqCompiler, settingsCompiler,
-} from './compilers/standard.js';
-import { stepRegistry } from '../steps/registry.js';
-import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.js';
+} from './compilers/standard.ts';
+import { stepRegistry } from '../steps/registry.ts';
+import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';
 
 // ============================================================================
 // Compiler Interface

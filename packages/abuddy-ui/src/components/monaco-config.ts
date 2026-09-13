@@ -631,7 +631,7 @@ export function setupFunctionBodyMode(
 // EDITOR ACTIONS
 // ============================================================================
 
-import { createInsertConsoleLogAction } from './monaco-actions.js'
+import { createInsertConsoleLogAction } from './monaco-actions.ts'
 
 export type EditorAction = 'executeCode' | 'insertConsoleLog'
 

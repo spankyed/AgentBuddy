@@ -1,10 +1,10 @@
 // ⚠️  NODE-ONLY barrel — re-exports modules that use fs, path, child_process, process.env.
 // FE-reachable SDK modules must NEVER import from this barrel; import from
 // '@abuddy/sdk/utils/pure' (or a specific sub-path like './compare-versions') instead.
-import { getHostModule } from '../runtime/host.js';
+import { getHostModule } from '../runtime/host.ts';
 
 // --- Pure utilities (environment-agnostic, re-exported for backend convenience) ---
-export * from './pure.js';
+export * from './pure.ts';
 
 // --- Paths (direct) ---
 export {
@@ -13,15 +13,15 @@ export {
   ensureDirectoryExists, createExportDir,
   getIndexPath, getIndexFilePath, getIndexMetadataPath, getIndexMappingsPath,
   resolvePath,
-} from './paths.js';
+} from './paths.ts';
 
 // --- Media (direct) ---
 export {
   extractMediaRefs, copyMediaByRef, rewriteMediaUrls, copyFlatMedia,
   resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs,
   restoreJsonMediaRefs, restoreMarkdownMediaRefs,
-} from './media.js';
-export type { MediaRef, ResolvedMedia } from './media.js';
+} from './media.ts';
+export type { MediaRef, ResolvedMedia } from './media.ts';
 
 export interface ImagePart {
   type: 'image'
@@ -29,7 +29,7 @@ export interface ImagePart {
   mimeType: string
 }
 
-import { extractMediaRefs as _extractMediaRefs, readMediaBuffer as _readMediaBuffer } from './media.js';
+import { extractMediaRefs as _extractMediaRefs, readMediaBuffer as _readMediaBuffer } from './media.ts';
 
 export function extractImageParts(markdown: string): ImagePart[] {
   return _extractMediaRefs(markdown)
@@ -46,24 +46,24 @@ export function extractImageParts(markdown: string): ImagePart[] {
 export {
   writeExportJson, writeExportFile, stripInternalFields,
   toSlug, uniqueFilename,
-} from './export.js';
+} from './export.ts';
 
 // --- Resolve CLI (direct) ---
 export {
   resolveForService, resolveCliPath, testCli,
   isCliName, clearCliPathCache,
-} from './resolve-cli.js';
-export type { CliName } from './resolve-cli.js';
+} from './resolve-cli.ts';
+export type { CliName } from './resolve-cli.ts';
 
 // --- Seed (direct) ---
 export {
   registerSeeder, seedData, seedCollection,
   loadJSON, shouldSeedAll, filterByInclude,
-} from './seed.js';
-export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } from './seed.js';
+} from './seed.ts';
+export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } from './seed.ts';
 
 // --- Lifecycle (direct) ---
-export { registerShutdownHook, runShutdownHooks, runShutdownHooksForKey, removeShutdownHooksForKey } from './lifecycle.js';
+export { registerShutdownHook, runShutdownHooks, runShutdownHooksForKey, removeShutdownHooksForKey } from './lifecycle.ts';
 
 // --- System Errors (host-injected) ---
 let _systemErrorsMod: any;

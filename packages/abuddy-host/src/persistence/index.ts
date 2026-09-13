@@ -1,4 +1,4 @@
-export type { PersistenceSink } from './base-sink.js';
-export { makePolicy } from './policy.js';
-export type { Partition, PartitionPolicy } from './policy.js';
-export { makeShardedPersistence } from './sharded-router.js';
+export type { PersistenceSink } from './base-sink.ts';
+export { makePolicy } from './policy.ts';
+export type { Partition, PartitionPolicy } from './policy.ts';
+export { makeShardedPersistence } from './sharded-router.ts';

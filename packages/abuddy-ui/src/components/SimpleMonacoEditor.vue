@@ -25,7 +25,7 @@
 import { computed, ref } from 'vue'
 import UnifiedMonacoEditor from './UnifiedMonacoEditor.vue'
 import type { editor } from 'monaco-editor'
-import type { EditorAction } from './monaco-config.js'
+import type { EditorAction } from './monaco-config.ts'
 
 export interface SimpleMonacoEditorProps {
   modelValue: string

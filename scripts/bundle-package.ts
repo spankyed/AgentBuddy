@@ -116,7 +116,7 @@ if (config.declarations) {
   const entryFiles = Object.values(config.entries).map((src) => path.join(pkgDir, src));
   execFileSync(process.execPath, [
     tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(outDir, 'dist'),
-    '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--target', 'es2022',
+    '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions', '--target', 'es2022',
     '--strict', '--esModuleInterop', '--skipLibCheck', '--types', 'node',
   ], { stdio: 'inherit' });
 }

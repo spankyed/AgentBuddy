@@ -1,9 +1,9 @@
-import { qx } from '../../ears/query.js';
-import { edgeStore } from '../../ears/edge-store.js';
-import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.js';
-import { stepRegistry } from '../../steps/index.js';
-import type { FlowDSL, Track, DSLStepNode } from './flow-types.js';
-import type { FlowEARS } from './flow-compiler.js';
+import { qx } from '../../ears/query.ts';
+import { edgeStore } from '../../ears/edge-store.ts';
+import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
+import { stepRegistry } from '../../steps/index.ts';
+import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
+import type { FlowEARS } from './flow-compiler.ts';
 
 interface DecompileGraphCtx {
   nodes: any[];

@@ -61,7 +61,7 @@ function typecheck(pack: string, layout: (typeof LAYOUTS)[number], consumer: str
       target: 'ES2022', module: layout.moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution: layout.moduleResolution,
       strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
       // The workspace layout checks the codegen against the SDK's source
-      ...(layout.published ? {} : { customConditions: ['@abuddy/source'] }),
+      ...(layout.published ? {} : { customConditions: ['@abuddy/source'], allowImportingTsExtensions: true }),
       paths: { '#generated/*': ['./src/__generated__/*'] },
     },
     include: ['src/__generated__/ears.ts', 'src/consumer.ts'],

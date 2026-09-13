@@ -1,9 +1,9 @@
 import * as fs from 'fs';
-import { loadJSON } from '../utils/index.js';
-import { seedPath } from '../build/manifest.js';
-import type { PackSeedsPreview, PackSeedPreviewItem, PackSeedItemKind } from '../build/preview.js';
+import { loadJSON } from '../utils/index.ts';
+import { seedPath } from '../build/manifest.ts';
+import type { PackSeedsPreview, PackSeedPreviewItem, PackSeedItemKind } from '../build/preview.ts';
 
-export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from '../build/preview.js';
+export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from '../build/preview.ts';
 
 const KEY_FIELDS = ['label', 'name', 'title', 'question', 'id'] as const;
 

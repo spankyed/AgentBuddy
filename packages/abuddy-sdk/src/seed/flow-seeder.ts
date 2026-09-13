@@ -1,11 +1,11 @@
-import { repository } from '../ears/index.js';
-import { findAll } from '../ears/query-helpers.js';
-import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.js';
-import { seedPath } from '../build/manifest.js';
-import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.js';
-import { validate } from '../build/compilers/flow-dsl-validator.js';
-import { isFlowConfig } from '../build/compilers/flow-types.js';
-import type { FlowEARS } from '../build/compilers/flow-compiler.js';
+import { repository } from '../ears/index.ts';
+import { findAll } from '../ears/query-helpers.ts';
+import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
+import { seedPath } from '../build/manifest.ts';
+import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
+import { validate } from '../build/compilers/flow-dsl-validator.ts';
+import { isFlowConfig } from '../build/compilers/flow-types.ts';
+import type { FlowEARS } from '../build/compilers/flow-compiler.ts';
 
 function buildLabelMap(entities: any[]): Map<string, string> {
   return new Map(entities.map((e: any) => [e.label, e.id]));

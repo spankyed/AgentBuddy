@@ -1,5 +1,5 @@
-import { safeEvents } from '../helpers/actor-helpers.js';
-import type { Simplify } from '../helpers/type-helpers.js';
+import { safeEvents } from '../helpers/actor-helpers.ts';
+import type { Simplify } from '../helpers/type-helpers.ts';
 
 /** Common system events sent by the bus to all systems. */
 export type SystemEvents =

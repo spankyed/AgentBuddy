@@ -1,6 +1,6 @@
 import { EARS } from '@abuddy/sdk/types';
-import type { PersistenceSink } from './base-sink.js';
-import type { PartitionPolicy, Partition } from './policy.js';
+import type { PersistenceSink } from './base-sink.ts';
+import type { PartitionPolicy, Partition } from './policy.ts';
 import { getAttr } from '@abuddy/sdk/ears';
 
 const entTypeOf = (id: string): EARS.Entity => {

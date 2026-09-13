@@ -1,8 +1,8 @@
-import { getHostModule } from '../runtime/host.js';
-import { repository } from '../ears/index.js';
-import type { EARS } from '../types/entities.js';
-import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.js';
-import type { Logger } from '../ears/runtime.js';
+import { getHostModule } from '../runtime/host.ts';
+import { repository } from '../ears/index.ts';
+import type { EARS } from '../types/entities.ts';
+import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.ts';
+import type { Logger } from '../ears/runtime.ts';
 
 function lazyHost(name: string) {
   let m: any;

@@ -4,11 +4,11 @@
  * `defineEars<PackShapes>()` (the pack's entities plus its dependencies'). There is no
  * global registry, so each pack's typing depends only on what it declares.
  */
-import type { EARS, EntityShapes, ShapeOf } from '../types/entities.js';
-import type { QueryBuilder } from './runtime.js';
-import { qx, type QxSeed } from './query.js';
-import { createEntity } from './attribute-storage.js';
-import { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers.js';
+import type { EARS, EntityShapes, ShapeOf } from '../types/entities.ts';
+import type { QueryBuilder } from './runtime.ts';
+import { qx, type QxSeed } from './query.ts';
+import { createEntity } from './attribute-storage.ts';
+import { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers.ts';
 
 export interface TypedQx<S extends EntityShapes> {
   (): QueryBuilder<string, S>;

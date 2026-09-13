@@ -1,4 +1,4 @@
-import type { Simplify } from './type-helpers.js';
+import type { Simplify } from './type-helpers.ts';
 
 type ExtractEvent<
   TEvent extends { type: string },
