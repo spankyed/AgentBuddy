@@ -4,30 +4,37 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { generatePackFiles, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
+import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
 
 /**
  * A pack's typed data access comes from its generated #generated/ears facade: its own
  * entity shapes plus its dependencies'. Typechecks a consumer against the facade codegen
- * writes, so a facade that falls back to untyped helpers fails here.
+ * writes, so a facade that falls back to untyped helpers fails here. Runs against the
+ * workspace SDK source and the packed SDK, under bundler and node16 resolution.
  */
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
 
-let pack: string;
+const LAYOUTS = [
+  { name: 'workspace source', published: false, moduleResolution: 'bundler' as const },
+  ...(PACKAGES_BUILT ? [
+    { name: 'published package', published: true, moduleResolution: 'bundler' as const },
+    { name: 'published package', published: true, moduleResolution: 'node16' as const },
+  ] : []),
+];
 
-function write(rel: string, content: string) {
+function write(pack: string, rel: string, content: string) {
   const file = path.join(pack, rel);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, content);
 }
 
-beforeAll(() => {
-  pack = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
-  write('package.json', JSON.stringify({ name: 'facade-pack', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
-  write('src/features/memos/be/types.ts', "export interface MemoEntity { entityType: 'Memo'; text: string; pinned: boolean }\n");
+function makePack(published: boolean): string {
+  const pack = published ? installPublishedPackages() : fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
+  write(pack, 'package.json', JSON.stringify({ name: 'facade-pack', type: 'module', imports: { '#generated/*': './src/__generated__/*' } }));
+  write(pack, 'src/features/memos/be/types.ts', "export interface MemoEntity { entityType: 'Memo'; text: string; pinned: boolean }\n");
   // A dependency's entity type, as fetch-deps caches it (snapshot + defs)
-  write('.abuddy/deps/base-pack/defs/entities.d.ts', "export interface TagEntity { entityType: 'Tag'; name: string }\n");
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
+  write(pack, '.abuddy/deps/base-pack/defs/entities.d.ts', "export interface TagEntity { entityType: 'Tag'; name: string }\n");
+  if (!published) fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
 
   const manifest = {
     id: 'facade-pack', name: 'Facade Pack', version: '1.0.0',
@@ -44,25 +51,22 @@ beforeAll(() => {
     packRoot: pack,
     depSnapshots: new Map([['base-pack', dependency]]),
   });
-  for (const [file, content] of Object.entries(files)) write(file, content);
+  for (const [file, content] of Object.entries(files)) write(pack, file, content as string);
+  return pack;
+}
 
-  write('tsconfig.json', JSON.stringify({
+function typecheck(pack: string, layout: (typeof LAYOUTS)[number], consumer: string): { code: number; output: string } {
+  write(pack, 'tsconfig.json', JSON.stringify({
     compilerOptions: {
-      target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true, noEmit: true,
-      // Checks the codegen against the workspace SDK's source
-      customConditions: ['@abuddy/source'],
-      types: ['node'], paths: { '#generated/*': ['./src/__generated__/*'] },
+      target: 'ES2022', module: layout.moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution: layout.moduleResolution,
+      strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
+      // The workspace layout checks the codegen against the SDK's source
+      ...(layout.published ? {} : { customConditions: ['@abuddy/source'] }),
+      paths: { '#generated/*': ['./src/__generated__/*'] },
     },
     include: ['src/__generated__/ears.ts', 'src/consumer.ts'],
   }));
-}, 60_000);
-
-afterAll(() => {
-  fs.rmSync(pack, { recursive: true, force: true });
-});
-
-function typecheck(consumer: string): { code: number; output: string } {
-  write('src/consumer.ts', consumer);
+  write(pack, 'src/consumer.ts', consumer);
   try {
     return { code: 0, output: execFileSync(TSC, ['-p', pack], { stdio: 'pipe' }).toString() };
   } catch (err: any) {
@@ -70,17 +74,22 @@ function typecheck(consumer: string): { code: number; output: string } {
   }
 }
 
-const HEADER = `
-import { qx, findById, findAll, createEntity, type EntityShape } from '#generated/ears';
+// node16 needs the extension on the subpath import; bundler resolution takes either
+const header = (layout: (typeof LAYOUTS)[number]) => `
+import { qx, findById, findAll, createEntity, type EntityShape } from '#generated/ears${layout.moduleResolution === 'node16' ? '.js' : ''}';
 import type { EARS } from '@abuddy/sdk';
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type Expect<T extends true> = T;
 type Equal<A, B> = (<X>() => X extends A ? 1 : 2) extends (<X>() => X extends B ? 1 : 2) ? true : false;
 `;
 
-describe('#generated/ears facade', () => {
+describe.each(LAYOUTS)('#generated/ears facade ($name, $moduleResolution)', (layout) => {
+  let pack: string;
+  beforeAll(() => { pack = makePack(layout.published); }, 120_000);
+  afterAll(() => fs.rmSync(pack, { recursive: true, force: true }));
+
   it("types the pack's own and its dependencies' entities, and never falls back to any", () => {
-    const result = typecheck(`${HEADER}
+    const result = typecheck(pack, layout, `${header(layout)}
 declare const memoId: EARS.EntityId<'Memo'>;
 const memo = findById(memoId)!;
 export type OwnField = Expect<Equal<typeof memo.text, string>>;
