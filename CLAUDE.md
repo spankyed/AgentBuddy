@@ -40,9 +40,12 @@ npm run compile          # Compile all DSLs (actions, prompts, flows, library) f
 npm run db:cli           # Database CLI
 npm run db:reset         # Reset database
 
-# SDK API surface (run from packages/abuddy-sdk)
-npm run api:check        # CI: fails if pack-facing API changed without updating reports
-npm run api:update       # Dev: regenerate etc/ears.api.md and etc/types.api.md
+# Published API surface (run from packages/abuddy-sdk or packages/abuddy-ui)
+npm run api:check        # CI: fails if a public entry's API changed without updating reports
+npm run api:update       # Dev: regenerate etc/<entry>.api.md for every public entry
+
+npm run packages:build   # Build dist/ for @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
+npm run packages:check   # publint + arethetypeswrong on the packed packages (after packages:build)
 ```
 
 ### E2E visual testing
@@ -92,7 +95,7 @@ When adding new utils, put pure functions in the appropriate file under `utils/`
 
 `@abuddy/sdk` and `@abuddy/ui` publish their workspace `package.json`. Each export resolves source under the `@abuddy/source` condition and `dist/` otherwise, so monorepo tooling sets that condition: tsconfig `customConditions`, Vite/Vitest `resolve.conditions`, esbuild/tsup `conditions`, `node --conditions` (root `.npmrc` `node-options` for npm scripts and `npx`, the CLI bin in source mode, the API process the app spawns from source). `npm run packages:build` writes `dist/`; `npm run exports:update -w @abuddy/ui` regenerates the UI exports map after adding or removing a module.
 
-When adding new EARS or FE exports, put them in the correct barrel. After changing pack-facing exports, run `npm run api:update` in `packages/abuddy-sdk` and commit the updated `etc/*.api.md` reports.
+When adding new EARS or FE exports, put them in the correct barrel. Tag exports only the host uses `@internal`. After changing public exports, run `npm run api:update` in `packages/abuddy-sdk` (or `packages/abuddy-ui`) and commit the updated `etc/*.api.md` reports.
 
 ### Data layer (EARS)
 

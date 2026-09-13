@@ -157,6 +157,13 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
 - Remove the generated publish manifests: `packages/abuddy-sdk/scripts/build-package.ts` only builds `dist/`, and `scripts/publish-packages.ts` publishes package directories.
 - Update the SDK bridge (`packages/api/src/packs/pack-loader.ts`), `sdk-bridge-drift.spec.ts` and the FE host-shared module list for the moved modules.
 
+**Implementation notes:**
+- The EARS engine stays in `@abuddy/sdk`: packs query it directly, and pack unit tests and the SDK's tests run it. Its write side (`src/ears/internals.ts`) is exported only under `@abuddy/source` (no `types`/`default`), excluded from `dist`, and re-exported by `@abuddy/host/ears` with the LMDB delegates. `@abuddy/sdk/services` reads registered pack services through the host module registry (`pack-registry`).
+- Exports use `types` + `default` (not `import`), so Node's `require.resolve` in tooling resolves them too. `.vue` entries nest the source condition inside `types` so publint sees `types` first and monorepo type checks read the SFC source.
+- `files` is `dist` (plus the schema for the SDK); the source condition's targets aren't shipped.
+- Node processes set the condition with root `.npmrc` `node-options`, the CLI bin's resolve hook in source mode (also passed to child processes through `NODE_OPTIONS`), and `--conditions` on the API process the app spawns from source. The FE bundler and the seed compiler add it only when the pack's `@abuddy/sdk` resolves outside `node_modules` (a linked checkout).
+- `@abuddy/cli` and `@abuddy/testing` still publish bundles with generated manifests (`dist/package`): they inline `@abuddy/sdk` and `@abuddy/host`, so their workspace manifests can't be published as is.
+
 **Done when:**
 - The published `package.json` of `@abuddy/sdk` and `@abuddy/ui` is the workspace `package.json`, byte for byte.
 - No host-only module is reachable from `@abuddy/sdk` or `@abuddy/ui` (attw plus a test).
