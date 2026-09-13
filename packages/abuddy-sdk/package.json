@@ -22,8 +22,8 @@
     "api:build": "tsc -p tsconfig.api-extractor.json",
     "generate:schema": "tsx scripts/generate-schema.ts",
     "schema:check": "tsx scripts/generate-schema.ts --check",
-    "api:check": "npm run api:build && api-extractor run --config api-extractor.ears.json && api-extractor run --config api-extractor.types.json",
-    "api:update": "npm run api:build && api-extractor run --config api-extractor.ears.json --local && api-extractor run --config api-extractor.types.json --local"
+    "api:check": "npm run api:build && tsx ../../scripts/api-reports.ts .",
+    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local"
   },
   "exports": {
     ".": {

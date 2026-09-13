@@ -16,9 +16,13 @@ const DATA_DIRS = {
 export const getUserDataPath = (): string => resolveAppContext().userDataDir
 export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
 export const getModelsCachePath = (): string => resolvePath('modelsCache')
+/** @internal Host-only: the app's database location. */
 export const getLmdbPath = (): string => resolvePath('lmdb')
+/** @internal Host-only: the app's database location. */
 export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
+/** @internal Host-only: the app's database location. */
 export const getSecretsLmdbPath = (): string => resolvePath('secretsLmdb')
+/** @internal Host-only: the app's media location. */
 export const getMediaPath = (): string => resolvePath('media')
 
 export const ensureDirectoryExists = (dirPath: string): void => {

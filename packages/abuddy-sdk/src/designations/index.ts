@@ -2,6 +2,7 @@ export type Designations = readonly string[] | Record<string, string>;
 
 const registry = new Map<string, string>();
 
+/** @internal Host-only: the host registers designations when it loads a pack. */
 export function registerDesignations(designations: Designations): void {
   if (Array.isArray(designations)) {
     for (const role of designations) registry.set(role, role);
@@ -10,6 +11,7 @@ export function registerDesignations(designations: Designations): void {
   }
 }
 
+/** @internal Host-only: the host unregisters designations when it unloads a pack. */
 export function unregisterDesignations(designations: Designations): void {
   if (Array.isArray(designations)) {
     for (const role of designations) registry.delete(role);

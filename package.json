@@ -60,6 +60,7 @@
     "typecheck:cli": "npm run typecheck --workspace @abuddy/cli --workspace @abuddy/testing && echo '✅ CLI + testing type check passed'",
     "typecheck:pack": "npm run typecheck --workspace @app/default-setup && echo '✅ Default-setup pack type check passed'",
     "packages:build": "npm run build:package -w @abuddy/sdk -w @abuddy/ui -w @abuddy/testing -w @abuddy/cli",
+    "packages:check": "publint --strict packages/abuddy-sdk && publint --strict packages/abuddy-ui && publint --strict packages/abuddy-cli/dist/package && publint --strict packages/abuddy-testing/dist/package && npm run attw -w @abuddy/sdk -w @abuddy/ui && attw --pack packages/abuddy-testing/dist/package --profile esm-only",
     "packages:publish": "tsx scripts/publish-packages.ts",
     "rebuild:dev": "cd packages/api && npm rebuild",
     "db:cli": "cd packages/api && npm run db:cli",

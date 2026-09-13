@@ -39,10 +39,13 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Check the published API surface
-        run: npm run api:check --workspace @abuddy/sdk
+        run: npm run api:check --workspace @abuddy/sdk --workspace @abuddy/ui
 
       - name: Build publishable packages
         run: npm run packages:build
+
+      - name: Validate packed packages
+        run: npm run packages:check
 
       - name: Version PR or publish
         uses: changesets/action@v1

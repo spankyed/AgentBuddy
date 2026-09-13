@@ -13,5 +13,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.vue", "src/testing/**"]
+  "exclude": ["src/ears/internals.ts"]
 }

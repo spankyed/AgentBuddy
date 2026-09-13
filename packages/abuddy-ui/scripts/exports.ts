@@ -18,7 +18,13 @@ export function computeExports(): Record<string, unknown> {
       exportsMap[`./${base}`] = { [SOURCE_CONDITION]: `./src/${rel}`, types: `./dist/${base}.d.ts`, default: `./dist/${base}.js` };
     } else if (rel.endsWith('.vue')) {
       const base = rel.slice(0, -'.vue'.length);
-      exportsMap[`./${rel}`] = { [SOURCE_CONDITION]: `./src/${rel}`, types: `./dist/${base}.d.vue.ts`, default: `./dist/${rel}` };
+      // TypeScript needs `types` first. The source condition inside it keeps monorepo type checks
+      // on the SFC source rather than a dist/ that may be stale.
+      exportsMap[`./${rel}`] = {
+        types: { [SOURCE_CONDITION]: `./src/${rel}`, default: `./dist/${base}.d.vue.ts` },
+        [SOURCE_CONDITION]: `./src/${rel}`,
+        default: `./dist/${rel}`,
+      };
     }
   }
   return exportsMap;
