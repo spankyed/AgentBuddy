@@ -94,7 +94,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem, useExternalFileDrag } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'

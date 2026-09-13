@@ -100,7 +100,7 @@ import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/features/flows/fe/canvas/layout-utils'
 import type { FlowEntity, NodeEntity, EARS } from '@/__generated__/types'
-import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
+import { isTriggerNode } from '@abuddy/ui/components/node-styles'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -117,8 +117,8 @@ import NodePalette from './components/NodePalette.vue'
 import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
-import ConfirmationDialog from '@abuddy/sdk/fe/design/ConfirmationDialog.vue'
-import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue'
+import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog.vue'
+import ToastNotification from '@abuddy/ui/design/ToastNotification.vue'
 
 const actorSystem = useActorSystem()
 

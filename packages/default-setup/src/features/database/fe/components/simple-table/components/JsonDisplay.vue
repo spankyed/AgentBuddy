@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor.vue';
 
 interface Props {
   data: any;

@@ -201,9 +201,9 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { Plus, Trash2, Code } from 'lucide-vue-next'
-import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
-import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
-import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
+import BaseForm from '@abuddy/ui/components/BaseForm.vue'
+import TipSection from '@abuddy/ui/components/TipSection.vue'
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor.vue'
 import type { NodeEntity } from '@/__generated__/types'
 import type { SwitchNode, Condition, Predicate } from '@/extensions/steps/switch/types'
 import type { BinaryOperator } from '@abuddy/sdk/utils'

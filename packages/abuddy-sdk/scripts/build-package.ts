@@ -7,9 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { builtinModules } from 'node:module';
-import { build } from 'esbuild';
-import { parse as parseSfc } from '@vue/compiler-sfc';
+import { BareImports, HOST_SHARED_PEERS, walk } from '../../../scripts/lib/published-imports.ts';
 
 const pkgDir = path.resolve(import.meta.dirname, '..');
 const srcDir = path.join(pkgDir, 'src');
@@ -28,60 +26,9 @@ const HOST_ONLY_EXPORTS = new Set([
   './testing',
 ]);
 
-/** Shared with the running app: packs must use the host's copy, so they are peers with host ranges. */
-const HOST_SHARED_PEERS: Record<string, string> = {
-  vue: '^3.5.18',
-  xstate: '^5.19.2',
-  '@xstate/vue': '^4.0.2',
-  'lucide-vue-next': '^0.503.0',
-  'reka-ui': '^2.2.1',
-  zod: '^3.24.0',
-  '@tiptap/core': '^3.20.1',
-  '@tiptap/pm': '^3.20.1',
-  '@tiptap/starter-kit': '^3.20.1',
-  '@tiptap/vue-3': '^3.20.1',
-  '@vue-flow/core': '^1.44.0',
-};
-
-function walk(dir: string): string[] {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name);
-    return entry.isDirectory() ? walk(full) : [full];
-  });
-}
-
-/** Package name → files importing it, from every shipped module (compiled .ts and .vue scripts). */
-const bareImports = new Map<string, Set<string>>();
-const packageName = (specifier: string) =>
-  specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
-
-function recordBareImport(specifier: string, importer: string): void {
-  const name = packageName(specifier);
-  if (!bareImports.has(name)) bareImports.set(name, new Set());
-  bareImports.get(name)!.add(path.relative(srcDir, importer));
-}
-
-/** Records the bare imports of a module without bundling it (relative imports stay external). */
-async function collectBareImports(contents: string, loader: 'js' | 'ts', resolveDir: string, file: string): Promise<void> {
-  await build({
-    stdin: { contents, loader, resolveDir, sourcefile: file },
-    bundle: true,
-    write: false,
-    logLevel: 'silent',
-    // verbatimModuleSyntax keeps imports only an SFC template uses; `import type` is still dropped
-    tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } },
-    plugins: [{
-      name: 'collect-bare-imports',
-      setup(b) {
-        b.onResolve({ filter: /^[^./]/ }, (args) => {
-          recordBareImport(args.path, file);
-          return { path: args.path, external: true };
-        });
-        b.onResolve({ filter: /^\./ }, (args) => ({ path: args.path, external: true }));
-      },
-    }],
-  });
-}
+/** Host-shared libraries the SDK imports. The tiptap ones are types for editor plugin contracts only. */
+const REQUIRED_HOST_PEERS = ['vue', 'xstate', 'zod'];
+const TYPE_ONLY_HOST_PEERS = ['@tiptap/pm', '@tiptap/vue-3'];
 
 function publicExports(exportsMap: Record<string, string>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -115,20 +62,14 @@ async function main(): Promise<void> {
     { stdio: 'inherit' },
   );
 
-  // Every shipped module's imports must be installable by a pack that uses it: tsc's output,
-  // and SFC scripts, which the pack's build compiles
+  // Every shipped module's imports must be installable by a pack that uses it
+  const bareImports = new BareImports(srcDir);
   for (const source of tsSources) {
     const emitted = path.join(outDir, path.relative(srcDir, source)).replace(/\.ts$/, '.js');
-    await collectBareImports(fs.readFileSync(emitted, 'utf-8'), 'js', path.dirname(emitted), source);
-  }
-  for (const file of files.filter((f) => f.endsWith('.vue'))) {
-    const { descriptor } = parseSfc(fs.readFileSync(file, 'utf-8'), { filename: file });
-    for (const block of [descriptor.script, descriptor.scriptSetup]) {
-      if (block) await collectBareImports(block.content, block.lang === 'ts' ? 'ts' : 'js', path.dirname(file), file);
-    }
+    await bareImports.fromModule(fs.readFileSync(emitted, 'utf-8'), 'js', path.dirname(emitted), source);
   }
 
-  // Vue SFCs, CSS and hand-written declarations ship as source; the pack's Vite build compiles them
+  // Hand-written declarations ship as source
   for (const file of files.filter((f) => !tsSources.includes(f))) {
     const dest = path.join(outDir, path.relative(srcDir, file));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -137,26 +78,19 @@ async function main(): Promise<void> {
 
   fs.copyFileSync(path.join(pkgDir, 'abuddy.schema.json'), path.join(outDir, 'abuddy.schema.json'));
 
+  const hostPeers = [...REQUIRED_HOST_PEERS, ...TYPE_ONLY_HOST_PEERS];
   const dependencies = Object.fromEntries(
-    Object.entries(pkg.dependencies as Record<string, string>).filter(([name]) => !(name in HOST_SHARED_PEERS)),
+    Object.entries(pkg.dependencies as Record<string, string>).filter(([name]) => !hostPeers.includes(name)),
   );
-  const peerDependencies = { ...pkg.peerDependencies, ...HOST_SHARED_PEERS };
-
-  // Every package a shipped module imports must be installable by a pack that uses it
-  const declared = new Set([pkg.name, ...Object.keys(dependencies), ...Object.keys(peerDependencies)]);
-  const builtins = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
-  const undeclared = [...bareImports].filter(([name]) => !declared.has(name) && !builtins.has(name));
-  if (undeclared.length > 0) {
-    throw new Error(
-      'Shipped @abuddy/sdk modules import packages the published manifest does not declare:\n' +
-      undeclared.map(([name, importers]) => `  ${name} <- ${[...importers].slice(0, 3).join(', ')}`).join('\n') +
-      '\nAdd them to packages/abuddy-sdk/package.json dependencies (or peerDependencies for host-shared libraries).',
-    );
-  }
+  const peerDependencies = {
+    ...pkg.peerDependencies,
+    ...Object.fromEntries(hostPeers.map((name) => [name, HOST_SHARED_PEERS[name]])),
+  };
+  bareImports.assertDeclared({ name: pkg.name, dependencies, peerDependencies }, 'packages/abuddy-sdk/package.json');
   const optionalPeers = Object.fromEntries(
     Object.keys(peerDependencies)
       // npm installs required peers: pack builds read host-shared libraries' exports, and types come from them
-      .filter((name) => !(name in HOST_SHARED_PEERS))
+      .filter((name) => !REQUIRED_HOST_PEERS.includes(name))
       .map((name) => [name, { optional: true }]),
   );
 

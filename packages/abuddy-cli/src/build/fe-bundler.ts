@@ -77,8 +77,9 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     }
   }
 
-  // SDK modules the host shares, by file. SDK components import these barrels by relative
-  // path (e.g. '../../index'); those imports must get the host proxy too, not an inlined copy.
+  // SDK modules the host shares, by file. A bundled SDK module can import one of these barrels
+  // by relative path (e.g. '../designations/index.js'); that import must get the host proxy too,
+  // not an inlined copy.
   let sharedModuleFiles: { sdkRoot: string; bySpecifier: Map<string, string> } | null | undefined;
   function getSharedModuleFiles() {
     if (sharedModuleFiles !== undefined) return sharedModuleFiles;

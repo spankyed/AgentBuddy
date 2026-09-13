@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
+import CopyButton from '@abuddy/ui/design/CopyButton.vue'
 
 defineProps<{
   artifact: ArtifactItem;

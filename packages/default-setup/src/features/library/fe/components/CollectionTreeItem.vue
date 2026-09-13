@@ -98,7 +98,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ChevronRight, Folder, Edit2, Trash2 } from 'lucide-vue-next'
-import Button from '@abuddy/sdk/fe/design/button.vue'
+import Button from '@abuddy/ui/design/button.vue'
 import type { CollectionDTO } from '@/__generated__/types'
 
 const props = defineProps<{

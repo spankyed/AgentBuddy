@@ -1,12 +1,12 @@
 import type { Component } from 'vue';
 import type { Plugin } from './plugin.js';
-import type { TiptapPlugin } from './components/tiptap/injection-keys.js';
+import type { TiptapPlugin } from './tiptap-plugins.js';
 import type { ArtifactDefinition } from '../artifacts/types.js';
 import type { BlockDefinition } from '../blocks/types.js';
 import type { StepDefinition } from '../steps/types.js';
 import { registerDesignations, unregisterDesignations } from '../designations/index.js';
 import { registerAppExtension, unregisterAppExtension } from './app-extensions.js';
-import { tiptapPluginRegistry } from './components/tiptap/registry.js';
+import { tiptapPluginRegistry } from './tiptap-plugins.js';
 import { artifactRegistry } from '../artifacts/registry.js';
 import { blockRegistry } from '../blocks/registry.js';
 import { stepRegistry } from '../steps/registry.js';

@@ -95,7 +95,7 @@ import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import type { CommitLogEntry } from '@/features/code/fe/features/commit/state'
 import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy, Search, X } from 'lucide-vue-next'
 import RevertDialog from '@/features/code/fe/features/commit/RevertDialog.vue'
-import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
+import PanelResizer from '@abuddy/ui/layout/panel-resizer.vue'
 
 const actorSystem = useActorSystem()
 

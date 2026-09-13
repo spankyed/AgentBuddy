@@ -1,5 +1,5 @@
-// Publishes the built copies (packages/<name>/dist/package) of @abuddy/sdk, @abuddy/cli and
-// @abuddy/testing. Run `npm run packages:build` first. Versions already on the registry are
+// Publishes the built copies (packages/<name>/dist/package) of @abuddy/sdk, @abuddy/ui,
+// @abuddy/cli and @abuddy/testing. Run `npm run packages:build` first. Versions already on the registry are
 // skipped, so re-running after a partial failure is safe. Prints "New tag:" lines, which
 // changesets/action turns into git tags and GitHub releases.
 //
@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const PACKAGES = ['abuddy-sdk', 'abuddy-testing', 'abuddy-cli'];
+const PACKAGES = ['abuddy-sdk', 'abuddy-ui', 'abuddy-testing', 'abuddy-cli'];
 
 const dryRun = process.argv.includes('--dry-run');
 const repoRoot = path.resolve(import.meta.dirname, '..');

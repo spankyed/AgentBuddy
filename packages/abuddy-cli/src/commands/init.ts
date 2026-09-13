@@ -46,8 +46,9 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
   include: ['src/**/*.ts', 'tests/**/*.ts', '.abuddy/generated/**/*.ts', '.abuddy/deps/**/*.d.ts'],
 }, null, 2);
 
-const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so single-file components resolve to a generic
-// component here. Checking inside SFCs needs vue-tsc.
+const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
+// generic component here. @abuddy/ui components ship declarations and keep their prop types.
+// Checking inside SFCs needs vue-tsc.
 declare module '*.vue' {
   import type { DefineComponent } from 'vue';
   const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, any>;

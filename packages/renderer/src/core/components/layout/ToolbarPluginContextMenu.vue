@@ -12,8 +12,9 @@
 import { computed, ref } from 'vue';
 import { ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
 import type { Plugin } from '@/core/types';
-import ContextMenuPopup from '@abuddy/sdk/fe/design/ContextMenuPopup.vue';
-import { useContextMenu, type MenuItem, useSettingsSaveStatus, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe';
+import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup.vue';
+import { useSettingsSaveStatus, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe';
+import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const { updateSettings } = useSettingsSaveStatus();

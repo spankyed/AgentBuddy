@@ -1,6 +1,6 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
-  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../abuddy-sdk/src/fe/**/*", "../abuddy-sdk/src/fe/**/*.vue"],
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../abuddy-sdk/src/fe/**/*"],
   "exclude": ["src/**/__tests__/*", "src/core/types/generated/*"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",

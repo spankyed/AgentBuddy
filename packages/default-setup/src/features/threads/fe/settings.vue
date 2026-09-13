@@ -685,11 +685,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import KeyboardShortcutInput from '@abuddy/sdk/fe/components/KeyboardShortcutInput.vue'
-import ColorPicker, { DEFAULT_COLORS } from '@abuddy/sdk/fe/design/ColorPicker.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue'
+import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput.vue'
+import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker.vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
-import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
 import type {

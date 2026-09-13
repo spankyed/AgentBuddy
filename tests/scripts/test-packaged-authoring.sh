@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End state for outside pack authors (docs/issues/goal-external-pack-authoring.md): in a temp
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
-#   1. install @abuddy/cli + @abuddy/sdk from tarballs
+#   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup
 #   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
 #   4. install that bundle into an isolated test data dir
@@ -24,12 +24,13 @@ export npm_config_cache="$(npm config get cache)"
 export HOME="$WORK/home"
 mkdir -p "$HOME"
 
-step "Pack @abuddy/sdk, @abuddy/cli and @abuddy/testing"
+step "Pack @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
 (cd "$ROOT" && npm run packages:build >/dev/null)
-for pkg in sdk cli testing; do
+for pkg in sdk ui cli testing; do
   (cd "$ROOT/packages/abuddy-$pkg/dist/package" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
 SDK_TGZ="$(ls "$WORK"/abuddy-sdk-*.tgz)"
+UI_TGZ="$(ls "$WORK"/abuddy-ui-*.tgz)"
 CLI_TGZ="$(ls "$WORK"/abuddy-cli-*.tgz)"
 TESTING_TGZ="$(ls "$WORK"/abuddy-testing-*.tgz)"
 
@@ -47,13 +48,19 @@ cd "$PACK"
 # The tarballs stand in for the npm registry
 npm pkg set "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ"
 npm install --silent
+# @abuddy/sdk carries the platform API only; the component library and its editors come with @abuddy/ui
+for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
+  [ ! -e "node_modules/$lib" ] || fail "a backend-only pack installed $lib"
+done
 # From here on, `abuddy` is the pack's own pinned CLI
 ABUDDY="$PACK/node_modules/.bin/abuddy"
 "$ABUDDY" add feature notes --label Notes >/dev/null
-# The published SDK's heavier components must build in a pack, not only in the monorepo
+# @abuddy/ui's heavier components must build in a pack, not only in the monorepo
+npm pkg set "dependencies.@abuddy/ui=file:$UI_TGZ"
+npm install --silent
 cat > src/features/notes/fe/editors.ts <<'TS'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue';
-import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor.vue';
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor.vue';
 
 export const editors = { TiptapEditor, SimpleMonacoEditor };
 TS

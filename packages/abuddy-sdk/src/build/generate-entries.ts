@@ -996,7 +996,7 @@ ${customReExports.length ? '\n' + customReExports.join('\n') : ''}
     });
 
     return `${HEADER}
-import { registerDslType } from '@abuddy/sdk/fe/components/monaco-config';
+import { registerDslType } from '@abuddy/sdk/fe';
 ${imports.join('\n')}
 
 ${registrations.join('\n\n')}

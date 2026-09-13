@@ -145,7 +145,7 @@ import {
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
 import { getFileIcon, videoExtensions } from '../../utils/file-icons'
-import TrackedContextMenuRoot from '@abuddy/sdk/fe/design/TrackedContextMenuRoot.vue'
+import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot.vue'
 
 interface FileItem {
   path: string

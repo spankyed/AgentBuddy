@@ -32,8 +32,8 @@
 import { computed } from 'vue'
 import { BookText } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
-import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor.vue'
+import CopyButton from '@abuddy/ui/design/CopyButton.vue'
 
 const props = defineProps<{
   artifact: ArtifactItem

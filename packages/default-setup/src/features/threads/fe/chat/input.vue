@@ -196,9 +196,9 @@ import ImageThumbnail from './ImageThumbnail.vue'
 import StatusLine from './StatusLine.vue'
 import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
-import { DOUBLE_ESC_MS } from '@abuddy/sdk/fe/components/tiptap/composables/createEditorKeyboard'
+import { DOUBLE_ESC_MS } from '@abuddy/ui/components/tiptap/composables/createEditorKeyboard'
 import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments'
-import { useExternalFileDrag } from '@abuddy/sdk/fe'
+import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -210,8 +210,8 @@ import {
 import PauseIcon from './pause-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
-import Button from '@abuddy/sdk/fe/design/button.vue'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
+import Button from '@abuddy/ui/design/button.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '@/__generated__/types'
 import { commandSuggestionPluginKey } from '../../../../extensions/tiptap/command-suggestion-plugin'

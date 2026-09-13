@@ -84,7 +84,7 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
-import TNodeListItem from '@abuddy/sdk/fe/components/TNodeListItem.vue'
+import TNodeListItem from '@abuddy/ui/components/TNodeListItem.vue'
 import type { TrackTree } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
 

@@ -166,9 +166,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import ColorPicker from '@abuddy/sdk/fe/design/ColorPicker.vue'
-import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection.vue'
+import ColorPicker from '@abuddy/ui/design/ColorPicker.vue'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import type { ActionsSettings, Category } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type ActionsState } from './state'

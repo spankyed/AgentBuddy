@@ -91,7 +91,7 @@ import { navigateToPlugin } from '@abuddy/sdk/fe'
 import Router from '@/core/components/layout/router.vue'
 import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
-import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue'
+import ToastNotification from '@abuddy/ui/design/ToastNotification.vue'
 import { registerGlobalToast } from '@/core/toast'
 
 const send = applicationState.send

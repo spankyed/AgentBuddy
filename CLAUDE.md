@@ -83,6 +83,7 @@ Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSyst
 - `@abuddy/sdk/ears/internals` — host-only: `initEARSRuntime`, `edgeStore`, `relationIndex`, `clearMemory`, etc.
 - `@abuddy/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
 - `@abuddy/sdk/fe/host` — host-only: `registerPackFE`, `getRegisteredPlugins`, etc.
+- `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/*.vue`, `@abuddy/ui/components/tiptap/TiptapEditor.vue`, `@abuddy/ui/composables/useDebounce`). Contracts and host-shared state (`useActorSystem`, menu state, tiptap plugin and DSL registries) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
 - `@abuddy/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
 - `@abuddy/sdk/utils/pure` — **environment-agnostic**: pure utilities only (`compareVersions`, `detectChanges`, `BinaryOperator`, `toMap`, `randomId`, etc.). Frontend/renderer code must import from this path (or a specific sub-path like `@abuddy/sdk/utils/compare-versions`), never from `@abuddy/sdk/utils`.
 

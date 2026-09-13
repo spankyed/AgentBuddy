@@ -129,7 +129,11 @@ export default __m;
 
 ### Deep subpath imports
 
-Only registered barrel subpaths are externalized. Deep imports like `@abuddy/sdk/fe/composables/useDebounce` fall back to resolve-and-bundle — the source file is compiled into your pack's `fe.js`. This is safe because deep imports are typically stateless leaf modules.
+Only registered barrel subpaths are externalized. Other SDK modules resolve and bundle: the file is compiled into your pack's `fe.js`. The FE build fails if a bundled SDK module depends on the host module registry.
+
+### `@abuddy/ui`
+
+Components, editors and UI composables (`@abuddy/ui/design/button.vue`, `@abuddy/ui/components/tiptap/TiptapEditor.vue`, `@abuddy/ui/composables/useDebounce`) come from the separate `@abuddy/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. Each module ships with declarations, so component props typecheck with plain `tsc`. `@abuddy/ui` modules bundle into your pack's `fe.js`, and their `@abuddy/sdk/fe` imports resolve to the host's shared copy.
 
 ## Generated files
 
