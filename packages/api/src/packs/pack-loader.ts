@@ -130,14 +130,27 @@ export { computePackSeedHash, seedPackData } from './pack-seed';
 // To add a new built-in pack: drop an abuddy.json with builtIn: true and
 // a src/__generated__/pack-entry.ts — the plugin picks it up automatically.
 
-import builtInLoaders from 'virtual:built-in-pack-loaders';
+// Imported when needed, so tools that run the API's modules unbundled (db scripts) can load
+// built-in packs from their dev entries instead
+const loadBuiltInLoaders = async () => (await import('virtual:built-in-pack-loaders')).default;
 
 const DEV_ENTRY_FILENAME = 'dev-entry.cjs';
 
 let _builtInPackInfos: BuiltInPackInfo[] = [];
 export function getBuiltInPackInfos(): BuiltInPackInfo[] { return _builtInPackInfos; }
 
-export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPackInfo[]> {
+export interface LoadBuiltInPacksOptions {
+  /**
+   * `prefer` (default in development) loads each pack's dist/dev-entry.cjs when it exists and falls
+   * back to the bundled loaders; `only` requires it (unbundled tools, which have no bundled loaders).
+   */
+  devEntry?: 'prefer' | 'only' | 'never';
+}
+
+export async function loadBuiltInPacks(
+  packagesDir: string,
+  { devEntry = process.env.NODE_ENV === 'development' ? 'prefer' : 'never' }: LoadBuiltInPacksOptions = {},
+): Promise<BuiltInPackInfo[]> {
   const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
     logger.warn('No built-in packs found in ' + packagesDir);
@@ -146,11 +159,14 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
   const loaded: BuiltInPackInfo[] = [];
   for (const pack of discovered) {
     // Dev mode: load from CJS on disk (enables hot reload)
-    if (process.env.NODE_ENV === 'development') {
-      const devEntry = path.join(pack.dir, 'dist', DEV_ENTRY_FILENAME);
-      if (fs.existsSync(devEntry)) {
+    if (devEntry !== 'never') {
+      const devEntryPath = path.join(pack.dir, 'dist', DEV_ENTRY_FILENAME);
+      if (devEntry === 'only' && !fs.existsSync(devEntryPath)) {
+        throw new Error(`Built-in pack ${pack.id} has no ${path.relative(packagesDir, devEntryPath)}. Run: npm run build -w @app/default-setup`);
+      }
+      if (fs.existsSync(devEntryPath)) {
         try {
-          const mod = withHostResolution(() => esmRequire(devEntry));
+          const mod = withHostResolution(() => esmRequire(devEntryPath));
           if (mod.registration) {
             mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
             registerPack(mod.registration);
@@ -159,13 +175,14 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
             continue;
           }
         } catch (err) {
+          if (devEntry === 'only') throw err;
           logger.warn(`Dev entry failed for ${pack.id}, falling back to bundle:`, err as Error);
         }
       }
     }
 
     // Production / fallback: use the bundled virtual module loader
-    const loader = builtInLoaders[pack.id];
+    const loader = (await loadBuiltInLoaders())[pack.id];
     if (!loader) {
       logger.warn(`Built-in pack ${pack.id}: no loader in virtual:built-in-pack-loaders, skipping`);
       continue;

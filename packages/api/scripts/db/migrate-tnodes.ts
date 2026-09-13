@@ -2,12 +2,14 @@
  * Migration script to move TNode entities from primary to volatile backup
  * and clean up the primary database.
  * 
- * Usage: npx tsx src/persistence/utils/migrate-tnodes.ts
+ * Usage: npm run db:script scripts/db/migrate-tnodes.ts (with the app closed)
  */
 
 import { open, type Database } from 'lmdb';
-import { getLmdbPath, getVolatileLmdbPath } from '@/core/helpers/paths';
-import { EARS } from '@/core/types';
+import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
+
+/** Turn nodes, which live only in the volatile backup partition now */
+const TNODE = 'TNode';
 
 const SEPARATOR = '\x1F';
 
@@ -67,7 +69,7 @@ async function migrateTNodes() {
   for (const { key, value } of primaryEntities.getRange()) {
     stats.totalScanned++;
     const id = String(key);
-    if (entTypeOf(id) === EARS.Entity.TNode) {
+    if (entTypeOf(id) === TNODE) {
       tnodeIds.add(id);
       stats.tnodeEntities++;
     }

@@ -8,8 +8,12 @@
  */
 
 import { qx } from '@abuddy/host/ears';
-import { EARS } from '@/core/types';
-import { getRelations, getIncomingRelations } from '@/core/ears/attribute-storage';
+import { edgeStore } from '@abuddy/sdk/ears/internals';
+import { getRegisteredEntityTypes } from '@abuddy/host/packs';
+import type { EARS } from '@abuddy/sdk';
+
+const getRelations = (id: string) => edgeStore.find({ sourceEntity: id as EARS.EntityId });
+const getIncomingRelations = (id: string) => edgeStore.find({ targetEntity: id as EARS.EntityId });
 
 interface InspectOptions {
   entityId?: string;
@@ -62,14 +66,14 @@ function visualizeGraph(entityId: string, depth: number, visited = new Set<strin
   const indent = '  '.repeat(Math.max(0, 2 - depth));
   
   // Get entity details
-  const entity = qx(entityId).pickOne();
+  const entity = qx(entityId as EARS.EntityId).pickAll()[0];
   if (!entity) {
     console.log(`${indent}❌ Entity not found: ${entityId}`);
     return;
   }
 
   const type = entityId.split('-')[0];
-  const name = entity.name || entity.title || entity.content || '';
+  const name = String(entity.name || entity.title || entity.content || '');
   const preview = name ? ` "${name.substring(0, 30)}${name.length > 30 ? '...' : ''}"` : '';
   
   console.log(`${indent}📦 [${type}] ${entityId}${preview}`);
@@ -184,7 +188,7 @@ async function inspectRelations() {
     
     const stats: Record<string, { entities: number; relations: number }> = {};
     
-    for (const entityType of Object.values(EARS.Entity)) {
+    for (const entityType of getRegisteredEntityTypes() as ReadonlySet<EARS.Entity>) {
       const entities = qx(entityType).ids();
       if (entities.length === 0) continue;
 

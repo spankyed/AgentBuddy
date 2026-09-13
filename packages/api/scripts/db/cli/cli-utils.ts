@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { inspect } from 'node:util';
-import { EARS } from '@/core/types';
+import { EARS } from '@abuddy/sdk';
 
 /**
  * Format result for console output

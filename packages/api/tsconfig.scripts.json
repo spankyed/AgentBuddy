@@ -1,8 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "noEmit": true,
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  // The db scripts, typechecked by npm run typecheck:be (they import the API's src)
+  "include": ["scripts/**/*.ts", "src/env.d.ts"],
+  "exclude": []
 }

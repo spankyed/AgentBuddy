@@ -8,13 +8,13 @@
 
 import { tx } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/host/ears';
-import { EARS } from '@/core/types';
+import { entity } from './database';
 
 async function cleanupSettings() {
   console.log('🧹 Starting settings cleanup...\n');
 
   // Get all settings
-  const settings = qx(EARS.Entity.Settings).pickAll();
+  const settings = qx(entity('Settings')).pickAll();
   console.log(`Found ${settings.length} settings entities\n`);
 
   if (settings.length === 0) {
@@ -26,7 +26,7 @@ async function cleanupSettings() {
   const byKey = new Map<string, typeof settings>();
   
   settings.forEach(setting => {
-    const key = setting.key || setting.name || 'unknown';
+    const key = String(setting.key || setting.name || 'unknown');
     if (!byKey.has(key)) {
       byKey.set(key, []);
     }
@@ -45,8 +45,8 @@ async function cleanupSettings() {
       
       // Keep the most recent one (assuming updatedAt or createdAt exists)
       const sorted = items.sort((a, b) => {
-        const aTime = a.updatedAt || a.createdAt || 0;
-        const bTime = b.updatedAt || b.createdAt || 0;
+        const aTime = Number(a.updatedAt || a.createdAt || 0);
+        const bTime = Number(b.updatedAt || b.createdAt || 0);
         return bTime - aTime;
       });
       

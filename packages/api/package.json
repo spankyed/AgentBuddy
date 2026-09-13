@@ -15,10 +15,11 @@
     "db:cli": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/cli/run-db-cli.ts",
     "db:exec": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/cli/run-db-cli.ts --exec",
     "db:script": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/cli/run-db-cli.ts --script",
-    "db:clearSettings": "node ../../scripts/with-source.mjs tsx ./scripts/db/destroy-settings.ts",
+    "db:clearSettings": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/destroy-settings.ts",
     "db:export": "./scripts/db/export.sh",
-    "db:import": "node ../../scripts/with-source.mjs tsx scripts/db/import-backup.ts",
-    "db:reset": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/reset.ts"
+    "db:import": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/import-backup.ts",
+    "db:reset": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/reset.ts",
+    "db:seed": "node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/seed.ts"
   },
   "keywords": [],
   "author": "angel santiago",

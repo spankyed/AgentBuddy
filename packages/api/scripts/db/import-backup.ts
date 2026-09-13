@@ -7,13 +7,14 @@
  *   npm run db:import -- --path /path/to/backup --force
  */
 
-import '@/setup/sdk-host-init';
 import * as fs from 'fs-extra';
 import * as path from 'node:path';
 import { importDatabase, getBackupInfo } from '@abuddy/host/backup';
-import { clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
+import { clearMemory } from '@abuddy/host/ears';
+import { createLogger } from '@abuddy/sdk/logger';
+import { policy, persistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { openDatabase, closeDatabase, envs } from './database';
 import readline from 'readline';
 
 const logger = createLogger('import-backup');
@@ -157,6 +158,9 @@ async function runImport() {
 
     console.log('\n🔄 Starting import...\n');
 
+    // Built-in packs decide which partition each entity type is hydrated into
+    await openDatabase({ hydrate: false });
+
     // Perform the import
     const result = await importDatabase(options.path);
 
@@ -175,6 +179,7 @@ async function runImport() {
       shardedPersistence: persistence
     });
 
+    closeDatabase();
     console.log('─'.repeat(50));
     console.log('\n✅ Import completed successfully!');
     console.log('\n📝 Note: If the application is running, you may need to restart it');

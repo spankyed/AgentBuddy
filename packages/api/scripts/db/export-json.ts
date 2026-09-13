@@ -19,19 +19,13 @@
  *   npm run db:export -- --raw Settings > settings.json
  */
 
-import '@/setup/sdk-host-init';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { qx } from '@abuddy/host/ears';
-import { EARS } from '@/core/types';
-import { getAllEntities, getEntitiesOfType, getAllEntityTypes, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/shared/paths';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { loadBuiltInPacks } from '@/core/packs/pack-loader';
-import { getBootHooks, getRegisteredEntityTypes } from '@/core/packs/pack-registration';
 import * as os from 'node:os';
-
-const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+import type { EARS } from '@abuddy/sdk';
+import { getEntitiesOfType, getAllEntityTypes } from '@abuddy/sdk/ears';
+import { qx, getAllEntities } from '@abuddy/host/ears';
+import { getBootHooks, getRegisteredEntityTypes } from '@abuddy/host/packs';
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@abuddy/sdk/utils';
+import { openDatabase, closeDatabase } from './database';
 
 // Suppress all console output except our final JSON
 const originalLog = console.log;
@@ -47,14 +41,8 @@ process.stderr.write = () => true;
 
 async function exportJSON() {
   try {
-    await loadBuiltInPacks(packagesDir);
-
     // Initialize database first (silently)
-    await hydrateSharded({
-      envs,
-      policy,
-      shardedPersistence: persistence
-    });
+    await openDatabase();
 
     // Initialize packs (ensure default data exists)
     for (const hooks of getBootHooks()) hooks.onInit?.();
@@ -75,11 +63,11 @@ async function exportJSON() {
     if (args.length === 0) {
       // Export all entities
       const allIds = getAllEntities();
-      data = allIds.map(id => qx(id).pickOne()).filter(Boolean);
+      data = allIds.map(id => qx(id).pickAll()[0]).filter(Boolean);
       exportType = 'all';
     } else if (args[0] === '--id' && args[1]) {
       // Export specific entity by ID
-      data = qx(args[1]).pickOne();
+      data = qx(args[1] as EARS.EntityId).pickAll()[0];
       exportType = 'single';
       entityFilter = args[1];
     } else if (getRegisteredEntityTypes().has(args[0])) {
@@ -147,14 +135,14 @@ async function exportJSON() {
     process.stdout.write(JSON.stringify(metadata, null, 2));
 
     // Clean shutdown
-    closePersistence();
+    closeDatabase();
     process.exit(0);
   } catch (error) {
     // Restore stderr for error reporting
     process.stderr.write = originalErrWrite;
     console.error = originalError;
     console.error('Error:', error);
-    closePersistence();
+    closeDatabase();
     process.exit(1);
   }
 }

@@ -2,37 +2,28 @@
 /**
  * Standalone CLI script for resetting the LMDB database
  *
- * Wipes all data and recreates a root flow with default settings.
+ * Wipes all data and recreates the packs' default data (settings, root flow).
  * Use this when the app is broken and can't start.
  *
  * Usage:
  *   npm run db:reset
  */
 
-import '@/setup/sdk-host-init';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { envs, policy, persistence, closePersistence, resetLmdbFiles } from '@/core/ears/attribute-storage';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { loadBuiltInPacks } from '@/core/packs/pack-loader';
-import { getBootHooks } from '@/core/packs/pack-registration';
-
-const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+import { getBootHooks } from '@abuddy/host/packs';
+import { resetLmdbFiles } from '@/core/ears/attribute-storage';
+import { openDatabase, closeDatabase } from './database';
 
 async function run() {
-  await loadBuiltInPacks(packagesDir);
-
-  console.log('Hydrating LMDB connections...');
-  await hydrateSharded({ envs, policy, shardedPersistence: persistence });
+  await openDatabase();
 
   console.log('Resetting database — wiping all LMDB data...');
   await resetLmdbFiles();
 
-  console.log('Initializing packs...');
+  console.log('Creating default data...');
   for (const hooks of getBootHooks()) hooks.onInit?.();
 
   console.log('Database reset complete.');
-  closePersistence();
+  closeDatabase();
 }
 
 run().catch(err => {

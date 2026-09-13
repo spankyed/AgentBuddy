@@ -1,15 +1,29 @@
 #!/usr/bin/env tsx
+/**
+ * Destroys every Settings entity; the app recreates defaults on its next start.
+ *
+ * Usage:
+ *   npm run db:clearSettings
+ */
 import { tx } from '@abuddy/sdk/ears';
 import { qx } from '@abuddy/host/ears';
-import { EARS } from '@/core/types';
-// ! broken
-console.log('🗑️  Settings Destroyer');
-console.log('─'.repeat(50));
+import { openDatabase, closeDatabase, entity } from './database';
 
-const settingsIds = qx(EARS.Entity.Settings).ids();
-console.log(`\nDestroying ${settingsIds.length} settings...`);
+async function run() {
+  await openDatabase();
+  console.log('🗑️  Settings Destroyer');
+  console.log('─'.repeat(50));
 
-settingsIds.forEach(id => tx(id).destroy());
+  const settingsIds = qx(entity('Settings')).ids();
+  console.log(`\nDestroying ${settingsIds.length} settings...`);
+  settingsIds.forEach(id => tx(id).destroy());
 
-console.log(`✅ Destroyed ${settingsIds.length} settings`);
-console.log('─'.repeat(50));
+  console.log(`✅ Destroyed ${settingsIds.length} settings`);
+  console.log('─'.repeat(50));
+  closeDatabase();
+}
+
+run().catch(err => {
+  console.error('Destroy failed:', err);
+  process.exit(1);
+});

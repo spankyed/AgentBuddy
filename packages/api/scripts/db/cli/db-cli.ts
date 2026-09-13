@@ -3,17 +3,10 @@ import repl from 'node:repl';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { inspect } from 'node:util';
-import { tx } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/host/ears';
-import { EARS } from '@/core/types';
-import { 
-  getAllEntities, 
-  getEntitiesOfType, 
-  getAttr, 
-  getAttrs,
-  getRoles,
-  getAll
-} from '@/core/ears/attribute-storage';
+import { pathToFileURL } from 'node:url';
+import { tx, getEntitiesOfType, getRoles, getAll } from '@abuddy/sdk/ears';
+import { qx, getAllEntities, getAttr, getAttrs } from '@abuddy/host/ears';
+import { EARS } from '@abuddy/sdk';
 import { formatResult, exportToJSON, exportToCSV, confirmAction } from './cli-utils';
 
 export interface CliOptions {
@@ -381,7 +374,12 @@ export class DatabaseCLI {
       }
 
       console.log(`Executing script: ${scriptPath}`);
-      await this.executeCommand(scriptContent);
+      if (/\.(ts|mts|js|mjs)$/.test(scriptPath)) {
+        // A module (scripts/db/*.ts): imported with the database already open; tsx compiles it
+        await import(pathToFileURL(path.resolve(scriptPath)).href);
+      } else {
+        await this.executeCommand(scriptContent);
+      }
     } catch (error) {
       console.error('Error executing script:', error);
       process.exit(1);

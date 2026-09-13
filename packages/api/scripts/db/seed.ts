@@ -6,27 +6,19 @@
  *   npm run db:seed
  */
 
-import '@/setup/sdk-host-init';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
-import { loadBuiltInPacks } from '@/core/packs/pack-loader';
-import { getBootHooks, runRegisteredBootSeeds } from '@/core/packs/pack-registration';
-
-const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+import { getBootHooks, runRegisteredBootSeeds } from '@abuddy/host/packs';
+import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
+import { openDatabase, closeDatabase } from './database';
 
 async function run() {
-  await loadBuiltInPacks(packagesDir);
-
   console.log('Initializing database...');
-  await hydrateSharded({ envs, policy, shardedPersistence: persistence });
-  for (const hooks of getBootHooks()) hooks.createDefaultSettings?.();
+  await openDatabase();
+  for (const hooks of getBootHooks()) hooks.onInit?.();
 
   console.log('Seeding compiled artifacts...\n');
-  runRegisteredBootSeeds();
+  runRegisteredBootSeeds(orchestrateDeclarativeSeed);
 
-  closePersistence();
+  closeDatabase();
 }
 
 run().catch(err => {

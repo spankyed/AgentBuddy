@@ -53,7 +53,7 @@
     "prebuild:be:dev": "npm run build:dev -w @app/default-setup",
     "typecheck": "npm run typecheck:fe && npm run typecheck:be && npm run typecheck:sdk && npm run typecheck:host && npm run typecheck:ui && npm run check:specifiers && npm run check:ui-entries && npm run typecheck:scripts && npm run typecheck:cli && npm run typecheck:pack && echo '✅ All type checks passed!'",
     "typecheck:fe": "npm run type-check --workspace @app/renderer && echo '✅ Frontend type check passed'",
-    "typecheck:be": "cd packages/api && npx tsc -p . --noEmit && echo '✅ Backend type check passed'",
+    "typecheck:be": "cd packages/api && npx tsc -p . --noEmit && npx tsc -p tsconfig.scripts.json && echo '✅ Backend type check passed'",
     "typecheck:sdk": "npm run typecheck --workspace @abuddy/sdk && echo '✅ SDK type check passed'",
     "typecheck:host": "npm run typecheck --workspace @abuddy/host && echo '✅ Host type check passed'",
     "check:specifiers": "tsx scripts/check-import-specifiers.ts",
