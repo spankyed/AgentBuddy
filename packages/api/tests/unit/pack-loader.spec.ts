@@ -123,6 +123,16 @@ describe('pack-loader', () => {
       expect(result).toEqual([]);
     });
 
+    it('skips packs whose hostVersion range excludes this host, not only >= ranges', () => {
+      makePack(path.join(tmpDir, 'packs'), 'old-range-pack', {
+        id: 'old-range-pack',
+        name: 'Old Range',
+        version: '1.0.0',
+        hostVersion: '>=0.0.1 <0.0.2',
+      });
+      expect(loadExternalPacks()).toEqual([]);
+    });
+
     it('loads packs whose hostVersion is satisfied', () => {
       makePack(path.join(tmpDir, 'packs'), 'compat-pack', {
         id: 'compat-pack',

@@ -84,9 +84,19 @@ function readValidManifest(dir: string): PackManifest {
   return raw as PackManifest;
 }
 
+/** Whether an app at `appVersion` satisfies a pack's hostVersion range (prereleases included). */
+export function isHostCompatible(hostRange: string | undefined, appVersion: string): boolean {
+  if (!hostRange) return true;
+  try {
+    return satisfies(appVersion, hostRange, { includePrerelease: true });
+  } catch {
+    return false;
+  }
+}
+
 function assertHostCompatible(manifest: PackManifest, hostVersion?: string): void {
   if (!hostVersion || !manifest.hostVersion) return;
-  if (!satisfies(hostVersion, manifest.hostVersion, { includePrerelease: true })) {
+  if (!isHostCompatible(manifest.hostVersion, hostVersion)) {
     throw new Error(`Pack ${manifest.id}@${manifest.version} requires AgentBuddy ${manifest.hostVersion}; this is ${hostVersion}`);
   }
 }

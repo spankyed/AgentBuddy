@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
-import { compareVersions } from '@abuddy/sdk/utils';
 import { APP_VERSION } from '@/version';
 import {
   registerPack,
@@ -15,6 +14,7 @@ import {
   isBundleDir,
   readBundleInfo,
   resolvePackSeedsDir,
+  isHostCompatible,
 } from '@abuddy/sdk/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
@@ -297,12 +297,10 @@ export function loadSingleExternalPack(
   manifest: import('@abuddy/sdk/packs').PackManifest,
   dir: string,
 ): LoadedPack | null {
-  if (manifest.hostVersion) {
-    const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
-    if (compareVersions(APP_VERSION, minVersion) < 0) {
-      logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
-      return null;
-    }
+  // The same semver check the installer applies, so any range a pack declares is honored
+  if (!isHostCompatible(manifest.hostVersion, APP_VERSION)) {
+    logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
+    return null;
   }
 
   if (isBundleDir(dir)) {

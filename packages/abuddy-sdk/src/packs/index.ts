@@ -25,7 +25,7 @@ export type { PackRegistryEntry } from './pack-registry';
 // Installer
 export {
   installPack, installPackFromLocal, installPackFromUrl, installPackFromGitHub,
-  uninstallPack, checkDependencies,
+  uninstallPack, checkDependencies, isHostCompatible,
 } from './pack-installer';
 export type { InstallResult } from './pack-installer';
 

@@ -13,6 +13,7 @@ import {
   checkForUpdates,
 } from '@abuddy/sdk/packs';
 import { teardownPack, activatePack } from './pack-lifecycle';
+import { activationProblem } from './activation-outcome';
 import { APP_VERSION } from '@/version';
 
 export type { PackInfo };
@@ -162,15 +163,12 @@ export const packsSystem = setup({
           source: isGitHub ? packSlug : undefined,
         }));
 
-        activatePack(result.id, system.get(bus), { seed: true });
-
-        // Seeding records failures (e.g. invalid flows) on the registry entry
-        const seedError = readPackRegistry().find(e => e.id === result.id)?.lastError;
-        if (seedError) {
+        const problem = activationProblem(result.id, activatePack(result.id, system.get(bus), { seed: true }));
+        if (problem) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_INSTALL_FAILED' as const,
             packSlug,
-            error: `${result.name} was installed but its data failed to seed:\n${seedError}`,
+            error: `${result.name} was installed but ${problem}`,
           }));
           emitPacksList(system);
           return;
@@ -270,14 +268,12 @@ export const packsSystem = setup({
           } : e),
         );
 
-        activatePack(packId, system.get(bus), { seed: true });
-
-        const seedError = readPackRegistry().find(e => e.id === packId)?.lastError;
-        if (seedError) {
+        const problem = activationProblem(packId, activatePack(packId, system.get(bus), { seed: true }));
+        if (problem) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
-            error: `Updated to ${result.version} but its data failed to seed:\n${seedError}`,
+            error: `Updated to ${result.version} but ${problem}`,
           }));
           emitPacksList(system);
           return;
