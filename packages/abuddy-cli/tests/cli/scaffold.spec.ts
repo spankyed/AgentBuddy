@@ -13,9 +13,9 @@ import { extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
 const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
-// The borrowed node_modules link the workspace @abuddy/* packages, which typecheck from source
-// (whose relative imports name .ts files)
-const TSC_ARGS = ['--noEmit', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions'];
+// Plain tsc on the generated tsconfig: the borrowed node_modules link the workspace @abuddy/*
+// packages, which the scaffold's tsconfig typechecks from source
+const TSC_ARGS = ['--noEmit'];
 
 let tmp: string;
 let pack: string;

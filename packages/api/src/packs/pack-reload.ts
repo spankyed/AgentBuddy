@@ -25,9 +25,7 @@ import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
 import type { PackManifest } from '@abuddy/host/packs';
 
-// @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
-const _metaUrl: string = import.meta.url;
-const esmRequire = Module.createRequire(_metaUrl);
+const esmRequire = Module.createRequire(import.meta.url);
 
 const logger = createLogger('pack-reload');
 

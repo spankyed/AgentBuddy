@@ -38,6 +38,10 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
     skipLibCheck: true,
     noEmit: true,
     types: ['node'],
+    // A pack linked to an AgentBuddy checkout typechecks its @abuddy/* packages from source, like
+    // abuddy build does; installed packages don't use the condition. Their sources name .ts files.
+    customConditions: ['@abuddy/source'],
+    allowImportingTsExtensions: true,
     // Mirrors package.json "imports": TypeScript doesn't add extensions to subpath import targets
     paths: {
       '#generated/*': ['./src/__generated__/*'],

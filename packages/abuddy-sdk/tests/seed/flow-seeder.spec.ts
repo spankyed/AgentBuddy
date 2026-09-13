@@ -3,17 +3,17 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/ears/index', () => ({
+vi.mock('../../src/ears/index.ts', () => ({
   findAll: () => [],
   repository: { promptQueries: { all: () => [] }, flowsCommands: {} },
 }));
 
-const { createFlowSeeder } = await import('../../src/seed/flow-seeder');
-const { stepRegistry } = await import('../../src/steps/registry');
-const { listenerTrigger, actionStep } = await import('../build/helpers/test-steps');
+const { createFlowSeeder } = await import('../../src/seed/flow-seeder.ts');
+const { stepRegistry } = await import('../../src/steps/registry.ts');
+const { listenerTrigger, actionStep } = await import('../build/helpers/test-steps.ts');
 stepRegistry.register(listenerTrigger);
 stepRegistry.register(actionStep);
-const { seedPath } = await import('../../src/build/manifest');
+const { seedPath } = await import('../../src/build/manifest.ts');
 
 let tmp: string | undefined;
 afterEach(() => {

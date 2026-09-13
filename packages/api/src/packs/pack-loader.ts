@@ -46,7 +46,6 @@ import * as _sdkBuild from '@abuddy/sdk/build';
 import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
 import * as _sdkEnv from '@abuddy/sdk/env';
-// @ts-expect-error — resolved by esbuild, not tsc
 import * as _sdkInference from '@abuddy/sdk/inference';
 import * as _sdkTemplates from '@abuddy/sdk/runtime';
 // Built-in packs also use host-only modules
@@ -97,10 +96,8 @@ export function getBridgedSdkSpecifiers(): readonly string[] {
   return Object.keys(SDK_BRIDGE);
 }
 
-// @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
-const _metaUrl: string = import.meta.url;
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
-const esmRequire = Module.createRequire(_metaUrl);
+const esmRequire = Module.createRequire(import.meta.url);
 const logger = createLogger('pack-loader');
 
 let _hostSdkVersion: string | undefined;

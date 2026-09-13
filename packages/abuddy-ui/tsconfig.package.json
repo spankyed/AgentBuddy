@@ -6,5 +6,7 @@
     "emitDeclarationOnly": true,
     "rootDir": "src",
     "outDir": "dist"
-  }
+  },
+  // Only the published source; tsconfig.json also checks the build scripts
+  "include": ["src/**/*.ts", "src/**/*.vue"]
 }

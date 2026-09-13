@@ -5,9 +5,9 @@
  * the pack's step definitions so the SDK compiler tests can run without
  * importing pack code.
  */
-import type { StepDefinition, StepBranch } from '../../../src/steps/types';
-import { BinaryOperator } from '../../../src/utils/index';
-import { expandRecord, collapseRecord } from '../../../src/steps/utils';
+import type { StepDefinition, StepBranch } from '../../../src/steps/types.ts';
+import { BinaryOperator } from '../../../src/utils/index.ts';
+import { expandRecord, collapseRecord } from '../../../src/steps/utils.ts';
 
 function nodeEntity(nodeId: string, ts: number, nodeType: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return { id: nodeId, entityType: 'Node', createdAt: ts, nodeType, ...extra };

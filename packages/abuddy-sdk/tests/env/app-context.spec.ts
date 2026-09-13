@@ -1,7 +1,7 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { inferElectronAppEnv, parseAppEnv, resolveAppContext } from '../../src/env';
+import { inferElectronAppEnv, parseAppEnv, resolveAppContext } from '../../src/env/index.ts';
 
 const saved = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
 

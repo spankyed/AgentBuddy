@@ -1,6 +1,6 @@
-import { tx } from '../../../src/ears/index';
-import type { EARS } from '../../../src/types/entities';
-import type { CompiledRows } from '../../../src/build/compilers/flow-compiler';
+import { tx } from '../../../src/ears/index.ts';
+import type { EARS } from '../../../src/types/entities.ts';
+import type { CompiledRows } from '../../../src/build/compilers/flow-compiler.ts';
 
 export function loadCompiledRows(compiled: CompiledRows) {
   for (const entity of compiled.entity) {

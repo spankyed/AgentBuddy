@@ -1,12 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { compile } from '../../src/build/compilers/flow-compiler';
-import type { FlowEARS } from '../../src/build/compilers/flow-compiler';
-import { ROOT_FLOW_ROLE } from '../../src/build/compilers/flow-types';
-import { stepRegistry } from '../../src/steps/registry';
-import { createRoundTrip } from './helpers/round-trip';
-import { wrapInFlow } from './helpers/dsl-factories';
-import { steps, ctx, flows } from './helpers/fixtures';
-import { ALL_TEST_STEPS } from './helpers/test-steps';
+import { compile } from '../../src/build/compilers/flow-compiler.ts';
+import type { FlowEARS } from '../../src/build/compilers/flow-compiler.ts';
+import { ROOT_FLOW_ROLE, resolveTracks, type DSLStepNode } from '../../src/build/compilers/flow-types.ts';
+import { stepRegistry } from '../../src/steps/registry.ts';
+import { createRoundTrip } from './helpers/round-trip.ts';
+import { wrapInFlow } from './helpers/dsl-factories.ts';
+import { steps, ctx, flows } from './helpers/fixtures.ts';
+import { ALL_TEST_STEPS } from './helpers/test-steps.ts';
+
+/** An exported switch step */
+interface SwitchNode extends DSLStepNode {
+  conditions: { if: string; steps: DSLStepNode[] }[];
+  else: DSLStepNode[];
+}
+const asSwitch = (node: DSLStepNode) => node as SwitchNode;
 
 const EARS: FlowEARS = {
   Entity: { Flow: 'Flow', Node: 'Node', Action: 'Action', Prompt: 'Prompt' },
@@ -31,7 +38,7 @@ describe('round-trip', () => {
 
       expect(exported['Simple']).toBeDefined();
       expect(exported['Simple']).toHaveLength(1);
-      const track = exported['Simple'][0];
+      const track = resolveTracks(exported['Simple'])[0];
       expect(track.event).toBe('start');
       expect(track.exits[0]).toHaveLength(1);
       expect(track.exits[0][0].type).toBe('action');
@@ -40,7 +47,7 @@ describe('round-trip', () => {
 
     it('multiple sequential steps: order preserved', () => {
       const exported = rt.roundTrip(flows.multiStep);
-      const steps = exported['Multi'][0].exits[0];
+      const steps = resolveTracks(exported['Multi'])[0].exits[0];
 
       expect(steps).toHaveLength(3);
       expect(steps[0].action).toBe('first');
@@ -50,7 +57,7 @@ describe('round-trip', () => {
 
     it('step with label and description: preserved', () => {
       const exported = rt.roundTrip(flows.labeled, { actions: ctx.actions });
-      const step = exported['Labeled'][0].exits[0][0];
+      const step = resolveTracks(exported['Labeled'])[0].exits[0][0];
 
       expect(step.label).toBe('Custom Label');
       expect(step.description).toBe('Does something important');
@@ -58,7 +65,7 @@ describe('round-trip', () => {
 
     it('step with final: true: preserved', () => {
       const exported = rt.roundTrip(flows.final);
-      const step = exported['Final'][0].exits[0][0];
+      const step = resolveTracks(exported['Final'])[0].exits[0][0];
 
       expect(step.final).toBe(true);
     });
@@ -78,7 +85,7 @@ describe('round-trip', () => {
     it('action with params: preserved', () => {
       const dsl = wrapInFlow([steps.actionParams]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('action');
       expect(step.params).toEqual({ to: 'user@test.com', subject: 'Hi' });
@@ -87,7 +94,7 @@ describe('round-trip', () => {
     it('action with field mappings (map): preserved', () => {
       const dsl = wrapInFlow([steps.actionMap]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.map).toEqual({ input: '$.data.value', key: '$.data.id' });
     });
@@ -95,7 +102,7 @@ describe('round-trip', () => {
     it('llm with all options (model, temperature, etc.): preserved', () => {
       const dsl = wrapInFlow([steps.llmBasic]);
       const exported = rt.roundTrip(dsl, { prompts: ctx.prompts });
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('llm');
       expect(step.prompt).toBe('classify');
@@ -108,7 +115,7 @@ describe('round-trip', () => {
     it('llm with field mappings (map): preserved', () => {
       const dsl = wrapInFlow([steps.llm]);
       const exported = rt.roundTrip(dsl, { prompts: ctx.prompts });
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('llm');
       expect(step.map).toEqual({ input: '$.data.text' });
@@ -125,7 +132,7 @@ describe('round-trip', () => {
         }],
       }]);
       const exported = rt.roundTrip(dsl);
-      const sw = exported['F'][0].exits[0][0];
+      const sw = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]);
 
       expect(sw.type).toBe('switch');
       expect(sw.conditions).toHaveLength(1);
@@ -145,7 +152,7 @@ describe('round-trip', () => {
         else: [{ type: 'action', action: 'onFalse' }],
       }]);
       const exported = rt.roundTrip(dsl);
-      const sw = exported['F'][0].exits[0][0];
+      const sw = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]);
 
       expect(sw.conditions).toHaveLength(1);
       expect(sw.conditions[0].steps[0].action).toBe('onTrue');
@@ -164,7 +171,7 @@ describe('round-trip', () => {
         ],
       }]);
       const exported = rt.roundTrip(dsl);
-      const sw = exported['F'][0].exits[0][0];
+      const sw = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]);
 
       expect(sw.conditions).toHaveLength(3);
       expect(sw.conditions[0].if).toBe('$.x == 1');
@@ -188,7 +195,7 @@ describe('round-trip', () => {
         }],
       }]);
       const exported = rt.roundTrip(dsl);
-      const branch = exported['F'][0].exits[0][0].conditions[0].steps;
+      const branch = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]).conditions[0].steps;
 
       expect(branch).toHaveLength(3);
       expect(branch[0].action).toBe('step1');
@@ -206,8 +213,8 @@ describe('round-trip', () => {
       }]);
       const exported = rt.roundTrip(dsl);
 
-      expect(exported['F'][0].exits[0]).toHaveLength(1);
-      expect(exported['F'][0].exits[0][0].type).toBe('switch');
+      expect(resolveTracks(exported['F'])[0].exits[0]).toHaveLength(1);
+      expect(resolveTracks(exported['F'])[0].exits[0][0].type).toBe('switch');
     });
 
     it('varied operators: !=, contains, is_empty all round-trip', () => {
@@ -220,7 +227,7 @@ describe('round-trip', () => {
         ],
       }]);
       const exported = rt.roundTrip(dsl);
-      const sw = exported['F'][0].exits[0][0];
+      const sw = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]);
 
       expect(sw.conditions).toHaveLength(3);
       expect(sw.conditions[0].if).toBe('$.x != 5');
@@ -235,7 +242,7 @@ describe('round-trip', () => {
         conditions: [{ if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] }],
       }]);
       const exported = rt.roundTrip(dsl);
-      const sw = exported['F'][0].exits[0][0];
+      const sw = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]);
 
       expect(sw.label).toBe('Route Decision');
     });
@@ -251,10 +258,10 @@ describe('round-trip', () => {
         { type: 'action', action: 'after' },
       ]);
       const exported = rt.roundTrip(dsl);
-      const exportedSteps = exported['F'][0].exits[0];
+      const exportedSteps = resolveTracks(exported['F'])[0].exits[0];
 
       expect(exportedSteps[0].type).toBe('switch');
-      expect(exportedSteps[0].conditions[0].steps[0].action).toBe('branchA');
+      expect(asSwitch(exportedSteps[0]).conditions[0].steps[0].action).toBe('branchA');
 
       const allActions = exportedSteps.flatMap((s: any) =>
         s.type === 'switch'
@@ -270,7 +277,7 @@ describe('round-trip', () => {
     it('fire with scope + payload', () => {
       const dsl = wrapInFlow([steps.fire]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('fire');
       expect(step.event).toBe('notify.sent');
@@ -281,7 +288,7 @@ describe('round-trip', () => {
     it('transform with script + outputType', () => {
       const dsl = wrapInFlow([steps.transform]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('transform');
       expect(step.script).toBe('return x + 1');
@@ -291,7 +298,7 @@ describe('round-trip', () => {
     it('query with prompt + as', () => {
       const dsl = wrapInFlow([steps.query]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('query');
       expect(step.prompt).toBe('Find user by name');
@@ -300,7 +307,7 @@ describe('round-trip', () => {
 
     it('flow with inherit + map', () => {
       const exported = rt.roundTrip(flows.parentChild);
-      const step = exported['Parent'][0].exits[0][0];
+      const step = resolveTracks(exported['Parent'])[0].exits[0][0];
 
       expect(step.type).toBe('subflow');
       expect(step.flow).toBe('Child');
@@ -311,7 +318,7 @@ describe('round-trip', () => {
     it('create with entity', () => {
       const dsl = wrapInFlow([steps.create]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('create');
       expect(step.entity).toBe('Thread');
@@ -320,7 +327,7 @@ describe('round-trip', () => {
     it('update with onMissing', () => {
       const dsl = wrapInFlow([steps.update]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('update');
       expect(step.onMissing).toBe('ignore');
@@ -329,7 +336,7 @@ describe('round-trip', () => {
     it('keep_alive', () => {
       const dsl = wrapInFlow([steps.keepAlive]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('keep_alive');
     });
@@ -337,7 +344,7 @@ describe('round-trip', () => {
     it('fire with default scope (local omitted) + no payload', () => {
       const dsl = wrapInFlow([steps.fireLocal]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.type).toBe('fire');
       expect(step.event).toBe('local.ping');
@@ -351,7 +358,7 @@ describe('round-trip', () => {
       const exported = rt.roundTrip(flows.multiTrack);
 
       expect(exported['MultiTrack']).toHaveLength(2);
-      const events = exported['MultiTrack'].map((t: any) => t.event);
+      const events = resolveTracks(exported['MultiTrack']).map((t: any) => t.event);
       expect(events).toContain('user.created');
       expect(events).toContain('user.updated');
     });
@@ -359,12 +366,12 @@ describe('round-trip', () => {
     it('track description: preserved', () => {
       const exported = rt.roundTrip(flows.trackWithDescription);
 
-      expect(exported['F'][0].description).toBe('Handles user signup');
+      expect(resolveTracks(exported['F'])[0].description).toBe('Handles user signup');
     });
 
     it('track labels: unique labels preserved', () => {
       const exported = rt.roundTrip(flows.twoLabeledTracks);
-      const labels = exported['F'].map((t: any) => t.label);
+      const labels = resolveTracks(exported['F']).map((t: any) => t.label);
 
       expect(labels).toContain('Track A');
       expect(labels).toContain('Track B');
@@ -374,7 +381,7 @@ describe('round-trip', () => {
   describe('parallel exits', () => {
     it('two exit chains from one listener: both preserved', () => {
       const exported = rt.roundTrip(flows.parallelExits);
-      const exits = exported['F'][0].exits;
+      const exits = resolveTracks(exported['F'])[0].exits;
 
       expect(exits).toHaveLength(2);
       expect(exits[0]).toHaveLength(1);
@@ -390,7 +397,7 @@ describe('round-trip', () => {
       const exported = rt.roundTrip(flows.scheduleFlow);
 
       expect(exported['Scheduled']).toHaveLength(1);
-      const track = exported['Scheduled'][0];
+      const track = resolveTracks(exported['Scheduled'])[0];
       expect(track.schedule).toBe('0 9 * * 1-5');
       expect(track.event).toBeUndefined();
       expect(track.exits[0]).toHaveLength(1);
@@ -402,13 +409,13 @@ describe('round-trip', () => {
       const exported = rt.roundTrip(flows.mixedFlow);
 
       expect(exported['Mixed']).toHaveLength(2);
-      const eventTrack = exported['Mixed'].find((t: any) => t.event);
-      const scheduleTrack = exported['Mixed'].find((t: any) => t.schedule);
+      const eventTrack = resolveTracks(exported['Mixed']).find((t: any) => t.event);
+      const scheduleTrack = resolveTracks(exported['Mixed']).find((t: any) => t.schedule);
 
       expect(eventTrack).toBeDefined();
-      expect(eventTrack.event).toBe('start');
+      expect(eventTrack?.event).toBe('start');
       expect(scheduleTrack).toBeDefined();
-      expect(scheduleTrack.schedule).toBe('*/15 * * * *');
+      expect(scheduleTrack?.schedule).toBe('*/15 * * * *');
     });
 
     it('preserves schedule-first trigger order so later listeners are not promoted to entry', () => {
@@ -436,7 +443,7 @@ describe('round-trip', () => {
     it('round-trips correctly (record -> array -> record)', () => {
       const dsl = wrapInFlow([steps.actionFieldMap]);
       const exported = rt.roundTrip(dsl);
-      const step = exported['F'][0].exits[0][0];
+      const step = resolveTracks(exported['F'])[0].exits[0][0];
 
       expect(step.map).toEqual({ name: '$.data.name', age: '$.data.age' });
     });
@@ -451,7 +458,7 @@ describe('round-trip', () => {
         ],
       }]);
       const exported = rt.roundTrip(dsl);
-      const sw = exported['F'][0].exits[0][0];
+      const sw = asSwitch(resolveTracks(exported['F'])[0].exits[0][0]);
 
       expect(sw.type).toBe('switch');
       expect(sw.conditions).toHaveLength(1);
@@ -463,7 +470,7 @@ describe('round-trip', () => {
       const exported = rt.roundTrip(flows.empty);
 
       expect(exported['Empty']).toBeDefined();
-      expect(exported['Empty'][0].exits[0]).toHaveLength(0);
+      expect(resolveTracks(exported['Empty'])[0].exits[0]).toHaveLength(0);
     });
   });
 });

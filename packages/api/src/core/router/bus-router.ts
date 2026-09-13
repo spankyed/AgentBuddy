@@ -1,3 +1,5 @@
+// Lets declaration emit name tRPC's router types through a public entry (TS2742 under bundler resolution)
+import type {} from '@trpc/server/unstable-core-do-not-import';
 import { observable } from '@trpc/server/observable';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';

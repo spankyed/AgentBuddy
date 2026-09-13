@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validate } from '../../src/build/compilers/flow-dsl-validator';
-import type { StepDefinition } from '../../src/steps/types';
-import { stepRegistry } from '../../src/steps/registry';
+import { validate } from '../../src/build/compilers/flow-dsl-validator.ts';
+import type { StepDefinition } from '../../src/steps/types.ts';
+import { stepRegistry } from '../../src/steps/registry.ts';
 
 const baseTriggers: StepDefinition[] = [
   {

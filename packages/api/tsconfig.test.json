@@ -8,9 +8,6 @@
     "emitDeclarationOnly": true,   // build‑time type pack
     "baseUrl": ".",
     "paths": {
-      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts"],
-      "@abuddy/host/*": ["../abuddy-host/src/*/index.ts", "../abuddy-host/src/*"],
       "@/*": ["src/*"]
     }
   },

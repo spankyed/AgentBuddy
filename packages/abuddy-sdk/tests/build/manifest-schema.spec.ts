@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { parseManifest } from '../../src/build/validate';
+import { parseManifest } from '../../src/build/validate.ts';
 
 describe('parseManifest', () => {
   it('accepts default-setup abuddy.json', () => {

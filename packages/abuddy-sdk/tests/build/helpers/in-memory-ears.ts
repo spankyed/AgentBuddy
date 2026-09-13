@@ -8,7 +8,7 @@
  * strings name entity types; tx() uses that to tell "create a new Flow" from
  * "operate on the entity with this id".
  */
-import { initEARSRuntime } from '../../../src/ears/runtime';
+import { initEARSRuntime } from '../../../src/ears/runtime.ts';
 
 export function setupInMemoryEARS(entityTypes: readonly string[]): void {
   const types = new Set(entityTypes);

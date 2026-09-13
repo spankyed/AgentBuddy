@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { ManifestSchema } from '../src/build/manifest-schema';
+import { ManifestSchema } from '../src/build/manifest-schema.ts';
 
 const jsonSchema = zodToJsonSchema(ManifestSchema, {
   $refStrategy: 'none',

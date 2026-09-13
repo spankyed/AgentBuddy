@@ -1,15 +1,15 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { compile } from '../../../src/build/compilers/flow-compiler';
-import type { FlowEARS } from '../../../src/build/compilers/flow-compiler';
-import { exportFlowsToDSL } from '../../../src/build/compilers/flow-to-dsl';
-import { clearMemory } from '../../../src/ears/attribute-storage';
-import { tx } from '../../../src/ears/index';
-import type { EARS } from '../../../src/types/entities';
-import type { FlowDSL } from '../../../src/build/compilers/flow-types';
-import { loadCompiledRows } from './load-compiled';
-import { setupInMemoryEARS } from './in-memory-ears';
+import { compile } from '../../../src/build/compilers/flow-compiler.ts';
+import type { FlowEARS } from '../../../src/build/compilers/flow-compiler.ts';
+import { exportFlowsToDSL } from '../../../src/build/compilers/flow-to-dsl.ts';
+import { clearMemory } from '../../../src/ears/attribute-storage.ts';
+import { tx } from '../../../src/ears/index.ts';
+import type { EARS } from '../../../src/types/entities.ts';
+import type { FlowDSL } from '../../../src/build/compilers/flow-types.ts';
+import { loadCompiledRows } from './load-compiled.ts';
+import { setupInMemoryEARS } from './in-memory-ears.ts';
 
 export function createRoundTrip(ears: FlowEARS, rootFlowRole: string) {
   let tmpDir: string;
