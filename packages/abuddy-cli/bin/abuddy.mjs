@@ -21,14 +21,11 @@ const handoff = projectCli();
 if (handoff) {
   await import(pathToFileURL(handoff).href);
 } else {
-  // Published packages run the compiled bundle. In the monorepo the CLI is TypeScript
-  // source: register the CLI's own tsx instead of relying on a `tsx` binary on PATH.
+  // The CLI loads pack TypeScript (seeds, step build code), and in the monorepo is TypeScript
+  // source itself: register the CLI's own tsx instead of relying on a `tsx` binary on PATH.
+  const { register } = await import('tsx/esm/api');
+  register();
+  // Published packages run the compiled bundle
   const bundle = new URL('../dist/cli.js', import.meta.url);
-  if (existsSync(bundle)) {
-    await import(bundle.href);
-  } else {
-    const { register } = await import('tsx/esm/api');
-    register();
-    await import('../src/index.ts');
-  }
+  await import(existsSync(bundle) ? bundle.href : '../src/index.ts');
 }

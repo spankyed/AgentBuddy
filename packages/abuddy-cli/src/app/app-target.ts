@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createInterface } from 'node:readline/promises';
+import { createInterface } from 'node:readline';
 import envPaths from 'env-paths';
-import { ensureBetaApp, type PackagedApp } from './beta-app';
+import semver from 'semver';
+import { ensureBetaApp, packagedExecutable, type PackagedApp } from './beta-app';
 
 /** The app `abuddy test` launches: a built monorepo checkout, or a packaged app build. */
 export type AppTarget =
@@ -61,6 +62,31 @@ function sourceTarget(root: string, from: string): AppTarget {
   return { kind: 'source', root: resolved };
 }
 
+/**
+ * The built-in packs directory of the app configured for `abuddy test` (ABUDDY_ROOT, or the
+ * saved choice: a checkout, or the newest downloaded beta), without prompting or downloading.
+ * Lets a pack resolve dependencies on built-in packs before the app has ever run.
+ */
+export function configuredAppPackagesDir(dirs: CliDirs = cliDirs(), env: NodeJS.ProcessEnv = process.env): { dir: string; label: string } | null {
+  const saved = readAppChoice(dirs);
+  const root = env.ABUDDY_ROOT ?? (saved && 'source' in saved ? saved.source : undefined);
+  if (root) return { dir: path.join(path.resolve(root), 'packages'), label: `AgentBuddy checkout ${path.resolve(root)}` };
+
+  if (saved && 'beta' in saved) {
+    const betaDir = path.join(dirs.cache, 'apps', 'beta');
+    const newest = (fs.existsSync(betaDir) ? fs.readdirSync(betaDir) : [])
+      // Versions appear only once fully extracted (ensureBetaApp renames them into place)
+      .filter(version => semver.valid(version))
+      .sort(semver.rcompare)[0];
+    if (newest) {
+      // Packaged apps ship packages/*/dist (electron-builder.mjs)
+      const resources = path.dirname(path.dirname(packagedExecutable(path.join(betaDir, newest))));
+      return { dir: path.join(resources, 'Resources', 'app', 'packages'), label: `AgentBuddy Beta ${newest}` };
+    }
+  }
+  return null;
+}
+
 export interface TestAppFlags {
   appRoot?: string;
   app?: string;
@@ -98,10 +124,18 @@ export interface ResolveAppOptions {
   betaApp?: (hostVersion: string, cacheDir: string) => Promise<PackagedApp>;
 }
 
-async function askOnce(question: string): Promise<string> {
+/** One readline for the whole conversation: answers typed ahead are buffered, not lost between questions. */
+async function withTerminalPrompt<T>(fn: (prompt: (question: string) => Promise<string>) => Promise<T>): Promise<T> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // The line iterator queues lines as they arrive; rl.question drops lines typed before it's asked
+  const lines = rl[Symbol.asyncIterator]();
   try {
-    return (await rl.question(question)).trim();
+    return await fn(async question => {
+      process.stdout.write(question);
+      const { value, done } = await lines.next();
+      if (done) throw new Error('No answer: input closed');
+      return value.trim();
+    });
   } finally {
     rl.close();
   }
@@ -115,7 +149,6 @@ async function askOnce(question: string): Promise<string> {
 export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTarget> {
   const { flags, hostVersion, dirs = cliDirs(), env = process.env } = options;
   const interactive = options.interactive ?? (Boolean(process.stdin.isTTY) && !env.CI);
-  const prompt = options.prompt ?? askOnce;
   const betaApp = options.betaApp ?? ((range, cacheDir) => ensureBetaApp({ hostVersion: range, cacheDir }));
   const packaged = async (): Promise<AppTarget> => ({ kind: 'packaged', ...(await betaApp(hostVersion, dirs.cache)) });
 
@@ -136,6 +169,11 @@ export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTar
     );
   }
 
+  const choice = await (options.prompt ? askForApp(options.prompt, dirs) : withTerminalPrompt(prompt => askForApp(prompt, dirs)));
+  return 'beta' in choice ? packaged() : { kind: 'source', root: choice.source };
+}
+
+async function askForApp(prompt: (question: string) => Promise<string>, dirs: CliDirs): Promise<AppChoice> {
   console.log('Which AgentBuddy app should `abuddy test` run your pack in?');
   console.log('  1) A local AgentBuddy checkout (installed and built)');
   console.log('  2) The newest AgentBuddy Beta build (downloaded and cached)');
@@ -144,7 +182,7 @@ export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTar
     if (answer === '2') {
       saveAppChoice(dirs, { beta: true });
       console.log(`Saved to ${configFile(dirs)}`);
-      return packaged();
+      return { beta: true };
     }
     if (answer === '1') {
       const root = path.resolve(await prompt('Path to the AgentBuddy checkout: '));
@@ -155,7 +193,7 @@ export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTar
       }
       saveAppChoice(dirs, { source: root });
       console.log(`Saved to ${configFile(dirs)}`);
-      return { kind: 'source', root };
+      return { source: root };
     }
   }
 }

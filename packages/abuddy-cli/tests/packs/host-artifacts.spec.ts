@@ -6,15 +6,16 @@ import { publishHostPackArtifacts } from '@abuddy/sdk/packs';
 import { resolveDepArtifacts } from '../../src/commands/fetch-deps';
 
 let tmp: string;
-const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR };
+const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, root: process.env.ABUDDY_ROOT };
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'host-artifacts-'));
   process.env.ABUDDY_USER_DATA_DIR = path.join(tmp, 'userdata');
+  delete process.env.ABUDDY_ROOT;
 });
 
 afterEach(() => {
-  for (const [key, value] of [['ABUDDY_ENV', saved.env], ['ABUDDY_USER_DATA_DIR', saved.dir]] as const) {
+  for (const [key, value] of [['ABUDDY_ENV', saved.env], ['ABUDDY_USER_DATA_DIR', saved.dir], ['ABUDDY_ROOT', saved.root]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
@@ -57,6 +58,20 @@ describe('dependency resolution from an installed app', () => {
     const artifacts = await resolveDepArtifacts(packRoot, 'base-pack', '*');
     expect(artifacts?.snapshot.manifest.id).toBe('base-pack');
     expect(artifacts?.buildDir).toBe(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'build'));
+    expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
+  });
+
+  it('resolves a built-in dependency from the app configured for abuddy test, before the app has run', async () => {
+    const checkout = path.join(tmp, 'AgentBuddy');
+    fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
+    fs.renameSync(builtInPack(), path.join(checkout, 'packages', 'base-pack'));
+    process.env.ABUDDY_ROOT = checkout;
+
+    const packRoot = path.join(tmp, 'author-pack');
+    fs.mkdirSync(packRoot, { recursive: true });
+
+    const artifacts = await resolveDepArtifacts(packRoot, 'base-pack', '*');
+    expect(artifacts?.snapshot.manifest.id).toBe('base-pack');
     expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
   });
 

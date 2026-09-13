@@ -68,6 +68,15 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(verifyBundle(extracted).id).toBe('demo-pack');
   }, 240_000);
 
+  it('keeps unit tests runnable after init-tests adds Playwright specs', () => {
+    expect(run('node', [CLI, 'init-tests'], pack).code).toBe(0);
+    expect(fs.existsSync(path.join(pack, 'tests', 'e2e', 'smoke.spec.ts'))).toBe(true);
+
+    const unit = run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
+    expect(unit.code, unit.output).toBe(0);
+    expect(unit.output).toMatch(/tests\/unit\/demo-pack\.spec\.ts/);
+  }, 120_000);
+
   it('fails the build on an unresolvable dependency', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));

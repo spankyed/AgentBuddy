@@ -8,6 +8,7 @@ import type { PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { extractBundleArchive } from '@abuddy/sdk/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
+import { configuredAppPackagesDir } from '../app/app-target';
 
 // ── Dependency value parsing ──
 
@@ -107,6 +108,14 @@ function resolveFromInstalledApp(depId: string): (DepArtifacts & { env: AppEnv }
     if (found) return { ...found, env };
   }
   return null;
+}
+
+/** Built-in packs of the app configured for `abuddy test` (a checkout or a downloaded beta). */
+function resolveFromConfiguredApp(depId: string): (DepArtifacts & { label: string }) | null {
+  const app = configuredAppPackagesDir();
+  if (!app) return null;
+  const found = findDepArtifacts(path.join(app.dir, depId));
+  return found && { ...found, label: app.label };
 }
 
 // ── File path resolution ──
@@ -271,6 +280,9 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 
   const installed = resolveFromInstalledApp(depId);
   if (installed) return { snapshot: installed.snapshot, buildDir: installed.buildDir, source: `installed app (${installed.env})` };
+
+  const configured = resolveFromConfiguredApp(depId);
+  if (configured) return { snapshot: configured.snapshot, buildDir: configured.buildDir, source: configured.label };
 
   // GitHub release (explicit source)
   if (github) {
