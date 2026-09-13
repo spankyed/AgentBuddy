@@ -208,58 +208,62 @@ export function createTest(options: CreateTestOptions = {}) {
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
       // between runs or from other packs, and nothing touches the developer's abuddy-test dir
       const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-e2e-'));
-      if (process.env.PACK_DIR) {
-        const packDir = path.resolve(process.env.PACK_DIR);
-        const manifest = getPackManifest();
-        if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-        // Always rebuild: installing an existing dist would silently test stale code
-        const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
-        console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
-        try {
-          execFileSync(process.execPath, [abuddyBin, 'build'], { cwd: packDir, stdio: 'pipe' });
-        } catch (e: any) {
-          const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
-          throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
+      // Removed however the worker ends, including a failed pack build or launch
+      try {
+        if (process.env.PACK_DIR) {
+          const packDir = path.resolve(process.env.PACK_DIR);
+          const manifest = getPackManifest();
+          if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
+          // Always rebuild: installing an existing dist would silently test stale code
+          const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
+          console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
+          try {
+            execFileSync(process.execPath, [abuddyBin, 'build'], { cwd: packDir, stdio: 'pipe' });
+          } catch (e: any) {
+            const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
+            throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
+          }
+          // Install through the same bundle path users get (stage → verify → place)
+          const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
+          console.log(`[pack] Installing ${manifest.id} into an isolated test data dir...`);
+          await installPackFromLocal(packDir, packsDir);
         }
-        // Install through the same bundle path users get (stage → verify → place)
-        const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
-        console.log(`[pack] Installing ${manifest.id} into an isolated test data dir...`);
-        await installPackFromLocal(packDir, packsDir);
-      }
 
-      // A checkout runs its sources with its own electron, so packs don't need electron installed
-      const launch = appLaunch.kind === 'source'
-        ? {
-          executablePath: createRequire(path.join(appLaunch.root, 'package.json'))('electron') as unknown as string,
-          args: [path.join(appLaunch.root, '.')],
-          cwd: appLaunch.root,
+        // A checkout runs its sources with its own electron, so packs don't need electron installed
+        const launch = appLaunch.kind === 'source'
+          ? {
+            executablePath: createRequire(path.join(appLaunch.root, 'package.json'))('electron') as unknown as string,
+            args: [path.join(appLaunch.root, '.')],
+            cwd: appLaunch.root,
+          }
+          : { executablePath: appLaunch.executable, args: [] };
+
+        const launchStart = Date.now();
+        const app = await _electron.launch({
+          ...launch,
+          env: appLaunchEnv(process.env, userDataDir),
+        });
+
+        launchStartedAt.set(app, launchStart);
+        userDataDirs.set(app, userDataDir);
+        captureOutput(app);
+        if (process.env.DEBUG_E2E) {
+          app.process().stdout?.on('data', (data: Buffer) => {
+            process.stdout.write(`[electron] ${data}`);
+          });
+          app.process().stderr?.on('data', (data: Buffer) => {
+            process.stderr.write(`[electron] ${data}`);
+          });
         }
-        : { executablePath: appLaunch.executable, args: [] };
 
-      const launchStart = Date.now();
-      const app = await _electron.launch({
-        ...launch,
-        env: appLaunchEnv(process.env, userDataDir),
-      });
-
-      launchStartedAt.set(app, launchStart);
-      userDataDirs.set(app, userDataDir);
-      captureOutput(app);
-      if (process.env.DEBUG_E2E) {
-        app.process().stdout?.on('data', (data: Buffer) => {
-          process.stdout.write(`[electron] ${data}`);
-        });
-        app.process().stderr?.on('data', (data: Buffer) => {
-          process.stderr.write(`[electron] ${data}`);
-        });
-      }
-
-      await use(app);
-      await app.close();
-      if (process.env.E2E_KEEP_DATA) {
-        console.log(`[e2e] kept test data dir: ${userDataDir}`);
-      } else {
-        fs.rmSync(userDataDir, { recursive: true, force: true });
+        await use(app);
+        await app.close();
+      } finally {
+        if (process.env.E2E_KEEP_DATA) {
+          console.log(`[e2e] kept test data dir: ${userDataDir}`);
+        } else {
+          fs.rmSync(userDataDir, { recursive: true, force: true });
+        }
       }
     }, { scope: 'worker' }],
 

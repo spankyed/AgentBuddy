@@ -3,11 +3,16 @@
 // electron-builder's dependency collector once dropped 112 of them (e.g. nanoid under
 // @ai-sdk/provider-utils) and the packaged API couldn't start; nothing failed at build time.
 //
-//   node build/prod/verify-node-modules.mjs "dist/mac-arm64/AgentBuddy.app/Contents/Resources/app"
+//   node build/prod/verify-node-modules.mjs "dist/mac-arm64/AgentBuddy.app/Contents/Resources/app" [workspace]
+//
+// Also checked: the published packages bundled in the app (packages/*/dist/package, e.g. the
+// CLI behind Resources/cli/abuddy), and optional dependencies the build workspace installed
+// for this platform (e.g. esbuild's native binary) but the app doesn't ship.
 import fs from 'node:fs';
 import path from 'node:path';
 
 const appDir = path.resolve(process.argv[2] ?? '');
+const workspaceDir = path.resolve(process.argv[3] ?? process.cwd());
 if (!fs.existsSync(path.join(appDir, 'package.json'))) {
   console.error(`Not a packaged app dir: ${appDir}`);
   process.exit(2);
@@ -38,19 +43,27 @@ function resolvable(fromDir, name) {
 }
 
 const missing = [];
-const roots = [
-  path.join(appDir, 'node_modules'),
-  ...fs.readdirSync(path.join(appDir, 'packages')).map(p => path.join(appDir, 'packages', p, 'node_modules')),
-];
-for (const root of roots) {
-  for (const dir of packages(root)) {
-    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
-    for (const name of Object.keys(pkg.dependencies ?? {})) {
-      // Type-only; electron-builder.mjs excludes node_modules/@types on purpose
-      if (name.startsWith('@types/')) continue;
-      if (!resolvable(dir, name)) missing.push(`${path.relative(appDir, dir)} → ${name}`);
-    }
+function check(dir) {
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
+  for (const name of Object.keys(pkg.dependencies ?? {})) {
+    // Type-only; electron-builder.mjs excludes node_modules/@types on purpose
+    if (name.startsWith('@types/')) continue;
+    if (!resolvable(dir, name)) missing.push(`${path.relative(appDir, dir)} → ${name}`);
   }
+  for (const name of Object.keys(pkg.optionalDependencies ?? {})) {
+    // Installed for this platform when the app was built, so the app needs it too
+    const installed = fs.existsSync(path.join(workspaceDir, 'node_modules', name, 'package.json'));
+    if (installed && !resolvable(dir, name)) missing.push(`${path.relative(appDir, dir)} → ${name} (optional, installed for this platform)`);
+  }
+}
+
+const packagesDir = path.join(appDir, 'packages');
+const workspacePackages = fs.existsSync(packagesDir) ? fs.readdirSync(packagesDir).map(p => path.join(packagesDir, p)) : [];
+for (const root of [path.join(appDir, 'node_modules'), ...workspacePackages.map(p => path.join(p, 'node_modules'))]) {
+  for (const dir of packages(root)) check(dir);
+}
+for (const bundled of workspacePackages.map(p => path.join(p, 'dist', 'package'))) {
+  if (fs.existsSync(path.join(bundled, 'package.json'))) check(bundled);
 }
 
 if (missing.length > 0) {
