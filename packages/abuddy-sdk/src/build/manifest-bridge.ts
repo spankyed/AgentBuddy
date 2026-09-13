@@ -31,12 +31,25 @@ export async function buildPackConfigFromManifest(
     name: manifest.id,
     ...(manifest.boot?.seed as Record<string, string> | undefined),
     async setup() {
+      // Step type → dependency module defining it; a pack step with the same type would silently
+      // merge over the dependency's definition in the registry
+      const dependencyStepTypes = new Map<string, string>();
       for (const modulePath of options.dependencyStepModules ?? []) {
         const mod = await import(pathToFileURL(modulePath).href);
         const items = findExportedArray(mod);
         if (!items) throw new Error(`${modulePath} does not export a step definition array`);
-        for (const item of items) stepRegistry.register(item as never);
+        for (const item of items) {
+          dependencyStepTypes.set((item as { type: string }).type, modulePath);
+          stepRegistry.register(item as never);
+        }
       }
+      const registerPackStep = (step: { type: string }) => {
+        const dependency = dependencyStepTypes.get(step.type);
+        if (dependency) {
+          throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
+        }
+        stepRegistry.register(step as never);
+      };
 
       const registrations: Array<{
         path: string | undefined;
@@ -44,7 +57,7 @@ export async function buildPackConfigFromManifest(
         label: string;
       }> = [
         // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI
-        { path: manifest.steps?.build ?? manifest.steps?.register, register: (s) => stepRegistry.register(s), label: 'steps' },
+        { path: manifest.steps?.build ?? manifest.steps?.register, register: registerPackStep, label: 'steps' },
         { path: manifest.artifacts, register: (a) => artifactRegistry.register(a), label: 'artifacts' },
         { path: manifest.blocks, register: (b) => blockRegistry.register(b), label: 'blocks' },
       ];

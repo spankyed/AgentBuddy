@@ -51,7 +51,7 @@ export interface PreflightResult {
   warnings: string[];
 }
 
-export async function preflight(root: string, options: { local: boolean; run: Runner; env?: NodeJS.ProcessEnv }): Promise<PreflightResult> {
+export async function preflight(root: string, options: { local: boolean; run: Runner; env?: NodeJS.ProcessEnv; version?: string }): Promise<PreflightResult> {
   const env = options.env ?? process.env;
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -83,7 +83,21 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
     } else if (!defaultBranch && !['main', 'master'].includes(branch)) {
       errors.push(`on branch "${branch}"; releases are cut from the default branch`);
     }
-    try { git('remote', 'get-url', 'origin'); } catch { errors.push('no "origin" remote to push the release tag to'); }
+    let hasOrigin = true;
+    try { git('remote', 'get-url', 'origin'); } catch { hasOrigin = false; errors.push('no "origin" remote to push the release tag to'); }
+    if (hasOrigin) {
+      // A rejected push would leave a local version commit and tag behind
+      try {
+        git('fetch', '--quiet', 'origin');
+        const behind = Number(git('rev-list', '--count', 'HEAD..@{upstream}') || '0');
+        if (behind > 0) errors.push(`branch is ${behind} commit(s) behind origin; pull first`);
+      } catch {}
+      if (options.version) {
+        let remoteTag = '';
+        try { remoteTag = git('ls-remote', '--tags', 'origin', `refs/tags/v${options.version}`); } catch {}
+        if (remoteTag) errors.push(`tag v${options.version} already exists on origin`);
+      }
+    }
   }
 
   const hasWorkflow = fs.existsSync(path.join(root, '.github', 'workflows', 'release.yml'));
@@ -239,7 +253,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   const version = nextReleaseVersion(manifest.version, options.bump, options.beta);
   console.log(`Releasing ${manifest.id}: ${manifest.version} → ${version}${options.dryRun ? ' (dry run)' : ''}`);
 
-  const { errors, warnings } = await preflight(root, { local: options.local, run, env });
+  const { errors, warnings } = await preflight(root, { local: options.local, run, env, version });
   for (const w of warnings) console.warn(`  ! ${w}`);
   if (errors.length > 0) {
     const report = errors.map(e => `  - ${e}`).join('\n');
@@ -256,11 +270,15 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const releaseDir = path.join(root, '.abuddy', 'release');
-  fs.rmSync(releaseDir, { recursive: true, force: true });
-  const packed = await packBundle(root, releaseDir, { version });
-  console.log(`\nBundle: ${packed.file}\n  sha256: ${packed.sha256}\n  files: ${Object.keys(readBundleInfo(path.join(root, '.abuddy', 'bundle', manifest.id)).files).length}`);
+  const packRelease = async () => {
+    fs.rmSync(releaseDir, { recursive: true, force: true });
+    const packed = await packBundle(root, releaseDir, { version });
+    console.log(`\nBundle: ${packed.file}\n  sha256: ${packed.sha256}\n  files: ${Object.keys(readBundleInfo(path.join(root, '.abuddy', 'bundle', manifest.id)).files).length}`);
+    return packed;
+  };
 
   if (options.dryRun) {
+    const packed = await packRelease();
     console.log(`\n[dry-run] Would commit version files, tag v${version} and push${options.local ? ', then publish the GitHub release locally' : ' (the release workflow publishes from the tag)'}.`);
     return { version, archive: packed.file };
   }
@@ -268,6 +286,8 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   const git = (...args: string[]) => run('git', args, root);
   git('add', 'abuddy.json', ...(fs.existsSync(path.join(root, 'package.json')) ? ['package.json'] : []));
   git('commit', '-m', `release: v${version}`);
+  // After the commit, so bundle.json's source.commit is the tagged commit
+  const packed = await packRelease();
   git('tag', '-a', `v${version}`, '-m', `v${version}`);
   git('push', '--follow-tags', 'origin', 'HEAD');
 

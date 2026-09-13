@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishHostPackArtifacts } from '@abuddy/sdk/packs';
 import { resolveDepArtifacts } from '../../src/commands/fetch-deps';
 
@@ -118,6 +118,30 @@ describe('dependency resolution from an installed app', () => {
     process.env.ABUDDY_ROOT = checkout;
 
     expect((await resolveDepArtifacts(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('3.0.0');
+  });
+
+  it("refuses a GitHub release without the dependency's own archive checksum", async () => {
+    const requested: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      requested.push(url);
+      if (url.includes('/releases?')) {
+        return new Response(JSON.stringify([{
+          tag_name: 'v1.2.0',
+          assets: [
+            { name: 'other-pack-1.2.0.tgz', url: 'https://example.test/other.tgz' },
+            { name: 'other-pack-1.2.0.tgz.sha256', url: 'https://example.test/other.sha256' },
+            { name: 'dep-pack-1.2.0.tgz', url: 'https://example.test/dep.tgz' },
+          ],
+        }]));
+      }
+      return new Response('unexpected download', { status: 500 });
+    }));
+    try {
+      expect(await resolveDepArtifacts(authorPack(), 'dep-pack', 'github:acme/dep-pack')).toBeNull();
+      expect(requested).toEqual([expect.stringContaining('/repos/acme/dep-pack/releases')]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('returns null when nothing provides the dependency', async () => {

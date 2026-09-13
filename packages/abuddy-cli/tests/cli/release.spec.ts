@@ -111,6 +111,19 @@ describe('preflight', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('refuses a release the push would reject: branch behind origin, or the tag already on origin', async () => {
+    const run = fakeGit({
+      ...cleanRepo,
+      'git rev-list --count HEAD..@{upstream}': '2',
+      'git ls-remote --tags origin refs/tags/v1.0.1': 'abc123\trefs/tags/v1.0.1',
+    });
+    const { errors } = await preflight(withWorkflow(builtPack()), { local: false, run, env: {}, version: '1.0.1' });
+    expect(errors).toEqual([
+      'branch is 2 commit(s) behind origin; pull first',
+      'tag v1.0.1 already exists on origin',
+    ]);
+  });
+
   it('warns when publishing relies on a release workflow that does not exist', async () => {
     const { warnings } = await preflight(builtPack(), { local: false, run: fakeGit(cleanRepo), env: {} });
     expect(warnings).toEqual([expect.stringMatching(/no \.github\/workflows\/release\.yml/)]);

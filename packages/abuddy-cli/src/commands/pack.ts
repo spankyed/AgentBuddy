@@ -16,7 +16,7 @@ Options:
   --out <dir>   Output directory (default: pack root)
 `.trim();
 
-function gitSource(root: string): BundleInfo['source'] | undefined {
+export function gitSource(root: string): BundleInfo['source'] | undefined {
   const git = (...args: string[]) => {
     try {
       return execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
@@ -26,7 +26,8 @@ function gitSource(root: string): BundleInfo['source'] | undefined {
   };
   const commit = git('rev-parse', 'HEAD');
   if (!commit) return undefined;
-  return { commit, repo: git('remote', 'get-url', 'origin') };
+  // An https remote can carry credentials (https://user:token@host/…); never publish them
+  return { commit, repo: git('remote', 'get-url', 'origin')?.replace(/^(\w+:\/\/)[^@/]+@/, '$1') };
 }
 
 export interface PackResult {

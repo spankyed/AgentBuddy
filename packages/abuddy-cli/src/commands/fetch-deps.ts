@@ -6,7 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
-import { extractBundleArchive } from '@abuddy/sdk/packs';
+import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 
@@ -179,12 +179,17 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
 
   const { release, version } = matching[0];
 
-  const asset = release.assets.find(a => a.name.endsWith('.tgz'));
+  // abuddy pack names the archive <id>-<version>.tgz and publishes its .sha256 next to it
+  const asset = release.assets.find(a => a.name === `${depId}-${version}.tgz`);
   if (!asset) {
-    console.warn(`  Release ${release.tag_name} in ${repo} has no .tgz asset`);
+    console.warn(`  Release ${release.tag_name} in ${repo} has no ${depId}-${version}.tgz asset`);
     return null;
   }
   const checksumAsset = release.assets.find(a => a.name === `${asset.name}.sha256`);
+  if (!checksumAsset) {
+    console.warn(`  Release ${release.tag_name} in ${repo} has no ${asset.name}.sha256; refusing an unverifiable download`);
+    return null;
+  }
 
   return downloadAndExtract(root, asset, checksumAsset, depId, version);
 }
@@ -204,7 +209,7 @@ async function downloadAsset(assetUrl: string, dest: string): Promise<boolean> {
 async function downloadAndExtract(
   root: string,
   asset: { name: string; url: string },
-  checksumAsset: { name: string; url: string } | undefined,
+  checksumAsset: { name: string; url: string },
   depId: string,
   version: string,
 ): Promise<DepArtifacts | null> {
@@ -213,14 +218,16 @@ async function downloadAndExtract(
     const archive = path.join(tmpDir, asset.name);
     if (!await downloadAsset(asset.url, archive)) return null;
 
-    let sha256: string | undefined;
-    if (checksumAsset) {
-      const checksumFile = path.join(tmpDir, checksumAsset.name);
-      if (!await downloadAsset(checksumAsset.url, checksumFile)) return null;
-      sha256 = fs.readFileSync(checksumFile, 'utf-8').trim().split(/\s+/)[0];
-    }
+    const checksumFile = path.join(tmpDir, checksumAsset.name);
+    if (!await downloadAsset(checksumAsset.url, checksumFile)) return null;
+    const sha256 = fs.readFileSync(checksumFile, 'utf-8').trim().split(/\s+/)[0];
 
     const extracted = await extractBundleArchive(archive, path.join(tmpDir, 'extracted'), sha256);
+    const bundle = verifyBundle(extracted);
+    if (bundle.id !== depId) {
+      console.warn(`  ${asset.name} contains pack "${bundle.id}", not ${depId}`);
+      return null;
+    }
     const artifacts = findDepArtifacts(extracted);
     if (!artifacts) {
       console.warn(`  No snapshot found in ${asset.name} for ${depId}@${version}`);
