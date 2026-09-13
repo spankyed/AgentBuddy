@@ -1,11 +1,14 @@
 // API reports for every code export of a published package (etc/<entry>.api.md), from
-// declarations emitted into .temp/api-types. Without --local, fails when a report is out of
-// date or API Extractor reports a problem.
+// declarations emitted into .temp/api-types. A component's declaration is only its default export,
+// so each component entry also gets a contract report (etc/<entry>.component.md): the props,
+// emits, slots and exposed members TypeScript resolves for it. Without --local, fails when a
+// report is out of date or API Extractor reports a problem.
 //
 //   tsx scripts/api-reports.ts packages/abuddy-sdk [--local]
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from '@microsoft/api-extractor';
+import ts from 'typescript';
 
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const local = process.argv.includes('--local');
@@ -58,8 +61,121 @@ for (const [key, declaration] of entries()) {
   }
 }
 
+/** Component entries (a .ts module re-exporting an SFC's default): [subpath, declaration] */
+function componentEntries(): [string, string][] {
+  return entries().filter(([key]) => {
+    const source = (pkg.exports[key] as Record<string, string>)['@abuddy/source'];
+    return /export\s*\{\s*default\s*\}\s*from\s*['"][^'"]+\.vue['"]/.test(fs.readFileSync(path.join(pkgDir, source), 'utf-8'));
+  });
+}
+
+/**
+ * The contract of each component, printed by the TypeScript checker: props (without Vue's own VNode
+ * props), emits, slots and exposed instance members. vue-tsc declares a component with slots as an
+ * intersection of constructors (__VLS_WithSlots), and vue-component-type-helpers infers from only
+ * the last one, so the instance members are read from every construct signature; a functional
+ * component uses the helpers.
+ */
+function componentContracts(components: [string, string][]): Map<string, string> {
+  const contractFile = path.join(typesDir, '__component-contracts.ts');
+  fs.writeFileSync(contractFile, [
+    "import type { ComponentProps, ComponentEmit, ComponentSlots, ComponentExposed } from 'vue-component-type-helpers';",
+    ...components.flatMap(([, declaration], i) => {
+      const specifier = `./${path.relative(typesDir, declaration).replace(/\.d\.ts$/, '.js')}`;
+      return [
+        `import C${i} from '${specifier}';`,
+        `export const component${i} = C${i};`,
+        `export type FunctionalProps${i} = ComponentProps<typeof C${i}>;`,
+        `export type FunctionalEmit${i} = ComponentEmit<typeof C${i}>;`,
+        `export type FunctionalSlots${i} = ComponentSlots<typeof C${i}>;`,
+        `export type FunctionalExposed${i} = ComponentExposed<typeof C${i}>;`,
+      ];
+    }),
+  ].join('\n'));
+  const { config } = ts.readConfigFile(path.join(pkgDir, 'tsconfig.api-extractor.json'), ts.sys.readFile);
+  const { options } = ts.parseJsonConfigFileContent(config, ts.sys, pkgDir);
+  const program = ts.createProgram([contractFile], { ...options, noEmit: true });
+  const diagnostics = ts.getPreEmitDiagnostics(program);
+  if (diagnostics.length > 0) {
+    throw new Error(ts.formatDiagnostics(diagnostics, { getCanonicalFileName: (f) => f, getCurrentDirectory: () => pkgDir, getNewLine: () => '\n' }));
+  }
+  const checker = program.getTypeChecker();
+  const source = program.getSourceFile(contractFile)!;
+  const flags = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.WriteArrowStyleSignature;
+  const relativize = (text: string) => text.replaceAll(/import\("([^"]+)"\)/g, (_, file: string) => {
+    const nodeModules = file.lastIndexOf('/node_modules/');
+    return `import("${nodeModules >= 0 ? file.slice(nodeModules + '/node_modules/'.length) : path.relative(typesDir, file)}")`;
+  });
+  const scope = (name: string, meaning: ts.SymbolFlags) => checker.getSymbolsInScope(source, meaning).find((s) => s.name === name)!;
+  const fromVue = (symbol: ts.Symbol) => (symbol.declarations ?? []).length > 0
+    && symbol.declarations!.every((d) => /\/node_modules\/@vue\//.test(d.getSourceFile().fileName));
+  // Union members print in type-creation order, which depends on the rest of the program: sort them
+  const typeText = (type: ts.Type): string => {
+    if (!type.isUnion() || type.aliasSymbol) return relativize(checker.typeToString(type, source, flags));
+    let members = [...new Set(type.types.map(typeText))];
+    if (members.includes('true') && members.includes('false')) members = [...members.filter((m) => m !== 'true' && m !== 'false'), 'boolean'];
+    // Function and conditional types need parentheses inside a union
+    return members.map((m) => (/=>|\bextends\b/.test(m) ? `(${m})` : m)).sort().join(' | ');
+  };
+  const member = (symbol: ts.Symbol) => {
+    const optional = symbol.flags & ts.SymbolFlags.Optional ? '?' : '';
+    return `  ${symbol.name}${optional}: ${typeText(checker.getTypeOfSymbolAtLocation(symbol, source))};`;
+  };
+  /** A member of the component instance, from any construct signature */
+  const instanceMember = (component: ts.Type, name: string): ts.Type | undefined => {
+    for (const signature of checker.getSignaturesOfType(component, ts.SignatureKind.Construct)) {
+      const property = checker.getReturnTypeOfSignature(signature).getProperty(name);
+      if (property) return checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(property, source));
+    }
+    return undefined;
+  };
+
+  const contracts = new Map<string, string>();
+  components.forEach(([key], i) => {
+    const component = checker.getTypeOfSymbolAtLocation(scope(`component${i}`, ts.SymbolFlags.Variable), source);
+    const constructs = checker.getSignaturesOfType(component, ts.SignatureKind.Construct);
+    const alias = (name: string) => checker.getDeclaredTypeOfSymbol(scope(`${name}${i}`, ts.SymbolFlags.TypeAlias));
+    const propsType = constructs.length > 0 ? instanceMember(component, '$props') : alias('FunctionalProps');
+    const emitType = constructs.length > 0 ? instanceMember(component, '$emit') : alias('FunctionalEmit');
+    const slotsType = constructs.length > 0 ? instanceMember(component, '$slots') : alias('FunctionalSlots');
+    const exposedType = constructs.length > 0 ? checker.getReturnTypeOfSignature(constructs[0]) : alias('FunctionalExposed');
+
+    const props = propsType ? checker.getPropertiesOfType(propsType).filter((p) => !fromVue(p)) : [];
+    const propNames = new Set(props.map((p) => p.name));
+    const emits = emitType ? checker.getSignaturesOfType(emitType, ts.SignatureKind.Call) : [];
+    const slots = slotsType ? checker.getPropertiesOfType(slotsType).filter((p) => !fromVue(p)) : [];
+    const exposed = checker.getPropertiesOfType(exposedType)
+      .filter((p) => !p.name.startsWith('$') && !propNames.has(p.name) && !fromVue(p));
+    const block = (title: string, lines: string[]) => [`${title} {`, ...lines.sort(), '}'];
+    contracts.set(key, [
+      `## Component contract for "${pkg.name}${key.slice(1)}"`,
+      '',
+      '> Generated by scripts/api-reports.ts; api:check fails when it is out of date.',
+      '',
+      '```ts',
+      ...block('props', props.map(member)),
+      ...block('emits', emits.map((sig) => `  ${relativize(checker.signatureToString(sig, source, flags))};`)),
+      ...block('slots', slots.map(member)),
+      ...block('exposed', exposed.map(member)),
+      '```',
+      '',
+    ].join('\n'));
+  });
+  fs.rmSync(contractFile);
+  return contracts;
+}
+
+for (const [key, contract] of componentContracts(componentEntries())) {
+  const file = reportName(key).replace(/\.api\.md$/, '.component.md');
+  expected.add(file);
+  const current = fs.existsSync(path.join(reportFolder, file)) ? fs.readFileSync(path.join(reportFolder, file), 'utf-8') : undefined;
+  if (current === contract) continue;
+  if (local) fs.writeFileSync(path.join(reportFolder, file), contract);
+  else { failed++; console.error(`etc/${file} is out of date; run api:update`); }
+}
+
 // Reports for exports that no longer exist
-for (const file of fs.readdirSync(reportFolder).filter((f) => f.endsWith('.api.md') && !expected.has(f))) {
+for (const file of fs.readdirSync(reportFolder).filter((f) => /\.(api|component)\.md$/.test(f) && !expected.has(f))) {
   if (local) fs.rmSync(path.join(reportFolder, file));
   else { failed++; console.error(`etc/${file} has no matching export; run with --local to remove it`); }
 }
