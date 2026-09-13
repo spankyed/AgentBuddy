@@ -1,6 +1,7 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+import type { EARS } from '@abuddy/sdk';
 import type { NodeEntity } from '@/__generated__/types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { z } from 'zod';
 import { createInspectLogger } from '@abuddy/sdk/logger';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
@@ -69,7 +70,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       throw new Error('No action linked to this node');
     }
 
-    const action = repository.actionQueries.byId(actionId);
+    const action = repository.actionQueries.byId(actionId as EARS.EntityId);
     if (!action) {
       throw new Error(`Action not found: ${actionId}`);
     }

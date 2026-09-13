@@ -1,6 +1,6 @@
 import { RepositoryErrorCode } from '@abuddy/sdk/ears';
 import { clearMemory } from '@abuddy/host/ears';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import '@/features/flows/be/repository';
 
 describe('flows repository', () => {
@@ -23,8 +23,8 @@ describe('flows repository', () => {
         cronExpression: '*/5 * * * * *',
       });
 
-      expect(fiveField.cronExpression).toBe('* * * * *');
-      expect(sixField.cronExpression).toBe('*/5 * * * * *');
+      expect(fiveField).toMatchObject({ nodeType: 'schedule', cronExpression: '* * * * *' });
+      expect(sixField).toMatchObject({ nodeType: 'schedule', cronExpression: '*/5 * * * * *' });
     });
 
     it('rejects invalid schedule cron expressions before persistence', () => {

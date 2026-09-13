@@ -5,7 +5,7 @@ import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent, ContentSection } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs/promises'

@@ -1,6 +1,5 @@
 import { emit } from '@/__generated__/events';
 // Cross-plugin send: the flows plugin also receives action events
-import { emit as emitToPlugin } from '@abuddy/sdk/helpers';
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
@@ -8,7 +7,7 @@ import { flows } from '@/__generated__/system-ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { ActionsStartupData, ActionEntity } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import './repository';
@@ -45,11 +44,11 @@ export type OutgoingActionEvents =
 export const actionsSpec = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
 export const actions = actionsSpec.id;
 
-// Helper to broadcast action events to both actions and flows plugins
+// Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
   const busSvc = system.get(bus);
   busSvc.send(emit(actions, event));
-  busSvc.send(emitToPlugin(flows, event));
+  busSvc.send(emit(flows, event));
 };
 
 export const actionsSystem = setup({

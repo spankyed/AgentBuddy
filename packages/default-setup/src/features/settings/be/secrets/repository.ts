@@ -1,5 +1,5 @@
 import { qx } from '@/__generated__/ears';
-import { registerRepository } from '@abuddy/sdk/ears';
+
 import { EARS } from '@/__generated__/ears';
 import { tx } from '@abuddy/sdk/ears';
 
@@ -99,5 +99,3 @@ export const secretsCommands = {
   }
 };
 
-registerRepository('secretsQueries', secretsQueries);
-registerRepository('secretsCommands', secretsCommands);

@@ -1,6 +1,6 @@
 import { GitRepository } from '@/features/code/be/services/git'
 import * as ghCli from '@/features/code/be/services/gh-cli'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/features/code/be/types'
 import { claudeCode } from './claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from './claude-code'

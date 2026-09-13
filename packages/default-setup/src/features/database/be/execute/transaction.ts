@@ -1,6 +1,7 @@
 import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { tx, getAttr, getAttrs, getEntitiesOfType, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity, createEntityWithDefaults, updateEntity, createRelation, removeRelation, removeRelationById } from '@abuddy/sdk/ears';
+import { tx, getEntitiesOfType, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity, createRelation, removeRelation, removeRelationById } from '@abuddy/sdk/ears';
+import { getAttr, getAttrs, createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import {
   getAllEntities,
   queryEntitiesByRelationTo,

@@ -1,5 +1,5 @@
 import { qx } from '@/__generated__/ears';
-import { registerRepository } from '@abuddy/sdk/ears';
+
 import { EARS } from '@/__generated__/ears';
 
 import { tx } from '@abuddy/sdk/ears';
@@ -127,5 +127,3 @@ export const settingsCommands = {
 export { detectAllArrayChanges, detectChanges, detectStatusChanges, detectCategoryChanges } from '../change-detection';
 export type { DiffResult } from '../change-detection';
 
-registerRepository('settingsQueries', settingsQueries);
-registerRepository('settingsCommands', settingsCommands);

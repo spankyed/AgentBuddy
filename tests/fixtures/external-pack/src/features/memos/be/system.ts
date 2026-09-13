@@ -3,7 +3,7 @@ import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 
-import { memoCommands, memoQueries } from './repository';
+import { repository } from '#generated/repository';
 import type { MemoDTO } from './types';
 
 type IncomingMemosEvents =
@@ -20,11 +20,11 @@ export const memosSystem = setup({
   types: memosSpec.types,
   actions: {
     sendConnectedData: ({ system }) => {
-      system.get(bus).send(emit(memos, { type: 'MEMOS_CONNECTED', memos: memoQueries.all() }));
+      system.get(bus).send(emit(memos, { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() }));
     },
     addMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
-      system.get(bus).send(emit(memos, { type: 'MEMO_ADDED', memo: memoCommands.add(text) }));
+      system.get(bus).send(emit(memos, { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) }));
     },
   },
 }).createMachine({

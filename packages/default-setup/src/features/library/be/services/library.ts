@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { DocumentDTO, DocumentShortCode, CollectionDTO, LibraryItem, ContentSection } from '@/features/library/be/types';
 import { EARS } from '@/__generated__/ears';
 import * as symlink from '@/features/library/be/repository/symlink';

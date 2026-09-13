@@ -6,10 +6,9 @@
  */
 
 // Export transaction helpers for common operations
+export { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 export {
   prepareEntity,
-  createEntityWithDefaults,
-  updateEntity,
   createRelation,
   removeRelation,
   removeRelationById,
@@ -26,14 +25,8 @@ export { qx } from '@/__generated__/ears';
 
 // Export type-safe query helpers
 export { findById, findAll, findWhere, findFirst } from '@/__generated__/ears';
-export {
-  findWithFields,
-  findByIdWithFields,
-  countEntities,
-  exists,
-  findWithRole,
-  findFirstWithRole
-} from '@abuddy/sdk/ears';
+export { findWithFields, findByIdWithFields, findWithRole, findFirstWithRole } from '@/__generated__/ears';
+export { countEntities, exists } from '@abuddy/sdk/ears';
 
 // Re-export EARS types for convenience
 export { EARS } from '@/__generated__/ears';

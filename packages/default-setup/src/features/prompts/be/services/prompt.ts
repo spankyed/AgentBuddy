@@ -1,5 +1,5 @@
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { PromptEntity } from '@/features/prompts/be/types';
 
 export class PromptService {

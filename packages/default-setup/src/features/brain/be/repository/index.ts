@@ -1,5 +1,5 @@
 import { qx, findById } from '@/__generated__/ears';
-import { registerRepository, tx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
 import { edgeStore } from '@abuddy/host/ears';
 import type {
@@ -598,5 +598,3 @@ export const brainCommands = {
   },
 } as const;
 
-registerRepository('brainQueries', brainQueries);
-registerRepository('brainCommands', brainCommands);

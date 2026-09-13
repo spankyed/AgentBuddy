@@ -8,7 +8,7 @@
  * Priority: ChatGPT OAuth tokens > explicit API key > settings/secrets > env vars.
  */
 
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
 import { getValidCredentials } from './openai-auth/refresh'
 

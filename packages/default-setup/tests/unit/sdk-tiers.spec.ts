@@ -4,14 +4,13 @@
  */
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import {
-  tx, repository, registerRepository,
-  createEntityWithDefaults, updateEntity, exists,
+  tx, repository, registerRepository, exists,
   RepositoryError, RepositoryErrorCode,
-  getAttr,
 } from '@abuddy/sdk/ears';
 import {
   clearMemory, edgeStore, relationIndex,
   qx, createEntity, findById, findByIdRaw, findAll, findWhere,
+  createEntityWithDefaults, updateEntity, getAttr,
 } from '@abuddy/host/ears';
 import { EARS } from '../../src/__generated__/ears';
 
@@ -112,7 +111,7 @@ describe('Tier 1 — EARS delegates', () => {
   it('repository proxy delegates registerRepository', () => {
     const testQueries = { list: () => 'ok' };
     registerRepository('sdkTestQueries', testQueries);
-    expect(repository.sdkTestQueries.list()).toBe('ok');
+    expect((repository.sdkTestQueries as typeof testQueries).list()).toBe('ok');
   });
 
   it('getAttr reads stored attributes', () => {

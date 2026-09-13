@@ -1,6 +1,6 @@
 import { sendToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
 
 import { readMediaBuffer } from '@abuddy/sdk/utils';

@@ -5,7 +5,7 @@ import { bus } from '@abuddy/sdk/ids';
 import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { FlowsConnectedData, FlowEntity, NodeEntity } from './types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';

@@ -2,7 +2,7 @@ import { qx } from '@/__generated__/ears';
 import { services as appServices } from '@/__generated__/services';
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
@@ -246,7 +246,7 @@ export function createFlowNodeSystem(
           for (const sn of allTriggerNodes) {
             const triggerFacet = stepRegistry.getTrigger(sn.triggerType);
             if (!triggerFacet?.register) continue;
-            const hasSteps = repository.brainQueries.eventAllSteps(sn.id!).length > 0;
+            const hasSteps = repository.brainQueries.eventAllSteps(sn.id as EARS.EntityId).length > 0;
             if (!hasSteps) continue;
             triggerFacet.register(sn as any, { flowTNodeId, sendToBrainSystem });
           }
@@ -276,7 +276,7 @@ export function createFlowNodeSystem(
           if (matchingEventNodes.length === 0) return;
 
           for (const eventNode of matchingEventNodes) {
-            const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
+            const allSteps = repository.brainQueries.eventAllSteps(eventNode.id as EARS.EntityId);
 
             if (allSteps.length === 0) {
               brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);

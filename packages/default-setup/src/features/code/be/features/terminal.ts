@@ -1,11 +1,10 @@
-// Terminal events reach the code plugin, which types them separately
-import { emit } from '@abuddy/sdk/helpers';
+import { emit } from '@/__generated__/events';
 import { setup, assign, fromPromise } from 'xstate'
 
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { terminalService } from '../services/terminal'
 import type { TerminalInfo, CodeSettings } from '../types'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 
 const pluginId = 'code' as const
 
@@ -53,7 +52,7 @@ export type Event =
   | { type: 'CODE_CONNECTED' };
 
 /** Emit an event to the frontend code plugin */
-const emitToFrontend = (event: Omit<OutgoingTerminalEvents, 'pluginId'> & { type: string }) => {
+const emitToFrontend = (event: OutgoingTerminalEvents) => {
   rootEvents.emitOutgoing(emit(pluginId, event).event)
 }
 

@@ -7,7 +7,7 @@ import { sendToPlugin } from '@/__generated__/events';
 import { featureServices } from '@/__generated__/services';
 import { createLogger } from '@abuddy/sdk/logger';
 import { sendToBrainSystem, sendToSystem, onOutgoing, onIncoming } from '@abuddy/sdk/services';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 
 export const services = {
   logger: createLogger('action-dsl'),

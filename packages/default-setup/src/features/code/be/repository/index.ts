@@ -1,9 +1,10 @@
 import { qx, findById, findAll } from '@/__generated__/ears';
-import { registerRepository } from '@abuddy/sdk/ears'
-import { EARS } from '@/__generated__/ears'
-import { tx } from '@abuddy/sdk/ears'
 
-import { createEntityWithDefaults, updateEntity, exists } from '@abuddy/sdk/ears';
+import { EARS } from '@/__generated__/ears'
+import { tx } from '@abuddy/sdk/ears';
+
+import { exists } from '@abuddy/sdk/ears';
+import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { TerminalInfo } from '../types'
 import { terminalService } from '../services/terminal'
 
@@ -162,5 +163,3 @@ export const terminalCommands = {
   }
 }
 
-registerRepository('terminalQueries', terminalQueries)
-registerRepository('terminalCommands', terminalCommands)

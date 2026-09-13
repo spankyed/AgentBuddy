@@ -5,12 +5,12 @@
 
 export { EARS, type BaseEntity } from '@abuddy/sdk/types';
 
-// The database console runs queries with the pack's typed qx
-export { qx } from '@/__generated__/ears';
+// The database console runs queries with the pack's typed helpers
+export { qx, getAttr, getAttrs } from '@/__generated__/ears';
 
 export {
   tx, bp, spawn,
-  getEntitiesOfType, getAllEntityTypes, getAttr, getAttrs, getAll,
+  getEntitiesOfType, getAllEntityTypes, getAll,
   createRelation, removeRelation, removeRelationById, destroyEntity, prepareEntity,
   getAllAttributeKinds, getAttributeStats, getAllRelationKinds,
   getRoles, grantRole, revokeRole,

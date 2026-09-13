@@ -1,7 +1,8 @@
 import { findById, findByIdRaw, findAll, findWhere } from '@/__generated__/ears';
-import { registerRepository } from '@abuddy/sdk/ears';
+
 import { EARS } from '@/__generated__/ears';
-import { createEntityWithDefaults, updateEntity, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { PromptEntity } from '../types';
 
 /**
@@ -55,7 +56,7 @@ export const promptCommands = {
       throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
 
-    const prompt = createEntityWithDefaults<PromptEntity>(
+    const prompt = createEntityWithDefaults(
       EARS.Entity.Prompt,
       input as any,
       'PROMPT'
@@ -90,5 +91,3 @@ export const promptCommands = {
   },
 };
 
-registerRepository('promptQueries', promptQueries);
-registerRepository('promptCommands', promptCommands);

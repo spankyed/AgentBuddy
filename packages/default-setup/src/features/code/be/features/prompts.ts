@@ -2,7 +2,7 @@ import { emit } from '@/__generated__/events';
 import { setup } from 'xstate'
 
 import { rootEvents } from '@abuddy/sdk/rpc'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
 import type { PromptEntity } from '@/__generated__/types'
 

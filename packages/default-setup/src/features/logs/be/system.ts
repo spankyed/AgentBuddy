@@ -8,7 +8,7 @@ import { randomId } from '@abuddy/sdk/utils';
 import { rootEvents } from '@abuddy/sdk/rpc';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 

@@ -73,6 +73,12 @@
         "chat": "src/features/threads/be/services/chat",
         "artifact": "src/features/threads/be/services/artifact",
         "threads": "src/features/threads/be/services/threads"
+      },
+      "repositories": {
+        "threadQueries": "src/features/threads/be/repository/index.ts#threadQueries",
+        "threadCommands": "src/features/threads/be/repository/index.ts#threadCommands",
+        "chatQueries": "src/features/threads/be/repository/index.ts#chatQueries",
+        "chatCommands": "src/features/threads/be/repository/index.ts#chatCommands"
       }
     },
     {
@@ -89,6 +95,10 @@
       "services": {
         "cli": "src/features/code/be/services/cli",
         "codex": "src/features/code/be/services/codex"
+      },
+      "repositories": {
+        "terminalQueries": "src/features/code/be/repository/index.ts#terminalQueries",
+        "terminalCommands": "src/features/code/be/repository/index.ts#terminalCommands"
       }
     },
     {
@@ -103,7 +113,11 @@
         "icon": "NotebookText"
       },
       "contributions": "src/features/notes/fe/contributions",
-      "services": {}
+      "services": {},
+      "repositories": {
+        "noteQueries": "src/features/notes/be/repository/index.ts#noteQueries",
+        "noteCommands": "src/features/notes/be/repository/index.ts#noteCommands"
+      }
     },
     {
       "id": "browser",
@@ -119,6 +133,10 @@
       },
       "services": {
         "browser": "src/features/browser/be/services/browser"
+      },
+      "repositories": {
+        "browserQueries": "src/features/browser/be/repository/index.ts#browserQueries",
+        "browserCommands": "src/features/browser/be/repository/index.ts#browserCommands"
       }
     },
     {
@@ -136,6 +154,10 @@
       "contributions": "src/features/library/fe/contributions",
       "services": {
         "library": "src/features/library/be/services/library"
+      },
+      "repositories": {
+        "libraryQueries": "src/features/library/be/repository/index.ts#libraryQueries",
+        "libraryCommands": "src/features/library/be/repository/index.ts#libraryCommands"
       }
     },
     {
@@ -151,14 +173,21 @@
         "icon": "Network",
         "isPinned": true
       },
-      "services": {}
+      "services": {},
+      "repositories": {
+        "flowsQueries": "src/features/flows/be/repository/index.ts#flowsQueries",
+        "flowsCommands": "src/features/flows/be/repository/index.ts#flowsCommands"
+      }
     },
     {
       "id": "actions",
       "settings": "src/features/actions/settings.ts",
       "system": {
         "entry": "src/features/actions/be/system.ts",
-        "outgoingEventsType": "OutgoingActionEvents"
+        "outgoingEventsType": "OutgoingActionEvents",
+        "sendsTo": [
+          "flows"
+        ]
       },
       "plugin": {
         "entry": "src/features/actions/fe/plugin.ts",
@@ -168,6 +197,10 @@
       },
       "services": {
         "action": "src/features/actions/be/services/action"
+      },
+      "repositories": {
+        "actionQueries": "src/features/actions/be/repository/index.ts#actionQueries",
+        "actionCommands": "src/features/actions/be/repository/index.ts#actionCommands"
       }
     },
     {
@@ -185,6 +218,10 @@
       },
       "services": {
         "prompt": "src/features/prompts/be/services/prompt"
+      },
+      "repositories": {
+        "promptQueries": "src/features/prompts/be/repository/index.ts#promptQueries",
+        "promptCommands": "src/features/prompts/be/repository/index.ts#promptCommands"
       }
     },
     {
@@ -203,6 +240,10 @@
       "services": {
         "llm": "src/features/brain/be/services/llm",
         "brain": "src/features/brain/be/services/brain"
+      },
+      "repositories": {
+        "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",
+        "brainCommands": "src/features/brain/be/repository/index.ts#brainCommands"
       }
     },
     {
@@ -242,7 +283,10 @@
       "designation": "settings",
       "settings": "src/features/settings/settings.ts",
       "system": {
-        "entry": "src/features/settings/be/system.ts"
+        "entry": "src/features/settings/be/system.ts",
+        "sendsTo": [
+          "application"
+        ]
       },
       "plugin": {
         "entry": "src/features/settings/fe/plugin.ts",
@@ -251,6 +295,12 @@
       },
       "services": {
         "settings": "src/features/settings/be/services/settings"
+      },
+      "repositories": {
+        "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
+        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands",
+        "secretsQueries": "src/features/settings/be/secrets/repository.ts#secretsQueries",
+        "secretsCommands": "src/features/settings/be/secrets/repository.ts#secretsCommands"
       }
     }
   ],

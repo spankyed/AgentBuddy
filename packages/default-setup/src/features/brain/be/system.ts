@@ -7,7 +7,7 @@ import './repository'; // side-effect: registers brainQueries/brainCommands
 import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import type { StepRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
@@ -283,7 +283,7 @@ export const brainSystem = setup({
     sendPluginData: ({ system, context, event, self }) => {
       // Use provided flowTNodeId or fall back to root
       const flowId = event.type === 'REQUEST_PLUGIN_DATA' && event.flowTNodeId
-        ? event.flowTNodeId as EARS.EntityId
+        ? event.flowTNodeId as EARS.EntityId<'TNode'>
         : undefined;
 
       let data: FlowTNodeData;
@@ -328,7 +328,7 @@ export const brainSystem = setup({
     },
     openTNode: ({ system, event, context }) => {
       const ev = brainSpec.typeOf('OPEN_TNODE', event);
-      const tNodeId = ev.tNodeId as EARS.EntityId;
+      const tNodeId = ev.tNodeId as EARS.EntityId<'TNode'>;
 
       // Check if this is a flow TNode before trying to get extended data
       const tNode = repository.brainQueries.tNodeById(tNodeId);
@@ -346,9 +346,9 @@ export const brainSystem = setup({
       }));
     },
     goBackTNode: ({ system, event }) => {
-      const currentFlowTNodeId = brainSpec.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId | undefined;
+      const currentFlowTNodeId = brainSpec.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId<'TNode'> | undefined;
       const parentFlowTNodeId = currentFlowTNodeId
-        ? repository.brainQueries.tNodeById(currentFlowTNodeId)?.nodeAttributes?._parentFlowTNodeId as EARS.EntityId | undefined
+        ? repository.brainQueries.tNodeById(currentFlowTNodeId)?.nodeAttributes?._parentFlowTNodeId as EARS.EntityId<'TNode'> | undefined
         : undefined;
 
       const data = parentFlowTNodeId
@@ -363,7 +363,7 @@ export const brainSystem = setup({
     },
     getTNodeDetails: ({ system, event }) => {
       const ev = brainSpec.typeOf('GET_TNODE_DETAILS', event);
-      const tNodeId = ev.tNodeId as EARS.EntityId;
+      const tNodeId = ev.tNodeId as EARS.EntityId<'TNode'>;
       
       const tNode = repository.brainQueries.tNodeById(tNodeId);
       

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { clearMemory } from '@abuddy/host/ears';
 import '@/features/actions/be/repository';
 import { exportActions } from '@/features/actions/be/repository/export-actions';

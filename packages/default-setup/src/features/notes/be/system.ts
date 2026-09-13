@@ -6,7 +6,7 @@ import { bus } from '@abuddy/sdk/ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 
 import './repository';
 import { syncReferences } from './repository/link-utils';

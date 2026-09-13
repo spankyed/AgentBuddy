@@ -1,84 +1,51 @@
-import { describe, it } from 'vitest';
-import { expectTypeOf } from 'vitest';
-import { emit, type PackEvents } from '@/__generated__/events';
+// Compile-time checks, run by `tsc` (npm run typecheck:pack). Exact type equality and expected
+// errors fail if the generated events regress to `any` or accept a wrong event.
+import { describe, expectTypeOf, it } from 'vitest';
+import type { HostPluginEvents } from '@abuddy/sdk/services';
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
+import type { EARS } from '@/__generated__/ears';
+import { emit, sendToPlugin, type PackEvents } from '@/__generated__/events';
+import type { OutgoingActionEvents } from '@/features/actions/be/system';
+import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
 
-// ─── PackEvents augmentation ──────────────────────────────────
+declare const actionEvent: OutgoingActionEvents;
+declare const hotkeys: ApplicationHotkeys;
 
-describe('PackEvents — augmented keys', () => {
-  it('registry includes all 12 plugin IDs', () => {
-    type Keys = keyof PackEvents;
-    expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'code'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'database'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'brain'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'flows'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'library'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'logs'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'notes'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'browser'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'prompts'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'actions'>().toMatchTypeOf<Keys>();
+describe('PackEvents', () => {
+  it('maps each plugin to exactly the events it receives', () => {
+    expectTypeOf<PackEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
+    // The flows plugin receives its own system's events and the actions system's (sendsTo)
+    expectTypeOf<PackEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
+    expectTypeOf<PackEvents['application']>().toEqualTypeOf<HostPluginEvents['application']>();
   });
 
-  it('unregistered plugin is not a key', () => {
-    type Keys = keyof PackEvents;
-    expectTypeOf<'unknown-plugin'>().not.toMatchTypeOf<Keys>();
-  });
-});
-
-// ─── PackEvents event shapes ──────────────────────────────────
-
-describe('PackEvents — event shapes', () => {
-  it('threads events include THREAD_CONNECTED', () => {
-    type ThreadEvents = PackEvents['threads'];
-    expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CONNECTED' }>>().not.toBeNever();
-  });
-
-  it('threads events include THREAD_CREATED', () => {
-    type ThreadEvents = PackEvents['threads'];
-    expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CREATED' }>>().not.toBeNever();
-  });
-
-  it('code events include CODE_CONNECTED', () => {
-    type CodeEvents = PackEvents['code'];
-    expectTypeOf<Extract<CodeEvents, { type: 'CODE_CONNECTED' }>>().not.toBeNever();
-  });
-
-  it('settings events include SETTINGS_LOADED', () => {
-    type SettingsEvents = PackEvents['settings'];
-    expectTypeOf<Extract<SettingsEvents, { type: 'SETTINGS_LOADED' }>>().not.toBeNever();
+  it('has no entry for a plugin nothing sends to', () => {
+    // @ts-expect-error not a plugin of this pack, its dependencies or the host
+    expectTypeOf<PackEvents['unknown-plugin']>().toBeNever();
   });
 });
 
-// ─── Typed emit() overload ─────────────────────────────────────────────
-
-describe('Typed emit() — constrained by PackEvents', () => {
-  it('emit return type includes OUTGOING wrapper', () => {
-    type EmitFn = typeof emit;
-    expectTypeOf<ReturnType<EmitFn>>().toHaveProperty('type');
-    expectTypeOf<ReturnType<EmitFn>>().toHaveProperty('event');
+describe('emit and sendToPlugin', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it('accept an event the plugin receives', () => {
+    const wrapped = emit('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
+    expectTypeOf(wrapped.event.pluginId).toEqualTypeOf<'threads'>();
+    expectTypeOf(() => {
+      emit('flows', actionEvent);
+      emit('application', { type: 'APPLICATION_HOTKEYS', hotkeys });
+      sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'notes' });
+    }).toBeFunction();
   });
 
-  it('emit with unregistered plugin accepts any event via fallback overload', () => {
-    const fallback: (id: string, event: { type: string }) => any = emit;
-    expectTypeOf(fallback).toBeFunction();
-  });
-
-  it('emit constrained overload narrows event param for registered plugin', () => {
-    type ThreadEvent = PackEvents['threads'];
-    type EmitThreads = (pluginId: 'threads', event: ThreadEvent) => any;
-    const typedEmit: EmitThreads = emit;
-    expectTypeOf(typedEmit).toBeFunction();
-  });
-});
-
-// ─── Extensibility ─────────────────────────────────────────────────────
-
-describe('PackEvents — extensibility', () => {
-  it('registry is open for declaration merging', () => {
-    type Keys = keyof PackEvents;
-    type HasThreads = 'threads' extends Keys ? true : false;
-    expectTypeOf<HasThreads>().toEqualTypeOf<true>();
+  it('reject an event the plugin does not receive', () => {
+    expectTypeOf(() => {
+      // @ts-expect-error the threads plugin doesn't receive action events
+      emit('threads', actionEvent);
+      // @ts-expect-error not an application event
+      emit('application', { type: 'SETTINGS_LOADED' });
+      // @ts-expect-error unknown plugin
+      sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+    }).toBeFunction();
   });
 });

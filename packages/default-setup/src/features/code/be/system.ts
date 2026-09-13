@@ -22,7 +22,7 @@ import './repository' // side-effect: registers terminalQueries/terminalCommands
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 
 // child systems
 import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'

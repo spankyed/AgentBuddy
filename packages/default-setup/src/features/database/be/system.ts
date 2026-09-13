@@ -14,7 +14,7 @@ import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/host/back
 import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@/__generated__/types';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/host/ears';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 
 const logger = createLogger('database');
 

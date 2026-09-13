@@ -9,10 +9,10 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/__generated__/ears'
-import { tx } from '@abuddy/sdk/ears'
-import { hasIdCollision } from '@abuddy/sdk/ears'
+import { tx } from '@abuddy/sdk/ears';
+import { hasIdCollision } from '@abuddy/sdk/ears';
 import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import type { ExportedThreadsData } from './export-types'
 
 interface ImportResult {

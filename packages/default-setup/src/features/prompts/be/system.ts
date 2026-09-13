@@ -5,7 +5,7 @@ import { bus } from '@abuddy/sdk/ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { PromptsConnectedData, PromptEntity } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import './repository';

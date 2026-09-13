@@ -1,4 +1,4 @@
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { ActionEntity } from '@/features/actions/be/types';
 import { EARS } from '@/__generated__/ears';
 import { services as appServices } from '@abuddy/sdk/services';

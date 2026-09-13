@@ -8,7 +8,7 @@ import { brain } from '@/__generated__/system-ids';
 import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
 import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import { tx } from '@abuddy/sdk/ears';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
 import type { AgentSettings, CommandItem } from '../../settings/be/types';

@@ -1,7 +1,8 @@
 import { findById, findAll, qx } from '@/__generated__/ears';
-import { registerRepository } from '@abuddy/sdk/ears';
+
 import { EARS } from '@/__generated__/ears';
-import { updateEntity, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { updateEntity } from '@/__generated__/ears';
 import { wouldCreateCycle } from '@abuddy/sdk/ears';
 import { b64Encode, b64Decode } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
@@ -14,7 +15,7 @@ import type {
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
 import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 
 /**
  * Threads Repository
@@ -1022,7 +1023,3 @@ export const chatCommands = {
   ): ArtifactEntity | undefined => findArtifactByThreadAndType(threadId, artifactType),
 } as const;
 
-registerRepository('threadQueries', threadQueries);
-registerRepository('threadCommands', threadCommands);
-registerRepository('chatQueries', chatQueries);
-registerRepository('chatCommands', chatCommands);

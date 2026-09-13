@@ -1,7 +1,8 @@
 import { findById, findByIdRaw, findAll, findWhere } from '@/__generated__/ears';
-import { registerRepository } from '@abuddy/sdk/ears';
+
 import { EARS } from '@/__generated__/ears';
-import { createEntityWithDefaults, updateEntity, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { ActionEntity } from '../types';
 
 /**
@@ -61,7 +62,7 @@ export const actionCommands = {
       throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
     
-    const action = createEntityWithDefaults<ActionEntity>(
+    const action = createEntityWithDefaults(
       EARS.Entity.Action,
       {
         ...data,
@@ -100,5 +101,3 @@ export const actionCommands = {
   },
 } as const;
 
-registerRepository('actionQueries', actionQueries);
-registerRepository('actionCommands', actionCommands);

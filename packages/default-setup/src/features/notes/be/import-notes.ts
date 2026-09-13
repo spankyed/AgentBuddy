@@ -1,7 +1,7 @@
 import { findWhere, qx } from '@/__generated__/ears';
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
 import { hasIdCollision } from '@abuddy/sdk/ears';
 

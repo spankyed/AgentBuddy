@@ -1,5 +1,6 @@
 import { qx } from '@/__generated__/ears';
-import { registerRepository, RepositoryError, RepositoryErrorCode, tx, getAttr, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode, tx, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
+import { getAttr } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 import { edgeStore, filterSystemFields } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -14,7 +15,7 @@ import type {
   FlowsConnectedData
 } from '../types';
 import { availableModels } from '@abuddy/sdk/inference';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
 import type { CompiledRows } from '@abuddy/sdk/build';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/build';
 
@@ -735,5 +736,3 @@ export const flowsCommands = {
   },
 } as const;
 
-registerRepository('flowsQueries', flowsQueries);
-registerRepository('flowsCommands', flowsCommands);

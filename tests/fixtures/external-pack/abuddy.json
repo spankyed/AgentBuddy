@@ -30,7 +30,11 @@
         "label": "Memos",
         "icon": "StickyNote"
       },
-      "services": {}
+      "services": {},
+      "repositories": {
+        "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
+        "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
+      }
     }
   ],
   "dependencies": {},

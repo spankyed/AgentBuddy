@@ -1,6 +1,7 @@
 import { findById, findByIdRaw, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { createEntityWithDefaults, updateEntity, createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 
 import { tx } from '@abuddy/sdk/ears';
 import type { NoteEntity } from '../types';
@@ -86,7 +87,7 @@ export const noteCommands = {
       }
     }
 
-    const note = createEntityWithDefaults<NoteEntity>(
+    const note = createEntityWithDefaults(
       EARS.Entity.Note,
       {
         title: input.title,

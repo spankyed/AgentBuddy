@@ -1,6 +1,7 @@
 import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { getAttr, getAttrs, getEntitiesOfType, getAll, getRoles } from '@abuddy/sdk/ears';
+import { getEntitiesOfType, getAll, getRoles } from '@abuddy/sdk/ears';
+import { getAttr, getAttrs } from '@/__generated__/ears';
 import {
   getAllEntities,
   queryEntitiesByRelationTo,
