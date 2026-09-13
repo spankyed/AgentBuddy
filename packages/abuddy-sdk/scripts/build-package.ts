@@ -5,7 +5,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { builtinModules } from 'node:module';
 import { build, type Plugin } from 'esbuild';
+import { parse as parseSfc } from '@vue/compiler-sfc';
 
 const pkgDir = path.resolve(import.meta.dirname, '..');
 const srcDir = path.join(pkgDir, 'src');
@@ -46,6 +48,17 @@ function walk(dir: string): string[] {
   });
 }
 
+/** Package name → files importing it, from every shipped module (compiled .ts and .vue scripts). */
+const bareImports = new Map<string, Set<string>>();
+const packageName = (specifier: string) =>
+  specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
+
+function recordBareImport(specifier: string, importer: string): void {
+  const name = packageName(specifier);
+  if (!bareImports.has(name)) bareImports.set(name, new Set());
+  bareImports.get(name)!.add(path.relative(srcDir, importer));
+}
+
 // Keep every module a separate file (one copy of shared state such as the host module
 // registry) and make relative imports Node-resolvable by pointing them at the emitted .js
 const relativeImportsToJs: Plugin = {
@@ -53,7 +66,10 @@ const relativeImportsToJs: Plugin = {
   setup(b) {
     b.onResolve({ filter: /.*/ }, (args) => {
       if (args.kind === 'entry-point') return undefined;
-      if (!args.path.startsWith('.')) return { path: args.path, external: true };
+      if (!args.path.startsWith('.')) {
+        recordBareImport(args.path, args.importer);
+        return { path: args.path, external: true };
+      }
       const target = path.resolve(args.resolveDir, args.path);
       if (fs.existsSync(target) && fs.statSync(target).isFile()) {
         return { path: args.path.replace(/\.ts$/, '.js'), external: true };
@@ -104,6 +120,32 @@ async function main(): Promise<void> {
     plugins: [relativeImportsToJs],
   });
 
+  // SFC scripts are compiled by the pack's build, so their imports must be installable too.
+  // verbatimModuleSyntax keeps imports only the template uses; `import type` is still dropped.
+  for (const file of files.filter((f) => f.endsWith('.vue'))) {
+    const { descriptor } = parseSfc(fs.readFileSync(file, 'utf-8'), { filename: file });
+    for (const block of [descriptor.script, descriptor.scriptSetup]) {
+      if (!block) continue;
+      await build({
+        stdin: { contents: block.content, loader: block.lang === 'ts' ? 'ts' : 'js', resolveDir: path.dirname(file), sourcefile: file },
+        bundle: true,
+        write: false,
+        logLevel: 'silent',
+        tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } },
+        plugins: [{
+          name: 'collect-sfc-imports',
+          setup(b) {
+            b.onResolve({ filter: /^[^./]/ }, (args) => {
+              recordBareImport(args.path, file);
+              return { path: args.path, external: true };
+            });
+            b.onResolve({ filter: /^\./ }, (args) => ({ path: args.path, external: true }));
+          },
+        }],
+      });
+    }
+  }
+
   // Vue SFCs, CSS and hand-written declarations ship as source; the pack's Vite build compiles them
   for (const file of files.filter((f) => !tsSources.includes(f))) {
     const dest = path.join(outDir, path.relative(srcDir, file));
@@ -123,9 +165,18 @@ async function main(): Promise<void> {
     Object.entries(pkg.dependencies as Record<string, string>).filter(([name]) => !(name in HOST_SHARED_PEERS)),
   );
   const peerDependencies = { ...pkg.peerDependencies, ...HOST_SHARED_PEERS };
-  // Its optional peers (vue ^2.6.14 || >=3, @vue/composition-api) make npm resolve vue 2 in a fresh
-  // install and fail with ERESOLVE. Packs that use SimpleMonacoEditor install it themselves.
-  delete peerDependencies['@guolao/vue-monaco-editor'];
+
+  // Every package a shipped module imports must be installable by a pack that uses it
+  const declared = new Set([pkg.name, ...Object.keys(dependencies), ...Object.keys(peerDependencies)]);
+  const builtins = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
+  const undeclared = [...bareImports].filter(([name]) => !declared.has(name) && !builtins.has(name));
+  if (undeclared.length > 0) {
+    throw new Error(
+      'Shipped @abuddy/sdk modules import packages the published manifest does not declare:\n' +
+      undeclared.map(([name, importers]) => `  ${name} <- ${[...importers].slice(0, 3).join(', ')}`).join('\n') +
+      '\nAdd them to packages/abuddy-sdk/package.json dependencies (or peerDependencies for host-shared libraries).',
+    );
+  }
   const optionalPeers = Object.fromEntries(
     Object.keys(peerDependencies)
       // npm installs required peers: pack builds read host-shared libraries' exports, and types come from them

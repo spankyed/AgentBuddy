@@ -50,6 +50,18 @@ npm install --silent
 # From here on, `abuddy` is the pack's own pinned CLI
 ABUDDY="$PACK/node_modules/.bin/abuddy"
 "$ABUDDY" add feature notes --label Notes >/dev/null
+# The published SDK's heavier components must build in a pack, not only in the monorepo
+cat > src/features/notes/fe/editors.ts <<'TS'
+import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue';
+import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
+
+export const editors = { TiptapEditor, SimpleMonacoEditor };
+TS
+node -e '
+  const fs = require("fs");
+  const file = "src/features/notes/fe/plugin.ts";
+  fs.writeFileSync(file, "import { editors } from \"./editors\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
+'
 "$ABUDDY" init-tests
 npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
 npm install --silent
@@ -88,7 +100,12 @@ EOF
 
 step "3. abuddy build"
 "$ABUDDY" build | tee "$WORK/build.log"
-grep -q "flows: 1" "$WORK/build.log" || fail "the keepAlive flow was not compiled"
+# The build prints a seed-file count even with no flows; check the compiled flow itself
+node -e '
+  const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));
+  const flow = flows["Notes Heartbeat"];
+  if (!flow || !JSON.stringify(flow).includes("keep_alive")) throw new Error("the keepAlive flow was not compiled: " + JSON.stringify(flows));
+' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
 
 step "3. abuddy release --local --dry-run"

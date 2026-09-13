@@ -43,6 +43,19 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', ({ dir, ext }
     expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/runtime/host.${ext}`);
   }, 60_000);
 
+  it('proxies shared SDK modules that SDK components import by relative path', async () => {
+    const { packDir, entry } = makePack(dir,
+      `import { createEditorClickHandler } from '@abuddy/sdk/fe/components/tiptap/composables/createEditorClickHandler';\n` +
+      `export const handler = createEditorClickHandler({ noteLinkClick() {}, imageClick() {} });\n`,
+    );
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    expect(result.success).toBe(true);
+    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy.sdkFe');
+  }, 60_000);
+
   it('builds when SDK imports go through host-shared proxies', async () => {
     const { packDir, entry } = makePack(dir,
       `import { trpc } from '@abuddy/sdk/rpc';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +

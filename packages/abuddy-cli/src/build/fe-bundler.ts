@@ -77,6 +77,25 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     }
   }
 
+  // SDK modules the host shares, by file. SDK components import these barrels by relative
+  // path (e.g. '../../index'); those imports must get the host proxy too, not an inlined copy.
+  let sharedModuleFiles: { sdkRoot: string; bySpecifier: Map<string, string> } | null | undefined;
+  function getSharedModuleFiles() {
+    if (sharedModuleFiles !== undefined) return sharedModuleFiles;
+    try {
+      const req = createRequire(path.join(packDir, 'package.json'));
+      const sdkRoot = fs.realpathSync(path.dirname(req.resolve('@abuddy/sdk/package.json')));
+      const bySpecifier = new Map<string, string>();
+      for (const specifier of Object.keys(sdkModules)) {
+        try { bySpecifier.set(fs.realpathSync(req.resolve(specifier)), specifier); } catch {}
+      }
+      sharedModuleFiles = { sdkRoot, bySpecifier };
+    } catch {
+      sharedModuleFiles = null;
+    }
+    return sharedModuleFiles;
+  }
+
   return {
     name: 'pack-externals',
     enforce: 'pre',
@@ -117,7 +136,18 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       );
     },
 
-    resolveId(source) {
+    async resolveId(source, importer, options) {
+      const shared = source.startsWith('.') && importer ? getSharedModuleFiles() : null;
+      if (shared) {
+        const importerPath = importer!.split('?')[0];
+        const insideSdk = fs.existsSync(importerPath) && fs.realpathSync(importerPath).startsWith(shared.sdkRoot + path.sep);
+        if (insideSdk) {
+          const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+          const file = resolved && !resolved.external ? resolved.id.split('?')[0] : undefined;
+          const specifier = file && fs.existsSync(file) ? shared.bySpecifier.get(fs.realpathSync(file)) : undefined;
+          if (specifier) return EXTERNAL_PREFIX + specifier;
+        }
+      }
       if (feDeps[source]) {
         return EXTERNAL_PREFIX + source;
       }
