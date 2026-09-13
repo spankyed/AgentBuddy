@@ -7,7 +7,7 @@ import {
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   relationIndex,
-} from '@abuddy/sdk/ears/internals';
+} from '@abuddy/host/ears';
 
 /**
  * Execute a user-provided transaction against the EARS database

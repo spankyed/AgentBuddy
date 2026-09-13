@@ -13,8 +13,8 @@ const Entity = {
 };
 import { makeLmdbAdapter } from '@/core/persistence/lmdb/adapter';
 import { LmdbQuery, decodeAttr } from '@/core/persistence/lmdb/query';
-import { makePolicy, type Partition } from '@abuddy/sdk/persistence';
-import type { PersistenceSink } from '@abuddy/sdk/persistence';
+import { makePolicy, type Partition } from '@abuddy/host/persistence';
+import type { PersistenceSink } from '@abuddy/host/persistence';
 
 // Must mock before importing sharded-router (it imports getAttr at module level)
 vi.mock('@abuddy/sdk/ears', async (importOriginal) => {
@@ -23,7 +23,7 @@ vi.mock('@abuddy/sdk/ears', async (importOriginal) => {
 });
 
 // Import after mock is set up
-const { makeShardedPersistence } = await import('@abuddy/sdk/persistence');
+const { makeShardedPersistence } = await import('@abuddy/host/persistence');
 
 function tmpDir(label: string) {
   return path.join(os.tmpdir(), `vitest-persistence-${label}-${crypto.randomBytes(4).toString('hex')}`);

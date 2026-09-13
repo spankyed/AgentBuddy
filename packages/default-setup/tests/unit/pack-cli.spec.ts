@@ -97,7 +97,7 @@ describe('pack CLI: install', () => {
   });
 
   it('installPackFromLocal throws on nonexistent path', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
     await expect(installPackFromLocal('/nonexistent/path')).rejects.toThrow(/Path not found/);
   });
 
@@ -140,7 +140,7 @@ describe('pack CLI: install', () => {
   });
 
   it('symlinks in source directory are skipped during copy', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'symlink-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
@@ -167,7 +167,7 @@ describe('pack CLI: install', () => {
   });
 
   it('installs from a zip file', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'zip-source');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });

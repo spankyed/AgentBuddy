@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
+import { extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 
 /**
  * The scaffold an outside author starts from must build, typecheck and pack as
@@ -13,6 +13,8 @@ import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
 const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
+// The borrowed node_modules link the workspace @abuddy/* packages, which typecheck from source
+const TSC_ARGS = ['--noEmit', '--customConditions', '@abuddy/source'];
 
 let tmp: string;
 let pack: string;
@@ -68,7 +70,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'fe.js'))).toBe(true);
 
-    const tsc = run(TSC, ['--noEmit'], pack);
+    const tsc = run(TSC, TSC_ARGS, pack);
     expect(tsc.code, tsc.output).toBe(0);
 
     const out = path.join(tmp, 'out');
@@ -90,7 +92,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const stepsBuild = await import(path.join(pack, 'dist', 'build', 'steps.build.mjs'));
     expect(stepsBuild.steps.map((step: { type: string }) => step.type)).toEqual(['ping']);
 
-    const tsc = run(TSC, ['--noEmit'], pack);
+    const tsc = run(TSC, TSC_ARGS, pack);
     expect(tsc.code, tsc.output).toBe(0);
   }, 240_000);
 

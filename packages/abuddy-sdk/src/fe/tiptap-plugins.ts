@@ -37,8 +37,3 @@ export const tiptapPluginRegistry = {
     return plugins;
   },
 };
-
-/** Tiptap plugins every pack has contributed, for editors to install. */
-export function getTiptapPlugins(): TiptapPlugin[] {
-  return tiptapPluginRegistry.getAll();
-}

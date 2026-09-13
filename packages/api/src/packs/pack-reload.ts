@@ -5,7 +5,7 @@ import {
   registerPack,
   unregisterPack,
   getPackContributions,
-} from '@abuddy/sdk/packs';
+} from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
 import { registerShutdownHook, runShutdownHooksForKey } from '@abuddy/sdk/utils';
@@ -23,7 +23,7 @@ import { seedPackData } from './pack-seed';
 import { updateLoadedPack } from './pack-api';
 import { seedData } from '@abuddy/sdk/utils';
 import { repository } from '@abuddy/sdk/ears';
-import type { PackManifest } from '@abuddy/sdk/packs';
+import type { PackManifest } from '@abuddy/host/packs';
 
 // @ts-ignore TS1343 — runtime is ESM despite CJS tsconfig
 const _metaUrl: string = import.meta.url;

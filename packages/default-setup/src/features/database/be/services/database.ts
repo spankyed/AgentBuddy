@@ -42,7 +42,7 @@ export { EARS } from '@/__generated__/ears';
 
 import { EARS as EARSTypes } from '@/__generated__/ears';
 import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/sdk/ears/internals';
+import { relationIndex } from '@abuddy/host/ears';
 
 /**
  * Build a query context from live data for AI query generation.

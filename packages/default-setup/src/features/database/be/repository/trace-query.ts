@@ -1,4 +1,4 @@
-import { LmdbQuery, envs } from '@abuddy/sdk/ears/internals';
+import { LmdbQuery, envs } from '@abuddy/host/ears';
 import { EARS } from '@/__generated__/ears';
 import type { TNodeEntity, TrackTree } from '@/__generated__/types';
 import { createLogger } from '@abuddy/sdk/logger';

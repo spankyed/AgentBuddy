@@ -2,12 +2,12 @@
 // Types describing what a pack contributes — pack-facing, unlike the
 // registration functions in ./host.
 export type { Plugin, RouteComponents } from './plugin.js'
-export type { PackFERegistration } from './pack-store.js'
+export type { PackFERegistration } from './pack-fe-registration.js'
 export { pasteIntoElement } from './input-paste.js'
 export { useActorSystem, useApplicationActor } from './actor-system.js'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.js'
 export { registerDslType, getDslTypes, type DslTypeConfig } from './dsl-types.js'
-export { EXTRA_BLOCK_ITEMS_KEY, TIPTAP_PLUGINS_KEY, getTiptapPlugins, type BlockItem, type TiptapPlugin } from './tiptap-plugins.js'
+export { EXTRA_BLOCK_ITEMS_KEY, TIPTAP_PLUGINS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin } from './tiptap-plugins.js'
 
 export { default, default as breadcrumb, breadcrumbWithParams, breadcrumbList, staticBreadcrumbList } from './breadcrumb.js'
 export { safeEvents, safeEvents as feSafeEvents, type ExtractEvent } from './safe-events.js'

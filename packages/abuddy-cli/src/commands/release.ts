@@ -8,7 +8,7 @@ import { parseManifest } from '@abuddy/sdk/build';
 import { resolveDeps } from './generate';
 import { build } from './build';
 import { packBundle } from './pack';
-import { bundleArchiveName, readBundleInfo, verifyBundle, extractBundleArchive } from '@abuddy/sdk/packs';
+import { bundleArchiveName, readBundleInfo, verifyBundle, extractBundleArchive } from '@abuddy/host/packs';
 
 const HELP = `
 Usage:

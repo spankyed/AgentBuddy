@@ -1,5 +1,5 @@
 import { repository } from '../ears/index.js';
-import { findAll } from '../ears/internals.js';
+import { findAll } from '../ears/query-helpers.js';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.js';
 import { seedPath } from '../build/manifest.js';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.js';

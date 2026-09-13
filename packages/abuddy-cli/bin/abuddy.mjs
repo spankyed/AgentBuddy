@@ -27,5 +27,15 @@ if (handoff) {
   register();
   // Published packages run the compiled bundle
   const bundle = new URL('../dist/cli.js', import.meta.url);
+  if (!existsSync(bundle)) {
+    // In the monorepo, workspace @abuddy/* packages resolve to their source (package.json exports).
+    // Registered after tsx, so it runs first and tsx resolves with the added condition.
+    const { register: registerHooks } = await import('node:module');
+    const hooks = `export const resolve = (specifier, context, next) =>
+      next(specifier, { ...context, conditions: [...context.conditions, '@abuddy/source'] });`;
+    registerHooks(`data:text/javascript,${encodeURIComponent(hooks)}`);
+    // Child Node processes (Playwright, the app's API) resolve the same way
+    process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS, '--conditions=@abuddy/source'].filter(Boolean).join(' ');
+  }
   await import(existsSync(bundle) ? bundle.href : '../src/index.ts');
 }

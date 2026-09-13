@@ -4,9 +4,9 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { satisfies } from 'semver';
 import { discoverBuiltInPacks } from './pack-discovery.js';
-import { resolveAppContext } from '../env/index.js';
-import { parseManifest } from '../build/validate.js';
-import type { PackManifest } from '../build/manifest.js';
+import { resolveAppContext } from '@abuddy/sdk/env';
+import { parseManifest } from '@abuddy/sdk/build';
+import type { PackManifest } from '@abuddy/sdk/build';
 import {
   BUNDLE_PATHS,
   extractBundleArchive,

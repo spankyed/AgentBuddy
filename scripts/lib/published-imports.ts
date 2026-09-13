@@ -1,25 +1,10 @@
-// Shared by the package builds of @abuddy/sdk and @abuddy/ui: host-shared peer ranges and
-// the guard that every package a shipped module imports is declared in the published manifest.
+// Shared by the package builds of @abuddy/sdk and @abuddy/ui: the guard that every package a
+// shipped module imports is declared in the manifest, and that the exports map was built.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import { build } from 'esbuild';
 import { parse as parseSfc } from '@vue/compiler-sfc';
-
-/** Shared with the running app: packs must use the host's copy, so they are peers with host ranges. */
-export const HOST_SHARED_PEERS: Record<string, string> = {
-  vue: '^3.5.18',
-  xstate: '^5.19.2',
-  '@xstate/vue': '^4.0.2',
-  'lucide-vue-next': '^0.503.0',
-  'reka-ui': '^2.2.1',
-  zod: '^3.24.0',
-  '@tiptap/core': '^3.20.1',
-  '@tiptap/pm': '^3.20.1',
-  '@tiptap/starter-kit': '^3.20.1',
-  '@tiptap/vue-3': '^3.20.1',
-  '@vue-flow/core': '^1.44.0',
-};
 
 const packageName = (specifier: string) =>
   specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
@@ -74,6 +59,18 @@ export class BareImports {
       `\nAdd them to ${workspaceManifest} dependencies (or peerDependencies for host-shared libraries).`,
     );
   }
+}
+
+/** The condition monorepo tooling resolves workspace packages' source through. */
+export const SOURCE_CONDITION = '@abuddy/source';
+
+/** Throws when an exports target outside the source condition wasn't built. */
+export function assertExportTargetsBuilt(pkgDir: string, exportsMap: Record<string, unknown>): void {
+  const targets = (entry: unknown): string[] =>
+    typeof entry === 'string' ? [entry]
+      : Object.entries(entry as Record<string, unknown>).flatMap(([condition, t]) => (condition === SOURCE_CONDITION ? [] : targets(t)));
+  const missing = Object.values(exportsMap).flatMap(targets).filter((t) => !fs.existsSync(path.join(pkgDir, t)));
+  if (missing.length > 0) throw new Error(`Export targets were not built:\n  ${missing.join('\n  ')}`);
 }
 
 export function walk(dir: string): string[] {

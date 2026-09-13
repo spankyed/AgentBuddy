@@ -35,12 +35,6 @@ export type {
   CompiledFAQ,
 } from './compilers/index.js';
 
-// Shared dependency registry (FE/BE externalization + host resolution)
-export {
-  getSharedFeDeps, getSdkFeModules, getSharedBeDeps, findSdkVersion,
-} from './shared-deps.js';
-export type { SharedDep } from './shared-deps.js';
-
 // Pack preview types
 export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview.js';
 
@@ -66,9 +60,8 @@ export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './s
 export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes } from './generate-entries.js';
 export type { GenerateEntriesOptions } from './generate-entries.js';
 
-// Built-in pack discovery (build-time)
-export { discoverBuiltInPacksForBuild } from './discover.js';
-export type { BuiltInPackBuildInfo } from './discover.js';
+// Resolve conditions for building pack code against a linked checkout
+export { sourceConditions } from './source-conditions.js';
 
 // Pack validation
 export { validateManifest, validateFeatures, parseManifest } from './validate.js';

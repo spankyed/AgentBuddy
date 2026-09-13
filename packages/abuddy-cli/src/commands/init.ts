@@ -79,6 +79,8 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   devDependencies: {
     // Pinned per project: a global, Homebrew or app-bundled `abuddy` hands off to this one
     '@abuddy/cli': `^${cliVersion()}`,
+    // The scaffold's tsconfig uses Node types
+    '@types/node': '^22.15.17',
     typescript: '^5.8.3',
     vitest: '^3.2.1',
   },

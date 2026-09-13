@@ -6,8 +6,9 @@
     "declarationMap": true,
     "sourceMap": true,
     "rootDir": "src",
-    "outDir": "dist/package"
+    "outDir": "dist"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/testing/**"]
+  // The engine's host hook resolves only under the @abuddy/source condition
+  "exclude": ["src/ears/internals.ts"]
 }

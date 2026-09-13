@@ -49,6 +49,8 @@ beforeAll(() => {
   write('tsconfig.json', JSON.stringify({
     compilerOptions: {
       target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true, noEmit: true,
+      // Checks the codegen against the workspace SDK's source
+      customConditions: ['@abuddy/source'],
       types: ['node'], paths: { '#generated/*': ['./src/__generated__/*'] },
     },
     include: ['src/__generated__/ears.ts', 'src/consumer.ts'],

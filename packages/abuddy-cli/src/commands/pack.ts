@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { findPackRoot, readManifest, sdkVersion } from '../utils';
-import { createBundleArchive, stageBundle, verifyBundle, type BundleInfo } from '@abuddy/sdk/packs';
+import { createBundleArchive, stageBundle, verifyBundle, type BundleInfo } from '@abuddy/host/packs';
 import { parseManifest } from '@abuddy/sdk/build';
 
 const HELP = `

@@ -29,7 +29,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions.js'
 import { getEditorConfig } from './editor-config.js'
-import { getTiptapPlugins } from '@abuddy/sdk/fe'
+import { tiptapPluginRegistry } from '@abuddy/sdk/fe'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
@@ -42,7 +42,7 @@ import { setEditorSystem } from './editor-system.js'
 
 setEditorSystem(useActorSystem())
 
-const tiptapPlugins = getTiptapPlugins()
+const tiptapPlugins = tiptapPluginRegistry.getAll()
 const injectedExtensions = tiptapPlugins.flatMap(p => p.extensions ?? [])
 const pluginPopups = tiptapPlugins.flatMap(p => p.popups ?? [])
 const isSuggestionActive = (view: import('@tiptap/pm/view').EditorView) =>

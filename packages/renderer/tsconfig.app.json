@@ -3,6 +3,8 @@
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../abuddy-sdk/src/fe/**/*"],
   "exclude": ["src/**/__tests__/*", "src/core/types/generated/*"],
   "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {

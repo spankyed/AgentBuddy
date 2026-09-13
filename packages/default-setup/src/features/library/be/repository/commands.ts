@@ -1,7 +1,7 @@
 import { qx } from '@/__generated__/ears';
 import * as path from 'path'
 import { tx } from '@abuddy/sdk/ears';
-import { edgeStore } from '@abuddy/sdk/ears/internals'
+import { edgeStore } from '@abuddy/host/ears'
 import { EARS } from '@/__generated__/ears'
 import { createLogger } from '@abuddy/sdk/logger'
 import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection, FolderItem } from '../types'

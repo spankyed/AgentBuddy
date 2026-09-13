@@ -22,7 +22,7 @@
 import '@/setup/sdk-host-init';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { qx } from '@abuddy/sdk/ears/internals';
+import { qx } from '@abuddy/host/ears';
 import { EARS } from '@/core/types';
 import { getAllEntities, getEntitiesOfType, getAllEntityTypes, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/shared/paths';

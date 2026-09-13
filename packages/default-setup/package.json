@@ -16,6 +16,7 @@
     "build:dev": "abuddy build --skip-fe"
   },
   "dependencies": {
+    "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "@abuddy/ui": "*",
     "@ai-sdk/provider": "^1.1.3",

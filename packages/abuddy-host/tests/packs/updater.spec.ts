@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { findLatestRelease } from '../../src/packs/pack-updater';
+import { findLatestRelease } from '../../src/packs/pack-updater.js';
 
 function mockReleases(releases: Array<{ tag_name: string; draft?: boolean; prerelease?: boolean }>) {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify(releases), { status: 200 }));

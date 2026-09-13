@@ -1,4 +1,4 @@
-import { readPackRegistry } from '@abuddy/sdk/packs';
+import { readPackRegistry } from '@abuddy/host/packs';
 
 /**
  * Why a just-installed or updated pack isn't working, or undefined when it activated and

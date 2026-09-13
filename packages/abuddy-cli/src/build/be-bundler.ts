@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SHARED_DEPS } from '@abuddy/sdk/build/shared-deps';
+import { SHARED_DEPS } from '@abuddy/host/build/shared-deps';
 
 export interface BundleRuntimeOptions {
   /** Minify for release bundles; dev builds keep readable output with source maps. */

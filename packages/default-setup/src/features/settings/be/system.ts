@@ -17,7 +17,7 @@ import { detectAllArrayChanges } from './change-detection';
 import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
-import { resetLmdbFiles } from '@abuddy/sdk/ears/internals';
+import { resetLmdbFiles } from '@abuddy/host/ears';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@abuddy/sdk/utils';
 import { mergeSecretReferences } from './secrets/merge-secret-settings';

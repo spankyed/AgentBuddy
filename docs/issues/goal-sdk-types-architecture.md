@@ -197,4 +197,4 @@ Fix or list with a reason:
 - Investigate failing tests before changing assertions; mutation-check every new guard or test.
 - Prefer libraries over hand-rolled code (`tsc`, vue-tsc, publint, `@arethetypeswrong/cli`, api-extractor). No polling or hacky workarounds.
 - External packs are first-class. Keep the in-repo fixture pack, the example pack (`/Users/spankyed/Develop/Projects/abuddy-external/example-pack`) and `test:packaged-authoring` passing throughout.
-- Manual API boots: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node dist/server.js`.
+- Manual API boots: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node --conditions=@abuddy/source dist/server.js`.

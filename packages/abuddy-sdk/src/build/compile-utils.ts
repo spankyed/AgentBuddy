@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import ts from 'typescript';
 import * as esbuild from 'esbuild';
+import { sourceConditions } from './source-conditions.js';
 
 const DISALLOWED_GLOBALS = new Set([
   'require', 'process', '__dirname', '__filename', 'Buffer', 'global',
@@ -77,6 +78,7 @@ function formatMessage(message: esbuild.Message): string {
 }
 
 export async function bundleFile(filePath: string): Promise<BundleResult> {
+  const extraConditions = sourceConditions(path.dirname(filePath));
   try {
     const result = await esbuild.build({
       entryPoints: [filePath],
@@ -88,6 +90,8 @@ export async function bundleFile(filePath: string): Promise<BundleResult> {
       // Messages are collected and reported by the caller. esbuild's own stderr
       // output would repeat a shared helper's error once per importing entry.
       logLevel: 'silent',
+      // Custom conditions replace esbuild's implicit 'module' condition, so keep it
+      ...(extraConditions.length > 0 ? { conditions: [...extraConditions, 'module'] } : {}),
       plugins: [createValidatorPlugin()],
     });
 

@@ -75,19 +75,22 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 
 Systems define `IncomingSystemEvents`, `SystemInternalEvents`, and `OutgoingSystemEvents`. System code lives in `packages/default-setup/src/features/<name>/be/system.ts`. The bus actor and systems registry live in `packages/api/src/systems.ts`.
 
-### SDK barrel split
+### SDK packages
 
-`@abuddy/sdk` separates pack-facing API from host-internal symbols. External packs import from the public barrels; host code (api, renderer) uses the internal paths.
+`@abuddy/sdk` is the pack-facing API; host-only modules live in the private `@abuddy/host` (`packages/abuddy-host`). External packs import `@abuddy/sdk` and `@abuddy/ui`; host code (api, renderer, CLI, testing, default-setup) also uses `@abuddy/host`.
 
-- `@abuddy/sdk/ears` — pack-facing: `qx`, `tx`, `repository`, `findById`, `grantRole`, etc.
-- `@abuddy/sdk/ears/internals` — host-only: `initEARSRuntime`, `edgeStore`, `relationIndex`, `clearMemory`, etc.
+- `@abuddy/sdk/ears` — pack-facing: `tx`, `repository`, `defineEars`, `grantRole`, etc. Packs get typed `qx`/`find*` from their generated `#generated/ears`.
+- `@abuddy/host/ears` — host-only: `initEARSRuntime`, `edgeStore`, `relationIndex`, `clearMemory`, untyped `qx`/`find*`, LMDB delegates. The engine itself stays in the SDK; `@abuddy/sdk/ears/internals` is its host hook, exported only under the `@abuddy/source` condition.
 - `@abuddy/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `useActorSystem`, `navigateToPlugin`, etc.
-- `@abuddy/sdk/fe/host` — host-only: `registerPackFE`, `getRegisteredPlugins`, etc.
+- `@abuddy/host/fe` — host-only: `registerPackFE`, `getRegisteredPlugins`, app extensions.
+- `@abuddy/host/packs`, `/persistence`, `/backup`, `/build/discover`, `/build/shared-deps` — pack registry, discovery, installer and updater; persistence partitioning; backups; build-time pack discovery and host-shared dependency lists.
 - `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/*.vue`, `@abuddy/ui/components/tiptap/TiptapEditor.vue`, `@abuddy/ui/composables/useDebounce`). Contracts and host-shared state (`useActorSystem`, menu state, tiptap plugin and DSL registries) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
 - `@abuddy/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
 - `@abuddy/sdk/utils/pure` — **environment-agnostic**: pure utilities only (`compareVersions`, `detectChanges`, `BinaryOperator`, `toMap`, `randomId`, etc.). Frontend/renderer code must import from this path (or a specific sub-path like `@abuddy/sdk/utils/compare-versions`), never from `@abuddy/sdk/utils`.
 
 When adding new utils, put pure functions in the appropriate file under `utils/` and re-export from `pure.ts`. Node-dependent code stays in the existing Node modules and is re-exported only from `index.ts`.
+
+`@abuddy/sdk` and `@abuddy/ui` publish their workspace `package.json`. Each export resolves source under the `@abuddy/source` condition and `dist/` otherwise, so monorepo tooling sets that condition: tsconfig `customConditions`, Vite/Vitest `resolve.conditions`, esbuild/tsup `conditions`, `node --conditions` (root `.npmrc` `node-options` for npm scripts and `npx`, the CLI bin in source mode, the API process the app spawns from source). `npm run packages:build` writes `dist/`; `npm run exports:update -w @abuddy/ui` regenerates the UI exports map after adding or removing a module.
 
 When adding new EARS or FE exports, put them in the correct barrel. After changing pack-facing exports, run `npm run api:update` in `packages/abuddy-sdk` and commit the updated `etc/*.api.md` reports.
 
@@ -115,7 +118,7 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 Environment identity and data paths come from one resolver, `@abuddy/sdk/env` (`resolveAppContext()`). Don't read `NODE_ENV`, `PLAYWRIGHT_TEST` or platform paths to decide which data dir to use.
 
 - The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel stamped by `build/build.sh` (`production` | `beta`; an unstamped packaged build refuses to start); source runs → `ABUDDY_ENV` if set, else `development`. It passes `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` to the API process.
-- Anything started without them throws instead of falling back to production. Manual API boots must pass both, pointing at a copy of user data: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node dist/server.js`
+- Anything started without them throws instead of falling back to production. Manual API boots must pass both, pointing at a copy of user data: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node --conditions=@abuddy/source dist/server.js`
 - CLI commands pass `{ env }` explicitly (`install`/`uninstall`/`list`/`open` default to production; `-d`/`-b` select dev/beta).
 
 ### Migrations

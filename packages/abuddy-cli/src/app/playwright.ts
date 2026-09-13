@@ -16,12 +16,7 @@ function tryResolve(from: string, specifier: string): string | undefined {
  */
 export function resolvePlaywrightCli(packDir: string): string {
   const fromPack = path.join(packDir, 'package.json');
-  const testing = tryResolve(fromPack, '@abuddy/testing')
-    // Packs written before the split import the deprecated @abuddy/sdk/testing re-export
-    ?? (() => {
-      const legacy = tryResolve(fromPack, '@abuddy/sdk/testing');
-      return legacy && tryResolve(legacy, '@abuddy/testing');
-    })();
+  const testing = tryResolve(fromPack, '@abuddy/testing');
   if (!testing) {
     throw new Error('@abuddy/testing is not installed in this pack. Run: npm i -D @abuddy/testing @playwright/test');
   }

@@ -2,7 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config } from 'tailwindcss';
 import containerQueries from '@tailwindcss/container-queries';
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover';
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesDir = path.join(__dirname, '..');

@@ -10,10 +10,10 @@ import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
-import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/sdk/backup';
+import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/host/backup';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@/__generated__/types';
-import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/sdk/ears/internals';
+import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/host/ears';
 import { repository } from '@abuddy/sdk/ears';
 
 const logger = createLogger('database');

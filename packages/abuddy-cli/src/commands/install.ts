@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal } from '@abuddy/sdk/packs';
+import { installPack, installPackFromLocal } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 

@@ -20,4 +20,4 @@ export {
 export {
   getAllEntities,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
-} from '@abuddy/sdk/ears/internals';
+} from '@abuddy/host/ears';

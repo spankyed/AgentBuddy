@@ -1,14 +1,21 @@
-// Publishes the built copies (packages/<name>/dist/package) of @abuddy/sdk, @abuddy/ui,
-// @abuddy/cli and @abuddy/testing. Run `npm run packages:build` first. Versions already on the registry are
-// skipped, so re-running after a partial failure is safe. Prints "New tag:" lines, which
-// changesets/action turns into git tags and GitHub releases.
+// Publishes @abuddy/sdk and @abuddy/ui from their package directories (their package.json is the
+// published manifest) and the bundled copies of @abuddy/cli and @abuddy/testing
+// (packages/<name>/dist/package). Run `npm run packages:build` first. Versions already on the
+// registry are skipped, so re-running after a partial failure is safe. Prints "New tag:" lines,
+// which changesets/action turns into git tags and GitHub releases.
 //
 //   tsx scripts/publish-packages.ts [--dry-run]
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const PACKAGES = ['abuddy-sdk', 'abuddy-ui', 'abuddy-testing', 'abuddy-cli'];
+/** Package directory → the directory npm publishes */
+const PACKAGES: Record<string, string> = {
+  'abuddy-sdk': '.',
+  'abuddy-ui': '.',
+  'abuddy-testing': 'dist/package',
+  'abuddy-cli': 'dist/package',
+};
 
 const dryRun = process.argv.includes('--dry-run');
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -22,11 +29,11 @@ function isPublished(name: string, version: string): boolean {
   }
 }
 
-for (const dir of PACKAGES) {
-  const packageDir = path.join(repoRoot, 'packages', dir, 'dist', 'package');
+for (const [dir, publishDir] of Object.entries(PACKAGES)) {
+  const packageDir = path.join(repoRoot, 'packages', dir, publishDir);
   const manifestPath = path.join(packageDir, 'package.json');
-  if (!fs.existsSync(manifestPath)) {
-    throw new Error(`${path.relative(repoRoot, packageDir)} is missing. Run: npm run packages:build`);
+  if (!fs.existsSync(path.join(packageDir, 'dist'))) {
+    throw new Error(`${path.relative(repoRoot, packageDir)} is not built. Run: npm run packages:build`);
   }
   const { name, version } = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   if (isPublished(name, version)) {

@@ -1,7 +1,7 @@
 import { qx } from '@/__generated__/ears';
 import { registerRepository, RepositoryError, RepositoryErrorCode, tx, getAttr, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import { edgeStore, filterSystemFields } from '@abuddy/sdk/ears/internals';
+import { edgeStore, filterSystemFields } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import type {

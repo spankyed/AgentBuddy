@@ -12,7 +12,7 @@ import {
 import {
   clearMemory, edgeStore, relationIndex,
   qx, createEntity, findById, findByIdRaw, findAll, findWhere,
-} from '@abuddy/sdk/ears/internals';
+} from '@abuddy/host/ears';
 import { EARS } from '../../src/__generated__/ears';
 
 describe('SDK runtime — host module registry', () => {

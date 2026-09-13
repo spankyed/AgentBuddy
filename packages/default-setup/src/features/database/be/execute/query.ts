@@ -7,7 +7,7 @@ import {
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   relationIndex,
-} from '@abuddy/sdk/ears/internals';
+} from '@abuddy/host/ears';
 import { getSchemaStats } from '../repository/schema';
 
 /**

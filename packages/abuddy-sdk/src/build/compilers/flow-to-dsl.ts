@@ -1,4 +1,5 @@
-import { qx, edgeStore } from '../../ears/internals.js';
+import { qx } from '../../ears/query.js';
+import { edgeStore } from '../../ears/edge-store.js';
 import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.js';
 import { stepRegistry } from '../../steps/index.js';
 import type { FlowDSL, Track, DSLStepNode } from './flow-types.js';

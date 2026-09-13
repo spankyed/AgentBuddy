@@ -8,8 +8,8 @@
     "skipLibCheck": true,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "declarationDir": "dist/types",
-    "outDir": "dist/types",
+    "declarationDir": ".temp/api-types",
+    "outDir": ".temp/api-types",
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],

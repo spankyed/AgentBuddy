@@ -6,7 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
-import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
+import { extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 

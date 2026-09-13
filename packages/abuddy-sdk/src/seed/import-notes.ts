@@ -1,5 +1,6 @@
 import { repository, hasIdCollision } from '../ears/index.js';
-import { findWhere, qx } from '../ears/internals.js';
+import { findWhere } from '../ears/query-helpers.js';
+import { qx } from '../ears/query.js';
 import type { ExportedNote, ExportedNotes } from '../build/compilers/compile-notes.js';
 
 export interface NotesEARS {

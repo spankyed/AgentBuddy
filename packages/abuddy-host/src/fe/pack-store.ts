@@ -1,25 +1,10 @@
-import type { Component } from 'vue';
-import type { Plugin } from './plugin.js';
-import type { TiptapPlugin } from './tiptap-plugins.js';
-import type { ArtifactDefinition } from '../artifacts/types.js';
-import type { BlockDefinition } from '../blocks/types.js';
-import type { StepDefinition } from '../steps/types.js';
-import { registerDesignations, unregisterDesignations } from '../designations/index.js';
+import type { Plugin, PackFERegistration } from '@abuddy/sdk/fe';
+import { tiptapPluginRegistry } from '@abuddy/sdk/fe';
+import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
+import { blockRegistry } from '@abuddy/sdk/blocks';
+import { stepRegistry } from '@abuddy/sdk/steps';
 import { registerAppExtension, unregisterAppExtension } from './app-extensions.js';
-import { tiptapPluginRegistry } from './tiptap-plugins.js';
-import { artifactRegistry } from '../artifacts/registry.js';
-import { blockRegistry } from '../blocks/registry.js';
-import { stepRegistry } from '../steps/registry.js';
-
-export interface PackFERegistration {
-  plugins?: Plugin[];
-  defaultPlugin?: Plugin;
-  steps?: StepDefinition[];
-  tiptapPlugins?: TiptapPlugin[];
-  appExtensions?: Record<string, Component>;
-  artifacts?: ArtifactDefinition[];
-  blocks?: BlockDefinition[];
-}
 
 interface PackFEContributions {
   pluginIds: string[];

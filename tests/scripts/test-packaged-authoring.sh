@@ -17,7 +17,8 @@ if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK"' EXIT; else echo "Work dir
 step() { printf '\n==> %s\n' "$*"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR
+# npm scripts in the checkout resolve workspace source (.npmrc); outside authors don't
+unset ABUDDY_ROOT ABUDDY_APP_EXECUTABLE ABUDDY_CLI PACK_DIR NODE_OPTIONS npm_config_node_options
 # The CLI keeps its saved app choice and downloads under the user's home; use a fresh one.
 # Keep npm's cache so installs don't re-download everything.
 export npm_config_cache="$(npm config get cache)"
@@ -26,8 +27,8 @@ mkdir -p "$HOME"
 
 step "Pack @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
 (cd "$ROOT" && npm run packages:build >/dev/null)
-for pkg in sdk ui cli testing; do
-  (cd "$ROOT/packages/abuddy-$pkg/dist/package" && npm pack --silent --pack-destination "$WORK" >/dev/null)
+for dir in abuddy-sdk abuddy-ui abuddy-cli/dist/package abuddy-testing/dist/package; do
+  (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
 SDK_TGZ="$(ls "$WORK"/abuddy-sdk-*.tgz)"
 UI_TGZ="$(ls "$WORK"/abuddy-ui-*.tgz)"

@@ -5,11 +5,11 @@
  * API core reads from this instead of importing from registries directly.
  */
 
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '../framework/index.js';
-import { registerDesignations, unregisterDesignations } from '../designations/index.js';
-import { stepRegistry } from '../steps/index.js';
-import { artifactRegistry } from '../artifacts/index.js';
-import { blockRegistry } from '../blocks/index.js';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
+import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
+import { stepRegistry } from '@abuddy/sdk/steps';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
+import { blockRegistry } from '@abuddy/sdk/blocks';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 

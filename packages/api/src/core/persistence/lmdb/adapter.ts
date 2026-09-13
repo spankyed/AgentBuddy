@@ -1,5 +1,5 @@
 import type { LmdbDbs } from './envs';
-import type { PersistenceSink } from '@abuddy/sdk/persistence';
+import type { PersistenceSink } from '@abuddy/host/persistence';
 
 export interface LmdbAdapterOptions {
   hardDelete?: boolean; // If true, permanently delete instead of tombstoning

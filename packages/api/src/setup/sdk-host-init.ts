@@ -1,6 +1,6 @@
 import { registerHostModule } from '@abuddy/sdk/runtime';
 import { initRpc } from '@abuddy/sdk/rpc';
-import { initEARSRuntime } from '@abuddy/sdk/ears/internals';
+import { initEARSRuntime } from '@abuddy/host/ears';
 import * as attributeStorage from '@/core/ears/attribute-storage';
 import * as lmdbQuery from '@/core/persistence/lmdb/query';
 import * as hydrateSharded from '@/core/persistence/partitioning/hydrate-sharded';
@@ -12,12 +12,12 @@ import * as systemErrorsMod from '@/core/shared/system-errors';
 import * as eventEmitterMod from '@/core/router/event-emitter';
 import * as versionMod from '@/version';
 import * as migrationsMod from '@/setup/migrations';
-import { getRegisteredEntityTypes } from '@abuddy/sdk/packs';
+import * as packRegistry from '@abuddy/host/packs';
 
 // EARS engine lives in SDK; inject persistence (done at attribute-storage import)
 // and entity type checker
 initEARSRuntime({
-  isEntityType: (v: string) => getRegisteredEntityTypes().has(v),
+  isEntityType: (v: string) => packRegistry.getRegisteredEntityTypes().has(v),
   // persistence already injected by attribute-storage module load (setPersistence call)
 });
 
@@ -33,3 +33,4 @@ registerHostModule('system-errors', systemErrorsMod);
 registerHostModule('event-emitter', eventEmitterMod);
 registerHostModule('version', versionMod);
 registerHostModule('migrations', migrationsMod);
+registerHostModule('pack-registry', packRegistry);

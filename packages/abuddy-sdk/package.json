@@ -1,12 +1,22 @@
 {
   "name": "@abuddy/sdk",
   "version": "0.1.0",
-  "private": true,
+  "description": "Pack-facing API and types for AgentBuddy packs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spankyed/AgentBuddy.git",
+    "directory": "packages/abuddy-sdk"
+  },
   "type": "module",
+  "files": [
+    "dist",
+    "abuddy.schema.json"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:package": "tsx scripts/build-package.ts",
-    "attw": "attw --pack dist/package --profile esm-only",
+    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./ears/internals",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "tsc -p tsconfig.api-extractor.json",
@@ -16,41 +26,136 @@
     "api:update": "npm run api:build && api-extractor run --config api-extractor.ears.json --local && api-extractor run --config api-extractor.types.json --local"
   },
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "@abuddy/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./package.json": "./package.json",
-    "./designations": "./src/designations/index.ts",
-    "./env": "./src/env/index.ts",
-    "./framework": "./src/framework/index.ts",
-    "./helpers": "./src/helpers/index.ts",
-    "./types": "./src/types/index.ts",
-    "./ids": "./src/ids/index.ts",
-    "./ears": "./src/ears/index.ts",
-    "./ears/internals": "./src/ears/internals.ts",
-    "./fe": "./src/fe/index.ts",
-    "./fe/host": "./src/fe/host.ts",
-    "./fe/pack-store": "./src/fe/pack-store.ts",
-    "./fe/contributions": "./src/fe/contribution-types.ts",
-    "./actions": "./src/actions/index.ts",
-    "./artifacts": "./src/artifacts/index.ts",
-    "./blocks": "./src/blocks/index.ts",
-    "./steps": "./src/steps/index.ts",
-    "./build": "./src/build/index.ts",
-    "./build/shared-deps": "./src/build/shared-deps.ts",
-    "./build/discover": "./src/build/discover.ts",
-    "./runtime": "./src/runtime/index.ts",
-    "./logger": "./src/logger/index.ts",
-    "./rpc": "./src/rpc/index.ts",
-    "./utils": "./src/utils/index.ts",
-    "./utils/pure": "./src/utils/pure.ts",
-    "./utils/compare-versions": "./src/utils/compare-versions.ts",
-    "./services": "./src/services/index.ts",
-    "./inference": "./src/services/inference.ts",
-    "./cron": "./src/utils/cron.ts",
-    "./backup": "./src/backup/index.ts",
-    "./seed": "./src/seed/index.ts",
-    "./packs": "./src/packs/index.ts",
-    "./persistence": "./src/persistence/index.ts",
-    "./testing": "./src/testing/index.ts"
+    "./designations": {
+      "@abuddy/source": "./src/designations/index.ts",
+      "types": "./dist/designations/index.d.ts",
+      "default": "./dist/designations/index.js"
+    },
+    "./env": {
+      "@abuddy/source": "./src/env/index.ts",
+      "types": "./dist/env/index.d.ts",
+      "default": "./dist/env/index.js"
+    },
+    "./framework": {
+      "@abuddy/source": "./src/framework/index.ts",
+      "types": "./dist/framework/index.d.ts",
+      "default": "./dist/framework/index.js"
+    },
+    "./helpers": {
+      "@abuddy/source": "./src/helpers/index.ts",
+      "types": "./dist/helpers/index.d.ts",
+      "default": "./dist/helpers/index.js"
+    },
+    "./types": {
+      "@abuddy/source": "./src/types/index.ts",
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    },
+    "./ids": {
+      "@abuddy/source": "./src/ids/index.ts",
+      "types": "./dist/ids/index.d.ts",
+      "default": "./dist/ids/index.js"
+    },
+    "./ears": {
+      "@abuddy/source": "./src/ears/index.ts",
+      "types": "./dist/ears/index.d.ts",
+      "default": "./dist/ears/index.js"
+    },
+    "./fe": {
+      "@abuddy/source": "./src/fe/index.ts",
+      "types": "./dist/fe/index.d.ts",
+      "default": "./dist/fe/index.js"
+    },
+    "./fe/contributions": {
+      "@abuddy/source": "./src/fe/contribution-types.ts",
+      "types": "./dist/fe/contribution-types.d.ts",
+      "default": "./dist/fe/contribution-types.js"
+    },
+    "./actions": {
+      "@abuddy/source": "./src/actions/index.ts",
+      "types": "./dist/actions/index.d.ts",
+      "default": "./dist/actions/index.js"
+    },
+    "./artifacts": {
+      "@abuddy/source": "./src/artifacts/index.ts",
+      "types": "./dist/artifacts/index.d.ts",
+      "default": "./dist/artifacts/index.js"
+    },
+    "./blocks": {
+      "@abuddy/source": "./src/blocks/index.ts",
+      "types": "./dist/blocks/index.d.ts",
+      "default": "./dist/blocks/index.js"
+    },
+    "./steps": {
+      "@abuddy/source": "./src/steps/index.ts",
+      "types": "./dist/steps/index.d.ts",
+      "default": "./dist/steps/index.js"
+    },
+    "./build": {
+      "@abuddy/source": "./src/build/index.ts",
+      "types": "./dist/build/index.d.ts",
+      "default": "./dist/build/index.js"
+    },
+    "./runtime": {
+      "@abuddy/source": "./src/runtime/index.ts",
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
+    },
+    "./logger": {
+      "@abuddy/source": "./src/logger/index.ts",
+      "types": "./dist/logger/index.d.ts",
+      "default": "./dist/logger/index.js"
+    },
+    "./rpc": {
+      "@abuddy/source": "./src/rpc/index.ts",
+      "types": "./dist/rpc/index.d.ts",
+      "default": "./dist/rpc/index.js"
+    },
+    "./utils": {
+      "@abuddy/source": "./src/utils/index.ts",
+      "types": "./dist/utils/index.d.ts",
+      "default": "./dist/utils/index.js"
+    },
+    "./utils/pure": {
+      "@abuddy/source": "./src/utils/pure.ts",
+      "types": "./dist/utils/pure.d.ts",
+      "default": "./dist/utils/pure.js"
+    },
+    "./utils/compare-versions": {
+      "@abuddy/source": "./src/utils/compare-versions.ts",
+      "types": "./dist/utils/compare-versions.d.ts",
+      "default": "./dist/utils/compare-versions.js"
+    },
+    "./services": {
+      "@abuddy/source": "./src/services/index.ts",
+      "types": "./dist/services/index.d.ts",
+      "default": "./dist/services/index.js"
+    },
+    "./inference": {
+      "@abuddy/source": "./src/services/inference.ts",
+      "types": "./dist/services/inference.d.ts",
+      "default": "./dist/services/inference.js"
+    },
+    "./cron": {
+      "@abuddy/source": "./src/utils/cron.ts",
+      "types": "./dist/utils/cron.d.ts",
+      "default": "./dist/utils/cron.js"
+    },
+    "./seed": {
+      "@abuddy/source": "./src/seed/index.ts",
+      "types": "./dist/seed/index.d.ts",
+      "default": "./dist/seed/index.js"
+    },
+    "./abuddy.schema.json": "./abuddy.schema.json",
+    "./ears/internals": {
+      "@abuddy/source": "./src/ears/internals.ts"
+    }
   },
   "peerDependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
@@ -59,22 +164,11 @@
     "@tiptap/pm": "^3.20.1",
     "@tiptap/vue-3": "^3.20.1",
     "ai": "^4.0.0",
-    "vue": "^3.0.0",
-    "xstate": "^5.19.2"
+    "vue": "^3.5.18",
+    "xstate": "^5.19.2",
+    "zod": "^3.24.0"
   },
   "peerDependenciesMeta": {
-    "vue": {
-      "optional": true
-    },
-    "@tiptap/vue-3": {
-      "optional": true
-    },
-    "@tiptap/pm": {
-      "optional": true
-    },
-    "ai": {
-      "optional": true
-    },
     "@ai-sdk/anthropic": {
       "optional": true
     },
@@ -83,24 +177,31 @@
     },
     "@ai-sdk/openai": {
       "optional": true
+    },
+    "@tiptap/pm": {
+      "optional": true
+    },
+    "@tiptap/vue-3": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
     }
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@microsoft/api-extractor": "^7.59.1",
-    "@types/semver": "^7.8.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "vite": "^7.0.0",
     "vitest": "^3.2.4",
     "xstate": "^5.19.2",
     "zod-to-json-schema": "^3.25.0"
   },
-  "dependencies": {
-    "@types/fs-extra": "^11.0.4",
-    "esbuild": "^0.25.0",
-    "fs-extra": "^11.4.0",
-    "semver": "^7.8.5",
-    "tar": "^7.5.22",
-    "typescript": "^5.8.3",
-    "zod": "^3.24.0"
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

@@ -1,4 +1,4 @@
-import type { EARS } from '../types/index.js';
+import type { EARS } from '@abuddy/sdk/types';
 
 export type Partition = 'primary' | 'volatileBackup' | 'secrets';
 

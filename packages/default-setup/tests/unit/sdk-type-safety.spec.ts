@@ -12,7 +12,7 @@
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
 import { tx, createEntityWithDefaults, type QueryBuilder, type TransactionBuilder } from '@abuddy/sdk/ears';
 import { qx, createEntity, findById, findAll, findWhere, findFirst, type PackShapes } from '@/__generated__/ears';
-import { clearMemory, filterSystemFields, type Logger } from '@abuddy/sdk/ears/internals';
+import { clearMemory, filterSystemFields, type Logger } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import {
   loadJSON,

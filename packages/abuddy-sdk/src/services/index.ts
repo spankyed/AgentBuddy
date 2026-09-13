@@ -1,6 +1,5 @@
 import { getHostModule } from '../runtime/host.js';
 import { repository } from '../ears/index.js';
-import { getRegisteredServices } from '../packs/index.js';
 import type { EARS } from '../types/entities.js';
 import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.js';
 import type { Logger } from '../ears/runtime.js';
@@ -12,6 +11,8 @@ function lazyHost(name: string) {
 
 // --- Event emitter (host-injected) ---
 const emitter = lazyHost('event-emitter');
+/** The host's pack registry, which holds the services each registered pack contributes. */
+const packRegistry = lazyHost('pack-registry');
 
 /** `sendToPlugin` typed against a plugin event map (see `#generated/events`). */
 export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => void;
@@ -81,7 +82,7 @@ function resolveServices(): HostServices & Record<string, unknown> {
     logger: logger(),
     emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
     repository,
-    ...getRegisteredServices(),
+    ...packRegistry().getRegisteredServices(),
   };
 }
 

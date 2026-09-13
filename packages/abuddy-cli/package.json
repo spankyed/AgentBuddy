@@ -20,6 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "@octokit/rest": "^21.1.1",
     "@vitejs/plugin-vue": "^6.0.1",

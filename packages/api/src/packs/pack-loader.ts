@@ -15,13 +15,13 @@ import {
   readBundleInfo,
   resolvePackSeedsDir,
   isHostCompatible,
-} from '@abuddy/sdk/packs';
+} from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
-import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/build';
+import { getSharedBeDeps, findSdkVersion } from '@abuddy/host/build/shared-deps';
 
 // ── SDK bridge ──────────────────────────────────────────────────────
-// The API bundle inlines @abuddy/sdk (tsup bundles it). Any CJS code
+// The API bundle inlines @abuddy/sdk and @abuddy/host (tsup bundles them). Any CJS code
 // loaded at runtime (external packs, built-in dev entry) that does
 // require('@abuddy/sdk/ears') would get a SEPARATE module instance
 // with empty singleton state (Maps, registries). These static imports
@@ -30,19 +30,15 @@ import { getSharedBeDeps, findSdkVersion } from '@abuddy/sdk/build';
 // loaded pack code shares the real singletons.
 import * as _sdkRoot from '@abuddy/sdk';
 import * as _sdkEars from '@abuddy/sdk/ears';
-import * as _sdkEarsInternals from '@abuddy/sdk/ears/internals';
 import * as _sdkFramework from '@abuddy/sdk/framework';
 import * as _sdkHelpers from '@abuddy/sdk/helpers';
-import * as _sdkPacks from '@abuddy/sdk/packs';
 import * as _sdkUtils from '@abuddy/sdk/utils';
 import * as _sdkUtilsPure from '@abuddy/sdk/utils/pure';
-import * as _sdkPersistence from '@abuddy/sdk/persistence';
 import * as _sdkRpc from '@abuddy/sdk/rpc';
 import * as _sdkIds from '@abuddy/sdk/ids';
 import * as _sdkLogger from '@abuddy/sdk/logger';
 import * as _sdkServices from '@abuddy/sdk/services';
 import * as _sdkSeed from '@abuddy/sdk/seed';
-import * as _sdkBackup from '@abuddy/sdk/backup';
 import * as _sdkSteps from '@abuddy/sdk/steps';
 import * as _sdkArtifacts from '@abuddy/sdk/artifacts';
 import * as _sdkBlocks from '@abuddy/sdk/blocks';
@@ -53,23 +49,24 @@ import * as _sdkEnv from '@abuddy/sdk/env';
 // @ts-expect-error — resolved by esbuild, not tsc
 import * as _sdkInference from '@abuddy/sdk/inference';
 import * as _sdkTemplates from '@abuddy/sdk/runtime';
+// Built-in packs also use host-only modules
+import * as _hostEars from '@abuddy/host/ears';
+import * as _hostPacks from '@abuddy/host/packs';
+import * as _hostPersistence from '@abuddy/host/persistence';
+import * as _hostBackup from '@abuddy/host/backup';
 
 const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk': _sdkRoot,
   '@abuddy/sdk/ears': _sdkEars,
-  '@abuddy/sdk/ears/internals': _sdkEarsInternals,
   '@abuddy/sdk/framework': _sdkFramework,
   '@abuddy/sdk/helpers': _sdkHelpers,
-  '@abuddy/sdk/packs': _sdkPacks,
   '@abuddy/sdk/utils': _sdkUtils,
   '@abuddy/sdk/utils/pure': _sdkUtilsPure,
-  '@abuddy/sdk/persistence': _sdkPersistence,
   '@abuddy/sdk/rpc': _sdkRpc,
   '@abuddy/sdk/ids': _sdkIds,
   '@abuddy/sdk/logger': _sdkLogger,
   '@abuddy/sdk/services': _sdkServices,
   '@abuddy/sdk/seed': _sdkSeed,
-  '@abuddy/sdk/backup': _sdkBackup,
   '@abuddy/sdk/steps': _sdkSteps,
   '@abuddy/sdk/artifacts': _sdkArtifacts,
   '@abuddy/sdk/blocks': _sdkBlocks,
@@ -79,10 +76,14 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/env': _sdkEnv,
   '@abuddy/sdk/inference': _sdkInference,
   '@abuddy/sdk/runtime': _sdkTemplates,
+  '@abuddy/host/ears': _hostEars,
+  '@abuddy/host/packs': _hostPacks,
+  '@abuddy/host/persistence': _hostPersistence,
+  '@abuddy/host/backup': _hostBackup,
 };
 
 /**
- * The @abuddy/sdk specifiers bridged to host singletons.
+ * The @abuddy/sdk and @abuddy/host specifiers bridged to host singletons.
  *
  * Exported for the drift guard in tests/unit/sdk-bridge-drift.spec.ts. A pack
  * importing an @abuddy/sdk subpath that is missing here does NOT fail loudly:
@@ -106,15 +107,15 @@ let _hostSdkVersion: string | undefined;
 function getHostSdkVersion(): string | undefined {
   if (_hostSdkVersion !== undefined) return _hostSdkVersion || undefined;
   try {
-    const sdkEntry = esmRequire.resolve('@abuddy/sdk');
+    const sdkEntry = esmRequire.resolve('@abuddy/sdk/package.json');
     _hostSdkVersion = findSdkVersion(path.dirname(sdkEntry)) ?? '';
   } catch { _hostSdkVersion = ''; }
   return _hostSdkVersion || undefined;
 }
 
 // Re-export discovery types and seed helpers for backward-compatible imports
-export type { BuiltInPackInfo, PackManifest } from '@abuddy/sdk/packs';
-export { discoverBuiltInPacks } from '@abuddy/sdk/packs';
+export type { BuiltInPackInfo, PackManifest } from '@abuddy/host/packs';
+export { discoverBuiltInPacks } from '@abuddy/host/packs';
 export { computePackSeedHash, seedPackData } from './pack-seed';
 
 // ── Built-in pack loading ────────────────────────────────────────────
@@ -190,7 +191,7 @@ export async function loadBuiltInPacks(packagesDir: string): Promise<BuiltInPack
 const HOST_PROVIDED_PACKAGES = getSharedBeDeps();
 
 export interface LoadedPack {
-  manifest: import('@abuddy/sdk/packs').PackManifest;
+  manifest: import('@abuddy/host/packs').PackManifest;
   dir: string;
   systems: Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>;
   services?: Record<string, unknown>;
@@ -294,7 +295,7 @@ function loadSystemFromCJS(
 }
 
 export function loadSingleExternalPack(
-  manifest: import('@abuddy/sdk/packs').PackManifest,
+  manifest: import('@abuddy/host/packs').PackManifest,
   dir: string,
 ): LoadedPack | null {
   // The same semver check the installer applies, so any range a pack declares is honored
@@ -362,7 +363,7 @@ export function loadSingleExternalPack(
 }
 
 function loadBundledRuntime(
-  manifest: import('@abuddy/sdk/packs').PackManifest,
+  manifest: import('@abuddy/host/packs').PackManifest,
   dir: string,
   runtimeEntry: string,
 ): LoadedPack | null {
@@ -415,7 +416,7 @@ function loadBundledRuntime(
  * switches them to runtime/index.cjs.
  */
 function loadLegacyLayout(
-  manifest: import('@abuddy/sdk/packs').PackManifest,
+  manifest: import('@abuddy/host/packs').PackManifest,
   dir: string,
 ): LoadedPack | null {
   logger.warn(`Pack ${manifest.id} uses the pre-bundle layout (no ${BUNDLE_PATHS.runtimeEntry}); rebuild it with a current abuddy CLI`);

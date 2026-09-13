@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover';
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(__dirname, '..');
@@ -34,6 +34,11 @@ export default defineConfig((options) => {
     shims: true,
     minify: !isDev,
     external: ['typescript', 'esbuild'],
+    esbuildOptions(esbuildOptions) {
+      // Workspace @abuddy/* packages bundle from source (see their package.json exports).
+      // Custom conditions replace esbuild's implicit 'module' condition, so keep it.
+      esbuildOptions.conditions = ['@abuddy/source', 'module'];
+    },
     esbuildPlugins: [
     {
       name: 'externalize-vue',

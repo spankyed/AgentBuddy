@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps, getSdkFeModules } from '@abuddy/sdk/build/shared-deps'
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover'
+import { getSharedFeDeps, getSdkFeModules } from '@abuddy/host/build/shared-deps'
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -104,11 +104,14 @@ export default defineConfig({
     vueDevTools(),
   ],
   resolve: {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    conditions: ['@abuddy/source', ...defaultClientConditions],
     alias: [
       { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
     ],
   },
+  ssr: { resolve: { conditions: ['@abuddy/source', ...defaultServerConditions] } },
   optimizeDeps: {
     include: [
       'monaco-editor',

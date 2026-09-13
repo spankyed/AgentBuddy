@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin as VitePlugin } from 'vite';
-import { getSharedFeDeps, getSdkFeModules } from '@abuddy/sdk/build/shared-deps';
+import { sourceConditions } from '@abuddy/sdk/build';
+import { getSharedFeDeps, getSdkFeModules } from '@abuddy/host/build/shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
@@ -53,47 +54,47 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     return [];
   }
 
-  function discoverSourceExports(specifier: string): string[] {
-    try {
-      const req = createRequire(path.join(packDir, 'package.json'));
-      const sourcePath = req.resolve(specifier);
-      return parseNamedExports(fs.readFileSync(sourcePath, 'utf-8'));
-    } catch {}
-    return [];
+  // SDK modules resolve through Vite (this.resolve), so the build's conditions apply: a pack
+  // linked to a checkout's workspace SDK gets its source, an installed SDK its dist.
+  const packImporter = path.join(packDir, 'package.json');
+  type ResolveContext = { resolve: (source: string, importer?: string, options?: { skipSelf?: boolean }) => Promise<{ id: string; external?: boolean | string } | null> };
+  async function resolveSdkFile(ctx: ResolveContext, specifier: string): Promise<string | undefined> {
+    const resolved = await ctx.resolve(specifier, packImporter, { skipSelf: true });
+    const file = resolved && !resolved.external ? resolved.id.split('?')[0] : undefined;
+    return file && fs.existsSync(file) ? fs.realpathSync(file) : undefined;
+  }
+
+  async function discoverSourceExports(ctx: ResolveContext, specifier: string): Promise<string[]> {
+    const sourcePath = await resolveSdkFile(ctx, specifier);
+    return sourcePath ? parseNamedExports(fs.readFileSync(sourcePath, 'utf-8')) : [];
   }
 
   // The SDK's host-module registry. Proxied SDK modules share the host's copy via
   // window.__abuddy; an inlined copy has its own empty registry, so any inlined
   // module calling getHostModule() throws "SDK host module ... not registered".
-  function resolveHostRegistryPath(): string | undefined {
-    try {
-      const req = createRequire(path.join(packDir, 'package.json'));
-      const runtimeDir = path.dirname(req.resolve('@abuddy/sdk/runtime'));
-      // Workspace source, or the published package's compiled module
-      const host = ['host.ts', 'host.js'].map(f => path.join(runtimeDir, f)).find(f => fs.existsSync(f));
-      return host && fs.realpathSync(host);
-    } catch {
-      return undefined;
-    }
+  async function resolveHostRegistryPath(ctx: ResolveContext): Promise<string | undefined> {
+    const runtimeIndex = await resolveSdkFile(ctx, '@abuddy/sdk/runtime');
+    if (!runtimeIndex) return undefined;
+    // Workspace source, or the published package's compiled module
+    const host = ['host.ts', 'host.js'].map(f => path.join(path.dirname(runtimeIndex), f)).find(f => fs.existsSync(f));
+    return host && fs.realpathSync(host);
   }
 
   // SDK modules the host shares, by file. A bundled SDK module can import one of these barrels
   // by relative path (e.g. '../designations/index.js'); that import must get the host proxy too,
   // not an inlined copy.
-  let sharedModuleFiles: { sdkRoot: string; bySpecifier: Map<string, string> } | null | undefined;
-  function getSharedModuleFiles() {
-    if (sharedModuleFiles !== undefined) return sharedModuleFiles;
-    try {
-      const req = createRequire(path.join(packDir, 'package.json'));
-      const sdkRoot = fs.realpathSync(path.dirname(req.resolve('@abuddy/sdk/package.json')));
+  let sharedModuleFiles: Promise<{ sdkRoot: string; bySpecifier: Map<string, string> } | null> | undefined;
+  function getSharedModuleFiles(ctx: ResolveContext) {
+    sharedModuleFiles ??= (async () => {
+      const manifest = await resolveSdkFile(ctx, '@abuddy/sdk/package.json');
+      if (!manifest) return null;
       const bySpecifier = new Map<string, string>();
       for (const specifier of Object.keys(sdkModules)) {
-        try { bySpecifier.set(fs.realpathSync(req.resolve(specifier)), specifier); } catch {}
+        const file = await resolveSdkFile(ctx, specifier);
+        if (file) bySpecifier.set(file, specifier);
       }
-      sharedModuleFiles = { sdkRoot, bySpecifier };
-    } catch {
-      sharedModuleFiles = null;
-    }
+      return { sdkRoot: path.dirname(manifest), bySpecifier };
+    })();
     return sharedModuleFiles;
   }
 
@@ -101,8 +102,8 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     name: 'pack-externals',
     enforce: 'pre',
 
-    generateBundle(_options, bundle) {
-      const hostPath = resolveHostRegistryPath();
+    async generateBundle(_options, bundle) {
+      const hostPath = await resolveHostRegistryPath(this);
       if (!hostPath) return;
       const sdkRoot = path.dirname(path.dirname(hostPath));
       // Only code that survives tree-shaking matters (e.g. generated files re-export BE modules)
@@ -133,12 +134,12 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
         'which would fail at runtime with "SDK host module ... not registered".\n' +
         `  Import chain: ${chain.reverse().map(rel).join(' → ')}\n` +
         `  Only these SDK modules are shared with the host in the renderer: ${Object.keys(sdkModules).join(', ')}.\n` +
-        '  Import from one of those instead, or add the module to SDK_FE_MODULES in @abuddy/sdk/build/shared-deps.',
+        '  Import from one of those instead, or add the module to SDK_FE_MODULES in @abuddy/host/build/shared-deps.',
       );
     },
 
     async resolveId(source, importer, options) {
-      const shared = source.startsWith('.') && importer ? getSharedModuleFiles() : null;
+      const shared = source.startsWith('.') && importer ? await getSharedModuleFiles(this) : null;
       if (shared) {
         const importerPath = importer!.split('?')[0];
         const insideSdk = fs.existsSync(importerPath) && fs.realpathSync(importerPath).startsWith(shared.sdkRoot + path.sep);
@@ -155,17 +156,13 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       if (sdkModules[source]) {
         return EXTERNAL_PREFIX + source;
       }
-      if (source.startsWith('@abuddy/sdk') && !sdkModules[source]) {
-        try {
-          const req = createRequire(path.join(packDir, 'package.json'));
-          return req.resolve(source);
-        } catch {
-          return undefined;
-        }
+      if (source.startsWith('@abuddy/sdk')) {
+        // From the pack, not the importing module: SDK modules must resolve to the pack's SDK
+        return this.resolve(source, packImporter, { ...options, skipSelf: true });
       }
     },
 
-    load(id) {
+    async load(id) {
       if (!id.startsWith(EXTERNAL_PREFIX)) return;
       const specifier = id.slice(EXTERNAL_PREFIX.length);
 
@@ -176,7 +173,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
 
       const sdkMod = sdkModules[specifier];
       if (sdkMod) {
-        return generateGlobalProxy(sdkMod.globalKey, discoverSourceExports(specifier));
+        return generateGlobalProxy(sdkMod.globalKey, await discoverSourceExports(this, specifier));
       }
     },
   };
@@ -271,6 +268,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
       },
       resolve: {
         alias: aliasEntries,
+        conditions: [...sourceConditions(packDir), ...vite.defaultClientConditions],
       },
       build: {
         lib: {

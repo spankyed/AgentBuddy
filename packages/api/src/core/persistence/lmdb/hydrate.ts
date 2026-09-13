@@ -1,6 +1,6 @@
 import type { LmdbDbs } from './envs';
 import { EARS } from '@/core/types';
-import { mergeAttr, putAttr, addToIndex } from '@abuddy/sdk/ears/internals';
+import { mergeAttr, putAttr, addToIndex } from '@abuddy/host/ears';
 
 function dec(e: { t: string; v: any }): unknown {
   if (!e) return null;

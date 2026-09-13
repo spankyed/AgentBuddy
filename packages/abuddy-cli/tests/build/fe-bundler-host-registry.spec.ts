@@ -1,30 +1,41 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { bundlePackFE } from '../../src/build/fe-bundler';
+import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
 
-const SDK_SOURCE = path.resolve(__dirname, '..', '..', '..', 'abuddy-sdk');
-const UI_SOURCE = path.resolve(__dirname, '..', '..', '..', 'abuddy-ui');
-// Written by `npm run packages:build`; CI builds them before these tests
-const SDK_PUBLISHED = path.join(SDK_SOURCE, 'dist', 'package');
-const UI_PUBLISHED = path.join(UI_SOURCE, 'dist', 'package');
+const SDK_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');
+const UI_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ui');
+let installed: string | undefined;
+
 const LAYOUTS = [
-  { name: 'workspace source', sdkDir: SDK_SOURCE, uiDir: UI_SOURCE, ext: 'ts' },
-  ...(fs.existsSync(SDK_PUBLISHED) && fs.existsSync(UI_PUBLISHED)
-    ? [{ name: 'published package', sdkDir: SDK_PUBLISHED, uiDir: UI_PUBLISHED, ext: 'js' }]
-    : []),
+  { name: 'workspace source', sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'ts' },
+  ...(PACKAGES_BUILT ? [{
+    name: 'published package',
+    sdkDir: () => path.join(installed!, 'node_modules', '@abuddy', 'sdk'),
+    uiDir: () => path.join(installed!, 'node_modules', '@abuddy', 'ui'),
+    ext: 'js',
+  }] : []),
 ];
+
+beforeAll(() => {
+  if (PACKAGES_BUILT) installed = installPublishedPackages();
+}, 120_000);
+
+afterAll(() => {
+  if (installed) fs.rmSync(installed, { recursive: true, force: true });
+});
 
 const tmpDirs: string[] = [];
 
-function makePack(layout: { sdkDir: string; uiDir: string }, entrySource: string): { packDir: string; entry: string } {
+function makePack(layout: { sdkDir: () => string; uiDir: () => string }, entrySource: string): { packDir: string; entry: string } {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fe-bundler-'));
   tmpDirs.push(packDir);
   fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'fixture-pack', type: 'module' }));
   fs.mkdirSync(path.join(packDir, 'node_modules', '@abuddy'), { recursive: true });
-  fs.symlinkSync(layout.sdkDir, path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
-  fs.symlinkSync(layout.uiDir, path.join(packDir, 'node_modules', '@abuddy', 'ui'), 'dir');
+  fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
+  fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@abuddy', 'ui'), 'dir');
   fs.mkdirSync(path.join(packDir, 'src'));
   const entry = path.join(packDir, 'src', 'entry.ts');
   fs.writeFileSync(entry, entrySource);
