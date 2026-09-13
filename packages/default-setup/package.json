@@ -12,7 +12,7 @@
     "prepare": "abuddy generate-entries",
     "generate:entries": "abuddy generate-entries",
     "generate:defs": "npx rollup -c rollup-defs.config.mjs",
-    "build": "abuddy build && node dev-build.mjs",
+    "build": "abuddy build && npm run generate:defs && node dev-build.mjs",
     "build:dev": "abuddy build --skip-fe"
   },
   "dependencies": {
