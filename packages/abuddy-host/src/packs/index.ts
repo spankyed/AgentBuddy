@@ -25,7 +25,7 @@ export type { PackRegistryEntry } from './pack-registry.js';
 // Installer
 export {
   installPack, installPackFromLocal, installPackFromUrl, installPackFromGitHub,
-  uninstallPack, checkDependencies, isHostCompatible,
+  uninstallPack, checkDependencies, isHostCompatible, sweepStaleStagingDirs,
 } from './pack-installer.js';
 export type { InstallResult } from './pack-installer.js';
 export { recordHostVersion, readHostVersion } from './host-info.js';
