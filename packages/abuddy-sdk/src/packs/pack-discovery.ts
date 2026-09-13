@@ -16,7 +16,6 @@ export interface BuiltInPackInfo {
   name: string;
   version: string;
   dir: string;
-  entry: string;
 }
 
 export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
@@ -35,19 +34,13 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
       if (!manifest.builtIn || !manifest.id || !manifest.name) continue;
 
-      const entryFile = path.join(dir, 'src', '__generated__', 'pack-entry');
-      const hasEntry = fs.existsSync(entryFile + '.ts') || fs.existsSync(entryFile + '.js');
-      if (!hasEntry) {
-        logger.warn(`Built-in pack ${manifest.id}: no src/__generated__/pack-entry found, skipping`);
-        continue;
-      }
-
+      // No source check: packaged apps ship only abuddy.json and dist/. The code comes from the
+      // API bundle's virtual:built-in-pack-loaders, and loadBuiltInPacks skips packs without one.
       results.push({
         id: manifest.id,
         name: manifest.name,
         version: manifest.version ?? '0.0.0',
         dir,
-        entry: 'src/__generated__/pack-entry',
       });
     } catch {}
   }
@@ -65,6 +58,8 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
+    // Hidden dirs are in-progress installs/replacements (see pack-installer placePack)
+    if (entry.name.startsWith('.')) continue;
     const packDir = path.join(packsDir, entry.name);
     const manifestPath = path.join(packDir, 'abuddy.json');
 

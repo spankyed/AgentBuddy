@@ -16,7 +16,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `license` | `string` | no | SPDX license identifier |
 | `builtIn` | `boolean` | no | `true` for the built-in pack only |
 | `features` | `PackFeatureEntry[]` | no | Feature declarations (system + plugin bundles) |
-| `steps` | `{ register, definitions[] }` | no | Flow step registration |
+| `steps` | `{ register, build?, definitions[] }` | no | Flow step registration. `build` is a barrel of build-only step facets (no FE or runtime imports), shipped as `build/steps.build.mjs` so packs depending on yours validate flows with your step code; `abuddy init` scaffolds it and `abuddy add step` adds to it |
 | `artifacts` | `string` | no | Path to artifact registration file |
 | `blocks` | `string` | no | Path to block registration file |
 | `migrations` | `string` | no | Path to migrations index file |
@@ -85,6 +85,7 @@ Flow step definitions use the structured object form.
 {
   "steps": {
     "register": "src/extensions/steps/register.ts",
+    "build": "src/extensions/steps/build.ts",
     "definitions": [
       { "type": "my-step", "path": "src/extensions/steps/my-step", "kind": "step" },
       { "type": "my-trigger", "path": "src/extensions/steps/my-trigger", "kind": "trigger" }
@@ -94,6 +95,8 @@ Flow step definitions use the structured object form.
 ```
 
 The `register` path points to a hand-maintained barrel file that imports and exports all step definitions. The `definitions` array is used by `generate-entries` for flow-helper codegen.
+
+The `build` path points to a second barrel with only each step's build facet (`compile`, `validate`, `decompile`, `getLabel`, trigger facets) and no FE or runtime imports. `abuddy build` bundles it to `dist/build/steps.build.mjs`, and packs that depend on yours load it to validate their flows with your step code. Without `build`, the CLI validates this pack's own flows with `register`, and dependents get no step code.
 
 ### StepEntry fields
 

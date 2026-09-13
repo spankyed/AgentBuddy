@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@/core/shared/debug/logger';
-import { compareVersions } from '@abuddy/sdk/utils';
 import { APP_VERSION } from '@/version';
 import {
   registerPack,
@@ -10,6 +9,12 @@ import {
   type BuiltInPackInfo,
   discoverPacks,
   reconcileExternalRegistry,
+  BUNDLE_PATHS,
+  BUNDLE_FORMAT_VERSION,
+  isBundleDir,
+  readBundleInfo,
+  resolvePackSeedsDir,
+  isHostCompatible,
 } from '@abuddy/sdk/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
@@ -292,16 +297,27 @@ export function loadSingleExternalPack(
   manifest: import('@abuddy/sdk/packs').PackManifest,
   dir: string,
 ): LoadedPack | null {
-  if (manifest.hostVersion) {
-    const minVersion = manifest.hostVersion.replace(/^>=?\s*/, '');
-    if (compareVersions(APP_VERSION, minVersion) < 0) {
-      logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
+  // The same semver check the installer applies, so any range a pack declares is honored
+  if (!isHostCompatible(manifest.hostVersion, APP_VERSION)) {
+    logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${APP_VERSION}`);
+    return null;
+  }
+
+  if (isBundleDir(dir)) {
+    try {
+      const info = readBundleInfo(dir);
+      if (Math.floor(info.formatVersion) !== BUNDLE_FORMAT_VERSION) {
+        logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${BUNDLE_FORMAT_VERSION})`);
+        return null;
+      }
+    } catch (err) {
+      logger.warn(`Skipping ${manifest.id}: unreadable ${BUNDLE_PATHS.info}`, err as Error);
       return null;
     }
   }
 
-  const snapshotPath = path.join(dir, 'dist', 'snapshot.json');
-  if (fs.existsSync(snapshotPath)) {
+  const snapshotPath = [path.join(dir, BUNDLE_PATHS.snapshot), path.join(dir, 'dist', 'snapshot.json')].find(p => fs.existsSync(p));
+  if (snapshotPath) {
     try {
       const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
       const hostSdk = getHostSdkVersion();
@@ -317,6 +333,92 @@ export function loadSingleExternalPack(
     } catch {}
   }
 
+  const runtimeEntry = path.join(dir, BUNDLE_PATHS.runtimeEntry);
+  const pack = fs.existsSync(runtimeEntry)
+    ? loadBundledRuntime(manifest, dir, runtimeEntry)
+    : loadLegacyLayout(manifest, dir);
+  if (!pack) return null;
+
+  if (!pack.ears && (manifest.entities || manifest.relKinds)) {
+    pack.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
+  }
+
+  if (pack.boot?.earlySystem) {
+    logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
+    delete pack.boot.earlySystem;
+  }
+  // External pack seeds are hash-checked per pack by seedPackData(); the declarative
+  // boot seed path tracks a single global hash and is reserved for built-in packs
+  if (pack.boot?.seedManifest) delete pack.boot.seedManifest;
+  const policy = pack.ears?.partitionPolicy;
+  if (policy) {
+    if ((policy.excludedEntityTypes?.length ?? 0) > 0 || (policy.secretEntityTypes?.length ?? 0) > 0) {
+      logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
+    }
+    delete pack.ears!.partitionPolicy;
+  }
+
+  return pack;
+}
+
+function loadBundledRuntime(
+  manifest: import('@abuddy/sdk/packs').PackManifest,
+  dir: string,
+  runtimeEntry: string,
+): LoadedPack | null {
+  let registration: import('@abuddy/sdk/framework').PackRegistration;
+  try {
+    registration = withHostResolution(() => {
+      const mod = esmRequire(runtimeEntry);
+      mod.setCompiledDir?.(resolvePackSeedsDir(dir));
+      return mod.registration;
+    });
+  } catch (err) {
+    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}):`, err as Error);
+    return null;
+  }
+  if (!registration) {
+    logger.error(`Pack ${manifest.id}: ${BUNDLE_PATHS.runtimeEntry} does not export \`registration\``);
+    return null;
+  }
+  if (registration.id !== manifest.id) {
+    logger.error(`Pack ${manifest.id}: runtime registration id "${registration.id}" does not match its manifest`);
+    return null;
+  }
+
+  const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
+  for (const def of registration.systems ?? []) {
+    const feature = manifest.features?.find(f => f.id === def.id);
+    const events = new Set<string>(def.events);
+    for (const evt of feature?.system?.events?.incoming ?? []) events.add(evt);
+    systems.set(def.id, { machine: def.machine, events });
+    logger.info(`Loaded system: ${manifest.id}/${def.id}`);
+  }
+
+  return {
+    manifest,
+    dir,
+    systems,
+    services: registration.services,
+    steps: registration.steps,
+    artifacts: registration.artifacts,
+    blocks: registration.blocks,
+    ears: registration.ears,
+    boot: registration.boot ? { ...registration.boot } : undefined,
+    migrations: registration.migrations,
+  };
+}
+
+/**
+ * Packs built before the bundle layout (dist/systems/*.cjs + optional dist/index.js).
+ * Kept so already-installed packs keep loading; rebuilding with a current abuddy CLI
+ * switches them to runtime/index.cjs.
+ */
+function loadLegacyLayout(
+  manifest: import('@abuddy/sdk/packs').PackManifest,
+  dir: string,
+): LoadedPack | null {
+  logger.warn(`Pack ${manifest.id} uses the pre-bundle layout (no ${BUNDLE_PATHS.runtimeEntry}); rebuild it with a current abuddy CLI`);
   const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
 
   const pluginEntries = manifest.features;
@@ -355,19 +457,6 @@ export function loadSingleExternalPack(
     } catch (err) {
       logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
     }
-  }
-
-  if (!pack.ears && (manifest.entities || manifest.relKinds)) {
-    pack.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
-  }
-
-  if (pack.boot?.earlySystem) {
-    logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
-    delete pack.boot.earlySystem;
-  }
-  if (pack.ears?.partitionPolicy) {
-    logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
-    delete pack.ears.partitionPolicy;
   }
 
   return pack;

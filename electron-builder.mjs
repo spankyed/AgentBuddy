@@ -12,6 +12,9 @@ const isBeta = process.env.ABUDDY_ENV === 'beta';
 const appId = isBeta ? 'com.agentbuddy.beta' : 'com.agentbuddy.app';
 const productName = isBeta ? 'AgentBuddy Beta' : 'AgentBuddy';
 const urlScheme = isBeta ? 'abuddy-beta' : 'abuddy';
+// File names without spaces: GitHub rewrites spaces in release asset names, and
+// `abuddy test --app beta` looks for AgentBuddy-Beta-<version>-mac-arm64.zip
+export const artifactPrefix = productName.replace(/ /g, '-');
 
 // Exclude prebuilds for platforms we're not targeting
 const excludePrebuilds = {
@@ -37,7 +40,7 @@ export default /** @type import('electron-builder').Configuration */
   icon: 'build/resources/icon',
   
   // Build options
-  artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
+  artifactName: `${artifactPrefix}-\${version}-\${os}-\${arch}.\${ext}`,
   generateUpdatesFilesForAllChannels: false,
   
   // Platform targets
@@ -168,6 +171,10 @@ export default /** @type import('electron-builder').Configuration */
     //   filter: ['**/*']
     // }
     ...speechResources,
+    // `abuddy` launcher for "Install 'abuddy' command in PATH"; runs packages/abuddy-cli/dist/package
+    ...(process.platform === 'darwin'
+      ? [{ from: 'packages/abuddy-cli/bin/app-launcher.sh', to: 'cli/abuddy' }]
+      : []),
   ],
   
   // Publishing: enable with PUBLISH_TO_GITHUB=true

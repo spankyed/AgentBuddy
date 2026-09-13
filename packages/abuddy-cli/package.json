@@ -1,0 +1,40 @@
+{
+  "name": "@abuddy/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AgentBuddy pack CLI: scaffold, build, test, pack and release packs",
+  "type": "module",
+  "bin": {
+    "abuddy": "bin/abuddy.mjs"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "scripts": {
+    "build:package": "tsx ../../scripts/bundle-package.ts .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@abuddy/sdk": "*",
+    "@octokit/rest": "^21.1.1",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "autoprefixer": "^10.4.14",
+    "env-paths": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "semver": "^7.8.5",
+    "tailwindcss": "^3.3.2",
+    "tsx": "^4.19.4",
+    "vite": "^7.0.6",
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@types/semver": "^7.8.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

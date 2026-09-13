@@ -49,8 +49,9 @@ export function createFlowSeeder(ears: FlowEARS): Seeder {
         });
         if (!validation.valid) {
           const msgs = validation.errors.map((e: any) => `${e.path}: ${e.message}`);
-          console.warn(`[seed] Skipping flow "${key}":`, msgs.join('; '));
-          counts.skipped++;
+          const message = `Flow "${key}" is invalid: ${msgs.join('; ')}`;
+          console.error(`[seed] ${message}`);
+          (counts.errors ??= []).push(message);
           continue;
         }
 

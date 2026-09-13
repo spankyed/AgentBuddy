@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": {
-    "abuddy": "./bin/abuddy.mjs"
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "build:package": "tsx scripts/build-package.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "tsc -p tsconfig.api-extractor.json",
@@ -18,6 +16,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./package.json": "./package.json",
     "./designations": "./src/designations/index.ts",
     "./env": "./src/env/index.ts",
     "./framework": "./src/framework/index.ts",
@@ -48,7 +47,6 @@
     "./fe/components/tiptap/registry": "./src/fe/components/tiptap/registry.ts",
     "./fe/components/tiptap/composables/*": "./src/fe/components/tiptap/composables/*",
     "./fe/components/tiptap/composables/createEditorKeyboard": "./src/fe/components/tiptap/composables/createEditorKeyboard.ts",
-    "./fe/constants": "./src/fe/constants.ts",
     "./actions": "./src/actions/index.ts",
     "./artifacts": "./src/artifacts/index.ts",
     "./blocks": "./src/blocks/index.ts",
@@ -75,8 +73,6 @@
     "@ai-sdk/anthropic": "^1.0.0",
     "@ai-sdk/google": "^2.0.0",
     "@ai-sdk/openai": "^1.0.0",
-    "@guolao/vue-monaco-editor": "^1.5.5",
-    "@playwright/test": ">=1.40.0",
     "@tiptap/core": "^3.20.1",
     "@tiptap/pm": "^3.20.1",
     "@tiptap/starter-kit": "^3.20.1",
@@ -85,11 +81,9 @@
     "@xstate/vue": "^4.0.2",
     "ai": "^4.0.0",
     "elkjs": "^0.9.0",
-    "lowlight": "^3.3.0",
     "lucide-vue-next": "^0.503.0",
     "monaco-editor": "^0.55.1",
     "reka-ui": "^2.2.1",
-    "tiptap-markdown": "^0.9.0",
     "vue": "^3.0.0",
     "xstate": "^5.19.2"
   },
@@ -112,16 +106,7 @@
     "monaco-editor": {
       "optional": true
     },
-    "@guolao/vue-monaco-editor": {
-      "optional": true
-    },
     "reka-ui": {
-      "optional": true
-    },
-    "tiptap-markdown": {
-      "optional": true
-    },
-    "lowlight": {
       "optional": true
     },
     "lucide-vue-next": {
@@ -144,25 +129,45 @@
     },
     "@ai-sdk/openai": {
       "optional": true
-    },
-    "@playwright/test": {
-      "optional": true
     }
   },
   "devDependencies": {
     "@microsoft/api-extractor": "^7.59.1",
+    "@types/semver": "^7.8.0",
     "@vitejs/plugin-vue": "^6.0.1",
-    "esbuild": "^0.25.0",
-    "typescript": "^5.8.3",
     "vite": "^7.0.0",
     "vitest": "^3.2.4",
     "xstate": "^5.19.2",
     "zod-to-json-schema": "^3.25.0"
   },
   "dependencies": {
+    "@guolao/vue-monaco-editor": "^1.5.5",
+    "@tiptap/extension-blockquote": "^3.20.1",
+    "@tiptap/extension-code": "^3.20.1",
+    "@tiptap/extension-code-block-lowlight": "^3.20.1",
+    "@tiptap/extension-color": "^3.22.3",
+    "@tiptap/extension-details": "^3.20.1",
+    "@tiptap/extension-highlight": "^3.22.3",
+    "@tiptap/extension-horizontal-rule": "^3.20.1",
+    "@tiptap/extension-image": "^3.20.1",
+    "@tiptap/extension-link": "^3.20.1",
+    "@tiptap/extension-paragraph": "^3.20.1",
+    "@tiptap/extension-placeholder": "^3.20.1",
+    "@tiptap/extension-table": "^3.20.1",
+    "@tiptap/extension-table-cell": "^3.20.1",
+    "@tiptap/extension-table-header": "^3.20.1",
+    "@tiptap/extension-table-row": "^3.20.1",
+    "@tiptap/extension-task-item": "^3.20.1",
+    "@tiptap/extension-task-list": "^3.20.1",
     "@types/fs-extra": "^11.0.4",
+    "esbuild": "^0.25.0",
     "fs-extra": "^11.4.0",
-    "tsx": "^4.19.4",
+    "highlight.js": "^11.11.1",
+    "lowlight": "^3.3.0",
+    "semver": "^7.8.5",
+    "tar": "^7.5.22",
+    "tiptap-markdown": "^0.9.0",
+    "typescript": "^5.8.3",
     "zod": "^3.24.0"
   }
 }

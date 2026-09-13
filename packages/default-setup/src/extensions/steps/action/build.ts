@@ -1,3 +1,4 @@
+import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
@@ -66,3 +67,9 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   if (node.params && Object.keys(node.params as any).length > 0) dsl.params = node.params;
   return dsl;
 }
+
+/** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
+export const actionStepBuild: StepDefinition = {
+  type: 'action',
+  build: { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } },
+};

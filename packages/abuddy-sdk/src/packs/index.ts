@@ -25,10 +25,21 @@ export type { PackRegistryEntry } from './pack-registry';
 // Installer
 export {
   installPack, installPackFromLocal, installPackFromUrl, installPackFromGitHub,
-  uninstallPack, checkDependencies,
+  uninstallPack, checkDependencies, isHostCompatible,
 } from './pack-installer';
 export type { InstallResult } from './pack-installer';
 
 // Updater
 export { checkForUpdates, getAvailableUpdates } from './pack-updater';
-export type { UpdateCheckResult } from './pack-updater';
+
+// Bundle (build output, release archive and installed layout)
+export {
+  BUNDLE_FORMAT_VERSION, BUNDLE_PATHS,
+  stageBundle, verifyBundle, readBundleInfo, isBundleDir, hasBuiltBundleSections,
+  resolveBundleManifest, resolvePackSeedsDir,
+  createBundleArchive, extractBundleArchive, bundleArchiveName, sha256File,
+  publishHostPackArtifacts,
+} from './bundle';
+export type { BundleInfo } from './bundle';
+export { findLatestRelease } from './pack-updater';
+export type { UpdateCheckResult, ReleaseCandidate } from './pack-updater';

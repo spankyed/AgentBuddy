@@ -235,7 +235,9 @@ export function generatePackFiles(
 
   function resolveServiceImport(key: string, manifestPath: string) {
     const base = join(root, manifestPath);
-    const fullPath = existsSync(base + '.ts') ? base + '.ts'
+    // abuddy add service writes the file path itself (src/extensions/services/<name>.ts)
+    const fullPath = base.endsWith('.ts') && existsSync(base) ? base
+      : existsSync(base + '.ts') ? base + '.ts'
       : existsSync(join(base, 'index.ts')) ? join(base, 'index.ts')
       : null;
     if (!fullPath) {
@@ -372,9 +374,7 @@ ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
     },
   },
 ${manifest.migrations ? '  migrations,' : ''}
-  features: [
-${featuresLiteral},
-  ],
+  features: [${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}],
 };
 `;
   }
@@ -885,10 +885,13 @@ export {};
   function emitTriggerTrackBuilder(step: StepEntry, isLocal: boolean): string | null {
     if (step.kind !== 'trigger') return null;
     if (!isLocal) return null;
-    const defFile = join(root, step.path, 'index.ts');
-    if (!existsSync(defFile)) return null;
-    const content = readFileSync(defFile, 'utf-8');
-    const match = content.match(/trackField:\s*['"](\w+)['"]/);
+    // trackField lives with the build facets (build.ts); older layouts define it in index.ts,
+    // possibly next to a helper build.ts, so check each file until one defines it
+    const match = ['build.ts', 'index.ts']
+      .map(f => join(root, step.path, f))
+      .filter(f => existsSync(f))
+      .map(f => readFileSync(f, 'utf-8').match(/trackField:\s*['"](\w+)['"]/))
+      .find(Boolean);
     if (!match) return null;
     const trackField = match[1];
     if (trackField === 'event') return null;

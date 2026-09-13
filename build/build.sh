@@ -32,6 +32,8 @@ validate_api_package() {
     echo -e "  ❌ Build validation failed: API package not found"
     exit 1
   fi
+  # electron-builder's dependency collector has silently dropped modules before
+  node build/prod/verify-node-modules.mjs "$1"
 }
 
 # Colors for output
@@ -90,6 +92,8 @@ echo ""
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
 npm run build
+# The CLI the app bundles (Resources/cli/abuddy runs it)
+npm run build:package -w @abuddy/cli
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 
@@ -170,13 +174,13 @@ echo ""
 echo "📁 Output:"
 if $IS_MAC; then
   echo "  • App: dist/mac-arm64/${APP_NAME}.app"
-  echo "  • DMG: dist/${APP_NAME}-*.dmg"
-  echo "  • ZIP: dist/${APP_NAME}-*.zip"
+  echo "  • DMG: dist/${APP_NAME// /-}-*.dmg"
+  echo "  • ZIP: dist/${APP_NAME// /-}-*.zip"
 elif $IS_WIN; then
-  echo "  • Installer: dist/${APP_NAME}-*.exe"
+  echo "  • Installer: dist/${APP_NAME// /-}-*.exe"
 else
-  echo "  • AppImage: dist/${APP_NAME}-*.AppImage"
-  echo "  • Deb: dist/${APP_NAME}-*.deb"
+  echo "  • AppImage: dist/${APP_NAME// /-}-*.AppImage"
+  echo "  • Deb: dist/${APP_NAME// /-}-*.deb"
 fi
 echo ""
 echo "📦 Next steps:"

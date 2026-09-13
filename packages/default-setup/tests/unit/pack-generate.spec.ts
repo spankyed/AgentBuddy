@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { generateEntries } from '../../../abuddy-sdk/src/cli/commands/generate-entries';
+import { generateEntries } from '../../../abuddy-cli/src/commands/generate-entries';
 import type { PackSnapshot, PackTypeManifest } from '../../../abuddy-sdk/src/build';
 
 let tmpDir: string;

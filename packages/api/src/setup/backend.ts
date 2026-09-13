@@ -1,7 +1,9 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem } from '@abuddy/sdk/packs';
+import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem, publishHostPackArtifacts } from '@abuddy/sdk/packs';
+import { resolveAppContext } from '@abuddy/sdk/env';
+import * as path from 'path';
 import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
@@ -43,6 +45,18 @@ export async function setupBackend(): Promise<void> {
     const builtInPackInfos = await builtInPromise;
     setBuiltInPacks(builtInPackInfos);
     setBuiltInPacksForRegistry(builtInPackInfos);
+
+    // Pack authors resolve built-in dependencies (types, step build code) from the installed app
+    const { hostPacksDir } = resolveAppContext();
+    for (const info of builtInPackInfos) {
+      try {
+        if (publishHostPackArtifacts(info.dir, path.join(hostPacksDir, info.id))) {
+          console.log(`[packs] Published build artifacts for built-in pack ${info.id}`);
+        }
+      } catch (err) {
+        console.warn(`[packs] Could not publish build artifacts for ${info.id}:`, err);
+      }
+    }
   }
 
   // Run early boot hooks (logs system must start before anything else)

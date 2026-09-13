@@ -1,7 +1,7 @@
 // Exercises the external-pack path end to end: compiled CJS system, bundled FE with
 // host-shared SDK proxies, pack Tailwind, prefixed bus IDs, and the test packs dir.
 // Run via `npm run test:external-pack` from the repo root.
-import { test, expect } from '@abuddy/sdk/testing';
+import { test, expect } from '@abuddy/testing';
 
 test('pack plugin renders with its own styles', async ({ appPage, app }) => {
   await app.waitForPlugin('memos');

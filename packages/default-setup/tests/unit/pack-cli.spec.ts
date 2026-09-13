@@ -24,7 +24,7 @@ function writeDist(dir: string) {
 
 describe('pack CLI: init', () => {
   it('scaffolds a valid pack directory structure', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
 
     const packName = 'test-pack';
     const packDir = path.join(tmpDir, packName);
@@ -46,8 +46,9 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'actions'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'flows'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'feature.config.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName, 'settings.ts'))).toBe(true);
+    // Features come from `abuddy add feature`; the pack id (kebab-case) is not a valid feature id
+    expect(fs.existsSync(path.join(packDir, 'src', 'features', packName))).toBe(false);
+    expect(fs.existsSync(path.join(packDir, '.github', 'workflows', 'release.yml'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'vitest.config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'tests', 'unit', `${packName}.spec.ts`))).toBe(true);
@@ -63,7 +64,7 @@ describe('pack CLI: init', () => {
   });
 
   it('rejects invalid pack names', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
 
     const origCwd = process.cwd();
     process.chdir(tmpDir);
@@ -75,7 +76,7 @@ describe('pack CLI: init', () => {
   });
 
   it('rejects if directory already exists', async () => {
-    const { init } = await import('../../../abuddy-sdk/src/cli/commands/init');
+    const { init } = await import('../../../abuddy-cli/src/commands/init');
 
     fs.mkdirSync(path.join(tmpDir, 'exists'));
 
@@ -91,7 +92,7 @@ describe('pack CLI: init', () => {
 
 describe('pack CLI: install', () => {
   it('install with no args returns without throwing (prints help)', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
     await expect(install([])).resolves.toBeUndefined();
   });
 
@@ -101,7 +102,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects manifest with invalid id format', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
 
     const badPack = path.join(tmpDir, 'bad-id-pack');
     fs.mkdirSync(badPack, { recursive: true });
@@ -116,7 +117,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects pack without dist directory', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
 
     const noDist = path.join(tmpDir, 'no-dist');
     fs.mkdirSync(noDist, { recursive: true });
@@ -126,11 +127,11 @@ describe('pack CLI: install', () => {
       version: '1.0.0',
     });
 
-    await expect(install([noDist])).rejects.toThrow(/No dist/);
+    await expect(install([noDist])).rejects.toThrow(/Pack is not built/);
   });
 
   it('rejects pack without abuddy.json', async () => {
-    const { install } = await import('../../../abuddy-sdk/src/cli/commands/install');
+    const { install } = await import('../../../abuddy-cli/src/commands/install');
 
     const noManifest = path.join(tmpDir, 'no-manifest');
     fs.mkdirSync(noManifest, { recursive: true });

@@ -1,0 +1,56 @@
+name: Publish packages
+
+# Versions @abuddy/sdk, @abuddy/cli and @abuddy/testing with Changesets and publishes the
+# built copies to npm with provenance. Until publishing is switched on, every run is a dry
+# run: it opens/updates the "Version packages" PR and runs `npm publish --dry-run`.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to npm (otherwise dry run)
+        type: boolean
+        default: false
+  # push:
+  #   branches: [master]
+
+concurrency:
+  group: publish-packages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check the published API surface
+        run: npm run api:check --workspace @abuddy/sdk
+
+      - name: Build publishable packages
+        run: npm run packages:build
+
+      - name: Version PR or publish
+        uses: changesets/action@v1
+        with:
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
+          version: npx changeset version
+          publish: npm run packages:publish -- ${{ !inputs.publish && '--dry-run' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

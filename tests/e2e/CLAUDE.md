@@ -16,13 +16,13 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 ## Rules for agents
 
 - **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod AgentBuddy alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
-- **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name, single-instance lock and data dir (`~/Library/Application Support/abuddy-test/`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
+- **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name and a fresh temp data dir per worker (`$TMPDIR/abuddy-e2e-*`, via `ABUDDY_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
 - **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/issues/postmortem-external-pack-calendar-extraction.md, item 1).
-- **The test data dir persists across runs.** Anything a test creates accumulates; assert on unique values and clean up what you create.
+- **Each worker starts from an empty data dir, but tests in a worker share it.** Anything a test creates is visible to later tests in the same run; assert on unique values and clean up what you create. `E2E_KEEP_DATA=1` keeps the dir for inspection.
 
 ## How the fixture works
 
-The test infrastructure lives in `@abuddy/sdk/testing` (source: `packages/abuddy-sdk/src/testing/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
+The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-testing/src/index.ts`). The local `tests/e2e/fixtures/app.ts` is a thin re-export. Tests import from `./fixtures/app` so the indirection is invisible.
 
 ### Startup lifecycle
 
@@ -32,8 +32,7 @@ When a test worker starts, the fixture runs this sequence:
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
-   - Check for a `.dev` signal file in the dev packs directory (`~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`). If present, `abuddy dev` is running — skip build/sync
-   - If no `.dev` signal: always rebuild the pack (using the `abuddy build` CLI binary), then sync the pack files to the test packs directory (`~/Library/Application Support/abuddy-test/packs/`; recursive copy, skipping symlinks, `node_modules`, and `.git`)
+   - Always rebuild the pack (using the `abuddy build` CLI binary), then install it into the worker's temp data dir with the bundle installer (stage → verify → place)
 
 3. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` (so external packs don't need `electron` installed), then launches with `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` and `PLAYWRIGHT_TEST=true`. The Electron app starts the same as dev mode but headless (no window display or splash screen) and with error handling set to crash immediately on uncaught exceptions.
 
@@ -121,14 +120,14 @@ There are two ways to test external packs:
 
 ### 1. From the pack's own repo (preferred for pack developers)
 
-Pack developers can write and run E2E tests without touching the AgentBuddy repo. The fixture is available as `@abuddy/sdk/testing`. See `packages/abuddy-sdk/src/testing/CLAUDE.md` for the full external pack testing guide.
+Pack developers can write and run E2E tests without the AgentBuddy repo. The fixture is `@abuddy/testing`. See `packages/abuddy-testing/CLAUDE.md` for the full guide.
 
 ```bash
 cd /path/to/my-pack
-abuddy init-tests                                        # scaffold config + sample test, link SDK
-npm i -D @playwright/test
-export ABUDDY_ROOT=/path/to/AgentBuddy                   # add to shell profile
-abuddy test                                              # run tests
+abuddy init-tests          # scaffold config + sample test, add @abuddy/testing + @playwright/test
+npm install
+abuddy test                # first run: choose a local checkout or the AgentBuddy Beta download
+abuddy test --app beta     # CI: never prompts, use --app beta or --app-root <path>
 ```
 
 ### 2. From this repo (quick iteration)
@@ -146,11 +145,9 @@ PACK_DIR=/path/to/my-pack npx playwright test tests/e2e/smoke
 #### What happens when `PACK_DIR` is set
 
 1. **Read manifest** — parses `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
-2. **Check for `abuddy dev`** — looks for a `.dev` signal file at `~/Library/Application Support/abuddy-dev/packs/{packId}/.dev`
-   - **If `.dev` exists** (`abuddy dev` is running): skips build/sync entirely — the pack is already installed and served by the Vite dev server via the `pack://` protocol
-   - **If no `.dev`**: continues to step 3
+2. **Isolated data dir** — creates `$TMPDIR/abuddy-e2e-*` for the worker
 3. **Build**: always runs `abuddy build` in the pack directory (fails the run if the build fails)
-4. **Sync** — copies the pack files (excluding `node_modules`, `.git`, symlinks) to the test packs directory (`~/Library/Application Support/abuddy-test/packs/{packId}/`)
+4. **Install** — installs the built pack into that data dir through the bundle installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
 6. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
@@ -173,8 +170,10 @@ The renderer exposes on `window`:
 |----------|-------------|
 | `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; crashes on uncaught errors and runs headless (no window display) |
 | `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
-| `PACK_DIR=/path/to/pack` | Syncs pack to dev packs dir (builds if no `dist/`), waits for plugins before tests run |
-| `ABUDDY_ROOT=/path/to/AgentBuddy` | Path to the AgentBuddy monorepo (auto-detected inside the monorepo) |
+| `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
+| `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
+| `ABUDDY_ROOT=/path/to/AgentBuddy` | A built AgentBuddy checkout to launch (auto-detected inside the monorepo) |
+| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --app beta`) |
 
 ## Key events for sendEvent()
 
@@ -192,8 +191,8 @@ The renderer exposes on `window`:
 
 | File | Purpose |
 |------|---------|
-| `fixtures/app.ts` | Thin re-export from `@abuddy/sdk/testing` |
+| `fixtures/app.ts` | Thin re-export from `@abuddy/testing` |
 | `smoke.spec.ts` | Basic tests: app launches, reaches connected state, plugins load, default screenshot |
 | `navigation.spec.ts` | Navigate between plugins, screenshot each |
 | `scratch.spec.ts` | Ad-hoc test file (gitignored — create as needed) |
-| `packages/abuddy-sdk/src/testing/index.ts` | The actual fixture source (shared between monorepo and external packs) |
+| `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

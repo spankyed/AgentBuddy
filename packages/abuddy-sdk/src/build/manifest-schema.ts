@@ -57,8 +57,16 @@ const PluginSchema = z.object({
   isPinned: z.boolean().describe('Whether this plugin is pinned in the sidebar by default.').optional(),
 }).strict();
 
+/**
+ * Feature IDs become identifiers in generated code (system exports, busId keys,
+ * settings keys, emit targets), so they must be valid identifiers. Pack IDs only
+ * appear as strings and stay kebab-case.
+ */
+export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
+
 export const FeatureEntrySchema = z.object({
-  id: z.string().describe('Unique feature identifier.'),
+  id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
+    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code.'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
@@ -90,6 +98,7 @@ const FEConfigSchema = z.object({
 
 const StepsSchema = z.object({
   register: z.string().describe('Path to the step registration barrel file.'),
+  build: z.string().describe('Path to a module exporting build-time step definitions only (validate/compile/decompile, trigger facets; no runtime or FE imports). Bundled to build/steps.build.mjs for dependent packs.').optional(),
   definitions: z.array(StepEntrySchema).describe('Step definitions for codegen.'),
 }).strict();
 

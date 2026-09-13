@@ -33,6 +33,8 @@ export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: 
   });
 }
 
+const REGISTRATION_KEYS = ['plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions'] as const;
+
 export async function loadPackFEEntry(
   entry: string,
   packBaseUrl: string,
@@ -44,6 +46,17 @@ export async function loadPackFEEntry(
     if (!registration || typeof registration !== 'object') {
       console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
       return null;
+    }
+    // A module without a default export falls back to its namespace object, which registers
+    // nothing; say so instead of loading a pack whose plugins silently never appear. A default
+    // export that declares registration fields, even empty ones, is deliberate: the generated
+    // entry of a pack without FE contributions is { plugins: [], defaultPlugin: undefined }.
+    const declaresRegistration = REGISTRATION_KEYS.some(key => key in registration);
+    if (!mod.default || !declaresRegistration) {
+      console.warn(
+        `[pack-loader] FE entry ${url} registers nothing (no ${REGISTRATION_KEYS.join('/')}). ` +
+        (mod.default ? 'Its default export declares none of them.' : 'It has no default export — export the registration as default.'),
+      );
     }
     return registration as PackFERegistration;
   } catch (err) {
