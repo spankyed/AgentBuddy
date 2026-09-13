@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as fs from 'fs'
-import { resolveAppContext } from '../env'
+import { resolveAppContext } from '../env/index.js'
 
 const DATA_DIRS = {
   modelsCache:  'models-cache',

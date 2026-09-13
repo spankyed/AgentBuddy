@@ -1,4 +1,4 @@
-export type { ValidationError, ValidationResult } from '../seed-compiler';
+export type { ValidationError, ValidationResult } from '../seed-compiler.js';
 
 export interface DSLNodeBase {
   label?: string;

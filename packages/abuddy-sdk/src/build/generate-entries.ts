@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
-import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest';
+import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest.js';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;

@@ -1,8 +1,8 @@
-import { getHostModule } from '../runtime/host';
+import { getHostModule } from '../runtime/host.js';
 
-export { wouldCreateCycle } from './graph';
-export { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from './entity-utils';
-export { b64Encode, b64Decode } from './query';
+export { wouldCreateCycle } from './graph.js';
+export { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from './entity-utils.js';
+export { b64Encode, b64Decode } from './query.js';
 
 // LMDB lifecycle delegates — host-provided, stay in API
 let _attrStorageMod: any;

@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { createLogger } from '../logger';
-import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry';
-import type { PackManifest } from '../build/manifest';
+import { createLogger } from '../logger/index.js';
+import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry.js';
+import type { PackManifest } from '../build/manifest.js';
 
 const logger = createLogger('pack-discovery');
 

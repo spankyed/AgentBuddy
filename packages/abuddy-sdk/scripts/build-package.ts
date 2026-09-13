@@ -1,12 +1,14 @@
-// Builds the publishable @abuddy/sdk into dist/package: compiled ESM, declarations and a
+// Builds the publishable @abuddy/sdk into dist/package: tsc-compiled ESM, declarations and a
 // package.json whose exports map only the pack-facing entry points. The workspace
-// package.json keeps pointing at src so the monorepo needs no build step.
+// package.json keeps pointing at src so the monorepo needs no build step. Sources use
+// explicit .js specifiers (the nodenext typecheck enforces it), so tsc's output resolves in
+// Node and in node16/bundler consumers as emitted.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { builtinModules } from 'node:module';
-import { build, type Plugin } from 'esbuild';
+import { build } from 'esbuild';
 import { parse as parseSfc } from '@vue/compiler-sfc';
 
 const pkgDir = path.resolve(import.meta.dirname, '..');
@@ -59,28 +61,27 @@ function recordBareImport(specifier: string, importer: string): void {
   bareImports.get(name)!.add(path.relative(srcDir, importer));
 }
 
-// Keep every module a separate file (one copy of shared state such as the host module
-// registry) and make relative imports Node-resolvable by pointing them at the emitted .js
-const relativeImportsToJs: Plugin = {
-  name: 'relative-imports-to-js',
-  setup(b) {
-    b.onResolve({ filter: /.*/ }, (args) => {
-      if (args.kind === 'entry-point') return undefined;
-      if (!args.path.startsWith('.')) {
-        recordBareImport(args.path, args.importer);
-        return { path: args.path, external: true };
-      }
-      const target = path.resolve(args.resolveDir, args.path);
-      if (fs.existsSync(target) && fs.statSync(target).isFile()) {
-        return { path: args.path.replace(/\.ts$/, '.js'), external: true };
-      }
-      for (const [suffix, emitted] of [['.ts', '.js'], ['/index.ts', '/index.js']] as const) {
-        if (fs.existsSync(target + suffix)) return { path: args.path + emitted, external: true };
-      }
-      throw new Error(`Unresolvable import ${args.path} in ${args.importer}`);
-    });
-  },
-};
+/** Records the bare imports of a module without bundling it (relative imports stay external). */
+async function collectBareImports(contents: string, loader: 'js' | 'ts', resolveDir: string, file: string): Promise<void> {
+  await build({
+    stdin: { contents, loader, resolveDir, sourcefile: file },
+    bundle: true,
+    write: false,
+    logLevel: 'silent',
+    // verbatimModuleSyntax keeps imports only an SFC template uses; `import type` is still dropped
+    tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } },
+    plugins: [{
+      name: 'collect-bare-imports',
+      setup(b) {
+        b.onResolve({ filter: /^[^./]/ }, (args) => {
+          recordBareImport(args.path, file);
+          return { path: args.path, external: true };
+        });
+        b.onResolve({ filter: /^\./ }, (args) => ({ path: args.path, external: true }));
+      },
+    }],
+  });
+}
 
 function publicExports(exportsMap: Record<string, string>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -108,41 +109,22 @@ async function main(): Promise<void> {
   const files = walk(srcDir).filter((f) => !path.relative(srcDir, f).startsWith('testing'));
   const tsSources = files.filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
 
-  await build({
-    entryPoints: tsSources,
-    outdir: outDir,
-    outbase: srcDir,
-    bundle: true,
-    format: 'esm',
-    platform: 'neutral',
-    target: 'es2022',
-    logLevel: 'warning',
-    plugins: [relativeImportsToJs],
-  });
+  execFileSync(
+    process.execPath,
+    [createRequire(import.meta.url).resolve('typescript/bin/tsc'), '-p', path.join(pkgDir, 'tsconfig.package.json')],
+    { stdio: 'inherit' },
+  );
 
-  // SFC scripts are compiled by the pack's build, so their imports must be installable too.
-  // verbatimModuleSyntax keeps imports only the template uses; `import type` is still dropped.
+  // Every shipped module's imports must be installable by a pack that uses it: tsc's output,
+  // and SFC scripts, which the pack's build compiles
+  for (const source of tsSources) {
+    const emitted = path.join(outDir, path.relative(srcDir, source)).replace(/\.ts$/, '.js');
+    await collectBareImports(fs.readFileSync(emitted, 'utf-8'), 'js', path.dirname(emitted), source);
+  }
   for (const file of files.filter((f) => f.endsWith('.vue'))) {
     const { descriptor } = parseSfc(fs.readFileSync(file, 'utf-8'), { filename: file });
     for (const block of [descriptor.script, descriptor.scriptSetup]) {
-      if (!block) continue;
-      await build({
-        stdin: { contents: block.content, loader: block.lang === 'ts' ? 'ts' : 'js', resolveDir: path.dirname(file), sourcefile: file },
-        bundle: true,
-        write: false,
-        logLevel: 'silent',
-        tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } },
-        plugins: [{
-          name: 'collect-sfc-imports',
-          setup(b) {
-            b.onResolve({ filter: /^[^./]/ }, (args) => {
-              recordBareImport(args.path, file);
-              return { path: args.path, external: true };
-            });
-            b.onResolve({ filter: /^\./ }, (args) => ({ path: args.path, external: true }));
-          },
-        }],
-      });
+      if (block) await collectBareImports(block.content, block.lang === 'ts' ? 'ts' : 'js', path.dirname(file), file);
     }
   }
 
@@ -151,28 +133,6 @@ async function main(): Promise<void> {
     const dest = path.join(outDir, path.relative(srcDir, file));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(file, dest);
-  }
-
-  execFileSync(
-    process.execPath,
-    [createRequire(import.meta.url).resolve('typescript/bin/tsc'), '-p', path.join(pkgDir, 'tsconfig.package.json')],
-    { stdio: 'inherit' },
-  );
-
-  // tsc keeps extensionless relative specifiers in declarations, which moduleResolution
-  // node16/nodenext consumers can't resolve; point them at the emitted .js like the JS output
-  for (const file of walk(outDir).filter((f) => f.endsWith('.d.ts'))) {
-    const source = fs.readFileSync(file, 'utf-8');
-    const rewritten = source.replace(/(\bfrom\s*|\bimport\s*\(\s*)(['"])(\.{1,2}\/[^'"]*)\2/g, (match, prefix, quote, specifier, offset: number) => {
-      if (/\.(js|vue|css|json)$/.test(specifier)) return match;
-      const line = source.slice(source.lastIndexOf('\n', offset) + 1, offset);
-      if (/^\s*(\*|\/\/)/.test(line)) return match; // doc comment example
-      const target = path.resolve(path.dirname(file), specifier);
-      if (fs.existsSync(`${target}.d.ts`)) return `${prefix}${quote}${specifier}.js${quote}`;
-      if (fs.existsSync(path.join(target, 'index.d.ts'))) return `${prefix}${quote}${specifier}/index.js${quote}`;
-      throw new Error(`Unresolvable import ${specifier} in ${path.relative(outDir, file)}`);
-    });
-    if (rewritten !== source) fs.writeFileSync(file, rewritten);
   }
 
   fs.copyFileSync(path.join(pkgDir, 'abuddy.schema.json'), path.join(outDir, 'abuddy.schema.json'));

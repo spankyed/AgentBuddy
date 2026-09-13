@@ -1,15 +1,15 @@
 import type { Component } from 'vue';
-import type { Plugin } from './plugin';
-import type { TiptapPlugin } from './components/tiptap/injection-keys';
-import type { ArtifactDefinition } from '../artifacts/types';
-import type { BlockDefinition } from '../blocks/types';
-import type { StepDefinition } from '../steps/types';
-import { registerDesignations, unregisterDesignations } from '../designations/index';
-import { registerAppExtension, unregisterAppExtension } from './app-extensions';
-import { tiptapPluginRegistry } from './components/tiptap/registry';
-import { artifactRegistry } from '../artifacts/registry';
-import { blockRegistry } from '../blocks/registry';
-import { stepRegistry } from '../steps/registry';
+import type { Plugin } from './plugin.js';
+import type { TiptapPlugin } from './components/tiptap/injection-keys.js';
+import type { ArtifactDefinition } from '../artifacts/types.js';
+import type { BlockDefinition } from '../blocks/types.js';
+import type { StepDefinition } from '../steps/types.js';
+import { registerDesignations, unregisterDesignations } from '../designations/index.js';
+import { registerAppExtension, unregisterAppExtension } from './app-extensions.js';
+import { tiptapPluginRegistry } from './components/tiptap/registry.js';
+import { artifactRegistry } from '../artifacts/registry.js';
+import { blockRegistry } from '../blocks/registry.js';
+import { stepRegistry } from '../steps/registry.js';
 
 export interface PackFERegistration {
   plugins?: Plugin[];

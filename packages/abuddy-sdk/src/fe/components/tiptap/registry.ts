@@ -1,4 +1,4 @@
-import type { TiptapPlugin } from './injection-keys';
+import type { TiptapPlugin } from './injection-keys.js';
 
 const plugins: TiptapPlugin[] = [];
 

@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { stepRegistry } from '../../steps'
+import { stepRegistry } from '../../steps/index.js'
 
 export interface NodeConfig {
   type: string

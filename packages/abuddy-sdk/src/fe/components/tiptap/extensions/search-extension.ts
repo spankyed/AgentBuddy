@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core'
-import { searchPlugin } from './search-plugin'
+import { searchPlugin } from './search-plugin.js'
 
-export { searchPluginKey } from './search-plugin'
+export { searchPluginKey } from './search-plugin.js'
 
 export const SearchAndFind = Extension.create({
   name: 'searchAndFind',

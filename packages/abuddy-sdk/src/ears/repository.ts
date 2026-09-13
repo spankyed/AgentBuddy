@@ -33,11 +33,11 @@ export {
   findWithFields, findByIdWithFields, countEntities,
   exists, findWithRole, findFirstWithRole,
   hasIdCollision,
-} from './query-helpers';
+} from './query-helpers.js';
 
 export {
   prepareEntity, createEntityWithDefaults, updateEntity,
   createRelation as repoCreateRelation, removeRelation as repoRemoveRelation,
-} from './transaction-helpers';
+} from './transaction-helpers.js';
 
-export { RepositoryError, RepositoryErrorCode } from './repository-errors';
+export { RepositoryError, RepositoryErrorCode } from './repository-errors.js';

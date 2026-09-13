@@ -76,7 +76,7 @@ export interface StepBuildFacet {
  * packs get real types instead of `unknown` casts.
  *─────────────────────────────────────────────────────────────────*/
 
-import type { BaseEntity, EARS } from '../types/entities';
+import type { BaseEntity, EARS } from '../types/entities.js';
 
 export type TimestampMs = number;
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
@@ -267,8 +267,8 @@ export interface TriggerRuntimeContext {
  * Step Definition
  *─────────────────────────────────────────────────────────────────*/
 
-export type { StepDSLMeta } from '../build/manifest';
-import type { StepDSLMeta } from '../build/manifest';
+export type { StepDSLMeta } from '../build/manifest.js';
+import type { StepDSLMeta } from '../build/manifest.js';
 
 export interface StepDefinition {
   type: string;

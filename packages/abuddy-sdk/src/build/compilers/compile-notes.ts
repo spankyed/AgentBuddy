@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { toDisplayName } from './library-utils';
+import { toDisplayName } from './library-utils.js';
 
 export interface ExportedNote {
   id?: string;

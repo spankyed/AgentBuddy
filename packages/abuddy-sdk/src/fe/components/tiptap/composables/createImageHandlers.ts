@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/vue-3'
-import { addUploadPlaceholder, removeUploadPlaceholder } from '../extensions/image-upload-placeholder'
+import { addUploadPlaceholder, removeUploadPlaceholder } from '../extensions/image-upload-placeholder.js'
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB

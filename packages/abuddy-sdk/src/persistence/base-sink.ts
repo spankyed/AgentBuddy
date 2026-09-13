@@ -1,1 +1,1 @@
-export type { PersistenceSink } from '../ears/runtime';
+export type { PersistenceSink } from '../ears/runtime.js';

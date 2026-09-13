@@ -18,7 +18,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
-import type { PackManifest } from '../build/manifest';
+import type { PackManifest } from '../build/manifest.js';
 
 export const BUNDLE_FORMAT_VERSION = 1;
 

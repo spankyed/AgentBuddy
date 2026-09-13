@@ -1,4 +1,4 @@
-import { safeEvents } from './safe-events';
+import { safeEvents } from './safe-events.js';
 
 export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string; info?: any };
 

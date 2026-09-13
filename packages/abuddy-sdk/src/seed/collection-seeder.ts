@@ -1,7 +1,7 @@
-import { createEntityWithDefaults, updateEntity, destroyEntity } from '../ears/index';
-import { findWhere, findAll, findById } from '../ears/internals';
-import { seedCollection, type Seeder, type SeederContext, type SeedCounts } from '../utils/index';
-import { seedPath } from '../build/manifest';
+import { createEntityWithDefaults, updateEntity, destroyEntity } from '../ears/index.js';
+import { findWhere, findAll, findById } from '../ears/internals.js';
+import { seedCollection, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.js';
+import { seedPath } from '../build/manifest.js';
 
 export function createCollectionSeeder(config: {
   key: string;

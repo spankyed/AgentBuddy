@@ -5,7 +5,7 @@
  * host (api) provides at boot via initEARSRuntime(). The in-memory engine
  * and helpers import getters from here to access host-provided services.
  */
-import type { EARS, EntityShapes, ShapeOf } from '../types/entities';
+import type { EARS, EntityShapes, ShapeOf } from '../types/entities.js';
 
 // ─── PersistenceSink interface ─────────────────────────────────────────
 

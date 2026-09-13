@@ -13,8 +13,8 @@ export interface PackConfig {
   faqs?: string;        // directory path
   settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
   features?: string;    // directory path, e.g. './src/features' — scanned for per-feature settings
-  compilers?: Array<{ type: string; compiler: import('./seed-compiler').SeedCompiler }>;
-  steps?: import('../steps/types').StepDefinition[];
+  compilers?: Array<{ type: string; compiler: import('./seed-compiler.js').SeedCompiler }>;
+  steps?: import('../steps/types.js').StepDefinition[];
   setup?: () => void | Promise<void>;
   [key: string]: unknown;
 }

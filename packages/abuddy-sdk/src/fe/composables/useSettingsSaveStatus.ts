@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue'
-import { useActorSystem } from './useActorSystem'
-import { getDesignated } from '../../designations/index'
+import { useActorSystem } from './useActorSystem.js'
+import { getDesignated } from '../../designations/index.js'
 
 export function useSettingsSaveStatus() {
   const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')

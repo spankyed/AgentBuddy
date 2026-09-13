@@ -10,8 +10,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { createLogger } from '../logger';
-import { resolveAppContext } from '../env';
+import { createLogger } from '../logger/index.js';
+import { resolveAppContext } from '../env/index.js';
 
 const logger = createLogger('pack-registry');
 

@@ -7,7 +7,7 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal } from '@abuddy/sdk/packs';
-import { appLaunchEnv } from './launch-env';
+import { appLaunchEnv } from './launch-env.js';
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;

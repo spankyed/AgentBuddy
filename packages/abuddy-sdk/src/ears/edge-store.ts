@@ -1,11 +1,11 @@
-import { relationIndex } from './relation-index';
+import { relationIndex } from './relation-index.js';
 import {
   getAttr,
   addRelation,
   updateRelation,
   removeRelationById,
-} from './attribute-storage';
-import { EARS } from '../types/entities';
+} from './attribute-storage.js';
+import { EARS } from '../types/entities.js';
 
 const matchIds = (
   w: Partial<Pick<EARS.RelationDetail,

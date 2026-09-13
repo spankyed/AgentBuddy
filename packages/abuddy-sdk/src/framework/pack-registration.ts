@@ -58,8 +58,8 @@ export interface PackRegistration {
   ears?: PackEARS;
   boot?: PackBootHooks;
   migrations?: PackMigration[];
-  steps?: import('../steps/types').StepDefinition[];
-  artifacts?: import('../artifacts/types').ArtifactDefinition[];
-  blocks?: import('../blocks/types').BlockDefinition[];
+  steps?: import('../steps/types.js').StepDefinition[];
+  artifacts?: import('../artifacts/types.js').ArtifactDefinition[];
+  blocks?: import('../blocks/types.js').BlockDefinition[];
   features?: PackFeatureDef[];
 }

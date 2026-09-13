@@ -5,12 +5,12 @@ import {
   queryEntitiesInRelationTo,
   queryEntitiesByRelationTo,
   getAll,
-} from './attribute-storage';
+} from './attribute-storage.js';
 
-import { relationIndex } from './relation-index';
-import { EARS } from '../types/entities';
-import type { QueryBuilder } from './runtime';
-import { getEntityTypeChecker } from './runtime';
+import { relationIndex } from './relation-index.js';
+import { EARS } from '../types/entities.js';
+import type { QueryBuilder } from './runtime.js';
+import { getEntityTypeChecker } from './runtime.js';
 
 type MaybeArr<T> = T | readonly T[];
 function asArr<T>(v: MaybeArr<T>): readonly T[] {

@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ManifestSchema } from './manifest-schema';
-import type { FeatureConfig } from './types';
+import { ManifestSchema } from './manifest-schema.js';
+import type { FeatureConfig } from './types.js';
 
 export interface ManifestValidation {
   errors: string[];

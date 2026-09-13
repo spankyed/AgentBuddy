@@ -1,7 +1,7 @@
-import { createLogger } from '../logger';
-import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack-registry';
+import { createLogger } from '../logger/index.js';
+import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack-registry.js';
 import * as semver from 'semver';
-import { resolveAppContext } from '../env';
+import { resolveAppContext } from '../env/index.js';
 
 const logger = createLogger('pack-updater');
 

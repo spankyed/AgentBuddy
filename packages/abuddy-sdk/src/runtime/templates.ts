@@ -1,4 +1,4 @@
-import { createLogger } from '../logger';
+import { createLogger } from '../logger/index.js';
 
 const logger = createLogger('templates');
 

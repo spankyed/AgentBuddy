@@ -3,10 +3,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { satisfies } from 'semver';
-import { discoverBuiltInPacks } from './pack-discovery';
-import { resolveAppContext } from '../env';
-import { parseManifest } from '../build/validate';
-import type { PackManifest } from '../build/manifest';
+import { discoverBuiltInPacks } from './pack-discovery.js';
+import { resolveAppContext } from '../env/index.js';
+import { parseManifest } from '../build/validate.js';
+import type { PackManifest } from '../build/manifest.js';
 import {
   BUNDLE_PATHS,
   extractBundleArchive,
@@ -15,7 +15,7 @@ import {
   stageBundle,
   verifyBundle,
   type BundleInfo,
-} from './bundle';
+} from './bundle.js';
 
 const log = {
   info(...args: unknown[]) { console.log(...args); },

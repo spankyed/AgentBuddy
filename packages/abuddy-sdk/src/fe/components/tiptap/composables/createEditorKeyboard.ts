@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import type { EditorView } from '@tiptap/pm/view'
 import { splitBlock } from '@tiptap/pm/commands'
-import type { EditorConfig } from '../editor-config'
+import type { EditorConfig } from '../editor-config.js'
 
 /** Max interval (ms) between two ESC presses to count as a double-tap. */
 export const DOUBLE_ESC_MS = 300

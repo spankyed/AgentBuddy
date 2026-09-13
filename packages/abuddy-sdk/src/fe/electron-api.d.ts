@@ -1,7 +1,7 @@
 // The preload IPC surface the host exposes to renderer and pack FE code alike.
 // Lives in the SDK because packs consume it; fe/index.ts references this file
 // so anything importing '@abuddy/sdk/fe' sees the global.
-import type {SpeechEvent} from '../../../../types/speech.js';
+import type { SpeechEvent } from './speech-event.js';
 
 declare global {
   interface Window {

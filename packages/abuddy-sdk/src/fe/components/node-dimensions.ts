@@ -1,5 +1,5 @@
 import type { ElkPort } from 'elkjs/lib/elk.bundled.js'
-import { stepRegistry } from '../../steps'
+import { stepRegistry } from '../../steps/index.js'
 
 export const NODE_DIMENSIONS = {
   default: { width: 200, height: 50 },

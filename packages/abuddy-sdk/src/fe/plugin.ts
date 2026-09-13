@@ -1,6 +1,6 @@
 import type { Component } from 'vue';
 import type { AnyStateMachine } from 'xstate';
-import type { PluginHotkeyDefinition } from './hotkeys';
+import type { PluginHotkeyDefinition } from './hotkeys.js';
 
 type RouteName = string;
 export type RouteComponents = Record<RouteName, Component>;

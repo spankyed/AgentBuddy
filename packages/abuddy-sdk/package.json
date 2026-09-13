@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:package": "tsx scripts/build-package.ts",
+    "attw": "attw --pack dist/package --profile esm-only --exclude-entrypoints ./fe/design/ToastNotification.vue ./fe/design/ContextMenuPopup.vue",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "tsc -p tsconfig.api-extractor.json",

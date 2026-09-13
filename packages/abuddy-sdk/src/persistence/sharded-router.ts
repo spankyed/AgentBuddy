@@ -1,7 +1,7 @@
-import { EARS } from '../types';
-import type { PersistenceSink } from './base-sink';
-import type { PartitionPolicy, Partition } from './policy';
-import { getAttr } from '../ears';
+import { EARS } from '../types/index.js';
+import type { PersistenceSink } from './base-sink.js';
+import type { PartitionPolicy, Partition } from './policy.js';
+import { getAttr } from '../ears/index.js';
 
 const entTypeOf = (id: string): EARS.Entity => {
   if (typeof id !== 'string' || id.length === 0) {

@@ -1,4 +1,4 @@
-import { openInAppBrowser } from '../../../../fe'
+import { openInAppBrowser } from '../../../../fe/index.js'
 
 type ClickEmit = {
   noteLinkClick: (noteId: string) => void

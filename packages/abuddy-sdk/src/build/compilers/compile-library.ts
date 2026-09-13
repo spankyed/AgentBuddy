@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { toDisplayName, parseMarkdownSections, parseFrontmatter } from './library-utils';
-import { sourceHash } from '../compile-utils';
+import { toDisplayName, parseMarkdownSections, parseFrontmatter } from './library-utils.js';
+import { sourceHash } from '../compile-utils.js';
 
 export interface ContentSection {
   type: 'field' | 'list' | 'markdown' | 'text' | 'code';

@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { repository } from '../ears/index';
-import { seedData, type SeedCounts, type SeedIncludeSet } from '../utils/index';
-import { seedPath } from '../build/manifest';
+import { repository } from '../ears/index.js';
+import { seedData, type SeedCounts, type SeedIncludeSet } from '../utils/index.js';
+import { seedPath } from '../build/manifest.js';
 
 export interface BootSeedConfig {
   artifacts: string[];

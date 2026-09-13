@@ -1,5 +1,5 @@
-import { getHostModule } from '../runtime/host';
-import type { Logger } from '../ears/runtime';
+import { getHostModule } from '../runtime/host.js';
+import type { Logger } from '../ears/runtime.js';
 
 let _mod: any;
 function mod() {

@@ -1,4 +1,4 @@
-import type { Track, DSLStepNode } from './compilers/flow-types';
+import type { Track, DSLStepNode } from './compilers/flow-types.js';
 
 export function entry(...branches: DSLStepNode[][]): Track {
   if (branches.length === 0) {

@@ -1,4 +1,4 @@
-import type { EARS } from '../types/entities';
+import type { EARS } from '../types/entities.js';
 
 interface DirectionLists {
   [entityId: string]: EARS.EntityId[];

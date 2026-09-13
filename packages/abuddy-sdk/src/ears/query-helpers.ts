@@ -1,7 +1,7 @@
 // STATUS: Unused — no external consumers currently import these helpers.
 // Kept for future use; the individual functions are exported from the SDK barrel.
-import { qx } from './query';
-import type { EARS } from '../types/entities';
+import { qx } from './query.js';
+import type { EARS } from '../types/entities.js';
 
 const isDeleted = (entity: any): boolean => entity?.deleted === true;
 

@@ -1,5 +1,5 @@
-import { EARS } from '../types/entities';
-import { qx } from './query';
+import { EARS } from '../types/entities.js';
+import { qx } from './query.js';
 
 export function getTimestamp(): number {
   return Date.now();

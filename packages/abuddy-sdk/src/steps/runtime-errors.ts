@@ -1,10 +1,10 @@
-import { rootEvents } from '../rpc';
-import { createLogger } from '../logger';
+import { rootEvents } from '../rpc/index.js';
+import { createLogger } from '../logger/index.js';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
-import { randomId } from '../utils/random-id';
-import { repository } from '../ears/repository';
-import type { EARS } from '../types/entities';
-import type { StepRuntimeError } from './types';
+import { randomId } from '../utils/random-id.js';
+import { repository } from '../ears/repository.js';
+import type { EARS } from '../types/entities.js';
+import type { StepRuntimeError } from './types.js';
 
 const logger = createLogger('step-runtime');
 

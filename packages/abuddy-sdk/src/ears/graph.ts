@@ -1,6 +1,6 @@
-import { qx } from './query';
-import { edgeStore } from './edge-store';
-import { EARS } from '../types/entities';
+import { qx } from './query.js';
+import { edgeStore } from './edge-store.js';
+import { EARS } from '../types/entities.js';
 
 const neighbours = (
   id: EARS.EntityId,

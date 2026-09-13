@@ -1,13 +1,13 @@
 // Types
-export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types';
+export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.js';
 
 // Seed compiler framework
-export { compilePack } from './seed-compiler';
-export type { SeedCompiler, CompileEntry, CompilationContext, ValidationError, ValidationResult } from './seed-compiler';
+export { compilePack } from './seed-compiler.js';
+export type { SeedCompiler, CompileEntry, CompilationContext, ValidationError, ValidationResult } from './seed-compiler.js';
 
 // Compile utilities
-export { compileSourceDir, bundleFile, sourceHash } from './compile-utils';
-export type { CompileConfig, CompiledEntry, CompileResult } from './compile-utils';
+export { compileSourceDir, bundleFile, sourceHash } from './compile-utils.js';
+export type { CompileConfig, CompiledEntry, CompileResult } from './compile-utils.js';
 
 // Compilers: standard instances, build utilities, types
 export {
@@ -23,7 +23,7 @@ export {
   validateFlowDSL,
   compileFlowDSL,
   exportFlowsToDSL,
-} from './compilers';
+} from './compilers/index.js';
 export type {
   FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
   FlowEntity, NodeBase, EdgeEntity,
@@ -33,19 +33,19 @@ export type {
   ExportedLibrary,
   ExportedNote, ExportedNotes,
   CompiledFAQ,
-} from './compilers';
+} from './compilers/index.js';
 
 // Shared dependency registry (FE/BE externalization + host resolution)
 export {
   getSharedFeDeps, getSdkFeModules, getSharedBeDeps, findSdkVersion,
-} from './shared-deps';
-export type { SharedDep } from './shared-deps';
+} from './shared-deps.js';
+export type { SharedDep } from './shared-deps.js';
 
 // Pack preview types
-export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview';
+export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview.js';
 
 // Manifest bridge
-export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge';
+export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.js';
 
 // Pack manifest types
 export type {
@@ -53,33 +53,33 @@ export type {
   PackSystemEntry, PackPluginEntry,
   PackFeatureEntry, PackBootConfig, SeedEntryConfig,
   StepEntry, StepDSLMeta,
-} from './manifest';
-export { seedFile, seedPath } from './manifest';
+} from './manifest.js';
+export { seedFile, seedPath } from './manifest.js';
 
 // Flow DSL helpers (track builders)
-export { entry, on } from './flow-helpers';
+export { entry, on } from './flow-helpers.js';
 
 // Seed authoring types
-export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './seed-types';
+export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './seed-types.js';
 
 // Entry codegen
-export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes } from './generate-entries';
-export type { GenerateEntriesOptions } from './generate-entries';
+export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes } from './generate-entries.js';
+export type { GenerateEntriesOptions } from './generate-entries.js';
 
 // Built-in pack discovery (build-time)
-export { discoverBuiltInPacksForBuild } from './discover';
-export type { BuiltInPackBuildInfo } from './discover';
+export { discoverBuiltInPacksForBuild } from './discover.js';
+export type { BuiltInPackBuildInfo } from './discover.js';
 
 // Pack validation
-export { validateManifest, validateFeatures, parseManifest } from './validate';
-export type { ManifestValidation } from './validate';
+export { validateManifest, validateFeatures, parseManifest } from './validate.js';
+export type { ManifestValidation } from './validate.js';
 
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
   BootConfigSchema, SeedEntryConfigSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema,
-} from './manifest-schema';
+} from './manifest-schema.js';
 
 // FE bundler — not re-exported here (uses import.meta which some
 // consumer tsconfigs reject). Import directly from './fe-bundler'.

@@ -1,20 +1,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { compileSourceDir } from '../compile-utils';
-import { seedFile } from '../manifest';
-import type { SeedCompiler, CompilationContext, ValidationResult } from '../seed-compiler';
-import type { CompiledEntry } from '../compile-utils';
-import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows';
-import { compileLibraryFromDir, copyLibraryMedia } from './compile-library';
-import { compileNotesFromDir, copyNotesMedia } from './compile-notes';
-import { compileFaqFromDir } from './compile-faq';
-import { loadSettingsFromFile, deepMerge } from './compile-settings';
-import type { FlowDSL } from './flow-types';
-import { stepRegistry } from '../../steps/registry';
-import type { CompiledFAQ } from './compile-faq';
-import type { ExportedLibrary } from './compile-library';
-import type { ExportedNotes } from './compile-notes';
-import { countDocs } from './library-utils';
+import { compileSourceDir } from '../compile-utils.js';
+import { seedFile } from '../manifest.js';
+import type { SeedCompiler, CompilationContext, ValidationResult } from '../seed-compiler.js';
+import type { CompiledEntry } from '../compile-utils.js';
+import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.js';
+import { compileLibraryFromDir, copyLibraryMedia } from './compile-library.js';
+import { compileNotesFromDir, copyNotesMedia } from './compile-notes.js';
+import { compileFaqFromDir } from './compile-faq.js';
+import { loadSettingsFromFile, deepMerge } from './compile-settings.js';
+import type { FlowDSL } from './flow-types.js';
+import { stepRegistry } from '../../steps/registry.js';
+import type { CompiledFAQ } from './compile-faq.js';
+import type { ExportedLibrary } from './compile-library.js';
+import type { ExportedNotes } from './compile-notes.js';
+import { countDocs } from './library-utils.js';
 
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');

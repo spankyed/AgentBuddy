@@ -1,6 +1,6 @@
-export { stepRegistry } from './registry';
-export { expandRecord, collapseRecord } from './utils';
-export { reportStepRuntimeError, toStepRuntimeError } from './runtime-errors';
+export { stepRegistry } from './registry.js';
+export { expandRecord, collapseRecord } from './utils.js';
+export { reportStepRuntimeError, toStepRuntimeError } from './runtime-errors.js';
 export type {
   StepDefinition,
   StepDSLMeta,
@@ -30,4 +30,4 @@ export type {
   RuntimeServices,
   ExecutionContext,
   StepRuntimeError,
-} from './types';
+} from './types.js';

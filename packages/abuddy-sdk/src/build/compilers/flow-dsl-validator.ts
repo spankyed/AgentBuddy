@@ -3,10 +3,10 @@ import type {
   Track,
   ValidationError,
   ValidationResult,
-} from './flow-types';
-import { isFlowConfig, resolveTracks } from './flow-types';
-import { stepRegistry } from '../../steps/registry';
-import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types';
+} from './flow-types.js';
+import { isFlowConfig, resolveTracks } from './flow-types.js';
+import { stepRegistry } from '../../steps/registry.js';
+import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types.js';
 
 const FALLBACK_STEP_TYPES = [
   'action', 'llm', 'switch', 'fire', 'transform',

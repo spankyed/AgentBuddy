@@ -1,4 +1,4 @@
-import type { EARS } from '../types';
+import type { EARS } from '../types/index.js';
 
 export type Partition = 'primary' | 'volatileBackup' | 'secrets';
 

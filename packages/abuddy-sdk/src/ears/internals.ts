@@ -1,7 +1,7 @@
 export {
   initEARSRuntime, setPersistence, getPersistence, getEntityTypeChecker,
   type PersistenceSink, type Logger,
-} from './runtime';
+} from './runtime.js';
 export {
   putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
   bulkLoadAttr,
@@ -10,16 +10,16 @@ export {
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
   queryEntitiesByRole,
   clearMemory,
-} from './attribute-storage';
-export { edgeStore } from './edge-store';
-export { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index';
+} from './attribute-storage.js';
+export { edgeStore } from './edge-store.js';
+export { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index.js';
 export {
   filterSystemFields, LmdbQuery, hydrateSharded,
   resetLmdbFiles, closePersistence, reinitializeLmdb,
   envs, policy, persistence,
-} from './helpers';
-export { _flushEarlyRegistrations } from './repository';
+} from './helpers.js';
+export { _flushEarlyRegistrations } from './repository.js';
 // Untyped query helpers for host code; packs get them typed from defineEars (see ./typed)
-export { qx } from './query';
-export { createEntity } from './attribute-storage';
-export { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers';
+export { qx } from './query.js';
+export { createEntity } from './attribute-storage.js';
+export { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers.js';
