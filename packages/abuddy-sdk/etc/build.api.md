@@ -492,6 +492,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
         outgoingEventsType: z.ZodOptional<z.ZodString>;
+        sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         events: z.ZodOptional<z.ZodObject<{
             incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             outgoing: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -505,6 +506,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     }, "strict", z.ZodTypeAny, {
         entry: string;
         outgoingEventsType?: string | undefined;
+        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
             outgoing?: string[] | undefined;
@@ -512,6 +514,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     }, {
         entry: string;
         outgoingEventsType?: string | undefined;
+        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
             outgoing?: string[] | undefined;
@@ -534,6 +537,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         isPinned?: boolean | undefined;
     }>>;
     services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     contributions: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -544,6 +548,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     system?: {
         entry: string;
         outgoingEventsType?: string | undefined;
+        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
             outgoing?: string[] | undefined;
@@ -556,6 +561,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         isPinned?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
+    repositories?: Record<string, string> | undefined;
     contributions?: string | undefined;
 }, {
     id: string;
@@ -566,6 +572,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     system?: {
         entry: string;
         outgoingEventsType?: string | undefined;
+        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
             outgoing?: string[] | undefined;
@@ -578,6 +585,7 @@ export const FeatureEntrySchema: z.ZodObject<{
         isPinned?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
+    repositories?: Record<string, string> | undefined;
     contributions?: string | undefined;
 }>;
 
@@ -697,6 +705,7 @@ export const ManifestSchema: z.ZodObject<{
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
             outgoingEventsType: z.ZodOptional<z.ZodString>;
+            sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             events: z.ZodOptional<z.ZodObject<{
                 incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
                 outgoing: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -710,6 +719,7 @@ export const ManifestSchema: z.ZodObject<{
         }, "strict", z.ZodTypeAny, {
             entry: string;
             outgoingEventsType?: string | undefined;
+            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
@@ -717,6 +727,7 @@ export const ManifestSchema: z.ZodObject<{
         }, {
             entry: string;
             outgoingEventsType?: string | undefined;
+            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
@@ -739,6 +750,7 @@ export const ManifestSchema: z.ZodObject<{
             isPinned?: boolean | undefined;
         }>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         contributions: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
@@ -749,6 +761,7 @@ export const ManifestSchema: z.ZodObject<{
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
+            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
@@ -761,6 +774,7 @@ export const ManifestSchema: z.ZodObject<{
             isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
+        repositories?: Record<string, string> | undefined;
         contributions?: string | undefined;
     }, {
         id: string;
@@ -771,6 +785,7 @@ export const ManifestSchema: z.ZodObject<{
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
+            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
@@ -783,6 +798,7 @@ export const ManifestSchema: z.ZodObject<{
             isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
+        repositories?: Record<string, string> | undefined;
         contributions?: string | undefined;
     }>, "many">>;
     defaultPlugin: z.ZodOptional<z.ZodString>;
@@ -987,6 +1003,7 @@ export const ManifestSchema: z.ZodObject<{
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
+            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
@@ -999,6 +1016,7 @@ export const ManifestSchema: z.ZodObject<{
             isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
+        repositories?: Record<string, string> | undefined;
         contributions?: string | undefined;
     }[] | undefined;
     defaultPlugin?: string | undefined;
@@ -1079,6 +1097,7 @@ export const ManifestSchema: z.ZodObject<{
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
+            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
@@ -1091,6 +1110,7 @@ export const ManifestSchema: z.ZodObject<{
             isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
+        repositories?: Record<string, string> | undefined;
         contributions?: string | undefined;
     }[] | undefined;
     defaultPlugin?: string | undefined;
@@ -1171,6 +1191,9 @@ export const notesCompiler: SeedCompiler<ExportedNotes, NotesMerged>;
 
 // @public (undocumented)
 export function on(event: string, exits: DSLStepNode[][], label?: string): Track;
+
+// @public
+export const PACK_TYPES_DEF = "pack-types";
 
 // @public (undocumented)
 export type PackBootConfig = z.infer<typeof BootConfigSchema>;

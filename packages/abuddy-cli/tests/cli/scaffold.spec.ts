@@ -103,7 +103,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
 
     const generate = run('node', [CLI, 'generate-entries'], pack);
     expect(generate.output).not.toMatch(/inputs unchanged/);
-    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService \}/);
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     expect(run('node', [CLI, 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
   }, 120_000);
 

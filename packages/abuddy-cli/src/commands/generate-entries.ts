@@ -11,7 +11,7 @@ const HASH_FILE = '.inputs-hash';
 function codegenSource(): string {
   const sdkDir = sdkPackageDir();
   // Workspace source, then the published compiled output
-  for (const file of ['src/build/generate-entries.ts', 'build/generate-entries.js']) {
+  for (const file of ['src/build/generate-entries.ts', 'dist/build/generate-entries.js']) {
     const candidate = path.join(sdkDir, file);
     if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf-8');
   }
@@ -81,7 +81,10 @@ export async function generateEntries(
 
   const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
 
+  // Dependencies' facade types are rewritten from their snapshots each time
+  fs.rmSync(path.join(outDir, 'deps'), { recursive: true, force: true });
   for (const [filePath, content] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, filePath)), { recursive: true });
     fs.writeFileSync(path.join(root, filePath), content);
   }
   // Generated files this codegen no longer emits (renamed or removed outputs) would keep

@@ -44,6 +44,7 @@ export const BootConfigSchema = z.object({
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
   outgoingEventsType: z.string().describe('TypeScript type name for outgoing events (used by codegen).').optional(),
+  sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s: other features of this pack, plugins of its dependencies, or host plugins ("application"). Each receiving plugin\'s generated event type includes this system\'s outgoing events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
     outgoing: z.array(z.string()).describe('Event types this system emits.').optional(),
@@ -74,6 +75,8 @@ export const FeatureEntrySchema = z.object({
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: z.record(z.string(), z.string()).describe('Service modules. Keys are service names, values are source file paths.').optional(),
+  repositories: z.record(z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier'), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
+    .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
   contributions: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
 }).strict();
 

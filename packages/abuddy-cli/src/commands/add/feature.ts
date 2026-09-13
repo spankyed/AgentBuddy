@@ -70,8 +70,12 @@ const TYPES = (pascal: string) => `export interface ${pascal}ConnectedData {
 }
 `;
 
-const REPOSITORY = () => `// Register EARS queries and commands here
-// import { repository } from '@abuddy/sdk/ears';
+const REPOSITORY = (camel: string) => `// EARS reads and writes for this feature. Declared in abuddy.json (features[].repositories) and
+// registered by the generated pack entry; systems and actions use them through
+// \`repository\` from '#generated/repository'. Typed query helpers come from '#generated/ears'.
+export const ${camel}Queries = {};
+
+export const ${camel}Commands = {};
 `;
 
 const PLUGIN = (camel: string, label: string, icon: string) => `import type { Plugin } from '@abuddy/sdk/fe';
@@ -169,7 +173,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'settings.ts'), SETTINGS(name)],
     [path.join(featureDir, 'be', 'system.ts'), SYSTEM(name, camel, pascal)],
     [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal)],
-    [path.join(featureDir, 'be', 'repository', 'index.ts'), REPOSITORY()],
+    [path.join(featureDir, 'be', 'repository', 'index.ts'), REPOSITORY(camel)],
     [path.join(featureDir, 'fe', 'plugin.ts'), PLUGIN(camel, label, icon)],
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
@@ -187,6 +191,10 @@ export async function addFeature(args: string[], root: string) {
     system: { entry: `src/features/${name}/be/system.ts` },
     plugin: { entry: `src/features/${name}/fe/plugin.ts`, label, icon },
     services: {},
+    repositories: {
+      [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,
+      [`${camel}Commands`]: `src/features/${name}/be/repository/index.ts#${camel}Commands`,
+    },
   });
   writeManifest(root, manifest);
 

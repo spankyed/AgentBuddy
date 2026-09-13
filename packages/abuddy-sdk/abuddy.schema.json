@@ -156,6 +156,13 @@
                 "type": "string",
                 "description": "TypeScript type name for outgoing events (used by codegen)."
               },
+              "sendsTo": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Plugins this system sends events to besides its own feature's: other features of this pack, plugins of its dependencies, or host plugins (\"application\"). Each receiving plugin's generated event type includes this system's outgoing events."
+              },
               "events": {
                 "type": "object",
                 "properties": {
@@ -218,6 +225,17 @@
               "type": "string"
             },
             "description": "Service modules. Keys are service names, values are source file paths."
+          },
+          "repositories": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            },
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
           "contributions": {
             "type": "string",

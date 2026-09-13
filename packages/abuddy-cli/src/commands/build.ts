@@ -5,10 +5,12 @@ import {
   buildPackConfigFromManifest,
   parseManifest,
   resolveFeatureSettingsFromManifest,
+  PACK_TYPES_DEF,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { bundlePackRuntime, bundlePackStepBuild } from '../build/be-bundler';
+import { bundlePackTypes } from '../build/types-bundler';
 import { BUNDLE_PATHS } from '@abuddy/host/packs';
 import { generate, resolveDeps } from './generate';
 import { resolveDepArtifacts } from './fetch-deps';
@@ -99,13 +101,14 @@ export async function build(args: string[]) {
     relKinds: manifest.relKinds ?? {},
   };
 
-  const defsDir = path.join(root, 'defs');
+  // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
-  if (fs.existsSync(defsDir)) {
-    for (const file of fs.readdirSync(defsDir)) {
-      if (!file.endsWith('.d.ts')) continue;
-      defs[file.replace(/\.d\.ts$/, '')] = fs.readFileSync(path.join(defsDir, file), 'utf-8');
-    }
+  const packTypes = await bundlePackTypes(root, path.join(outputDir, BUNDLE_PATHS.typesDir, `${PACK_TYPES_DEF}.d.ts`));
+  if (packTypes.success) {
+    defs[PACK_TYPES_DEF] = packTypes.content;
+  } else {
+    console.error(`\nPack types bundle failed: ${packTypes.error}`);
+    process.exitCode = 1;
   }
   const snapshot: PackSnapshot = { types, defs, manifest, sdkVersion: sdkVersion() };
   fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });

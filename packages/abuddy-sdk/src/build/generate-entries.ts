@@ -136,12 +136,14 @@ export type AllEntities = EARS.Entity;
 
 // ── Dependency type aggregation ─────────────────────────────────
 
-const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities']);
+// Names the generated facades provide: re-exporting a dependency's would shadow them
+const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities', 'PackEntityShapes', 'PackEvents', 'Repositories']);
 
 export function parseExportedTypeNames(content: string): string[] {
   const names: string[] = [];
+  // `export type { Local as Exported }` exports the name after `as`
   for (const m of content.matchAll(/^export\s+type\s+\{([^}]+)\}/gm))
-    names.push(...m[1].split(',').map(s => s.trim()).filter(Boolean));
+    names.push(...m[1].split(',').map(s => s.trim().split(/\s+as\s+/).pop()!.trim()).filter(Boolean));
   for (const m of content.matchAll(/^export\s+(?:declare\s+)?(?:type|interface)\s+(\w+)/gm))
     names.push(m[1]);
   return [...new Set(names)];
@@ -205,18 +207,47 @@ export function emitDepTypes(depSnapshots: Map<string, { types: PackTypeManifest
 
 // ── Helpers ─────────────────────────────────────────────────────
 
+/** Extensions a manifest path can name a module by; anything else (`memo.types`) is part of the name */
+const MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue', '.json', '.css']);
+
 /**
  * Specifier from src/__generated__ to a manifest path (relative to the pack root), with an
  * explicit .js extension so generated code resolves under node16/nodenext as well as bundlers.
  */
 function toImportPath(root: string, manifestPath: string): string {
-  const rel = '../' + manifestPath.replace(/^src\//, '');
-  if (rel.endsWith('.ts')) return rel.replace(/\.ts$/, '.js');
-  if (extname(rel)) return rel;
-  if (!existsSync(join(root, `${manifestPath}.ts`)) && existsSync(join(root, manifestPath, 'index.ts'))) {
+  const normalized = manifestPath.split('\\').join('/');
+  const rel = '../' + normalized.replace(/^(\.\/)?src\//, '');
+  const ext = extname(rel);
+  if (ext === '.ts' || ext === '.tsx' || ext === '.mts' || ext === '.cts') {
+    return rel.slice(0, -ext.length) + { '.ts': '.js', '.tsx': '.js', '.mts': '.mjs', '.cts': '.cjs' }[ext];
+  }
+  if (MODULE_EXTENSIONS.has(ext)) return rel;
+  if (!existsSync(join(root, `${normalized}.ts`)) && existsSync(join(root, normalized, 'index.ts'))) {
     return `${rel}/index.js`;
   }
   return `${rel}.js`;
+}
+
+/** Host plugins pack systems can send to: the keys of HostPluginEvents in @abuddy/sdk/services */
+const HOST_PLUGIN_IDS = ['application'];
+
+/** Entity types whose shapes the SDK declares itself (SdkEntityShapes in @abuddy/sdk/steps) */
+const SDK_ENTITY_SHAPES = ['TNode'];
+
+/** The type-bundle key in a pack's snapshot defs, written by `abuddy build` */
+export const PACK_TYPES_DEF = 'pack-types';
+
+/** A local name for a type imported from a dependency, unique per dependency */
+function depAlias(depId: string, name: string): string {
+  return `__dep_${depId.replace(/[^A-Za-z0-9_$]/g, '_')}_${name}`;
+}
+
+/** Whether a source file exports a type (or value) with this name */
+function exportsName(content: string, name: string): boolean {
+  const declared = new RegExp(`export\\s+(?:declare\\s+)?(?:default\\s+)?(?:abstract\\s+)?(?:interface|type|class|enum|const|let|var|function)\\s+${name}\\b`);
+  const listed = [...content.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}/g)]
+    .some((m) => m[1].split(',').some((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim() === name));
+  return declared.test(content) || listed;
 }
 
 function toPascalCase(id: string): string {
@@ -245,6 +276,15 @@ export function generatePackFiles(
 ): Record<string, string> {
   const root = opts.packRoot;
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
+  // Dependencies built with facade types (older snapshots have none, so their types stay untyped)
+  const typedDeps = [...depSnapshots].filter(([, snap]) => snap.defs?.[PACK_TYPES_DEF]).map(([depId]) => depId);
+  /** `import type { name as alias }` from each typed dependency, and the aliases */
+  function depTypeImports(name: string): { imports: string[]; aliases: string[] } {
+    return {
+      imports: typedDeps.map((depId) => `import type { ${name} as ${depAlias(depId, name)} } from './deps/${depId}.js';`),
+      aliases: typedDeps.map((depId) => depAlias(depId, name)),
+    };
+  }
 
   function resolveServiceImport(key: string, manifestPath: string) {
     const base = join(root, manifestPath);
@@ -345,13 +385,13 @@ export function generatePackFiles(
     return `${HEADER}
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { toPackSystemDefs } from '@abuddy/sdk/framework';
-
+${hasRepositories() ? "// Registers this pack's repositories before any system uses them\nimport './repositories.js';\n" : ''}
 ${systemImports}
 ${earlyImport}
 import { featureServices } from './services.js';
 import { EARS } from './ears.js';
 ${hooksImport}
-import './seeders';
+import './seeders.js';
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
@@ -450,7 +490,7 @@ ${manifest.migrations ? '  migrations,' : ''}
     if (feExts.blocks) regProps.push(`  blocks: blocksFE,`);
 
     const dslImport = manifest.dsl && Object.values(manifest.dsl).some(d => d.targets.includes('monaco') && d.globals)
-      ? `import './dsl-register-fe';\n`
+      ? `import './dsl-register-fe.js';\n`
       : '';
 
     return `${HEADER}
@@ -476,6 +516,7 @@ ${regProps.join('\n')}
     }
     const registry = mergeRegistries(manifest.id, manifest, depTypes);
     const { imports: shapeImports, entries: shapeEntries } = entityShapeEntries();
+    const depShapes = depTypeImports('PackEntityShapes');
     return `${emitEARS(manifest.id, registry)}
 // ── Typed EARS helpers ──────────────────────────────────────────
 // The query helpers typed against this pack's entity shapes (its own and its
@@ -486,15 +527,23 @@ import { defineEars, type ShapeOf } from '@abuddy/sdk/ears';
 import type { SdkEntityShapes } from '@abuddy/sdk/steps';
 ${shapeImports.join('\n')}
 
-export type PackShapes = SdkEntityShapes & {
+${depShapes.imports.join('\n')}
+
+/** Entity shapes this pack declares */
+export type OwnEntityShapes = {
 ${shapeEntries.join('\n')}
 };
+
+/** Every entity shape this pack can read: the SDK's, its own and its dependencies' */
+export type PackShapes = SdkEntityShapes & OwnEntityShapes${depShapes.aliases.map((a) => ` & ${a}`).join('')};
 
 /** An entity type's shape in this pack; undeclared types read as base fields plus \`unknown\` values. */
 export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 
 export const {
-  qx, findById, findByIdRaw, findAll, findWhere, findFirst, createEntity,
+  qx, findById, findByIdRaw, findAll, findWhere, findFirst,
+  findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
+  createEntity, createEntityWithDefaults, updateEntity, getAttr, getAttrs,
 } = /*#__PURE__*/ defineEars<PackShapes>();
 `;
   }
@@ -548,26 +597,55 @@ ${busIdEntries},
 `;
   }
 
+  /**
+   * Plugin id → the events that plugin receives from this pack's systems: its own feature's system
+   * and every system whose `sendsTo` names it. Dependency and host plugins get their map from the
+   * dependency's facade types and HostPluginEvents.
+   */
   function generateEvents(): string {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
+    const ownIds = new Set(features.map(f => f.id));
+    const depPluginIds = new Set([...depSnapshots.values()].flatMap(snap => (snap.manifest.features ?? []).filter(f => f.plugin).map(f => f.id)));
+
+    const receivers = new Map<string, string[]>();
+    const addSender = (pluginId: string, feature: PackFeatureEntry) => {
+      const alias = `__events_${feature.id}`;
+      const senders = receivers.get(pluginId) ?? [];
+      if (!senders.includes(alias)) senders.push(alias);
+      receivers.set(pluginId, senders);
+    };
+    for (const feature of systemFeatures) addSender(feature.id, feature);
+    for (const feature of systemFeatures) {
+      for (const target of feature.system!.sendsTo ?? []) {
+        if (ownIds.has(target)) addSender(target, feature);
+        else if (!depPluginIds.has(target) && !HOST_PLUGIN_IDS.includes(target)) {
+          throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", which is neither a feature of this pack, a plugin of its dependencies, nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
+        }
+      }
+    }
 
     const imports = systemFeatures
-      .map(f => `import type { ${outgoingEventsType(f)} } from '${toImportPath(root, f.system!.entry)}';`)
+      .map(f => `import type { ${outgoingEventsType(f)} as __events_${f.id} } from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
-
-    const entries = systemFeatures
-      .map(f => `  '${f.id}': ${outgoingEventsType(f)};`)
-      .join('\n');
+    const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
+    const deps = depTypeImports('PackEvents');
 
     return `${HEADER}
-import { defineEvents } from '@abuddy/sdk/services';
+import { defineEvents, type HostPluginEvents } from '@abuddy/sdk/services';
 ${imports}
+${deps.imports.join('\n')}
 
-/** Plugin id → the events this pack's systems send to that plugin. */
-export type PackEvents = {
+/** Plugin id → the events this pack's systems send to that plugin (their own, and each \`sendsTo\`). */
+export type OwnPackEvents = {
 ${entries}
 };
+
+/**
+ * Every plugin this pack's systems can send to: its own, its dependencies' and the host's. A plugin
+ * id this pack also uses types as its own plugin.
+ */
+export type PackEvents = OwnPackEvents${deps.aliases.map(a => ` & Omit<${a}, keyof OwnPackEvents>`).join('')} & Omit<HostPluginEvents, keyof OwnPackEvents>;
 
 export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
 `;
@@ -620,18 +698,20 @@ ${nodeEntity}`;
     const imports: string[] = [];
     const entries: string[] = [];
 
+    // Imports are aliased so a service name can't shadow a generated binding (e.g. `services`)
     function addService(key: string, manifestPath: string) {
       const { style, exportName } = resolveServiceImport(key, manifestPath);
       const importPath = toImportPath(root, manifestPath);
+      const local = `__service_${key}`;
       if (style === 'factory') {
-        imports.push(`import { ${exportName} } from '${importPath}';`);
-        entries.push(`  ${key}: ${exportName}(),`);
+        imports.push(`import { ${exportName} as ${local} } from '${importPath}';`);
+        entries.push(`  ${key}: ${local}(),`);
       } else if (style === 'named') {
-        imports.push(`import { ${exportName} } from '${importPath}';`);
-        entries.push(`  ${key}: ${exportName},`);
+        imports.push(`import { ${exportName} as ${local} } from '${importPath}';`);
+        entries.push(`  ${key}: ${local},`);
       } else {
-        imports.push(`import * as ${key} from '${importPath}';`);
-        entries.push(`  ${key},`);
+        imports.push(`import * as ${local} from '${importPath}';`);
+        entries.push(`  ${key}: ${local},`);
       }
     }
 
@@ -645,27 +725,96 @@ ${nodeEntity}`;
       addService(key, svcPath);
     }
 
+    const deps = depTypeImports('Services');
+
     return `${HEADER}
 import type { z } from 'zod';
 import type { EARS } from '@abuddy/sdk';
-import { services as sdkServices } from '@abuddy/sdk/services';
+import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
+import type { Repositories } from './repository.js';
 ${imports.join('\n')}
+${deps.imports.join('\n')}
 
 export const featureServices = {
 ${entries.join('\n')}
 };
 
 /**
- * What an action actually receives: this pack's feature services plus the
- * ambient ones the host injects (logger, emitter, repository).
+ * What an action actually receives: this pack's feature services, its dependencies' services
+ * and the ambient ones the host injects (logger, emitter, repository).
  * The featureServices value itself stays feature-only.
  */
-export type Services = typeof featureServices & import('@abuddy/sdk/services').HostServices;
+export type Services = typeof featureServices & Omit<HostServices, 'repository'> & { repository: Repositories }${deps.aliases.map(a => ` & Omit<${a}, 'repository'>`).join('')};
 
 /** The host's services proxy, typed with this pack's feature services. */
 export const services = sdkServices as unknown as Services;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
+`;
+  }
+
+  // ── Repositories ──────────────────────────────────────────────
+
+  /** [name, source module specifier, export name] of each repository the manifest declares */
+  function repositoryEntries(): [string, string, string][] {
+    const seen = new Map<string, string>();
+    return (manifest.features ?? []).flatMap(f => Object.entries(f.repositories ?? {}).map(([name, target]) => {
+      if (seen.has(name)) throw new Error(`Repository "${name}" is declared by features "${seen.get(name)}" and "${f.id}"`);
+      seen.set(name, f.id);
+      const [source, exportName] = target.split('#');
+      const normalized = source.split('\\').join('/');
+      const file = [normalized, `${normalized}.ts`, join(normalized, 'index.ts')].map(p => join(root, p)).find(p => /\.ts$/.test(p) && existsSync(p));
+      if (!file || !exportsName(readFileSync(file, 'utf-8'), exportName)) {
+        throw new Error(`Repository "${name}" (feature "${f.id}"): ${source} doesn't export "${exportName}"`);
+      }
+      return [name, toImportPath(root, normalized), exportName] as [string, string, string];
+    }));
+  }
+
+  function hasRepositories(): boolean {
+    return (manifest.features ?? []).some(f => Object.keys(f.repositories ?? {}).length > 0);
+  }
+
+  /** `repository`, typed with this pack's repositories and its dependencies'. Type-only imports: no cycles. */
+  function generateRepository(): string {
+    const entries = repositoryEntries();
+    const deps = depTypeImports('Repositories');
+    return `${HEADER}
+import { repository as sdkRepository } from '@abuddy/sdk/ears';
+${entries.map(([name, path, exportName]) => `import type { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
+${deps.imports.join('\n')}
+
+/** The repositories this pack declares (abuddy.json features[].repositories) */
+export type OwnRepositories = {
+${entries.map(([name]) => `  ${name}: typeof __repo_${name};`).join('\n')}
+};
+
+/** Every repository this pack can use: its own and its dependencies' */
+export type Repositories = OwnRepositories${deps.aliases.map(a => ` & ${a}`).join('')};
+
+export const repository = sdkRepository as unknown as Repositories;
+`;
+  }
+
+  /** Registers this pack's repositories; the backend entry imports it first */
+  function generateRepositories(): string {
+    const entries = repositoryEntries();
+    if (entries.length === 0) return '';
+    return `${HEADER}
+import { registerRepository } from '@abuddy/sdk/ears';
+${entries.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
+
+${entries.map(([name]) => `registerRepository('${name}', __repo_${name});`).join('\n')}
+`;
+  }
+
+  /** The facade types dependents import, bundled into dist/types/pack-types.d.ts by \`abuddy build\` */
+  function generatePackTypes(): string {
+    return `${HEADER}
+export type { PackShapes as PackEntityShapes } from './ears.js';
+export type { PackEvents } from './events.js';
+export type { Services } from './services.js';
+export type { Repositories } from './repository.js';
 `;
   }
 
@@ -790,70 +939,25 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 `;
   }
 
+  /** Imports and map entries for this pack's own entity shapes. Dependencies' come from their facade types. */
   function entityShapeEntries(): { imports: string[]; entries: string[] } {
-    const allImports: string[] = [];
-    const allEntries: string[] = [];
-    const seenEntities = new Set<string>();
-
-    const shapes = manifest.entityShapes;
-    if (shapes) {
-      const byPath = new Map<string, Set<string>>();
-      for (const { source, type: typeName } of Object.values(shapes)) {
-        const p = toImportPath(root, source);
-        if (!byPath.has(p)) byPath.set(p, new Set());
-        byPath.get(p)!.add(typeName);
+    const imports: string[] = [];
+    const entries: string[] = [];
+    for (const [entity, { source, type: typeName }] of Object.entries(manifest.entityShapes ?? {})) {
+      if (SDK_ENTITY_SHAPES.includes(entity)) {
+        throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove it from entityShapes`);
       }
-      allImports.push(
-        ...Array.from(byPath.entries())
-          .map(([p, names]) => `import type { ${[...names].join(', ')} } from '${p}';`),
-      );
-      for (const [entity, { type: typeName }] of Object.entries(shapes)) {
-        seenEntities.add(entity);
-        allEntries.push(`  '${entity}': ${typeName};`);
+      const normalized = source.split('\\').join('/');
+      const file = [normalized, `${normalized}.ts`, join(normalized, 'index.ts')]
+        .map((f) => join(root, f)).find((f) => existsSync(f) && !f.endsWith('/') && extname(f) !== '' && /\.(ts|tsx|mts|cts|d\.ts)$/.test(f));
+      if (!file || !exportsName(readFileSync(file, 'utf-8'), typeName)) {
+        throw new Error(`Entity shape "${entity}": ${source} doesn't export a type named "${typeName}"`);
       }
+      const alias = `__shape_${entity.replace(/[^A-Za-z0-9_$]/g, '_')}`;
+      imports.push(`import type { ${typeName} as ${alias} } from '${toImportPath(root, normalized)}';`);
+      entries.push(`  '${entity}': ${alias};`);
     }
-
-    for (const [depId, snap] of depSnapshots) {
-      const depShapes = snap.manifest.entityShapes;
-      if (!depShapes) continue;
-
-      const depDefsDir = join(root, '.abuddy', 'deps', depId, 'defs');
-      if (!existsSync(depDefsDir)) continue;
-
-      const typeToFile = new Map<string, string>();
-      try {
-        for (const file of readdirSync(depDefsDir)) {
-          if (file.endsWith('.d.ts')) {
-            const key = file.replace(/\.d\.ts$/, '');
-            const content = readFileSync(join(depDefsDir, file), 'utf-8');
-            for (const m of content.matchAll(/export\s+(?:declare\s+)?(?:type|interface)\s+(\w+)/g)) {
-              typeToFile.set(m[1], key);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn(`  Warning: failed to read defs for dep "${depId}": ${e instanceof Error ? e.message : e}`);
-      }
-
-      const depByPath = new Map<string, Set<string>>();
-      for (const [entity, { type: typeName }] of Object.entries(depShapes)) {
-        if (seenEntities.has(entity)) continue;
-        const fileKey = typeToFile.get(typeName);
-        if (!fileKey) continue;
-        seenEntities.add(entity);
-
-        const defsImportPath = `../../.abuddy/deps/${depId}/defs/${fileKey}.js`;
-        if (!depByPath.has(defsImportPath)) depByPath.set(defsImportPath, new Set());
-        depByPath.get(defsImportPath)!.add(typeName);
-        allEntries.push(`  '${entity}': ${typeName};`);
-      }
-      allImports.push(
-        ...Array.from(depByPath.entries())
-          .map(([p, names]) => `import type { ${[...names].join(', ')} } from '${p}';`),
-      );
-    }
-
-    return { imports: allImports, entries: allEntries };
+    return { imports, entries };
   }
 
   // ── Flow helpers ───────────────────────────────────────────────
@@ -1027,6 +1131,11 @@ ${registrations.join('\n\n')}
     ['src/__generated__/events.ts', generateEvents()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],
+    ['src/__generated__/repository.ts', generateRepository()],
+    ['src/__generated__/repositories.ts', generateRepositories()],
+    ['src/__generated__/pack-types.ts', generatePackTypes()],
+    // Each dependency's facade types, from its snapshot
+    ...typedDeps.map((depId) => [`src/__generated__/deps/${depId}.d.ts`, `${HEADER}\n${depSnapshots.get(depId)!.defs[PACK_TYPES_DEF]}`]),
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
