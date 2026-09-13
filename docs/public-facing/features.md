@@ -18,7 +18,7 @@ src/features/bookmarks/
     system.ts                    # Backend XState machine
     types.ts                     # Shared types
     repository/
-      index.ts                   # EARS queries and commands
+      index.ts                   # EARS queries and commands (declared in abuddy.json repositories)
   fe/
     plugin.ts                    # Frontend plugin definition
     state.ts                     # Frontend XState machine
@@ -95,7 +95,7 @@ export default bookmarksEntry;
 
 - **Default-export the `SystemEntry`** — every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`, `feature.config.ts`) default-exports its single contribution. Named exports alongside it are fine; the default is what gets loaded.
 - **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects. Send initial state back to the plugin via the bus.
-- **Use `emit()` to send to the frontend** — `system.get(bus).send(emit(systemId, event))` routes the event to the matching frontend plugin.
+- **Use `emit()` to send to the frontend** — `system.get(bus).send(emit(systemId, event))` routes the event to the matching frontend plugin. `emit` from `#generated/events` accepts only the events that plugin receives. To send to another plugin (another feature's, a dependency's, or the app's `application`), list it in the system's `sendsTo` in `abuddy.json`; its type then accepts this system's events.
 - **Never use `pluginId` as a field name in outgoing events** — the transport layer overwrites it. Use `targetId` or similar instead.
 
 ### Communication patterns

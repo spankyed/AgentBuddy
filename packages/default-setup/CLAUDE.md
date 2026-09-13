@@ -16,7 +16,10 @@ src/
     bus-ids.ts             # busId map (bus-routable system IDs); import-free, safe for FE code
     events.ts              # PackEvents + typed emit/sendToPlugin facade
     types.ts               # Type barrel (outgoing events + per-feature types)
-    services.ts            # Service aggregation (featureServices object)
+    services.ts            # Service aggregation (featureServices object) and the typed services proxy
+    repository.ts          # repository, typed with the repositories declared in abuddy.json
+    repositories.ts        # Registers those repositories; pack-entry.ts imports it first
+    pack-types.ts          # Facade types abuddy build bundles into dist/types/pack-types.d.ts
     contributions.ts       # Contribution types, categories, item providers (tiptap references)
     seeders.ts             # Seed registration for all seed types
     step-types.ts          # Step type augmentation
@@ -41,7 +44,7 @@ src/
 Each feature lives in `src/features/<name>/` with this layout:
 
 - `be/system.ts` — XState backend system machine + event types
-- `be/repository/` — EARS read/write layer (registered via side-effect import)
+- `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `abuddy.json` `features[].repositories` and registered by the generated pack entry; use them through `repository` from `@/__generated__/repository`
 - `be/services/` — Stateless service modules exposed to other systems and actions
 - `be/types.ts` — Shared types
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
@@ -74,9 +77,10 @@ The model client (`extensions/services/model-client/`) handles LLM streaming, to
 Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers all entity types and relation kinds, plus partition policy (TNode excluded from persistence, Secret routed to secrets store).
 
 Typed facades (no module augmentation):
-- `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface) and the typed `qx`/`find*`/`createEntity` helpers built with `defineEars`
-- `__generated__/events.ts` — `PackEvents` (plugin ID → outgoing event types) and typed `emit`/`sendToPlugin` built with `defineEvents`
-- `__generated__/services.ts` — the `services` proxy typed as `Services`
+- `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface) and the typed `qx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`
+- `__generated__/events.ts` — `PackEvents` (receiving plugin ID → the events it gets: its own system's plus every system whose `system.sendsTo` names it, e.g. actions → flows, settings → the host's `application`) and typed `emit`/`sendToPlugin` built with `defineEvents`. Don't import `emit`/`sendToPlugin` from `@abuddy/sdk/helpers`; declare the send in `abuddy.json` instead
+- `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`)
+- `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
 
 ## Seeds
 
@@ -152,3 +156,4 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
 - `prepare` script runs `abuddy generate-entries` after `npm install`
+- `npm run build` runs `abuddy build` and rebuilds `dist/dev-entry.cjs` (the API's dev-mode loader)
