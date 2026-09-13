@@ -18,7 +18,7 @@ export interface SeederContext {
   compiledDir: string;
   include?: SeedIncludeSet;
   mode?: ImportMode;
-  log: (...args: any[]) => void;
+  log: (...args: unknown[]) => void;
 }
 
 export interface Seeder {
@@ -102,7 +102,7 @@ export function seedCollection<T>(opts: {
   findExisting: (item: T) => { id: EARS.EntityId } | undefined;
   create: (item: T) => void;
   update: (id: EARS.EntityId, item: T) => void;
-  log: (...args: any[]) => void;
+  log: (...args: unknown[]) => void;
   include?: SeedIncludeSet;
   mode?: ImportMode;
   wipe?: () => void;

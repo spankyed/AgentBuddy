@@ -1,10 +1,9 @@
 import { getHostModule } from '../runtime/host.ts';
 import type { Logger } from '../ears/runtime.ts';
 
-let _mod: any;
+let _mod: { createLogger(source?: string): Logger } | undefined;
 function mod() {
-  if (!_mod) _mod = getHostModule('logger');
-  return _mod;
+  return _mod ??= getHostModule<{ createLogger(source?: string): Logger }>('logger');
 }
 
 export type { Logger };
@@ -14,13 +13,13 @@ export function createLogger(source?: string): Logger {
   const resolve = () => _inner ??= mod().createLogger(source);
   return new Proxy({} as Logger, {
     get(_, prop) {
-      return (resolve() as any)[prop];
+      return resolve()[prop as keyof Logger];
     },
   });
 }
 
 export interface InspectLogger {
-  inspect: (message: string, meta?: Record<string, any>) => void;
+  inspect: (message: string, meta?: Record<string, unknown>) => void;
   logger: Logger;
   setEnabled: (enabled: boolean) => void;
   isEnabled: () => boolean;
@@ -35,7 +34,7 @@ export function createInspectLogger(namespace: string): InspectLogger {
   }
 
   return {
-    inspect(message: string, meta?: Record<string, any>) {
+    inspect(message: string, meta?: Record<string, unknown>) {
       if (_nsEnabled.get(namespace)) logger.debug(message, meta);
     },
     logger,
@@ -50,10 +49,7 @@ export type LogEvent = {
   level: LogLevel;
   message: string;
   source?: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
   stack?: string;
 }
 
-export const LogEventValue: any = new Proxy({} as any, {
-  get(_, prop: string) { return mod().LogEvent[prop]; },
-});

@@ -1,3 +1,4 @@
+import type { EARS } from '../types/entities.ts';
 import { destroyEntity } from '../ears/index.ts';
 import { createEntityWithDefaults, updateEntity } from '../ears/transaction-helpers.ts';
 import { findWhere, findAll, findById } from '../ears/query-helpers.ts';
@@ -6,7 +7,7 @@ import { seedPath } from '../build/manifest.ts';
 
 export function createCollectionSeeder(config: {
   key: string;
-  entityType: any;
+  entityType: EARS.Entity;
   lookupField: string;
 }): Seeder {
   const { key, entityType, lookupField } = config;

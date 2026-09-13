@@ -36,7 +36,7 @@ export enum BinaryOperator {
 }
 
 // @public (undocumented)
-export type ChangeBlock<T = any> = {
+export type ChangeBlock<T = unknown> = {
     renames?: Rename[];
     removed?: Array<T | string>;
 };
@@ -60,7 +60,7 @@ export function copyMediaByRef(refs: MediaRef[], outputDir: string): number;
 export function createExportDir(parentDir: string, systemName: string): string;
 
 // @public (undocumented)
-export const detectAllArrayChanges: (prev: any, next: any) => Record<string, DiffResult<any>> | null;
+export const detectAllArrayChanges: (prev: unknown, next: unknown) => Record<string, DiffResult<DiffItem>> | null;
 
 // @public (undocumented)
 export const detectChanges: <T>(prev: T[] | undefined, next: T[] | undefined, id: (x: T) => string, key: (x: T) => string) => DiffResult<T>;
@@ -91,7 +91,7 @@ export function extractImageParts(markdown: string): ImagePart[];
 export function extractMediaRefs(markdown: string): MediaRef[];
 
 // @public (undocumented)
-export function extractValueByPath(source: any, path: string): any;
+export function extractValueByPath(source: unknown, path: string): unknown;
 
 // @public (undocumented)
 export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[];
@@ -214,8 +214,25 @@ export type Rename = {
     to: string;
 };
 
+// @public
+export function reportSystemError(input: ReportSystemErrorInput): void;
+
 // @public (undocumented)
-export function reportSystemError(...args: any[]): void;
+export interface ReportSystemErrorInput {
+    // (undocumented)
+    entityId?: string;
+    // (undocumented)
+    error: unknown;
+    // (undocumented)
+    operation?: string;
+    // (undocumented)
+    severity?: 'error' | 'fatal';
+    // (undocumented)
+    source?: string;
+    // (undocumented)
+    title?: string;
+    userMessage?: string;
+}
 
 // @public
 export function resolveCliPath(cli: CliName, preferredPath?: string): Promise<string>;
@@ -271,7 +288,7 @@ export function seedCollection<T>(opts: {
     } | undefined;
     create: (item: T) => void;
     update: (id: EARS.EntityId, item: T) => void;
-    log: (...args: any[]) => void;
+    log: (...args: unknown[]) => void;
     include?: SeedIncludeSet;
     mode?: ImportMode;
     wipe?: () => void;
@@ -315,7 +332,7 @@ export interface SeederContext {
     // (undocumented)
     include?: SeedIncludeSet;
     // (undocumented)
-    log: (...args: any[]) => void;
+    log: (...args: unknown[]) => void;
     // (undocumented)
     mode?: ImportMode;
 }
@@ -345,7 +362,7 @@ export function testCli(cli: CliName, storedPath?: string): Promise<{
 export function toDisplayName(str: string): string;
 
 // @public (undocumented)
-export const toIdentifierSet: <T = any>(removed?: Array<T | string>, keyExtractor?: (item: T) => string) => Set<string>;
+export const toIdentifierSet: <T = unknown>(removed?: Array<T | string>, keyExtractor?: (item: T) => string) => Set<string>;
 
 // @public (undocumented)
 export const toMap: (r?: Rename[]) => Map<string, string>;

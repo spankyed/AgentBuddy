@@ -6,7 +6,7 @@ export type {} from './electron-api.ts';
 export type { Plugin, RouteComponents } from './plugin.ts'
 export type { PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
-export { useActorSystem, useApplicationActor } from './actor-system.ts'
+export { useActorSystem, useApplicationActor, type PluginActorSystem } from './actor-system.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
 export { registerDslType, getDslTypes, type DslTypeConfig } from './dsl-types.ts'
 export { EXTRA_BLOCK_ITEMS_KEY, TIPTAP_PLUGINS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin } from './tiptap-plugins.ts'
@@ -26,4 +26,5 @@ export {
   navigateToPlugin,
   openInAppBrowser,
   useState,
+  type PluginEvent,
 } from './delegates.ts'

@@ -1,9 +1,15 @@
 import { inject } from 'vue'
+import type { AnyActorRef } from 'xstate'
 
-export function useActorSystem(): { get(id: string): any } {
-  return inject<{ get(id: string): any }>('actorSystem')!
+/** The renderer's actor system: the application, plugin and host actors by id */
+export interface PluginActorSystem {
+  get(id: string): AnyActorRef
 }
 
-export function useApplicationActor(): any {
-  return inject('applicationActor')!
+export function useActorSystem(): PluginActorSystem {
+  return inject<PluginActorSystem>('actorSystem')!
+}
+
+export function useApplicationActor(): AnyActorRef {
+  return inject<AnyActorRef>('applicationActor')!
 }

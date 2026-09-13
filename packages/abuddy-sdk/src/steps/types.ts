@@ -76,6 +76,7 @@ export interface StepBuildFacet {
  * packs get real types instead of `unknown` casts.
  *─────────────────────────────────────────────────────────────────*/
 
+import type { AnyActorRef } from 'xstate';
 import type { BaseEntity, EARS } from '../types/entities.ts';
 
 export type TimestampMs = number;
@@ -135,8 +136,8 @@ export interface StepRun {
 }
 
 export interface RuntimeServices {
-  getFlowActor: (flowTNodeId: EARS.EntityId) => any | undefined;
-  getAppServices: () => any;
+  getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
+  getAppServices: () => unknown;
 }
 
 export interface ExecutionContext {
@@ -259,8 +260,8 @@ export interface TriggerRuntimeNode {
 }
 
 export interface TriggerRuntimeContext {
-  flowTNodeId: string;
-  sendToBrainSystem: (event: { eventType: string; payload?: any; targetFlowId?: any }) => void;
+  flowTNodeId: EARS.EntityId;
+  sendToBrainSystem: (event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }) => void;
 }
 
 /*─────────────────────────────────────────────────────────────────

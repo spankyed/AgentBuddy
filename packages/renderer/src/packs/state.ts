@@ -1,7 +1,7 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { registerPackFE, unregisterPackFE } from '@abuddy/host/fe';
-import { trpc } from '@abuddy/sdk/rpc';
+import { trpc } from '@/core/trpc';
 import type { PackInfo } from '@abuddy/host/packs';
 import { application } from '@/core/actors/application';
 import { loadPackFEEntry, loadPackPlugins, loadPackStyles } from './pack-loader';

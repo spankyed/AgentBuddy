@@ -6,6 +6,7 @@
  * Branching is handled generically via StepBuildFacet.branches().
  */
 
+import type { EARS } from '../../types/entities.ts';
 import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
 import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
 import type { CompilerContext } from './flow-entities.ts';
@@ -14,8 +15,8 @@ import { stepRegistry, type StepDefinition } from '../../steps/index.ts';
 export type { CompilerContext };
 
 export interface FlowEARS {
-  Entity: Record<string, any>;
-  RelKind: Record<string, any>;
+  Entity: Record<'Flow' | 'Node' | 'Action' | 'Prompt', EARS.Entity>;
+  RelKind: Record<'CONTAINS' | 'INSTANCE_OF' | 'TRANSITIONS_TO', EARS.RelKind>;
 }
 
 type Relation = { source: string; kind: string; target: string; info?: object };

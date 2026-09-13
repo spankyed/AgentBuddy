@@ -1,12 +1,13 @@
 import { safeEvents } from './safe-events.ts';
 
-export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string; info?: any };
+export type TrailClickEvent<TInfo = unknown> = { type: 'TRAIL_CLICK'; target: string; info?: TInfo };
 
 const typeOf = safeEvents<TrailClickEvent>();
 
-export const targetIs = ({ event }: any, params: { view: string }) => typeOf('TRAIL_CLICK', event).target === params.view;
+export const targetIs = ({ event }: { event: { type: string } }, params: { view: string }) =>
+  typeOf('TRAIL_CLICK', event as TrailClickEvent).target === params.view;
 
-type TransitionConfig = any;
+type TransitionConfig = object;
 type RouteTuple = [string, string];
 
 export function TRAIL_CLICK<T extends TransitionConfig>(routes: RouteTuple[]) {

@@ -1,5 +1,6 @@
 import { streamText as aiStreamText, generateText as aiGenerateText, streamObject as aiStreamObject, generateObject as aiGenerateObject } from 'ai';
-import type { CoreMessage } from 'ai';
+import type { LanguageModel, Schema } from 'ai';
+import type { z } from 'zod';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -52,7 +53,7 @@ const PROVIDER_CONFIGS = {
   cohere: () => { throw new Error('Cohere provider not yet implemented'); },
 } as const;
 
-function getProvider(providerName: string, explicitApiKey?: string): any {
+function getProvider(providerName: string, explicitApiKey?: string): (modelId: string) => LanguageModel {
   const apiKey = getApiKey(providerName, explicitApiKey);
 
   if (providerName === 'openai.responses') {
@@ -63,63 +64,45 @@ function getProvider(providerName: string, explicitApiKey?: string): any {
   const createFn = PROVIDER_CONFIGS[baseProvider];
   if (!createFn) throw new Error(`Unknown provider: ${providerName}`);
 
-  return createFn(apiKey);
+  return createFn(apiKey) as (modelId: string) => LanguageModel;
 }
 
 function getModel(config: ModelConfig) {
   return getProvider(config.provider, config.apiKey)(config.model);
 }
 
-export async function streamText(params: {
+type TextCallOptions = Omit<Parameters<typeof aiGenerateText>[0], 'model'>;
+
+/** The AI SDK's options, with the model named by provider and id */
+export type GenerateTextOptions = TextCallOptions & { model: ModelConfig };
+export type StreamTextOptions = Omit<Parameters<typeof aiStreamText>[0], 'model'> & { model: ModelConfig };
+export type ObjectCallOptions<T> = Pick<TextCallOptions,
+  | 'system' | 'prompt' | 'messages' | 'maxTokens' | 'temperature' | 'topP' | 'topK' | 'presencePenalty'
+  | 'frequencyPenalty' | 'seed' | 'maxRetries' | 'abortSignal' | 'headers' | 'providerOptions' | 'experimental_telemetry'
+> & {
   model: ModelConfig;
-  prompt?: string;
-  messages?: CoreMessage[];
-  system?: string;
-  temperature?: number;
-  maxTokens?: number;
-  [key: string]: any;
-}) {
+  schema: z.Schema<T, z.ZodTypeDef, unknown> | Schema<T>;
+  schemaName?: string;
+  schemaDescription?: string;
+  mode?: 'auto' | 'json' | 'tool';
+};
+
+export async function streamText(params: StreamTextOptions) {
   const { model, ...aiParams } = params;
   return aiStreamText({ model: getModel(model), ...aiParams });
 }
 
-export async function generateText(params: {
-  model: ModelConfig;
-  prompt?: string;
-  messages?: CoreMessage[];
-  system?: string;
-  temperature?: number;
-  maxTokens?: number;
-  [key: string]: any;
-}) {
+export async function generateText(params: GenerateTextOptions) {
   const { model, ...aiParams } = params;
   return aiGenerateText({ model: getModel(model), ...aiParams });
 }
 
-export async function streamObject<T>(params: {
-  model: ModelConfig;
-  schema: any;
-  prompt?: string;
-  messages?: CoreMessage[];
-  system?: string;
-  temperature?: number;
-  maxTokens?: number;
-  [key: string]: any;
-}) {
+export async function streamObject<T>(params: ObjectCallOptions<T>) {
   const { model, ...aiParams } = params;
   return aiStreamObject<T>({ model: getModel(model), ...aiParams });
 }
 
-export async function generateObject<T>(params: {
-  model: ModelConfig;
-  schema: any;
-  prompt?: string;
-  messages?: CoreMessage[];
-  system?: string;
-  temperature?: number;
-  maxTokens?: number;
-  [key: string]: any;
-}) {
+export async function generateObject<T>(params: ObjectCallOptions<T>) {
   const { model, ...aiParams } = params;
   return aiGenerateObject<T>({ model: getModel(model), ...aiParams });
 }

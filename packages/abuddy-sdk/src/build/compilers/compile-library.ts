@@ -5,7 +5,7 @@ import { sourceHash } from '../compile-utils.ts';
 
 export interface ContentSection {
   type: 'field' | 'list' | 'markdown' | 'text' | 'code';
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ExportedDocument {

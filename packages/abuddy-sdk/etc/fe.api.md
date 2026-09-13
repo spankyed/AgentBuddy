@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
 import type { Component } from 'vue';
@@ -22,7 +23,7 @@ export interface BlockItem {
     // (undocumented)
     command: (e: Editor) => void;
     // (undocumented)
-    icon: any;
+    icon: Component;
     // (undocumented)
     label: string;
 }
@@ -42,12 +43,12 @@ export default breadcrumb;
 export function breadcrumbList<C>(getCrumbs: (ctx: C) => Array<{
     label: string;
     target: string;
-    info?: any;
+    info?: unknown;
 }>): {
     readonly breadcrumb: (ctx: C) => Array<{
         label: string;
         target: string;
-        info?: any;
+        info?: unknown;
     }>;
 };
 
@@ -95,10 +96,10 @@ export interface ContextMenuItem {
     // (undocumented)
     event: {
         type: string;
-        [key: string]: any;
+        [key: string]: unknown;
     };
     // (undocumented)
-    icon?: any;
+    icon?: Component;
     // (undocumented)
     iconColor?: string;
     // (undocumented)
@@ -110,7 +111,7 @@ export interface ContextMenuItem {
 }
 
 // @public (undocumented)
-export type ContextMenuMeta = ContextMenuItem[] | ((context: any) => ContextMenuItem[]);
+export type ContextMenuMeta = ContextMenuItem[] | ((context: never) => ContextMenuItem[]);
 
 // @public (undocumented)
 export function createHotkeyProcessor<const TMap extends Record<string, string>, TContext extends {
@@ -229,7 +230,7 @@ export interface NavHistory<T> {
 }
 
 // @public (undocumented)
-export function navigateToPlugin(pluginId: string, event?: Record<string, any> | Record<string, any>[]): void;
+export function navigateToPlugin(pluginId: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
@@ -289,6 +290,18 @@ interface Plugin_2 {
 }
 export { Plugin_2 as Plugin }
 
+// @public
+export interface PluginActorSystem {
+    // (undocumented)
+    get(id: string): AnyActorRef;
+}
+
+// @public
+export type PluginEvent = {
+    type: string;
+    [key: string]: unknown;
+};
+
 // @public (undocumented)
 export interface PluginHotkeyDefinition {
     // (undocumented)
@@ -298,7 +311,7 @@ export interface PluginHotkeyDefinition {
 }
 
 // @public (undocumented)
-export function processHotkeys<const T extends Record<string, string>, H = any>(event: HotkeyEvent, hotkeys: H | undefined, actionMap: T): T[keyof T] | undefined;
+export function processHotkeys<const T extends Record<string, string>, H = unknown>(event: HotkeyEvent, hotkeys: H | undefined, actionMap: T): T[keyof T] | undefined;
 
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
@@ -326,12 +339,12 @@ export function saveTabGroups(key: string, groups: TabGroup[]): void;
 export function staticBreadcrumbList(crumbs: Array<{
     label: string;
     target: string;
-    info?: any;
+    info?: unknown;
 }>): {
     readonly breadcrumb: {
         label: string;
         target: string;
-        info?: any;
+        info?: unknown;
     }[];
 };
 
@@ -355,7 +368,11 @@ export interface TabGroup {
 export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray';
 
 // @public (undocumented)
-export const targetIs: (input: any, params: {
+export const targetIs: (input: {
+    event: {
+        type: string;
+    };
+}, params: {
     view: string;
 }) => boolean;
 
@@ -393,19 +410,17 @@ export function TRAIL_CLICK<T extends TransitionConfig>(routes: RouteTuple[]): {
 };
 
 // @public (undocumented)
-export type TrailClickEvent = {
+export type TrailClickEvent<TInfo = unknown> = {
     type: 'TRAIL_CLICK';
     target: string;
-    info?: any;
+    info?: TInfo;
 };
 
 // @public (undocumented)
-export function useActorSystem(): {
-    get(id: string): any;
-};
+export function useActorSystem(): PluginActorSystem;
 
 // @public (undocumented)
-export function useApplicationActor(): any;
+export function useApplicationActor(): AnyActorRef;
 
 // @public (undocumented)
 export function useSettingsSaveStatus(): {
@@ -414,13 +429,13 @@ export function useSettingsSaveStatus(): {
         entityType: string;
         label: string;
         path: string[];
-        value: any;
+        value: unknown;
     }) => void;
     setSaveStatus: (status: "saving" | "saved") => void;
 };
 
 // @public (undocumented)
-export function useState<T = any>(pluginId: string): T;
+export function useState<T = AnyActorRef>(pluginId: string): T;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

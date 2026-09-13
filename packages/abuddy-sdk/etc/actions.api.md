@@ -19,7 +19,7 @@ export interface BuildTranscriptOptions {
 }
 
 // @public (undocumented)
-export function formatProviderError(error: any, currentProvider: string, alternatives?: Record<string, string>): ProviderErrorResult;
+export function formatProviderError(error: unknown, currentProvider: string, alternatives?: Record<string, string>): ProviderErrorResult;
 
 // @public (undocumented)
 export interface ProviderErrorResult {

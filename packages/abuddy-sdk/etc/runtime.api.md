@@ -5,21 +5,21 @@
 ```ts
 
 // @public
-export function createTemplateResolver(executeFn: (fnBody: string, params: Record<string, any>, resolver?: TemplateResolver) => string, lookup: (name: string) => {
+export function createTemplateResolver(executeFn: (fnBody: string, params: Record<string, unknown>, resolver?: TemplateResolver) => string, lookup: (name: string) => {
     templateFn: string;
 } | undefined, maxDepth?: number, currentDepth?: number): TemplateResolver;
 
 // @public
-export function executeTemplate(fnBody: string, params: Record<string, any>, resolver?: TemplateResolver): string;
+export function executeTemplate(fnBody: string, params: Record<string, unknown>, resolver?: TemplateResolver): string;
 
 // @internal
-export function getHostModule<T = any>(key: string): T;
+export function getHostModule<T = unknown>(key: string): T;
 
 // @public (undocumented)
-export function hostFn(moduleKey: string, fnName: string): AnyFn;
+export function hostFn<TArgs extends unknown[] = unknown[], TResult = unknown>(moduleKey: string, fnName: string): (...args: TArgs) => TResult;
 
 // @public (undocumented)
-export function hostValue<T = any>(moduleKey: string, name: string): T;
+export function hostValue<T = unknown>(moduleKey: string, name: string): T;
 
 // @internal
 export function registerHostModule(key: string, mod: unknown): void;
@@ -27,7 +27,7 @@ export function registerHostModule(key: string, mod: unknown): void;
 // @public
 export interface TemplateResolver {
     // (undocumented)
-    resolve(name: string, params: Record<string, any>): string | undefined;
+    resolve(name: string, params: Record<string, unknown>): string | undefined;
 }
 
 // (No @packageDocumentation comment for this package)

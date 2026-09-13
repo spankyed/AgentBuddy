@@ -36,7 +36,7 @@ export enum BinaryOperator {
 }
 
 // @public (undocumented)
-export type ChangeBlock<T = any> = {
+export type ChangeBlock<T = unknown> = {
     renames?: Rename[];
     removed?: Array<T | string>;
 };
@@ -45,7 +45,7 @@ export type ChangeBlock<T = any> = {
 export function compareVersions(a: string, b: string): number;
 
 // @public (undocumented)
-export const detectAllArrayChanges: (prev: any, next: any) => Record<string, DiffResult<any>> | null;
+export const detectAllArrayChanges: (prev: unknown, next: unknown) => Record<string, DiffResult<DiffItem>> | null;
 
 // @public (undocumented)
 export const detectChanges: <T>(prev: T[] | undefined, next: T[] | undefined, id: (x: T) => string, key: (x: T) => string) => DiffResult<T>;
@@ -64,7 +64,7 @@ export type DiffResult<T> = null | {
 export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyof T, T[keyof T]]>;
 
 // @public (undocumented)
-export function extractValueByPath(source: any, path: string): any;
+export function extractValueByPath(source: unknown, path: string): unknown;
 
 // @public (undocumented)
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
@@ -106,7 +106,7 @@ export type Rename = {
 export function toDisplayName(str: string): string;
 
 // @public (undocumented)
-export const toIdentifierSet: <T = any>(removed?: Array<T | string>, keyExtractor?: (item: T) => string) => Set<string>;
+export const toIdentifierSet: <T = unknown>(removed?: Array<T | string>, keyExtractor?: (item: T) => string) => Set<string>;
 
 // @public (undocumented)
 export const toMap: (r?: Rename[]) => Map<string, string>;

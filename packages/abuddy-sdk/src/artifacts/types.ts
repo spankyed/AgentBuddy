@@ -10,15 +10,15 @@ export interface ArtifactDefinition {
   fe?: ArtifactFEFacet;
 }
 
-export interface ArtifactItem {
+export interface ArtifactItem<TContent = unknown> {
   id: string;
   type: string;
   title: string;
-  content: any;
+  content: TContent;
   color?: string;
   metadata?: {
     createdAt: number;
     updatedAt?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }

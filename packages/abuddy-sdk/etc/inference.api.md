@@ -7,10 +7,14 @@
 import { CoreMessage } from 'ai';
 import { DeepPartial } from 'ai';
 import { GenerateObjectResult } from 'ai';
+import { generateText as generateText_2 } from 'ai';
 import { GenerateTextResult } from 'ai';
+import type { Schema } from 'ai';
 import { StreamObjectResult } from 'ai';
+import { streamText as streamText_2 } from 'ai';
 import { StreamTextResult } from 'ai';
 import { ToolSet } from 'ai';
+import type { z } from 'zod';
 
 // @public (undocumented)
 export const availableModels: ModelCatalogEntry[];
@@ -18,27 +22,15 @@ export const availableModels: ModelCatalogEntry[];
 export { CoreMessage }
 
 // @public (undocumented)
-export function generateObject<T>(params: {
-    model: ModelConfig;
-    schema: any;
-    prompt?: string;
-    messages?: CoreMessage[];
-    system?: string;
-    temperature?: number;
-    maxTokens?: number;
-    [key: string]: any;
-}): Promise<GenerateObjectResult<T>>;
+export function generateObject<T>(params: ObjectCallOptions<T>): Promise<GenerateObjectResult<T>>;
 
 // @public (undocumented)
-export function generateText(params: {
+export function generateText(params: GenerateTextOptions): Promise<GenerateTextResult<ToolSet, unknown>>;
+
+// @public
+export type GenerateTextOptions = TextCallOptions & {
     model: ModelConfig;
-    prompt?: string;
-    messages?: CoreMessage[];
-    system?: string;
-    temperature?: number;
-    maxTokens?: number;
-    [key: string]: any;
-}): Promise<GenerateTextResult<ToolSet, never>>;
+};
 
 // @public (undocumented)
 export function getApiKey(providerName: string, explicitApiKey?: string): string;
@@ -79,6 +71,15 @@ export type ModelConfig = {
 };
 
 // @public (undocumented)
+export type ObjectCallOptions<T> = Pick<TextCallOptions, 'system' | 'prompt' | 'messages' | 'maxTokens' | 'temperature' | 'topP' | 'topK' | 'presencePenalty' | 'frequencyPenalty' | 'seed' | 'maxRetries' | 'abortSignal' | 'headers' | 'providerOptions' | 'experimental_telemetry'> & {
+    model: ModelConfig;
+    schema: z.Schema<T, z.ZodTypeDef, unknown> | Schema<T>;
+    schemaName?: string;
+    schemaDescription?: string;
+    mode?: 'auto' | 'json' | 'tool';
+};
+
+// @public (undocumented)
 export type Provider = ProviderName | 'openai.responses' | string;
 
 // @public (undocumented)
@@ -88,27 +89,15 @@ export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral
 export function resolveProvider(provider: string): ProviderName;
 
 // @public (undocumented)
-export function streamObject<T>(params: {
-    model: ModelConfig;
-    schema: any;
-    prompt?: string;
-    messages?: CoreMessage[];
-    system?: string;
-    temperature?: number;
-    maxTokens?: number;
-    [key: string]: any;
-}): Promise<StreamObjectResult<DeepPartial<T>, T, never>>;
+export function streamObject<T>(params: ObjectCallOptions<T>): Promise<StreamObjectResult<DeepPartial<T>, T, never>>;
 
 // @public (undocumented)
-export function streamText(params: {
+export function streamText(params: StreamTextOptions): Promise<StreamTextResult<ToolSet, unknown>>;
+
+// @public (undocumented)
+export type StreamTextOptions = Omit<Parameters<typeof streamText_2>[0], 'model'> & {
     model: ModelConfig;
-    prompt?: string;
-    messages?: CoreMessage[];
-    system?: string;
-    temperature?: number;
-    maxTokens?: number;
-    [key: string]: any;
-}): Promise<StreamTextResult<ToolSet, never>>;
+};
 
 // (No @packageDocumentation comment for this package)
 

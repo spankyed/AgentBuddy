@@ -22,18 +22,20 @@ export function createBootSeed(config: BootSeedConfig): (options?: {
 // @public (undocumented)
 export function createCollectionSeeder(config: {
     key: string;
-    entityType: any;
+    entityType: EARS.Entity;
     lookupField: string;
 }): Seeder;
 
 // @public (undocumented)
-export function createFlowSeeder(ears: FlowEARS): Seeder;
+export function createFlowSeeder(ears?: FlowEARS): Seeder;
 
 // @public (undocumented)
-export function createLibrarySeeder(ears: any): Seeder;
+export function createLibrarySeeder(ears?: {
+    Entity: Record<'Collection' | 'Document', EARS.Entity>;
+}): Seeder;
 
 // @public (undocumented)
-export function createNotesSeeder(ears: NotesEARS): Seeder;
+export function createNotesSeeder(ears?: NotesEARS): Seeder;
 
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
@@ -44,9 +46,9 @@ export function importNotesFromData(data: ExportedNotes, ears: NotesEARS): Notes
 // @public (undocumented)
 export interface NotesEARS {
     // (undocumented)
-    Entity: Record<string, any>;
+    Entity: Record<'Note', EARS.Entity>;
     // (undocumented)
-    RelKind: Record<string, any>;
+    RelKind: Record<'CONTAINS', EARS.RelKind>;
 }
 
 // @public (undocumented)

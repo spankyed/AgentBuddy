@@ -1,3 +1,4 @@
+import { sendParent, type AnyActorRef } from 'xstate';
 import type { Simplify } from './type-helpers.ts';
 
 type ExtractEvent<
@@ -33,7 +34,10 @@ export function safeEvents<TEvent extends { type: string }>() {
         `Expected type ${expectedArr.join(' | ')}, got ${event.type}`
       );
     }
-    return event as any;
+    return event as ExtractEvent<
+      TEvent,
+      TTypes extends readonly TEvent['type'][] ? TTypes[number] : TTypes
+    >;
   };
 }
 
@@ -69,19 +73,21 @@ export function emit(pluginId: string, event: { type: string }) {
 export function sendParentSafe<TEvent extends { type: string }>() {
   return <Type extends TEvent['type']>(
     payload: Extract<TEvent, { type: Type }>
-  ) => {
-    const { sendParent } = require('xstate');
-    return sendParent(payload);
-  };
+  ) => sendParent(payload);
 }
 
-export function getActor(system: any, id: string) {
+/** An XState actor system (an action's `system`), by what these helpers need from it */
+export interface ActorLookup {
+  get(id: string): AnyActorRef | undefined;
+}
+
+export function getActor(system: ActorLookup, id: string): AnyActorRef {
   const actor = system.get(id);
   if (!actor) throw new Error(`Actor with id '${id}' not found in the system`);
   return actor;
 }
 
-export function getBus(system: any) {
+export function getBus(system: ActorLookup): AnyActorRef {
   const busActor = system.get('bus');
   if (!busActor) throw new Error("Bus actor not found in the system");
   return busActor;

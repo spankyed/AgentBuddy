@@ -2,7 +2,7 @@ export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
   description?: string;
   required?: boolean;
-  default?: any;
+  default?: unknown;
   placeholder?: string;
 }
 
@@ -11,7 +11,7 @@ export interface ActionMeta {
   description?: string;
   category?: string;
   input: Record<string, ActionParameter>;
-  output?: any;
+  output?: unknown;
 }
 
 export interface TemplateInput {
@@ -19,9 +19,9 @@ export interface TemplateInput {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
   description?: string;
   required?: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   commonSources?: string[];
-  example?: any;
+  example?: unknown;
 }
 
 export interface PromptMeta {
@@ -29,5 +29,5 @@ export interface PromptMeta {
   description?: string;
   category?: string;
   inputs: Record<string, TemplateInput>;
-  outputSchema?: any;
+  outputSchema?: unknown;
 }

@@ -955,7 +955,7 @@ const notesState = setup({
         target: '.editor',
         actions: [
           assign(({ event, context }) => {
-            const noteId = (event as TrailClickEvent).info
+            const noteId = (event as TrailClickEvent<string>).info
             if (!noteId) return {}
             const note = context.notes.find(n => n.id === noteId) || null
 

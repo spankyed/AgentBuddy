@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -17,13 +18,13 @@ export interface ActionMeta {
     // (undocumented)
     label: string;
     // (undocumented)
-    output?: any;
+    output?: unknown;
 }
 
 // @public (undocumented)
 export interface ActionParameter {
     // (undocumented)
-    default?: any;
+    default?: unknown;
     // (undocumented)
     description?: string;
     // (undocumented)
@@ -131,7 +132,7 @@ export interface CompileConfig {
 // @public (undocumented)
 export interface CompiledEntity {
     // (undocumented)
-    [key: string]: any;
+    [key: string]: unknown;
     // (undocumented)
     entityType: EARS.Entity;
     // (undocumented)
@@ -141,7 +142,7 @@ export interface CompiledEntity {
 // @public (undocumented)
 export interface CompiledEntry {
     // (undocumented)
-    [key: string]: any;
+    [key: string]: unknown;
     // (undocumented)
     category?: string;
     // (undocumented)
@@ -179,7 +180,7 @@ export interface CompiledFlow {
 // @public (undocumented)
 export interface CompiledRelation {
     // (undocumented)
-    info?: Record<string, any>;
+    info?: Record<string, unknown>;
     // (undocumented)
     kind: EARS.RelKind;
     // (undocumented)
@@ -281,7 +282,7 @@ export function compileSourceDir(sourceDir: string, config: Omit<CompileConfig, 
 // @public (undocumented)
 export interface ContentSection {
     // (undocumented)
-    [key: string]: any;
+    [key: string]: unknown;
     // (undocumented)
     type: 'field' | 'list' | 'markdown' | 'text' | 'code';
 }
@@ -296,7 +297,7 @@ export function copyNotesMedia(notesDir: string, outputDir: string): void;
 export function countDocs(items: ExportedItem[]): number;
 
 // @public (undocumented)
-export function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any>;
+export function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown>;
 
 // @public (undocumented)
 export const DslEntrySchema: z.ZodObject<{
@@ -346,7 +347,7 @@ export type EdgeEntity = {
     target: EARS.EntityId;
     sourceHandle?: string;
     targetHandle?: string;
-    info?: Record<string, any>;
+    info?: Record<string, unknown>;
 };
 
 // @public (undocumented)
@@ -605,9 +606,9 @@ export type FlowDSL = Record<string, Track[] | FlowConfig>;
 // @public (undocumented)
 export interface FlowEARS {
     // (undocumented)
-    Entity: Record<string, any>;
+    Entity: Record<'Flow' | 'Node' | 'Action' | 'Prompt', EARS.Entity>;
     // (undocumented)
-    RelKind: Record<string, any>;
+    RelKind: Record<'CONTAINS' | 'INSTANCE_OF' | 'TRANSITIONS_TO', EARS.RelKind>;
 }
 
 // @public (undocumented)
@@ -659,7 +660,7 @@ export function loadFlowsFromDir(flowsDir: string): Promise<{
 }>;
 
 // @public (undocumented)
-export function loadSettingsFromFile(settingsPath: string): Promise<Record<string, any>>;
+export function loadSettingsFromFile(settingsPath: string): Promise<Record<string, unknown>>;
 
 // @public (undocumented)
 export const ManifestSchema: z.ZodObject<{
@@ -1322,7 +1323,7 @@ export interface PromptMeta {
     // (undocumented)
     label: string;
     // (undocumented)
-    outputSchema?: any;
+    outputSchema?: unknown;
 }
 
 // @public (undocumented)
@@ -1381,7 +1382,7 @@ export function seedFile(name: string): string;
 export function seedPath(compiledDir: string, name: string): string;
 
 // @public (undocumented)
-export const settingsCompiler: SeedCompiler<Record<string, any>, Record<string, any>>;
+export const settingsCompiler: SeedCompiler<Record<string, unknown>, Record<string, unknown>>;
 
 // @internal
 export function sourceConditions(dir: string): string[];
@@ -1453,11 +1454,11 @@ export interface TemplateInput {
     // (undocumented)
     commonSources?: string[];
     // (undocumented)
-    defaultValue?: any;
+    defaultValue?: unknown;
     // (undocumented)
     description?: string;
     // (undocumented)
-    example?: any;
+    example?: unknown;
     // (undocumented)
     name: string;
     // (undocumented)

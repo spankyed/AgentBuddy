@@ -1,8 +1,10 @@
+import type { Component } from 'vue';
+
 export interface ContextMenuItem {
   label: string;
-  icon?: any;
+  icon?: Component;
   iconColor?: string;
-  event: { type: string; [key: string]: any };
+  event: { type: string; [key: string]: unknown };
   separator?: boolean;
   isActive?: boolean;
   confirm?: string;
@@ -10,7 +12,8 @@ export interface ContextMenuItem {
 
 export type ContextMenuMeta =
   | ContextMenuItem[]
-  | ((context: any) => ContextMenuItem[]);
+  // `never`: the host passes the machine's own context, which each menu function types itself
+  | ((context: never) => ContextMenuItem[]);
 
 export function contextMenu(items: ContextMenuItem[]) {
   return { contextMenu: items };

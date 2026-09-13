@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
 import type { Component } from 'vue';
 
 // @public (undocumented)
@@ -17,9 +18,8 @@ export interface CategoryConfig {
 }
 
 // @public
-export interface CategoryItemsProvider {
-    // (undocumented)
-    buildItems: (actorState: any) => ContributionItem[];
+export interface CategoryItemsProvider<TSnapshot = unknown> {
+    buildItems(snapshot: TSnapshot | undefined): ContributionItem[];
     // (undocumented)
     category: string;
     // (undocumented)
@@ -45,7 +45,7 @@ export interface ContributionTypeConfig {
     // (undocumented)
     icon: Component;
     // (undocumented)
-    navigate: (system: any, refId: string) => void;
+    navigate: (system: PluginActorSystem, refId: string) => void;
     // (undocumented)
     plugin: string;
     // (undocumented)

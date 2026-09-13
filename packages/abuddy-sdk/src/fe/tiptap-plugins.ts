@@ -6,7 +6,7 @@ import type { EditorState } from '@tiptap/pm/state'
 
 export interface BlockItem {
   label: string
-  icon: any
+  icon: Component
   command: (e: Editor) => void
 }
 
@@ -20,15 +20,17 @@ export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]> = Symbol('extraBlo
 export const TIPTAP_PLUGINS_KEY: InjectionKey<TiptapPlugin[]> = Symbol('tiptapPlugins')
 
 const plugins: TiptapPlugin[] = [];
+/** The pack each registered plugin came from */
+const pluginPacks = new WeakMap<TiptapPlugin, string | undefined>();
 
 export const tiptapPluginRegistry = {
   register(plugin: TiptapPlugin, packId?: string): void {
-    (plugin as any).__packId = packId;
+    pluginPacks.set(plugin, packId);
     plugins.push(plugin);
   },
   unregisterAll(packId: string): void {
     for (let i = plugins.length - 1; i >= 0; i--) {
-      if ((plugins[i] as any).__packId === packId) {
+      if (pluginPacks.get(plugins[i]) === packId) {
         plugins.splice(i, 1);
       }
     }

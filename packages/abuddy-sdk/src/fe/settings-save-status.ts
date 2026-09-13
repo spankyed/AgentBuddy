@@ -27,7 +27,7 @@ export function useSettingsSaveStatus() {
     entityType: string
     label: string
     path: string[]
-    value: any
+    value: unknown
   }) => {
     setSaveStatus('saving')
 

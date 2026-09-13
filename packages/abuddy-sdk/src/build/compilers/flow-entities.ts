@@ -37,7 +37,7 @@ export type EdgeEntity = {
   target: EARS.EntityId;
   sourceHandle?: string;
   targetHandle?: string;
-  info?: Record<string, any>;
+  info?: Record<string, unknown>;
 };
 
 /*─────────────────────────────────────────────────────────────────
@@ -59,14 +59,14 @@ export interface CompiledFlow {
 export interface CompiledEntity {
   id: string;
   entityType: EARS.Entity;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface CompiledRelation {
   source: string;
   kind: EARS.RelKind;
   target: string;
-  info?: Record<string, any>;
+  info?: Record<string, unknown>;
 }
 
 export interface CompiledRole {

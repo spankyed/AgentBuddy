@@ -7,7 +7,7 @@ const logger = createLogger('templates');
  * enabling nested template references with depth protection.
  */
 export interface TemplateResolver {
-  resolve(name: string, params: Record<string, any>): string | undefined;
+  resolve(name: string, params: Record<string, unknown>): string | undefined;
 }
 
 /**
@@ -17,7 +17,7 @@ export interface TemplateResolver {
  */
 export function executeTemplate(
   fnBody: string,
-  params: Record<string, any>,
+  params: Record<string, unknown>,
   resolver?: TemplateResolver
 ): string {
   try {
@@ -60,13 +60,13 @@ export function validateTemplate(fnBody: string): { valid: boolean; error?: stri
  * with depth-limited recursion to catch circular references.
  */
 export function createTemplateResolver(
-  executeFn: (fnBody: string, params: Record<string, any>, resolver?: TemplateResolver) => string,
+  executeFn: (fnBody: string, params: Record<string, unknown>, resolver?: TemplateResolver) => string,
   lookup: (name: string) => { templateFn: string } | undefined,
   maxDepth: number = 10,
   currentDepth: number = 0,
 ): TemplateResolver {
   return {
-    resolve(name: string, params: Record<string, any>): string | undefined {
+    resolve(name: string, params: Record<string, unknown>): string | undefined {
       if (currentDepth >= maxDepth) {
         logger.error('Maximum template resolution depth exceeded', {
           name, currentDepth, maxDepth,

@@ -1,18 +1,20 @@
 import { pathToFileURL } from 'url';
 
-export async function loadSettingsFromFile(settingsPath: string): Promise<Record<string, any>> {
+export async function loadSettingsFromFile(settingsPath: string): Promise<Record<string, unknown>> {
   const mod = await import(pathToFileURL(settingsPath).href);
   return mod.default;
 }
 
-export function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+export function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
   const result = { ...target };
   for (const key of Object.keys(source)) {
-    if (
-      result[key] && typeof result[key] === 'object' && !Array.isArray(result[key]) &&
-      source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])
-    ) {
-      result[key] = deepMerge(result[key], source[key]);
+    const current = result[key];
+    const incoming = source[key];
+    if (isRecord(current) && isRecord(incoming)) {
+      result[key] = deepMerge(current, incoming);
     } else {
       result[key] = source[key];
     }

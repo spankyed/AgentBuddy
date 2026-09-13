@@ -250,13 +250,13 @@ export const faqCompiler: SeedCompiler<CompiledFAQ[], CompiledFAQ[]> = {
 // Settings Compiler
 // ============================================================================
 
-export const settingsCompiler: SeedCompiler<Record<string, any>, Record<string, any>> = {
+export const settingsCompiler: SeedCompiler<Record<string, unknown>, Record<string, unknown>> = {
   async compile(filePath) {
     return loadSettingsFromFile(filePath);
   },
 
   merge(results) {
-    let merged: Record<string, any> = {};
+    let merged: Record<string, unknown> = {};
     for (const { data } of results) {
       merged = deepMerge(merged, data);
     }

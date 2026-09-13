@@ -25,18 +25,18 @@ export interface ArtifactFEFacet {
 }
 
 // @public (undocumented)
-export interface ArtifactItem {
+export interface ArtifactItem<TContent = unknown> {
     // (undocumented)
     color?: string;
     // (undocumented)
-    content: any;
+    content: TContent;
     // (undocumented)
     id: string;
     // (undocumented)
     metadata?: {
         createdAt: number;
         updatedAt?: number;
-        [key: string]: any;
+        [key: string]: unknown;
     };
     // (undocumented)
     title: string;

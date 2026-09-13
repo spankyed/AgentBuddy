@@ -1,11 +1,15 @@
 import { getHostModule } from '../runtime/host.ts';
+import type { AnyActorRef } from 'xstate';
 import { getDesignated } from '../designations/index.ts';
 
-function getApp(): any {
-  return getHostModule('application');
+/** An event for a plugin's actor */
+export type PluginEvent = { type: string; [key: string]: unknown };
+
+function getApp(): AnyActorRef {
+  return getHostModule<AnyActorRef>('application');
 }
 
-export function navigateToPlugin(pluginId: string, event?: Record<string, any> | Record<string, any>[]) {
+export function navigateToPlugin(pluginId: string, event?: PluginEvent | PluginEvent[]) {
   const app = getApp();
   const snapshot = app.getSnapshot();
   if (snapshot.context.activePlugin.id !== pluginId) {
@@ -39,11 +43,11 @@ export function openInAppBrowser(url: string) {
   if (openLinksInApp) {
     navigateToPlugin(getDesignated('browser'), { type: 'TAB.CREATE', url });
   } else {
-    (window as any).electronAPI?.shell?.openExternal(url);
+    window.electronAPI?.shell?.openExternal(url);
   }
 }
 
-export function useState<T = any>(pluginId: string): T {
+export function useState<T = AnyActorRef>(pluginId: string): T {
   const actor = getApp().system.get(pluginId) as T;
   if (!actor) {
     throw new Error(`Plugin actor not found: ${pluginId}`);

@@ -1,11 +1,12 @@
+import type { EARS } from '../types/entities.ts';
 import { repository, hasIdCollision } from '../ears/index.ts';
 import { findWhere } from '../ears/query-helpers.ts';
 import { qx } from '../ears/query.ts';
 import type { ExportedNote, ExportedNotes } from '../build/compilers/compile-notes.ts';
 
 export interface NotesEARS {
-  Entity: Record<string, any>;
-  RelKind: Record<string, any>;
+  Entity: Record<'Note', EARS.Entity>;
+  RelKind: Record<'CONTAINS', EARS.RelKind>;
 }
 
 export interface NotesImportResult {

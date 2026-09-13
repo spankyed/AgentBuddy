@@ -17,9 +17,10 @@ export type UpdateData = {
   menuItems: ContextMenuItem[];
 }
 
-function resolveMenuItems(meta: ContextMenuMeta | undefined, ctx: any): ContextMenuItem[] {
+function resolveMenuItems(meta: ContextMenuMeta | undefined, ctx: unknown): ContextMenuItem[] {
   if (!meta) return [];
-  return typeof meta === 'function' ? meta(ctx) : meta;
+  // A menu function types the context of the machine it's declared in
+  return typeof meta === 'function' ? (meta as (context: unknown) => ContextMenuItem[])(ctx) : meta;
 }
 
 export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {

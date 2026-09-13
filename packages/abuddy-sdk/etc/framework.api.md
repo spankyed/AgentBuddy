@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
 import type { AnyStateMachine } from 'xstate';
 import { z } from 'zod';
 
@@ -123,9 +124,12 @@ export interface PackSystemDef {
 // @public (undocumented)
 export interface SystemEntry {
     // (undocumented)
-    machine: any;
-    // (undocumented)
-    spec: SystemSpec<any, any, any, any>;
+    machine: AnyStateMachine;
+    spec: Pick<SystemSpec<string, {
+        type: string;
+    }, {
+        type: string;
+    }>, 'id' | 'designation'>;
 }
 
 // @public

@@ -4,17 +4,54 @@
 
 ```ts
 
-// @public (undocumented)
-export type IncomingSystemEvents = any;
+// @public
+export type IncomingSystemEvents = {
+    type: string;
+    systemId: string;
+    [key: string]: unknown;
+};
 
 // @internal
 export function initRpc(): void;
 
-// @public (undocumented)
-export let rootEvents: any;
+// @public
+export type OutgoingSystemEvents = {
+    type: string;
+    pluginId: string;
+    [key: string]: unknown;
+};
+
+// @public
+export interface RootEvents {
+    // (undocumented)
+    emitLog(event: LogEvent): void;
+    // (undocumented)
+    emitOutgoing(event: OutgoingSystemEvents): void;
+    // (undocumented)
+    onConnected(callback: () => void): () => void;
+    // (undocumented)
+    onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
+    // (undocumented)
+    onLog(callback: (event: LogEvent) => void): () => void;
+    // (undocumented)
+    onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void;
+}
 
 // @public (undocumented)
-export const trpc: any;
+export let rootEvents: RootEvents;
+
+// @public
+export interface RpcClient {
+    // (undocumented)
+    bus: {
+        send: {
+            mutate(event: IncomingSystemEvents): Promise<void>;
+        };
+    };
+}
+
+// @public (undocumented)
+export const trpc: RpcClient;
 
 // (No @packageDocumentation comment for this package)
 

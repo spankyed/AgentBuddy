@@ -69,7 +69,7 @@ export function onIncoming(callback: (event: { type: string; [key: string]: unkn
 
 // --- Services aggregator ---
 let _logger: Logger | undefined;
-function logger() { return _logger ??= getHostModule('logger').createLogger('log-service'); }
+function logger() { return _logger ??= getHostModule<{ createLogger(source: string): Logger }>('logger').createLogger('log-service'); }
 
 /**
  * Ambient services the host supplies to every action, alongside the services a

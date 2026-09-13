@@ -1379,10 +1379,11 @@ const threadsState = setup({
         ...tab,
         artifacts: tab.artifacts.map(artifact => {
           if (artifact.id === artifactId && artifact.type === 'todo') {
-            const tasks = artifact.content.tasks.map((task: any) =>
+            const content = artifact.content as { tasks: Array<{ id: string; completed?: boolean }> };
+            const tasks = content.tasks.map(task =>
               task.id === taskId ? { ...task, completed } : task
             );
-            return { ...artifact, content: { ...artifact.content, tasks } };
+            return { ...artifact, content: { ...content, tasks } };
           }
           return artifact;
         })

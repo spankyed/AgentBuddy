@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -47,9 +48,9 @@ export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeErr
 // @public (undocumented)
 export interface RuntimeServices {
     // (undocumented)
-    getAppServices: () => any;
+    getAppServices: () => unknown;
     // (undocumented)
-    getFlowActor: (flowTNodeId: EARS.EntityId) => any | undefined;
+    getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
 }
 
 // @public
@@ -364,12 +365,12 @@ export interface TriggerFacet {
 // @public (undocumented)
 export interface TriggerRuntimeContext {
     // (undocumented)
-    flowTNodeId: string;
+    flowTNodeId: EARS.EntityId;
     // (undocumented)
     sendToBrainSystem: (event: {
         eventType: string;
-        payload?: any;
-        targetFlowId?: any;
+        payload?: unknown;
+        targetFlowId?: EARS.EntityId;
     }) => void;
 }
 

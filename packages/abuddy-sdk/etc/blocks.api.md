@@ -9,8 +9,8 @@ export interface BlockBEFacet {
     // (undocumented)
     generateAsideText?(block: {
         type: string;
-        props: Record<string, any>;
-    }, response: any, context: string): string | null;
+        props: Record<string, unknown>;
+    }, response: unknown, context: string): string | null;
 }
 
 // @public (undocumented)

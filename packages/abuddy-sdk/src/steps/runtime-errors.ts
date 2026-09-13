@@ -66,7 +66,7 @@ export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeErr
     pluginId: 'brain',
     type: 'BRAIN_RUNTIME_ERROR',
     error: runtimeError,
-  } as any);
+  });
 
   return runtimeError;
 }

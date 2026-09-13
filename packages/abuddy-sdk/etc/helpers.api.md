@@ -4,6 +4,19 @@
 
 ```ts
 
+import { ActionFunction } from 'xstate';
+import { AnyActorRef } from 'xstate';
+import { AnyEventObject } from 'xstate';
+import { EventObject } from 'xstate';
+import { MachineContext } from 'xstate';
+import { NonReducibleUnknown } from 'xstate';
+
+// @public
+export interface ActorLookup {
+    // (undocumented)
+    get(id: string): AnyActorRef | undefined;
+}
+
 // @public
 export function emit<P extends string, E extends {
     type: string;
@@ -15,10 +28,10 @@ export function emit<P extends string, E extends {
 };
 
 // @public (undocumented)
-export function getActor(system: any, id: string): any;
+export function getActor(system: ActorLookup, id: string): AnyActorRef;
 
 // @public (undocumented)
-export function getBus(system: any): any;
+export function getBus(system: ActorLookup): AnyActorRef;
 
 // @public
 export type PluginEvents = {
@@ -37,7 +50,7 @@ export function sendParentSafe<TEvent extends {
     type: string;
 }>(): <Type extends TEvent["type"]>(payload: Extract<TEvent, {
     type: Type;
-}>) => any;
+}>) => ActionFunction<MachineContext, EventObject, AnyEventObject, NonReducibleUnknown, never, never, never, never, never>;
 
 // @public (undocumented)
 export type Simplify<T> = {

@@ -13,7 +13,7 @@ export function createLogger(source?: string): Logger;
 // @public (undocumented)
 export interface InspectLogger {
     // (undocumented)
-    inspect: (message: string, meta?: Record<string, any>) => void;
+    inspect: (message: string, meta?: Record<string, unknown>) => void;
     // (undocumented)
     isEnabled: () => boolean;
     // (undocumented)
@@ -27,12 +27,9 @@ export type LogEvent = {
     level: LogLevel;
     message: string;
     source?: string;
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
     stack?: string;
 };
-
-// @public (undocumented)
-export const LogEventValue: any;
 
 // @public (undocumented)
 export interface Logger {
