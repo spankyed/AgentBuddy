@@ -1,5 +1,13 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { findLatestRelease } from '../../src/packs/pack-updater.ts';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { checkForUpdates, findLatestRelease } from '../../src/packs/pack-updater.ts';
+import { readPackRegistry, writePackRegistry } from '../../src/packs/pack-registry.ts';
+import { registerHostModule } from '@abuddy/sdk/runtime';
+
+const noop = () => {};
+registerHostModule('logger', { createLogger: () => ({ debug: noop, info: noop, warn: noop, error: noop }), LogEvent: {} });
 
 function mockReleases(releases: Array<{ tag_name: string; draft?: boolean; prerelease?: boolean }>) {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify(releases), { status: 200 }));
@@ -53,7 +61,7 @@ describe('findLatestRelease', () => {
     it('skips releases whose manifest requires a different AgentBuddy', async () => {
       const fetchMock = mockReleasesWithManifests({ 'v1.9.1': { hostVersion: '>=0.5.0' }, 'v1.2.0': { hostVersion: '>=0.3.0' } });
       expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toEqual({ version: '1.2.0', tag: 'v1.2.0' });
-      expect(fetchMock).toHaveBeenCalledWith('https://raw.githubusercontent.com/acme/pack/v1.9.1/abuddy.json');
+      expect(fetchMock).toHaveBeenCalledWith('https://raw.githubusercontent.com/acme/pack/v1.9.1/abuddy.json', expect.anything());
     });
 
     it('keeps a release whose manifest has no hostVersion or cannot be read', async () => {
@@ -65,5 +73,75 @@ describe('findLatestRelease', () => {
       mockReleasesWithManifests({ 'v1.9.1': { hostVersion: '>=1.0.0' }, 'v1.2.0': { hostVersion: '>=1.0.0' } });
       expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toBeNull();
     });
+  });
+
+  describe('bounds', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      tag_name: `v1.${i}.0`,
+      assets: [{ name: `pack-1.${i}.0.tgz.bundle.json`, browser_download_url: `https://github.com/acme/pack/releases/download/v1.${i}.0/pack-1.${i}.0.tgz.bundle.json` }],
+    }));
+
+    function mockManyReleases(hostVersionOf: (tag: string) => string) {
+      const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+        if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify(many), { status: 200 });
+        const tag = url.match(/download\/(v[^/]+)\//)?.[1];
+        return tag ? new Response(JSON.stringify({ hostVersion: hostVersionOf(tag) }), { status: 200 }) : new Response('Not Found', { status: 404 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      return fetchMock;
+    }
+    const manifestFetches = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url]) => !String(url).startsWith('https://api.github.com/'));
+
+    it("reads hostVersion from a release's bundle.json asset", async () => {
+      const fetchMock = mockManyReleases(() => '>=0.3.0');
+      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0' })).toEqual({ version: '1.29.0', tag: 'v1.29.0' });
+      expect(manifestFetches(fetchMock).map(([url]) => url)).toEqual(['https://github.com/acme/pack/releases/download/v1.29.0/pack-1.29.0.tgz.bundle.json']);
+    });
+
+    it('stops at the installed version', async () => {
+      const fetchMock = mockManyReleases(() => '>=9.0.0');
+      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0', installedVersion: '1.27.0' })).toBeNull();
+      expect(manifestFetches(fetchMock).map(([url]) => String(url).match(/download\/(v[^/]+)\//)?.[1])).toEqual(['v1.29.0', 'v1.28.0']);
+    });
+
+    it('reads at most 10 release manifests, each with a timeout', async () => {
+      const fetchMock = mockManyReleases(() => '>=9.0.0');
+      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0' })).toBeNull();
+      expect(manifestFetches(fetchMock)).toHaveLength(10);
+      expect(fetchMock.mock.calls.every(([, init]) => (init as RequestInit | undefined)?.signal instanceof AbortSignal)).toBe(true);
+    });
+  });
+});
+
+describe('checkForUpdates', () => {
+  let userDataDir: string;
+  const env = { ABUDDY_ENV: process.env.ABUDDY_ENV, ABUDDY_USER_DATA_DIR: process.env.ABUDDY_USER_DATA_DIR };
+  beforeEach(() => {
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'updater-'));
+    process.env.ABUDDY_ENV = 'test';
+    process.env.ABUDDY_USER_DATA_DIR = userDataDir;
+  });
+  afterEach(() => {
+    for (const [key, value] of Object.entries(env)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(userDataDir, { recursive: true, force: true });
+  });
+
+  it('ignores a cached result from another AgentBuddy version', async () => {
+    writePackRegistry([{
+      id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack',
+      lastUpdateCheck: new Date().toISOString(), lastUpdateCheckHostVersion: '0.3.0', availableVersion: '1.5.0', availableTag: 'v1.5.0',
+    }]);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
+      ? new Response(JSON.stringify([{ tag_name: 'v1.2.0' }]), { status: 200 })
+      : new Response(JSON.stringify({ hostVersion: '>=0.4.0' }), { status: 200 })));
+
+    expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([{ packId: 'demo-pack', currentVersion: '1.0.0', availableVersion: '1.2.0', source: 'acme/pack' }]);
+    expect(readPackRegistry()[0]).toMatchObject({ availableVersion: '1.2.0', lastUpdateCheckHostVersion: '0.4.0' });
+    // Same AgentBuddy version: the cached result stands
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('no network'); }));
+    expect(await checkForUpdates({ hostVersion: '0.4.0' })).toHaveLength(1);
   });
 });

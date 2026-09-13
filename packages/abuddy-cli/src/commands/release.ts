@@ -23,7 +23,7 @@ release   Preflight, bump the version (beta cycle: 1.2.3 → 1.2.4-beta.0 → -b
           produces and verifies the bundle for the next version under .abuddy/release/.
 
 publish   Create the GitHub release for the bundle in <dir> (default .abuddy/release)
-          and upload <id>-<version>.tgz and .sha256. Used by the release workflow.
+          and upload <id>-<version>.tgz, .sha256 and .bundle.json. Used by the release workflow.
           Needs GITHUB_TOKEN (or GH_TOKEN) and GITHUB_REPOSITORY or an origin remote.
 `.trim();
 
@@ -192,10 +192,14 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   // Refuse to publish anything that doesn't verify
   const sha256 = fs.readFileSync(checksumFile, 'utf-8').trim().split(/\s+/)[0];
   const scratch = fs.mkdtempSync(path.join(releaseDir, '.verify-'));
+  // The bundle's bundle.json (id, version, hostVersion) as its own asset: the app's update check
+  // reads a release's hostVersion from it without downloading the archive
+  const infoFile = `${archive}.bundle.json`;
   try {
     const extracted = await extractBundleArchive(archive, scratch, sha256);
     const info = verifyBundle(extracted);
     if (info.version !== version) throw new Error(`Bundle version ${info.version} does not match abuddy.json ${version}`);
+    fs.writeFileSync(infoFile, JSON.stringify(info, null, 2) + '\n');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -205,7 +209,7 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   const { owner, repo } = resolveRepository(root, env, run);
 
   if (options.dryRun) {
-    console.log(`[dry-run] Would create GitHub release ${owner}/${repo}@${tag}${prerelease ? ' (prerelease)' : ''} with ${path.basename(archive)} and ${path.basename(checksumFile)}`);
+    console.log(`[dry-run] Would create GitHub release ${owner}/${repo}@${tag}${prerelease ? ' (prerelease)' : ''} with ${path.basename(archive)}, ${path.basename(checksumFile)} and ${path.basename(infoFile)}`);
     return { tag, prerelease };
   }
 
@@ -221,14 +225,15 @@ export async function publishRelease(root: string, releaseDir: string, options: 
     prerelease,
     generate_release_notes: true,
   });
-  for (const file of [archive, checksumFile]) {
+  for (const file of [archive, checksumFile, infoFile]) {
+    const contentType = file.endsWith('.tgz') ? 'application/gzip' : file.endsWith('.json') ? 'application/json' : 'text/plain';
     await octokit.rest.repos.uploadReleaseAsset({
       owner,
       repo,
       release_id: release.id,
       name: path.basename(file),
       data: fs.readFileSync(file) as unknown as string,
-      headers: { 'content-type': file.endsWith('.tgz') ? 'application/gzip' : 'text/plain' },
+      headers: { 'content-type': contentType },
     });
   }
   console.log(`Published ${owner}/${repo}@${tag}${prerelease ? ' (prerelease)' : ''}`);

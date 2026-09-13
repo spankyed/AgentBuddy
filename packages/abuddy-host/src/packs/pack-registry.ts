@@ -29,6 +29,8 @@ export interface PackRegistryEntry {
   /** Why the pack's last install or boot seed failed; cleared on the next successful seed. */
   lastError?: string;
   lastUpdateCheck?: string;
+  /** The AgentBuddy version the last update check ran for; a different one checks again. */
+  lastUpdateCheckHostVersion?: string;
 }
 
 interface PackRegistryFile {
