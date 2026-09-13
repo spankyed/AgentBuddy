@@ -77,7 +77,14 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
 
   async function discoverSourceExports(ctx: ResolveContext, specifier: string): Promise<string[]> {
     const sourcePath = await resolveSdkFile(ctx, specifier);
-    return sourcePath ? parseNamedExports(fs.readFileSync(sourcePath, 'utf-8')) : [];
+    if (!sourcePath) return [];
+    const source = fs.readFileSync(sourcePath, 'utf-8');
+    // A component's entry module re-exports its SFC (`export * from './button.vue'`)
+    const reexported = [...source.matchAll(/export\s*\*\s*from\s*['"](\.{1,2}\/[^'"]+\.vue)['"]/g)]
+      .map((match) => path.resolve(path.dirname(sourcePath), match[1]))
+      .filter((file) => fs.existsSync(file))
+      .flatMap((file) => parseNamedExports(fs.readFileSync(file, 'utf-8')));
+    return [...new Set([...parseNamedExports(source), ...reexported])];
   }
 
   // The SDK's host-module registry. Proxied SDK modules share the host's copy via

@@ -24,91 +24,58 @@
   "exports": {
     "./package.json": "./package.json",
     "./components/BaseForm": {
-      "types": {
-        "@abuddy/source": "./src/components/BaseForm.vue",
-        "default": "./dist/components/BaseForm.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/BaseForm.vue",
+      "@abuddy/source": "./src/components/BaseForm.ts",
+      "types": "./dist/components/BaseForm.d.ts",
       "default": "./dist/components/BaseForm.js"
     },
     "./components/BaseNode": {
-      "types": {
-        "@abuddy/source": "./src/components/BaseNode.vue",
-        "default": "./dist/components/BaseNode.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/BaseNode.vue",
+      "@abuddy/source": "./src/components/BaseNode.ts",
+      "types": "./dist/components/BaseNode.d.ts",
       "default": "./dist/components/BaseNode.js"
     },
     "./components/DataRenderer": {
-      "types": {
-        "@abuddy/source": "./src/components/DataRenderer.vue",
-        "default": "./dist/components/DataRenderer.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/DataRenderer.vue",
+      "@abuddy/source": "./src/components/DataRenderer.ts",
+      "types": "./dist/components/DataRenderer.d.ts",
       "default": "./dist/components/DataRenderer.js"
     },
     "./components/JsonHoverPopup": {
-      "types": {
-        "@abuddy/source": "./src/components/JsonHoverPopup.vue",
-        "default": "./dist/components/JsonHoverPopup.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/JsonHoverPopup.vue",
+      "@abuddy/source": "./src/components/JsonHoverPopup.ts",
+      "types": "./dist/components/JsonHoverPopup.d.ts",
       "default": "./dist/components/JsonHoverPopup.js"
     },
     "./components/JsonSchemaEditor": {
-      "types": {
-        "@abuddy/source": "./src/components/JsonSchemaEditor.vue",
-        "default": "./dist/components/JsonSchemaEditor.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/JsonSchemaEditor.vue",
+      "@abuddy/source": "./src/components/JsonSchemaEditor.ts",
+      "types": "./dist/components/JsonSchemaEditor.d.ts",
       "default": "./dist/components/JsonSchemaEditor.js"
     },
     "./components/JsonViewerDialog": {
-      "types": {
-        "@abuddy/source": "./src/components/JsonViewerDialog.vue",
-        "default": "./dist/components/JsonViewerDialog.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/JsonViewerDialog.vue",
+      "@abuddy/source": "./src/components/JsonViewerDialog.ts",
+      "types": "./dist/components/JsonViewerDialog.d.ts",
       "default": "./dist/components/JsonViewerDialog.js"
     },
     "./components/KeyboardShortcutInput": {
-      "types": {
-        "@abuddy/source": "./src/components/KeyboardShortcutInput.vue",
-        "default": "./dist/components/KeyboardShortcutInput.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/KeyboardShortcutInput.vue",
+      "@abuddy/source": "./src/components/KeyboardShortcutInput.ts",
+      "types": "./dist/components/KeyboardShortcutInput.d.ts",
       "default": "./dist/components/KeyboardShortcutInput.js"
     },
     "./components/SimpleMonacoEditor": {
-      "types": {
-        "@abuddy/source": "./src/components/SimpleMonacoEditor.vue",
-        "default": "./dist/components/SimpleMonacoEditor.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/SimpleMonacoEditor.vue",
+      "@abuddy/source": "./src/components/SimpleMonacoEditor.ts",
+      "types": "./dist/components/SimpleMonacoEditor.d.ts",
       "default": "./dist/components/SimpleMonacoEditor.js"
     },
     "./components/TNodeListItem": {
-      "types": {
-        "@abuddy/source": "./src/components/TNodeListItem.vue",
-        "default": "./dist/components/TNodeListItem.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/TNodeListItem.vue",
+      "@abuddy/source": "./src/components/TNodeListItem.ts",
+      "types": "./dist/components/TNodeListItem.d.ts",
       "default": "./dist/components/TNodeListItem.js"
     },
     "./components/TipSection": {
-      "types": {
-        "@abuddy/source": "./src/components/TipSection.vue",
-        "default": "./dist/components/TipSection.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/TipSection.vue",
+      "@abuddy/source": "./src/components/TipSection.ts",
+      "types": "./dist/components/TipSection.d.ts",
       "default": "./dist/components/TipSection.js"
     },
     "./components/UnifiedMonacoEditor": {
-      "types": {
-        "@abuddy/source": "./src/components/UnifiedMonacoEditor.vue",
-        "default": "./dist/components/UnifiedMonacoEditor.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/UnifiedMonacoEditor.vue",
+      "@abuddy/source": "./src/components/UnifiedMonacoEditor.ts",
+      "types": "./dist/components/UnifiedMonacoEditor.d.ts",
       "default": "./dist/components/UnifiedMonacoEditor.js"
     },
     "./components/monaco-actions": {
@@ -137,75 +104,48 @@
       "default": "./dist/components/node-styles.js"
     },
     "./components/tiptap/TiptapBlockMenu": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/TiptapBlockMenu.vue",
-        "default": "./dist/components/tiptap/TiptapBlockMenu.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/TiptapBlockMenu.vue",
+      "@abuddy/source": "./src/components/tiptap/TiptapBlockMenu.ts",
+      "types": "./dist/components/tiptap/TiptapBlockMenu.d.ts",
       "default": "./dist/components/tiptap/TiptapBlockMenu.js"
     },
     "./components/tiptap/TiptapBubbleMenu": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/TiptapBubbleMenu.vue",
-        "default": "./dist/components/tiptap/TiptapBubbleMenu.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/TiptapBubbleMenu.vue",
+      "@abuddy/source": "./src/components/tiptap/TiptapBubbleMenu.ts",
+      "types": "./dist/components/tiptap/TiptapBubbleMenu.d.ts",
       "default": "./dist/components/tiptap/TiptapBubbleMenu.js"
     },
     "./components/tiptap/TiptapEditor": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/TiptapEditor.vue",
-        "default": "./dist/components/tiptap/TiptapEditor.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/TiptapEditor.vue",
+      "@abuddy/source": "./src/components/tiptap/TiptapEditor.ts",
+      "types": "./dist/components/tiptap/TiptapEditor.d.ts",
       "default": "./dist/components/tiptap/TiptapEditor.js"
     },
     "./components/tiptap/TiptapImageBubbleMenu": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/TiptapImageBubbleMenu.vue",
-        "default": "./dist/components/tiptap/TiptapImageBubbleMenu.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/TiptapImageBubbleMenu.vue",
+      "@abuddy/source": "./src/components/tiptap/TiptapImageBubbleMenu.ts",
+      "types": "./dist/components/tiptap/TiptapImageBubbleMenu.d.ts",
       "default": "./dist/components/tiptap/TiptapImageBubbleMenu.js"
     },
     "./components/tiptap/TiptapSearchBar": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/TiptapSearchBar.vue",
-        "default": "./dist/components/tiptap/TiptapSearchBar.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/TiptapSearchBar.vue",
+      "@abuddy/source": "./src/components/tiptap/TiptapSearchBar.ts",
+      "types": "./dist/components/tiptap/TiptapSearchBar.d.ts",
       "default": "./dist/components/tiptap/TiptapSearchBar.js"
     },
     "./components/tiptap/bubble-menu/BubbleMenuColorSelector": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuColorSelector.vue",
-        "default": "./dist/components/tiptap/bubble-menu/BubbleMenuColorSelector.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuColorSelector.vue",
+      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuColorSelector.ts",
+      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuColorSelector.d.ts",
       "default": "./dist/components/tiptap/bubble-menu/BubbleMenuColorSelector.js"
     },
     "./components/tiptap/bubble-menu/BubbleMenuLinkInput": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuLinkInput.vue",
-        "default": "./dist/components/tiptap/bubble-menu/BubbleMenuLinkInput.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuLinkInput.vue",
+      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuLinkInput.ts",
+      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuLinkInput.d.ts",
       "default": "./dist/components/tiptap/bubble-menu/BubbleMenuLinkInput.js"
     },
     "./components/tiptap/bubble-menu/BubbleMenuNodeSelector": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuNodeSelector.vue",
-        "default": "./dist/components/tiptap/bubble-menu/BubbleMenuNodeSelector.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuNodeSelector.vue",
+      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuNodeSelector.ts",
+      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuNodeSelector.d.ts",
       "default": "./dist/components/tiptap/bubble-menu/BubbleMenuNodeSelector.js"
     },
     "./components/tiptap/bubble-menu/BubbleMenuToolbar": {
-      "types": {
-        "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuToolbar.vue",
-        "default": "./dist/components/tiptap/bubble-menu/BubbleMenuToolbar.d.vue.ts"
-      },
-      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuToolbar.vue",
+      "@abuddy/source": "./src/components/tiptap/bubble-menu/BubbleMenuToolbar.ts",
+      "types": "./dist/components/tiptap/bubble-menu/BubbleMenuToolbar.d.ts",
       "default": "./dist/components/tiptap/bubble-menu/BubbleMenuToolbar.js"
     },
     "./components/tiptap/composables/createEditorClickHandler": {
@@ -344,211 +284,133 @@
       "default": "./dist/composables/useInfiniteScroll.js"
     },
     "./design/Autocomplete": {
-      "types": {
-        "@abuddy/source": "./src/design/Autocomplete.vue",
-        "default": "./dist/design/Autocomplete.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/Autocomplete.vue",
+      "@abuddy/source": "./src/design/Autocomplete.ts",
+      "types": "./dist/design/Autocomplete.d.ts",
       "default": "./dist/design/Autocomplete.js"
     },
     "./design/CategoryFilter": {
-      "types": {
-        "@abuddy/source": "./src/design/CategoryFilter.vue",
-        "default": "./dist/design/CategoryFilter.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/CategoryFilter.vue",
+      "@abuddy/source": "./src/design/CategoryFilter.ts",
+      "types": "./dist/design/CategoryFilter.d.ts",
       "default": "./dist/design/CategoryFilter.js"
     },
     "./design/CollapsibleSection": {
-      "types": {
-        "@abuddy/source": "./src/design/CollapsibleSection.vue",
-        "default": "./dist/design/CollapsibleSection.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/CollapsibleSection.vue",
+      "@abuddy/source": "./src/design/CollapsibleSection.ts",
+      "types": "./dist/design/CollapsibleSection.d.ts",
       "default": "./dist/design/CollapsibleSection.js"
     },
     "./design/ColorPicker": {
-      "types": {
-        "@abuddy/source": "./src/design/ColorPicker.vue",
-        "default": "./dist/design/ColorPicker.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ColorPicker.vue",
+      "@abuddy/source": "./src/design/ColorPicker.ts",
+      "types": "./dist/design/ColorPicker.d.ts",
       "default": "./dist/design/ColorPicker.js"
     },
     "./design/ConfirmationDialog": {
-      "types": {
-        "@abuddy/source": "./src/design/ConfirmationDialog.vue",
-        "default": "./dist/design/ConfirmationDialog.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ConfirmationDialog.vue",
+      "@abuddy/source": "./src/design/ConfirmationDialog.ts",
+      "types": "./dist/design/ConfirmationDialog.d.ts",
       "default": "./dist/design/ConfirmationDialog.js"
     },
     "./design/ContextMenuPopup": {
-      "types": {
-        "@abuddy/source": "./src/design/ContextMenuPopup.vue",
-        "default": "./dist/design/ContextMenuPopup.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ContextMenuPopup.vue",
+      "@abuddy/source": "./src/design/ContextMenuPopup.ts",
+      "types": "./dist/design/ContextMenuPopup.d.ts",
       "default": "./dist/design/ContextMenuPopup.js"
     },
     "./design/CopyButton": {
-      "types": {
-        "@abuddy/source": "./src/design/CopyButton.vue",
-        "default": "./dist/design/CopyButton.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/CopyButton.vue",
+      "@abuddy/source": "./src/design/CopyButton.ts",
+      "types": "./dist/design/CopyButton.d.ts",
       "default": "./dist/design/CopyButton.js"
     },
     "./design/CopyFeedback": {
-      "types": {
-        "@abuddy/source": "./src/design/CopyFeedback.vue",
-        "default": "./dist/design/CopyFeedback.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/CopyFeedback.vue",
+      "@abuddy/source": "./src/design/CopyFeedback.ts",
+      "types": "./dist/design/CopyFeedback.d.ts",
       "default": "./dist/design/CopyFeedback.js"
     },
     "./design/DirectorySelect": {
-      "types": {
-        "@abuddy/source": "./src/design/DirectorySelect.vue",
-        "default": "./dist/design/DirectorySelect.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/DirectorySelect.vue",
+      "@abuddy/source": "./src/design/DirectorySelect.ts",
+      "types": "./dist/design/DirectorySelect.d.ts",
       "default": "./dist/design/DirectorySelect.js"
     },
     "./design/DirectorySelector": {
-      "types": {
-        "@abuddy/source": "./src/design/DirectorySelector.vue",
-        "default": "./dist/design/DirectorySelector.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/DirectorySelector.vue",
+      "@abuddy/source": "./src/design/DirectorySelector.ts",
+      "types": "./dist/design/DirectorySelector.d.ts",
       "default": "./dist/design/DirectorySelector.js"
     },
     "./design/EmojiPicker": {
-      "types": {
-        "@abuddy/source": "./src/design/EmojiPicker.vue",
-        "default": "./dist/design/EmojiPicker.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/EmojiPicker.vue",
+      "@abuddy/source": "./src/design/EmojiPicker.ts",
+      "types": "./dist/design/EmojiPicker.d.ts",
       "default": "./dist/design/EmojiPicker.js"
     },
     "./design/ImageLightbox": {
-      "types": {
-        "@abuddy/source": "./src/design/ImageLightbox.vue",
-        "default": "./dist/design/ImageLightbox.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ImageLightbox.vue",
+      "@abuddy/source": "./src/design/ImageLightbox.ts",
+      "types": "./dist/design/ImageLightbox.d.ts",
       "default": "./dist/design/ImageLightbox.js"
     },
     "./design/NameSaveHeader": {
-      "types": {
-        "@abuddy/source": "./src/design/NameSaveHeader.vue",
-        "default": "./dist/design/NameSaveHeader.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/NameSaveHeader.vue",
+      "@abuddy/source": "./src/design/NameSaveHeader.ts",
+      "types": "./dist/design/NameSaveHeader.d.ts",
       "default": "./dist/design/NameSaveHeader.js"
     },
     "./design/ParameterRow": {
-      "types": {
-        "@abuddy/source": "./src/design/ParameterRow.vue",
-        "default": "./dist/design/ParameterRow.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ParameterRow.vue",
+      "@abuddy/source": "./src/design/ParameterRow.ts",
+      "types": "./dist/design/ParameterRow.d.ts",
       "default": "./dist/design/ParameterRow.js"
     },
     "./design/ScrollToBottomFob": {
-      "types": {
-        "@abuddy/source": "./src/design/ScrollToBottomFob.vue",
-        "default": "./dist/design/ScrollToBottomFob.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ScrollToBottomFob.vue",
+      "@abuddy/source": "./src/design/ScrollToBottomFob.ts",
+      "types": "./dist/design/ScrollToBottomFob.d.ts",
       "default": "./dist/design/ScrollToBottomFob.js"
     },
     "./design/Select": {
-      "types": {
-        "@abuddy/source": "./src/design/Select.vue",
-        "default": "./dist/design/Select.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/Select.vue",
+      "@abuddy/source": "./src/design/Select.ts",
+      "types": "./dist/design/Select.d.ts",
       "default": "./dist/design/Select.js"
     },
     "./design/ToastNotification": {
-      "types": {
-        "@abuddy/source": "./src/design/ToastNotification.vue",
-        "default": "./dist/design/ToastNotification.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/ToastNotification.vue",
+      "@abuddy/source": "./src/design/ToastNotification.ts",
+      "types": "./dist/design/ToastNotification.d.ts",
       "default": "./dist/design/ToastNotification.js"
     },
     "./design/TrackedContextMenuRoot": {
-      "types": {
-        "@abuddy/source": "./src/design/TrackedContextMenuRoot.vue",
-        "default": "./dist/design/TrackedContextMenuRoot.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/TrackedContextMenuRoot.vue",
+      "@abuddy/source": "./src/design/TrackedContextMenuRoot.ts",
+      "types": "./dist/design/TrackedContextMenuRoot.d.ts",
       "default": "./dist/design/TrackedContextMenuRoot.js"
     },
     "./design/back-button": {
-      "types": {
-        "@abuddy/source": "./src/design/back-button.vue",
-        "default": "./dist/design/back-button.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/back-button.vue",
+      "@abuddy/source": "./src/design/back-button.ts",
+      "types": "./dist/design/back-button.d.ts",
       "default": "./dist/design/back-button.js"
     },
     "./design/button": {
-      "types": {
-        "@abuddy/source": "./src/design/button.vue",
-        "default": "./dist/design/button.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/button.vue",
+      "@abuddy/source": "./src/design/button.ts",
+      "types": "./dist/design/button.d.ts",
       "default": "./dist/design/button.js"
     },
     "./design/dialog": {
-      "types": {
-        "@abuddy/source": "./src/design/dialog.vue",
-        "default": "./dist/design/dialog.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/dialog.vue",
+      "@abuddy/source": "./src/design/dialog.ts",
+      "types": "./dist/design/dialog.d.ts",
       "default": "./dist/design/dialog.js"
     },
     "./design/label": {
-      "types": {
-        "@abuddy/source": "./src/design/label.vue",
-        "default": "./dist/design/label.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/label.vue",
+      "@abuddy/source": "./src/design/label.ts",
+      "types": "./dist/design/label.d.ts",
       "default": "./dist/design/label.js"
     },
     "./design/pagination": {
-      "types": {
-        "@abuddy/source": "./src/design/pagination.vue",
-        "default": "./dist/design/pagination.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/pagination.vue",
+      "@abuddy/source": "./src/design/pagination.ts",
+      "types": "./dist/design/pagination.d.ts",
       "default": "./dist/design/pagination.js"
     },
     "./design/tag-input": {
-      "types": {
-        "@abuddy/source": "./src/design/tag-input.vue",
-        "default": "./dist/design/tag-input.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/tag-input.vue",
+      "@abuddy/source": "./src/design/tag-input.ts",
+      "types": "./dist/design/tag-input.d.ts",
       "default": "./dist/design/tag-input.js"
     },
     "./design/toggle-button": {
-      "types": {
-        "@abuddy/source": "./src/design/toggle-button.vue",
-        "default": "./dist/design/toggle-button.d.vue.ts"
-      },
-      "@abuddy/source": "./src/design/toggle-button.vue",
+      "@abuddy/source": "./src/design/toggle-button.ts",
+      "types": "./dist/design/toggle-button.d.ts",
       "default": "./dist/design/toggle-button.js"
     },
     "./layout/panel-resizer": {
-      "types": {
-        "@abuddy/source": "./src/layout/panel-resizer.vue",
-        "default": "./dist/layout/panel-resizer.d.vue.ts"
-      },
-      "@abuddy/source": "./src/layout/panel-resizer.vue",
+      "@abuddy/source": "./src/layout/panel-resizer.ts",
+      "types": "./dist/layout/panel-resizer.d.ts",
       "default": "./dist/layout/panel-resizer.js"
     },
     "./utils/json-detection": {
