@@ -32,6 +32,8 @@ validate_api_package() {
     echo -e "  ❌ Build validation failed: API package not found"
     exit 1
   fi
+  # electron-builder's dependency collector has silently dropped modules before
+  node build/prod/verify-node-modules.mjs "$1"
 }
 
 # Colors for output
