@@ -911,11 +911,8 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       const factory = SEEDER_FACTORIES[key];
       if (factory) {
         seedImports.add(factory);
-        if (key === 'settings') {
-          registrations.push(`registerSeeder(${factory}());`);
-        } else {
-          registrations.push(`registerSeeder(${factory}(EARS));`);
-        }
+        // Flows, library and notes are stored under default-setup's entity names, not this pack's EARS
+        registrations.push(`registerSeeder(${factory}());`);
         continue;
       }
 
@@ -927,7 +924,6 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
     return `${HEADER}
 import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
 import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
-import { EARS } from './ears.js';
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}

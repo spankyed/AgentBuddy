@@ -6,12 +6,13 @@ import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig } from '../build/compilers/flow-types.ts';
 import type { FlowEARS } from '../build/compilers/flow-compiler.ts';
+import { FLOW_NAMES } from './built-in-names.ts';
 
 function buildLabelMap(entities: any[]): Map<string, string> {
   return new Map(entities.map((e: any) => [e.label, e.id]));
 }
 
-export function createFlowSeeder(ears: FlowEARS): Seeder {
+export function createFlowSeeder(ears: FlowEARS = FLOW_NAMES): Seeder {
   const repo = repository as any;
 
   return {

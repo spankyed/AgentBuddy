@@ -32,7 +32,7 @@ describe('flow seeder', () => {
     }));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const seeder = createFlowSeeder({ Entity: { Flow: 'Flow', Action: 'Action' } } as never);
+    const seeder = createFlowSeeder();
     const counts = seeder.seed({ compiledDir: tmp, mode: 'replace-on-collision', log: () => {} });
 
     expect(counts.errors).toEqual([expect.stringMatching(/^Flow "Broken Flow" is invalid: /)]);

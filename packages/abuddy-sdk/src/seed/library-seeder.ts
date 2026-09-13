@@ -1,3 +1,5 @@
+import type { EARS } from '../types/entities.ts';
+import { LIBRARY_NAMES } from './built-in-names.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import { repository } from '../ears/index.ts';
@@ -109,7 +111,7 @@ function seedLibraryTree(
   }
 }
 
-export function createLibrarySeeder(ears: any): Seeder {
+export function createLibrarySeeder(ears: { Entity: Record<'Collection' | 'Document', EARS.Entity> } = LIBRARY_NAMES): Seeder {
   return {
     key: 'library',
     seed(ctx: SeederContext): SeedCounts {

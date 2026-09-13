@@ -3,8 +3,9 @@ import { findAll } from '../ears/query-helpers.ts';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { importNotesFromData, type NotesEARS } from './import-notes.ts';
+import { NOTES_NAMES } from './built-in-names.ts';
 
-export function createNotesSeeder(ears: NotesEARS): Seeder {
+export function createNotesSeeder(ears: NotesEARS = NOTES_NAMES): Seeder {
   const repo = repository as any;
 
   return {
