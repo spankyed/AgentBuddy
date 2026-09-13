@@ -55,7 +55,7 @@ It then runs the Playwright CLI that the pack's `@abuddy/testing` resolves (neve
 - `ABUDDY_ROOT` (checkout) or `ABUDDY_APP_EXECUTABLE` (packaged app, e.g. `AgentBuddy Beta.app/Contents/MacOS/AgentBuddy Beta`)
 - `PACK_DIR` — the pack directory
 - `ABUDDY_CLI` — its own bin, which the fixture uses to build the pack
-- `NODE_OPTIONS` with `--conditions=@abuddy/source` only when the pack's `@abuddy/testing` is a checkout's source (a linked pack, the in-repo fixture pack), so the runner loads the SDK and host from source. The fixture drops the condition for the app it launches, and fails (`source-check.ts`) when a checkout's `@abuddy/sdk` or `@abuddy/ui` would resolve to `dist`.
+- `NODE_OPTIONS` with `--conditions=@abuddy/source` only when the pack's `@abuddy/testing` is a checkout's source (a linked pack, the in-repo fixture pack), so the runner loads the SDK and host from source. The fixture drops the condition for the app it launches, and fails (`source-check.ts`) when a checkout's `@abuddy/sdk` or `@abuddy/ui` would resolve to `dist`. Without the condition a checkout's `@abuddy/testing` resolves to `src/requires-source.ts`, which fails naming the fix; it declares the fixture's runtime exports, so keep them in sync.
 
 Every non-Playwright arg is forwarded (`abuddy test -g "renders"`, `abuddy test smoke`).
 

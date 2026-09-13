@@ -5,7 +5,11 @@
   "description": "Playwright E2E fixture for AgentBuddy and AgentBuddy packs",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "@abuddy/source": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/requires-source.ts"
+    }
   },
   "engines": {
     "node": ">=20.6.0"
