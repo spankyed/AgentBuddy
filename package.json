@@ -77,7 +77,7 @@
     "@types/ws": "^8.18.1",
     "create-vite": "7.0.3",
     "electron": "37.2.4",
-    "electron-builder": "26.0.12",
+    "electron-builder": "26.15.3",
     "glob": "11.0.3",
     "playwright": "^1.54.1",
     "tsc-alias": "^1.8.16",
