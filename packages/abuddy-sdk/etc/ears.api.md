@@ -72,13 +72,13 @@ export interface CreatedEntityFields {
 }
 
 // @public
-export const createEntity: <E extends EARS.Entity>(t: E) => EARS.EntityId<E extends keyof EntityShapeRegistry ? E : string>;
-
-// @public
 export function createEntityWithDefaults<T extends Record<string, any> = Record<string, any>>(entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId): T & CreatedEntityFields;
 
 // @public (undocumented)
 export function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
+
+// @public
+export function defineEars<S extends EntityShapes>(): TypedEars<S>;
 
 // @public (undocumented)
 export function descendants(start: EARS.EntityId, relKind: EARS.RelKind): EARS.EntityId[];
@@ -176,52 +176,18 @@ export interface EARSRuntimeDeps {
 }
 
 // @public
-export type EntityShape<E extends string> = [
-E
-] extends [keyof EntityShapeRegistry] ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
-
-// @public
-export interface EntityShapeRegistry {
-}
+export type EntityShapes = {
+    [entityType: string]: object;
+};
 
 // @public (undocumented)
 export function exists(id: EARS.EntityId): boolean;
 
 // @public (undocumented)
-export function findAll<E extends EARS.Entity>(entityType: E): EntityShape<E>[];
-
-// @public (undocumented)
-export function findAll<T>(entityType: EARS.Entity): T[];
-
-// @public (undocumented)
-export function findById<E extends string>(id: EARS.EntityId<E>): EntityShape<E> | undefined;
-
-// @public (undocumented)
-export function findById<T>(id: EARS.EntityId): T | undefined;
-
-// @public (undocumented)
-export function findByIdRaw<E extends string>(id: EARS.EntityId<E>): EntityShape<E> | undefined;
-
-// @public (undocumented)
-export function findByIdRaw<T>(id: EARS.EntityId): T | undefined;
-
-// @public (undocumented)
 export function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
 
 // @public (undocumented)
-export function findFirst<E extends EARS.Entity>(entityType: E, field: string, value: any): EntityShape<E> | undefined;
-
-// @public (undocumented)
-export function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
-
-// @public (undocumented)
 export function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-
-// @public (undocumented)
-export function findWhere<E extends EARS.Entity>(entityType: E, field: string, value: any): EntityShape<E>[];
-
-// @public (undocumented)
-export function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
 
 // @public (undocumented)
 export function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
@@ -329,12 +295,12 @@ export function prepareEntity<T extends {
     entityType: EARS.Entity;
 }>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
 
-// @public (undocumented)
-export interface QueryBuilder<E extends string = string> {
+// @public
+export interface QueryBuilder<E extends string = string, S extends EntityShapes = {}> {
     // (undocumented)
     count(): number;
     // (undocumented)
-    distinct(field?: keyof EntityShape<E> & string): QueryBuilder<E>;
+    distinct(field?: keyof ShapeOf<S, E> & string): QueryBuilder<E, S>;
     // (undocumented)
     edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
     // (undocumented)
@@ -342,87 +308,69 @@ export interface QueryBuilder<E extends string = string> {
     // (undocumented)
     first(): EARS.EntityId | null;
     // (undocumented)
-    forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E>;
+    forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E, S>;
     // (undocumented)
-    groupBy(field: keyof EntityShape<E> & string): Map<unknown, QueryBuilder<E>>;
+    groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S>>;
     // (undocumented)
     id(): EARS.EntityId | null;
     // (undocumented)
     ids(): EARS.EntityId[];
     // (undocumented)
-    inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E>;
+    inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E, S>;
     // (undocumented)
     last(): EARS.EntityId | null;
     // (undocumented)
-    limit(n: number): QueryBuilder<E>;
+    limit(n: number): QueryBuilder<E, S>;
     // (undocumented)
     links<K extends string>(relKinds: K | readonly K[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): Array<{
         relation: K;
         id: EARS.EntityId;
     }>;
-    linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(relKinds: readonly [K, K, ...K[]], fields: A, tgtType?: T | T[]): ({
+    linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof ShapeOf<S, T> & string)[]>(relKinds: readonly [K, K, ...K[]], fields: A, tgtType?: T | T[]): ({
         id: EARS.EntityId;
         relation: K;
-    } & Pick<EntityShape<T>, A[number]>)[];
+    } & Pick<ShapeOf<S, T>, A[number]>)[];
     // (undocumented)
-    linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof EntityShape<T> & string)[]>(relKinds: K | readonly [K], fields: A, tgtType?: T | T[]): ({
+    linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof ShapeOf<S, T> & string)[]>(relKinds: K | readonly [K], fields: A, tgtType?: T | T[]): ({
         id: EARS.EntityId;
-    } & Pick<EntityShape<T>, A[number]>)[];
-    linksTo<T extends EARS.Entity>(relKinds: string | readonly string[], tgtType: T | readonly T[], asSrc?: boolean): QueryBuilder<T>;
+    } & Pick<ShapeOf<S, T>, A[number]>)[];
+    linksTo<T extends EARS.Entity>(relKinds: string | readonly string[], tgtType: T | readonly T[], asSrc?: boolean): QueryBuilder<T, S>;
     // (undocumented)
-    linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | readonly EARS.Entity[], asSrc?: boolean): QueryBuilder<string>;
+    linksTo(relKinds: string | readonly string[], tgtType?: EARS.Entity | readonly EARS.Entity[], asSrc?: boolean): QueryBuilder<string, S>;
     // (undocumented)
     map<T>(fn: (id: EARS.EntityId) => T): T[];
     // (undocumented)
-    ofType<T extends string>(t: T): QueryBuilder<T>;
+    ofType<T extends string>(t: T): QueryBuilder<T, S>;
     // (undocumented)
-    orderBy(field: keyof EntityShape<E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E>;
+    orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S>;
     // (undocumented)
     page(size: number, cursor?: string | null): {
         items: EARS.EntityId[];
         nextCursor: string | null;
     };
     // (undocumented)
-    pick<A extends readonly (keyof EntityShape<E> & string)[]>(fields: A): ({
+    pick<A extends readonly (keyof ShapeOf<S, E> & string)[]>(fields: A): ({
         id: EARS.EntityId;
-    } & Pick<EntityShape<E>, A[number]>)[];
+    } & Pick<ShapeOf<S, E>, A[number]>)[];
     // (undocumented)
-    pickAll(): EntityShape<E>[];
+    pickAll(): ShapeOf<S, E>[];
     // (undocumented)
-    pickOne<A extends readonly (keyof EntityShape<E> & string)[]>(f: A): ({
+    pickOne<A extends readonly (keyof ShapeOf<S, E> & string)[]>(f: A): ({
         id: EARS.EntityId;
-    } & Pick<EntityShape<E>, A[number]>) | null;
+    } & Pick<ShapeOf<S, E>, A[number]>) | null;
     // (undocumented)
     reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
     // (undocumented)
-    related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E>;
+    related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E, S>;
     // (undocumented)
-    relatedTo(target: EARS.EntityId): QueryBuilder<E>;
+    relatedTo(target: EARS.EntityId): QueryBuilder<E, S>;
     // (undocumented)
-    reverse(): QueryBuilder<E>;
+    reverse(): QueryBuilder<E, S>;
     // (undocumented)
-    where<K extends keyof EntityShape<E> & string>(k: K, v?: EntityShape<E>[K]): QueryBuilder<E>;
+    where<K extends keyof ShapeOf<S, E> & string>(k: K, v?: ShapeOf<S, E>[K]): QueryBuilder<E, S>;
     // (undocumented)
-    withRole(r: string): QueryBuilder<E>;
+    withRole(r: string): QueryBuilder<E, S>;
 }
-
-// @public
-export function qx(): QueryBuilder<string>;
-
-// @public (undocumented)
-export function qx<E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E>;
-
-// @public (undocumented)
-export function qx<E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
-
-// @public (undocumented)
-export function qx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
-
-// @public (undocumented)
-export function qx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
-
-// @public (undocumented)
-export function qx(seed?: QxSeed): QueryBuilder<string>;
 
 // @public (undocumented)
 export type QxSeed = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[];
@@ -480,6 +428,11 @@ export interface SafeLinkOptions {
     // (undocumented)
     symmetric?: boolean;
 }
+
+// @public
+export type ShapeOf<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? S[E] & BaseEntity : BaseEntity & Record<string, unknown>;
 
 // @public (undocumented)
 export function shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null;
@@ -593,6 +546,75 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolea
     readonly destroy: (skipPersistence?: boolean) => never;
     readonly id: () => EARS.EntityId<string>;
 };
+
+// @public
+export type TypedCreateEntity<S extends EntityShapes> = <E extends EARS.Entity>(t: E) => EARS.EntityId<E extends keyof S ? E : string>;
+
+// @public (undocumented)
+export interface TypedEars<S extends EntityShapes> {
+    // (undocumented)
+    createEntity: TypedCreateEntity<S>;
+    // (undocumented)
+    findAll: TypedFindAll<S>;
+    // (undocumented)
+    findById: TypedFindById<S>;
+    // (undocumented)
+    findByIdRaw: TypedFindById<S>;
+    // (undocumented)
+    findFirst: TypedFindFirst<S>;
+    // (undocumented)
+    findWhere: TypedFindWhere<S>;
+    // (undocumented)
+    qx: TypedQx<S>;
+}
+
+// @public (undocumented)
+export interface TypedFindAll<S extends EntityShapes> {
+    // (undocumented)
+    <E extends EARS.Entity>(entityType: E): ShapeOf<S, E>[];
+    // (undocumented)
+    <T>(entityType: EARS.Entity): T[];
+}
+
+// @public (undocumented)
+export interface TypedFindById<S extends EntityShapes> {
+    // (undocumented)
+    <E extends string>(id: EARS.EntityId<E>): ShapeOf<S, E> | undefined;
+    // (undocumented)
+    <T>(id: EARS.EntityId): T | undefined;
+}
+
+// @public (undocumented)
+export interface TypedFindFirst<S extends EntityShapes> {
+    // (undocumented)
+    <E extends EARS.Entity>(entityType: E, field: string, value: unknown): ShapeOf<S, E> | undefined;
+    // (undocumented)
+    <T>(entityType: EARS.Entity, field: string, value: unknown): T | undefined;
+}
+
+// @public (undocumented)
+export interface TypedFindWhere<S extends EntityShapes> {
+    // (undocumented)
+    <E extends EARS.Entity>(entityType: E, field: string, value: unknown): ShapeOf<S, E>[];
+    // (undocumented)
+    <T>(entityType: EARS.Entity, field: string, value: unknown): T[];
+}
+
+// @public (undocumented)
+export interface TypedQx<S extends EntityShapes> {
+    // (undocumented)
+    (): QueryBuilder<string, S>;
+    // (undocumented)
+    <E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E, S>;
+    // (undocumented)
+    <E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E, S>;
+    // (undocumented)
+    <E extends EARS.Entity>(seed: E): QueryBuilder<E, S>;
+    // (undocumented)
+    (seed: readonly EARS.Entity[]): QueryBuilder<string, S>;
+    // (undocumented)
+    (seed?: QxSeed): QueryBuilder<string, S>;
+}
 
 // @public (undocumented)
 export function updateEntity(id: EARS.EntityId, updates: Record<string, any>, skipTimestamp?: boolean): void;
