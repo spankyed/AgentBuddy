@@ -31,9 +31,14 @@ describe('loadPackFEEntry', () => {
     expect(warnings).toEqual([expect.stringMatching(/registers nothing[\s\S]*no default export/)]);
   });
 
-  it('warns when the default export contributes nothing', async () => {
-    const { warnings } = await load('fe.mjs', 'export default { plugins: [] };');
-    expect(warnings).toEqual([expect.stringMatching(/registers nothing[\s\S]*default export is empty/)]);
+  it('warns when the default export declares no registration fields', async () => {
+    const { warnings } = await load('fe.mjs', 'export default { plugin: { id: "typo" } };');
+    expect(warnings).toEqual([expect.stringMatching(/registers nothing[\s\S]*default export declares none of them/)]);
+  });
+
+  it("doesn't warn for the generated entry of a pack without FE contributions", async () => {
+    const { warnings } = await load('fe.mjs', 'export default { plugins: [], defaultPlugin: undefined };');
+    expect(warnings).toEqual([]);
   });
 
   it('accepts a registration that contributes plugins without warning', async () => {
