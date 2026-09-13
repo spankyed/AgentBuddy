@@ -1,17 +1,25 @@
 <script lang="ts">
-// Suppress Monaco's internal diff range validation error (non-fatal, Monaco recovers)
-window.addEventListener('error', (event) => {
-  if (event.error?.message?.includes('cannot be after endLineNumberExclusive')) {
-    event.preventDefault()
-    event.stopImmediatePropagation()
-  }
-})
-window.addEventListener('unhandledrejection', (event) => {
-  const msg = event.reason?.message ?? String(event.reason)
-  if (msg.includes('cannot be after endLineNumberExclusive')) {
-    event.preventDefault()
-  }
-})
+// Monaco's internal diff range validation error is non-fatal (Monaco recovers). The filters are
+// installed with the first editor, not when the module is imported: the app imports every
+// @abuddy/ui module at startup to share it with packs.
+let diffRangeErrorFiltersInstalled = false
+
+function installDiffRangeErrorFilters(): void {
+  if (diffRangeErrorFiltersInstalled || typeof window === 'undefined') return
+  diffRangeErrorFiltersInstalled = true
+  window.addEventListener('error', (event) => {
+    if (event.error?.message?.includes('cannot be after endLineNumberExclusive')) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+  })
+  window.addEventListener('unhandledrejection', (event) => {
+    const msg = event.reason?.message ?? String(event.reason)
+    if (msg.includes('cannot be after endLineNumberExclusive')) {
+      event.preventDefault()
+    }
+  })
+}
 </script>
 
 <template>
@@ -61,6 +69,8 @@ import {
   type InitializeMonacoOptions,
   type EditorAction
 } from './monaco-config.ts'
+
+installDiffRangeErrorFilters()
 
 // Props interface
 export interface UnifiedMonacoEditorProps {
