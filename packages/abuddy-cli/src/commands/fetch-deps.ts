@@ -101,18 +101,27 @@ function resolveFromWorkspace(root: string, depId: string): DepArtifacts | null 
 
 // ── Installed app resolution ──
 
+/** Whether a resolved dependency's version satisfies the range abuddy.json declares. */
+function inRange(artifacts: DepArtifacts, range: string): boolean {
+  if (!range || range === '*') return true;
+  const version = clean(artifacts.snapshot.manifest?.version ?? '');
+  return version !== null && satisfies(version, range, { includePrerelease: true });
+}
+
 /** Built-in packs published by an installed AgentBuddy (any channel) into its data dir at boot. */
-function resolveFromInstalledApp(depId: string): (DepArtifacts & { env: AppEnv }) | null {
+function resolveFromInstalledApp(depId: string, range: string): (DepArtifacts & { env: AppEnv }) | null {
   for (const env of ['production', 'beta', 'development', 'test'] as const) {
     const found = findDepArtifacts(path.join(resolveAppContext({ env }).hostPacksDir, depId));
-    if (found) return { ...found, env };
+    if (found && inRange(found, range)) return { ...found, env };
   }
   return null;
 }
 
 /** Built-in packs of the app configured for `abuddy test` (a checkout or a downloaded beta). */
-function resolveFromConfiguredApp(depId: string): (DepArtifacts & { label: string }) | null {
-  const app = configuredAppPackagesDir();
+async function resolveFromConfiguredApp(root: string, depId: string): Promise<(DepArtifacts & { label: string }) | null> {
+  let hostVersion: string | undefined;
+  try { hostVersion = readManifest(root).hostVersion; } catch {}
+  const app = await configuredAppPackagesDir({ hostVersion });
   if (!app) return null;
   const found = findDepArtifacts(path.join(app.dir, depId));
   return found && { ...found, label: app.label };
@@ -264,6 +273,38 @@ function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
 
 // ── Resolution chain ──
 
+/**
+ * Sources on this machine, in order: the workspace, the app configured for `abuddy test`
+ * (ABUDDY_APP, ABUDDY_ROOT or the saved choice), then installed apps. Each must satisfy the
+ * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
+ */
+async function resolveFromMachine(root: string, depId: string, range: string): Promise<(DepArtifacts & { source: string }) | null> {
+  const workspace = resolveFromWorkspace(root, depId);
+  if (workspace && inRange(workspace, range)) return { ...workspace, source: 'workspace' };
+
+  const configured = await resolveFromConfiguredApp(root, depId);
+  if (configured && inRange(configured, range)) {
+    return { snapshot: configured.snapshot, buildDir: configured.buildDir, source: configured.label };
+  }
+
+  const installed = resolveFromInstalledApp(depId, range);
+  if (installed) return { snapshot: installed.snapshot, buildDir: installed.buildDir, source: `installed app (${installed.env})` };
+  return null;
+}
+
+async function resolveFromNetwork(root: string, depId: string, github: string | null, range: string): Promise<(DepArtifacts & { source: string }) | null> {
+  if (github) {
+    const found = await resolveFromGitHub(root, depId, github, range);
+    return found && { ...found, source: `github:${github}@${found.snapshot.manifest.version}` };
+  }
+  const registrySource = await lookupRegistry(depId);
+  if (registrySource) {
+    const found = await resolveFromGitHub(root, depId, registrySource, range);
+    if (found) return { ...found, source: `registry → github:${registrySource}@${found.snapshot.manifest.version}` };
+  }
+  return null;
+}
+
 async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<(DepArtifacts & { source: string }) | null> {
   const { github, filePath, range } = parseDepValue(depValue);
 
@@ -274,45 +315,35 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
     return null;
   }
 
-  // Workspace first — always try, even with github: prefix (local dev)
-  const workspace = resolveFromWorkspace(root, depId);
-  if (workspace) return { ...workspace, source: 'workspace' };
-
-  const installed = resolveFromInstalledApp(depId);
-  if (installed) return { snapshot: installed.snapshot, buildDir: installed.buildDir, source: `installed app (${installed.env})` };
-
-  const configured = resolveFromConfiguredApp(depId);
-  if (configured) return { snapshot: configured.snapshot, buildDir: configured.buildDir, source: configured.label };
-
-  // GitHub release (explicit source)
-  if (github) {
-    const found = await resolveFromGitHub(root, depId, github, range);
-    if (found) return { ...found, source: `github:${github}@${found.snapshot.manifest.version}` };
-    return null;
-  }
-
-  // Registry lookup → GitHub
-  const registrySource = await lookupRegistry(depId);
-  if (registrySource) {
-    const found = await resolveFromGitHub(root, depId, registrySource, range);
-    if (found) return { ...found, source: `registry → github:${registrySource}@${found.snapshot.manifest.version}` };
-  }
-
-  return null;
+  return (await resolveFromMachine(root, depId, range)) ?? resolveFromNetwork(root, depId, github, range);
 }
 
-/** Resolve a dependency's artifacts (snapshot + optional build code), caching non-file deps. */
+/**
+ * Resolve a dependency's artifacts (snapshot + optional build code). Sources on this machine
+ * win and refresh the .abuddy/deps cache; the cache only stands in for a network source, and
+ * only while it satisfies the declared range.
+ */
 export async function resolveDepArtifacts(root: string, depId: string, depValue: string, skipCache = false): Promise<DepArtifacts | null> {
-  const isFileDep = depValue.startsWith('file:');
-  if (!skipCache && !isFileDep) {
-    const cached = resolveFromLocal(root, depId);
-    if (cached) return cached;
+  const { github, filePath, range } = parseDepValue(depValue);
+  if (filePath) {
+    const found = await resolveFromUpstream(root, depId, depValue);
+    return found && { snapshot: found.snapshot, buildDir: found.buildDir };
   }
 
-  const result = await resolveFromUpstream(root, depId, depValue);
-  if (!result) return null;
-  if (isFileDep) return { snapshot: result.snapshot, buildDir: result.buildDir };
-  cacheDep(root, depId, result);
+  const local = await resolveFromMachine(root, depId, range);
+  if (local) {
+    cacheDep(root, depId, local);
+    return resolveFromLocal(root, depId);
+  }
+
+  if (!skipCache) {
+    const cached = resolveFromLocal(root, depId);
+    if (cached && inRange(cached, range)) return cached;
+  }
+
+  const fetched = await resolveFromNetwork(root, depId, github, range);
+  if (!fetched) return null;
+  cacheDep(root, depId, fetched);
   return resolveFromLocal(root, depId);
 }
 

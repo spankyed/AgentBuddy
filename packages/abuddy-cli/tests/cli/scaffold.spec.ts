@@ -41,7 +41,10 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
   it('scaffolds a pack with a release workflow and no unresolvable dependencies', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8'));
     expect(manifest.dependencies).toEqual({});
-    expect(fs.existsSync(path.join(pack, '.github', 'workflows', 'release.yml'))).toBe(true);
+    const workflow = fs.readFileSync(path.join(pack, '.github', 'workflows', 'release.yml'), 'utf-8');
+    // A runner has no installed app, so the build resolves built-in dependencies from a downloaded beta
+    expect(workflow).toMatch(/runs-on: macos-14/);
+    expect(workflow).toMatch(/ABUDDY_APP: beta/);
   });
 
   it('rejects a feature id that is not an identifier', () => {

@@ -44,7 +44,7 @@ No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
 
 1. `--app-root <path>` — a local AgentBuddy checkout (installed and built)
 2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy-releases`) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
-3. `ABUDDY_ROOT` — a local checkout
+3. `ABUDDY_APP=beta` (the env form of `--app beta`, for CI), then `ABUDDY_ROOT` — a local checkout
 4. The saved choice in the CLI config (`~/Library/Preferences/abuddy-cli/config.json` on macOS)
 5. First run in an interactive terminal: asks for a checkout path or the beta download and saves the answer
 
@@ -148,6 +148,7 @@ Screenshot output location depends on context:
 | `ABUDDY_ROOT` | A built AgentBuddy checkout to launch. Set by `abuddy test` for checkouts; auto-detected inside the monorepo. |
 | `ABUDDY_APP_EXECUTABLE` | A packaged AgentBuddy executable to launch. Set by `abuddy test --app beta`. |
 | `ABUDDY_CLI` | The abuddy bin that builds the pack. Set by `abuddy test`. |
+| `ABUDDY_APP` | `beta`: `abuddy test` and `abuddy build` use the newest matching AgentBuddy Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |

@@ -125,7 +125,10 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # AgentBuddy Beta builds are macOS arm64; the build reads built-in packs (e.g. default-setup) from one
+    runs-on: macos-14
+    env:
+      ABUDDY_APP: beta
     steps:
       - uses: actions/checkout@v4
 

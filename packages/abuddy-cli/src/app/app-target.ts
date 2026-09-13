@@ -62,12 +62,41 @@ function sourceTarget(root: string, from: string): AppTarget {
   return { kind: 'source', root: resolved };
 }
 
+/** Packaged apps ship each package's dist dir (electron-builder.mjs) next to the app code. */
+export function packagedAppPackagesDir(executable: string): string {
+  return path.join(path.dirname(path.dirname(executable)), 'Resources', 'app', 'packages');
+}
+
+/** ABUDDY_APP: the env form of `--app`, for CI (`ABUDDY_APP=beta`). */
+function appFromEnv(env: NodeJS.ProcessEnv): 'beta' | undefined {
+  if (env.ABUDDY_APP === undefined || env.ABUDDY_APP === '') return undefined;
+  if (env.ABUDDY_APP !== 'beta') throw new Error(`Unknown ABUDDY_APP "${env.ABUDDY_APP}" (supported: beta)`);
+  return 'beta';
+}
+
+export interface ConfiguredAppOptions {
+  dirs?: CliDirs;
+  env?: NodeJS.ProcessEnv;
+  /** The pack's hostVersion, when a beta has to be downloaded */
+  hostVersion?: string;
+  betaApp?: (hostVersion: string, cacheDir: string) => Promise<PackagedApp>;
+}
+
 /**
- * The built-in packs directory of the app configured for `abuddy test` (ABUDDY_ROOT, or the
- * saved choice: a checkout, or the newest downloaded beta), without prompting or downloading.
- * Lets a pack resolve dependencies on built-in packs before the app has ever run.
+ * The built-in packs directory of the app configured for `abuddy test`: ABUDDY_APP=beta
+ * (downloaded when needed), ABUDDY_ROOT, or the saved choice (a checkout, or the newest
+ * downloaded beta, downloading one if none is cached). Never prompts. Lets a pack resolve
+ * dependencies on built-in packs before the app has ever run, including in CI.
  */
-export function configuredAppPackagesDir(dirs: CliDirs = cliDirs(), env: NodeJS.ProcessEnv = process.env): { dir: string; label: string } | null {
+export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {}): Promise<{ dir: string; label: string } | null> {
+  const { dirs = cliDirs(), env = process.env, hostVersion = '*' } = options;
+  const betaApp = options.betaApp ?? ((range, cacheDir) => ensureBetaApp({ hostVersion: range, cacheDir }));
+  const downloaded = async () => {
+    const app = await betaApp(hostVersion, dirs.cache);
+    return { dir: packagedAppPackagesDir(app.executable), label: `AgentBuddy Beta ${app.version}` };
+  };
+
+  if (appFromEnv(env) === 'beta') return downloaded();
   const saved = readAppChoice(dirs);
   const root = env.ABUDDY_ROOT ?? (saved && 'source' in saved ? saved.source : undefined);
   if (root) return { dir: path.join(path.resolve(root), 'packages'), label: `AgentBuddy checkout ${path.resolve(root)}` };
@@ -78,11 +107,8 @@ export function configuredAppPackagesDir(dirs: CliDirs = cliDirs(), env: NodeJS.
       // Versions appear only once fully extracted (ensureBetaApp renames them into place)
       .filter(version => semver.valid(version))
       .sort(semver.rcompare)[0];
-    if (newest) {
-      // Packaged apps ship packages/*/dist (electron-builder.mjs)
-      const resources = path.dirname(path.dirname(packagedExecutable(path.join(betaDir, newest))));
-      return { dir: path.join(resources, 'Resources', 'app', 'packages'), label: `AgentBuddy Beta ${newest}` };
-    }
+    if (!newest) return downloaded();
+    return { dir: packagedAppPackagesDir(packagedExecutable(path.join(betaDir, newest))), label: `AgentBuddy Beta ${newest}` };
   }
   return null;
 }
@@ -153,7 +179,7 @@ export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTar
   const packaged = async (): Promise<AppTarget> => ({ kind: 'packaged', ...(await betaApp(hostVersion, dirs.cache)) });
 
   if (flags.appRoot) return sourceTarget(flags.appRoot, '--app-root');
-  if (flags.app === 'beta') return packaged();
+  if (flags.app === 'beta' || appFromEnv(env) === 'beta') return packaged();
   if (env.ABUDDY_ROOT) return sourceTarget(env.ABUDDY_ROOT, 'ABUDDY_ROOT');
 
   const saved = readAppChoice(dirs);
@@ -165,7 +191,7 @@ export async function resolveTestApp(options: ResolveAppOptions): Promise<AppTar
       'No AgentBuddy app to test against. Pass one of:\n' +
       '  --app-root <path>   a local AgentBuddy checkout (installed and built)\n' +
       '  --app beta          the newest AgentBuddy Beta build that satisfies the pack\'s hostVersion\n' +
-      'or set ABUDDY_ROOT. Run `abuddy test` in a terminal once to save a default.',
+      'or set ABUDDY_APP=beta or ABUDDY_ROOT. Run `abuddy test` in a terminal once to save a default.',
     );
   }
 

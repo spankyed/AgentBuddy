@@ -62,7 +62,7 @@ my-pack/
       my-pack.spec.ts
 ```
 
-The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `abuddy.json`. `abuddy build` resolves each dependency from a local path, the installed AgentBuddy app, the app you configured for `abuddy test` (a checkout or the downloaded beta), or a GitHub release, and validates your flows with the dependency's real step code.
+The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `abuddy.json`. `abuddy build` resolves each dependency from a local path, the workspace, the app you configured for `abuddy test` (a checkout or the downloaded beta; `ABUDDY_APP=beta` in CI), the installed AgentBuddy app, or a GitHub release. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `ABUDDY_APP=beta`, so built-in dependencies resolve in CI.
 
 ## The dev loop
 

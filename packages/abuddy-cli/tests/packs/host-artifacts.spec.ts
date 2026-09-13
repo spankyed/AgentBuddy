@@ -75,6 +75,51 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
   });
 
+  function publishInstalled(version: string, steps = 'export const steps = [];') {
+    const src = builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version } } as any);
+    fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), steps);
+    publishHostPackArtifacts(src, path.join(tmp, 'userdata', 'host-packs', 'base-pack'));
+  }
+
+  function authorPack(): string {
+    const packRoot = path.join(tmp, 'author-pack');
+    fs.mkdirSync(packRoot, { recursive: true });
+    return packRoot;
+  }
+
+  it('refreshes the cached dependency when the app provides a new version', async () => {
+    const packRoot = authorPack();
+    publishInstalled('1.0.0', 'export const steps = ["v1"];');
+    expect((await resolveDepArtifacts(packRoot, 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
+
+    publishInstalled('2.0.0', 'export const steps = ["v2"];');
+    const artifacts = await resolveDepArtifacts(packRoot, 'base-pack', '*');
+    expect(artifacts?.snapshot.manifest.version).toBe('2.0.0');
+    expect(fs.readFileSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'), 'utf-8')).toContain('v2');
+  });
+
+  it('only accepts a dependency version that satisfies the declared range, cached or not', async () => {
+    const packRoot = authorPack();
+    publishInstalled('1.0.0');
+    expect(await resolveDepArtifacts(packRoot, 'base-pack', '*')).not.toBeNull(); // now cached
+
+    expect(await resolveDepArtifacts(packRoot, 'base-pack', '>=2.0.0')).toBeNull();
+    expect((await resolveDepArtifacts(packRoot, 'base-pack', '^1.0.0'))?.snapshot.manifest.version).toBe('1.0.0');
+  });
+
+  it('prefers the app configured for abuddy test over an installed app', async () => {
+    publishInstalled('1.0.0');
+    const checkout = path.join(tmp, 'AgentBuddy');
+    fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
+    fs.renameSync(
+      builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '3.0.0' } } as any),
+      path.join(checkout, 'packages', 'base-pack'),
+    );
+    process.env.ABUDDY_ROOT = checkout;
+
+    expect((await resolveDepArtifacts(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('3.0.0');
+  });
+
   it('returns null when nothing provides the dependency', async () => {
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });

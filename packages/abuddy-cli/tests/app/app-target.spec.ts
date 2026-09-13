@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   configuredAppPackagesDir,
+  packagedAppPackagesDir,
   parseTestAppFlags,
   readAppChoice,
   resolveTestApp,
@@ -80,6 +81,11 @@ describe('resolveTestApp', () => {
     expect(beta).toHaveBeenCalledWith('>=0.3.0', dirs.cache);
   });
 
+  it('downloads the beta for ABUDDY_APP=beta, ahead of ABUDDY_ROOT', async () => {
+    await expect(resolve({ env: { ABUDDY_APP: 'beta', ABUDDY_ROOT: makeCheckout('env') } }))
+      .resolves.toMatchObject({ kind: 'packaged', version: '0.4.0-beta.2' });
+  });
+
   it('uses ABUDDY_ROOT before the saved choice', async () => {
     const envRoot = makeCheckout('env');
     saveAppChoice(dirs, { beta: true });
@@ -121,16 +127,31 @@ describe('resolveTestApp', () => {
 });
 
 describe('configuredAppPackagesDir', () => {
-  it('uses ABUDDY_ROOT, then a saved checkout', () => {
+  const opts = (env: NodeJS.ProcessEnv) => ({ dirs, env, hostVersion: '>=0.3.0', betaApp: beta });
+  const betaPackages = (version: string) =>
+    path.join(dirs.cache, 'apps', 'beta', version, 'AgentBuddy Beta.app', 'Contents', 'Resources', 'app', 'packages');
+
+  it('uses ABUDDY_ROOT, then a saved checkout', async () => {
     const saved = makeCheckout('saved');
     saveAppChoice(dirs, { source: saved });
-    expect(configuredAppPackagesDir(dirs, { ABUDDY_ROOT: '/env-root' })?.dir).toBe('/env-root/packages');
-    expect(configuredAppPackagesDir(dirs, {})?.dir).toBe(path.join(saved, 'packages'));
+    expect((await configuredAppPackagesDir(opts({ ABUDDY_ROOT: '/env-root' })))?.dir).toBe('/env-root/packages');
+    expect((await configuredAppPackagesDir(opts({})))?.dir).toBe(path.join(saved, 'packages'));
   });
 
-  it('uses the newest downloaded beta for a saved beta choice, and nothing before a download', () => {
+  it('downloads the beta for ABUDDY_APP=beta (CI), ahead of ABUDDY_ROOT and the saved choice', async () => {
+    saveAppChoice(dirs, { source: makeCheckout('saved') });
+    await expect(configuredAppPackagesDir(opts({ ABUDDY_APP: 'beta', ABUDDY_ROOT: '/env-root' }))).resolves.toEqual({
+      dir: packagedAppPackagesDir('/cache/AgentBuddy Beta'),
+      label: 'AgentBuddy Beta 0.4.0-beta.2',
+    });
+    expect(beta).toHaveBeenCalledWith('>=0.3.0', dirs.cache);
+    await expect(configuredAppPackagesDir(opts({ ABUDDY_APP: 'nightly' }))).rejects.toThrow(/Unknown ABUDDY_APP "nightly"/);
+  });
+
+  it('uses the newest downloaded beta for a saved beta choice, and downloads one when none is cached', async () => {
     saveAppChoice(dirs, { beta: true });
-    expect(configuredAppPackagesDir(dirs, {})).toBeNull();
+    expect((await configuredAppPackagesDir(opts({})))?.label).toBe('AgentBuddy Beta 0.4.0-beta.2');
+    expect(beta).toHaveBeenCalledTimes(1);
 
     for (const version of ['0.4.0-beta.9', '0.4.0-beta.10', '0.3.9']) {
       const executable = packagedExecutable(path.join(dirs.cache, 'apps', 'beta', version));
@@ -139,10 +160,15 @@ describe('configuredAppPackagesDir', () => {
     }
     fs.mkdirSync(path.join(dirs.cache, 'apps', 'beta', '.0.5.0-beta.0.download-x'));
 
-    expect(configuredAppPackagesDir(dirs, {})).toEqual({
-      dir: path.join(dirs.cache, 'apps', 'beta', '0.4.0-beta.10', 'AgentBuddy Beta.app', 'Contents', 'Resources', 'app', 'packages'),
+    await expect(configuredAppPackagesDir(opts({}))).resolves.toEqual({
+      dir: betaPackages('0.4.0-beta.10'),
       label: 'AgentBuddy Beta 0.4.0-beta.10',
     });
+    expect(beta).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves nothing without a configured app', async () => {
+    await expect(configuredAppPackagesDir(opts({}))).resolves.toBeNull();
   });
 });
 

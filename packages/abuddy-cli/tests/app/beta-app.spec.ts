@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureBetaApp, packagedExecutable, pickBetaRelease } from '../../src/app/beta-app';
@@ -41,7 +42,8 @@ describe('beta release file names', () => {
   it('match what electron-builder.mjs names the AgentBuddy Beta zip, with only characters GitHub keeps', async () => {
     vi.stubEnv('ABUDDY_ENV', 'beta');
     vi.resetModules();
-    const config = (await import('../../../../electron-builder.mjs')).default as { artifactName: string };
+    const configUrl = pathToFileURL(path.resolve(__dirname, '..', '..', '..', '..', 'electron-builder.mjs')).href;
+    const config = (await import(configUrl)).default as { artifactName: string };
     vi.unstubAllEnvs();
 
     const version = '0.4.0-beta.1';
