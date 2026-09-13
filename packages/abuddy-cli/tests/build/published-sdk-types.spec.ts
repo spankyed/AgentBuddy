@@ -3,9 +3,7 @@ import { pathToFileURL } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
-
-const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
+import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, TSC_VERSIONS, installPublishedPackages, type TscVersion } from '../helpers/published-packages';
 
 let consumer: string | undefined;
 beforeAll(() => {
@@ -15,13 +13,13 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-function typecheck(moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
+function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
   const tmp = consumer!;
   fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
   fs.writeFileSync(path.join(tmp, 'tsconfig.json'), JSON.stringify({
     compilerOptions: {
       target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
-      strict: true, skipLibCheck: true, noEmit: true, types: [],
+      strict: true, skipLibCheck: true, noEmit: true, types: [], lib: ['ES2022', 'DOM'],
     },
     include: ['index.ts'],
   }));
@@ -33,6 +31,9 @@ function typecheck(moduleResolution: 'node16' | 'bundler'): { code: number; outp
     "export const newer: number = compareVersions('1.0.0', '0.9.0');",
     "export const step: StepDefinition | undefined = undefined;",
     "export type Meta = ActionMeta;",
+    // @abuddy/sdk/fe declares the preload bridge on window
+    "import '@abuddy/sdk/fe';",
+    "export const popout = window.electronAPI?.plugins.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
     "import { defineEars } from '@abuddy/sdk/ears';",
     "import { defineEvents } from '@abuddy/sdk/services';",
@@ -57,15 +58,15 @@ function typecheck(moduleResolution: 'node16' | 'bundler'): { code: number; outp
     "export * as packs from '@abuddy/sdk/packs';",
   ].join('\n'));
   try {
-    return { code: 0, output: execFileSync(TSC, ['-p', tmp], { stdio: 'pipe' }).toString() };
+    return { code: 0, output: execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', tmp], { stdio: 'pipe' }).toString() };
   } catch (err: any) {
     return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
   }
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
-  it.each(['node16', 'bundler'] as const)('typecheck for consumers using moduleResolution %s', (moduleResolution) => {
-    const result = typecheck(moduleResolution);
+  it.each(CONSUMER_MATRIX)('typecheck for consumers using TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
+    const result = typecheck(tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);
   }, 120_000);
 
@@ -83,6 +84,8 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
     const shipped = fs.readdirSync(path.join(sdk, 'dist'), { recursive: true }).map(String);
     expect(shipped.filter((f) => /^(packs|persistence|backup)\/|^ears\/internals\.|^fe\/(host|pack-store|app-extensions)\.|^build\/(discover|shared-deps)\./.test(f))).toEqual([]);
     expect(fs.readdirSync(sdk).sort()).toEqual(['abuddy.schema.json', 'dist', 'package.json']);
+    // Source maps would point at src, which isn't published
+    expect(shipped.filter((f) => f.endsWith('.map'))).toEqual([]);
   });
 
   it.each(['sdk', 'ui'])('publishes the workspace package.json of @abuddy/%s as is', (name) => {

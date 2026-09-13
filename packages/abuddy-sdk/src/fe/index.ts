@@ -1,6 +1,8 @@
-/// <reference path="./electron-api.d.ts" />
 // Types describing what a pack contributes — pack-facing, unlike the
 // registration functions in ./host.
+
+// Declares window.electronAPI; a type-only re-export survives in the emitted declarations
+export type {} from './electron-api.ts';
 export type { Plugin, RouteComponents } from './plugin.ts'
 export type { PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'

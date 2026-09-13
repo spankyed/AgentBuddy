@@ -1,6 +1,6 @@
 // The preload IPC surface the host exposes to renderer and pack FE code alike.
-// Lives in the SDK because packs consume it; fe/index.ts references this file
-// so anything importing '@abuddy/sdk/fe' sees the global.
+// Lives in the SDK because packs consume it; fe/index.ts re-exports this module's (empty) type
+// surface so anything importing '@abuddy/sdk/fe' sees the global in source and in declarations.
 import type { SpeechEvent } from './speech-event.js';
 
 declare global {

@@ -2,11 +2,9 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
+import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, TSC_VERSIONS, installPublishedPackages, type TscVersion } from '../helpers/published-packages';
 
 /** Every export of the packed @abuddy/sdk and @abuddy/ui resolves to declarations for consumers. */
-const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
-
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
@@ -24,7 +22,7 @@ function codeExports(name: string): string[] {
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
-  it.each(['node16', 'bundler'] as const)('all resolve to declarations under moduleResolution %s', (moduleResolution) => {
+  it.each(CONSUMER_MATRIX)('all resolve to declarations under TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
     const specifiers = [...codeExports('sdk'), ...codeExports('ui')];
     // Every UI export and every SDK export but its source-only host hook, package.json and the schema
     const exportCount = (name: string) => Object.keys(JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8')).exports).length;
@@ -46,7 +44,7 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
 
     let output = '';
     try {
-      execFileSync(TSC, ['-p', consumer!], { stdio: 'pipe' });
+      execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', consumer!], { stdio: 'pipe' });
     } catch (err: any) {
       output = `${err.stdout ?? ''}${err.stderr ?? ''}`;
     }

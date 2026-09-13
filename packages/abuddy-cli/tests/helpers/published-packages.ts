@@ -9,8 +9,38 @@ const PACKAGE_DIRS: Record<string, string> = {
   ui: path.join(REPO_ROOT, 'packages', 'abuddy-ui'),
 };
 
-/** dist/ is written by `npm run packages:build`; CI builds it before these tests. */
+/** Compilers consumers may use: the workspace TypeScript and the oldest the packages support (their typescript peer) */
+export const TSC_VERSIONS = {
+  current: path.join(REPO_ROOT, 'node_modules', 'typescript', 'bin', 'tsc'),
+  '5.3': path.join(REPO_ROOT, 'packages', 'typescript-floor', 'node_modules', 'typescript', 'bin', 'tsc'),
+} as const;
+export type TscVersion = keyof typeof TSC_VERSIONS;
+/** Every TypeScript version × moduleResolution a consumer may use */
+export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
+  .flatMap((tsc) => (['node16', 'bundler'] as const).map((moduleResolution) => ({ tsc, moduleResolution })));
+
+/** Newest modification time of the files under dir */
+function newestMtime(dir: string): number {
+  return Math.max(0, ...fs.readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => fs.statSync(path.join(entry.parentPath, entry.name)).mtimeMs));
+}
+
+/**
+ * dist/ is written by `npm run packages:build`; CI builds it before these tests. Without it the
+ * published-package specs skip, except in CI. A dist older than its source fails instead of
+ * testing stale output.
+ */
 export const PACKAGES_BUILT = Object.values(PACKAGE_DIRS).every((dir) => fs.existsSync(path.join(dir, 'dist')));
+if (!PACKAGES_BUILT && process.env.CI) {
+  throw new Error('The published-package specs need built packages in CI. Run: npm run packages:build');
+}
+for (const dir of PACKAGES_BUILT ? Object.values(PACKAGE_DIRS) : []) {
+  const builtAt = fs.statSync(path.join(dir, 'dist')).birthtimeMs;
+  if (newestMtime(path.join(dir, 'src')) > builtAt) {
+    throw new Error(`${path.relative(REPO_ROOT, dir)}/dist is older than its src. Run: npm run packages:build`);
+  }
+}
 
 /**
  * A directory whose node_modules has the npm-packed @abuddy/sdk and @abuddy/ui installed, as a

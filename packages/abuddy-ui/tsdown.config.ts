@@ -17,7 +17,8 @@ export default defineConfig({
   platform: 'neutral',
   // vue-tsc emits the declarations
   dts: false,
-  deps: { neverBundle: external },
+  // Nothing from node_modules is bundled: an import of an undeclared package fails the build
+  deps: { neverBundle: external, onlyBundle: [] },
   // Compiled components import their own CSS, so a consumer's bundler collects it
   // The postcss transformer inlines relative @imports (the tiptap theme) with postcss-import, a
   // dev dependency; only emitted CSS ships

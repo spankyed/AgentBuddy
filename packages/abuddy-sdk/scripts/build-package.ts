@@ -1,4 +1,4 @@
-// Builds @abuddy/sdk's dist/: tsc-compiled ESM, declarations and maps. package.json is the
+// Builds @abuddy/sdk's dist/: tsc-compiled ESM and declarations (no source maps: src doesn't ship). package.json is the
 // published manifest; its exports resolve source under the @abuddy/source condition (monorepo
 // tooling) and dist otherwise. Relative imports name the .ts source and tsc rewrites them to .js
 // (rewriteRelativeImportExtensions), so the emitted JS resolves in Node and in bundlers as is.
