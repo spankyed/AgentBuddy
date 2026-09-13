@@ -70,8 +70,6 @@ import {
   type EditorAction
 } from './monaco-config.ts'
 
-installDiffRangeErrorFilters()
-
 // Props interface
 export interface UnifiedMonacoEditorProps {
   // Core props
@@ -128,6 +126,8 @@ const emit = defineEmits<{
   'cursorChange': [position: { line: number; col: number }]
   'fileReady': []
 }>()
+
+installDiffRangeErrorFilters()
 
 // State
 const editorInstance = shallowRef<editor.IStandaloneCodeEditor>()
