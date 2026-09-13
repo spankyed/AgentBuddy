@@ -4,13 +4,19 @@ import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { installPackFromLocal } from '@abuddy/host/packs';
+import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
 
 function getDevApiUrl(): string | null {
   try {
     const port = fs.readFileSync(resolveAppContext({ env: 'development' }).apiPortFile, 'utf-8').trim();
     return port ? `http://localhost:${port}` : null;
   } catch { return null; }
+}
+
+/** Installs into the dev data dir, checking hostVersion against the dev app that last used it. */
+function installToDev(root: string) {
+  const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
+  return installPackFromLocal(root, packsDir, { hostVersion: readHostVersion(userDataDir) });
 }
 
 function writeSignalFile(packsDir: string, packId: string, port: number): string {
@@ -41,7 +47,7 @@ export async function dev(_args: string[]) {
   await build([]);
 
   console.log(`Installing pack to dev environment...`);
-  const result = await installPackFromLocal(root, packsDir);
+  const result = await installToDev(root);
   console.log(`  ${result.dir}\n`);
 
   if (!feEntry) {
@@ -137,7 +143,7 @@ export async function dev(_args: string[]) {
         console.log('Rebuilding...');
         await build([]);
         console.log('Installing to dev...');
-        await installPackFromLocal(root, packsDir);
+        await installToDev(root);
         console.log('Triggering BE reload...');
         const apiUrl = getDevApiUrl();
         if (!apiUrl) {
@@ -182,7 +188,7 @@ async function watchRebuildFallback(root: string, srcDir: string, packId: string
       try {
         console.log(`\nChange detected: ${label}`);
         await build([]);
-        await installPackFromLocal(root, packsDir);
+        await installToDev(root);
         const apiUrl = getDevApiUrl();
         if (!apiUrl) {
           console.warn('Dev app not running (no port file). Restart to apply changes.\n');

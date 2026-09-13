@@ -30,8 +30,7 @@ const DEV_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'dev
  * import added later fails CI instead of silently breaking pack loading.
  */
 const UNBRIDGED_LEAVES = new Map<string, string>([
-  ['@abuddy/sdk/cron', 'self-contained leaf, no imports, no state'],
-  ['@abuddy/sdk/utils/compare-versions', 'self-contained leaf, no imports, no state'],
+  // None: an installed pack has no node_modules, so even leaf modules are bridged
 ]);
 
 /**
