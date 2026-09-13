@@ -50,6 +50,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
+  ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
   // Metadata: tooling reads them, code never requires them.
   ['@abuddy/sdk/package.json', 'package metadata, not code'],
   ['@abuddy/sdk/abuddy.schema.json', 'manifest JSON schema, not code'],

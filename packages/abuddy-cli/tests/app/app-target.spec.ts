@@ -12,6 +12,7 @@ import {
   type CliDirs,
 } from '../../src/app/app-target';
 import { fixtureEnv } from '../../src/commands/test';
+import { testingFromSource } from '../../src/app/playwright';
 import { cliBin } from '../../src/utils';
 import { packagedExecutable } from '../../src/app/beta-app';
 import { appLaunchEnv } from '../../../abuddy-testing/src/launch-env';
@@ -204,6 +205,12 @@ describe('appLaunchEnv (@abuddy/testing)', () => {
       ABUDDY_USER_DATA_DIR: '/tmp/data',
     });
   });
+
+  it("doesn't pass the runner's @abuddy/source condition to the app", () => {
+    expect(appLaunchEnv({ NODE_OPTIONS: '--max-old-space-size=4096 --conditions=@abuddy/source' }, '/tmp/data').NODE_OPTIONS)
+      .toBe('--max-old-space-size=4096');
+    expect(appLaunchEnv({ NODE_OPTIONS: '--conditions=@abuddy/source' }, '/tmp/data')).not.toHaveProperty('NODE_OPTIONS');
+  });
 });
 
 describe('fixtureEnv', () => {
@@ -214,5 +221,39 @@ describe('fixtureEnv', () => {
     expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
       .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fs.existsSync(cliBin())).toBe(true);
+  });
+
+  it('gives the runner the @abuddy/source condition only for a checkout @abuddy/testing', () => {
+    const app = { kind: 'source', root: '/repo' } as const;
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--max-old-space-size=4096' }, true).NODE_OPTIONS)
+      .toBe('--max-old-space-size=4096 --conditions=@abuddy/source');
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@abuddy/source' }, true).NODE_OPTIONS)
+      .toBe('--conditions=@abuddy/source');
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@abuddy/source' }, false)).not.toHaveProperty('NODE_OPTIONS');
+  });
+});
+
+describe('testingFromSource', () => {
+  function pack(testing: Record<string, string>): string {
+    const dir = path.join(tmp, 'pack');
+    for (const [file, content] of Object.entries({ 'package.json': '{}', ...Object.fromEntries(Object.entries(testing).map(([f, c]) => [`node_modules/@abuddy/testing/${f}`, c])) })) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+      fs.writeFileSync(path.join(dir, file), content);
+    }
+    return dir;
+  }
+
+  it('is true for the workspace source package', () => {
+    const dir = pack({ 'package.json': JSON.stringify({ name: '@abuddy/testing', exports: { '.': './src/index.ts' } }), 'src/index.ts': '' });
+    expect(testingFromSource(dir)).toBe(true);
+  });
+
+  it('is false for the published bundle', () => {
+    const dir = pack({ 'package.json': JSON.stringify({ name: '@abuddy/testing', exports: { '.': { types: './dist/index.d.ts', default: './dist/index.js' } } }), 'dist/index.js': '' });
+    expect(testingFromSource(dir)).toBe(false);
+  });
+
+  it('is false when @abuddy/testing is not installed', () => {
+    expect(testingFromSource(pack({}))).toBe(false);
   });
 });

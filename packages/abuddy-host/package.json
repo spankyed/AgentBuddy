@@ -12,6 +12,7 @@
     "./backup": "./src/backup/index.ts",
     "./build/discover": "./src/build/discover.ts",
     "./build/shared-deps": "./src/build/shared-deps.ts",
+    "./build/source-resolution": "./src/build/source-resolution.ts",
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
     "./packs": "./src/packs/index.ts",

@@ -1,3 +1,5 @@
+// Must stay the first import (see source-check.ts)
+import './source-check.js';
 import { test as base, _electron, type ElectronApplication, type Page } from '@playwright/test';
 export { expect } from '@playwright/test';
 import * as path from 'path';

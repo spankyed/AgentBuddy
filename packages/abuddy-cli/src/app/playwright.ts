@@ -28,3 +28,20 @@ export function resolvePlaywrightCli(packDir: string): string {
   const cli = path.join(path.dirname(playwrightPkg), JSON.parse(fs.readFileSync(playwrightPkg, 'utf-8')).bin.playwright);
   return fs.realpathSync(cli);
 }
+
+/**
+ * Whether the pack's @abuddy/testing is a checkout's workspace source (a pack linked to a
+ * checkout, or the in-repo fixture pack) rather than the published bundle. Its runner then needs
+ * the @abuddy/source condition to load the SDK and host from source too.
+ */
+export function testingFromSource(packDir: string): boolean {
+  const entry = tryResolve(path.join(packDir, 'package.json'), '@abuddy/testing');
+  if (!entry) return false;
+  let dir = path.dirname(fs.realpathSync(entry));
+  while (!fs.existsSync(path.join(dir, 'package.json'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) return false;
+    dir = parent;
+  }
+  return fs.existsSync(path.join(dir, 'src'));
+}

@@ -21,12 +21,21 @@ import { repository } from '@abuddy/sdk/ears';
 import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { setLoadedPacks, setBuiltInPacksForRegistry } from '@/packs/pack-api';
+import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
+import { createRequire } from 'module';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
 export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
 
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
+
+  // Packs require workspace @abuddy/* packages at runtime: from a checkout they must get source,
+  // not a stale dist (main starts the API with the condition; manual boots must pass it). The
+  // packaged app runs the API on Electron's runtime and ships no workspace source.
+  if (!process.versions.electron) {
+    assertSourceResolution(createRequire(import.meta.url).resolve, 'The API server');
+  }
 
   // ── Register host-level systems (before any pack loading) ──────────
   registerHostSystem('packs', packsSystem, packsEvents);

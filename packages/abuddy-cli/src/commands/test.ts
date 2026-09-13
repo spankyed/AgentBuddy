@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseTestAppFlags, resolveTestApp, type AppTarget } from '../app/app-target';
-import { resolvePlaywrightCli } from '../app/playwright';
+import { resolvePlaywrightCli, testingFromSource } from '../app/playwright';
+import { withSourceCondition, withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { cliBin } from '../utils';
 
 export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [playwright args...]
@@ -11,9 +12,15 @@ Runs the pack's Playwright tests in AgentBuddy. The app is, in order: --app-root
 AgentBuddy checkout), --app beta (the newest AgentBuddy Beta build satisfying the pack's
 hostVersion, downloaded and cached), ABUDDY_ROOT, or the app you chose on first run.`;
 
-/** Env the @abuddy/testing fixture reads to launch the app and install the pack. */
-export function fixtureEnv(app: AppTarget, packDir: string | undefined, base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+/**
+ * Env the @abuddy/testing fixture reads to launch the app and install the pack. The runner gets
+ * the @abuddy/source condition only when @abuddy/testing is a checkout's source.
+ */
+export function fixtureEnv(app: AppTarget, packDir: string | undefined, base: NodeJS.ProcessEnv, fromSource = false): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
+  const nodeOptions = fromSource ? withSourceCondition(base.NODE_OPTIONS) : withoutSourceCondition(base.NODE_OPTIONS);
+  if (nodeOptions) env.NODE_OPTIONS = nodeOptions;
+  else delete env.NODE_OPTIONS;
   delete env.ABUDDY_ROOT;
   // ELECTRON_RUN_AS_NODE (app-bundled launcher) stays: the runner and its workers run on
   // process.execPath. The fixture drops it for the app it launches (appLaunchEnv).
@@ -56,7 +63,7 @@ export async function test(args: string[]): Promise<void> {
   console.log(app.kind === 'source' ? `Testing in AgentBuddy from ${app.root}` : `Testing in AgentBuddy Beta ${app.version}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
     cwd,
-    env: fixtureEnv(app, manifest ? cwd : undefined, process.env),
+    env: fixtureEnv(app, manifest ? cwd : undefined, process.env, testingFromSource(cwd)),
     stdio: 'inherit',
   });
   if (result.status !== 0) process.exit(result.status ?? 1);
