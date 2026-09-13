@@ -1,7 +1,7 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/shared/actor-helpers';
-import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem, publishHostPackArtifacts } from '@abuddy/host/packs';
+import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem, publishHostPackArtifacts, recordHostVersion } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import { registerShutdownHook } from '@abuddy/sdk/utils';
@@ -40,6 +40,9 @@ export async function setupBackend(): Promise<void> {
   if (externalPacks.length > 0) {
     externalPacks = registerExternalPacks(externalPacks);
   }
+
+  // abuddy install checks packs' hostVersion against the app that uses this data dir
+  recordHostVersion(resolveAppContext().userDataDir, APP_VERSION);
 
   if (builtInPromise) {
     const builtInPackInfos = await builtInPromise;

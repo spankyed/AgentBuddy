@@ -7,6 +7,7 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal } from '@abuddy/host/packs';
+import { appVersion } from './app-version.js';
 import { appLaunchEnv } from './launch-env.js';
 
 export interface AppHelper {
@@ -226,7 +227,7 @@ export function createTest(options: CreateTestOptions = {}) {
           // Install through the same bundle path users get (stage → verify → place)
           const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
           console.log(`[pack] Installing ${manifest.id} into an isolated test data dir...`);
-          await installPackFromLocal(packDir, packsDir);
+          await installPackFromLocal(packDir, packsDir, { hostVersion: appVersion(appLaunch) });
         }
 
         // A checkout runs its sources with its own electron, so packs don't need electron installed

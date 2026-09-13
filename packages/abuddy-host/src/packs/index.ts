@@ -28,6 +28,7 @@ export {
   uninstallPack, checkDependencies, isHostCompatible,
 } from './pack-installer.js';
 export type { InstallResult } from './pack-installer.js';
+export { recordHostVersion, readHostVersion } from './host-info.js';
 
 // Updater
 export { checkForUpdates, getAvailableUpdates } from './pack-updater.js';
