@@ -13,5 +13,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.vue", "src/testing/**", "src/cli/**"]
+  "exclude": ["src/**/*.vue", "src/testing/**"]
 }

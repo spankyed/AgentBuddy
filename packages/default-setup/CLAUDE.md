@@ -99,12 +99,14 @@ See `src/seeds/CLAUDE.md` for authoring details.
 
 Step definitions in `src/extensions/steps/`. Each step directory contains:
 
-- `index.ts` — `StepDefinition` combining build, runtime, and FE config
+- `build.ts` — build facet: `export const <name>StepBuild` (or `<name>TriggerBuild`) with compile/validate/decompile/getLabel and trigger facets, and no FE or runtime imports
+- `index.ts` — `StepDefinition` spreading the build facet and adding runtime and FE config
 - `fe.ts` — frontend config (icon, colors, node config, lazy-loaded form component)
 - `types.ts` — step-specific types
 - `form.vue` — optional editor form component
-- `build.ts` — optional compile/validate/decompile logic
 - `runtime.ts` — optional runtime handler
+
+A new step goes in both barrels: `src/extensions/steps/register.ts` (the full definition) and `src/extensions/steps/build.ts` (the build facet). `abuddy.json` `steps.build` points at the latter; it's bundled to `dist/build/steps.build.mjs`, which packs depending on default-setup use to validate their flows. `tests/unit/step-build-barrel.spec.ts` fails when the barrels diverge.
 
 13 steps: **action**, **llm**, **switch**, **fire**, **transform**, **query**, **subflow**, **create**, **update**, **keep-alive**, **kill**, **schedule** (trigger), **listener** (trigger).
 

@@ -100,7 +100,7 @@ Installer: verify checksum, check hostVersion + dependencies, place the bundle. 
 
 **Phase 4 — D4.** `abuddy test` app resolution (prompt, config, CI flags, beta download with checksum + cache) and the `release.sh` beta-before-prod rule. Stop running Playwright through `npx playwright`: run the runner that matches the fixture's `@playwright/test`.
 
-**Phase 5 — test isolation (N3, N4).** The fixture creates a temp `ABUDDY_USER_DATA_DIR` per worker (the variable already exists), installs only the pack under test, and drops the `.dev` skip-sync shortcut. Report boot time before/after. Update `packages/abuddy-sdk/src/testing/CLAUDE.md` and `tests/e2e/CLAUDE.md`.
+**Phase 5 — test isolation (N3, N4).** The fixture creates a temp `ABUDDY_USER_DATA_DIR` per worker (the variable already exists), installs only the pack under test, and drops the `.dev` skip-sync shortcut. Report boot time before/after. Update `packages/abuddy-testing/CLAUDE.md` (formerly `packages/abuddy-sdk/src/testing/CLAUDE.md`) and `tests/e2e/CLAUDE.md`.
 
 **Phase 6 — hardening.** F4–F7 and F9 in `sdk-bridge-drift.spec.ts` (mutation-check each), F10 (assert the "No machine export found" message), F11 (renderer `loadPackFEEntry` warns when an entry registers no plugins).
 

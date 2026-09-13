@@ -6,7 +6,7 @@ class Abuddy < Formula
   desc "Scaffold, build, test and release AgentBuddy packs"
   homepage "https://github.com/spankyed/AgentBuddy"
   url "https://registry.npmjs.org/@abuddy/cli/-/cli-0.1.0.tgz"
-  sha256 "d0935be52a4f79fe537ceb40fcc695641741a9c54cc21739b95bbf69669b4c00"
+  sha256 "05b8a5434e224a5a71222be0dcc4ed94868fba03ae70dc920c13bd052f7af4e9"
   license "MIT"
 
   depends_on "node"

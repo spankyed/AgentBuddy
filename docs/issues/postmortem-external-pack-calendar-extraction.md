@@ -124,7 +124,7 @@ Changes in `packages/abuddy-sdk/src/testing/index.ts`:
 
 **Mutation check:** a pack whose FE entry throws now fails in 4.7s with `Pack FE failed to load … Error: PROBE FE boom`. It used to time out after 30s. The monorepo smoke suite still passes.
 
-Docs updated: `packages/abuddy-sdk/src/testing/CLAUDE.md`, `tests/e2e/CLAUDE.md`. Related open issues: N3, N4.
+Docs updated: `packages/abuddy-sdk/src/testing/CLAUDE.md` (now `packages/abuddy-testing/CLAUDE.md`), `tests/e2e/CLAUDE.md`. Related open issues: N3, N4.
 
 ### 5. Unproxied SDK imports in pack frontend code — ✅ resolved
 
@@ -329,6 +329,6 @@ T1 was also upgraded from "unverified" to a confirmed live bug (item 1).
 
 - `docs/issues/postmortem-default-setup-compile-stale.md` — earlier stale-artifact incident
 - `docs/external-pack-fe-deps.md`, `docs/pack-install-flow.md` — external pack FE deps and install design
-- `packages/abuddy-sdk/src/testing/CLAUDE.md` — pack E2E fixture (items 3, 4)
+- `packages/abuddy-testing/CLAUDE.md` — pack E2E fixture (items 3, 4; moved from `packages/abuddy-sdk/src/testing/`)
 - `packages/api/tests/unit/sdk-bridge-drift.spec.ts` — backend drift guard to mirror (item 5)
 - Commits: `e63fd0f1c` (extraction), `a1a86d498` (loader diagnostic)
