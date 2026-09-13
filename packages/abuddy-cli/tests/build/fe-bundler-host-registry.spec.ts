@@ -29,10 +29,11 @@ afterAll(() => {
 
 const tmpDirs: string[] = [];
 
-function makePack(layout: { sdkDir: () => string; uiDir: () => string }, entrySource: string): { packDir: string; entry: string } {
+function makePack(layout: { sdkDir: () => string; uiDir: () => string }, entrySource: string, manifest: Record<string, unknown> = {}): { packDir: string; entry: string } {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fe-bundler-'));
   tmpDirs.push(packDir);
   fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'fixture-pack', type: 'module' }));
+  fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', ...manifest }));
   fs.mkdirSync(path.join(packDir, 'node_modules', '@abuddy'), { recursive: true });
   fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
   fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@abuddy', 'ui'), 'dir');
@@ -60,10 +61,28 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
     expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/runtime/host.${ext}`);
   }, 60_000);
 
-  it('inlines @abuddy/ui modules and proxies the shared SDK modules they import', async () => {
+  it('uses the host\'s @abuddy/ui instead of bundling it', async () => {
+    const { packDir, entry } = makePack(layout, [
+      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';",
+      "import { useDebounce } from '@abuddy/ui/composables/useDebounce';",
+      'export const ui = { TiptapEditor, useDebounce };',
+    ].join('\n'));
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy["@abuddy/ui/components/tiptap/TiptapEditor"]');
+    expect(output).toContain('window.__abuddy["@abuddy/ui/composables/useDebounce"]');
+    // No UI code: the editor's extensions, its styles or the debounce implementation
+    expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
+  }, 60_000);
+
+  it('bundles @abuddy/ui with fe.bundleUi and proxies the shared SDK modules it imports', async () => {
     const { packDir, entry } = makePack(layout,
       `import { createEditorClickHandler } from '@abuddy/ui/components/tiptap/composables/createEditorClickHandler';\n` +
       `export const handler = createEditorClickHandler({ noteLinkClick() {}, imageClick() {} });\n`,
+      { fe: { bundleUi: true } },
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
@@ -71,8 +90,26 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy.sdkFe');
+    expect(output).toContain('window.__abuddy["sdkFe"]');
     expect(output).toContain('createEditorClickHandler');
+  }, 60_000);
+
+  it('compiles no @abuddy/ui SFC when a pack bundles @abuddy/ui', async () => {
+    const { packDir, entry } = makePack(layout,
+      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      { fe: { bundleUi: true } },
+    );
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    const { sources } = JSON.parse(fs.readFileSync(path.join(packDir, 'dist', 'fe.js.map'), 'utf-8')) as { sources: string[] };
+    const uiSources = sources.filter((source) => source.includes('@abuddy/ui/') || source.includes('abuddy-ui/'));
+    expect(uiSources.length).toBeGreaterThan(0);
+    // The published package ships compiled components; only the monorepo's source condition yields SFCs
+    const compiledSfcs = uiSources.filter((source) => /\.vue(\?|$)/.test(source));
+    if (layout.name === 'published package') expect(compiledSfcs).toEqual([]);
+    else expect(compiledSfcs.length).toBeGreaterThan(0);
   }, 60_000);
 
   it('drops the generated EARS facade from FE code that only uses the EARS constants', async () => {
@@ -102,6 +139,6 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy.sdkRpc');
+    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy["sdkRpc"]');
   }, 60_000);
 });

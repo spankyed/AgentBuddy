@@ -94,6 +94,7 @@ const FEConfigSchema = z.object({
   tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
   appExtensions: z.record(z.string(), z.string()).describe('Named app extensions. Keys are extension names, values are paths to Vue components.').optional(),
   styles: z.string().describe('Path to a CSS file to include in the frontend bundle.').optional(),
+  bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Frontend-specific pack configuration.');
 
 const StepsSchema = z.object({

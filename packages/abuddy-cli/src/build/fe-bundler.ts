@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin as VitePlugin } from 'vite';
 import { sourceConditions } from '@abuddy/sdk/build';
-import { getSharedFeDeps, getSdkFeModules } from '@abuddy/host/build/shared-deps';
+import { getSharedFeDeps, getSdkFeModules, getUiFeModules } from '@abuddy/host/build/shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
@@ -29,7 +29,7 @@ function parseNamedExports(source: string): string[] {
 }
 
 function generateGlobalProxy(globalKey: string, namedExports: string[]): string {
-  const lines = [`const __m = window.__abuddy.${globalKey};`];
+  const lines = [`const __m = window.__abuddy[${JSON.stringify(globalKey)}];`];
   for (const name of namedExports) {
     lines.push(`export const ${name} = __m.${name};`);
   }
@@ -37,9 +37,20 @@ function generateGlobalProxy(globalKey: string, namedExports: string[]): string 
   return lines.join('\n');
 }
 
+/** Whether the pack's abuddy.json opts into bundling its own copy of @abuddy/ui (`fe.bundleUi`). */
+function bundlesUi(packDir: string): boolean {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8')).fe?.bundleUi === true;
+  } catch {
+    return false;
+  }
+}
+
 export function packExternalsPlugin(packDir: string): VitePlugin {
   const feDeps = getSharedFeDeps();
   const sdkModules = getSdkFeModules();
+  // @abuddy/ui comes from the host like the SDK modules, unless the pack bundles all of it
+  const uiModules = bundlesUi(packDir) ? {} : getUiFeModules(packDir);
 
   function discoverRuntimeExports(specifier: string): string[] {
     for (const base of [path.join(packDir, 'package.json'), import.meta.url]) {
@@ -153,7 +164,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       if (feDeps[source]) {
         return EXTERNAL_PREFIX + source;
       }
-      if (sdkModules[source]) {
+      if (sdkModules[source] || uiModules[source]) {
         return EXTERNAL_PREFIX + source;
       }
       if (source.startsWith('@abuddy/sdk')) {
@@ -171,9 +182,9 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
         return generateGlobalProxy(hostDep.globalKey, discoverRuntimeExports(specifier));
       }
 
-      const sdkMod = sdkModules[specifier];
-      if (sdkMod) {
-        return generateGlobalProxy(sdkMod.globalKey, await discoverSourceExports(this, specifier));
+      const sharedMod = sdkModules[specifier] ?? uiModules[specifier];
+      if (sharedMod) {
+        return generateGlobalProxy(sharedMod.globalKey, await discoverSourceExports(this, specifier));
       }
     },
   };

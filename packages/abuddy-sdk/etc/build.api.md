@@ -920,16 +920,19 @@ export const ManifestSchema: z.ZodObject<{
         tiptapPlugins: z.ZodOptional<z.ZodString>;
         appExtensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         styles: z.ZodOptional<z.ZodString>;
+        bundleUi: z.ZodOptional<z.ZodBoolean>;
     }, "strict", z.ZodTypeAny, {
         entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
         styles?: string | undefined;
+        bundleUi?: boolean | undefined;
     }, {
         entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
         styles?: string | undefined;
+        bundleUi?: boolean | undefined;
     }>>;
     dsl: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         entry: z.ZodString;
@@ -1037,6 +1040,7 @@ export const ManifestSchema: z.ZodObject<{
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
         styles?: string | undefined;
+        bundleUi?: boolean | undefined;
     } | undefined;
 }, {
     id: string;
@@ -1128,6 +1132,7 @@ export const ManifestSchema: z.ZodObject<{
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
         styles?: string | undefined;
+        bundleUi?: boolean | undefined;
     } | undefined;
 }>;
 

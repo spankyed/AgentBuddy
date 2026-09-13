@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps, getSdkFeModules } from '@abuddy/host/build/shared-deps'
+import { getSharedFeDeps, getSdkFeModules, getUiFeModules } from '@abuddy/host/build/shared-deps'
 import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
@@ -69,11 +69,15 @@ function hostDepsPlugin(): Plugin {
   const sdkImportLines = Object.entries(sdkModules)
     .map(([pkg, { globalKey }]) => `import * as ${globalKey} from '${pkg}';`)
     .join('\n');
+  // Pack FE code gets @abuddy/ui from the host too, keyed by specifier
+  const uiModules = Object.keys(getUiFeModules(fileURLToPath(new URL('.', import.meta.url))));
+  const uiImportLines = uiModules.map((specifier, i) => `import * as ui${i} from '${specifier}';`).join('\n');
   const allKeys = [
     ...Object.values(feDeps).map(d => d.globalKey),
     ...Object.values(sdkModules).map(d => d.globalKey),
+    ...uiModules.map((specifier, i) => `${JSON.stringify(specifier)}: ui${i}`),
   ].join(', ');
-  const virtualContent = `${depsImportLines}\n${sdkImportLines}\nwindow.__abuddy = { ${allKeys} };\n`;
+  const virtualContent = `${depsImportLines}\n${sdkImportLines}\n${uiImportLines}\nwindow.__abuddy = { ${allKeys} };\n`;
 
   return {
     name: 'host-deps',

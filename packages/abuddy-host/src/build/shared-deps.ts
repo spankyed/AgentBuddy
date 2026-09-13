@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createRequire } from 'node:module';
 
 export interface SharedDep {
   globalKey?: string;
@@ -43,6 +44,29 @@ export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
 
 export function getSdkFeModules(): Record<string, SdkFeModule> {
   return SDK_FE_MODULES;
+}
+
+/**
+ * Every @abuddy/ui export, shared with pack FE code like the SDK modules: the host exposes each
+ * module on window.__abuddy under its specifier. Read from the exports map of the @abuddy/ui that
+ * `fromDir` resolves (the host's own, or a pack's).
+ */
+export function getUiFeModules(fromDir: string): Record<string, SdkFeModule> {
+  let manifestPath: string;
+  try {
+    manifestPath = createRequire(path.join(fromDir, 'package.json')).resolve('@abuddy/ui/package.json');
+  } catch {
+    return {};
+  }
+  const { exports } = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as { exports: Record<string, unknown> };
+  return Object.fromEntries(
+    Object.keys(exports)
+      .filter((key) => key !== './package.json')
+      .map((key) => {
+        const specifier = `@abuddy/ui${key.slice(1)}`;
+        return [specifier, { globalKey: specifier }];
+      }),
+  );
 }
 
 export function getSharedBeDeps(): string[] {
