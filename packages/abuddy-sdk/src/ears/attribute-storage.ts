@@ -1,6 +1,5 @@
 import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from './relation-index';
 import { EARS } from '../types/entities';
-import type { EntityShapeRegistry } from '../types/entities';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id';
 import { getPersistence } from './runtime';
@@ -9,11 +8,11 @@ const isPlainObject = (val: unknown): val is Record<string, unknown> =>
   typeof val === 'object' && val !== null && !Array.isArray(val);
 
 /**
- * Brands the new id with its entity type so downstream reads infer the shape.
- * Types absent from the registry stay unbranded — there is no shape to infer.
+ * Creates an id for a new entity of type `t`. A pack's `#generated/ears` exports this
+ * typed to brand the id with the entity type, so reads through its helpers infer the shape.
  */
-export const createEntity = <E extends EARS.Entity>(t: E) =>
-  `${t}-${randomId()}` as EARS.EntityId<E extends keyof EntityShapeRegistry ? E : string>;
+export const createEntity = <E extends EARS.Entity>(t: E): EARS.EntityId =>
+  `${t}-${randomId()}` as EARS.EntityId;
 
 const store       = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
 const entityIndex = new Map<EARS.Entity, Set<EARS.EntityId>>();

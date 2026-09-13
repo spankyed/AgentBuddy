@@ -1,15 +1,7 @@
+import { findById, findByIdRaw, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import {
-  findById,
-  findByIdRaw,
-  createEntityWithDefaults,
-  updateEntity,
-  createRelation,
-  removeRelation,
-  RepositoryError,
-  RepositoryErrorCode,
-} from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
+import { createEntityWithDefaults, updateEntity, createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+
 import { tx } from '@abuddy/sdk/ears';
 import type { NoteEntity } from '../types';
 import { REFERENCES } from '../types';

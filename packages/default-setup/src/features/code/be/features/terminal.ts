@@ -1,5 +1,7 @@
+// Terminal events reach the code plugin, which types them separately
+import { emit } from '@abuddy/sdk/helpers';
 import { setup, assign, fromPromise } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { terminalService } from '../services/terminal'
 import type { TerminalInfo, CodeSettings } from '../types'

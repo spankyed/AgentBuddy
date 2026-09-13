@@ -23,6 +23,7 @@ export type {
   EntityStatus,
   TNodeKind,
   TNodeEntity,
+  SdkEntityShapes,
   TrackTree,
   ExecutionEvent,
   StepRun,

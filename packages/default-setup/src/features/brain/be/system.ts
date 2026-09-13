@@ -1,9 +1,10 @@
+import { emit } from '@/__generated__/events';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
-import { emit, getActor } from '@abuddy/sdk/helpers';
+import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import type { StepRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@abuddy/sdk/ears';
@@ -50,7 +51,6 @@ export type OutgoingBrainEvents =
   | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
-
 
 export interface BrainContext {
   brainActor?: any;

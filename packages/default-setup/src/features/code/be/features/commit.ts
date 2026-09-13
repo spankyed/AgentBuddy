@@ -1,5 +1,6 @@
+import { emit } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'

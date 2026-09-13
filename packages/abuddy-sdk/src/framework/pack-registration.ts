@@ -54,7 +54,7 @@ export interface PackFeatureDef {
 export interface PackRegistration {
   id: string;
   systems: PackSystemDef[];
-  services?: Record<string, unknown> & Partial<import('../types/entities').ServiceRegistry>;
+  services?: Record<string, unknown>;
   ears?: PackEARS;
   boot?: PackBootHooks;
   migrations?: PackMigration[];

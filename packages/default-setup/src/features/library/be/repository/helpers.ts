@@ -1,4 +1,5 @@
-import { qx, tx } from '@abuddy/sdk/ears'
+import { qx } from '@/__generated__/ears';
+import { tx } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears/internals'
 import { EARS } from '@/__generated__/ears'
 import type { ContentSection } from '../types'

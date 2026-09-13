@@ -1,14 +1,9 @@
+import { findById, findAll, qx } from '@/__generated__/ears';
 import { registerRepository } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import {
-  findById,
-  findAll,
-  updateEntity,
-  RepositoryError,
-  RepositoryErrorCode
-} from '@abuddy/sdk/ears';
+import { updateEntity, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
 import { wouldCreateCycle } from '@abuddy/sdk/ears';
-import { qx, b64Encode, b64Decode } from '@abuddy/sdk/ears';
+import { b64Encode, b64Decode } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
@@ -770,11 +765,11 @@ export const chatCommands = {
       .put('updatedAt', now);
 
     let updatedBlocks: BlockConfig[] | undefined;
-    const fullMessage = qx(messageId).pickOne(['blocks']);
+    const storedBlocks = qx(messageId).pickOne(['blocks'])?.blocks;
 
-    if (fullMessage?.blocks && response.buttonId) {
+    if (Array.isArray(storedBlocks) && response.buttonId) {
       let buttonToggled = false;
-      const newBlocks = fullMessage.blocks.map((block: BlockConfig) => {
+      const newBlocks = (storedBlocks as BlockConfig[]).map((block: BlockConfig) => {
         if (block.type === 'button-group') {
           const updatedButtons = block.props.buttons.map((button: any) => {
             if (button.toggleStates && button.id === response.buttonId) {

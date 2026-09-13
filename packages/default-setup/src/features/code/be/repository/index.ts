@@ -1,8 +1,9 @@
+import { qx, findById, findAll } from '@/__generated__/ears';
 import { registerRepository } from '@abuddy/sdk/ears'
 import { EARS } from '@/__generated__/ears'
 import { tx } from '@abuddy/sdk/ears'
-import { qx } from '@abuddy/sdk/ears'
-import { createEntityWithDefaults, updateEntity, findById, findAll, exists } from '@abuddy/sdk/ears'
+
+import { createEntityWithDefaults, updateEntity, exists } from '@abuddy/sdk/ears';
 import type { TerminalInfo } from '../types'
 import { terminalService } from '../services/terminal'
 
@@ -42,7 +43,6 @@ export const terminalQueries = {
     return all.filter(t => t.active === true)
   },
   
-
 
   getStartupData: (): StartupData => {
     // Get all terminals from the service (only in-memory terminals)

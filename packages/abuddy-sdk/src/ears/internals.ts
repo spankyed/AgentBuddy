@@ -19,3 +19,7 @@ export {
   envs, policy, persistence,
 } from './helpers';
 export { _flushEarlyRegistrations } from './repository';
+// Untyped query helpers for host code; packs get them typed from defineEars (see ./typed)
+export { qx } from './query';
+export { createEntity } from './attribute-storage';
+export { findById, findByIdRaw, findAll, findWhere, findFirst } from './query-helpers';

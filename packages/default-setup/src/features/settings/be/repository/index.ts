@@ -1,6 +1,7 @@
+import { qx } from '@/__generated__/ears';
 import { registerRepository } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import { qx } from '@abuddy/sdk/ears';
+
 import { tx } from '@abuddy/sdk/ears';
 import type { SettingsEntity, SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';

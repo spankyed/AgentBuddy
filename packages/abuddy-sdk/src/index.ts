@@ -16,4 +16,4 @@ export type { Designations } from './designations/index';
 export { bus } from './ids/index';
 
 // EARS runtime (pack-facing)
-export { qx, tx, createEntity, type EARSRuntimeDeps } from './ears/index';
+export { tx, defineEars, type EARSRuntimeDeps } from './ears/index';

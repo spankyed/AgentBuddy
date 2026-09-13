@@ -1,7 +1,8 @@
 import { getHostModule } from '../runtime/host';
 import { repository } from '../ears';
 import { getRegisteredServices } from '../packs';
-import type { EARS, PluginEventRegistry, ServiceRegistry } from '../types/entities';
+import type { EARS } from '../types/entities';
+import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers';
 import type { Logger } from '../ears/runtime';
 
 function lazyHost(name: string) {
@@ -12,12 +13,25 @@ function lazyHost(name: string) {
 // --- Event emitter (host-injected) ---
 const emitter = lazyHost('event-emitter');
 
-export function sendToPlugin<P extends keyof PluginEventRegistry & string>(
-  pluginId: P, event: PluginEventRegistry[P]
-): void;
-export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: any }): void;
-export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: any }): void {
+/** `sendToPlugin` typed against a plugin event map (see `#generated/events`). */
+export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => void;
+
+/** Any plugin, any event with a `type`. Packs use the typed one from `defineEvents` (their `#generated/events`). */
+export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: unknown }): void {
   emitter().sendToPlugin(pluginId, event);
+}
+
+export interface TypedEvents<M extends PluginEvents> {
+  emit: TypedEmit<M>;
+  sendToPlugin: TypedSendToPlugin<M>;
+}
+
+/**
+ * `emit` and `sendToPlugin` typed against a pack's plugin event map. `abuddy generate-entries`
+ * writes `#generated/events` with `defineEvents<PackEvents>()`; the functions are the SDK's.
+ */
+export function defineEvents<M extends PluginEvents>(): TypedEvents<M> {
+  return { emit, sendToPlugin } as unknown as TypedEvents<M>;
 }
 
 export function sendToBrainSystem(event: {
@@ -71,11 +85,11 @@ function resolveServices(): HostServices & Record<string, unknown> {
   };
 }
 
-type Services = keyof ServiceRegistry extends never
-  ? Record<string, any>
-  : ServiceRegistry & Record<string, unknown>;
-
-export const services: Services = new Proxy({} as any, {
+/**
+ * Host services plus every registered pack service. Untyped beyond HostServices: a pack's
+ * `#generated/services` exports `services` typed with its own feature services.
+ */
+export const services: HostServices & Record<string, any> = new Proxy({} as any, {
   get(_, prop: string) { return resolveServices()[prop]; },
   ownKeys() { return Reflect.ownKeys(resolveServices()); },
   getOwnPropertyDescriptor(_, prop) {

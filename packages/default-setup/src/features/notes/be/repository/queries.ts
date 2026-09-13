@@ -1,6 +1,6 @@
+import { findById, findAll, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { findById, findAll } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
+
 import type { NoteEntity, NoteDTO } from '../types';
 import { REFERENCES } from '../types';
 

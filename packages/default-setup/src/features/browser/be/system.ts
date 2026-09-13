@@ -1,7 +1,7 @@
+import { emit } from '@/__generated__/events';
 import { setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { emit } from '@abuddy/sdk/helpers';
 import { rootEvents } from '@abuddy/sdk/rpc';
 import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
 import { browserQueries } from './repository/queries';

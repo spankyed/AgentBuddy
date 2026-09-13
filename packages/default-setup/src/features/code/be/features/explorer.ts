@@ -1,5 +1,6 @@
+import { emit } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { FileSystemRepository } from '../services/filesystem'
 import { GitWatcherService } from '../services/gitwatcher'
@@ -326,7 +327,6 @@ export const explorerSystem = setup({
       }
     },
 
-
     setBaseDirectory: ({ event, context }) => {
       // No longer need to send active directory info
     },
@@ -356,7 +356,6 @@ export const explorerSystem = setup({
         return ev.gitWatcher
       }
     }),
-
 
     closeFile: ({ event, context }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }

@@ -1,5 +1,6 @@
+import { qx } from '@/__generated__/ears';
 import * as path from 'path'
-import { qx, tx } from '@abuddy/sdk/ears'
+import { tx } from '@abuddy/sdk/ears';
 import { edgeStore } from '@abuddy/sdk/ears/internals'
 import { EARS } from '@/__generated__/ears'
 import { createLogger } from '@abuddy/sdk/logger'

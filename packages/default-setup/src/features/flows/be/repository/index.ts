@@ -1,4 +1,5 @@
-import { registerRepository, RepositoryError, RepositoryErrorCode, qx, tx, getAttr, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
+import { qx } from '@/__generated__/ears';
+import { registerRepository, RepositoryError, RepositoryErrorCode, tx, getAttr, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
 import { edgeStore, filterSystemFields } from '@abuddy/sdk/ears/internals';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -375,8 +376,8 @@ export const flowsCommands = {
     options?: { sourceHandle?: string; targetHandle?: string }
   ): { relId: EARS.EntityId } => {
     // Validate: target node must accept inputs (trigger nodes don't)
-    const targetAttrs = qx(targetId).pickOne(['nodeType'] as const) ?? undefined;
-    const isTargetTrigger = targetAttrs?.nodeType && stepRegistry.isTrigger(targetAttrs.nodeType);
+    const targetNodeType = qx(targetId).pickOne(['nodeType'] as const)?.nodeType;
+    const isTargetTrigger = typeof targetNodeType === 'string' && stepRegistry.isTrigger(targetNodeType);
     if (isTargetTrigger) {
       throw new RepositoryError(
         'Trigger nodes cannot receive incoming connections',
@@ -397,8 +398,8 @@ export const flowsCommands = {
     }
 
     // Validate: source handle must not already have an outgoing edge (except trigger nodes)
-    const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) ?? undefined;
-    const isTrigger = sourceAttrs?.nodeType && stepRegistry.isTrigger(sourceAttrs.nodeType);
+    const sourceNodeType = qx(sourceId).pickOne(['nodeType'] as const)?.nodeType;
+    const isTrigger = typeof sourceNodeType === 'string' && stepRegistry.isTrigger(sourceNodeType);
     if (!isTrigger) {
       const handleOccupied = existingEdges.some((rel: any) => {
         const relHandle = (rel.info as any)?.sourceHandle;

@@ -1,5 +1,6 @@
+import { emit } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { FileSystemRepository } from '../services/filesystem'
 import type { SearchOptions, SearchResult, SearchProgress } from '../types'

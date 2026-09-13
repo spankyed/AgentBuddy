@@ -1,9 +1,5 @@
 import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
 
-declare module '@abuddy/sdk/types' {
-  interface NodeEntityRegistry { subflow: FlowNode }
-}
-
 export interface DSLFlowNode extends DSLNodeBase {
   type: 'subflow';
   flow: string;

@@ -1,4 +1,5 @@
-import { findAll, repository } from '../ears/index';
+import { repository } from '../ears/index';
+import { findAll } from '../ears/internals';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index';
 import { seedPath } from '../build/manifest';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler';

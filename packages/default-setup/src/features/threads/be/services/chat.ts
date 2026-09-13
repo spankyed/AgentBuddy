@@ -1,7 +1,8 @@
+import { sendToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@abuddy/sdk/ears';
 import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
-import { sendToPlugin } from '@abuddy/sdk/services';
+
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
 import { blockRegistry } from '@abuddy/sdk/blocks';

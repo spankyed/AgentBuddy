@@ -1,42 +1,42 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { EntityShapeRegistry, EntityShape, BaseEntity } from '@abuddy/sdk/types';
-import '@/__generated__/entity-shapes';
+import type { BaseEntity } from '@abuddy/sdk/types';
+import type { PackShapes, EntityShape } from '@/__generated__/ears';
 
-// ─── EntityShapeRegistry augmentation ────────────────────────────────
+// ─── PackShapes augmentation ────────────────────────────────
 // These tests verify that the declaration merging in entity-shapes.ts
-// correctly augments the SDK's EntityShapeRegistry, and that
+// correctly augments the SDK's PackShapes, and that
 // EntityShape<E> resolves to the right type.
 
-describe('EntityShapeRegistry — augmented types', () => {
+describe('PackShapes — augmented types', () => {
   it('registry has Action with label and actionFn', () => {
-    expectTypeOf<EntityShapeRegistry['Action']>().toHaveProperty('label');
-    expectTypeOf<EntityShapeRegistry['Action']>().toHaveProperty('actionFn');
+    expectTypeOf<PackShapes['Action']>().toHaveProperty('label');
+    expectTypeOf<PackShapes['Action']>().toHaveProperty('actionFn');
   });
 
   it('registry has Thread with topic and status', () => {
-    expectTypeOf<EntityShapeRegistry['Thread']>().toHaveProperty('topic');
-    expectTypeOf<EntityShapeRegistry['Thread']>().toHaveProperty('status');
+    expectTypeOf<PackShapes['Thread']>().toHaveProperty('topic');
+    expectTypeOf<PackShapes['Thread']>().toHaveProperty('status');
   });
 
   it('registry has Flow with label and flowType', () => {
-    expectTypeOf<EntityShapeRegistry['Flow']>().toHaveProperty('label');
-    expectTypeOf<EntityShapeRegistry['Flow']>().toHaveProperty('flowType');
+    expectTypeOf<PackShapes['Flow']>().toHaveProperty('label');
+    expectTypeOf<PackShapes['Flow']>().toHaveProperty('flowType');
   });
 
   it('registry has Document with name and content', () => {
-    expectTypeOf<EntityShapeRegistry['Document']>().toHaveProperty('name');
-    expectTypeOf<EntityShapeRegistry['Document']>().toHaveProperty('content');
+    expectTypeOf<PackShapes['Document']>().toHaveProperty('name');
+    expectTypeOf<PackShapes['Document']>().toHaveProperty('content');
   });
 
   it('registry has Prompt with label and templateFn', () => {
-    expectTypeOf<EntityShapeRegistry['Prompt']>().toHaveProperty('label');
-    expectTypeOf<EntityShapeRegistry['Prompt']>().toHaveProperty('templateFn');
+    expectTypeOf<PackShapes['Prompt']>().toHaveProperty('label');
+    expectTypeOf<PackShapes['Prompt']>().toHaveProperty('templateFn');
   });
 
   it('registry has Message with sender and text', () => {
-    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('sender');
-    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('text');
+    expectTypeOf<PackShapes['Message']>().toHaveProperty('sender');
+    expectTypeOf<PackShapes['Message']>().toHaveProperty('text');
   });
 });
 
@@ -65,9 +65,10 @@ describe('EntityShape<E> — type resolution', () => {
     expectTypeOf<FlowShape>().toHaveProperty('id');
   });
 
-  it('falls back to Record<string, any> for unregistered entity', () => {
+  it('reads an undeclared entity as base fields plus unknown values, never any', () => {
     type UnknownShape = EntityShape<'SomeFutureEntity'>;
-    expectTypeOf<UnknownShape>().toEqualTypeOf<Record<string, any>>();
+    expectTypeOf<UnknownShape>().toEqualTypeOf<BaseEntity & Record<string, unknown>>();
+    expectTypeOf<UnknownShape['anything']>().toBeUnknown();
   });
 
   it('EntityShape includes BaseEntity fields for registered types', () => {
@@ -95,9 +96,9 @@ describe('EntityShape<E> — type resolution', () => {
   });
 });
 
-describe('EntityShapeRegistry — extensibility', () => {
+describe('PackShapes — extensibility', () => {
   it('keyof includes all augmented entity types', () => {
-    type Keys = keyof EntityShapeRegistry;
+    type Keys = keyof PackShapes;
     expectTypeOf<'Action'>().toMatchTypeOf<Keys>();
     expectTypeOf<'Thread'>().toMatchTypeOf<Keys>();
     expectTypeOf<'Flow'>().toMatchTypeOf<Keys>();

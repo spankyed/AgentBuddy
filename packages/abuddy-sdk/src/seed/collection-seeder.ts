@@ -1,7 +1,5 @@
-import {
-  findWhere, findAll, findById,
-  createEntityWithDefaults, updateEntity, destroyEntity,
-} from '../ears/index';
+import { createEntityWithDefaults, updateEntity, destroyEntity } from '../ears/index';
+import { findWhere, findAll, findById } from '../ears/internals';
 import { seedCollection, type Seeder, type SeederContext, type SeedCounts } from '../utils/index';
 import { seedPath } from '../build/manifest';
 

@@ -102,15 +102,10 @@ export interface TNodeEntity extends BaseEntity {
   };
 }
 
-/**
- * TNode's shape is fully owned by the SDK, so it is registered here rather than
- * in each pack's manifest. Mirrors how packs augment NodeEntityRegistry.
- */
-declare module '../types/entities' {
-  interface EntityShapeRegistry {
-    'TNode': TNodeEntity;
-  }
-}
+/** Entities whose shapes the SDK owns; every pack's generated PackShapes includes them. */
+export type SdkEntityShapes = {
+  TNode: TNodeEntity;
+};
 
 /**
  * One track's execution, as a tree: a persisted TNode with its SPAWNED children
@@ -118,7 +113,7 @@ declare module '../types/entities' {
  *
  * Deliberately not named `TrackEntity` — `Track` is not a declared entity type,
  * and in this codebase an `XEntity` suffix means "shape of a persisted EARS
- * entity" (i.e. a key in EntityShapeRegistry). Not to be confused with `Track`
+ * entity" (i.e. an entity in a pack's PackShapes). Not to be confused with `Track`
  * in build/compilers/flow-types.ts, which is the static DSL track definition.
  */
 export interface TrackTree extends TNodeEntity {

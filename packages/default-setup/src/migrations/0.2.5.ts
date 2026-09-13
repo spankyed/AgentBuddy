@@ -1,5 +1,6 @@
+import { findAll, qx } from '@/__generated__/ears';
 import { EARS } from '../__generated__/ears';
-import { findAll, qx, tx, repository } from '@abuddy/sdk/ears';
+import { tx, repository } from '@abuddy/sdk/ears';
 import type { ThreadEntity, ArtifactEntity } from '../features/threads/be/types';
 import type { PackMigration } from '@abuddy/sdk/framework';
 

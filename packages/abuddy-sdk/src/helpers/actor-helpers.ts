@@ -1,5 +1,4 @@
 import type { Simplify } from './type-helpers';
-import type { PluginEventRegistry } from '../types/entities';
 
 type ExtractEvent<
   TEvent extends { type: string },
@@ -39,19 +38,26 @@ export function safeEvents<TEvent extends { type: string }>() {
 }
 
 /**
- * Generic emit — wraps an event with pluginId for the bus.
- * Each system uses this with its own outgoing type for per-system type safety.
+ * Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its
+ * `PackEvents` and exports `emit` / `sendToPlugin` typed against it.
+ */
+export type PluginEvents = { [pluginId: string]: { type: string } };
+
+/** `emit` typed against a plugin event map (see `#generated/events`). */
+export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(
+  pluginId: P,
+  event: M[P],
+) => { type: 'OUTGOING'; event: M[P] & { pluginId: P } };
+
+/**
+ * Wraps an event with pluginId for the bus. Untyped: packs use the `emit` from their
+ * `#generated/events`, which constrains the event to what the plugin receives.
  * The global OutgoingSystemEvents union is assembled in api/src/systems/index.ts.
  */
-export function emit<P extends keyof PluginEventRegistry & string>(
+export function emit<P extends string, E extends { type: string }>(
   pluginId: P,
-  event: PluginEventRegistry[P]
-): { type: 'OUTGOING'; event: PluginEventRegistry[P] & { pluginId: P } };
-
-export function emit<E extends { type: string }>(
-  pluginId: string,
   event: E
-): { type: 'OUTGOING'; event: E & { pluginId: string } };
+): { type: 'OUTGOING'; event: E & { pluginId: P } };
 
 export function emit(pluginId: string, event: { type: string }) {
   return {

@@ -4,14 +4,15 @@
  */
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import {
-  qx, tx, createEntity,
-  repository, registerRepository,
-  findById, findByIdRaw, findAll, findWhere,
+  tx, repository, registerRepository,
   createEntityWithDefaults, updateEntity, exists,
   RepositoryError, RepositoryErrorCode,
   getAttr,
 } from '@abuddy/sdk/ears';
-import { clearMemory, edgeStore, relationIndex } from '@abuddy/sdk/ears/internals';
+import {
+  clearMemory, edgeStore, relationIndex,
+  qx, createEntity, findById, findByIdRaw, findAll, findWhere,
+} from '@abuddy/sdk/ears/internals';
 import { EARS } from '../../src/__generated__/ears';
 
 describe('SDK runtime — host module registry', () => {

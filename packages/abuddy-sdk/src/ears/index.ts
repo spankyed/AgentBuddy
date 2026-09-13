@@ -1,20 +1,20 @@
 export {
   type EARSRuntimeDeps, type QueryBuilder, type TransactionBuilder, type SafeLinkOptions,
 } from './runtime';
-export { qx, b64Encode, b64Decode, type QxSeed } from './query';
+export { b64Encode, b64Decode, type QxSeed } from './query';
 export { tx } from './transaction';
 export {
-  createEntity, getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
+  getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
   getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats, isEntity,
   getRoles, grantRole, revokeRole,
 } from './attribute-storage';
 export {
   repository, registerRepository, type Repository,
-  findById, findByIdRaw, findAll, findWhere, hasIdCollision,
+  hasIdCollision,
   createEntityWithDefaults, updateEntity, exists,
   repoCreateRelation as createRelation,
   repoRemoveRelation as removeRelation,
-  findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
+  findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
   RepositoryError, RepositoryErrorCode,
   prepareEntity,
 } from './repository';
@@ -25,7 +25,11 @@ export {
 export type { CreatedEntityFields } from './transaction-helpers';
 export type { PersistenceSink } from './runtime';
 export { EARS } from '../types/entities';
-export type { EntityShape, EntityShapeRegistry, BaseEntity } from '../types/entities';
+export type { EntityShapes, ShapeOf, BaseEntity } from '../types/entities';
+export {
+  defineEars,
+  type TypedEars, type TypedQx, type TypedFindById, type TypedFindAll, type TypedFindWhere, type TypedFindFirst, type TypedCreateEntity,
+} from './typed';
 export { bp, spawn, type Blueprint } from './blueprint';
 export {
   descendants, ancestors, rootParent, linkSymmetric,

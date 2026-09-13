@@ -14,8 +14,9 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
+import { emit } from '@/__generated__/events';
 import { setup, enqueueActions, assign } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import './repository' // side-effect: registers terminalQueries/terminalCommands
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
@@ -149,7 +150,6 @@ export const systemMachine = setup({
       enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
       enqueue.spawnChild('promptsSystem', { systemId: 'codePrompts' });
     }),
-
 
     routeEvent: ({ event, system }) => {
       const eventType = event.type;

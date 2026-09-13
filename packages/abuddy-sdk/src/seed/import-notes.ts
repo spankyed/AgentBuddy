@@ -1,4 +1,5 @@
-import { repository, findWhere, hasIdCollision, qx } from '../ears/index';
+import { repository, hasIdCollision } from '../ears/index';
+import { findWhere, qx } from '../ears/internals';
 import type { ExportedNote, ExportedNotes } from '../build/compilers/compile-notes';
 
 export interface NotesEARS {

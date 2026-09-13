@@ -462,7 +462,28 @@ ${regProps.join('\n')}
       for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
     }
     const registry = mergeRegistries(manifest.id, manifest, depTypes);
-    return emitEARS(manifest.id, registry);
+    const { imports: shapeImports, entries: shapeEntries } = entityShapeEntries();
+    return `${emitEARS(manifest.id, registry)}
+// ── Typed EARS helpers ──────────────────────────────────────────
+// The query helpers typed against this pack's entity shapes (its own and its
+// dependencies'). The call is pure, so bundles that only use the EARS constants above
+// drop it.
+
+import { defineEars, type ShapeOf } from '@abuddy/sdk/ears';
+import type { SdkEntityShapes } from '@abuddy/sdk/steps';
+${shapeImports.join('\n')}
+
+export type PackShapes = SdkEntityShapes & {
+${shapeEntries.join('\n')}
+};
+
+/** An entity type's shape in this pack; undeclared types read as base fields plus \`unknown\` values. */
+export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
+
+export const {
+  qx, findById, findByIdRaw, findAll, findWhere, findFirst, createEntity,
+} = /*#__PURE__*/ defineEars<PackShapes>();
+`;
   }
 
   function generateSystemIds(): string {
@@ -514,7 +535,7 @@ ${busIdEntries},
 `;
   }
 
-  function generateEventChannels(): string {
+  function generateEvents(): string {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
 
@@ -523,19 +544,19 @@ ${busIdEntries},
       .join('\n');
 
     const entries = systemFeatures
-      .map(f => `    '${f.id}': ${outgoingEventsType(f)};`)
+      .map(f => `  '${f.id}': ${outgoingEventsType(f)};`)
       .join('\n');
 
     return `${HEADER}
+import { defineEvents } from '@abuddy/sdk/services';
 ${imports}
 
-declare module '@abuddy/sdk/types' {
-  interface PluginEventRegistry {
+/** Plugin id → the events this pack's systems send to that plugin. */
+export type PackEvents = {
 ${entries}
-  }
-}
+};
 
-export {};
+export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
 `;
   }
 
@@ -559,12 +580,25 @@ export {};
       return lines.join('\n');
     }).join('\n\n');
 
+    // Runtime node entities of this pack's steps: each step's types.ts `interface XNode extends NodeBase`
+    const nodeTypes = stepDefinitions
+      .map(step => ({ step, file: join(root, step.path, 'types.ts') }))
+      .filter(({ file }) => existsSync(file))
+      .flatMap(({ step, file }) =>
+        [...readFileSync(file, 'utf-8').matchAll(/export\s+interface\s+(\w+)\s+extends\s+NodeBase\b/g)]
+          .map(m => ({ name: m[1], importPath: toImportPath(step.path + '/types') })));
+    const nodeEntity = nodeTypes.length
+      ? `${nodeTypes.map(n => `import type { ${n.name} } from '${n.importPath}';`).join('\n')}\n\n` +
+        "/** Discriminated union (on `nodeType`) of this pack's step node entities. */\n" +
+        `export type NodeEntity = ${nodeTypes.map(n => n.name).join(' | ')};\n`
+      : '';
+
     return `${HEADER}
 export type { EARS } from '@abuddy/sdk';
 export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType } from '@abuddy/sdk/build';
 
 ${perFeature}
-`;
+${nodeEntity}`;
   }
 
   function generateServices(): string {
@@ -601,6 +635,7 @@ ${perFeature}
     return `${HEADER}
 import type { z } from 'zod';
 import type { EARS } from '@abuddy/sdk';
+import { services as sdkServices } from '@abuddy/sdk/services';
 ${imports.join('\n')}
 
 export const featureServices = {
@@ -613,6 +648,9 @@ ${entries.join('\n')}
  * The featureServices value itself stays feature-only.
  */
 export type Services = typeof featureServices & import('@abuddy/sdk/services').HostServices;
+
+/** The host's services proxy, typed with this pack's feature services. */
+export const services = sdkServices as unknown as Services;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 `;
@@ -739,7 +777,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 `;
   }
 
-  function generateEntityShapes(): string {
+  function entityShapeEntries(): { imports: string[]; entries: string[] } {
     const allImports: string[] = [];
     const allEntries: string[] = [];
     const seenEntities = new Set<string>();
@@ -758,7 +796,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
       );
       for (const [entity, { type: typeName }] of Object.entries(shapes)) {
         seenEntities.add(entity);
-        allEntries.push(`    '${entity}': ${typeName};`);
+        allEntries.push(`  '${entity}': ${typeName};`);
       }
     }
 
@@ -794,7 +832,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
         const defsImportPath = `../../.abuddy/deps/${depId}/defs/${fileKey}`;
         if (!depByPath.has(defsImportPath)) depByPath.set(defsImportPath, new Set());
         depByPath.get(defsImportPath)!.add(typeName);
-        allEntries.push(`    '${entity}': ${typeName};`);
+        allEntries.push(`  '${entity}': ${typeName};`);
       }
       allImports.push(
         ...Array.from(depByPath.entries())
@@ -802,33 +840,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
       );
     }
 
-    if (allEntries.length === 0) return '';
-
-    return `${HEADER}
-${allImports.join('\n')}
-
-declare module '@abuddy/sdk/types' {
-  interface EntityShapeRegistry {
-${allEntries.join('\n')}
-  }
-}
-
-export {};
-`;
-  }
-
-  function generateServiceTypes(): string {
-    return `${HEADER}
-import type { featureServices } from './services';
-
-type FeatureServices = typeof featureServices;
-
-declare module '@abuddy/sdk/types' {
-  interface ServiceRegistry extends FeatureServices {}
-}
-
-export {};
-`;
+    return { imports: allImports, entries: allEntries };
   }
 
   // ── Flow helpers ───────────────────────────────────────────────
@@ -999,11 +1011,9 @@ ${registrations.join('\n\n')}
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/system-ids.ts', generateSystemIds()],
     ['src/__generated__/bus-ids.ts', generateBusIds()],
-    ['src/__generated__/event-channels.ts', generateEventChannels()],
+    ['src/__generated__/events.ts', generateEvents()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],
-    ['src/__generated__/entity-shapes.ts', generateEntityShapes()],
-    ['src/__generated__/service-types.ts', generateServiceTypes()],
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],

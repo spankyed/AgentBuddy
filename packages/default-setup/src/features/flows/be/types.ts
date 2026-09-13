@@ -1,7 +1,7 @@
+import { type NodeEntity } from '@/__generated__/types';
 import { type BaseEntity, EARS } from '@/__generated__/ears';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';
 import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
-import type { NodeEntity } from '@abuddy/sdk/types';
 
 export { BinaryOperator } from '@abuddy/sdk/utils';
 export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
@@ -31,10 +31,10 @@ export type EdgeEntity = {
 };
 
 /*─────────────────────────────────────────────────────────────────
- * Node entity (auto-populated via module augmentation in each step's types.ts)
+ * Node entity: generated union of the step node interfaces in each step's types.ts
  *─────────────────────────────────────────────────────────────────*/
 
-export type { NodeEntity } from '@abuddy/sdk/types';
+export type { NodeEntity } from '@/__generated__/types';
 
 export type NodeKind = NodeEntity['nodeType'] | (string & {});
 

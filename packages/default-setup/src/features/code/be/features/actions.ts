@@ -1,5 +1,6 @@
+import { emit } from '@/__generated__/events';
 import { setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { repository } from '@abuddy/sdk/ears'
 import { EARS } from '@/__generated__/ears'
