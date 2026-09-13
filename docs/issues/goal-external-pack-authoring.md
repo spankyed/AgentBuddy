@@ -70,13 +70,15 @@ Installer: verify checksum, check hostVersion + dependencies, place the bundle. 
 - Downloads pick the newest beta satisfying the pack's hostVersion, verify checksums, cache by version.
 - `build/release/release.sh` enforces: a production release must have a beta tag for the same version, or it also publishes that build as the current beta.
 
-**D5 — Packages published to npm.**
-- `@abuddy/sdk`: pack-facing API + types only (compiled ESM + rolled-up `.d.ts`, no bin). Host-only barrels (`ears/internals`, `fe/host`, …) are not in the public exports map.
+**D5 — Packages published to npm.** (Updated by `docs/issues/goal-sdk-types-architecture.md`.)
+- `@abuddy/sdk`: pack-facing platform API and types (no bin). ESM, per-file `.d.ts` and declaration maps emitted by `tsc` from sources with explicit `.js` specifiers. Host-only modules (pack registry, installer, persistence, backups, FE registration, build-time discovery) live in the private workspace package `@abuddy/host`, which the app, CLI and testing bundles inline; the published SDK neither ships nor exports them.
+- Pack typing comes from facades each pack generates (`#generated/ears`, `#generated/events`, `#generated/services`, `#generated/types`), typed against the pack's and its dependencies' entity shapes, events and services. There is no module augmentation of `@abuddy/sdk`.
+- `@abuddy/ui`: the Vue component library (design components, tiptap and Monaco editors, UI composables) with vue-tsc declarations (`X.d.vue.ts`) and an explicit exports map. Its editor libraries are its own dependencies, so backend-only packs don't install them.
 - `@abuddy/cli`: the only `abuddy` bin, the build toolchain (vite, esbuild, tailwind, codegen) and commands; depends on `@abuddy/sdk`. Packs pin it as a devDependency. A globally installed, Homebrew or app-bundled `abuddy` hands off to the project's pinned `@abuddy/cli` when run inside a pack.
 - `@abuddy/testing`: the Playwright fixture, with `@playwright/test` as a peer.
 - Host-shared libraries (xstate, vue, @xstate/vue, lucide-vue-next, reka-ui, zod, tiptap) are peerDependencies with host ranges.
 - Versioned together with Changesets; published from CI with `npm publish --provenance`.
-- The monorepo resolves src via a `source` export condition or tsconfig paths, with no build step for dev.
+- `@abuddy/sdk` and `@abuddy/ui` publish their workspace `package.json` as is. Each export resolves source under the `@abuddy/source` condition, which monorepo tooling sets, and `dist/` otherwise, so dev needs no build step. CI runs publint, arethetypeswrong, API Extractor reports for every entry and a consumer typecheck matrix (bundler and node16) against the packed packages.
 
 **D6 — CLI distribution.** The installed app bundles `@abuddy/cli` and puts it on PATH only through an explicit app action ("Install 'abuddy' command in PATH", like VS Code). Also installable via `npm i -g @abuddy/cli` and a Homebrew formula.
 

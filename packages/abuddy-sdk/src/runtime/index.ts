@@ -1,3 +1,3 @@
-export { registerHostModule, getHostModule, hostFn, hostValue } from './host';
-export { executeTemplate, createTemplateResolver } from './templates';
-export type { TemplateResolver } from './templates';
+export { registerHostModule, getHostModule, hostFn, hostValue } from './host.ts';
+export { executeTemplate, createTemplateResolver } from './templates.ts';
+export type { TemplateResolver } from './templates.ts';

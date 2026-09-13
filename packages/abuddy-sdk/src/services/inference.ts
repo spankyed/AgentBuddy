@@ -3,8 +3,8 @@ import type { CoreMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
-import { repository } from '../ears/repository';
-import type { EARS } from '../types/entities';
+import { repository } from '../ears/repository.ts';
+import type { EARS } from '../types/entities.ts';
 
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
 export type Provider = ProviderName | 'openai.responses' | string;

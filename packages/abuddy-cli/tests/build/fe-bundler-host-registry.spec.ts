@@ -1,25 +1,42 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { bundlePackFE } from '../../src/build/fe-bundler';
+import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
 
-const SDK_SOURCE = path.resolve(__dirname, '..', '..', '..', 'abuddy-sdk');
-// Written by `npm run packages:build`; CI builds it before these tests
-const SDK_PUBLISHED = path.join(SDK_SOURCE, 'dist', 'package');
+const SDK_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');
+const UI_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ui');
+let installed: string | undefined;
+
 const LAYOUTS = [
-  { name: 'workspace source', dir: SDK_SOURCE, ext: 'ts' },
-  ...(fs.existsSync(SDK_PUBLISHED) ? [{ name: 'published package', dir: SDK_PUBLISHED, ext: 'js' }] : []),
+  { name: 'workspace source', sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'ts' },
+  ...(PACKAGES_BUILT ? [{
+    name: 'published package',
+    sdkDir: () => path.join(installed!, 'node_modules', '@abuddy', 'sdk'),
+    uiDir: () => path.join(installed!, 'node_modules', '@abuddy', 'ui'),
+    ext: 'js',
+  }] : []),
 ];
+
+beforeAll(() => {
+  if (PACKAGES_BUILT) installed = installPublishedPackages();
+}, 120_000);
+
+afterAll(() => {
+  if (installed) fs.rmSync(installed, { recursive: true, force: true });
+});
 
 const tmpDirs: string[] = [];
 
-function makePack(sdkDir: string, entrySource: string): { packDir: string; entry: string } {
+function makePack(layout: { sdkDir: () => string; uiDir: () => string }, entrySource: string, manifest: Record<string, unknown> = {}): { packDir: string; entry: string } {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fe-bundler-'));
   tmpDirs.push(packDir);
   fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'fixture-pack', type: 'module' }));
+  fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', ...manifest }));
   fs.mkdirSync(path.join(packDir, 'node_modules', '@abuddy'), { recursive: true });
-  fs.symlinkSync(sdkDir, path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
+  fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
+  fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@abuddy', 'ui'), 'dir');
   fs.mkdirSync(path.join(packDir, 'src'));
   const entry = path.join(packDir, 'src', 'entry.ts');
   fs.writeFileSync(entry, entrySource);
@@ -30,9 +47,10 @@ afterEach(() => {
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', ({ dir, ext }) => {
+describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
+  const { ext } = layout;
   it('fails when pack FE code inlines an SDK module that needs the host registry', async () => {
-    const { packDir, entry } = makePack(dir,
+    const { packDir, entry } = makePack(layout,
       `import { createLogger } from '@abuddy/sdk/logger';\nexport const log = createLogger('fixture');\n`,
     );
 
@@ -43,21 +61,76 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', ({ dir, ext }
     expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/runtime/host.${ext}`);
   }, 60_000);
 
-  it('proxies shared SDK modules that SDK components import by relative path', async () => {
-    const { packDir, entry } = makePack(dir,
-      `import { createEditorClickHandler } from '@abuddy/sdk/fe/components/tiptap/composables/createEditorClickHandler';\n` +
+  it('uses the host\'s @abuddy/ui instead of bundling it', async () => {
+    const { packDir, entry } = makePack(layout, [
+      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';",
+      "import { useDebounce } from '@abuddy/ui/composables/useDebounce';",
+      'export const ui = { TiptapEditor, useDebounce };',
+    ].join('\n'));
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy["@abuddy/ui/components/tiptap/TiptapEditor"]');
+    expect(output).toContain('window.__abuddy["@abuddy/ui/composables/useDebounce"]');
+    // No UI code: the editor's extensions, its styles or the debounce implementation
+    expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
+  }, 60_000);
+
+  it('bundles @abuddy/ui with fe.bundleUi and proxies the shared SDK modules it imports', async () => {
+    const { packDir, entry } = makePack(layout,
+      `import { createEditorClickHandler } from '@abuddy/ui/components/tiptap/composables/createEditorClickHandler';\n` +
       `export const handler = createEditorClickHandler({ noteLinkClick() {}, imageClick() {} });\n`,
+      { fe: { bundleUi: true } },
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy.sdkFe');
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy["sdkFe"]');
+    expect(output).toContain('createEditorClickHandler');
+  }, 60_000);
+
+  it('compiles no @abuddy/ui SFC when a pack bundles @abuddy/ui', async () => {
+    const { packDir, entry } = makePack(layout,
+      "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      { fe: { bundleUi: true } },
+    );
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error).toBeUndefined();
+    const { sources } = JSON.parse(fs.readFileSync(path.join(packDir, 'dist', 'fe.js.map'), 'utf-8')) as { sources: string[] };
+    const uiSources = sources.filter((source) => source.includes('@abuddy/ui/') || source.includes('abuddy-ui/'));
+    expect(uiSources.length).toBeGreaterThan(0);
+    // The published package ships compiled components; only the monorepo's source condition yields SFCs
+    const compiledSfcs = uiSources.filter((source) => /\.vue(\?|$)/.test(source));
+    if (layout.name === 'published package') expect(compiledSfcs).toEqual([]);
+    else expect(compiledSfcs.length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('drops the generated EARS facade from FE code that only uses the EARS constants', async () => {
+    const { packDir, entry } = makePack(layout, `import { EARS } from './ears';\nexport const kind = EARS.Entity.Memo;\n`);
+    // Shape of #generated/ears: the EARS namespace plus the pure typed-helpers factory call
+    fs.writeFileSync(path.join(packDir, 'src', 'ears.ts'), [
+      "export namespace EARS { export namespace Entity { export const Memo = 'Memo'; } }",
+      "import { defineEars } from '@abuddy/sdk/ears';",
+      "export const { qx, findById, findAll } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
+    ].join('\n'));
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error, result.error).toBeUndefined();
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).not.toContain('defineEars');
+    expect(output).toContain('Memo');
   }, 60_000);
 
   it('builds when SDK imports go through host-shared proxies', async () => {
-    const { packDir, entry } = makePack(dir,
+    const { packDir, entry } = makePack(layout,
       `import { trpc } from '@abuddy/sdk/rpc';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
       `export const x = [trpc, compareVersions];\n`,
     );
@@ -66,6 +139,6 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', ({ dir, ext }
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy.sdkRpc');
+    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy["sdkRpc"]');
   }, 60_000);
 });

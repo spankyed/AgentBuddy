@@ -3,7 +3,8 @@ import repl from 'node:repl';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { inspect } from 'node:util';
-import { qx, tx } from '@abuddy/sdk/ears';
+import { tx } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/host/ears';
 import { EARS } from '@/core/types';
 import { 
   getAllEntities, 

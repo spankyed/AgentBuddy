@@ -123,10 +123,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Trash2, Sparkle, Plus } from 'lucide-vue-next';
-import Button from '@abuddy/sdk/fe/design/button.vue';
-import CategoryFilter from '@abuddy/sdk/fe/design/CategoryFilter.vue';
+import Button from '@abuddy/ui/design/button';
+import CategoryFilter from '@abuddy/ui/design/CategoryFilter';
 import type { PromptEntity, EARS, Category } from '@/__generated__/types';
-import { useInfiniteScroll } from '@abuddy/sdk/fe';
+import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll';
 
 const props = defineProps<{
   prompts: PromptEntity[];

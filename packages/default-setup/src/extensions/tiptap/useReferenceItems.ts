@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
+import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
 import { CATEGORIES, ITEMS_PROVIDERS } from '@/__generated__/contributions'
 import type { ContributionItem, CategoryItemsProvider } from '@abuddy/sdk/fe/contributions'
 

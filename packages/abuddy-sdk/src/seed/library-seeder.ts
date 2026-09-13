@@ -1,9 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { findAll, findWhere, repository } from '../ears/index';
-import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts, type ImportMode } from '../utils/index';
-import { getMediaPath } from '../utils/index';
-import { seedPath } from '../build/manifest';
+import { repository } from '../ears/index.ts';
+import { findAll, findWhere } from '../ears/query-helpers.ts';
+import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts, type ImportMode } from '../utils/index.ts';
+import { getMediaPath } from '../utils/index.ts';
+import { seedPath } from '../build/manifest.ts';
 
 const RELATIVE_MEDIA_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
 

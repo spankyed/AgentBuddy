@@ -1,10 +1,12 @@
+import { emit } from '@/__generated__/events';
+import { services } from '@/__generated__/services';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/__generated__/system-ids';
 import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
-import { emit, getActor, sendParentSafe } from '@abuddy/sdk/helpers';
+import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@abuddy/sdk/ears';
 import { tx } from '@abuddy/sdk/ears';
@@ -14,7 +16,7 @@ import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
-import { services, runThreadTeardown } from '@abuddy/sdk/services';
+import { runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FieldContent } from '@/__generated__/types';

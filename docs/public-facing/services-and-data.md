@@ -146,10 +146,14 @@ To get typed attributes on entities, declare shapes in the manifest:
 }
 ```
 
-This generates an `EntityShapeRegistry` module augmentation. Once an entity has a
-registered shape, queries seeded with that entity type are checked against it:
+The shapes (yours plus your dependencies') type the query helpers that
+`#generated/ears` exports. Import `qx`, `findById`, `findAll`, `findWhere`, `findFirst`
+and `createEntity` from there. `@abuddy/sdk/ears` doesn't export untyped versions.
+Queries seeded with a declared entity type are checked against its shape:
 
 ```ts
+import { EARS, qx } from '#generated/ears';
+
 qx(EARS.Entity.Bookmark).where('url', u)      // ok — declared attribute
 qx(EARS.Entity.Bookmark).where('urll', u)     // compile error
 qx(EARS.Entity.Bookmark).pickAll()[0].title   // typed, no cast needed
@@ -157,9 +161,10 @@ qx(EARS.Entity.Bookmark).orderBy('createdAt') // BaseEntity fields are included
 ```
 
 `where`, `orderBy`, `distinct`, `groupBy` and `pickAll` all narrow this way. Entity
-types **without** a registered shape fall back to `Record<string, any>`, so they stay
-permissive — as do builders seeded by id or with no seed (`qx(someId)`, `qx()`), since
-those cannot know the entity type. `pick`/`pickOne`/`linksPick` are deliberately not
+types **without** a declared shape read as `BaseEntity & Record<string, unknown>`: every
+field is there, but you have to narrow a value before using it. The same goes for
+builders seeded by id or with no seed (`qx(someId)`, `qx()`), since those can't know
+the entity type. `pick`/`pickOne`/`linksPick` are deliberately not
 narrowed: their field lists are often computed, and `linksPick`'s fields describe the
 relation's *target* entity rather than the one being queried.
 

@@ -1,6 +1,6 @@
 name: Publish packages
 
-# Versions @abuddy/sdk, @abuddy/cli and @abuddy/testing with Changesets and publishes the
+# Versions @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing with Changesets and publishes the
 # built copies to npm with provenance. Until publishing is switched on, every run is a dry
 # run: it opens/updates the "Version packages" PR and runs `npm publish --dry-run`.
 on:
@@ -39,10 +39,13 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Check the published API surface
-        run: npm run api:check --workspace @abuddy/sdk
+        run: npm run api:check --workspace @abuddy/sdk --workspace @abuddy/ui
 
       - name: Build publishable packages
         run: npm run packages:build
+
+      - name: Validate packed packages
+        run: npm run packages:check
 
       - name: Version PR or publish
         uses: changesets/action@v1

@@ -18,7 +18,7 @@ export { test, expect } from '@abuddy/testing';
 export type { AppHelper } from '@abuddy/testing';
 ```
 
-All test files (`smoke.spec.ts`, `navigation.spec.ts`) import from `./fixtures/app`. `@abuddy/testing` is the `packages/abuddy-testing` workspace package (`@abuddy/sdk/testing` remains as a deprecated re-export).
+All test files (`smoke.spec.ts`, `navigation.spec.ts`) import from `./fixtures/app`. `@abuddy/testing` is the `packages/abuddy-testing` workspace package.
 
 ### How external packs use it
 

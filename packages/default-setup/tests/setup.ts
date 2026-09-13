@@ -25,7 +25,7 @@ if (typeof globalThis.localStorage === 'undefined') {
   } as Storage;
 }
 import '@/setup/sdk-host-init';
-import { registerPack, getRegisteredEntityTypes } from '@abuddy/sdk/packs';
+import { registerPack, getRegisteredEntityTypes } from '@abuddy/host/packs';
 import { setCompiledDir } from '../src/__generated__/seeders';
 import { registration } from '../src/__generated__/pack-entry';
 

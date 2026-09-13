@@ -3,11 +3,10 @@
  * Defines what's available as globals in the action code editor.
  */
 
+import { sendToPlugin } from '@/__generated__/events';
 import { featureServices } from '@/__generated__/services';
 import { createLogger } from '@abuddy/sdk/logger';
-import {
-  sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming,
-} from '@abuddy/sdk/services';
+import { sendToBrainSystem, sendToSystem, onOutgoing, onIncoming } from '@abuddy/sdk/services';
 import { repository } from '@abuddy/sdk/ears';
 
 export const services = {

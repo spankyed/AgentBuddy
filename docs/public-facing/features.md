@@ -40,7 +40,8 @@ Every system is an XState state machine that communicates via a central event bu
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+// emit is typed with the events each of this pack's plugins receives
+import { emit } from '#generated/events';
 
 // Define event contracts
 type IncomingBookmarksEvents =

@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import type {
   ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
-} from './manifest-schema';
+} from './manifest-schema.ts';
 
 // Types derived from the canonical Zod schema in manifest-schema.ts.
 // The schema is the single source of truth; these re-exports preserve

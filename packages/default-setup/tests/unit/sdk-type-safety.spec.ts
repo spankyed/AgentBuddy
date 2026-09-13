@@ -10,13 +10,9 @@
  * correctly when backed by real host modules.
  */
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
-import {
-  qx, tx, createEntity,
-  findById, findAll, findWhere, findFirst,
-  createEntityWithDefaults,
-  type QueryBuilder, type TransactionBuilder,
-} from '@abuddy/sdk/ears';
-import { clearMemory, filterSystemFields, type Logger } from '@abuddy/sdk/ears/internals';
+import { tx, createEntityWithDefaults, type QueryBuilder, type TransactionBuilder } from '@abuddy/sdk/ears';
+import { qx, createEntity, findById, findAll, findWhere, findFirst, type PackShapes } from '@/__generated__/ears';
+import { clearMemory, filterSystemFields, type Logger } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import {
   loadJSON,
@@ -29,13 +25,9 @@ import {
   breadcrumb, breadcrumbWithParams, breadcrumbList,
   contextMenuFn,
 } from '@abuddy/sdk/fe';
-import { services } from '@abuddy/sdk/services';
-import type { ServiceRegistry } from '@abuddy/sdk/types';
+import { services, type Services } from '@/__generated__/services';
 import { EARS } from '../../src/__generated__/ears';
 
-// Activate augmentations — external packs get these via their tsconfig includes
-import '@/__generated__/entity-shapes';
-import '@/__generated__/service-types';
 
 // ─── Compile-time type assertions ──────────────────────────────────────
 // These verify that generic functions return typed results, not `any`.
@@ -44,7 +36,7 @@ import '@/__generated__/service-types';
 
 describe('Type inference — EARS runtime', () => {
   it('qx() returns QueryBuilder, not any', () => {
-    expectTypeOf(qx).returns.toMatchTypeOf<QueryBuilder>();
+    expectTypeOf(qx).returns.toMatchTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
   it('tx() returns TransactionBuilder, not any', () => {
@@ -216,7 +208,7 @@ describe('Type inference — FE delegate generics', () => {
 
 // ─── Registry-augmented inference (no explicit generics) ─────────────
 // These verify that pack authors get types automatically when using
-// EntityShapeRegistry / ServiceRegistry augmentation, WITHOUT needing
+// the generated PackShapes / Services facades, WITHOUT needing
 // explicit generic parameters like findAll<MyType>(...).
 
 describe('Registry-based inference — services', () => {
@@ -237,8 +229,8 @@ describe('Registry-based inference — services', () => {
     expectTypeOf(services.llm).toHaveProperty('streamText');
   });
 
-  it('ServiceRegistry keyof includes all registered services', () => {
-    type Keys = keyof ServiceRegistry;
+  it('Services keyof includes all registered services', () => {
+    type Keys = keyof Services;
     expectTypeOf<'llm'>().toMatchTypeOf<Keys>();
     expectTypeOf<'prompt'>().toMatchTypeOf<Keys>();
     expectTypeOf<'database'>().toMatchTypeOf<Keys>();
@@ -250,7 +242,7 @@ describe('Registry-based inference — services', () => {
 
 describe('Registry-based inference — entity queries', () => {
   it('findAll with registered entity key infers shape without generic', () => {
-    // Cast needed to match the overload's E extends keyof EntityShapeRegistry & string
+    // Cast needed to match the overload's E extends keyof PackShapes & string
     const actions = findAll('Action' as 'Action' & EARS.Entity);
     expectTypeOf(actions).items.toHaveProperty('label');
     expectTypeOf(actions).items.toHaveProperty('actionFn');

@@ -1,11 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { EntityShape, EntityShapeRegistry } from '@abuddy/sdk/types';
 import type { QueryBuilder } from '@abuddy/sdk/ears';
-import { createEntity } from '@abuddy/sdk/ears';
-import { findById } from '@abuddy/sdk/ears';
-import { EARS } from '@/__generated__/ears';
-import '@/__generated__/entity-shapes';
+import { EARS, createEntity, findById, type EntityShape, type PackShapes } from '@/__generated__/ears';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
@@ -51,7 +47,7 @@ describe('Branded EntityId — createEntity overloads', () => {
 
 type InferFindById<E extends string> =
   EARS.EntityId<E> extends EARS.EntityId<infer R>
-    ? R extends keyof EntityShapeRegistry
+    ? R extends keyof PackShapes
       ? EntityShape<R> | undefined
       : unknown
     : unknown;
@@ -81,7 +77,7 @@ describe('Branded EntityId — findById inference', () => {
 
 describe('Branded EntityId — integration with QueryBuilder', () => {
   it('qx(Entity.Action) ids should be branded EntityId', () => {
-    type Result = ReturnType<QueryBuilder<'Action'>['ids']>;
+    type Result = ReturnType<QueryBuilder<'Action', PackShapes>['ids']>;
     expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId[]>();
   });
 

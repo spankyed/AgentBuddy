@@ -89,7 +89,7 @@
 import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
-import JsonHoverPopup from '@abuddy/sdk/fe/components/JsonHoverPopup.vue'
+import JsonHoverPopup from '@abuddy/ui/components/JsonHoverPopup'
 import { computeLabel, computeBadge } from './tool-activity-label'
 
 const actorSystem = useActorSystem()

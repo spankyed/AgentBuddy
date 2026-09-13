@@ -1,33 +1,37 @@
+export type {
+  EARSRuntimeDeps, QueryBuilder, TransactionBuilder, SafeLinkOptions,
+} from './runtime.ts';
+export { b64Encode, b64Decode, type QxSeed } from './query.ts';
+export { tx } from './transaction.ts';
 export {
-  type EARSRuntimeDeps, type QueryBuilder, type TransactionBuilder, type SafeLinkOptions,
-} from './runtime';
-export { qx, b64Encode, b64Decode, type QxSeed } from './query';
-export { tx } from './transaction';
-export {
-  createEntity, getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
+  getAttr, getAttrs, getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
   getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats, isEntity,
   getRoles, grantRole, revokeRole,
-} from './attribute-storage';
+} from './attribute-storage.ts';
 export {
   repository, registerRepository, type Repository,
-  findById, findByIdRaw, findAll, findWhere, hasIdCollision,
+  hasIdCollision,
   createEntityWithDefaults, updateEntity, exists,
   repoCreateRelation as createRelation,
   repoRemoveRelation as removeRelation,
-  findFirst, findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
+  findWithFields, findByIdWithFields, countEntities, findWithRole, findFirstWithRole,
   RepositoryError, RepositoryErrorCode,
   prepareEntity,
-} from './repository';
+} from './repository.ts';
 export {
   wouldCreateCycle, getTimestamp, generateShortCode, generateLabelWithCount,
-} from './helpers';
+} from './helpers.ts';
 // Types that appear in the signatures above, so pack authors can name them.
-export type { CreatedEntityFields } from './transaction-helpers';
-export type { PersistenceSink } from './runtime';
-export { EARS } from '../types/entities';
-export type { EntityShape, EntityShapeRegistry, BaseEntity } from '../types/entities';
-export { bp, spawn, type Blueprint } from './blueprint';
+export type { CreatedEntityFields } from './transaction-helpers.ts';
+export type { PersistenceSink } from './runtime.ts';
+export { EARS } from '../types/entities.ts';
+export type { EntityShapes, ShapeOf, BaseEntity } from '../types/entities.ts';
+export {
+  defineEars,
+  type TypedEars, type TypedQx, type TypedFindById, type TypedFindAll, type TypedFindWhere, type TypedFindFirst, type TypedCreateEntity,
+} from './typed.ts';
+export { bp, spawn, type Blueprint } from './blueprint.ts';
 export {
   descendants, ancestors, rootParent, linkSymmetric,
   topoSort, shortestPath, leaves, lowestCommonAncestor,
-} from './graph';
+} from './graph.ts';

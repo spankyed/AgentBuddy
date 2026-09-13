@@ -98,94 +98,23 @@ export interface BaseEntity {
 }
 
 /**
- * Maps entity type strings to their attribute shapes.
- *
- * Empty by default — packs augment via declaration merging:
- * ```ts
- * declare module '@abuddy/sdk/types' {
- *   interface EntityShapeRegistry {
- *     'Action': { label: string; actionFn: string; category?: string };
- *     'Thread': { title: string; status: string };
- *   }
- * }
- * ```
- *
- * When augmented, functions like `findAll(Entity.Action)` return
- * `ActionEntity[]` without an explicit generic parameter.
+ * Entity type name → attribute shape. There is no global registry: each pack's
+ * `#generated/ears` defines its `PackShapes` (its own entities plus its dependencies')
+ * and exports EARS helpers typed against it.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface EntityShapeRegistry {}
+export type EntityShapes = { [entityType: string]: object };
 
 /**
- * Resolves an entity type string to its shape from the registry,
- * falling back to `Record<string, any>` for unregistered types.
+ * An entity type's shape in `S`. A type `S` doesn't declare reads as its base fields plus
+ * `unknown` values: never `any`, so undeclared data has to be narrowed before use.
  *
- * The check is wrapped in tuples to make it NON-distributive. A naked
- * conditional distributes over a union `E`, and because
- * `keyof Record<string, any>` is `string | number`, `keyof` of a union with any
- * unregistered arm collapses to roughly `keyof BaseEntity` — over-constraining
- * every caller whose `E` is not a single registered literal.
+ * The check is wrapped in tuples to make it NON-distributive. A naked conditional
+ * distributes over a union `E`, and because `keyof Record<string, any>` is
+ * `string | number`, `keyof` of a union with any undeclared arm collapses to roughly
+ * `keyof BaseEntity` — over-constraining every caller whose `E` is not a single
+ * declared literal.
  */
-export type EntityShape<E extends string> =
-  [E] extends [keyof EntityShapeRegistry]
-    ? EntityShapeRegistry[E] & BaseEntity
-    : Record<string, any>;
-
-/**
- * Maps plugin IDs to their outgoing event types.
- *
- * Empty by default — packs augment via declaration merging:
- * ```ts
- * declare module '@abuddy/sdk/types' {
- *   interface PluginEventRegistry {
- *     'threads': { type: 'THREAD_DATA'; threads: Thread[] } | { type: 'TOKEN_STREAM'; token: string };
- *     'code': { type: 'CODE_DATA'; data: any };
- *   }
- * }
- * ```
- *
- * When augmented, `emit('threads', event)` constrains `event` to
- * only the event types that the threads plugin can receive.
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface PluginEventRegistry {}
-
-/**
- * Maps service names to their types.
- *
- * Empty by default — packs augment via declaration merging:
- * ```ts
- * declare module '@abuddy/sdk/types' {
- *   interface ServiceRegistry {
- *     llm: typeof import('./services/llm');
- *     prompt: PromptService;
- *   }
- * }
- * ```
- *
- * When augmented, `services.llm.streamChat(...)` gets full
- * autocomplete and type checking.
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface ServiceRegistry {}
-
-/**
- * Maps step `nodeType` strings to their runtime entity interfaces.
- *
- * Empty by default — packs augment via declaration merging:
- * ```ts
- * declare module '@abuddy/sdk/types' {
- *   interface NodeEntityRegistry {
- *     'action': ActionNode;
- *     'llm': LLMNode;
- *   }
- * }
- * ```
- *
- * When augmented, `NodeEntity` becomes a discriminated union of
- * all registered step node types.
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface NodeEntityRegistry {}
-
-export type NodeEntity = NodeEntityRegistry[keyof NodeEntityRegistry];
+export type ShapeOf<S extends EntityShapes, E extends string> =
+  [E] extends [keyof S]
+    ? S[E] & BaseEntity
+    : BaseEntity & Record<string, unknown>;

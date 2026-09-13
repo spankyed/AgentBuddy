@@ -1,5 +1,6 @@
+import { findAll } from '#generated/ears';
 import { EARS } from '#generated/ears';
-import { createEntityWithDefaults, findAll } from '@abuddy/sdk/ears';
+import { createEntityWithDefaults } from '@abuddy/sdk/ears';
 import type { MemoDTO, MemoEntity } from './types';
 
 function toDTO(memo: MemoEntity): MemoDTO {

@@ -2,7 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config } from 'tailwindcss';
 import containerQueries from '@tailwindcss/container-queries';
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover';
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesDir = path.join(__dirname, '..');
@@ -13,7 +13,7 @@ export default {
   content: [
     path.join(__dirname, './index.html'),
     path.join(__dirname, './src/**/*.{vue,js,ts,jsx,tsx}'),
-    path.join(packagesDir, 'abuddy-sdk/src/fe/**/*.{vue,js,ts,jsx,tsx}'),
+    path.join(packagesDir, 'abuddy-ui/src/**/*.{vue,js,ts,jsx,tsx}'),
     ...builtInPacks.map(p => path.join(p.srcDir, '**/*.{vue,js,ts,jsx,tsx}')),
   ],
   safelist: [

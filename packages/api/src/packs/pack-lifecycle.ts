@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@/core/shared/debug/logger';
-import { unregisterPack, getPackContributions } from '@abuddy/sdk/packs';
+import { unregisterPack, getPackContributions } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import type { PackManifest } from '@abuddy/sdk/packs';
+import type { PackManifest } from '@abuddy/host/packs';
 import { registerShutdownHook, runShutdownHooksForKey, seedData } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
 import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';

@@ -31,7 +31,7 @@ import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@/__generated__/types'
 import { stepRegistry } from '@abuddy/sdk/steps'
 
-import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
+import BaseForm from '@abuddy/ui/components/BaseForm'
 import NodeTypeMenu from './NodeTypeMenu.vue'
 
 interface Props {

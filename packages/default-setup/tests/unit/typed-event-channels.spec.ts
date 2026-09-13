@@ -1,14 +1,12 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { PluginEventRegistry } from '@abuddy/sdk/types';
-import { emit } from '@abuddy/sdk/helpers';
-import '@/__generated__/event-channels';
+import { emit, type PackEvents } from '@/__generated__/events';
 
-// ─── PluginEventRegistry augmentation ──────────────────────────────────
+// ─── PackEvents augmentation ──────────────────────────────────
 
-describe('PluginEventRegistry — augmented keys', () => {
+describe('PackEvents — augmented keys', () => {
   it('registry includes all 12 plugin IDs', () => {
-    type Keys = keyof PluginEventRegistry;
+    type Keys = keyof PackEvents;
     expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
     expectTypeOf<'code'>().toMatchTypeOf<Keys>();
     expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
@@ -24,38 +22,38 @@ describe('PluginEventRegistry — augmented keys', () => {
   });
 
   it('unregistered plugin is not a key', () => {
-    type Keys = keyof PluginEventRegistry;
+    type Keys = keyof PackEvents;
     expectTypeOf<'unknown-plugin'>().not.toMatchTypeOf<Keys>();
   });
 });
 
-// ─── PluginEventRegistry event shapes ──────────────────────────────────
+// ─── PackEvents event shapes ──────────────────────────────────
 
-describe('PluginEventRegistry — event shapes', () => {
+describe('PackEvents — event shapes', () => {
   it('threads events include THREAD_CONNECTED', () => {
-    type ThreadEvents = PluginEventRegistry['threads'];
+    type ThreadEvents = PackEvents['threads'];
     expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CONNECTED' }>>().not.toBeNever();
   });
 
   it('threads events include THREAD_CREATED', () => {
-    type ThreadEvents = PluginEventRegistry['threads'];
+    type ThreadEvents = PackEvents['threads'];
     expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CREATED' }>>().not.toBeNever();
   });
 
   it('code events include CODE_CONNECTED', () => {
-    type CodeEvents = PluginEventRegistry['code'];
+    type CodeEvents = PackEvents['code'];
     expectTypeOf<Extract<CodeEvents, { type: 'CODE_CONNECTED' }>>().not.toBeNever();
   });
 
   it('settings events include SETTINGS_LOADED', () => {
-    type SettingsEvents = PluginEventRegistry['settings'];
+    type SettingsEvents = PackEvents['settings'];
     expectTypeOf<Extract<SettingsEvents, { type: 'SETTINGS_LOADED' }>>().not.toBeNever();
   });
 });
 
 // ─── Typed emit() overload ─────────────────────────────────────────────
 
-describe('Typed emit() — constrained by PluginEventRegistry', () => {
+describe('Typed emit() — constrained by PackEvents', () => {
   it('emit return type includes OUTGOING wrapper', () => {
     type EmitFn = typeof emit;
     expectTypeOf<ReturnType<EmitFn>>().toHaveProperty('type');
@@ -68,7 +66,7 @@ describe('Typed emit() — constrained by PluginEventRegistry', () => {
   });
 
   it('emit constrained overload narrows event param for registered plugin', () => {
-    type ThreadEvent = PluginEventRegistry['threads'];
+    type ThreadEvent = PackEvents['threads'];
     type EmitThreads = (pluginId: 'threads', event: ThreadEvent) => any;
     const typedEmit: EmitThreads = emit;
     expectTypeOf(typedEmit).toBeFunction();
@@ -77,9 +75,9 @@ describe('Typed emit() — constrained by PluginEventRegistry', () => {
 
 // ─── Extensibility ─────────────────────────────────────────────────────
 
-describe('PluginEventRegistry — extensibility', () => {
+describe('PackEvents — extensibility', () => {
   it('registry is open for declaration merging', () => {
-    type Keys = keyof PluginEventRegistry;
+    type Keys = keyof PackEvents;
     type HasThreads = 'threads' extends Keys ? true : false;
     expectTypeOf<HasThreads>().toEqualTypeOf<true>();
   });

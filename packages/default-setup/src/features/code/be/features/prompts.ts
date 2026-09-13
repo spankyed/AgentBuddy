@@ -1,5 +1,6 @@
+import { emit } from '@/__generated__/events';
 import { setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { repository } from '@abuddy/sdk/ears'
 import { EARS } from '@/__generated__/ears'
@@ -25,7 +26,6 @@ export interface Context {
 export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string };
-
 
 export const promptsSystem = setup({
   types: {

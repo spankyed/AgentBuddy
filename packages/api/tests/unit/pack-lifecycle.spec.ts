@@ -43,7 +43,7 @@ const packsDir = () => path.join(tmpDir, 'packs');
 describe('pack full lifecycle: init → install → discover', () => {
   it('scaffolded pack can be installed and discovered by pack-loader', async () => {
     const { init } = await import('../../../abuddy-cli/src/commands/init');
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     // Step 1: Init
     process.chdir(tmpDir);
@@ -101,7 +101,7 @@ describe('pack full lifecycle: init → install → discover', () => {
   });
 
   it('update flow: reinstalling overwrites the previous version', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'update-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
@@ -139,7 +139,7 @@ describe('pack full lifecycle: init → install → discover', () => {
   });
 
   it('hostVersion gating prevents loading incompatible packs', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'future-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
@@ -161,7 +161,7 @@ describe('pack full lifecycle: init → install → discover', () => {
   });
 
   it('multiple packs coexist and all get discovered', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-sdk/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     for (const id of ['pack-alpha', 'pack-beta', 'pack-gamma']) {
       const dir = path.join(tmpDir, id);
@@ -184,7 +184,7 @@ describe('pack full lifecycle: init → install → discover', () => {
 
 describe('registry source and update tracking', () => {
   it('stores source field in registry when GitHub slug is used', async () => {
-    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../abuddy-sdk/src/packs/pack-registry');
+    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../abuddy-host/src/packs/pack-registry');
 
     modifyRegistry(entries => addToRegistry(entries, {
       id: 'github-pack',
@@ -203,7 +203,7 @@ describe('registry source and update tracking', () => {
   });
 
   it('stores availableVersion and lastUpdateCheck after update check', async () => {
-    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../abuddy-sdk/src/packs/pack-registry');
+    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../abuddy-host/src/packs/pack-registry');
 
     modifyRegistry(entries => addToRegistry(entries, {
       id: 'versioned-pack',
@@ -229,8 +229,8 @@ describe('registry source and update tracking', () => {
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {
-    const { modifyRegistry, addToRegistry } = await import('../../../abuddy-sdk/src/packs/pack-registry');
-    const { getAvailableUpdates } = await import('../../../abuddy-sdk/src/packs/pack-updater');
+    const { modifyRegistry, addToRegistry } = await import('../../../abuddy-host/src/packs/pack-registry');
+    const { getAvailableUpdates } = await import('../../../abuddy-host/src/packs/pack-updater');
 
     modifyRegistry(entries => {
       let updated = addToRegistry(entries, {
@@ -270,7 +270,7 @@ describe('registry source and update tracking', () => {
 
 describe('FE pack deregistration', () => {
   it('unregisterPackFE removes contributions and returns removed plugins', async () => {
-    const { registerPackFE, unregisterPackFE } = await import('../../../abuddy-sdk/src/fe/pack-store');
+    const { registerPackFE, unregisterPackFE } = await import('../../../abuddy-host/src/fe/pack-store');
 
     const testPlugin = { id: 'test-plugin', label: 'Test', icon: 'Zap', state: {} as any, canvas: {} as any };
     registerPackFE({ plugins: [testPlugin] }, 'test-pack');
@@ -285,7 +285,7 @@ describe('FE pack deregistration', () => {
   });
 
   it('unregisterPackFE handles pack with no contributions gracefully', async () => {
-    const { unregisterPackFE } = await import('../../../abuddy-sdk/src/fe/pack-store');
+    const { unregisterPackFE } = await import('../../../abuddy-host/src/fe/pack-store');
 
     const removed = unregisterPackFE('nonexistent-pack');
     expect(removed).toHaveLength(0);
@@ -296,7 +296,7 @@ describe('pack-registration teardown', () => {
   it('registerPack then unregisterPack cleans up SDK registries', async () => {
     const {
       registerPack, unregisterPack, getPackContributions,
-    } = await import('../../../abuddy-sdk/src/packs/pack-registration');
+    } = await import('../../../abuddy-host/src/packs/pack-registration');
 
     const packId = 'teardown-test-pack';
     registerPack({
@@ -315,7 +315,7 @@ describe('pack-registration teardown', () => {
   });
 
   it('unregisterPack throws for unknown pack', async () => {
-    const { unregisterPack } = await import('../../../abuddy-sdk/src/packs/pack-registration');
+    const { unregisterPack } = await import('../../../abuddy-host/src/packs/pack-registration');
 
     expect(() => unregisterPack('nonexistent')).toThrow('Pack "nonexistent" is not registered');
   });

@@ -54,12 +54,12 @@ export interface PackFeatureDef {
 export interface PackRegistration {
   id: string;
   systems: PackSystemDef[];
-  services?: Record<string, unknown> & Partial<import('../types/entities').ServiceRegistry>;
+  services?: Record<string, unknown>;
   ears?: PackEARS;
   boot?: PackBootHooks;
   migrations?: PackMigration[];
-  steps?: import('../steps/types').StepDefinition[];
-  artifacts?: import('../artifacts/types').ArtifactDefinition[];
-  blocks?: import('../blocks/types').BlockDefinition[];
+  steps?: import('../steps/types.ts').StepDefinition[];
+  artifacts?: import('../artifacts/types.ts').ArtifactDefinition[];
+  blocks?: import('../blocks/types.ts').BlockDefinition[];
   features?: PackFeatureDef[];
 }

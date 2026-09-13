@@ -1,5 +1,5 @@
-import type { SystemSpec } from './define-system';
-import type { PackSystemDef } from './pack-registration';
+import type { SystemSpec } from './define-system.ts';
+import type { PackSystemDef } from './pack-registration.ts';
 
 export interface SystemEntry {
   spec: SystemSpec<any, any, any, any>;

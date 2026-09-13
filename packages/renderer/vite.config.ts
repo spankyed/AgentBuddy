@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps, getSdkFeModules } from '@abuddy/sdk/build/shared-deps'
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover'
+import { getSharedFeDeps, getSdkFeModules, getUiFeModules } from '@abuddy/host/build/shared-deps'
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -69,11 +69,15 @@ function hostDepsPlugin(): Plugin {
   const sdkImportLines = Object.entries(sdkModules)
     .map(([pkg, { globalKey }]) => `import * as ${globalKey} from '${pkg}';`)
     .join('\n');
+  // Pack FE code gets @abuddy/ui from the host too, keyed by specifier
+  const uiModules = Object.keys(getUiFeModules(fileURLToPath(new URL('.', import.meta.url))));
+  const uiImportLines = uiModules.map((specifier, i) => `import * as ui${i} from '${specifier}';`).join('\n');
   const allKeys = [
     ...Object.values(feDeps).map(d => d.globalKey),
     ...Object.values(sdkModules).map(d => d.globalKey),
+    ...uiModules.map((specifier, i) => `${JSON.stringify(specifier)}: ui${i}`),
   ].join(', ');
-  const virtualContent = `${depsImportLines}\n${sdkImportLines}\nwindow.__abuddy = { ${allKeys} };\n`;
+  const virtualContent = `${depsImportLines}\n${sdkImportLines}\n${uiImportLines}\nwindow.__abuddy = { ${allKeys} };\n`;
 
   return {
     name: 'host-deps',
@@ -104,11 +108,14 @@ export default defineConfig({
     vueDevTools(),
   ],
   resolve: {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    conditions: ['@abuddy/source', ...defaultClientConditions],
     alias: [
       { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
     ],
   },
+  ssr: { resolve: { conditions: ['@abuddy/source', ...defaultServerConditions] } },
   optimizeDeps: {
     include: [
       'monaco-editor',

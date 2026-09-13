@@ -1,8 +1,14 @@
 {
   "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
     "target": "ES2022",
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "verbatimModuleSyntax": true,
+    // Relative imports name the .ts source; tsc rewrites them to .js in emitted JS
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

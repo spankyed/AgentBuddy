@@ -1,7 +1,7 @@
 import {getNodeMajorVersion} from '@app/electron-versions';
 import {spawn} from 'child_process';
 import electronPath from 'electron';
-import {defineConfig} from 'vite';
+import {defineConfig, defaultServerConditions} from 'vite';
 import {viteStaticCopy} from 'vite-plugin-static-copy';
 
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
@@ -11,6 +11,8 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
   // Bundle SDK source into main: packaged builds strip .ts files, so it can't be imported at runtime
   ssr: {
     noExternal: [/^@abuddy\/sdk/],
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    resolve: {conditions: ['@abuddy/source', ...defaultServerConditions]},
   },
   build: {
     ssr: true,

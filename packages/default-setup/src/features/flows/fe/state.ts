@@ -22,10 +22,10 @@ import type {
   OutgoingBrainEvents,
 } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
-import { getNodeConfig, isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
+import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
-import { computeMaxBottom, type LayoutNodeData } from '@abuddy/sdk/fe/components/node-dimensions'
+import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 

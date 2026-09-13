@@ -195,9 +195,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
-import ColorPicker, { DEFAULT_COLORS } from '@abuddy/sdk/fe/design/ColorPicker.vue'
-import { useActorSystem, useDebounce } from '@abuddy/sdk/fe'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
+import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
 

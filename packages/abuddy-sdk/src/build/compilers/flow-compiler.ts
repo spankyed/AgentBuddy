@@ -6,10 +6,10 @@
  * Branching is handled generically via StepBuildFacet.branches().
  */
 
-import type { FlowDSL, Track, DSLStepNode } from './flow-types';
-import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types';
-import type { CompilerContext } from './flow-entities';
-import { stepRegistry, type StepDefinition } from '../../steps';
+import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
+import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
+import type { CompilerContext } from './flow-entities.ts';
+import { stepRegistry, type StepDefinition } from '../../steps/index.ts';
 
 export type { CompilerContext };
 

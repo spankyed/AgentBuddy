@@ -1,2 +1,2 @@
-export { safeEvents, emit, sendParentSafe, getActor, getBus } from './actor-helpers';
-export type { Simplify } from './type-helpers';
+export { safeEvents, emit, sendParentSafe, getActor, getBus, type PluginEvents, type TypedEmit } from './actor-helpers.ts';
+export type { Simplify } from './type-helpers.ts';

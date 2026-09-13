@@ -86,7 +86,7 @@ import {
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackTree } from '@/__generated__/types'
-import BaseNode from '@abuddy/sdk/fe/components/BaseNode.vue';
+import BaseNode from '@abuddy/ui/components/BaseNode';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
 import { cronToHuman } from '@abuddy/sdk/cron';

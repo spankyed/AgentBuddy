@@ -1,9 +1,5 @@
 import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
 
-declare module '@abuddy/sdk/types' {
-  interface NodeEntityRegistry { llm: LLMNode }
-}
-
 export interface DSLLLMNode extends DSLNodeBase {
   type: 'llm';
   prompt: string;

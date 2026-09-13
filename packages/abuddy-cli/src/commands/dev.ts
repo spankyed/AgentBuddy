@@ -4,7 +4,7 @@ import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { installPackFromLocal } from '@abuddy/sdk/packs';
+import { installPackFromLocal } from '@abuddy/host/packs';
 
 function getDevApiUrl(): string | null {
   try {
@@ -84,7 +84,7 @@ export async function dev(_args: string[]) {
     },
     logLevel: 'info',
     optimizeDeps: {
-      exclude: Object.keys((await import('@abuddy/sdk/build/shared-deps')).getSharedFeDeps()),
+      exclude: Object.keys((await import('@abuddy/host/build/shared-deps')).getSharedFeDeps()),
     },
   });
 

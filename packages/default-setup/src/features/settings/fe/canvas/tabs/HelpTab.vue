@@ -57,7 +57,7 @@ import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
 import type { FAQItem } from '@/__generated__/types'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
 import { useActorSystem, openInAppBrowser } from '@abuddy/sdk/fe'
 

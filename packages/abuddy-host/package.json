@@ -1,0 +1,30 @@
+{
+  "name": "@abuddy/host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Host-only modules shared by the AgentBuddy app, CLI and test fixture",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "exports": {
+    "./backup": "./src/backup/index.ts",
+    "./build/discover": "./src/build/discover.ts",
+    "./build/shared-deps": "./src/build/shared-deps.ts",
+    "./ears": "./src/ears/index.ts",
+    "./fe": "./src/fe/index.ts",
+    "./packs": "./src/packs/index.ts",
+    "./persistence": "./src/persistence/index.ts"
+  },
+  "dependencies": {
+    "@abuddy/sdk": "*",
+    "fs-extra": "^11.4.0",
+    "semver": "^7.8.5",
+    "tar": "^7.5.22"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/semver": "^7.8.0"
+  }
+}

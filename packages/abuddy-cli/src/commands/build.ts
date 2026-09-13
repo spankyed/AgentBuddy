@@ -9,7 +9,7 @@ import {
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { bundlePackRuntime, bundlePackStepBuild } from '../build/be-bundler';
-import { BUNDLE_PATHS } from '@abuddy/sdk/packs';
+import { BUNDLE_PATHS } from '@abuddy/host/packs';
 import { generate, resolveDeps } from './generate';
 import { resolveDepArtifacts } from './fetch-deps';
 import { generateEntries } from './generate-entries';

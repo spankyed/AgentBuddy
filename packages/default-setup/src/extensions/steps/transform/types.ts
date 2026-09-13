@@ -1,9 +1,5 @@
 import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
 
-declare module '@abuddy/sdk/types' {
-  interface NodeEntityRegistry { transform: TransformNode }
-}
-
 export interface DSLTransformNode extends DSLNodeBase {
   type: 'transform';
   script: string;

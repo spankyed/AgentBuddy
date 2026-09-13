@@ -1,9 +1,12 @@
+import { emit } from '@/__generated__/events';
+// The application plugin belongs to the host, not this pack
+import { emit as emitToPlugin } from '@abuddy/sdk/helpers';
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/__generated__/system-ids';
-import { emit } from '@abuddy/sdk/helpers';
+
 import type { SettingsData, FAQItem } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
@@ -14,7 +17,7 @@ import { detectAllArrayChanges } from './change-detection';
 import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
-import { resetLmdbFiles } from '@abuddy/sdk/ears/internals';
+import { resetLmdbFiles } from '@abuddy/host/ears';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@abuddy/sdk/utils';
 import { mergeSecretReferences } from './secrets/merge-secret-settings';
@@ -111,7 +114,7 @@ export const settingsSystem = setup({
       }));
       
       // Send hotkeys to the application
-      system.get(bus).send(emit('application', {
+      system.get(bus).send(emitToPlugin('application', {
         type: 'APPLICATION_HOTKEYS' as const,
         hotkeys: data.general.application.hotkeys
       }));
@@ -189,7 +192,7 @@ export const settingsSystem = setup({
       // If hotkeys were updated, send them to the application
       // Check if updating entire hotkeys object (label === 'hotkeys') or a specific property
       if (ev.entityType === 'general' && (ev.label === 'hotkeys' || ev.path[0] === 'hotkeys')) {
-        system.get(bus).send(emit('application', {
+        system.get(bus).send(emitToPlugin('application', {
           type: 'APPLICATION_HOTKEYS',
           hotkeys: data.general.application.hotkeys
         }));
@@ -234,7 +237,7 @@ export const settingsSystem = setup({
       }));
 
       // Re-send hotkeys in case they changed
-      system.get(bus).send(emit('application', {
+      system.get(bus).send(emitToPlugin('application', {
         type: 'APPLICATION_HOTKEYS',
         hotkeys: data.general.application.hotkeys
       }));

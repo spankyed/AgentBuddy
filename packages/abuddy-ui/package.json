@@ -1,0 +1,412 @@
+{
+  "name": "@abuddy/ui",
+  "version": "0.1.0",
+  "description": "Vue components, editors and composables for AgentBuddy pack UIs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spankyed/AgentBuddy.git",
+    "directory": "packages/abuddy-ui"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:package": "tsx scripts/build-package.ts",
+    "exports:update": "tsx scripts/exports.ts",
+    "attw": "attw --pack . --profile esm-only",
+    "typecheck": "vue-tsc --noEmit",
+    "api:build": "vue-tsc -p tsconfig.package.json --outDir .temp/api-types",
+    "api:check": "npm run api:build && tsx ../../scripts/api-reports.ts .",
+    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    "./components/BaseForm": {
+      "@abuddy/source": "./src/components/BaseForm.ts",
+      "types": "./dist/components/BaseForm.d.ts",
+      "default": "./dist/components/BaseForm.js"
+    },
+    "./components/BaseNode": {
+      "@abuddy/source": "./src/components/BaseNode.ts",
+      "types": "./dist/components/BaseNode.d.ts",
+      "default": "./dist/components/BaseNode.js"
+    },
+    "./components/DataRenderer": {
+      "@abuddy/source": "./src/components/DataRenderer.ts",
+      "types": "./dist/components/DataRenderer.d.ts",
+      "default": "./dist/components/DataRenderer.js"
+    },
+    "./components/JsonHoverPopup": {
+      "@abuddy/source": "./src/components/JsonHoverPopup.ts",
+      "types": "./dist/components/JsonHoverPopup.d.ts",
+      "default": "./dist/components/JsonHoverPopup.js"
+    },
+    "./components/JsonSchemaEditor": {
+      "@abuddy/source": "./src/components/JsonSchemaEditor.ts",
+      "types": "./dist/components/JsonSchemaEditor.d.ts",
+      "default": "./dist/components/JsonSchemaEditor.js"
+    },
+    "./components/KeyboardShortcutInput": {
+      "@abuddy/source": "./src/components/KeyboardShortcutInput.ts",
+      "types": "./dist/components/KeyboardShortcutInput.d.ts",
+      "default": "./dist/components/KeyboardShortcutInput.js"
+    },
+    "./components/SimpleMonacoEditor": {
+      "@abuddy/source": "./src/components/SimpleMonacoEditor.ts",
+      "types": "./dist/components/SimpleMonacoEditor.d.ts",
+      "default": "./dist/components/SimpleMonacoEditor.js"
+    },
+    "./components/TNodeListItem": {
+      "@abuddy/source": "./src/components/TNodeListItem.ts",
+      "types": "./dist/components/TNodeListItem.d.ts",
+      "default": "./dist/components/TNodeListItem.js"
+    },
+    "./components/TipSection": {
+      "@abuddy/source": "./src/components/TipSection.ts",
+      "types": "./dist/components/TipSection.d.ts",
+      "default": "./dist/components/TipSection.js"
+    },
+    "./components/UnifiedMonacoEditor": {
+      "@abuddy/source": "./src/components/UnifiedMonacoEditor.ts",
+      "types": "./dist/components/UnifiedMonacoEditor.d.ts",
+      "default": "./dist/components/UnifiedMonacoEditor.js"
+    },
+    "./components/monaco-actions": {
+      "@abuddy/source": "./src/components/monaco-actions.ts",
+      "types": "./dist/components/monaco-actions.d.ts",
+      "default": "./dist/components/monaco-actions.js"
+    },
+    "./components/monaco-config": {
+      "@abuddy/source": "./src/components/monaco-config.ts",
+      "types": "./dist/components/monaco-config.d.ts",
+      "default": "./dist/components/monaco-config.js"
+    },
+    "./components/node-dimensions": {
+      "@abuddy/source": "./src/components/node-dimensions.ts",
+      "types": "./dist/components/node-dimensions.d.ts",
+      "default": "./dist/components/node-dimensions.js"
+    },
+    "./components/node-handles": {
+      "@abuddy/source": "./src/components/node-handles.ts",
+      "types": "./dist/components/node-handles.d.ts",
+      "default": "./dist/components/node-handles.js"
+    },
+    "./components/node-styles": {
+      "@abuddy/source": "./src/components/node-styles.ts",
+      "types": "./dist/components/node-styles.d.ts",
+      "default": "./dist/components/node-styles.js"
+    },
+    "./components/tiptap/TiptapEditor": {
+      "@abuddy/source": "./src/components/tiptap/TiptapEditor.ts",
+      "types": "./dist/components/tiptap/TiptapEditor.d.ts",
+      "default": "./dist/components/tiptap/TiptapEditor.js"
+    },
+    "./components/tiptap/TiptapSearchBar": {
+      "@abuddy/source": "./src/components/tiptap/TiptapSearchBar.ts",
+      "types": "./dist/components/tiptap/TiptapSearchBar.d.ts",
+      "default": "./dist/components/tiptap/TiptapSearchBar.js"
+    },
+    "./components/tiptap/composables/createEditorClickHandler": {
+      "@abuddy/source": "./src/components/tiptap/composables/createEditorClickHandler.ts",
+      "types": "./dist/components/tiptap/composables/createEditorClickHandler.d.ts",
+      "default": "./dist/components/tiptap/composables/createEditorClickHandler.js"
+    },
+    "./components/tiptap/composables/createEditorKeyboard": {
+      "@abuddy/source": "./src/components/tiptap/composables/createEditorKeyboard.ts",
+      "types": "./dist/components/tiptap/composables/createEditorKeyboard.d.ts",
+      "default": "./dist/components/tiptap/composables/createEditorKeyboard.js"
+    },
+    "./components/tiptap/composables/createImageHandlers": {
+      "@abuddy/source": "./src/components/tiptap/composables/createImageHandlers.ts",
+      "types": "./dist/components/tiptap/composables/createImageHandlers.d.ts",
+      "default": "./dist/components/tiptap/composables/createImageHandlers.js"
+    },
+    "./components/tiptap/composables/useBlockHandle": {
+      "@abuddy/source": "./src/components/tiptap/composables/useBlockHandle.ts",
+      "types": "./dist/components/tiptap/composables/useBlockHandle.d.ts",
+      "default": "./dist/components/tiptap/composables/useBlockHandle.js"
+    },
+    "./components/tiptap/composables/useSubDocumentTracking": {
+      "@abuddy/source": "./src/components/tiptap/composables/useSubDocumentTracking.ts",
+      "types": "./dist/components/tiptap/composables/useSubDocumentTracking.d.ts",
+      "default": "./dist/components/tiptap/composables/useSubDocumentTracking.js"
+    },
+    "./components/tiptap/editor-config": {
+      "@abuddy/source": "./src/components/tiptap/editor-config.ts",
+      "types": "./dist/components/tiptap/editor-config.d.ts",
+      "default": "./dist/components/tiptap/editor-config.js"
+    },
+    "./components/tiptap/editor-system": {
+      "@abuddy/source": "./src/components/tiptap/editor-system.ts",
+      "types": "./dist/components/tiptap/editor-system.d.ts",
+      "default": "./dist/components/tiptap/editor-system.js"
+    },
+    "./components/tiptap/extensions": {
+      "@abuddy/source": "./src/components/tiptap/extensions.ts",
+      "types": "./dist/components/tiptap/extensions.d.ts",
+      "default": "./dist/components/tiptap/extensions.js"
+    },
+    "./components/tiptap/extensions/blockquote-pipe": {
+      "@abuddy/source": "./src/components/tiptap/extensions/blockquote-pipe.ts",
+      "types": "./dist/components/tiptap/extensions/blockquote-pipe.d.ts",
+      "default": "./dist/components/tiptap/extensions/blockquote-pipe.js"
+    },
+    "./components/tiptap/extensions/code-block-copy": {
+      "@abuddy/source": "./src/components/tiptap/extensions/code-block-copy.ts",
+      "types": "./dist/components/tiptap/extensions/code-block-copy.d.ts",
+      "default": "./dist/components/tiptap/extensions/code-block-copy.js"
+    },
+    "./components/tiptap/extensions/custom-horizontal-rule": {
+      "@abuddy/source": "./src/components/tiptap/extensions/custom-horizontal-rule.ts",
+      "types": "./dist/components/tiptap/extensions/custom-horizontal-rule.d.ts",
+      "default": "./dist/components/tiptap/extensions/custom-horizontal-rule.js"
+    },
+    "./components/tiptap/extensions/details-block": {
+      "@abuddy/source": "./src/components/tiptap/extensions/details-block.ts",
+      "types": "./dist/components/tiptap/extensions/details-block.d.ts",
+      "default": "./dist/components/tiptap/extensions/details-block.js"
+    },
+    "./components/tiptap/extensions/empty-line-preserver": {
+      "@abuddy/source": "./src/components/tiptap/extensions/empty-line-preserver.ts",
+      "types": "./dist/components/tiptap/extensions/empty-line-preserver.d.ts",
+      "default": "./dist/components/tiptap/extensions/empty-line-preserver.js"
+    },
+    "./components/tiptap/extensions/image-selection-decoration": {
+      "@abuddy/source": "./src/components/tiptap/extensions/image-selection-decoration.ts",
+      "types": "./dist/components/tiptap/extensions/image-selection-decoration.d.ts",
+      "default": "./dist/components/tiptap/extensions/image-selection-decoration.js"
+    },
+    "./components/tiptap/extensions/image-upload-placeholder": {
+      "@abuddy/source": "./src/components/tiptap/extensions/image-upload-placeholder.ts",
+      "types": "./dist/components/tiptap/extensions/image-upload-placeholder.d.ts",
+      "default": "./dist/components/tiptap/extensions/image-upload-placeholder.js"
+    },
+    "./components/tiptap/extensions/list-shift-enter": {
+      "@abuddy/source": "./src/components/tiptap/extensions/list-shift-enter.ts",
+      "types": "./dist/components/tiptap/extensions/list-shift-enter.d.ts",
+      "default": "./dist/components/tiptap/extensions/list-shift-enter.js"
+    },
+    "./components/tiptap/extensions/markdown-parse-fixes": {
+      "@abuddy/source": "./src/components/tiptap/extensions/markdown-parse-fixes.ts",
+      "types": "./dist/components/tiptap/extensions/markdown-parse-fixes.d.ts",
+      "default": "./dist/components/tiptap/extensions/markdown-parse-fixes.js"
+    },
+    "./components/tiptap/extensions/search-extension": {
+      "@abuddy/source": "./src/components/tiptap/extensions/search-extension.ts",
+      "types": "./dist/components/tiptap/extensions/search-extension.d.ts",
+      "default": "./dist/components/tiptap/extensions/search-extension.js"
+    },
+    "./components/tiptap/extensions/search-plugin": {
+      "@abuddy/source": "./src/components/tiptap/extensions/search-plugin.ts",
+      "types": "./dist/components/tiptap/extensions/search-plugin.d.ts",
+      "default": "./dist/components/tiptap/extensions/search-plugin.js"
+    },
+    "./components/tiptap/resizable-image": {
+      "@abuddy/source": "./src/components/tiptap/resizable-image.ts",
+      "types": "./dist/components/tiptap/resizable-image.d.ts",
+      "default": "./dist/components/tiptap/resizable-image.js"
+    },
+    "./components/tiptap/sub-document-link": {
+      "@abuddy/source": "./src/components/tiptap/sub-document-link.ts",
+      "types": "./dist/components/tiptap/sub-document-link.d.ts",
+      "default": "./dist/components/tiptap/sub-document-link.js"
+    },
+    "./composables/useClickOutside": {
+      "@abuddy/source": "./src/composables/useClickOutside.ts",
+      "types": "./dist/composables/useClickOutside.d.ts",
+      "default": "./dist/composables/useClickOutside.js"
+    },
+    "./composables/useCollapsibleState": {
+      "@abuddy/source": "./src/composables/useCollapsibleState.ts",
+      "types": "./dist/composables/useCollapsibleState.d.ts",
+      "default": "./dist/composables/useCollapsibleState.js"
+    },
+    "./composables/useContextMenu": {
+      "@abuddy/source": "./src/composables/useContextMenu.ts",
+      "types": "./dist/composables/useContextMenu.d.ts",
+      "default": "./dist/composables/useContextMenu.js"
+    },
+    "./composables/useDebounce": {
+      "@abuddy/source": "./src/composables/useDebounce.ts",
+      "types": "./dist/composables/useDebounce.d.ts",
+      "default": "./dist/composables/useDebounce.js"
+    },
+    "./composables/useExternalFileDrag": {
+      "@abuddy/source": "./src/composables/useExternalFileDrag.ts",
+      "types": "./dist/composables/useExternalFileDrag.d.ts",
+      "default": "./dist/composables/useExternalFileDrag.js"
+    },
+    "./composables/useInfiniteScroll": {
+      "@abuddy/source": "./src/composables/useInfiniteScroll.ts",
+      "types": "./dist/composables/useInfiniteScroll.d.ts",
+      "default": "./dist/composables/useInfiniteScroll.js"
+    },
+    "./design/Autocomplete": {
+      "@abuddy/source": "./src/design/Autocomplete.ts",
+      "types": "./dist/design/Autocomplete.d.ts",
+      "default": "./dist/design/Autocomplete.js"
+    },
+    "./design/CategoryFilter": {
+      "@abuddy/source": "./src/design/CategoryFilter.ts",
+      "types": "./dist/design/CategoryFilter.d.ts",
+      "default": "./dist/design/CategoryFilter.js"
+    },
+    "./design/CollapsibleSection": {
+      "@abuddy/source": "./src/design/CollapsibleSection.ts",
+      "types": "./dist/design/CollapsibleSection.d.ts",
+      "default": "./dist/design/CollapsibleSection.js"
+    },
+    "./design/ColorPicker": {
+      "@abuddy/source": "./src/design/ColorPicker.ts",
+      "types": "./dist/design/ColorPicker.d.ts",
+      "default": "./dist/design/ColorPicker.js"
+    },
+    "./design/ConfirmationDialog": {
+      "@abuddy/source": "./src/design/ConfirmationDialog.ts",
+      "types": "./dist/design/ConfirmationDialog.d.ts",
+      "default": "./dist/design/ConfirmationDialog.js"
+    },
+    "./design/ContextMenuPopup": {
+      "@abuddy/source": "./src/design/ContextMenuPopup.ts",
+      "types": "./dist/design/ContextMenuPopup.d.ts",
+      "default": "./dist/design/ContextMenuPopup.js"
+    },
+    "./design/CopyButton": {
+      "@abuddy/source": "./src/design/CopyButton.ts",
+      "types": "./dist/design/CopyButton.d.ts",
+      "default": "./dist/design/CopyButton.js"
+    },
+    "./design/CopyFeedback": {
+      "@abuddy/source": "./src/design/CopyFeedback.ts",
+      "types": "./dist/design/CopyFeedback.d.ts",
+      "default": "./dist/design/CopyFeedback.js"
+    },
+    "./design/DirectorySelect": {
+      "@abuddy/source": "./src/design/DirectorySelect.ts",
+      "types": "./dist/design/DirectorySelect.d.ts",
+      "default": "./dist/design/DirectorySelect.js"
+    },
+    "./design/EmojiPicker": {
+      "@abuddy/source": "./src/design/EmojiPicker.ts",
+      "types": "./dist/design/EmojiPicker.d.ts",
+      "default": "./dist/design/EmojiPicker.js"
+    },
+    "./design/ImageLightbox": {
+      "@abuddy/source": "./src/design/ImageLightbox.ts",
+      "types": "./dist/design/ImageLightbox.d.ts",
+      "default": "./dist/design/ImageLightbox.js"
+    },
+    "./design/NameSaveHeader": {
+      "@abuddy/source": "./src/design/NameSaveHeader.ts",
+      "types": "./dist/design/NameSaveHeader.d.ts",
+      "default": "./dist/design/NameSaveHeader.js"
+    },
+    "./design/ParameterRow": {
+      "@abuddy/source": "./src/design/ParameterRow.ts",
+      "types": "./dist/design/ParameterRow.d.ts",
+      "default": "./dist/design/ParameterRow.js"
+    },
+    "./design/ScrollToBottomFob": {
+      "@abuddy/source": "./src/design/ScrollToBottomFob.ts",
+      "types": "./dist/design/ScrollToBottomFob.d.ts",
+      "default": "./dist/design/ScrollToBottomFob.js"
+    },
+    "./design/Select": {
+      "@abuddy/source": "./src/design/Select.ts",
+      "types": "./dist/design/Select.d.ts",
+      "default": "./dist/design/Select.js"
+    },
+    "./design/ToastNotification": {
+      "@abuddy/source": "./src/design/ToastNotification.ts",
+      "types": "./dist/design/ToastNotification.d.ts",
+      "default": "./dist/design/ToastNotification.js"
+    },
+    "./design/TrackedContextMenuRoot": {
+      "@abuddy/source": "./src/design/TrackedContextMenuRoot.ts",
+      "types": "./dist/design/TrackedContextMenuRoot.d.ts",
+      "default": "./dist/design/TrackedContextMenuRoot.js"
+    },
+    "./design/button": {
+      "@abuddy/source": "./src/design/button.ts",
+      "types": "./dist/design/button.d.ts",
+      "default": "./dist/design/button.js"
+    },
+    "./design/dialog": {
+      "@abuddy/source": "./src/design/dialog.ts",
+      "types": "./dist/design/dialog.d.ts",
+      "default": "./dist/design/dialog.js"
+    },
+    "./design/tag-input": {
+      "@abuddy/source": "./src/design/tag-input.ts",
+      "types": "./dist/design/tag-input.d.ts",
+      "default": "./dist/design/tag-input.js"
+    },
+    "./layout/panel-resizer": {
+      "@abuddy/source": "./src/layout/panel-resizer.ts",
+      "types": "./dist/layout/panel-resizer.d.ts",
+      "default": "./dist/layout/panel-resizer.js"
+    },
+    "./utils/json-detection": {
+      "@abuddy/source": "./src/utils/json-detection.ts",
+      "types": "./dist/utils/json-detection.d.ts",
+      "default": "./dist/utils/json-detection.js"
+    },
+    "./utils/path-truncation": {
+      "@abuddy/source": "./src/utils/path-truncation.ts",
+      "types": "./dist/utils/path-truncation.d.ts",
+      "default": "./dist/utils/path-truncation.js"
+    }
+  },
+  "peerDependencies": {
+    "@abuddy/sdk": "^0.1.0",
+    "@tiptap/core": "^3.20.1",
+    "@tiptap/pm": "^3.20.1",
+    "@tiptap/starter-kit": "^3.20.1",
+    "@tiptap/vue-3": "^3.20.1",
+    "@vue-flow/core": "^1.44.0",
+    "@xstate/vue": "^4.0.2",
+    "elkjs": "^0.9.0",
+    "lucide-vue-next": "^0.503.0",
+    "monaco-editor": "^0.55.1",
+    "reka-ui": "^2.2.1",
+    "vue": "^3.5.18",
+    "xstate": "^5.19.2"
+  },
+  "peerDependenciesMeta": {
+    "elkjs": {
+      "optional": true
+    },
+    "monaco-editor": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@guolao/vue-monaco-editor": "^1.5.5",
+    "@tiptap/extension-blockquote": "^3.20.1",
+    "@tiptap/extension-code": "^3.20.1",
+    "@tiptap/extension-code-block-lowlight": "^3.20.1",
+    "@tiptap/extension-color": "^3.22.3",
+    "@tiptap/extension-details": "^3.20.1",
+    "@tiptap/extension-highlight": "^3.22.3",
+    "@tiptap/extension-horizontal-rule": "^3.20.1",
+    "@tiptap/extension-image": "^3.20.1",
+    "@tiptap/extension-link": "^3.20.1",
+    "@tiptap/extension-paragraph": "^3.20.1",
+    "@tiptap/extension-placeholder": "^3.20.1",
+    "@tiptap/extension-table": "^3.20.1",
+    "@tiptap/extension-table-cell": "^3.20.1",
+    "@tiptap/extension-table-header": "^3.20.1",
+    "@tiptap/extension-table-row": "^3.20.1",
+    "@tiptap/extension-task-item": "^3.20.1",
+    "@tiptap/extension-task-list": "^3.20.1",
+    "highlight.js": "^11.11.1",
+    "lowlight": "^3.3.0",
+    "tiptap-markdown": "^0.9.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

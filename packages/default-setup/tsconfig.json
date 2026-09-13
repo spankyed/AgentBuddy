@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -13,8 +15,6 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vitest/globals"],
     "paths": {
-      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/__generated__/*": ["./src/__generated__/*"],
       "#generated/*": ["./src/__generated__/*"],
       "@/registries/*": ["./src/registries/*"],

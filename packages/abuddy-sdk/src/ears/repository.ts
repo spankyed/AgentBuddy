@@ -6,7 +6,7 @@ export function registerRepository(name: string, value: any): void {
   entries[name] = value;
 }
 
-export const repository = new Proxy({} as Record<string, any>, {
+export const repository = /*#__PURE__*/ new Proxy({} as Record<string, any>, {
   get(_, prop) {
     if (typeof prop === 'symbol') return undefined;
     const value = entries[prop];
@@ -33,11 +33,11 @@ export {
   findWithFields, findByIdWithFields, countEntities,
   exists, findWithRole, findFirstWithRole,
   hasIdCollision,
-} from './query-helpers';
+} from './query-helpers.ts';
 
 export {
   prepareEntity, createEntityWithDefaults, updateEntity,
   createRelation as repoCreateRelation, removeRelation as repoRemoveRelation,
-} from './transaction-helpers';
+} from './transaction-helpers.ts';
 
-export { RepositoryError, RepositoryErrorCode } from './repository-errors';
+export { RepositoryError, RepositoryErrorCode } from './repository-errors.ts';

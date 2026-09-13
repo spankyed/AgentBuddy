@@ -1,15 +1,7 @@
+import { findById, findByIdRaw, findAll, findWhere } from '@/__generated__/ears';
 import { registerRepository } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import {
-  findById,
-  findByIdRaw,
-  findAll,
-  findWhere,
-  createEntityWithDefaults,
-  updateEntity,
-  RepositoryError,
-  RepositoryErrorCode
-} from '@abuddy/sdk/ears';
+import { createEntityWithDefaults, updateEntity, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
 import type { ActionEntity } from '../types';
 
 /**

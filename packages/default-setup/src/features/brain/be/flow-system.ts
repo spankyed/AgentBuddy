@@ -1,7 +1,9 @@
+import { qx } from '@/__generated__/ears';
+import { services as appServices } from '@/__generated__/services';
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';
 import { repository } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
+
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
 import { EARS } from '@/__generated__/ears';
@@ -11,7 +13,7 @@ import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
 import { unregisterByPrefix } from './services/scheduler';
-import { sendToBrainSystem, services as appServices } from '@abuddy/sdk/services';
+import { sendToBrainSystem } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';

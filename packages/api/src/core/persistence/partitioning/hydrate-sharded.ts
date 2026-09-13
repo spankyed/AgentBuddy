@@ -1,8 +1,8 @@
 import { EARS } from '@abuddy/sdk';
-import type { PartitionPolicy, Partition } from '@abuddy/sdk/persistence';
-import type { makeShardedPersistence } from '@abuddy/sdk/persistence';
+import type { PartitionPolicy, Partition } from '@abuddy/host/persistence';
+import type { makeShardedPersistence } from '@abuddy/host/persistence';
 import { LmdbDbs } from '../lmdb/envs';
-import { bulkLoadAttr, addToIndex } from '@abuddy/sdk/ears/internals';
+import { bulkLoadAttr, addToIndex } from '@abuddy/host/ears';
 
 const SEP = '\x1F';
 

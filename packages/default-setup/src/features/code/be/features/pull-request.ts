@@ -1,5 +1,6 @@
+import { emit } from '@/__generated__/events';
 import { setup, assign } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
+
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { createLogger } from '@abuddy/sdk/logger'
 import { GitRepository } from '../services/git'

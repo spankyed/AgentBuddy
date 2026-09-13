@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { publishHostPackArtifacts } from '@abuddy/sdk/packs';
+import { publishHostPackArtifacts } from '@abuddy/host/packs';
 import { resolveDepArtifacts } from '../../src/commands/fetch-deps';
 
 let tmp: string;

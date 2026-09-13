@@ -9,6 +9,8 @@
     "eslint.config.*"
   ],
   "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
 

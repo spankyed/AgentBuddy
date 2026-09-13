@@ -1,7 +1,2 @@
-export type SpeechEvent =
-  | { event: 'ready' }
-  | { event: 'started' }
-  | { event: 'stopped' }
-  | { event: 'partial'; text: string }
-  | { event: 'final'; text: string }
-  | { event: 'error'; code: string; message: string };
+// The SDK owns the contract because packs see it through window.electronAPI
+export type { SpeechEvent } from '../packages/abuddy-sdk/src/fe/speech-event.js';

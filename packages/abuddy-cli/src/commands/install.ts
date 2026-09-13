@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal } from '@abuddy/sdk/packs';
+import { installPack, installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 
@@ -40,7 +40,9 @@ Options:
     return;
   }
 
-  const { packsDir, hostPacksDir } = resolveAppContext({ env });
+  const { packsDir, hostPacksDir, userDataDir } = resolveAppContext({ env });
+  // Recorded by the app when it starts with this data dir
+  const hostVersion = readHostVersion(userDataDir);
   const kind = detectSource(source);
 
   let resolvedSource = source;
@@ -49,8 +51,8 @@ Options:
   }
 
   const result = kind === 'local'
-    ? await installPackFromLocal(resolvedSource, packsDir)
-    : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir);
+    ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion })
+    : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion });
 
   if (result.missingDependencies.length > 0) {
     if (fs.existsSync(hostPacksDir)) {
@@ -61,6 +63,10 @@ Options:
       console.warn(`\n  Note: ${result.missingDependencies.join(', ')} not installed as packs. That's expected for packs built into AgentBuddy,`);
       console.warn(`  which can't be checked until AgentBuddy${envLabel(env)} has started with this data dir.`);
     }
+  }
+
+  if (!hostVersion) {
+    console.warn(`\n  Note: the pack's hostVersion wasn't checked. AgentBuddy${envLabel(env)} records its version when it starts with this data dir.`);
   }
 
   console.log(`\nInstalled "${result.name}" v${result.version}${envLabel(env)}`);

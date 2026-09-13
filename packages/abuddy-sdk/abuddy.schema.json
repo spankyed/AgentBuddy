@@ -417,6 +417,10 @@
         "styles": {
           "type": "string",
           "description": "Path to a CSS file to include in the frontend bundle."
+        },
+        "bundleUi": {
+          "type": "boolean",
+          "description": "Bundle a copy of @abuddy/ui into the pack instead of using the host app's. All of @abuddy/ui is bundled, so the pack never mixes the two."
         }
       },
       "additionalProperties": false,

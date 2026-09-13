@@ -38,7 +38,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import Dialog from '@abuddy/sdk/fe/design/dialog.vue'
+import Dialog from '@abuddy/ui/design/dialog'
 
 interface Props {
   modelValue: boolean

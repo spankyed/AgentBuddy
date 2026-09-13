@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import type { PackConfig } from './types';
-import type { PackManifest } from './manifest';
-import { stepRegistry } from '../steps/registry';
-import { artifactRegistry } from '../artifacts/registry';
-import { blockRegistry } from '../blocks/registry';
+import type { PackConfig } from './types.ts';
+import type { PackManifest } from './manifest.ts';
+import { stepRegistry } from '../steps/registry.ts';
+import { artifactRegistry } from '../artifacts/registry.ts';
+import { blockRegistry } from '../blocks/registry.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   for (const value of Object.values(mod)) {

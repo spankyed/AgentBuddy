@@ -1,7 +1,7 @@
 import { repository } from '@abuddy/sdk/ears';
 import { APP_VERSION } from '@/version';
 import { compareVersions } from '@abuddy/sdk/utils';
-import { getRegisteredMigrations } from '@abuddy/sdk/packs';
+import { getRegisteredMigrations } from '@abuddy/host/packs';
 import type { LoadedPack } from '@/packs/pack-loader';
 
 export function runMigrations(): void {

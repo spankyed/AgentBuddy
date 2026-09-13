@@ -22,14 +22,11 @@ export { tx } from '@abuddy/sdk/ears';
 export type { SafeLinkOptions } from '@abuddy/sdk/ears';
 
 // Export EARS query builder
-export { qx } from '@abuddy/sdk/ears';
+export { qx } from '@/__generated__/ears';
 
 // Export type-safe query helpers
+export { findById, findAll, findWhere, findFirst } from '@/__generated__/ears';
 export {
-  findById,
-  findAll,
-  findWhere,
-  findFirst,
   findWithFields,
   findByIdWithFields,
   countEntities,
@@ -45,7 +42,7 @@ export { EARS } from '@/__generated__/ears';
 
 import { EARS as EARSTypes } from '@/__generated__/ears';
 import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/sdk/ears/internals';
+import { relationIndex } from '@abuddy/host/ears';
 
 /**
  * Build a query context from live data for AI query generation.

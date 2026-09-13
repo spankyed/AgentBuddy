@@ -1,7 +1,8 @@
+import { emit } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { emit, getActor } from '@abuddy/sdk/helpers';
+import { getActor } from '@abuddy/sdk/helpers';
 import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/__generated__/system-ids';
 import type { DatabaseStartupData } from './types';
@@ -9,10 +10,10 @@ import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
-import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/sdk/backup';
+import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/host/backup';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@/__generated__/types';
-import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/sdk/ears/internals';
+import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/host/ears';
 import { repository } from '@abuddy/sdk/ears';
 
 const logger = createLogger('database');

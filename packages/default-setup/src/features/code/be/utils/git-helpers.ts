@@ -1,4 +1,5 @@
-import { emit } from '@abuddy/sdk/helpers'
+
+import { emit } from '@/__generated__/events';
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { GitRepository } from '../services/git'
 

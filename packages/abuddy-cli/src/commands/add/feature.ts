@@ -26,7 +26,8 @@ const SETTINGS = (id: string) => `export default {
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+// emit is typed with the events each of this pack's plugins receives
+import { emit } from '#generated/events';
 
 type Incoming${pascal}Events =
   | { type: 'CLIENT_CONNECTED' };

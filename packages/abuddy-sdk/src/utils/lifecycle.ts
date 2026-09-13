@@ -10,6 +10,7 @@ export function registerShutdownHook(hook: () => void, key?: string): void {
   hooks.push(hook);
 }
 
+/** @internal Host-only: the api runs shutdown hooks when it exits. */
 export function runShutdownHooks(): void {
   for (const hooks of shutdownHooks.values()) {
     for (const hook of hooks) {
@@ -18,6 +19,7 @@ export function runShutdownHooks(): void {
   }
 }
 
+/** @internal Host-only: the api runs a pack's shutdown hooks when it unloads the pack. */
 export function runShutdownHooksForKey(key: string): void {
   const hooks = shutdownHooks.get(key);
   if (!hooks) return;

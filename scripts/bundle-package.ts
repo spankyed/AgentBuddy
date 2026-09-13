@@ -1,7 +1,7 @@
 // Builds a publishable copy of a workspace package that ships as a bundle (@abuddy/cli,
-// @abuddy/testing) into <package>/dist/package. @abuddy/sdk is inlined, so the published
-// package can use host-only SDK modules that the public SDK exports map leaves out; every
-// other package stays external and becomes a dependency at the version the workspace uses.
+// @abuddy/testing) into <package>/dist/package. @abuddy/sdk and the private @abuddy/host are
+// inlined from source, so the published package can use host-only modules; every other
+// package stays external and becomes a dependency at the version the workspace uses.
 //
 //   tsx scripts/bundle-package.ts packages/abuddy-cli
 import * as fs from 'node:fs';
@@ -42,27 +42,29 @@ if (!config) throw new Error(`No bundle config for ${pkg.name}`);
 
 const outDir = path.join(pkgDir, 'dist', 'package');
 const sdkPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'packages', 'abuddy-sdk', 'package.json'), 'utf-8'));
+const hostPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'packages', 'abuddy-host', 'package.json'), 'utf-8'));
+const INLINED = new Set(['@abuddy/sdk', '@abuddy/host']);
 
 const builtins = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
 const packageName = (specifier: string) =>
   specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
 
-const externalizeAllButSdk: Plugin = {
-  name: 'externalize-all-but-sdk',
+const externalizeAllButInlined: Plugin = {
+  name: 'externalize-all-but-inlined',
   setup(b) {
     b.onResolve({ filter: /^[^./]/ }, (args) => {
-      if (args.kind === 'entry-point' || packageName(args.path) === '@abuddy/sdk') return undefined;
+      if (args.kind === 'entry-point' || INLINED.has(packageName(args.path))) return undefined;
       return { path: args.path, external: true };
     });
   },
 };
 
 function versionOf(name: string): string {
-  // The package's own ranges win; inlined SDK code brings the SDK's ranges
-  for (const source of [pkg.dependencies, pkg.peerDependencies, sdkPkg.dependencies, sdkPkg.peerDependencies]) {
+  // The package's own ranges win; inlined SDK and host code brings their ranges
+  for (const source of [pkg.dependencies, pkg.peerDependencies, sdkPkg.dependencies, sdkPkg.peerDependencies, hostPkg.dependencies]) {
     if (source?.[name]) return source[name];
   }
-  throw new Error(`${pkg.name} bundle imports ${name}, which neither ${pkg.name} nor @abuddy/sdk declares`);
+  throw new Error(`${pkg.name} bundle imports ${name}, which neither ${pkg.name}, @abuddy/sdk nor @abuddy/host declares`);
 }
 
 fs.rmSync(outDir, { recursive: true, force: true });
@@ -77,9 +79,11 @@ const result = await build({
   target: 'node20',
   metafile: true,
   logLevel: 'warning',
+  // Inlined workspace packages bundle from source (see their package.json exports)
+  conditions: ['@abuddy/source', 'module'],
   // Bundled CommonJS dependencies may call require(); give ESM chunks one
   banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
-  plugins: [externalizeAllButSdk],
+  plugins: [externalizeAllButInlined],
 });
 
 const imported = new Set<string>();
@@ -98,6 +102,8 @@ for (const name of imported) {
 }
 // Packs build against the SDK version released with this package
 if (dependencies['@abuddy/sdk']) dependencies['@abuddy/sdk'] = sdkPkg.version;
+// The private host package is inlined, never installed
+delete dependencies['@abuddy/host'];
 
 for (const file of config.copy ?? []) {
   const dest = path.join(outDir, file);
@@ -110,7 +116,7 @@ if (config.declarations) {
   const entryFiles = Object.values(config.entries).map((src) => path.join(pkgDir, src));
   execFileSync(process.execPath, [
     tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(outDir, 'dist'),
-    '--module', 'esnext', '--moduleResolution', 'bundler', '--target', 'es2022',
+    '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions', '--target', 'es2022',
     '--strict', '--esModuleInterop', '--skipLibCheck', '--types', 'node',
   ], { stdio: 'inherit' });
 }

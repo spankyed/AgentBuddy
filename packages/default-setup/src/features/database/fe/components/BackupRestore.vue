@@ -333,7 +333,7 @@ import {
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
 import { trpc } from '@abuddy/sdk/rpc';
-import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue';
+import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 const actorSystem = useActorSystem()
 

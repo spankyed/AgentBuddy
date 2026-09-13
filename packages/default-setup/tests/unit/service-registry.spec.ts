@@ -1,42 +1,41 @@
 import { describe, it, expectTypeOf } from 'vitest';
-import type { ServiceRegistry } from '@abuddy/sdk/types';
-import '@/__generated__/service-types';
+import type { Services } from '@/__generated__/services';
 
-describe('ServiceRegistry — augmented types', () => {
+describe('Services — augmented types', () => {
   it('registry has llm service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('llm');
+    expectTypeOf<Services>().toHaveProperty('llm');
   });
 
   it('registry has prompt service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('prompt');
+    expectTypeOf<Services>().toHaveProperty('prompt');
   });
 
   it('registry has database service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('database');
+    expectTypeOf<Services>().toHaveProperty('database');
   });
 
   it('registry has settings service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('settings');
+    expectTypeOf<Services>().toHaveProperty('settings');
   });
 
   it('registry has browser service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('browser');
+    expectTypeOf<Services>().toHaveProperty('browser');
   });
 
   it('registry has threads service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('threads');
+    expectTypeOf<Services>().toHaveProperty('threads');
   });
 
   it('registry has cli service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('cli');
+    expectTypeOf<Services>().toHaveProperty('cli');
   });
 
   it('registry has modelClient service', () => {
-    expectTypeOf<ServiceRegistry>().toHaveProperty('modelClient');
+    expectTypeOf<Services>().toHaveProperty('modelClient');
   });
 
   it('keyof includes all registered service names', () => {
-    type Keys = keyof ServiceRegistry;
+    type Keys = keyof Services;
     expectTypeOf<'llm'>().toMatchTypeOf<Keys>();
     expectTypeOf<'database'>().toMatchTypeOf<Keys>();
     expectTypeOf<'prompt'>().toMatchTypeOf<Keys>();

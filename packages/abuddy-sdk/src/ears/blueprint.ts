@@ -1,5 +1,5 @@
-import { tx } from './transaction';
-import { EARS } from '../types/entities';
+import { tx } from './transaction.ts';
+import { EARS } from '../types/entities.ts';
 
 export interface Blueprint {
   entity: EARS.Entity;

@@ -196,7 +196,7 @@
 <script setup lang="ts">
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'

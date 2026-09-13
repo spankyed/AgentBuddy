@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { stepRegistry } from '@abuddy/sdk/steps'
-import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/sdk/fe/components/node-dimensions'
-import type { LayoutNodeData } from '@abuddy/sdk/fe/components/node-dimensions'
+import { NODE_DIMENSIONS, getDescriptor } from '@abuddy/ui/components/node-dimensions'
+import type { LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import {
   parseHandleIndex,
   buildPortId,

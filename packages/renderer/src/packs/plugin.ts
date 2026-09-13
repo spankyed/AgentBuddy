@@ -1,4 +1,4 @@
-import type { Plugin } from '@abuddy/sdk/fe/host';
+import type { Plugin } from '@abuddy/host/fe';
 import { Package } from 'lucide-vue-next';
 import state, { id } from './state';
 import canvas from './canvas/index.vue';

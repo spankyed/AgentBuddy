@@ -11,7 +11,7 @@ import {
   installPackFromGitHub,
   getPackContributions, type PackContributions,
   checkForUpdates,
-} from '@abuddy/sdk/packs';
+} from '@abuddy/host/packs';
 import { teardownPack, activatePack } from './pack-lifecycle';
 import { activationProblem } from './activation-outcome';
 import { APP_VERSION } from '@/version';
@@ -304,7 +304,7 @@ export const packsSystem = setup({
     },
 
     checkForPackUpdates: ({ system }) => {
-      checkForUpdates().then(() => {
+      checkForUpdates({ hostVersion: APP_VERSION }).then(() => {
         emitPacksList(system);
       }).catch(err => {
         console.error('[packs] Update check failed:', err);

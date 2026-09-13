@@ -1,8 +1,8 @@
 // STATUS: Unused — no external consumers currently import these helpers.
 // Kept for future use; the individual functions are exported from the SDK barrel.
-import { tx } from './transaction';
-import { getTimestamp, generateShortCode, generateLabelWithCount } from './entity-utils';
-import { EARS } from '../types/entities';
+import { tx } from './transaction.ts';
+import { getTimestamp, generateShortCode, generateLabelWithCount } from './entity-utils.ts';
+import { EARS } from '../types/entities.ts';
 
 export function prepareEntity<T extends { entityType: EARS.Entity }>(
   entityType: EARS.Entity,

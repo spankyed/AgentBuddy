@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin } from './reference-suggestion-plugin'
-import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
+import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
 import { CONTRIBUTION_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config'
 
 function createIconSvg(type: ReferenceType): SVGSVGElement {

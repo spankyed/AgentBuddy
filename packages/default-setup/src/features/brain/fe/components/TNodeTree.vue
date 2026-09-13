@@ -33,7 +33,7 @@ export default {
 
 <script setup lang="ts">
 import type { TrackTree } from '@/__generated__/types'
-import TNodeListItem from '@abuddy/sdk/fe/components/TNodeListItem.vue';
+import TNodeListItem from '@abuddy/ui/components/TNodeListItem';
 
 interface Props {
   tnodeTree?: TrackTree[];

@@ -27,3 +27,13 @@ test('add memo round-trip through the pack backend', async ({ appPage, app }) =>
   // Only rendered after the backend persists the memo and emits MEMO_ADDED
   await expect(appPage.getByTestId('memo-list').getByText(text, { exact: true })).toBeVisible({ timeout: 10_000 });
 });
+
+test("renders the host's @abuddy/ui editor inside the pack", async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  await app.navigate('memos');
+
+  const preview = appPage.getByTestId('memo-preview');
+  await expect(preview.locator('.ProseMirror')).toContainText('Memo preview', { timeout: 10_000 });
+  await appPage.getByTestId('memo-input').fill('typed draft');
+  await expect(preview.locator('.ProseMirror')).toContainText('typed draft');
+});

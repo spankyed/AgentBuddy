@@ -1,8 +1,13 @@
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextReleaseVersion, preflight, publishRelease, type Runner } from '../../src/commands/release';
+import { defaultRunner, nextReleaseVersion, preflight, publishRelease, runRelease, type Runner } from '../../src/commands/release';
+import { readBundleInfo } from '@abuddy/host/packs';
+
+// runRelease verifies with a release build; these tests use prebuilt packs
+vi.mock('../../src/commands/build', () => ({ build: vi.fn(async () => {}) }));
 import { packBundle } from '../../src/commands/pack';
 
 let tmp: string;
@@ -177,3 +182,32 @@ describe('publishRelease', () => {
     expect(createRelease).not.toHaveBeenCalled();
   });
 });
+
+describe('runRelease', () => {
+  it('packs after the version commit, so bundle.json records the tagged commit', async () => {
+    const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+    const origin = path.join(tmp, 'origin.git');
+    fs.mkdirSync(origin);
+    git(origin, 'init', '--quiet', '--bare', '-b', 'main');
+    const root = builtPack();
+    git(root, 'init', '--quiet', '-b', 'main');
+    git(root, 'add', '-A');
+    git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'initial pack');
+    git(root, 'remote', 'add', 'origin', origin);
+    git(root, 'push', '--quiet', '-u', 'origin', 'main');
+    git(root, 'remote', 'set-head', 'origin', 'main');
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Real git (commit, tag, push to the local origin); verification commands do nothing
+    const run: Runner = (cmd, args, cwd) => (cmd === 'git' ? defaultRunner(cmd, ['-c', 'user.name=author', '-c', 'user.email=author@example.com', ...args], cwd) : '');
+    const { version } = await runRelease(root, { bump: 'patch', beta: false, dryRun: false, local: false, skipTests: true, skipE2e: true, run, env: {} });
+
+    expect(version).toBe('1.2.4');
+    const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
+    expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
+    expect(readBundleInfo(path.join(root, '.abuddy', 'bundle', 'demo-pack')).source?.commit).toBe(tagged);
+    expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
+  }, 60_000);
+});
+

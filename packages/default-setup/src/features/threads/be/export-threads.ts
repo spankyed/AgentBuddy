@@ -5,7 +5,7 @@
  * artifacts, fork relations, and media from both instructions and messages.
  */
 
-import { qx } from '@abuddy/sdk/ears'
+import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears'
 import { createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'

@@ -1,6 +1,7 @@
-import { registerRepository, qx, findById, tx } from '@abuddy/sdk/ears';
+import { qx, findById } from '@/__generated__/ears';
+import { registerRepository, tx } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears';
-import { edgeStore } from '@abuddy/sdk/ears/internals';
+import { edgeStore } from '@abuddy/host/ears';
 import type {
   FlowTNodeData,
   TNodeEntity,

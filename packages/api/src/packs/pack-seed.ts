@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { LoadedPack } from './pack-loader';
-import { resolvePackSeedsDir, modifyRegistry } from '@abuddy/sdk/packs';
+import { resolvePackSeedsDir, modifyRegistry } from '@abuddy/host/packs';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
 import { repository } from '@abuddy/sdk/ears';

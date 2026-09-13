@@ -86,6 +86,8 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
  * 1. Playwright → test
  * 2. Packaged → the channel stamped at build time (a missing stamp is a broken build)
  * 3. Unpackaged → ABUDDY_ENV if set, otherwise development
+ *
+ * @internal Host-only: the Electron main process infers its environment.
  */
 export function inferElectronAppEnv(input: {
   playwrightTest: boolean;

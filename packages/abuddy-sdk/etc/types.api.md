@@ -118,13 +118,9 @@ export namespace EARS {
 }
 
 // @public
-export type EntityShape<E extends string> = [
-E
-] extends [keyof EntityShapeRegistry] ? EntityShapeRegistry[E] & BaseEntity : Record<string, any>;
-
-// @public
-export interface EntityShapeRegistry {
-}
+export type EntityShapes = {
+    [entityType: string]: object;
+};
 
 // @public (undocumented)
 export interface KeyboardShortcut {
@@ -136,20 +132,10 @@ export interface KeyboardShortcut {
     modifiers: string[];
 }
 
-// @public (undocumented)
-export type NodeEntity = NodeEntityRegistry[keyof NodeEntityRegistry];
-
 // @public
-export interface NodeEntityRegistry {
-}
-
-// @public
-export interface PluginEventRegistry {
-}
-
-// @public
-export interface ServiceRegistry {
-}
+export type ShapeOf<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? S[E] & BaseEntity : BaseEntity & Record<string, unknown>;
 
 // (No @packageDocumentation comment for this package)
 

@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
+import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
 import type { CommandItem } from './command-config'
 
 export function useCommandItems(query: Ref<string>) {

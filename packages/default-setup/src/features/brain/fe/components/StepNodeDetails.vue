@@ -119,7 +119,7 @@
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@/__generated__/types';
-import DataRenderer from '@abuddy/sdk/fe/components/DataRenderer.vue';
+import DataRenderer from '@abuddy/ui/components/DataRenderer';
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 
 const actorSystem = useActorSystem()

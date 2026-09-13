@@ -1,5 +1,5 @@
-import { getHostModule } from '../runtime/host';
-import { getDesignated } from '../designations/index';
+import { getHostModule } from '../runtime/host.ts';
+import { getDesignated } from '../designations/index.ts';
 
 function getApp(): any {
   return getHostModule('application');

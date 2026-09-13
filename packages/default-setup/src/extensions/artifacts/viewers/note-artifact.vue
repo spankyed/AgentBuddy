@@ -33,8 +33,8 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
-import CopyButton from '@abuddy/sdk/fe/design/CopyButton.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@abuddy/ui/design/CopyButton'
 import { useSelector } from '@xstate/vue'
 
 const actorSystem = useActorSystem()

@@ -3,15 +3,16 @@
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "declarationDir": "dist/types",
-    "outDir": "dist/types",
+    "declarationDir": ".temp/api-types",
+    "outDir": ".temp/api-types",
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.vue", "src/testing/**"]
+  "exclude": ["src/ears/internals.ts"]
 }

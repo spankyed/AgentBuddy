@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -13,6 +15,7 @@
     "composite": false,
     "baseUrl": ".",
     "paths": {
+      // rollup-defs.config.mjs inlines SDK types into the self-contained Monaco declarations
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
       "@abuddy/sdk/inference": ["../abuddy-sdk/src/services/inference.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],

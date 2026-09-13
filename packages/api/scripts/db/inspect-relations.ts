@@ -7,7 +7,7 @@
  *   npm run db:script scripts/db/inspect-relations.ts -- --entity Thread-123
  */
 
-import { qx } from '@abuddy/sdk/ears';
+import { qx } from '@abuddy/host/ears';
 import { EARS } from '@/core/types';
 import { getRelations, getIncomingRelations } from '@/core/ears/attribute-storage';
 

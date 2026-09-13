@@ -1,4 +1,4 @@
-import { getHostModule } from '../runtime/host';
+import { getHostModule } from '../runtime/host.ts';
 
 let _trpcMod: any;
 function trpcMod() {
@@ -17,6 +17,7 @@ export const trpc: any = new Proxy({} as any, {
 // instance after init.
 export let rootEvents: any;
 
+/** @internal Host-only: the host wires the RPC client at boot. */
 export function initRpc() {
   rootEvents = getHostModule('bus-emitter').rootEvents;
 }

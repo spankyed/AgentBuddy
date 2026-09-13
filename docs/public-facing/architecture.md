@@ -125,11 +125,19 @@ export default __m;
 
 ### Shared SDK modules
 
-`@abuddy/sdk/fe`, `@abuddy/sdk/runtime`, `@abuddy/sdk/steps`, `@abuddy/sdk/artifacts`, `@abuddy/sdk/blocks`, `@abuddy/sdk/designations`, `@abuddy/sdk/helpers`
+`@abuddy/sdk/fe`, `@abuddy/sdk/runtime`, `@abuddy/sdk/steps`, `@abuddy/sdk/artifacts`, `@abuddy/sdk/blocks`, `@abuddy/sdk/designations`, `@abuddy/sdk/helpers`, and every `@abuddy/ui` export
 
 ### Deep subpath imports
 
-Only registered barrel subpaths are externalized. Deep imports like `@abuddy/sdk/fe/composables/useDebounce` fall back to resolve-and-bundle — the source file is compiled into your pack's `fe.js`. This is safe because deep imports are typically stateless leaf modules.
+Only registered barrel subpaths are externalized. Other SDK modules resolve and bundle: the file is compiled into your pack's `fe.js`. The FE build fails if a bundled SDK module depends on the host module registry.
+
+### `@abuddy/ui`
+
+Components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`) come from the separate `@abuddy/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. The package ships compiled JS with declarations, so component props typecheck with plain `tsc`.
+
+At runtime your pack uses the app's copy: `abuddy build` turns `@abuddy/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@abuddy/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
+
+To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abuddy/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
 
 ## Generated files
 
@@ -139,14 +147,12 @@ Only registered barrel subpaths are externalized. Deep imports like `@abuddy/sdk
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, steps, artifacts, blocks, EARS, boot hooks |
 | `pack-entry-fe.ts` | FE registration: plugins, step/artifact/block FE, tiptap, app extensions |
-| `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types) |
+| `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `system-ids.ts` | Re-exports system ID constants from each feature |
 | `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
-| `event-channels.ts` | `PluginEventRegistry` type augmentation (plugin ID -> event types) |
+| `events.ts` | `PackEvents` (plugin ID -> outgoing event types) and the typed `emit`/`sendToPlugin` facade |
 | `types.ts` | Type barrel: outgoing events + per-feature types |
-| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` |
-| `service-types.ts` | `ServiceRegistry` type augmentation |
-| `entity-shapes.ts` | `EntityShapeRegistry` type augmentation |
+| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` and the typed `services` proxy |
 | `contributions.ts` | Contribution type aggregation |
 | `seeders.ts` | Seeder registration with compiled data paths |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition |
