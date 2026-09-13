@@ -14,9 +14,9 @@ function attrStorageMod() {
 export function resetLmdbFiles(): Promise<void> { return attrStorageMod().resetLmdbFiles(); }
 export function closePersistence(): void { return attrStorageMod().closePersistence(); }
 export function reinitializeLmdb(): void { return attrStorageMod().reinitializeLmdb(); }
-export const envs: any = new Proxy({} as any, { get(_, p) { return attrStorageMod().envs[p]; } });
-export const policy: any = new Proxy({} as any, { get(_, p) { return attrStorageMod().policy[p]; } });
-export const persistence: any = new Proxy({} as any, { get(_, p) { return attrStorageMod().persistence[p]; } });
+export const envs: any = /*#__PURE__*/ new Proxy({} as any, { get(_, p) { return attrStorageMod().envs[p]; } });
+export const policy: any = /*#__PURE__*/ new Proxy({} as any, { get(_, p) { return attrStorageMod().policy[p]; } });
+export const persistence: any = /*#__PURE__*/ new Proxy({} as any, { get(_, p) { return attrStorageMod().persistence[p]; } });
 
 let _lmdbQueryMod: any;
 function lmdbQueryMod() {
@@ -24,7 +24,7 @@ function lmdbQueryMod() {
   return _lmdbQueryMod;
 }
 
-export const LmdbQuery: any = new Proxy({} as any, {
+export const LmdbQuery: any = /*#__PURE__*/ new Proxy({} as any, {
   get(_, prop: string) { return lmdbQueryMod().LmdbQuery[prop]; },
   construct(_, args) { return new (lmdbQueryMod().LmdbQuery)(...args); },
 });

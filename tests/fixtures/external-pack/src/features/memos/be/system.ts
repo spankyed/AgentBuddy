@@ -1,7 +1,8 @@
+import { emit } from '#generated/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+
 import { memoCommands, memoQueries } from './repository';
 import type { MemoDTO } from './types';
 

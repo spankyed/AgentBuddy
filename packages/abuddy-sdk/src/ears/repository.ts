@@ -6,7 +6,7 @@ export function registerRepository(name: string, value: any): void {
   entries[name] = value;
 }
 
-export const repository = new Proxy({} as Record<string, any>, {
+export const repository = /*#__PURE__*/ new Proxy({} as Record<string, any>, {
   get(_, prop) {
     if (typeof prop === 'symbol') return undefined;
     const value = entries[prop];

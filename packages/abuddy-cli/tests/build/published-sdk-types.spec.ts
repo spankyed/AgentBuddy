@@ -35,6 +35,23 @@ function typecheck(moduleResolution: 'node16' | 'bundler'): { code: number; outp
     "export const newer: number = compareVersions('1.0.0', '0.9.0');",
     "export const step: StepDefinition | undefined = undefined;",
     "export type Meta = ActionMeta;",
+    // Typed data access and events come only from the factories a pack's facade uses
+    "import { defineEars } from '@abuddy/sdk/ears';",
+    "import { defineEvents } from '@abuddy/sdk/services';",
+    "import type { EARS } from '@abuddy/sdk';",
+    "type IsAny<T> = 0 extends 1 & T ? true : false;",
+    "interface MemoEntity { entityType: 'Memo'; text: string }",
+    "const { findById } = defineEars<{ Memo: MemoEntity }>();",
+    "declare const memoId: EARS.EntityId<'Memo'>;",
+    "const memo = findById(memoId)!;",
+    "export const text: string = memo.text;",
+    "export const textNotAny: IsAny<typeof memo.text> = false;",
+    "const { emit } = defineEvents<{ memos: { type: 'MEMO_ADDED'; id: string } }>();",
+    "export const added = emit('memos', { type: 'MEMO_ADDED', id: 'm1' });",
+    "// @ts-expect-error the memos plugin doesn't receive this event",
+    "emit('memos', { type: 'MEMO_REMOVED' });",
+    "// @ts-expect-error untyped query helpers aren't pack-facing",
+    "export { findAll } from '@abuddy/sdk/ears';",
   ].join('\n'));
   try {
     return { code: 0, output: execFileSync(TSC, ['-p', tmp], { stdio: 'pipe' }).toString() };

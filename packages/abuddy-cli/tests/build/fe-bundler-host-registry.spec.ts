@@ -56,6 +56,23 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', ({ dir, ext }
     expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy.sdkFe');
   }, 60_000);
 
+  it('drops the generated EARS facade from FE code that only uses the EARS constants', async () => {
+    const { packDir, entry } = makePack(dir, `import { EARS } from './ears';\nexport const kind = EARS.Entity.Memo;\n`);
+    // Shape of #generated/ears: the EARS namespace plus the pure typed-helpers factory call
+    fs.writeFileSync(path.join(packDir, 'src', 'ears.ts'), [
+      "export namespace EARS { export namespace Entity { export const Memo = 'Memo'; } }",
+      "import { defineEars } from '@abuddy/sdk/ears';",
+      "export const { qx, findById, findAll } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
+    ].join('\n'));
+
+    const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
+
+    expect(result.error, result.error).toBeUndefined();
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).not.toContain('defineEars');
+    expect(output).toContain('Memo');
+  }, 60_000);
+
   it('builds when SDK imports go through host-shared proxies', async () => {
     const { packDir, entry } = makePack(dir,
       `import { trpc } from '@abuddy/sdk/rpc';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
