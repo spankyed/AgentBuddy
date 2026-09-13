@@ -17,6 +17,8 @@ export default defineConfig({
   platform: 'neutral',
   // vue-tsc emits the declarations
   dts: false,
+  // With the sources inlined: src doesn't ship
+  sourcemap: true,
   // Nothing from node_modules is bundled: an import of an undeclared package fails the build
   deps: { neverBundle: external, onlyBundle: [] },
   // Compiled components import their own CSS, so a consumer's bundler collects it

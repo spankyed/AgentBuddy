@@ -8,7 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, walk } from '../../../scripts/lib/published-imports.ts';
-import { computeExports, pkgDir } from './exports.ts';
+import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from './exports.ts';
 
 const outDir = path.join(pkgDir, 'dist');
 const require = createRequire(import.meta.url);
@@ -16,6 +16,8 @@ const run = (bin: string, args: string[]) => execFileSync(process.execPath, [bin
 
 async function main(): Promise<void> {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
+  const missingEntries = findComponentsWithoutEntry();
+  if (missingEntries.length > 0) throw new Error(missingEntriesMessage(missingEntries));
   if (!isDeepStrictEqual(pkg.exports, computeExports())) {
     throw new Error('packages/abuddy-ui/package.json exports are out of date with src/. Run: npm run exports:update -w @abuddy/ui');
   }
