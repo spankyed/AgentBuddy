@@ -40,7 +40,7 @@ Options:
     return;
   }
 
-  const { packsDir } = resolveAppContext({ env });
+  const { packsDir, hostPacksDir } = resolveAppContext({ env });
   const kind = detectSource(source);
 
   let resolvedSource = source;
@@ -53,8 +53,14 @@ Options:
     : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir);
 
   if (result.missingDependencies.length > 0) {
-    console.warn(`\n  Warning: missing dependencies: ${result.missingDependencies.join(', ')}`);
-    console.warn(`  Install them first for full functionality.`);
+    if (fs.existsSync(hostPacksDir)) {
+      console.warn(`\n  Warning: missing dependencies: ${result.missingDependencies.join(', ')}`);
+      console.warn(`  They are neither installed nor built into AgentBuddy. Install them first for full functionality.`);
+    } else {
+      // The app publishes its built-in packs into the data dir when it starts
+      console.warn(`\n  Note: ${result.missingDependencies.join(', ')} not installed as packs. That's expected for packs built into AgentBuddy,`);
+      console.warn(`  which can't be checked until AgentBuddy${envLabel(env)} has started with this data dir.`);
+    }
   }
 
   console.log(`\nInstalled "${result.name}" v${result.version}${envLabel(env)}`);

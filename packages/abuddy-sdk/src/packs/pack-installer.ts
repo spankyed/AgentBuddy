@@ -102,37 +102,35 @@ function findPackRoot(dir: string): string {
   return dir;
 }
 
-function getBuiltInPackIds(): Set<string> {
-  const ids = new Set<string>();
-  const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  if (builtInDir) {
-    for (const pack of discoverBuiltInPacks(builtInDir)) ids.add(pack.id);
-    return ids;
-  }
-  // Monorepo fallback when not running inside the app (CJS contexts only; ESM has no __dirname)
-  if (typeof __dirname === 'undefined') return ids;
-  const packagesDir = path.resolve(__dirname, '..', '..', '..');
-  try {
-    for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const manifestPath = path.join(packagesDir, entry.name, 'abuddy.json');
-      if (!fs.existsSync(manifestPath)) continue;
-      try {
-        const m = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        if (m.builtIn && m.id) ids.add(m.id);
-      } catch {}
-    }
-  } catch {}
-  return ids;
+/** The app data dir's published built-in packs (`<userData>/host-packs`, written at app boot). */
+export function hostPacksDirFor(packsDir: string): string {
+  return path.join(path.dirname(packsDir), 'host-packs');
 }
 
+/**
+ * Packs the host provides: discovered from BUILT_IN_PACKS_DIR inside the app, otherwise the
+ * built-in packs the app published into the data dir next to `packsDir`.
+ */
+function getBuiltInPackIds(packsDir: string): Set<string> {
+  const builtInDir = process.env.BUILT_IN_PACKS_DIR;
+  if (builtInDir) return new Set(discoverBuiltInPacks(builtInDir).map(pack => pack.id));
+  const hostPacksDir = hostPacksDirFor(packsDir);
+  if (!fs.existsSync(hostPacksDir)) return new Set();
+  return new Set(
+    fs.readdirSync(hostPacksDir, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name),
+  );
+}
+
+/** Dependencies neither installed in `packsDir` nor built into the host. */
 export function checkDependencies(
   manifest: { dependencies?: Record<string, string> },
   packsDir: string,
 ): string[] {
   const deps = manifest.dependencies ?? {};
   if (Object.keys(deps).length === 0) return [];
-  const builtInIds = getBuiltInPackIds();
+  const builtInIds = getBuiltInPackIds(packsDir);
   const missing: string[] = [];
   for (const depId of Object.keys(deps)) {
     if (builtInIds.has(depId)) continue;

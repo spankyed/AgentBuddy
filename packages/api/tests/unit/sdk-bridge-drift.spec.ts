@@ -67,13 +67,24 @@ function toSpecifier(key: string): string {
 
 function concreteSdkExports(): string[] {
   return Object.keys(sdkExportsMap())
-    // Wildcard subpaths are all under ./fe/* today (renderer-only)
+    // Wildcards can't be enumerated; the test below keeps them renderer-only
     .filter((k) => !k.includes('*'))
     .map(toSpecifier)
     .filter((s) => !isFeSpecifier(s));
 }
 
 describe('SDK bridge drift', () => {
+  it('only has wildcard exports for renderer-only subpaths', () => {
+    const nonFeWildcards = Object.keys(sdkExportsMap())
+      .filter((k) => k.includes('*'))
+      .filter((k) => !isFeSpecifier(toSpecifier(k)));
+
+    expect(nonFeWildcards, [
+      'Wildcard @abuddy/sdk exports outside ./fe/* can reach pack runtime code, but this guard',
+      "can't enumerate them to check the bridge. Export each subpath explicitly instead.",
+    ].join(' ')).toEqual([]);
+  });
+
   it('bridges every non-fe SDK export, or records why not', () => {
     const bridged = new Set(getBridgedSdkSpecifiers());
     const unaccounted = concreteSdkExports().filter(
