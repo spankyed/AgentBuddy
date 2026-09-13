@@ -8,8 +8,8 @@ import { pipeline } from 'node:stream/promises';
 import { Octokit } from '@octokit/rest';
 import semver from 'semver';
 
-/** Public releases of the desktop app (build/release/publish-release.sh copies them here). */
-export const APP_RELEASES_REPO = { owner: 'spankyed', repo: 'AgentBuddy-releases' };
+/** Desktop app releases, published by .github/workflows/build-mac.yml. */
+export const APP_RELEASES_REPO = { owner: 'spankyed', repo: 'AgentBuddy' };
 const PRODUCT_NAME = 'AgentBuddy Beta';
 /** Release file names use the product name without spaces (electron-builder.mjs artifactName). */
 export const BETA_ARTIFACT_PREFIX = 'AgentBuddy-Beta';

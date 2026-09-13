@@ -43,7 +43,7 @@ No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
 `abuddy test` (source: `packages/abuddy-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
 
 1. `--app-root <path>` — a local AgentBuddy checkout (installed and built)
-2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy-releases`) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
+2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
 3. `ABUDDY_APP=beta` (the env form of `--app beta`, for CI), then `ABUDDY_ROOT` — a local checkout
 4. The saved choice in the CLI config (`~/Library/Preferences/abuddy-cli/config.json` on macOS)
 5. First run in an interactive terminal: asks for a checkout path or the beta download and saves the answer

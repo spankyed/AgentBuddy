@@ -90,7 +90,6 @@ Context: `docs/issues/goal-external-pack-authoring.md` (decisions D1–D7).
 
 ### Spec gaps (out of scope unless trivial; list in the summary)
 
-- No automated beta publish to the public releases repo.
 - No PATH action on Windows/Linux.
 - `abuddy-beta` defaults to production.
 - Missing dependencies don't block installs, and dependency ranges aren't enforced.
