@@ -3,6 +3,7 @@ import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack
 import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { isHostCompatible } from './pack-installer.ts';
+import { fetchReleaseAsset, fetchRepoFile, githubFetch, type GitHubReleaseAsset } from './github.ts';
 
 const logger = createLogger('pack-updater');
 
@@ -18,23 +19,18 @@ export interface UpdateCheckResult {
 export interface ReleaseCandidate {
   version: string;
   tag: string;
+  /** Set when the release's hostVersion couldn't be read: why. The installer checks it again. */
+  hostVersionUnverified?: string;
 }
 
 /** Release manifests (bundle.json assets or abuddy.json) a single check reads at most */
 const MAX_MANIFEST_FETCHES = 10;
-const FETCH_TIMEOUT_MS = 10_000;
 
 interface GitHubRelease {
   tag_name: string;
   draft?: boolean;
   prerelease?: boolean;
-  assets?: Array<{ name: string; browser_download_url: string }>;
-}
-
-async function fetchJson(url: string, headers?: Record<string, string>): Promise<unknown> {
-  const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-  if (!response.ok) throw new Error(`${response.status} ${url}`);
-  return response.json();
+  assets?: GitHubReleaseAsset[];
 }
 
 /**
@@ -42,8 +38,9 @@ async function fetchJson(url: string, headers?: Record<string, string>): Promise
  * 1.2.0-beta.1) are only considered for the beta channel; drafts and non-semver tags are ignored,
  * and so are releases not newer than `installedVersion`. With a hostVersion, each candidate's
  * range is read from its `<archive>.bundle.json` asset (`abuddy release` uploads it), else from
- * abuddy.json at its tag; a candidate whose range can't be read is kept (the installer checks it
- * again). At most MAX_MANIFEST_FETCHES ranges are read, newest first.
+ * abuddy.json at its tag; a candidate whose range can't be read is returned with
+ * `hostVersionUnverified`. At most MAX_MANIFEST_FETCHES ranges are read, newest first.
+ * A failing release list (rate limit, private or missing repository) throws GitHubRequestError.
  */
 export async function findLatestRelease(
   slug: string,
@@ -53,15 +50,7 @@ export async function findLatestRelease(
   const [owner, repo] = ownerRepo.split('/');
   if (!owner || !repo) return null;
 
-  let releases: GitHubRelease[];
-  try {
-    releases = await fetchJson(
-      `https://api.github.com/repos/${owner}/${repo}/releases?per_page=100`,
-      { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'AgentBuddy' },
-    ) as GitHubRelease[];
-  } catch {
-    return null;
-  }
+  const releases = await (await githubFetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=100`)).json() as GitHubRelease[];
   const installed = options.installedVersion ? semver.valid(options.installedVersion) : null;
   const candidates = releases
     .filter(r => !r.draft)
@@ -73,29 +62,31 @@ export async function findLatestRelease(
   if (!options.hostVersion) return candidates[0] ? { version: candidates[0].version, tag: candidates[0].tag } : null;
 
   let fetches = 0;
-  /** The release's hostVersion range; undefined when it has none or can't be read */
-  const hostRange = async (release: GitHubRelease): Promise<string | undefined> => {
+  /** The release's hostVersion range, or why it couldn't be read */
+  const hostRange = async (release: GitHubRelease): Promise<{ range?: string; unread?: string }> => {
     const asset = release.assets?.find(a => a.name.endsWith('.bundle.json'));
-    const urls = [
-      ...(asset ? [asset.browser_download_url] : []),
-      `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(release.tag_name)}/abuddy.json`,
+    const sources = [
+      ...(asset ? [() => fetchReleaseAsset(asset)] : []),
+      () => fetchRepoFile(owner, repo, release.tag_name, 'abuddy.json'),
     ];
-    for (const url of urls) {
-      if (fetches >= MAX_MANIFEST_FETCHES) return undefined;
+    let unread = `the manifest fetch limit (${MAX_MANIFEST_FETCHES}) was reached`;
+    for (const source of sources) {
+      if (fetches >= MAX_MANIFEST_FETCHES) break;
       fetches++;
       try {
-        const { hostVersion } = await fetchJson(url) as { hostVersion?: unknown };
-        return typeof hostVersion === 'string' ? hostVersion : undefined;
-      } catch {
-        // Next source
+        const { hostVersion } = await (await source()).json() as { hostVersion?: unknown };
+        return { range: typeof hostVersion === 'string' ? hostVersion : undefined };
+      } catch (err) {
+        unread = err instanceof Error ? err.message : String(err);
       }
     }
-    return undefined;
+    return { unread };
   };
   for (const candidate of candidates) {
     if (fetches >= MAX_MANIFEST_FETCHES) break;
-    if (isHostCompatible(await hostRange(candidate.release), options.hostVersion)) {
-      return { version: candidate.version, tag: candidate.tag };
+    const { range, unread } = await hostRange(candidate.release);
+    if (isHostCompatible(range, options.hostVersion)) {
+      return { version: candidate.version, tag: candidate.tag, ...(unread ? { hostVersionUnverified: unread } : {}) };
     }
   }
   return null;
@@ -138,13 +129,25 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
       }
     }
 
-    const latest = await findLatestRelease(entry.source!, { includePrerelease, hostVersion: options.hostVersion, installedVersion: entry.version });
+    let latest: ReleaseCandidate | null;
+    try {
+      latest = await findLatestRelease(entry.source!, { includePrerelease, hostVersion: options.hostVersion, installedVersion: entry.version });
+    } catch (err) {
+      // Not checked: kept out of the cache so the next check tries again
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn(`Update check for ${entry.id} failed: ${message}`);
+      updatedEntries.set(entry.id, { updateCheckError: message });
+      continue;
+    }
     const latestVersion = latest && isNewer(latest.version, entry.version) ? latest.version : undefined;
+    const unverified = latestVersion ? latest!.hostVersionUnverified : undefined;
+    if (unverified) logger.warn(`${entry.id} v${latestVersion}: couldn't read its hostVersion (${unverified}); installing it checks again`);
     updatedEntries.set(entry.id, {
       lastUpdateCheck: new Date().toISOString(),
       lastUpdateCheckHostVersion: options.hostVersion,
       availableVersion: latestVersion,
       availableTag: latestVersion ? latest!.tag : undefined,
+      updateCheckError: unverified ? `Couldn't confirm v${latestVersion} supports this AgentBuddy: ${unverified}` : undefined,
     });
 
     if (latestVersion) {

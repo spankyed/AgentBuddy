@@ -44,4 +44,5 @@ export {
 } from './bundle.ts';
 export type { BundleInfo } from './bundle.ts';
 export { findLatestRelease } from './pack-updater.ts';
+export { GitHubRequestError, githubFetch, githubToken } from './github.ts';
 export type { UpdateCheckResult, ReleaseCandidate } from './pack-updater.ts';

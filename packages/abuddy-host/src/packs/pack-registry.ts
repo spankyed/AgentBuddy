@@ -31,6 +31,8 @@ export interface PackRegistryEntry {
   lastUpdateCheck?: string;
   /** The AgentBuddy version the last update check ran for; a different one checks again. */
   lastUpdateCheckHostVersion?: string;
+  /** Why the last update check couldn't finish or confirm compatibility (rate limit, private repo, …) */
+  updateCheckError?: string;
 }
 
 interface PackRegistryFile {

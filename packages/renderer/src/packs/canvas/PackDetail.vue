@@ -33,6 +33,10 @@
 
     <!-- Content -->
     <div class="space-y-5 overflow-y-auto flex-1">
+      <p v-if="pack.updateCheckError" class="text-xs text-amber-400" data-testid="pack-update-check-error">
+        Update check: {{ pack.updateCheckError }}
+      </p>
+
       <!-- Description -->
       <p v-if="pack.description" class="text-sm text-neutral-400">{{ pack.description }}</p>
 

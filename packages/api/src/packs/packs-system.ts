@@ -106,6 +106,7 @@ function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
       registeredAt: e.registeredAt,
       source: e.source,
       availableVersion: e.availableVersion,
+      updateCheckError: e.updateCheckError,
     }, contrib);
   });
 }

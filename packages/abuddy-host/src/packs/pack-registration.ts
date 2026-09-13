@@ -299,6 +299,8 @@ export interface PackInfo {
   registeredAt?: string;
   source?: string;
   availableVersion?: string;
+  /** Why the last update check couldn't finish or confirm compatibility */
+  updateCheckError?: string;
 }
 
 export function getPackContributions(packId: string): PackContributions | null {

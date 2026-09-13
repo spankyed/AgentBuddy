@@ -5,6 +5,7 @@ import { execFileSync } from 'child_process';
 import { satisfies } from 'semver';
 import { discoverBuiltInPacks } from './pack-discovery.ts';
 import { stagingDirName } from './staging.ts';
+import { fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseManifest } from '@abuddy/sdk/build';
 import type { PackManifest } from '@abuddy/sdk/build';
@@ -260,8 +261,6 @@ export async function installPackFromUrl(url: string, targetPacksDir?: string, o
   }
 }
 
-interface GitHubAsset { name: string; browser_download_url: string }
-
 export async function installPackFromGitHub(slug: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
   const [ownerRepo, tag] = slug.split('@');
   const [owner, repo] = ownerRepo.split('/');
@@ -273,15 +272,7 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
     ? `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`
     : `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
 
-  const response = await fetch(apiUrl, {
-    headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'AgentBuddy' },
-  });
-
-  if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-  }
-
-  const release = await response.json() as { assets: GitHubAsset[] };
+  const release = await (await githubFetch(apiUrl)).json() as { assets: GitHubReleaseAsset[] };
   const tgzAsset = release.assets.find(a => a.name.endsWith('.tgz'));
   if (!tgzAsset) {
     throw new Error(`No .tgz asset found in release${tag ? ` ${tag}` : ' (latest)'}`);
@@ -291,12 +282,18 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
   let sha256 = options.sha256;
   const checksumAsset = release.assets.find(a => a.name === `${tgzAsset.name}.sha256`);
   if (!sha256 && checksumAsset) {
-    const res = await fetch(checksumAsset.browser_download_url);
-    if (!res.ok) throw new Error(`Failed to download ${checksumAsset.name}: ${res.status}`);
-    sha256 = (await res.text()).trim().split(/\s+/)[0];
+    sha256 = (await (await fetchReleaseAsset(checksumAsset)).text()).trim().split(/\s+/)[0];
   }
 
-  return installPackFromUrl(tgzAsset.browser_download_url, targetPacksDir, { ...options, sha256 });
+  // Downloaded through GitHub's API when authenticated, so private repositories install too
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
+  try {
+    const downloadPath = path.join(tmpDir, tgzAsset.name);
+    fs.writeFileSync(downloadPath, Buffer.from(await (await fetchReleaseAsset(tgzAsset)).arrayBuffer()));
+    return await installPackFromLocal(downloadPath, targetPacksDir, { ...options, sha256 });
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 }
 
 export async function installPack(packSlug: string, source?: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
