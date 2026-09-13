@@ -38,7 +38,7 @@ Status after the external pack authoring goal:
 | 9 | Cleanup | ✅ Resolved |
 | 10 | Agent guardrails | ✅ Resolved |
 | N1–N5 | New findings from this pass | ✅ N1–N5 resolved (see below) |
-| F2–F11 | Secondary review findings | ✅ Resolved; F8 still theoretical |
+| F2–F11 | Secondary review findings | ✅ Resolved |
 
 Verification for the first pass (the goal's verification is under *Closed by the external pack authoring goal*):
 - `npm run typecheck`: all 4 legs pass.
@@ -228,7 +228,7 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 | F5 | ✅ **Resolved** (`6f727af82`). A test asserts each leaf has no imports (mutation-checked). |
 | F6 | ✅ **Resolved** (`6f727af82`). `isFeSpecifier` matches `@abuddy/sdk/fe` or `@abuddy/sdk/fe/…` only. |
 | F7 | ✅ **Resolved** (`6f727af82`). The dev-entry assertion applies the same fe filter. |
-| F8 | **Still theoretical.** All wildcard exports are still `./fe/*`. The package build now fails on any export whose target is missing (`addc756de`); that check found and removed a stale `./fe/constants`. |
+| F8 | ✅ **Resolved.** `sdk-bridge-drift.spec.ts` fails on any wildcard export outside `./fe/*` (checked with `./ears/*` and `./fe-widgets/*`), so a non-renderer wildcard can't bypass the bridge check. The package build also fails on export targets that don't exist (`addc756de`). |
 | F9 | ✅ **Resolved** (`6f727af82`). Unbridged entries the SDK no longer exports fail the test. `@abuddy/sdk/package.json` is recorded as metadata. |
 | F10 | ✅ **Resolved** (`6f727af82`). `pack-loader.spec.ts` asserts the "No machine export found" diagnostic names the compiled file actually loaded, via `rootEvents.onLog` (mutation-checked). Earlier fix: fixtures use `features`. |
 | F11 | ✅ **Resolved** (`6f727af82`). `loadPackFEEntry` warns when an entry registers nothing and calls out a missing default export. Renderer unit tests run in CI. |
