@@ -1,7 +1,7 @@
 // Builds @abuddy/sdk's dist/: tsc-compiled ESM, declarations and maps. package.json is the
 // published manifest; its exports resolve source under the @abuddy/source condition (monorepo
-// tooling) and dist otherwise. Sources use explicit .js specifiers (the nodenext typecheck
-// enforces it), so tsc's output resolves in Node and in node16/bundler consumers as emitted.
+// tooling) and dist otherwise. Relative imports name the .ts source and tsc rewrites them to .js
+// (rewriteRelativeImportExtensions), so the emitted JS resolves in Node and in bundlers as is.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';

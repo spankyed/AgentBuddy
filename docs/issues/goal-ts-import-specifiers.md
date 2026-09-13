@@ -88,3 +88,5 @@ Run on a throwaway branch (`spike/ts-specifiers`, deleted afterwards) with TypeS
 - the UI build compiles SFCs to JS. That's a different packaging decision (packs would no longer compile the SFCs, or scan them for Tailwind classes) and outside this goal.
 
 **Decision:** per Decision 2, all three packages keep `.js` specifiers. Nothing else changed. Revisit if `@abuddy/ui` stops shipping `.vue` source, or TypeScript and vue-tsc gain a supported way to rewrite specifiers in SFCs.
+
+**Update:** `goal-compiled-ui-host-shared.md` removed the blocker. `@abuddy/ui` now publishes compiled JS, so no `.vue` source ships, and all three packages use `.ts` specifiers.

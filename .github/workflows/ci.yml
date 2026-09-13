@@ -29,6 +29,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
 
+      # Includes check:specifiers (relative imports name .ts sources in sdk, host and ui)
       - name: Typecheck
         run: npm run typecheck
 

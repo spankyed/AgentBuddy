@@ -125,7 +125,7 @@ export default __m;
 
 ### Shared SDK modules
 
-`@abuddy/sdk/fe`, `@abuddy/sdk/runtime`, `@abuddy/sdk/steps`, `@abuddy/sdk/artifacts`, `@abuddy/sdk/blocks`, `@abuddy/sdk/designations`, `@abuddy/sdk/helpers`
+`@abuddy/sdk/fe`, `@abuddy/sdk/runtime`, `@abuddy/sdk/steps`, `@abuddy/sdk/artifacts`, `@abuddy/sdk/blocks`, `@abuddy/sdk/designations`, `@abuddy/sdk/helpers`, and every `@abuddy/ui` export
 
 ### Deep subpath imports
 
@@ -133,7 +133,11 @@ Only registered barrel subpaths are externalized. Other SDK modules resolve and 
 
 ### `@abuddy/ui`
 
-Components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`) come from the separate `@abuddy/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. Each module ships with declarations, so component props typecheck with plain `tsc`. `@abuddy/ui` modules bundle into your pack's `fe.js`, and their `@abuddy/sdk/fe` imports resolve to the host's shared copy.
+Components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`) come from the separate `@abuddy/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. The package ships compiled JS with declarations, so component props typecheck with plain `tsc`.
+
+At runtime your pack uses the app's copy: `abuddy build` turns `@abuddy/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@abuddy/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
+
+To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abuddy/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
 
 ## Generated files
 

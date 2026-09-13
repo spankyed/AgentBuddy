@@ -4,7 +4,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import { build } from 'esbuild';
-import { parse as parseSfc } from '@vue/compiler-sfc';
 
 const packageName = (specifier: string) =>
   specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
@@ -25,7 +24,6 @@ export class BareImports {
       bundle: true,
       write: false,
       logLevel: 'silent',
-      // verbatimModuleSyntax keeps imports only an SFC template uses; `import type` is still dropped
       tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } },
       plugins: [{
         name: 'collect-bare-imports',
@@ -40,14 +38,6 @@ export class BareImports {
         },
       }],
     });
-  }
-
-  /** SFC scripts are compiled by the pack's build, so their imports must be installable too. */
-  async fromSfc(file: string): Promise<void> {
-    const { descriptor } = parseSfc(fs.readFileSync(file, 'utf-8'), { filename: file });
-    for (const block of [descriptor.script, descriptor.scriptSetup]) {
-      if (block) await this.fromModule(block.content, block.lang === 'ts' ? 'ts' : 'js', path.dirname(file), file);
-    }
   }
 
   /** Throws when a shipped module imports a package the manifest doesn't declare. */

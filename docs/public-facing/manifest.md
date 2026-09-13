@@ -158,10 +158,19 @@ When a seed value is an object instead of a string path:
     "appExtensions": {
       "welcome": "src/extensions/Welcome.vue"
     },
-    "styles": "src/styles/global.css"
+    "styles": "src/styles/global.css",
+    "bundleUi": false
   }
 }
 ```
+
+| Field | Type | Description |
+|---|---|---|
+| `entry` | `string` | Path to the frontend entry module |
+| `tiptapPlugins` | `string` | Tiptap plugin registration module |
+| `appExtensions` | `Record<string, string>` | Named app extensions: extension name → Vue component path |
+| `styles` | `string` | CSS file included in the frontend bundle |
+| `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two. |
 
 ## Dependencies
 
