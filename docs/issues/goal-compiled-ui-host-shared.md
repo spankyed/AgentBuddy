@@ -104,6 +104,10 @@ tsdown passes 1–3; Vite fails 3.
 1. The renderer main chunk went from 4,389,492 to 4,423,287 bytes (+0.77%, limit 5%) when `virtual:host-deps` imported all 80 UI exports. JS chunks went from 42 to 39: `BaseForm`, `BaseNode` and `TipSection`, previously lazy step-form chunks, moved into the main chunk. Baseline: the last build of the same renderer code before the change.
 2. A pack importing `TiptapEditor` and `useDebounce` builds a `fe.js` holding only `window.__abuddy["@abuddy/ui/…"]` proxies (no `createExtensions`, `ProseMirror` or debounce code), in the workspace and the published layout. The fixture pack renders the host's `TiptapEditor` in E2E (`memos.spec.ts`), and a test loads a built pack against the host's `monaco-config` module and gets the same function objects.
 
+### Implementation notes
+
+- Decision 1's "their `@abuddy/source` target stays the `.vue` file" doesn't work for types: TypeScript ignores exports targets with a `.vue` extension, and vue-tsc only maps specifiers that end in `.vue`. It went unnoticed while a built `dist/` existed, because TypeScript fell back to its declarations; from a clean checkout the renderer and default-setup couldn't resolve `@abuddy/ui/design/ToastNotification`. Tsconfig `paths` to `.vue` files didn't help either. Each public component therefore has a `.ts` entry module (`design/button.ts` re-exporting `./button.vue`, like PrimeVue's per-component `index` modules), and the exports map lists `.ts` modules only. Component exports stay extensionless, and the monorepo still needs no build step.
+
 ### Phase 1 — Compile `@abuddy/ui`
 
 - Build with the tool from Phase 0 (`packages/abuddy-ui/scripts/build-package.ts`). Keep the undeclared-import guard and `assertExportTargetsBuilt`.
