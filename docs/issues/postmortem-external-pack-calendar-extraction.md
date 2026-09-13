@@ -3,6 +3,7 @@
 **Date of incident:** 2026-09-11 → 2026-09-12
 **Status re-verified:** 2026-09-12 against `master@898134763`, by running the checks listed under each item — including the pack's E2E suite from the pack directory.
 **Actionable items worked:** 2026-09-12 on `master@394b55317` (uncommitted); see *Status of the actionable items*.
+**Remaining items closed:** 2026-09-12 on branch `AS/external-pack-authoring` (`1dee2929d`…`225e081cf`), per `docs/issues/goal-external-pack-authoring.md`; see *Closed by the external pack authoring goal*.
 **Severity:** Medium (developer friction, plus one live functional bug) — no end-user impact.
 **Affected:** Anyone developing or testing an external pack.
 **Source:** Claude Code session `568f96d9-ddc3-4530-a4d7-f2a101fcf177` (resumed from `2220b4bc-f1e4-460e-855b-e8fe59eee08e`), compacted 12 times. This report was reconstructed from its compaction summaries, with every error message and quote re-checked against the raw transcript.
@@ -13,11 +14,12 @@
 
 Moving `calendar` from `packages/default-setup` into `abuddy-external/example-pack` was the first end-to-end run of an external pack with a real backend system and frontend plugin. Getting five simple E2E tests to pass took ~1h50m and 30+ test runs. Along the way it surfaced **ten latent platform bugs**, all of which are now fixed and still in place.
 
-What remains after the 2026-09-12 pass:
+Status after the external pack authoring goal:
 
 - The suspected "live bug" (item 1) wasn't a platform bug. Test data accumulating across runs plus the month grid's chip cap hid the event; the round trip works. The test now asserts it for real.
-- **Waiting on decisions:** the pack E2E dependency on the monorepo (item 3) and four new findings (N1–N4), led by N1: a freshly scaffolded pack can't build. The CLI's `tsx` dependency (item 2) is resolved.
-- Guards, CI coverage, typecheck, baselines, cleanup and guardrails (items 4–10) are done.
+- The pack E2E dependency on the monorepo (item 3) and the new findings N1–N4 are resolved. An outside author can now build, release, install and test a pack from published packages alone. `npm run test:packaged-authoring` proves it from `npm pack` tarballs in a temp dir.
+- Guards, CI coverage, typecheck, baselines, cleanup and guardrails (items 4–10) are done, and the secondary review findings F4–F11 are resolved.
+- Still open: the new CI jobs haven't run on a GitHub runner (item 6), and no AgentBuddy Beta build has been published yet, so `abuddy test --app beta` is only verified with mocked releases.
 
 ---
 
@@ -27,7 +29,7 @@ What remains after the 2026-09-12 pass:
 |---|---|---|
 | 1 | Calendar create round-trip | ✅ Resolved: not a platform bug; the test is fixed and the assertion restored |
 | 2 | CLI needs `tsx` on `PATH` | ✅ Resolved (option A) |
-| 3 | Pack E2E depends on the monorepo | ⏸ Open, needs a decision |
+| 3 | Pack E2E depends on the monorepo | ✅ Resolved (goal D4/D5; see below) |
 | 4 | Fixture hides root causes | ✅ Resolved |
 | 5 | Silent inlining of unproxied SDK FE imports | ✅ Resolved (build now fails) |
 | 6 | No CI coverage for external packs | ✅ Resolved locally; the CI job hasn't run on a runner yet |
@@ -35,9 +37,10 @@ What remains after the 2026-09-12 pass:
 | 8 | No visual baselines | ✅ Resolved |
 | 9 | Cleanup | ✅ Resolved |
 | 10 | Agent guardrails | ✅ Resolved |
-| N1–N5 | New findings from this pass | ⏸ N1–N4 open; N5 resolved (see below) |
+| N1–N5 | New findings from this pass | ✅ N1–N5 resolved (see below) |
+| F2–F11 | Secondary review findings | ✅ Resolved; F8 still theoretical |
 
-Verification for the whole pass:
+Verification for the first pass (the goal's verification is under *Closed by the external pack authoring goal*):
 - `npm run typecheck`: all 4 legs pass.
 - Unit tests: sdk 106, api 102, default-setup 527 passed (2 skipped).
 - `schema:check` and `api:check` pass.
@@ -86,7 +89,20 @@ The event didn't render because of two things together:
 
 Existing installs need their `abuddy` bin link refreshed (`npm install`, or re-run `npm link` for a global link), because the old link targets `src/cli/index.ts`.
 
-### 3. Pack E2E still depends on the monorepo — ⏸ decision needed
+### 3. Pack E2E still depends on the monorepo — ✅ resolved
+
+**Resolution** (decisions D4/D5, commits `e04f163e7`, `addc756de`, `7e9f3499e`, `225e081cf`):
+- The SDK, CLI and fixture are published packages (`@abuddy/sdk`, `@abuddy/cli`, `@abuddy/testing`). A pack installs them normally, so peers such as `xstate`, `vue` and `zod` install too, and the pack typechecks without mapping anything to the monorepo.
+- `abuddy test` resolves the app from `--app-root`, `--app beta` (the newest AgentBuddy Beta satisfying `hostVersion`, verified against its `.sha256` and cached), `ABUDDY_ROOT`, or the choice saved at the first-run prompt. CI never prompts.
+- It runs the Playwright CLI that the pack's `@abuddy/testing` resolves, not `npx playwright`.
+- `init-tests` adds devDependencies instead of symlinking the SDK.
+
+**Evidence:**
+- `npm run test:packaged-authoring`: tarballs only, temp dir outside the repo, first-run prompt answered through `expect`, 2/2 E2E passed. It fails when the configured-app dependency source is disabled.
+- The example pack's `abuddy test --app-root …` passes 8/8 with no `PATH` edit and no `ABUDDY_ROOT`.
+- CLI unit tests cover resolution order, prompting, saved choices, beta selection, checksum mismatch and caching, and Playwright resolution, each mutation-checked.
+
+The original analysis follows.
 
 Re-verified on HEAD: `abuddy test` requires `ABUDDY_ROOT`, and `@playwright/test` in the example pack is still a symlink into the monorepo. With item 2 fixed, the example pack's `abuddy test` on a clean `PATH` now gets past the CLI and fails at `sh: playwright: command not found`: `test.ts` runs `npx playwright`, and the symlinked package has no `.bin` in the pack. It only worked before because the monorepo's `node_modules/.bin` was on `PATH`. The in-repo fixture passes on a clean `PATH`, because npx finds the repo's Playwright.
 
@@ -192,14 +208,14 @@ Update baselines with `-u`.
 
 Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild, fail-fast, calendar plugin ID).
 
-### New findings from this pass — ⏸ open
+### New findings from this pass — ✅ resolved
 
 | # | Finding | Evidence | Notes |
 |---|---|---|---|
-| N1 | **A freshly scaffolded pack can't build.** `init` declares `"default-setup": "*"`, which can't resolve outside a workspace layout (`abuddy fetch-deps` → `Failed to resolve: default-setup`; the registry lookup is a stub). The template's example flow then fails with `does not provide an export named 'keepAlive'`. Even with a `file:` dependency, the build fails with `No trigger types provided`: external pack builds register only the pack's own step definitions, so a flow using host steps can't compile. | Scaffold in `untracked/`: `abuddy init` + `add feature` → `abuddy build` exit 1 | Design decision: how external packs get dependency snapshots and step definitions at build time. The fixture avoids seeds for now. |
-| N2 | **`abuddy add feature` accepts hyphenated IDs, but the generated TS is invalid** (`settings.ts`: `{ notes-lite: true }`; `system-ids.ts`: `export { notes-lite }`). The manifest schema allows any string. | `add feature notes-lite` → `abuddy build`: `Expected "}" but found "-"` | Decision: restrict IDs to identifiers, or quote and camel-case them throughout codegen. |
-| N3 | **The test packs dir isn't isolated per pack.** Every pack installed in `abuddy-test/packs` loads in every E2E run, and the `abuddy-test` data dir persists across runs. | A stale mutated `abuddy-external` build broke the fixture's run until re-synced; accumulated events caused item 1. Fail-fast is now scoped to the pack under test. | Options include a per-run temp user-data dir for pack E2E. |
-| N4 | **The fixture's `.dev` check looks in the dev packs dir, but the test app reads the test packs dir.** While `abuddy dev` runs, the fixture skips build and sync, so tests use whatever was last synced to `abuddy-test/packs`. | Code reading: `testing/index.ts` (`devSignal` under `getPacksDirForEnv('development')`) vs sync target `getPacksDirForEnv('test')` | Not reproduced by a run. |
+| N1 | **A freshly scaffolded pack can't build.** `init` declares `"default-setup": "*"`, which can't resolve outside a workspace layout (`abuddy fetch-deps` → `Failed to resolve: default-setup`; the registry lookup is a stub). The template's example flow then fails with `does not provide an export named 'keepAlive'`. Even with a `file:` dependency, the build fails with `No trigger types provided`: external pack builds register only the pack's own step definitions, so a flow using host steps can't compile. | Scaffold in `untracked/`: `abuddy init` + `add feature` → `abuddy build` exit 1 | ✅ **Resolved** (`1dee2929d`, `fd096520a`, `e6e219f0f`, `225e081cf`). The scaffold has no dependencies and no example flow, and an unresolvable dependency is a hard build error. Dependencies ship `build/steps.build.mjs`, and `abuddy build` validates flows with the dependency's real step code. The host re-validates at seed time, and invalid flows now record `lastError`, which fails `abuddy test`. Built-in packs resolve from the installed app's `host-packs`, or from the app configured for `abuddy test`. Evidence: the scaffold unit test (init → add feature → build → tsc → pack); the End state script builds and seeds a `keepAlive` flow from `default-setup`. |
+| N2 | **`abuddy add feature` accepts hyphenated IDs, but the generated TS is invalid** (`settings.ts`: `{ notes-lite: true }`; `system-ids.ts`: `export { notes-lite }`). The manifest schema allows any string. | `add feature notes-lite` → `abuddy build`: `Expected "}" but found "-"` | ✅ **Resolved** (`1dee2929d`, D7). Feature IDs must match `^[a-z][a-zA-Z0-9]*$` in the manifest schema and `abuddy add feature`. The scaffold test rejects `my-notes`. |
+| N3 | **The test packs dir isn't isolated per pack.** Every pack installed in `abuddy-test/packs` loads in every E2E run, and the `abuddy-test` data dir persists across runs. | A stale mutated `abuddy-external` build broke the fixture's run until re-synced; accumulated events caused item 1. Fail-fast is now scoped to the pack under test. | ✅ **Resolved** (`c9d886a33`). Each worker gets a fresh `$TMPDIR/abuddy-e2e-*` data dir (`ABUDDY_USER_DATA_DIR`), and only the pack under test is installed in it. Launch-to-connected time is unchanged (~1.45–1.95s). The smoke test asserts the isolation. |
+| N4 | **The fixture's `.dev` check looks in the dev packs dir, but the test app reads the test packs dir.** While `abuddy dev` runs, the fixture skips build and sync, so tests use whatever was last synced to `abuddy-test/packs`. | Code reading: `testing/index.ts` (`devSignal` under `getPacksDirForEnv('development')`) vs sync target `getPacksDirForEnv('test')` | ✅ **Resolved** (`c9d886a33`). The `.dev` shortcut is gone: the fixture always builds and installs the pack. |
 | N5 | ✅ **Resolved.** Month grid showed zero chips when a cell fits one row and holds two or more events. | `MonthGrid.vue` `visibleCount`: capacity 1 → `capacity - 1 = 0` | Single-row cells now render the first event's chip with an inline `+N`. New example-pack E2E test *overflowing month cell still shows an event* passes, and fails when the old rendering is forced. |
 
 ### Secondary review findings (`~/.claude/plans/fix-4-ticklish-crown.md`), re-checked on HEAD
@@ -208,15 +224,44 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 |---|---|
 | F2 | ✅ **Resolved.** `pack-e2e.spec.ts` now runs against a temp dir via `ABUDDY_ENV=test` + `ABUDDY_USER_DATA_DIR`; the hardcoded production packs path and `USER_DATA_PATH` handling are gone. The app-wide resolver makes a test without an environment throw instead of reaching real app data. |
 | F3 | ✅ **Resolved.** Environment and data paths now come from one resolver, `@abuddy/sdk/env` (`resolveAppContext`): explicit input, then `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR`, otherwise it throws. The Electron main process infers the environment once (`packages/main/src/app-context.ts`: Playwright → test; packaged → build-stamped channel, unstamped refuses to start; source run → `ABUDDY_ENV` or development) and passes it to the API process. `build/build.sh` now stamps production builds too. `getPacksDir`, `getPacksDirForEnv`, `getApiPortFile`, `resolveAppEnv`, `resolveAppDataDir` and `USER_DATA_PATH` are removed; `tests/env/identity-guard.spec.ts` fails if they return. |
-| F4 | **Still applies.** `UNBRIDGED_BY_DESIGN` still mixes the policy-only `actions`, which has extensionless relative re-exports, with the true leaves. |
-| F5 | **Still applies.** Nothing asserts that the leaf entries have no imports. |
-| F6 | **Still applies.** `startsWith('@abuddy/sdk/fe')` has no `/` boundary (`sdk-bridge-drift.spec.ts:58,79`). |
-| F7 | **Still applies.** Assertion 3 has no fe filter. |
-| F8 | **Still theoretical.** All 7 wildcard exports are still `./fe/*`. |
-| F9 | **Still applies.** Nothing checks `UNBRIDGED_BY_DESIGN` for staleness. |
-| F10 | **Still applies.** No test asserts the "No machine export found" message. Separately, `pack-loader.spec.ts` fixtures still used the removed `plugins` key, so the CJS-load test failed and five "0 systems" tests passed vacuously. They now use `features`, and all 24 pass. |
-| F11 | **Still applies.** `packages/renderer/src/packs/pack-loader.ts` still does `mod.default \|\| mod` with no warning when an entry registers nothing. |
+| F4 | ✅ **Resolved** (`6f727af82`). `UNBRIDGED_LEAVES` (proven leaves) and `UNBRIDGED_BY_POLICY` (the dev entry must never require them) are separate. |
+| F5 | ✅ **Resolved** (`6f727af82`). A test asserts each leaf has no imports (mutation-checked). |
+| F6 | ✅ **Resolved** (`6f727af82`). `isFeSpecifier` matches `@abuddy/sdk/fe` or `@abuddy/sdk/fe/…` only. |
+| F7 | ✅ **Resolved** (`6f727af82`). The dev-entry assertion applies the same fe filter. |
+| F8 | **Still theoretical.** All wildcard exports are still `./fe/*`. The package build now fails on any export whose target is missing (`addc756de`); that check found and removed a stale `./fe/constants`. |
+| F9 | ✅ **Resolved** (`6f727af82`). Unbridged entries the SDK no longer exports fail the test. `@abuddy/sdk/package.json` is recorded as metadata. |
+| F10 | ✅ **Resolved** (`6f727af82`). `pack-loader.spec.ts` asserts the "No machine export found" diagnostic names the compiled file actually loaded, via `rootEvents.onLog` (mutation-checked). Earlier fix: fixtures use `features`. |
+| F11 | ✅ **Resolved** (`6f727af82`). `loadPackFEEntry` warns when an entry registers nothing and calls out a missing default export. Renderer unit tests run in CI. |
 | — | The stale `exportName` fields in the example pack are gone. |
+
+### Closed by the external pack authoring goal
+
+Branch `AS/external-pack-authoring`. The spec is `docs/issues/goal-external-pack-authoring.md`.
+
+| Phase | Commits |
+|---|---|
+| 0 Release artifact and pipeline | `98f5afc7e`, `545a3d6c4`, `3a36a642f` |
+| 1 Scaffold works | `1dee2929d` |
+| 2 Dependency steps (D1), loud seeds | `fd096520a`, `e6e219f0f` |
+| 3 Packages, publishing, CLI distribution | `e04f163e7`, `addc756de`, `683942c4c` |
+| 4 `abuddy test` without the monorepo | `7e9f3499e` |
+| 5 Test isolation | `c9d886a33` |
+| 6 Hardening | `6f727af82` |
+| End state | `225e081cf` |
+
+**Verification** (2026-09-12, at `225e081cf`):
+- `npm run typecheck` (fe, be, sdk, cli + testing, default-setup) and `npm run typecheck -w @app/main` pass.
+- `schema:check` and `api:check` pass.
+- Unit tests: api 112, default-setup 527 (2 skipped), sdk 132, cli 52, renderer 3 passed. `tests/scripts/release-beta-rule.test.sh`: 5 ok.
+- `npm run test:external-pack`: 2 passed. Monorepo smoke: 5 passed.
+- Example pack `abuddy test --app-root`: 8 passed, including the create/delete round trip and the overflowing month cell.
+- `npm run test:packaged-authoring`: OK.
+
+**Still open:**
+- The CI jobs (`check`, `external-pack-e2e` with the packaged authoring step, `publish-packages.yml`) haven't run on a runner; triggers are manual.
+- No AgentBuddy Beta build with checksums is published yet, so `--app beta` is verified with mocked releases and a local zip only.
+- A local unsigned `electron-builder --dir` package was missing `nanoid` and the API failed to boot. The installed 0.3.14 app has it, and removing this branch's `@abuddy/cli` dependency from `@app/main` doesn't change it. Launching a packaged app from the fixture was exercised up to that point, but not to a passing test. Worth checking with a real `build/build.sh` build before the first beta.
+- "Install 'abuddy' command in PATH" (`packages/main/src/modules/cli-command.ts`) wasn't clicked in a packaged app. The launcher it links is covered by `app-launcher.spec.ts`, and the bundled CLI ran from a packaged app dir with no Node on `PATH`.
 
 ---
 
