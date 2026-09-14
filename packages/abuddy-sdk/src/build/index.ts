@@ -5,7 +5,7 @@ export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult }
 export { compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
-  compileFormatEntry, checkRecordEntities, entryEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
+  compileFormatEntry, checkRecordEntities, recordLabel, entryEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
   type SeedRecord, type CompiledSeedFile, type SeedFieldSource, type SeedFieldSpec, type SeedTreeSpec,
   type GenericSeedEntry, type SeedCompileContext, type SeedCompilerModule,
 } from './seeds/records.ts';
@@ -31,7 +31,7 @@ export type {
 } from './compilers/index.ts';
 
 // Pack preview types
-export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview.ts';
+export type { PackSeedsPreview, PackSeedPreviewItem } from './preview.ts';
 
 // Manifest bridge
 export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';

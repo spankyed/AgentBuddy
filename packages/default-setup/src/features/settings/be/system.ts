@@ -26,25 +26,8 @@ import type { CompiledFAQ } from '@/features/settings/be/faqs';
  * (`null = all items, [] = skip, string[] = filter`) into the `SeedInclude`
  * structure consumed by `seedData`.
  */
-function toSeedInclude(
-  include: {
-    actions: string[] | null;
-    prompts: string[] | null;
-    flows: string[] | null;
-    library: string[] | null;
-    notes: string[] | null;
-    settings: string[] | null;
-  },
-): Record<string, SeedIncludeSet | undefined> {
-  const conv = (v: string[] | null): SeedIncludeSet => (v === null ? true : new Set(v));
-  return {
-    actions: conv(include.actions),
-    prompts: conv(include.prompts),
-    flows: conv(include.flows),
-    library: conv(include.library),
-    notes: conv(include.notes),
-    settings: conv(include.settings),
-  };
+function toSeedInclude(include: Record<string, string[] | null>): Record<string, SeedIncludeSet | undefined> {
+  return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
 type IncomingSettingsEvents =
@@ -57,7 +40,7 @@ type IncomingSettingsEvents =
   | { type: 'SECRETS.CMD.GET_API_KEYS' }
   | { type: 'TEST_CLI_PROVIDER'; provider: string }
   | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
-  | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
+  | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: SettingsData }
   | { type: 'RESET_APP' }
 

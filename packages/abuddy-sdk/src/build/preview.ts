@@ -1,16 +1,14 @@
-export type PackSeedItemKind = 'collection' | 'document' | 'tasklist' | 'task';
-
+/** One item a seed key holds, as the import dialog lists it */
 export interface PackSeedPreviewItem {
+  /** What include sets name it by: a record's first identity field, a flow's name */
   key: string;
   description?: string;
-  kind?: PackSeedItemKind;
+  /** Tree records: how many children it has */
   childCount?: number;
 }
 
+/** The seeded keys of a compiled seeds directory and their items, from its seeds.json */
 export interface PackSeedsPreview {
   directory: string;
   seeds: Record<string, PackSeedPreviewItem[]>;
-  missing: string[];
 }
-
-export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';

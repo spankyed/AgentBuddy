@@ -34,6 +34,11 @@ export default defineConfig((options) => {
     shims: true,
     minify: !isDev,
     external: ['typescript', 'esbuild'],
+    // Bundled CommonJS dependencies require Node builtins (yaml requires 'process'); ESM output has no
+    // require, so give it one, as the CLI bundle does
+    banner: ({ format }) => (format === 'esm'
+      ? { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" }
+      : {}),
     esbuildOptions(esbuildOptions) {
       // Workspace @abuddy/* packages bundle from source (see their package.json exports).
       // Custom conditions replace esbuild's implicit 'module' condition, so keep it.

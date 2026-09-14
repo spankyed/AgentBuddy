@@ -48,8 +48,7 @@
 
           <!-- Count / status -->
           <span class="ml-auto text-xs text-neutral-500">
-            <template v-if="row.missing">not found</template>
-            <template v-else-if="row.isEmpty">no items</template>
+            <template v-if="row.isEmpty">no items</template>
             <template v-else>
               {{ row.selectedCount }} / {{ row.totalCount }} items
             </template>
@@ -72,7 +71,7 @@
             <input
               type="checkbox"
               class="mt-0.5 w-3.5 h-3.5 accent-blue-600"
-              :checked="selection[row.key].includes(item.key)"
+              :checked="(selection[row.key] ?? []).includes(item.key)"
               :disabled="importing"
               @change="emit('toggle-item', { key: row.key, item: item.key })"
             />
@@ -167,26 +166,27 @@ import {
   Library,
   StickyNote,
   Settings,
+  Database,
   ChevronRight,
   ChevronDown,
 } from 'lucide-vue-next'
-import type { PackSeedsPreview, PackSeedType } from '@abuddy/sdk/build'
+import type { PackSeedsPreview } from '@abuddy/sdk/build'
 
 type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'
 
 const props = defineProps<{
   preview: PackSeedsPreview
-  selection: Record<PackSeedType, string[]>
-  expanded: Record<PackSeedType, boolean>
+  selection: Record<string, string[]>
+  expanded: Record<string, boolean>
   importMode: ImportMode
   restartBrain: boolean
   importing: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'toggle-expand', key: PackSeedType): void
-  (e: 'toggle-type-all', key: PackSeedType): void
-  (e: 'toggle-item', payload: { key: PackSeedType; item: string }): void
+  (e: 'toggle-expand', key: string): void
+  (e: 'toggle-type-all', key: string): void
+  (e: 'toggle-item', payload: { key: string; item: string }): void
   (e: 'set-mode', mode: ImportMode): void
   (e: 'toggle-restart-brain'): void
   (e: 'confirm'): void
@@ -200,7 +200,7 @@ const importModes: { value: ImportMode; label: string; description: string }[] =
 ]
 
 interface Row {
-  key: PackSeedType
+  key: string
   label: string
   icon: any
   hint?: string
@@ -209,40 +209,37 @@ interface Row {
   allSelected: boolean
   indeterminate: boolean
   isEmpty: boolean
-  missing: boolean
 }
 
-const TYPE_META: { key: PackSeedType; label: string; icon: any; hint?: string }[] = [
-  { key: 'actions', label: 'Actions', icon: Zap },
-  { key: 'prompts', label: 'Prompts', icon: MessageSquare },
-  {
-    key: 'flows',
-    label: 'Flows',
+// Seed keys the pack's compiled seeds.json lists; known keys get an icon and hint, any other key a generic row
+const KEY_META: Record<string, { icon: any; hint?: string }> = {
+  actions: { icon: Zap },
+  prompts: { icon: MessageSquare },
+  flows: {
     icon: GitBranch,
     hint: 'Flows reference actions and prompts by label. Any referenced action/prompt must already exist in the database (or be imported in the same run) or the flow will be skipped.',
   },
-  { key: 'library', label: 'Library', icon: Library },
-  { key: 'notes', label: 'Notes', icon: StickyNote },
-  { key: 'settings', label: 'Settings', icon: Settings },
-]
+  library: { icon: Library },
+  notes: { icon: StickyNote },
+  settings: { icon: Settings },
+}
+
+const labelOf = (key: string) => key.split(/[-_]/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 
 const rows = computed<Row[]>(() =>
-  TYPE_META.map(meta => {
-    const items = props.preview.seeds[meta.key] ?? []
-    const missing = props.preview.missing?.includes(meta.key) ?? false
+  Object.entries(props.preview.seeds).map(([key, items]) => {
     const totalCount = items.length
-    const selectedCount = props.selection[meta.key].length
+    const selectedCount = (props.selection[key] ?? []).length
     return {
-      key: meta.key,
-      label: meta.label,
-      icon: meta.icon,
-      hint: meta.hint,
+      key,
+      label: labelOf(key),
+      icon: KEY_META[key]?.icon ?? Database,
+      hint: KEY_META[key]?.hint,
       totalCount,
       selectedCount,
       allSelected: totalCount > 0 && selectedCount === totalCount,
       indeterminate: selectedCount > 0 && selectedCount < totalCount,
-      isEmpty: missing || totalCount === 0,
-      missing,
+      isEmpty: totalCount === 0,
     }
   }),
 )

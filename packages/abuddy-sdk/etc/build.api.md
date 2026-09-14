@@ -1572,33 +1572,21 @@ export const PackPermissionSchema: z.ZodEnum<["ears", "llm", "filesystem", "netw
 // @public (undocumented)
 export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
-// @public (undocumented)
-export type PackSeedItemKind = 'collection' | 'document' | 'tasklist' | 'task';
-
-// @public (undocumented)
+// @public
 export interface PackSeedPreviewItem {
-    // (undocumented)
     childCount?: number;
     // (undocumented)
     description?: string;
-    // (undocumented)
     key: string;
-    // (undocumented)
-    kind?: PackSeedItemKind;
 }
 
-// @public (undocumented)
+// @public
 export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
     // (undocumented)
-    missing: string[];
-    // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
 }
-
-// @public (undocumented)
-export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
 
 // @public (undocumented)
 export interface PackSnapshot {
@@ -1651,6 +1639,9 @@ export const promptsCompiler: SpecialtyCompiler<DslCompiled>;
 
 // @public
 export const RECORD_KEYS: ReadonlySet<string>;
+
+// @public
+export function recordLabel(record: SeedRecord, identity?: readonly string[]): string;
 
 // @public (undocumented)
 export function resolveFeatureSettingsFromManifest(manifest: PackManifest, packDir: string): Array<{
@@ -1812,6 +1803,7 @@ export interface SeedIndexEntry {
     // (undocumented)
     count: number;
     identity?: string[];
+    items: PackSeedPreviewItem[];
     // (undocumented)
     key: string;
     seeded: boolean;
@@ -1863,6 +1855,7 @@ export interface SpecialtyCompiler<T = unknown> {
     // (undocumented)
     compile(sourcePath: string, context: SpecialtyCompileContext): Promise<T>;
     count(data: T): number;
+    items(data: T): PackSeedPreviewItem[];
     output?(data: T): unknown;
     // (undocumented)
     validate?(data: T, context: CompilationContext): ValidationResult;

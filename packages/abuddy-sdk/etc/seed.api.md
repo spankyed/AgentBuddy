@@ -28,36 +28,24 @@ export function createSeeder(options: SeederOptions): Seeder;
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
 
-// @public (undocumented)
-export type PackSeedItemKind = 'collection' | 'document' | 'tasklist' | 'task';
-
-// @public (undocumented)
+// @public
 export interface PackSeedPreviewItem {
-    // (undocumented)
     childCount?: number;
     // (undocumented)
     description?: string;
-    // (undocumented)
     key: string;
-    // (undocumented)
-    kind?: PackSeedItemKind;
 }
 
-// @public (undocumented)
+// @public
 export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
     // (undocumented)
-    missing: string[];
-    // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
 }
 
-// @public (undocumented)
-export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
-
-// @public (undocumented)
-export function previewPackSeeds(directory: string, seedKeys?: string[]): PackSeedsPreview;
+// @public
+export function previewPackSeeds(directory: string): PackSeedsPreview;
 
 // @public
 export function recordLabel(record: SeedRecord, identity?: readonly string[]): string;

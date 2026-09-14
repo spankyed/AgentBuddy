@@ -44,7 +44,7 @@ describe('compilePack', () => {
     expect(records[0]).toMatchObject({ entity: 'Memo', title: '2024', pinned: true, body: 'Hello ![pic](media/pic.png)\n', sourceHash: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(records[1].children).toEqual([expect.objectContaining({ entity: 'Memo', title: 'child memo', pinned: false })]);
     expect(fs.readFileSync(path.join(out, 'media/memos/pic.png'), 'utf-8')).toBe('PNG');
-    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3 }] });
+    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
     expect(result.seeds).toEqual({ memos: 3 });
   });
 
@@ -73,7 +73,7 @@ export default ({ path, key }) => fs.readFileSync(path, 'utf-8').trim().split('\
     write('seeds/faqs.json', JSON.stringify([{ question: 'Why?' }]));
     await compile({ faqs: { path: 'seeds/faqs.json', format: 'json' } });
     expect(read('faqs.seed.json').records).toEqual([{ question: 'Why?', sourceHash: expect.any(String) }]);
-    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'faqs', seeded: false, count: 1 }]);
+    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'faqs', seeded: false, count: 1, items: [] }]);
   });
 
   it('compiles seed keys named like PackConfig fields as seeds', async () => {
@@ -94,6 +94,6 @@ export default ({ path, key }) => fs.readFileSync(path, 'utf-8').trim().split('\
     write('seeds/settings.json', JSON.stringify({ theme: 'dark' }));
     await compile({ settings: 'seeds/settings.json' });
     expect(read('settings.seed.json')).toEqual({ theme: 'dark' });
-    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'settings', seeded: true, count: 1 }]);
+    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'settings', seeded: true, count: 1, items: [{ key: 'default-settings', description: 'Application defaults' }] }]);
   });
 });

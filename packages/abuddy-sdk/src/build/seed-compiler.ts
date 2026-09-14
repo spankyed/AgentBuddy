@@ -2,12 +2,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+import type { PackSeedPreviewItem } from './preview.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';
 import { seedFile } from './manifest.ts';
 import type { SeedEntryConfig } from './manifest.ts';
 import {
-  checkRecordEntities, compileFormatEntry, entryEntities, withSourceHashes,
+  checkRecordEntities, compileFormatEntry, entryEntities, recordLabel, withSourceHashes,
   type SeedCompileContext, type SeedRecord,
 } from './seeds/records.ts';
 
@@ -49,6 +50,8 @@ export interface SpecialtyCompiler<T = unknown> {
   output?(data: T): unknown;
   /** Items compiled, for the build summary */
   count(data: T): number;
+  /** The items the import dialog lists, named as include sets name them */
+  items(data: T): PackSeedPreviewItem[];
 }
 
 /** `seeds.json` in the compiled directory: what each seed key holds */
@@ -59,11 +62,13 @@ export interface SeedIndex {
 
 export interface SeedIndexEntry {
   key: string;
-  /** Seeded into the database (compile-only entries, like FAQs, are read by pack code instead) */
+  /** Seeded into the database (a compile-only entry is read by pack code instead) */
   seeded: boolean;
   /** Fields that name a record: include sets and previews use the first */
   identity?: string[];
   count: number;
+  /** Top-level items, named as include sets name them */
+  items: PackSeedPreviewItem[];
 }
 
 export const SEED_INDEX_FILE = 'seeds.json';
@@ -132,6 +137,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
           seeded: true,
           ...((key === 'actions' || key === 'prompts') && { identity: ['label'] }),
           count: specialty.count(data),
+          items: specialty.items(data),
         },
       });
       continue;
@@ -152,15 +158,21 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       continue;
     }
     errors.push(...checkRecordEntities(key, entry, records));
+    const seeded = entryEntities(entry).length > 0 || entry.seeder !== undefined;
     compiled.push({
       key,
       entry,
       output: { records },
       index: {
         key,
-        seeded: entryEntities(entry).length > 0 || entry.seeder !== undefined,
+        seeded,
         ...(entry.identity && { identity: entry.identity }),
         count: countRecords(records),
+        items: !seeded ? [] : records.map((record) => ({
+          key: recordLabel(record, entry.identity),
+          ...(typeof record.description === 'string' && { description: record.description }),
+          ...(record.children && { childCount: record.children.length }),
+        })),
       },
     });
   }

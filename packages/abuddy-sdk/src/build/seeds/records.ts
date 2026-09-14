@@ -42,6 +42,12 @@ export interface SeedCompileContext {
 
 export type SeedCompilerModule = (context: SeedCompileContext) => SeedRecord[] | Promise<SeedRecord[]>;
 
+/** A record's label: what include sets and previews name it by */
+export function recordLabel(record: SeedRecord, identity: readonly string[] = []): string {
+  const field = identity.find((name) => name !== 'parent');
+  return String((field ? record[field] : undefined) ?? record.name ?? record.title ?? record.label ?? '');
+}
+
 /** The entity types an entry seeds */
 export function entryEntities(entry: GenericSeedEntry): string[] {
   const own = entry.entity === undefined ? [] : Array.isArray(entry.entity) ? entry.entity : [entry.entity];

@@ -25,6 +25,11 @@ interface DslCompiled {
   errors: string[];
 }
 
+const labelledItems = (data: DslCompiled) => data.records.map((record) => ({
+  key: record.label,
+  ...(record.description && { description: record.description }),
+}));
+
 export const actionsCompiler: SpecialtyCompiler<DslCompiled> = {
   async compile(dir) {
     const compiled = await compileSourceDir(dir, {
@@ -37,6 +42,7 @@ export const actionsCompiler: SpecialtyCompiler<DslCompiled> = {
   collectErrors: (data) => data.errors,
   output: (data) => ({ records: data.records }),
   count: (data) => data.records.length,
+  items: labelledItems,
 };
 
 export const promptsCompiler: SpecialtyCompiler<DslCompiled> = {
@@ -51,6 +57,7 @@ export const promptsCompiler: SpecialtyCompiler<DslCompiled> = {
   collectErrors: (data) => data.errors,
   output: (data) => ({ records: data.records }),
   count: (data) => data.records.length,
+  items: labelledItems,
 };
 
 export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
@@ -72,6 +79,10 @@ export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
 
   output: (flows) => (Object.keys(flows).length > 0 ? hashFlows(flows) : {}),
   count: (flows) => Object.keys(flows).length,
+  items: (flows) => Object.entries(flows).map(([name, flow]) => {
+    const description: unknown = Array.isArray(flow) ? undefined : (flow as { description?: unknown }).description;
+    return { key: name, ...(typeof description === 'string' && { description }) };
+  }),
 };
 
 /** The pack's base settings file merged with each feature's settings */
@@ -84,6 +95,7 @@ export const settingsCompiler: SpecialtyCompiler<Record<string, unknown>> = {
     return merged;
   },
   count: () => 1,
+  items: () => [{ key: 'default-settings', description: 'Application defaults' }],
 };
 
 /** Seed keys the SDK compiles itself */

@@ -175,7 +175,6 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
-import type { PackSeedType } from '@abuddy/sdk/build'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 
@@ -237,15 +236,15 @@ async function selectDirectory() {
   actor.send({ type: 'PACK_SEEDS.PREVIEW', directory: result })
 }
 
-function onToggleExpand(key: PackSeedType) {
+function onToggleExpand(key: string) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_EXPAND', key })
 }
 
-function onToggleTypeAll(key: PackSeedType) {
+function onToggleTypeAll(key: string) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_TYPE_ALL', key })
 }
 
-function onToggleItem(payload: { key: PackSeedType; item: string }) {
+function onToggleItem(payload: { key: string; item: string }) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_ITEM', key: payload.key, item: payload.item })
 }
 

@@ -10,7 +10,7 @@ import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInf
 import { trpc } from '@abuddy/sdk/rpc'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
-import type { PackSeedsPreview, PackSeedType } from '@abuddy/sdk/build'
+import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { CompiledFAQ } from '@/features/settings/be/faqs';
 
 /* ─────────────────────────────────────────────────────────── */
@@ -27,32 +27,24 @@ export interface PackSeedsImport {
   status: 'idle' | 'previewing' | 'selecting' | 'importing' | 'success' | 'error';
   directory: string | null;
   preview: PackSeedsPreview | null;
-  /** Per-type selection: array of keys currently ticked. */
-  selection: Record<PackSeedType, string[]>;
-  /** Which type rows are currently expanded in the UI. */
-  expanded: Record<PackSeedType, boolean>;
+  /** Per seed key (as the preview lists them): the item keys currently ticked. */
+  selection: Record<string, string[]>;
+  /** Which seed key rows are currently expanded in the UI. */
+  expanded: Record<string, boolean>;
   importMode: ImportMode;
   restartBrain: boolean;
   result: any | null;
   error: string | null;
 }
 
-// Read-only templates. Consumers must use `freshPackSeeds()` (or spread)
-// so the module-level defaults stay pristine.
-const EMPTY_SELECTION: Record<PackSeedType, string[]> = {
-  actions: [], prompts: [], flows: [], library: [], notes: [], settings: [],
-};
-const COLLAPSED: Record<PackSeedType, boolean> = {
-  actions: false, prompts: false, flows: false, library: false, notes: false, settings: false,
-};
 
 function freshPackSeeds(): PackSeedsImport {
   return {
     status: 'idle',
     directory: null,
     preview: null,
-    selection: { ...EMPTY_SELECTION },
-    expanded: { ...COLLAPSED },
+    selection: {},
+    expanded: {},
     importMode: 'replace-on-collision',
     restartBrain: false,
     result: null,
@@ -83,9 +75,9 @@ type UIEvent =
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
   | { type: 'PACK_SEEDS.PREVIEW'; directory: string }
-  | { type: 'PACK_SEEDS.TOGGLE_EXPAND'; key: PackSeedType }
-  | { type: 'PACK_SEEDS.TOGGLE_TYPE_ALL'; key: PackSeedType }
-  | { type: 'PACK_SEEDS.TOGGLE_ITEM'; key: PackSeedType; item: string }
+  | { type: 'PACK_SEEDS.TOGGLE_EXPAND'; key: string }
+  | { type: 'PACK_SEEDS.TOGGLE_TYPE_ALL'; key: string }
+  | { type: 'PACK_SEEDS.TOGGLE_ITEM'; key: string; item: string }
   | { type: 'PACK_SEEDS.SET_MODE'; mode: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace' }
   | { type: 'PACK_SEEDS.TOGGLE_RESTART_BRAIN' }
   | { type: 'PACK_SEEDS.CONFIRM_IMPORT' }
@@ -251,8 +243,8 @@ const settingsState = setup({
           status: 'previewing' as const,
           directory: ev.directory,
           preview: null,
-          selection: { ...EMPTY_SELECTION },
-          expanded: { ...COLLAPSED },
+          selection: {},
+          expanded: {},
           result: null,
           error: null,
         },
@@ -261,21 +253,14 @@ const settingsState = setup({
 
     setPackSeedsPreview: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview };
-      const selection: Record<PackSeedType, string[]> = {
-        actions: (ev.preview.seeds.actions ?? []).map(i => i.key),
-        prompts: (ev.preview.seeds.prompts ?? []).map(i => i.key),
-        flows: (ev.preview.seeds.flows ?? []).map(i => i.key),
-        library: (ev.preview.seeds.library ?? []).map(i => i.key),
-        notes: (ev.preview.seeds.notes ?? []).map(i => i.key),
-        settings: (ev.preview.seeds.settings ?? []).map(i => i.key),
-      };
+      const selection = Object.fromEntries(Object.entries(ev.preview.seeds).map(([key, items]) => [key, items.map(i => i.key)]));
       return {
         packSeedsImport: {
           ...context.packSeedsImport,
           status: 'selecting' as const,
           preview: ev.preview,
           selection,
-          expanded: { ...COLLAPSED },
+          expanded: {},
           result: null,
           error: null,
         },
@@ -296,7 +281,7 @@ const settingsState = setup({
     }),
 
     togglePackSeedsExpand: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.TOGGLE_EXPAND'; key: PackSeedType };
+      const ev = event as { type: 'PACK_SEEDS.TOGGLE_EXPAND'; key: string };
       return {
         packSeedsImport: {
           ...context.packSeedsImport,
@@ -309,10 +294,10 @@ const settingsState = setup({
     }),
 
     togglePackSeedsTypeAll: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.TOGGLE_TYPE_ALL'; key: PackSeedType };
+      const ev = event as { type: 'PACK_SEEDS.TOGGLE_TYPE_ALL'; key: string };
       const preview = context.packSeedsImport.preview;
       if (!preview) return {};
-      const currentlySelected = context.packSeedsImport.selection[ev.key];
+      const currentlySelected = context.packSeedsImport.selection[ev.key] ?? [];
       const allKeys = (preview.seeds[ev.key] ?? []).map(i => i.key);
       const nextSelection = currentlySelected.length === allKeys.length ? [] : allKeys;
       return {
@@ -327,8 +312,8 @@ const settingsState = setup({
     }),
 
     togglePackSeedsItem: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.TOGGLE_ITEM'; key: PackSeedType; item: string };
-      const current = context.packSeedsImport.selection[ev.key];
+      const ev = event as { type: 'PACK_SEEDS.TOGGLE_ITEM'; key: string; item: string };
+      const current = context.packSeedsImport.selection[ev.key] ?? [];
       const next = current.includes(ev.item)
         ? current.filter(k => k !== ev.item)
         : [...current, ev.item];
@@ -347,12 +332,11 @@ const settingsState = setup({
       const { directory, preview, selection, importMode, restartBrain } = context.packSeedsImport;
       if (!directory || !preview) return {};
 
-      // null = import all items of this type, [] = skip, string[] = filter.
-      // A zero-total type (missing from the pack, or simply empty) should be
-      // skipped — not treated as "import everything".
-      const toIncludeField = (key: PackSeedType): string[] | null => {
-        const selected = selection[key];
-        const total = (preview.seeds[key] ?? []).length;
+      // null = import all items of this key, [] = skip, string[] = filter.
+      // An empty key should be skipped — not treated as "import everything".
+      const toIncludeField = (key: string): string[] | null => {
+        const selected = selection[key] ?? [];
+        const total = preview.seeds[key].length;
         if (total === 0) return [];
         return selected.length === total ? null : selected;
       };
@@ -361,14 +345,7 @@ const settingsState = setup({
         systemId: id,
         type: 'IMPORT_PACK_SEEDS',
         directory,
-        include: {
-          actions: toIncludeField('actions'),
-          prompts: toIncludeField('prompts'),
-          flows: toIncludeField('flows'),
-          library: toIncludeField('library'),
-          notes: toIncludeField('notes'),
-          settings: toIncludeField('settings'),
-        },
+        include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
         mode: importMode,
         restartBrain,
       } as any);

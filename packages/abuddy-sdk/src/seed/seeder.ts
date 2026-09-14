@@ -9,7 +9,7 @@ import { createEntityWithDefaults, updateEntity } from '../ears/transaction-help
 import { findAll, findByIdRaw, findWhere } from '../ears/query-helpers.ts';
 import { getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
-import { RECORD_KEYS, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
+import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
 import { seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
 
 export interface SeederOptions {
@@ -24,12 +24,6 @@ export interface SeederOptions {
 
 const DEFAULT_REL_KIND = 'contains';
 const MEDIA_LINK_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
-
-/** A record's label: what include sets and previews name it by */
-export function recordLabel(record: SeedRecord, identity: readonly string[] = []): string {
-  const field = identity.find((name) => name !== 'parent');
-  return String((field ? record[field] : undefined) ?? record.name ?? record.title ?? record.label ?? '');
-}
 
 function fieldsOf(record: SeedRecord): Record<string, unknown> {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !RECORD_KEYS.has(key)));
