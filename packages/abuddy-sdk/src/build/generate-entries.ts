@@ -526,6 +526,8 @@ ${regProps.join('\n')}
 
   // ── Registries ────────────────────────────────────────────────
 
+  // The generated PackShapes, EntityName and Node override are part of the typed EARS contract
+  // (packages/abuddy-sdk/TYPED-EARS.md)
   function generateEars(): string {
     let depTypes = opts.depTypes;
     if (!depTypes) {

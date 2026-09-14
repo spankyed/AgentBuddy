@@ -2,6 +2,8 @@
  * The entity types and relation kinds the SDK owns: the EARS engine's own (Relation) and the flow
  * model the SDK's flow compiler, flow seeders and steps API are written against. Every pack has
  * them, and no pack declares them. The generator, the manifest schema and the host all read this module.
+ *
+ * The shapes here are part of the typed EARS contract (packages/abuddy-sdk/TYPED-EARS.md).
  */
 import type { BaseEntity, EARS } from './entities.ts';
 import type { TNodeEntity } from '../steps/types.ts';

@@ -10,6 +10,10 @@
  *             The SDK owns Relation and the flow model (sdk-entities.ts).
  *   RelKind — packs declare relation kinds; the SDK owns the flow model's,
  *             plus the Custom() helper and open type.
+ *
+ * CHANGE CONTROL: these types are a specified contract, and editor completions and error messages
+ * depend on their exact form. Don't change them to make one call site compile; fix the call site.
+ * Read packages/abuddy-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
  *───────────────────────────────────────────────────────────────────────────*/
 import { SDK_ENTITIES, SDK_REL_KINDS } from './sdk-entities.ts';
 

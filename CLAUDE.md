@@ -99,6 +99,8 @@ When adding new utils, put pure functions in the appropriate file under `utils/`
 
 When adding new EARS or FE exports, put them in the correct barrel. Tag exports only the host uses `@internal`. After changing public exports, run `npm run api:update` in `packages/abuddy-sdk` (or `packages/abuddy-ui`) and commit the updated `etc/*.api.md` reports. A UI component's props, emits, slots and exposed members are reported in `etc/<entry>.component.md`, so changing them needs `api:update` too. The pack-facing SDK exposes no `any` (`published-sdk-any.spec.ts` fails when an export does; use `unknown` or a generic); `@abuddy/sdk` and `@abuddy/ui` support TypeScript 5.3 and later.
 
+**Typed EARS types are change-controlled.** `types/entities.ts`, `ears/runtime.ts`, `ears/typed.ts`, `types/sdk-entities.ts` and the generated `PackShapes`/`EntityName` are a specified contract that editor completions depend on. Don't widen or rewrap them to make a call site compile; fix the call site (explicit shape, `EntityName` constraint, the untyped `qx` from `@abuddy/host/ears`). Read `packages/abuddy-sdk/TYPED-EARS.md` and follow its checklist, including checking completions, before any change.
+
 ### Data layer (EARS)
 
 Custom entity-attribute-relation graph database backed by LMDB. All data lives in memory.

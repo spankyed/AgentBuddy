@@ -4,6 +4,10 @@
  * Holds injectable state (persistence sink, entity type checker) that the
  * host (api) provides at boot via initEARSRuntime(). The in-memory engine
  * and helpers import getters from here to access host-provided services.
+ *
+ * CHANGE CONTROL: these types are a specified contract, and editor completions and error messages
+ * depend on their exact form. Don't change them to make one call site compile; fix the call site.
+ * Read packages/abuddy-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
  */
 import type { EARS, EntityNameArg, EntityShapes, ShapeOf } from '../types/entities.ts';
 
@@ -60,6 +64,12 @@ type NoInferType<T> = [T][T extends unknown ? 0 : never];
  * `S` is the entity shape map reads are typed against and `N` the entity names accepted as
  * arguments: `{}` and `string` (unchecked) from `@abuddy/sdk/ears`, the pack's `PackShapes` and
  * `EntityName` from its `#generated/ears`.
+ *
+ * Field parameters stay `keyof ShapeOf<S, E> & string` and picked rows `Pick<ShapeOf<S, E>, K>`:
+ * that form is what gives editors field completions and lists the valid fields in a typo's error.
+ * Wrapping them in conditional or mapped types keeps everything compiling and passing type tests
+ * while breaking completions (TYPED-EARS.md, Incidents). For a union shape (Node rows) only shared
+ * fields are accepted; a query over member-specific or runtime fields uses the untyped host `qx`.
  */
 export interface QueryBuilder<E extends string = string, S extends EntityShapes = {}, N extends string = string> {
   ofType<T extends string>(t: EntityNameArg<N, T>): QueryBuilder<T, S, N>;

@@ -3,6 +3,12 @@
  * to get them: `abuddy generate-entries` writes `#generated/ears` with
  * `defineEars<PackShapes>()` (the pack's entities plus its dependencies'). There is no
  * global registry, so each pack's typing depends only on what it declares.
+ *
+ * CHANGE CONTROL: these types are a specified contract, and editor completions and error messages
+ * depend on their exact form. Don't change them to make one call site compile; fix the call site.
+ * Read packages/abuddy-sdk/TYPED-EARS.md (the contract and the pre-change checklist) first.
+ * Overload order here is part of the contract: a signature that accepts more than the one before
+ * it lets a call that should fail (a typo'd name or field) fall through to it.
  */
 import type { EARS, EntityNameArg, EntityShapes, ShapeOf } from '../types/entities.ts';
 import type { QueryBuilder, TransactionBuilder } from './runtime.ts';
