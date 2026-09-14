@@ -35,7 +35,7 @@ export default defineConfig(async () => {
       testTimeout: 120_000,
       env: { ABUDDY_ENV: 'test', ABUDDY_USER_DATA_DIR: userDataDir },
       globalSetup: ['./tests/global-teardown.ts'],
-      setupFiles: ['./tests/setup.ts'],
+      setupFiles: ['./tests/worker-data-dir.ts', './tests/setup.ts'],
     },
   };
 });

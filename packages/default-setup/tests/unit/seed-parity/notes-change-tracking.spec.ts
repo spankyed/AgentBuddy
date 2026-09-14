@@ -7,15 +7,15 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compileFormatEntry, type GenericSeedEntry, type SeedRecord } from '@abuddy/sdk/build';
+import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { dropAttr, getAllEntities, qx } from '@abuddy/host/ears';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
-/** default-setup's notes seed entry; the test setup registers its Note seed hooks with the pack */
-const NOTES_ENTRY = manifest.boot.seed.notes as GenericSeedEntry;
+/** default-setup's notes format; the test setup registers its Note seed hooks with the pack */
+const NOTES_FORMAT = manifest.seedFormats.notes as SeedFormatConfig;
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
 const golden = (scenario: string) => JSON.parse(fs.readFileSync(path.join(GOLDEN_DIR, `${scenario}.json`), 'utf-8'));
@@ -27,7 +27,7 @@ function compile(sources: 'v1' | 'v2' | 'default-setup') {
     const source = sources === 'default-setup'
       ? path.join(PACK_DIR, 'src/seeds/notes')
       : path.join(FIXTURES, sources, 'notes');
-    const records = compileFormatEntry('notes', NOTES_ENTRY, source);
+    const records = compileBuiltinFormat('notes', NOTES_FORMAT, source);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-seed-'));
     dirs.push(dir);
     fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records }));
@@ -40,7 +40,7 @@ afterAll(() => {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-const seeder = createSeeder({ key: 'notes', identity: NOTES_ENTRY.identity, relKind: NOTES_ENTRY.tree?.relKind });
+const seeder = createSeeder({ key: 'notes', identity: NOTES_FORMAT.identity, relKind: NOTES_FORMAT.tree?.relKind });
 function seedNotes(sources: 'v1' | 'v2' | 'default-setup', options: { mode?: ImportMode; include?: SeedIncludeSet } = {}): SeedCounts {
   return seeder.seed({ compiledDir: compile(sources).dir, mode: options.mode, include: options.include, log: () => {} });
 }

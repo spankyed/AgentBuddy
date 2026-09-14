@@ -11,47 +11,11 @@
     "seed": {
       "team-notes": {
         "path": "src/seeds/team-notes",
-        "format": "markdown-tree",
-        "entity": "Note",
-        "identity": [
-          "title",
-          "parent"
-        ],
-        "tree": {
-          "branch": "index.md",
-          "relKind": "contains"
-        },
-        "fields": {
-          "title": {
-            "from": "frontmatter.title",
-            "default": "filename",
-            "type": "string"
-          },
-          "noteType": {
-            "from": "frontmatter.type",
-            "default": "document"
-          },
-          "icon": {
-            "from": "frontmatter.icon",
-            "default": null,
-            "type": "string"
-          },
-          "favorite": {
-            "from": "frontmatter.favorite",
-            "default": false
-          },
-          "hideCompletedChildren": {
-            "from": "frontmatter.hideCompletedChildren",
-            "default": false
-          },
-          "completed": {
-            "from": "frontmatter.completed",
-            "default": false
-          },
-          "content": {
-            "from": "body"
-          }
-        }
+        "format": "default-setup:notes"
+      },
+      "team-docs": {
+        "path": "src/seeds/team-docs",
+        "format": "default-setup:library"
       }
     }
   }

@@ -5,7 +5,7 @@
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
 import { EARS, findWhere } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { ContentSection } from './types';
+import type { ContentSection } from '@/features/library/be/types';
 
 export interface DocumentSeedRecord extends SeedRecord {
   name: string;
