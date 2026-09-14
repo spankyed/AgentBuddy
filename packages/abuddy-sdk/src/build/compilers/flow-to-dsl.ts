@@ -3,7 +3,7 @@ import { edgeStore } from '../../ears/edge-store.ts';
 import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
 import { stepRegistry } from '../../steps/index.ts';
 import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
-import type { FlowEARS } from './flow-compiler.ts';
+import { EARS } from '../../types/entities.ts';
 
 interface DecompileGraphCtx {
   nodes: any[];
@@ -18,14 +18,13 @@ interface DecompileGraphCtx {
 }
 
 export interface ExportFlowsOptions {
-  ears: FlowEARS;
   rootFlowRole: string;
   flowIds?: string[];
 }
 
-function getFlowNodes(flowId: string, ears: FlowEARS): any[] {
+function getFlowNodes(flowId: string): any[] {
   const nodeIds = qx(flowId)
-    .links(ears.RelKind.CONTAINS, ears.Entity.Node)
+    .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }: any) => id);
 
   const nodes = qx(nodeIds).pickAll();
@@ -34,14 +33,14 @@ function getFlowNodes(flowId: string, ears: FlowEARS): any[] {
     const rel = stepRegistry.getBuild(node.nodeType)?.relation;
     if (!rel) return node;
     const linkedId = qx(node.id)
-      .links(ears.RelKind.INSTANCE_OF)
+      .links(EARS.RelKind.INSTANCE_OF)
       .map(({ id }: any) => id)[0];
     return linkedId ? { ...node, [rel.field]: linkedId } : node;
   });
 }
 
-function getFlowEdges(flowId: string, ears: FlowEARS): any[] {
-  const nodes = getFlowNodes(flowId, ears);
+function getFlowEdges(flowId: string): any[] {
+  const nodes = getFlowNodes(flowId);
   const nodeIds = nodes.map((n: any) => n.id).filter(Boolean);
 
   const seen = new Set<string>();
@@ -49,7 +48,7 @@ function getFlowEdges(flowId: string, ears: FlowEARS): any[] {
 
   for (const source of nodeIds) {
     qx(source)
-      .links([ears.RelKind.TRANSITIONS_TO], [ears.Entity.Node])
+      .links([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
       .filter(({ id: targetId }: any) => nodeIds.includes(targetId))
       .forEach(({ relation, id: target }: any) => {
         const relId = edgeStore.relIds({
@@ -309,10 +308,9 @@ function decompileFlow(
   actionMap: Map<string, string>,
   promptMap: Map<string, string>,
   flowMap: Map<string, string>,
-  ears: FlowEARS,
 ): { name: string; tracks: Track[] } {
-  const nodes = getFlowNodes(flow.id, ears);
-  const edges = getFlowEdges(flow.id, ears);
+  const nodes = getFlowNodes(flow.id);
+  const edges = getFlowEdges(flow.id);
   const tracks = buildTracksFromGraph(nodes, edges, actionMap, promptMap, flowMap);
   return { name: flow.label, tracks };
 }
@@ -326,10 +324,10 @@ export function exportFlowsToDSL(
   options: ExportFlowsOptions,
   versioned = true,
 ): { filePath: string; flowCount: number } {
-  const { ears, rootFlowRole, flowIds } = options;
+  const { rootFlowRole, flowIds } = options;
 
-  const actions = qx(ears.Entity.Action).pickAll() as any[];
-  const prompts = qx(ears.Entity.Prompt).pickAll() as any[];
+  const actions = qx(EARS.Entity.Action).pickAll() as any[];
+  const prompts = qx(EARS.Entity.Prompt).pickAll() as any[];
 
   const actionMap = new Map<string, string>();
   for (const action of actions) actionMap.set(action.id, action.label);
@@ -337,7 +335,7 @@ export function exportFlowsToDSL(
   const promptMap = new Map<string, string>();
   for (const prompt of prompts) promptMap.set(prompt.id, prompt.label);
 
-  let flows = qx(ears.Entity.Flow).pickAll() as any[];
+  let flows = qx(EARS.Entity.Flow).pickAll() as any[];
   if (flowIds) {
     const idSet = new Set(flowIds);
     flows = flows.filter((f: any) => idSet.has(f.id));
@@ -352,7 +350,7 @@ export function exportFlowsToDSL(
   let exported = 0;
 
   for (const flow of flows) {
-    const { name, tracks } = decompileFlow(flow, actionMap, promptMap, flowMap, ears);
+    const { name, tracks } = decompileFlow(flow, actionMap, promptMap, flowMap);
     if (tracks.length === 0) continue;
 
     if (flow.id === rootFlowId) {

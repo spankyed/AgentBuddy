@@ -8,7 +8,4 @@ export { createBootSeed, type BootSeedConfig } from './boot-seed.ts';
 export { previewPackSeeds } from './preview.ts';
 export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType, PackSeedItemKind } from './preview.ts';
 
-export const STANDARD_SEED_DEFAULTS: Record<string, { entityType: string; lookupField: string }> = {
-  actions: { entityType: 'Action', lookupField: 'label' },
-  prompts: { entityType: 'Prompt', lookupField: 'label' },
-};
+export { STANDARD_SEED_DEFAULTS } from './standard-seeds.ts';

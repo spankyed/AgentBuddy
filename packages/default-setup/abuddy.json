@@ -13,9 +13,6 @@
     "Message": "Message",
     "Artifact": "Artifact",
     "Brain": "Brain",
-    "Flow": "Flow",
-    "Node": "Node",
-    "TNode": "TNode",
     "Document": "Document",
     "Collection": "Collection",
     "SearchIndex": "SearchIndex",
@@ -27,29 +24,20 @@
     "FAQ": "FAQ",
     "BrowserTab": "BrowserTab",
     "BrowserBookmark": "BrowserBookmark",
-    "Note": "Note",
-    "Action": "Action",
-    "Prompt": "Prompt"
+    "Note": "Note"
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
-    "CONTAINS": "contains",
     "REPLIED_TO": "replied_to",
     "HAS": "has",
     "BLOCKS": "blocks",
     "DEPENDS_ON": "depends_on",
     "RELATES_TO": "relates_to",
     "DUPLICATES": "duplicates",
-    "TRANSITIONS_TO": "transitions_to",
-    "EMITS": "emits",
-    "INSTANCE_OF": "instance_of",
-    "SPAWNED": "spawned",
-    "TRACKED": "tracked"
+    "EMITS": "emits"
   },
   "partitionPolicy": {
-    "excludedEntityTypes": [
-      "TNode"
-    ],
+    "excludedEntityTypes": [],
     "secretEntityTypes": [
       "Secret"
     ]
@@ -332,14 +320,6 @@
     }
   },
   "entityShapes": {
-    "Action": {
-      "source": "src/features/actions/be/types.ts",
-      "type": "ActionEntity"
-    },
-    "Prompt": {
-      "source": "src/features/prompts/be/types.ts",
-      "type": "PromptEntity"
-    },
     "Thread": {
       "source": "src/features/threads/be/types.ts",
       "type": "ThreadEntity"
@@ -347,10 +327,6 @@
     "Message": {
       "source": "src/features/threads/be/types.ts",
       "type": "MessageEntity"
-    },
-    "Flow": {
-      "source": "src/features/flows/be/types.ts",
-      "type": "FlowEntity"
     },
     "Document": {
       "source": "src/features/library/be/types.ts",

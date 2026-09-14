@@ -6,7 +6,7 @@ export { safeEvents, emit } from './helpers/index.ts';
 export type { Simplify } from './helpers/index.ts';
 
 // Types
-export { EARS, type BaseEntity, type RelationEntity } from './types/index.ts';
+export { EARS, type BaseEntity, type RelationEntity, type FlowEntity, type ActionEntity, type PromptEntity, type SdkEntityShapes } from './types/index.ts';
 
 // Designations
 export { registerDesignations, getDesignated, hasDesignation } from './designations/index.ts';

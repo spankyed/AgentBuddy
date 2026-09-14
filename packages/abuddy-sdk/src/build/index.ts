@@ -28,7 +28,7 @@ export type {
   FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
   FlowEntity, NodeBase, EdgeEntity,
   CompilerContext, CompiledFlow, CompiledEntity, CompiledRelation, CompiledRole,
-  FlowEARS, CompiledRows, ExportFlowsOptions,
+  CompiledRows, ExportFlowsOptions,
   ContentSection, ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
   ExportedLibrary,
   ExportedNote, ExportedNotes,

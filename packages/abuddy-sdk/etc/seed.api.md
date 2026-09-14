@@ -27,7 +27,7 @@ export function createCollectionSeeder(config: {
 }): Seeder;
 
 // @public (undocumented)
-export function createFlowSeeder(ears?: FlowEARS): Seeder;
+export function createFlowSeeder(): Seeder;
 
 // @public (undocumented)
 export function createLibrarySeeder(ears?: {
@@ -94,7 +94,7 @@ export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes'
 // @public (undocumented)
 export function previewPackSeeds(directory: string, seedKeys?: string[]): PackSeedsPreview;
 
-// @public (undocumented)
+// @public
 export const STANDARD_SEED_DEFAULTS: Record<string, {
     entityType: string;
     lookupField: string;

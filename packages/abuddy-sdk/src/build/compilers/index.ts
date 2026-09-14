@@ -24,7 +24,7 @@ export { validate as validateFlowDSL } from './flow-dsl-validator.ts';
 
 // Flow compiler
 export { compile as compileFlowDSL } from './flow-compiler.ts';
-export type { FlowEARS, CompiledRows } from './flow-compiler.ts';
+export type { CompiledRows } from './flow-compiler.ts';
 
 // Flow-to-DSL export (decompiler)
 export { exportFlowsToDSL } from './flow-to-dsl.ts';

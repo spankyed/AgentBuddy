@@ -178,10 +178,10 @@ To get typed attributes on entities, declare shapes in the manifest:
 }
 ```
 
-The shapes (yours plus your dependencies') type the query helpers that
-`#generated/ears` exports: `qx`, `findById`, `findAll`, `findWhere`, `findFirst`,
+The shapes (yours, your dependencies' and the SDK's) type the query helpers that
+`#generated/ears` exports: `qx`, `tx`, `findById`, `findAll`, `findWhere`, `findFirst`,
 `findWithFields`, `findWithRole`, `createEntity`, `createEntityWithDefaults`, `updateEntity`,
-`getAttr` and `getAttrs`. `@abuddy/sdk/ears` doesn't export untyped versions. A shape the
+`getAttr` and `getAttrs`. Of these, `@abuddy/sdk/ears` exports only `tx`, unchecked. A shape the
 build can't find (a wrong `source` or `type`) fails the build. Queries seeded with a declared
 entity type are checked against its shape:
 
@@ -260,7 +260,10 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
 ### Constraints
 
 - Entity types and relation kinds must be globally unique across all installed packs.
-- `Relation` is the SDK's own entity (every link is stored as one). Every pack has it, typed as `RelationEntity`, and no pack declares it.
+- The SDK owns a few entity types and relation kinds, which every pack has and none declares:
+  - `Relation`: every link between entities is stored as one (`RelationEntity`).
+  - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `TNodeEntity`, `ActionEntity`, `PromptEntity`; a `Node`'s shape is your pack's step node types), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
+  - `TNode` rows are execution records and are never persisted.
 - External packs cannot use `partitionPolicy` (entity routing to excluded/secrets stores is reserved for the built-in pack).
 
 ---

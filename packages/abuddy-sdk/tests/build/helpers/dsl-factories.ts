@@ -1,5 +1,4 @@
 import type { FlowDSL } from '../../../src/build/compilers/flow-types.ts';
-import type { FlowEARS } from '../../../src/build/compilers/flow-compiler.ts';
 import { compile } from '../../../src/build/compilers/flow-compiler.ts';
 import { findEntity } from './compiled-result.ts';
 
@@ -26,12 +25,12 @@ export function makeSwitchDSL(
 }
 
 /** Compile a switch with a single condition and return its parsed predicate */
-export function parsedPredicate(expr: string, ears: FlowEARS) {
+export function parsedPredicate(expr: string) {
   const dsl = wrapInFlow([{
     type: 'switch',
     conditions: [{ if: expr, steps: [{ type: 'action', action: 'x' }] }],
   }]);
-  const result = compile(dsl, ears);
+  const result = compile(dsl);
   const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
   return switchNode.conditions[0].predicate;
 }

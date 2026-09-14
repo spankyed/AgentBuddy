@@ -96,7 +96,11 @@ export namespace EARS {
     const // (undocumented)
     Entity: {
         readonly Relation: "Relation";
+        readonly Flow: "Flow";
         readonly Node: "Node";
+        readonly TNode: "TNode";
+        readonly Action: "Action";
+        readonly Prompt: "Prompt";
     };
     // (undocumented)
     export interface AttributePayloads {
@@ -111,8 +115,12 @@ export namespace EARS {
     export type AttributeStore = Record<string, AttributeTypeMap>;
     const // (undocumented)
     RelKind: {
-        readonly INSTANCE_OF: "instance_of";
         readonly Custom: <T extends string>(k: T) => T & RelKind;
+        readonly CONTAINS: "contains";
+        readonly TRANSITIONS_TO: "transitions_to";
+        readonly INSTANCE_OF: "instance_of";
+        readonly SPAWNED: "spawned";
+        readonly TRACKED: "tracked";
     };
     // (undocumented)
     export type AttributeType = AttrKind;

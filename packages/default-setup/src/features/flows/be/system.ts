@@ -371,7 +371,7 @@ export const flowsSystem = setup({
       const promptMap = new Map<string, string>(prompts.map((p: PromptEntity) => [p.label, p.id]));
 
       // Compile DSL
-      const compiled = compileFlowDSL(dsl as FlowDSL, { Entity: EARS.Entity, RelKind: EARS.RelKind }, {
+      const compiled = compileFlowDSL(dsl as FlowDSL, {
         actions: actionMap,
         prompts: promptMap,
       });
@@ -413,7 +413,6 @@ export const flowsSystem = setup({
 
       try {
         const { filePath, flowCount } = exportFlowsToDSL(directory, {
-          ears: { Entity: EARS.Entity, RelKind: EARS.RelKind },
           rootFlowRole: FLOW_ROLES.ROOT_FLOW,
           flowIds: flowId ? [flowId] : undefined,
         });

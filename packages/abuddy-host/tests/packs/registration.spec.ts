@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
 
 const registered: string[] = [];
 afterEach(() => {
@@ -31,8 +31,8 @@ describe('registerPack services', () => {
 });
 
 describe('registerPack entities', () => {
-  const registerEntities = (id: string, entities: Record<string, string>) => {
-    registerPack({ id, systems: [], ears: { entities, relKinds: {} } } as unknown as PackRegistration);
+  const registerEntities = (id: string, entities: Record<string, string>, relKinds: Record<string, string> = {}) => {
+    registerPack({ id, systems: [], ears: { entities, relKinds } } as unknown as PackRegistration);
     registered.push(id);
   };
 
@@ -41,11 +41,21 @@ describe('registerPack entities', () => {
     expect(() => registerEntities('second-pack', { Memo: 'Memo' })).toThrow('EARS collision: entity type "Memo" — pack "second-pack" vs "first-pack"');
   });
 
-  it("treats the engine's Relation as every pack's, not a collision", () => {
-    expect(getRegisteredEntityTypes().has('Relation')).toBe(true);
-    // Packs built with an older SDK list it
-    registerEntities('first-pack', { Relation: 'Relation', Memo: 'Memo' });
-    expect(() => registerEntities('second-pack', { Relation: 'Relation', Tag: 'Tag' })).not.toThrow();
-    expect([...getRegisteredEntityTypes()].sort()).toEqual(['Memo', 'Relation', 'Tag']);
+  it("rejects a relation kind another pack registered", () => {
+    registerEntities('first-pack', {}, { PINNED: 'pinned' });
+    expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "pinned" — pack "second-pack" vs "first-pack"');
+  });
+
+  it("has the SDK's entities and relation kinds with no pack registered, and doesn't count them as collisions", () => {
+    expect([...getRegisteredEntityTypes()].sort()).toEqual(['Action', 'Flow', 'Node', 'Prompt', 'Relation', 'TNode']);
+    expect(getRegisteredEARS().relKinds).toMatchObject({ CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to' });
+    // Packs built with an older SDK list them
+    registerEntities('first-pack', { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, { CONTAINS: 'contains' });
+    expect(() => registerEntities('second-pack', { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, { CONTAINS: 'contains' })).not.toThrow();
+    expect([...getRegisteredEntityTypes()].sort()).toEqual(['Action', 'Flow', 'Memo', 'Node', 'Prompt', 'Relation', 'TNode', 'Tag']);
+  });
+
+  it('keeps TNode out of persistence without any pack asking', () => {
+    expect(getRegisteredEARSPolicy().excludedEntityTypes).toEqual(['TNode']);
   });
 });

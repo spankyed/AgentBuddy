@@ -67,14 +67,14 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. Relation is defined by the SDK and can't be declared."
+      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt."
     },
     "relKinds": {
       "type": "object",
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers."
+      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED."
     },
     "partitionPolicy": {
       "type": "object",

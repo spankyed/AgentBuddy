@@ -1,7 +1,8 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { extname, join } from 'path';
 import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest.ts';
-import { SDK_ENTITIES } from './manifest-schema.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
+import { STANDARD_SEED_DEFAULTS as COLLECTION_DEFAULTS } from '../seed/standard-seeds.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -21,8 +22,8 @@ export function mergeRegistries(
   function merge(own: Record<string, string> | undefined, kind: string) {
     const map = new Map<string, RegistryEntry>();
     const errors: string[] = [];
-    // The engine's own entities (Relation) are in every pack
-    const sdkOwned = kind === 'entity' ? SDK_ENTITIES : {};
+    // The SDK's own entities and relation kinds are in every pack
+    const sdkOwned: Record<string, string> = kind === 'entity' ? SDK_ENTITIES : SDK_REL_KINDS;
 
     if (own) {
       for (const [key, value] of Object.entries(own))
@@ -32,7 +33,7 @@ export function mergeRegistries(
     for (const [depId, dep] of depManifests) {
       const depEntries = kind === 'entity' ? dep.entities : dep.relKinds;
       for (const [key, value] of Object.entries(depEntries)) {
-        // A dependency built before the SDK owned this entity still lists it
+        // A dependency built before the SDK owned this name still lists it
         if (key in sdkOwned) continue;
         const existing = map.get(key);
         if (existing && existing.source !== depId) {
@@ -44,7 +45,7 @@ export function mergeRegistries(
     }
 
     for (const [key, value] of Object.entries(sdkOwned)) {
-      if (map.get(key)?.source === ownId) errors.push(`${kind} "${key}" is declared by the SDK; remove it from abuddy.json`);
+      if (map.get(key)?.source === ownId) errors.push(`${kind} "${key}" is defined by the SDK; remove it from abuddy.json`);
       map.set(key, { value, source: SDK_SOURCE });
     }
 
@@ -247,13 +248,11 @@ function toImportPath(root: string, manifestPath: string): string {
 /** Host plugins pack systems can send to: the keys of HostPluginEvents in @abuddy/sdk/services */
 const HOST_PLUGIN_IDS = ['application'];
 
-/** Entity types whose shapes the SDK declares itself (SdkEntityShapes in @abuddy/sdk/steps) */
-const SDK_ENTITY_SHAPES = ['TNode', ...Object.keys(SDK_ENTITIES)];
 
 /** This pack's entities with no shape (in entityShapes or the SDK's), whose fields read as unknown values */
 export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[] {
   return Object.keys(manifest.entities ?? {})
-    .filter((entity) => !(entity in (manifest.entityShapes ?? {})) && !SDK_ENTITY_SHAPES.includes(entity));
+    .filter((entity) => !(entity in (manifest.entityShapes ?? {})) && !(SDK_SHAPED_ENTITIES as readonly string[]).includes(entity));
 }
 
 /** The type-bundle key in a pack's snapshot defs, written by `abuddy build` */
@@ -544,7 +543,7 @@ ${regProps.join('\n')}
 // drop it.
 
 import { defineEars, type ShapeOf } from '@abuddy/sdk/ears';
-import type { SdkEntityShapes } from '@abuddy/sdk/steps';
+import type { SdkEntityShapes } from '@abuddy/sdk';
 ${shapeImports.join('\n')}
 
 ${depShapes.imports.join('\n')}
@@ -561,10 +560,10 @@ export type PackShapes = SdkEntityShapes & OwnEntityShapes${depShapes.aliases.ma
 export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 
 /**
- * Entity names the helpers below accept as literals: this pack's and its dependencies'. A name
+ * Entity names the helpers below accept as literals: this pack's, its dependencies' and the SDK's. A name
  * known only at runtime (typed \`string\`) is accepted unchecked.
  */
-export type EntityName = ${[...entityNames, 'keyof PackShapes & string'].join(' | ')};
+export type EntityName = ${entityNames.join(' | ')};
 
 export const {
   qx, tx, findById, findByIdRaw, findAll, findWhere, findFirst,
@@ -896,10 +895,6 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
     const packImports: string[] = [];
     const registrations: string[] = [];
 
-    const COLLECTION_DEFAULTS: Record<string, { entityType: string; lookupField: string }> = {
-      actions: { entityType: 'Action', lookupField: 'label' },
-      prompts: { entityType: 'Prompt', lookupField: 'label' },
-    };
 
     for (const [key, value] of Object.entries(seed)) {
       const config: SeedEntryConfig = typeof value === 'string' ? {} : value;
@@ -966,7 +961,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
     const imports: string[] = [];
     const entries: string[] = [];
     for (const [entity, { source, type: typeName }] of Object.entries(manifest.entityShapes ?? {})) {
-      if (SDK_ENTITY_SHAPES.includes(entity)) {
+      if ((SDK_SHAPED_ENTITIES as readonly string[]).includes(entity)) {
         throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove it from entityShapes`);
       }
       const normalized = source.split('\\').join('/');

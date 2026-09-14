@@ -7,7 +7,7 @@
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
 import type { HostServices } from '@abuddy/sdk/services';
-import { EARS } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS } from '@abuddy/sdk/types';
 import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
@@ -38,6 +38,10 @@ export function registerHostSystem(
   hostSystems.set(id, { machine, events });
 }
 
+/** Entity types and relation kinds the SDK owns: every pack has them, and none registers them */
+const sdkEntityTypes: ReadonlySet<string> = new Set(Object.values(SDK_ENTITIES));
+const sdkRelKinds: ReadonlySet<string> = new Set(Object.values(SDK_REL_KINDS));
+
 export function registerPack(registration: PackRegistration): void {
   if (registrations.has(registration.id)) {
     throw new Error(`Pack "${registration.id}" is already registered`);
@@ -48,14 +52,15 @@ export function registerPack(registration: PackRegistration): void {
       if (!existing.ears) continue;
       const existingEntValues = Object.values(existing.ears.entities);
       for (const val of Object.values(registration.ears.entities)) {
-        // The engine's own Relation; a pack built with an older SDK may still list it
-        if (val === EARS.Entity.Relation) continue;
+        // The SDK's own; a pack built with an older SDK may still list it
+        if (sdkEntityTypes.has(val)) continue;
         if (existingEntValues.includes(val)) {
           throw new Error(`EARS collision: entity type "${val}" — pack "${registration.id}" vs "${existingId}"`);
         }
       }
       const existingRelValues = Object.values(existing.ears.relKinds);
       for (const val of Object.values(registration.ears.relKinds)) {
+        if (sdkRelKinds.has(val)) continue;
         if (existingRelValues.includes(val)) {
           throw new Error(`EARS collision: relation kind "${val}" — pack "${registration.id}" vs "${existingId}"`);
         }
@@ -152,7 +157,7 @@ export function unregisterPack(packId: string): void {
 
 export function getRegisteredEntityTypes(): ReadonlySet<string> {
   if (!_entityTypeCache) {
-    _entityTypeCache = new Set<string>([EARS.Entity.Relation]);
+    _entityTypeCache = new Set<string>(sdkEntityTypes);
     for (const reg of registrations.values()) {
       if (reg.ears) {
         for (const val of Object.values(reg.ears.entities)) {
@@ -207,8 +212,8 @@ export function getRegisteredServices(): Record<string, unknown> {
 }
 
 export function getRegisteredEARS(): PackEARS {
-  const entities: Record<string, string> = {};
-  const relKinds: Record<string, string> = {};
+  const entities: Record<string, string> = { ...SDK_ENTITIES };
+  const relKinds: Record<string, string> = { ...SDK_REL_KINDS };
   for (const reg of registrations.values()) {
     if (reg.ears) {
       Object.assign(entities, reg.ears.entities);
@@ -243,7 +248,7 @@ export function runRegisteredBootSeeds(
 }
 
 export function getRegisteredEARSPolicy(): { excludedEntityTypes: string[]; secretEntityTypes: string[] } {
-  const excluded: string[] = [];
+  const excluded: string[] = [...SDK_EXCLUDED_ENTITY_TYPES];
   const secret: string[] = [];
   for (const reg of registrations.values()) {
     if (reg.ears?.partitionPolicy) {

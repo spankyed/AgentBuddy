@@ -6,18 +6,13 @@
  * Branching is handled generically via StepBuildFacet.branches().
  */
 
-import type { EARS } from '../../types/entities.ts';
+import { EARS } from '../../types/entities.ts';
 import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
 import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
 import type { CompilerContext } from './flow-entities.ts';
 import { stepRegistry, type StepDefinition } from '../../steps/index.ts';
 
 export type { CompilerContext };
-
-export interface FlowEARS {
-  Entity: Record<'Flow' | 'Node' | 'Action' | 'Prompt', EARS.Entity>;
-  RelKind: Record<'CONTAINS' | 'INSTANCE_OF' | 'TRANSITIONS_TO', EARS.RelKind>;
-}
 
 type Relation = { source: string; kind: string; target: string; info?: object };
 
@@ -31,7 +26,6 @@ interface FlowCompileCtx {
   flowName: string;
   ts: number;
   ctx: CompilerContext;
-  ears: FlowEARS;
   globalLabelMap: Map<string, string>;
   inlineStepIds: Map<string, string>;
 }
@@ -87,7 +81,7 @@ function registerInlineSteps(
     const step = steps[si];
     const label = getStepLabel(step, si);
     const key = `${pathPrefix}-i${si}`;
-    const id = generateId('Node', `${flowName}-${label}-${key}`);
+    const id = generateId(EARS.Entity.Node, `${flowName}-${label}-${key}`);
     inlineStepIds.set(key, id);
 
     if (step.label) {
@@ -136,7 +130,7 @@ function compileStepList(
 
     out.relations.push({
       source: fCtx.flowId,
-      kind: fCtx.ears.RelKind.CONTAINS,
+      kind: EARS.RelKind.CONTAINS,
       target: stepId,
     });
   }
@@ -158,7 +152,7 @@ function compileStepList(
       if (targetId) {
         out.relations.push({
           source: stepId,
-          kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+          kind: EARS.RelKind.TRANSITIONS_TO,
           target: targetId,
         });
       }
@@ -168,13 +162,13 @@ function compileStepList(
     if (si < stepIds.length - 1) {
       out.relations.push({
         source: stepId,
-        kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+        kind: EARS.RelKind.TRANSITIONS_TO,
         target: stepIds[si + 1],
       });
     } else if (continuationId) {
       out.relations.push({
         source: stepId,
-        kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+        kind: EARS.RelKind.TRANSITIONS_TO,
         target: continuationId,
       });
     }
@@ -199,7 +193,7 @@ function wireBranchEdges(
 
     out.relations.push({
       source: stepId,
-      kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+      kind: EARS.RelKind.TRANSITIONS_TO,
       target: firstInlineId,
       info: { sourceHandle: `branch-${bi}` },
     });
@@ -214,7 +208,7 @@ function wireBranchEdges(
  * Main Compiler
  *─────────────────────────────────────────────────────────────────*/
 
-export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = {}): CompiledRows {
+export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRows {
   const ts = Date.now();
 
   const entities: object[] = [];
@@ -228,7 +222,7 @@ export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = 
   };
 
   for (const flowName of Object.keys(dsl)) {
-    const flowId = generateId('Flow', flowName);
+    const flowId = generateId(EARS.Entity.Flow, flowName);
     ctx.flows.set(flowName, flowId);
   }
 
@@ -241,7 +235,6 @@ export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = 
       flowId,
       ts,
       ctx,
-      ears
     );
 
     const sourceHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
@@ -264,7 +257,6 @@ function compileFlow(
   flowId: string,
   ts: number,
   ctx: CompilerContext,
-  ears: FlowEARS,
 ): {
   flowEntity: object;
   nodeEntities: object[];
@@ -275,7 +267,7 @@ function compileFlow(
 
   const flowEntity = {
     id: flowId,
-    entityType: ears.Entity.Flow,
+    entityType: EARS.Entity.Flow,
     shortCode,
     label: flowName,
     flowType: 'workflow',
@@ -292,7 +284,7 @@ function compileFlow(
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
     const listenerLabel = resolveTrackLabel(track, trackIdx);
-    const listenerId = generateId('Node', `${flowName}-${listenerLabel}-t${trackIdx}`);
+    const listenerId = generateId(EARS.Entity.Node, `${flowName}-${listenerLabel}-t${trackIdx}`);
     globalLabelMap.set(listenerLabel, listenerId);
 
     for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
@@ -300,7 +292,7 @@ function compileFlow(
       for (let stepIdx = 0; stepIdx < exitSteps.length; stepIdx++) {
         const step = exitSteps[stepIdx];
         const stepLabel = getStepLabel(step, stepIdx);
-        const stepId = generateId('Node', `${flowName}-${stepLabel}-t${trackIdx}-e${exitIdx}-s${stepIdx}`);
+        const stepId = generateId(EARS.Entity.Node, `${flowName}-${stepLabel}-t${trackIdx}-e${exitIdx}-s${stepIdx}`);
         if (globalLabelMap.has(stepLabel)) {
           throw new Error(`Duplicate step label "${stepLabel}" in flow "${flowName}" (track ${trackIdx}, exit ${exitIdx}, step ${stepIdx}). Use explicit labels to disambiguate.`);
         }
@@ -311,7 +303,7 @@ function compileFlow(
     }
   }
 
-  const fCtx: FlowCompileCtx = { flowId, flowName, ts, ctx, ears, globalLabelMap, inlineStepIds };
+  const fCtx: FlowCompileCtx = { flowId, flowName, ts, ctx, globalLabelMap, inlineStepIds };
 
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
@@ -377,7 +369,7 @@ function compileTrack(
 
   trackRelations.push({
     source: fCtx.flowId,
-    kind: fCtx.ears.RelKind.CONTAINS,
+    kind: EARS.RelKind.CONTAINS,
     target: listenerId,
   });
 
@@ -402,7 +394,7 @@ function compileTrack(
 
     trackRelations.push({
       source: listenerId,
-      kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+      kind: EARS.RelKind.TRANSITIONS_TO,
       target: exitStepIds[0],
       info: { sourceHandle: `exit-${exitIdx}` },
     });

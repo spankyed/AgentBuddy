@@ -5,6 +5,32 @@
 ```ts
 
 // @public (undocumented)
+export interface ActionEntity extends BaseEntity {
+    // (undocumented)
+    actionFn: string;
+    // (undocumented)
+    category?: string;
+    // (undocumented)
+    createdAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Action;
+    // (undocumented)
+    input: Record<string, ActionParameter>;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    output?: unknown;
+    shortCode?: string;
+    sourceHash?: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public (undocumented)
 export interface ApplicationHotkeys {
     // (undocumented)
     custom?: CustomHotkey[];
@@ -41,7 +67,11 @@ export namespace EARS {
     const // (undocumented)
     Entity: {
         readonly Relation: "Relation";
+        readonly Flow: "Flow";
         readonly Node: "Node";
+        readonly TNode: "TNode";
+        readonly Action: "Action";
+        readonly Prompt: "Prompt";
     };
     // (undocumented)
     export interface AttributePayloads {
@@ -56,8 +86,12 @@ export namespace EARS {
     export type AttributeStore = Record<string, AttributeTypeMap>;
     const // (undocumented)
     RelKind: {
-        readonly INSTANCE_OF: "instance_of";
         readonly Custom: <T extends string>(k: T) => T & RelKind;
+        readonly CONTAINS: "contains";
+        readonly TRANSITIONS_TO: "transitions_to";
+        readonly INSTANCE_OF: "instance_of";
+        readonly SPAWNED: "spawned";
+        readonly TRACKED: "tracked";
     };
     // (undocumented)
     export type AttributeType = AttrKind;
@@ -122,6 +156,24 @@ export type EntityShapes = {
 };
 
 // @public (undocumented)
+export interface FlowEntity extends BaseEntity {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Flow;
+    // (undocumented)
+    flowType: 'workflow' | 'integration';
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    shortCode: string;
+    // (undocumented)
+    sourceHash?: string;
+}
+
+// @public (undocumented)
 export interface KeyboardShortcut {
     // (undocumented)
     global?: boolean;
@@ -131,11 +183,66 @@ export interface KeyboardShortcut {
     modifiers: string[];
 }
 
-// @public
+// @public (undocumented)
+export interface PromptEntity extends BaseEntity {
+    // (undocumented)
+    category?: string;
+    // (undocumented)
+    createdAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Prompt;
+    // (undocumented)
+    inputs: Record<string, TemplateInput>;
+    // (undocumented)
+    label: string;
+    outputSchema?: unknown;
+    shortCode?: string;
+    sourceHash?: string;
+    templateFn: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public (undocumented)
 export interface RelationEntity extends BaseEntity {
     // (undocumented)
     relationDetails: EARS.RelationDetail;
 }
+
+// @public (undocumented)
+export const SDK_ENTITIES: {
+    readonly Relation: "Relation";
+    readonly Flow: "Flow";
+    readonly Node: "Node";
+    readonly TNode: "TNode";
+    readonly Action: "Action";
+    readonly Prompt: "Prompt";
+};
+
+// @public
+export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[];
+
+// @public (undocumented)
+export const SDK_REL_KINDS: {
+    readonly CONTAINS: "contains";
+    readonly TRANSITIONS_TO: "transitions_to";
+    readonly INSTANCE_OF: "instance_of";
+    readonly SPAWNED: "spawned";
+    readonly TRACKED: "tracked";
+};
+
+// @public
+export type SdkEntityShapes = {
+    Relation: RelationEntity;
+    Flow: FlowEntity;
+    TNode: TNodeEntity;
+    Action: ActionEntity;
+    Prompt: PromptEntity;
+};
 
 // @public
 export type ShapeOf<S extends EntityShapes, E extends string> = [

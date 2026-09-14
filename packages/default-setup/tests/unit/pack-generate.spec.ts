@@ -124,7 +124,8 @@ describe('abuddy generate-entries', () => {
 
     const output = readGenerated();
     expect(output).toContain('export type Entity = string');
-    expect(output).toContain("export type RelKind = (string & {})");
+    // Relation kinds stay open; the SDK's own are named
+    expect(output).toContain("export type RelKind = RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | (string & {})");
   });
 
   it('includes AttrKind namespace with Role and RelationDetails', async () => {

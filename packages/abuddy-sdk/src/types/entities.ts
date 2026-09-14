@@ -6,17 +6,17 @@
  * that the host composes with concrete values via registration.
  *
  * Entity and RelKind are open by design:
- *   Entity  — features declare entities; the host merges them into a
- *             registry. The SDK only provides the core Relation entity.
- *   RelKind — domain-specific relation kinds are registered by the host.
- *             The SDK provides just the Custom() helper and open type.
+ *   Entity  — packs declare entities; the host merges them into a registry.
+ *             The SDK owns Relation and the flow model (sdk-entities.ts).
+ *   RelKind — packs declare relation kinds; the SDK owns the flow model's,
+ *             plus the Custom() helper and open type.
  *───────────────────────────────────────────────────────────────────────────*/
+import { SDK_ENTITIES, SDK_REL_KINDS } from './sdk-entities.ts';
+
 export namespace EARS {
   // ─── Entity ────────────────────────────────────────────────────────────
-  export const Entity = {
-    Relation: 'Relation',
-    Node: 'Node',
-  } as const;
+  // The SDK's own entities; packs add theirs in their generated EARS
+  export const Entity = SDK_ENTITIES;
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
   /**
@@ -32,7 +32,7 @@ export namespace EARS {
   const _relCustom = <T extends string>(k: T) => k as T & RelKind;
 
   export const RelKind = {
-    INSTANCE_OF: 'instance_of',
+    ...SDK_REL_KINDS,
     Custom: _relCustom,
   } as const;
 
@@ -108,14 +108,6 @@ export interface BaseEntity {
  * and exports EARS helpers typed against it.
  */
 export type EntityShapes = { [entityType: string]: object };
-
-/**
- * A relation between two entities. The EARS engine stores every link as a Relation entity, so the
- * type is part of every pack: packs don't declare it.
- */
-export interface RelationEntity extends BaseEntity {
-  relationDetails: EARS.RelationDetail;
-}
 
 /**
  * An entity type's shape in `S`. A type `S` doesn't declare reads as its base fields plus

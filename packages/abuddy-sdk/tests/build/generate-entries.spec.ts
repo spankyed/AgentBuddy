@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
 let root: string;
@@ -161,24 +162,26 @@ describe('generated EARS facade', () => {
   it('names the declared entities and passes them to the typed helpers, with tx', () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
     const ears = generate({ entities: { Memo: 'Memo', Tag: 'Tag' }, entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } } })['src/__generated__/ears.ts'];
-    expect(ears).toContain("export type EntityName = 'Memo' | 'Tag' | 'Relation' | keyof PackShapes & string;");
+    expect(ears).toContain("export type EntityName = 'Memo' | 'Tag' | 'Relation' | 'Flow' | 'Node' | 'TNode' | 'Action' | 'Prompt';");
     expect(ears).toContain('defineEars<PackShapes, EntityName>()');
     expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
   });
 });
 
-describe('the SDK-owned Relation entity', () => {
-  it('is in every pack, with no entities or dependencies declared', () => {
+describe("the SDK's entities and relation kinds", () => {
+  it('are in every pack, with no entities or dependencies declared', () => {
     const ears = generate({})['src/__generated__/ears.ts'];
-    expect(ears).toContain("export const Relation = 'Relation';");
-    expect(ears).toContain("export type EntityName = 'Relation' | keyof PackShapes & string;");
+    for (const entity of Object.values(SDK_ENTITIES)) expect(ears).toContain(`export const ${entity} = '${entity}';`);
+    for (const [name, kind] of Object.entries(SDK_REL_KINDS)) expect(ears).toContain(`export const ${name} = '${kind}';`);
+    expect(ears).toContain("export type EntityName = 'Relation' | 'Flow' | 'Node' | 'TNode' | 'Action' | 'Prompt';");
+    expect(ears).toContain("import type { SdkEntityShapes } from '@abuddy/sdk';");
     // Relation alone doesn't close the pack's Entity type
     expect(ears).toContain('export type Entity = string;');
   });
 
-  it('ignores dependencies built when their manifests still declared Relation', () => {
-    const base = { ...dependency({}), types: { entities: { Relation: 'Relation', Tag: 'Tag' }, relKinds: {} } };
-    const other = { ...dependency({ id: 'other-pack' }), types: { entities: { Relation: 'Relation', Memo: 'Memo' }, relKinds: {} } };
+  it("ignores dependencies built when their manifests still declared the SDK's names", () => {
+    const base = { ...dependency({}), types: { entities: { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, relKinds: { CONTAINS: 'contains' } } };
+    const other = { ...dependency({ id: 'other-pack' }), types: { entities: { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, relKinds: { CONTAINS: 'contains' } } };
     const ears = generate({ dependencies: { 'base-pack': '*', 'other-pack': '*' } }, { 'base-pack': base, 'other-pack': other })['src/__generated__/ears.ts'];
     expect(ears).toContain("export const Relation = 'Relation';");
     expect(ears).toContain("export const Tag = 'Tag';");
@@ -192,15 +195,17 @@ describe('the SDK-owned Relation entity', () => {
     expect(entry).toContain('relKinds: {"PINNED":"pinned"},');
   });
 
-  it("rejects a pack's own declaration of Relation", () => {
-    expect(() => generate({ entities: { Relation: 'Relation' } })).toThrow(/entity "Relation" is declared by the SDK/);
+  it("rejects a pack's own declaration of the SDK's names", () => {
+    expect(() => generate({ entities: { Relation: 'Relation' } })).toThrow(/entity "Relation" is defined by the SDK/);
+    expect(() => generate({ entities: { Action: 'Action' } })).toThrow(/entity "Action" is defined by the SDK/);
+    expect(() => generate({ relKinds: { TRANSITIONS_TO: 'transitions_to' } })).toThrow(/relKind "TRANSITIONS_TO" is defined by the SDK/);
   });
 });
 
 describe('entitiesWithoutShapes', () => {
   it("lists the pack's entities with no shape, leaving out those the SDK shapes", () => {
     expect(entitiesWithoutShapes({
-      entities: { Memo: 'Memo', Tag: 'Tag', TNode: 'TNode', Relation: 'Relation' },
+      entities: { Memo: 'Memo', Tag: 'Tag', TNode: 'TNode', Relation: 'Relation', Action: 'Action' },
       entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } },
     })).toEqual(['Tag']);
     expect(entitiesWithoutShapes({})).toEqual([]);

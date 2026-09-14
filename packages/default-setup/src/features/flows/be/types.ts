@@ -1,5 +1,5 @@
 import { type NodeEntity } from '@/__generated__/types';
-import { type BaseEntity, EARS } from '@/__generated__/ears';
+import { EARS } from '@/__generated__/ears';
 import type { ActionEntity, PromptEntity } from '@/__generated__/types';
 import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 
@@ -10,15 +10,9 @@ export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
  * Flow & Edge entities
  *─────────────────────────────────────────────────────────────────*/
 
-export interface FlowEntity extends BaseEntity {
-  entityType: EARS.Entity.Flow;
-  shortCode: string;
-  label: string;
-  description?: string;
-  flowType: 'workflow' | 'integration';
-  createdAt: number;
-  sourceHash?: string;
-}
+// The SDK owns the Flow entity and its shape
+export type { FlowEntity } from '@abuddy/sdk';
+import type { FlowEntity } from '@abuddy/sdk';
 
 export type EdgeEntity = {
   id: EARS.EntityId;

@@ -12,12 +12,15 @@ describe('parseManifest', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('rejects declaring the SDK-owned Relation entity, by name or value', () => {
-    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }]) {
-      const result = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities });
-      expect(result.errors).toEqual([expect.stringMatching(/"entities": Relation is defined by the SDK/)]);
+  it("rejects declaring the SDK's entities or relation kinds, by name or value", () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }]) {
+      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt are defined by the SDK/)]);
     }
-    expect(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' } }).errors).toEqual([]);
+    for (const relKinds of [{ CONTAINS: 'contains' }, { NEXT: 'transitions_to' }]) {
+      expect(parseManifest({ ...pack, relKinds }).errors).toEqual([expect.stringMatching(/"relKinds": CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED are defined by the SDK/)]);
+    }
+    expect(parseManifest({ ...pack, entities: { Memo: 'Memo' }, relKinds: { PINNED: 'pinned' } }).errors).toEqual([]);
   });
 
   it('accepts a minimal valid manifest', () => {

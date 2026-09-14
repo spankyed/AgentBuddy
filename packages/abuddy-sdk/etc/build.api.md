@@ -224,7 +224,7 @@ export interface CompileEntry<T> {
 export function compileFaqFromDir(faqsDir: string): CompiledFAQ[];
 
 // @public (undocumented)
-export function compileFlowDSL(dsl: FlowDSL, ears: FlowEARS, options?: CompileOptions): CompiledRows;
+export function compileFlowDSL(dsl: FlowDSL, options?: CompileOptions): CompiledRows;
 
 // @public (undocumented)
 export function compileLibraryFromDir(libraryDir: string): ExportedLibrary;
@@ -457,8 +457,6 @@ export interface ExportedSymlink {
 // @public (undocumented)
 export interface ExportFlowsOptions {
     // (undocumented)
-    ears: FlowEARS;
-    // (undocumented)
     flowIds?: string[];
     // (undocumented)
     rootFlowRole: string;
@@ -607,14 +605,6 @@ export interface FlowConfig {
 export type FlowDSL = Record<string, Track[] | FlowConfig>;
 
 // @public (undocumented)
-export interface FlowEARS {
-    // (undocumented)
-    Entity: Record<'Flow' | 'Node' | 'Action' | 'Prompt', EARS.Entity>;
-    // (undocumented)
-    RelKind: Record<'CONTAINS' | 'INSTANCE_OF' | 'TRANSITIONS_TO', EARS.RelKind>;
-}
-
-// @public (undocumented)
 export interface FlowEntity extends BaseEntity {
     // (undocumented)
     description?: string;
@@ -679,7 +669,7 @@ export const ManifestSchema: z.ZodObject<{
     dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
     entities: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
-    relKinds: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    relKinds: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
     partitionPolicy: z.ZodOptional<z.ZodObject<{
         excludedEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         secretEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -974,6 +964,8 @@ export const ManifestSchema: z.ZodObject<{
     id: string;
     name: string;
     version: string;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -988,8 +980,6 @@ export const ManifestSchema: z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
         secretEntityTypes?: string[] | undefined;
@@ -1068,6 +1058,8 @@ export const ManifestSchema: z.ZodObject<{
     id: string;
     name: string;
     version: string;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1082,8 +1074,6 @@ export const ManifestSchema: z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
         secretEntityTypes?: string[] | undefined;

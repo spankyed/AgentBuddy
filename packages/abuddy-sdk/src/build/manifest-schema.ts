@@ -1,7 +1,14 @@
 import { z } from 'zod';
+import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 
-/** Entity types the EARS engine itself defines; every pack has them and none may declare them */
-export const SDK_ENTITIES: Record<string, string> = { Relation: 'Relation' };
+/** Rejects a pack's declaration of a name or value the SDK owns */
+const notSdkOwned = (owned: Record<string, string>, field: string) => ({
+  check: (declared: Record<string, string>) =>
+    Object.entries(declared).every(([key, value]) => !(key in owned) && !Object.values(owned).includes(value)),
+  message: `${Object.keys(owned).join(', ')} are defined by the SDK and available to every pack; remove them from ${field}`,
+});
+const sdkEntities = notSdkOwned(SDK_ENTITIES, 'entities');
+const sdkRelKinds = notSdkOwned(SDK_REL_KINDS, 'relKinds');
 
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
@@ -128,13 +135,11 @@ export const ManifestSchema = z.object({
     .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   entities: z.record(z.string(), z.string())
-    .refine(
-      (entities) => Object.entries(entities).every(([key, value]) => !(key in SDK_ENTITIES) && !Object.values(SDK_ENTITIES).includes(value)),
-      { message: `${Object.keys(SDK_ENTITIES).join(', ')} is defined by the SDK and available to every pack; remove it from entities` },
-    )
-    .describe(`EARS entity types this pack registers. Keys are enum names, values are string identifiers. ${Object.keys(SDK_ENTITIES).join(', ')} is defined by the SDK and can't be declared.`).optional(),
+    .refine(sdkEntities.check, { message: sdkEntities.message })
+    .describe(`EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_ENTITIES).join(', ')}.`).optional(),
   relKinds: z.record(z.string(), z.string())
-    .describe('EARS relation kinds this pack registers. Keys are enum names, values are string identifiers.').optional(),
+    .refine(sdkRelKinds.check, { message: sdkRelKinds.message })
+    .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
   partitionPolicy: PartitionPolicySchema.optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema)
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),

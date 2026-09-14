@@ -25,12 +25,12 @@ if (typeof globalThis.localStorage === 'undefined') {
   } as Storage;
 }
 import '@/setup/sdk-host-init';
-import { registerPack, getRegisteredEntityTypes } from '@abuddy/host/packs';
+import { registerPack, getPackContributions } from '@abuddy/host/packs';
 import { setCompiledDir } from '../src/__generated__/seeders';
 import { registration } from '../src/__generated__/pack-entry';
 
 setCompiledDir(path.resolve(__dirname, '..', 'dist'));
 
-if (!getRegisteredEntityTypes().has('Action')) {
+if (!getPackContributions(registration.id)) {
   registerPack(registration);
 }

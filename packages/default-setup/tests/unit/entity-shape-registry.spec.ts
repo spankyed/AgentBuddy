@@ -2,7 +2,7 @@
 // generated entity shape regresses to `any` or loses its declared field types.
 import { describe, expectTypeOf, it } from 'vitest';
 import type { BaseEntity } from '@abuddy/sdk/types';
-import type { SdkEntityShapes } from '@abuddy/sdk/steps';
+import type { SdkEntityShapes } from '@abuddy/sdk';
 import type { EntityShape, OwnEntityShapes, PackShapes } from '@/__generated__/ears';
 import type { ActionEntity } from '@/features/actions/be/types';
 import type { FlowEntity } from '@/features/flows/be/types';
@@ -10,14 +10,15 @@ import type { MessageEntity, ThreadEntity } from '@/features/threads/be/types';
 
 describe('PackShapes', () => {
   it('maps declared entities to their shape types', () => {
-    expectTypeOf<OwnEntityShapes['Action']>().toEqualTypeOf<ActionEntity>();
     expectTypeOf<OwnEntityShapes['Thread']>().toEqualTypeOf<ThreadEntity>();
-    expectTypeOf<OwnEntityShapes['Flow']>().toEqualTypeOf<FlowEntity>();
     expectTypeOf<OwnEntityShapes['Message']>().toEqualTypeOf<MessageEntity>();
   });
 
-  it("includes the SDK's shapes", () => {
+  it("includes the SDK's shapes, which the pack's feature types re-export", () => {
     expectTypeOf<PackShapes['TNode']>().toEqualTypeOf<SdkEntityShapes['TNode']>();
+    expectTypeOf<PackShapes['Action']>().toEqualTypeOf<ActionEntity>();
+    expectTypeOf<PackShapes['Flow']>().toEqualTypeOf<FlowEntity>();
+    expectTypeOf<PackShapes['Relation']>().toEqualTypeOf<SdkEntityShapes['Relation']>();
   });
 
   it('has no key for an undeclared entity', () => {

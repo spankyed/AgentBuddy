@@ -77,7 +77,7 @@ export interface StepBuildFacet {
  *─────────────────────────────────────────────────────────────────*/
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity, EARS, RelationEntity } from '../types/entities.ts';
+import type { BaseEntity, EARS } from '../types/entities.ts';
 
 export type TimestampMs = number;
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
@@ -103,11 +103,8 @@ export interface TNodeEntity extends BaseEntity {
   };
 }
 
-/** Entities whose shapes the SDK owns; every pack's generated PackShapes includes them. */
-export type SdkEntityShapes = {
-  TNode: TNodeEntity;
-  Relation: RelationEntity;
-};
+// Kept here for packs whose built types import it from @abuddy/sdk/steps
+export type { SdkEntityShapes } from '../types/sdk-entities.ts';
 
 /**
  * One track's execution, as a tree: a persisted TNode with its SPAWNED children

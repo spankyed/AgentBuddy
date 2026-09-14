@@ -189,6 +189,11 @@ tx(tags[0]!.id).put('name', 1);
 const relationType: 'Relation' = PackEARS.Entity.Relation;
 const relation = findAll(relationType)[0]!;
 export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceEntity, EARS.EntityId>>;
+// So is the flow model, without depending on default-setup
+const action = findAll('Action')[0]!;
+export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
+const tNodes = qx(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
+export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
 // A plain id leaves writes unchecked
 tx(plainId).put('text', 42);
 // @ts-expect-error undeclared entity name
