@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach } from 'vitest';
-import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime } from '@abuddy/sdk/testing';
+import { registerSeedRuntime, resetTestData, restoreModelProvider, startTestRuntime, takeSystemErrors, type SeedRuntime } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
@@ -27,6 +27,24 @@ import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abudd
 
 export { resetTestData, takeSystemErrors, type SeedRuntime };
 export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents } from './app.ts';
+
+const serviceMocks = new Map<string, unknown>();
+
+/** The pack registry `services` reads, with the current test's mocked services over the registered ones */
+const packRegistryWithMocks = {
+  ...hostPacks,
+  getRegisteredServices: () => ({ ...hostPacks.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
+};
+
+/**
+ * Replaces a service in `services` for the current test, restored after it. Type it with the pack's
+ * services (`mockService<Services>('llm', { generateText: … })`); give only the members the code
+ * under test uses. Code that imports a service module directly instead of using `services` isn't
+ * affected.
+ */
+export function mockService<S extends object = Record<string, object>, K extends keyof S & string = keyof S & string>(name: K, implementation: Partial<S[K]>): void {
+  serviceMocks.set(name, implementation);
+}
 
 /** Where `abuddy build` caches a dependency's snapshot and build/ in a pack */
 const DEPS_DIR = path.join('.abuddy', 'deps');
@@ -91,6 +109,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   const dependencies = readDependencies(packDir, manifest);
 
   startTestRuntime({ entityTypes: [...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities)) });
+  try {
+    getHostModule('pack-registry');
+  } catch {
+    registerHostModule('pack-registry', packRegistryWithMocks);
+  }
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);
   } else {
@@ -112,6 +135,8 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   });
   afterEach(() => {
     stopRunningApps();
+    serviceMocks.clear();
+    restoreModelProvider();
     const errors = takeSystemErrors();
     if (errors.length > 0) {
       const described = errors.map((e) => `${e.source ?? 'unknown'}: ${e.error instanceof Error ? e.error.message : String(e.error)}`);
@@ -122,11 +147,6 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */
 async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>, registration: PackRegistration): Promise<void> {
-  try {
-    getHostModule('pack-registry');
-  } catch {
-    registerHostModule('pack-registry', hostPacks);
-  }
   for (const [depId, dependency] of dependencies) {
     const runtimeEntry = path.join(dependency.dir, 'runtime', 'index.cjs');
     if (!fs.existsSync(runtimeEntry)) {
