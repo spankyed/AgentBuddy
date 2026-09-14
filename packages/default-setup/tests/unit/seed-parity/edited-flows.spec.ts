@@ -7,7 +7,8 @@ import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { seedFile } from '@abuddy/sdk/build';
 import { seedData } from '@abuddy/sdk/utils';
-import { dropAttr, findWhere, getAttr } from '@abuddy/host/ears';
+import { findWhere, getAttr } from '@/__generated__/ears';
+import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, tx } from '@abuddy/sdk/ears';
 import { repository } from '@/__generated__/repository';
 import { PACK_DIR, resetDatabase } from './harness';
@@ -82,13 +83,13 @@ describe('re-seeding edited flows', () => {
   });
 
   it("leaves flows alone whose seeded graph wasn't recorded (seeded before edits were detected)", () => {
-    dropAttr(flow('Codex')[0].id, 'seededGraph' as never);
+    dropAttribute(flow('Codex')[0].id, 'seededGraph');
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 0 });
     expect(getAttr(flow('Codex')[0].id, 'seedKey' as never)).not.toBeNull();
   });
 
   it('gives flows seeded before seed keys theirs, so a later rename is found', () => {
-    dropAttr(flow('Codex')[0].id, 'seedKey' as never);
+    dropAttribute(flow('Codex')[0].id, 'seedKey');
     seedFlows(compiled());
     repository.flowsCommands.updateFlowLabel(flow('Codex')[0].id, 'My Codex');
     seedFlows(compiled(['Codex']));

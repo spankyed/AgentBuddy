@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import * as path from 'node:path';
 
 describe('PackProtocol MIME types', () => {

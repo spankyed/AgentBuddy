@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -24,7 +25,7 @@ function writeDist(dir: string) {
 
 describe('pack CLI: init', () => {
   it('scaffolds a valid pack directory structure', async () => {
-    const { init } = await import('../../../abuddy-cli/src/commands/init');
+    const { init } = await import('../../src/commands/init');
 
     const packName = 'test-pack';
     const packDir = path.join(tmpDir, packName);
@@ -64,7 +65,7 @@ describe('pack CLI: init', () => {
   });
 
   it('rejects invalid pack names', async () => {
-    const { init } = await import('../../../abuddy-cli/src/commands/init');
+    const { init } = await import('../../src/commands/init');
 
     const origCwd = process.cwd();
     process.chdir(tmpDir);
@@ -76,7 +77,7 @@ describe('pack CLI: init', () => {
   });
 
   it('rejects if directory already exists', async () => {
-    const { init } = await import('../../../abuddy-cli/src/commands/init');
+    const { init } = await import('../../src/commands/init');
 
     fs.mkdirSync(path.join(tmpDir, 'exists'));
 
@@ -92,17 +93,17 @@ describe('pack CLI: init', () => {
 
 describe('pack CLI: install', () => {
   it('install with no args returns without throwing (prints help)', async () => {
-    const { install } = await import('../../../abuddy-cli/src/commands/install');
+    const { install } = await import('../../src/commands/install');
     await expect(install([])).resolves.toBeUndefined();
   });
 
   it('installPackFromLocal throws on nonexistent path', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('@abuddy/host/packs');
     await expect(installPackFromLocal('/nonexistent/path')).rejects.toThrow(/Path not found/);
   });
 
   it('rejects manifest with invalid id format', async () => {
-    const { install } = await import('../../../abuddy-cli/src/commands/install');
+    const { install } = await import('../../src/commands/install');
 
     const badPack = path.join(tmpDir, 'bad-id-pack');
     fs.mkdirSync(badPack, { recursive: true });
@@ -117,7 +118,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects pack without dist directory', async () => {
-    const { install } = await import('../../../abuddy-cli/src/commands/install');
+    const { install } = await import('../../src/commands/install');
 
     const noDist = path.join(tmpDir, 'no-dist');
     fs.mkdirSync(noDist, { recursive: true });
@@ -131,7 +132,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects pack without abuddy.json', async () => {
-    const { install } = await import('../../../abuddy-cli/src/commands/install');
+    const { install } = await import('../../src/commands/install');
 
     const noManifest = path.join(tmpDir, 'no-manifest');
     fs.mkdirSync(noManifest, { recursive: true });
@@ -140,7 +141,7 @@ describe('pack CLI: install', () => {
   });
 
   it('symlinks in source directory are skipped during copy', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('@abuddy/host/packs');
 
     const sourceDir = path.join(tmpDir, 'symlink-pack');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
@@ -167,7 +168,7 @@ describe('pack CLI: install', () => {
   });
 
   it('installs from a zip file', async () => {
-    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
+    const { installPackFromLocal } = await import('@abuddy/host/packs');
 
     const sourceDir = path.join(tmpDir, 'zip-source');
     fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });

@@ -1,21 +1,20 @@
 // A pack's feature settings (abuddy.json features[].settings) are defaults once the pack registers:
 // its plugin's slice and sidebar visibility join the app's defaults, which stored settings override.
 import { afterEach, describe, expect, it } from 'vitest';
-import type { PackRegistration } from '@abuddy/sdk/framework';
-import { registerPack, unregisterPack } from '@abuddy/host/packs';
-import { clearMemory } from '@abuddy/host/ears';
+import { packSettingsRegistry } from '@abuddy/sdk/framework';
+import { resetTestData } from '@abuddy/sdk/testing';
 import { getDefaultSettings } from '@/features/settings/be/defaults';
 import { repository } from '@/__generated__/repository';
 
 const feature = (id: string, settings: Record<string, unknown>) => ({ id, hasSystem: false, services: [], settings });
 const registered: string[] = [];
 function register(id: string, features: ReturnType<typeof feature>[]): void {
-  registerPack({ id, systems: [], features } as unknown as PackRegistration);
+  packSettingsRegistry.register(id, features);
   registered.push(id);
 }
 afterEach(() => {
-  for (const id of registered.splice(0)) unregisterPack(id);
-  clearMemory();
+  for (const id of registered.splice(0)) packSettingsRegistry.unregister(id);
+  resetTestData();
 });
 
 describe("packs' feature settings as defaults", () => {
@@ -26,7 +25,7 @@ describe("packs' feature settings as defaults", () => {
     expect(repository.settingsQueries.getPluginSettings('memos')).toEqual({ sort: 'newest' });
     expect(repository.settingsQueries.getSettings().plugins._meta?.visibility).toMatchObject({ memos: false });
 
-    unregisterPack('memo-pack');
+    packSettingsRegistry.unregister('memo-pack');
     registered.splice(0);
     expect(getDefaultSettings().plugins).not.toHaveProperty('memos');
     expect(getDefaultSettings().plugins._meta?.visibility).not.toHaveProperty('memos');
@@ -35,7 +34,7 @@ describe("packs' feature settings as defaults", () => {
   it("stores only the user's changes, so a pack's defaults still leave with it after a settings update", () => {
     register('memo-pack', [feature('memos', { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' } } })]);
     repository.settingsCommands.updateSettings('plugin', '_meta', ['lastActivePlugin'], 'memos');
-    unregisterPack('memo-pack');
+    packSettingsRegistry.unregister('memo-pack');
     registered.splice(0);
     const { plugins } = repository.settingsQueries.getSettings();
     expect(plugins._meta?.lastActivePlugin).toBe('memos');

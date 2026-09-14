@@ -3,13 +3,18 @@
  * and cliUuid lookup across nested forks, post-compaction scenarios, and
  * edge cases.
  *
- * These tests exercise handle-fork.ts with mocked Services, verifying:
+ * These tests run handle-fork.ts on the harness's services (real thread and message rows, the CLI
+ * mocked), verifying:
  * - Correct sessionId + cliUuid persisted on the new thread
  * - The viewSession validation guard (post-compaction safety)
  * - Graceful degradation when viewSession throws
  * - openThreadChatAndRefreshRecent called AFTER state persistence (race fix)
  */
 
+import { vi, describe, expect, it } from 'vitest';
+import { mockService } from '@abuddy/testing/harness';
+import { services, type Services, type EntityId } from '@/__generated__/services';
+import { repository } from '@/__generated__/repository';
 import { action as handleFork } from '../../src/seeds/actions/claude-code/handle-fork';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -28,8 +33,8 @@ interface MockMessage {
 }
 
 /**
- * Build a minimal Services mock. Thread state is stored in `threads` map
- * so getClaudeState/persistClaudeState work via byId/update.
+ * Seeds the threads and messages as rows in the harness's in-memory database and mocks the services
+ * the action drives (the Claude Code CLI, settings, logger). `t` and `m` map the fixture keys to row ids.
  */
 function createServices(opts: {
   threads: Map<string, MockThread>;
@@ -37,66 +42,40 @@ function createServices(opts: {
   /** viewSession return value or error. Default: empty array. */
   viewSessionResult?: unknown[] | Error;
 }) {
-  const { threads, messages } = opts;
-  const callOrder: string[] = [];
+  const threadIds = new Map<string, EntityId>();
+  const messageIds = new Map<string, EntityId>();
+  for (const [key, thread] of opts.threads) {
+    const { id } = repository.threadCommands.create({ id: `Thread-${key}`, topic: key, instructions: '', tags: thread.tags ?? [] });
+    if (thread.context) repository.threadCommands.update(id, { context: thread.context });
+    threadIds.set(key, id);
+  }
+  for (const [threadKey, list] of opts.messages) {
+    for (const message of list) {
+      const added = repository.chatCommands.addMessage({
+        threadId: threadIds.get(threadKey)!, sender: message.sender, text: message.text ?? '', ...(message.context && { context: message.context }),
+      });
+      messageIds.set(message.id, added.id);
+    }
+  }
 
   const viewSessionMock = vi.fn(async () => {
     if (opts.viewSessionResult instanceof Error) throw opts.viewSessionResult;
     return opts.viewSessionResult ?? [];
   });
-
-  const openThreadChatMock = vi.fn(() => {
-    callOrder.push('openThreadChat');
-  });
+  mockService<Services, 'cli'>('cli', { claudeCode: { viewSession: viewSessionMock } as never });
+  mockService<Services, 'settings'>('settings', { updatePluginSetting: vi.fn() } as never);
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
   return {
-    services: {
-      logger: {
-        debug: vi.fn(),
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-      },
-      repository: {
-        chatQueries: {
-          threadData: vi.fn((threadId: string) => ({
-            messages: messages.get(threadId) || [],
-          })),
-        },
-        threadQueries: {
-          byId: vi.fn((threadId: string) => threads.get(threadId) || null),
-        },
-        threadCommands: {
-          update: vi.fn((threadId: string, updates: any) => {
-            callOrder.push('persistState');
-            const thread = threads.get(threadId);
-            if (thread) {
-              thread.context = updates.context ?? thread.context;
-              thread.tags = updates.tags ?? thread.tags;
-            }
-          }),
-        },
-      },
-      emitter: {
-        sendToPlugin: vi.fn(),
-      },
-      settings: {
-        updatePluginSetting: vi.fn(),
-      },
-      cli: {
-        claudeCode: {
-          viewSession: viewSessionMock,
-        },
-      },
-    } as any,
+    t: (key: string) => threadIds.get(key) ?? (`Thread-${key}` as EntityId),
+    m: (key: string) => messageIds.get(key) ?? (key as EntityId),
     viewSessionMock,
-    callOrder,
   };
 }
 
 /** Shorthand: get the claudeCode state persisted on a thread. */
-function getState(threads: Map<string, MockThread>, threadId: string) {
-  return threads.get(threadId)?.context?.claudeCode as Record<string, unknown> | undefined;
+function getState(threadId: EntityId) {
+  return (repository.threadQueries.byId(threadId)?.context as { claudeCode?: Record<string, unknown> } | undefined)?.claudeCode;
 }
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -131,7 +110,7 @@ describe('CC: Handle Fork — stress tests', () => {
     ]);
 
     // viewSession confirms U2 exists in session S1
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: [
         { type: 'assistant', uuid: 'U1' },
@@ -140,13 +119,13 @@ describe('CC: Handle Fork — stress tests', () => {
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new', sourceMessageId: 'M5' },
+      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M5') },
       services,
     );
 
     expect(result).toMatchObject({ success: true, copied: true, sessionId: 'S1', cliUuid: 'U2' });
 
-    const state = getState(threads, 'new');
+    const state = getState(t('new'));
     expect(state).toMatchObject({
       sessionId: 'S1',
       cwd: '/project',
@@ -169,13 +148,13 @@ describe('CC: Handle Fork — stress tests', () => {
       )],
     ]);
 
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: [{ type: 'assistant', uuid: 'U1' }, { type: 'assistant', uuid: 'U2' }],
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new', sourceMessageId: 'M2' },
+      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M2') },
       services,
     );
 
@@ -196,16 +175,16 @@ describe('CC: Handle Fork — stress tests', () => {
       )],
     ]);
 
-    const { services } = createServices({ threads, messages });
+    const { t, m } = createServices({ threads, messages });
 
     const result = await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new', sourceMessageId: 'M1' },
+      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M1') },
       services,
     );
 
     expect(result).toMatchObject({ success: true, copied: true, cliUuid: undefined });
 
-    const state = getState(threads, 'new');
+    const state = getState(t('new'));
     expect(state).toMatchObject({
       forkFrom: { sessionId: 'S1', cliUuid: undefined },
     });
@@ -234,7 +213,7 @@ describe('CC: Handle Fork — stress tests', () => {
     ]);
 
     // S2 was forked from S1 at U2, so S2 contains U1 and U2
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: [
         { type: 'assistant', uuid: 'U1' },
@@ -244,13 +223,13 @@ describe('CC: Handle Fork — stress tests', () => {
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'threadB', newThreadId: 'threadC', sourceMessageId: 'M2p' },
+      { sourceThreadId: t('threadB'), newThreadId: t('threadC'), sourceMessageId: m('M2p') },
       services,
     );
 
     expect(result).toMatchObject({ success: true, copied: true, sessionId: 'S2', cliUuid: 'U1' });
 
-    const state = getState(threads, 'threadC');
+    const state = getState(t('threadC'));
     expect(state).toMatchObject({
       sessionId: 'S2',
       forkFrom: { sessionId: 'S2', cliUuid: 'U1' },
@@ -278,20 +257,20 @@ describe('CC: Handle Fork — stress tests', () => {
     ]);
 
     // S3 (compacted) only contains U5, not U1 or U2
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: [{ type: 'assistant', uuid: 'U5' }],
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'threadB', newThreadId: 'threadC', sourceMessageId: 'M2p' },
+      { sourceThreadId: t('threadB'), newThreadId: t('threadC'), sourceMessageId: m('M2p') },
       services,
     );
 
     // cliUuid should be cleared — fork from session end
     expect(result).toMatchObject({ success: true, copied: true, cliUuid: undefined });
 
-    const state = getState(threads, 'threadC');
+    const state = getState(t('threadC'));
     expect(state).toMatchObject({
       sessionId: 'S3',
       forkFrom: { sessionId: 'S3', cliUuid: undefined },
@@ -312,13 +291,13 @@ describe('CC: Handle Fork — stress tests', () => {
       )],
     ]);
 
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: new Error('JSONL not found'),
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new', sourceMessageId: 'M2' },
+      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M2') },
       services,
     );
 
@@ -348,7 +327,7 @@ describe('CC: Handle Fork — stress tests', () => {
     ]);
 
     // S4 (fork chain) still contains U1 from the original session
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: [
         { type: 'assistant', uuid: 'U1' },
@@ -357,13 +336,13 @@ describe('CC: Handle Fork — stress tests', () => {
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'threadD', newThreadId: 'threadE', sourceMessageId: 'M2ppp' },
+      { sourceThreadId: t('threadD'), newThreadId: t('threadE'), sourceMessageId: m('M2ppp') },
       services,
     );
 
     expect(result).toMatchObject({ success: true, copied: true, sessionId: 'S4', cliUuid: 'U1' });
 
-    const state = getState(threads, 'threadE');
+    const state = getState(t('threadE'));
     expect(state).toMatchObject({
       sessionId: 'S4',
       forkFrom: { sessionId: 'S4', cliUuid: 'U1' },
@@ -378,13 +357,13 @@ describe('CC: Handle Fork — stress tests', () => {
       ['new', { id: 'new', context: {}, tags: [] }],
     ]);
 
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads,
       messages: new Map(),
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new', sourceMessageId: 'M1' },
+      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M1') },
       services,
     );
 
@@ -399,19 +378,19 @@ describe('CC: Handle Fork — stress tests', () => {
       ['new', { id: 'new', context: {}, tags: [] }],
     ]);
 
-    const { services } = createServices({
+    const { t, m } = createServices({
       threads,
       messages: new Map(),
     });
 
     const result = await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new' },
+      { sourceThreadId: t('source'), newThreadId: t('new') },
       services,
     );
 
     expect(result).toMatchObject({ success: true, copied: true, cliUuid: undefined });
 
-    const state = getState(threads, 'new');
+    const state = getState(t('new'));
     expect(state).toMatchObject({
       forkFrom: { sessionId: 'S1', cliUuid: undefined },
     });
@@ -431,22 +410,18 @@ describe('CC: Handle Fork — stress tests', () => {
       )],
     ]);
 
-    const { services, callOrder } = createServices({
+    const { t, m } = createServices({
       threads, messages,
       viewSessionResult: [{ type: 'assistant', uuid: 'U1' }],
     });
 
     await handleFork(
-      { sourceThreadId: 'source', newThreadId: 'new', sourceMessageId: 'M2' },
+      { sourceThreadId: t('source'), newThreadId: t('new'), sourceMessageId: m('M2') },
       services,
     );
 
-    // persistState (via threadCommands.update) must have been called
-    const persistIndex = callOrder.indexOf('persistState');
-    expect(persistIndex).toBeGreaterThanOrEqual(0);
-
     // State should be on the new thread
-    const state = getState(threads, 'new');
+    const state = getState(t('new'));
     expect(state).toMatchObject({
       sessionId: 'S1',
       cwd: '/p',

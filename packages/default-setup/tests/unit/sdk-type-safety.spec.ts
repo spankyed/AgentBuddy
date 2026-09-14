@@ -16,8 +16,9 @@ import {
   type EntityShape, type PackShapes,
 } from '@/__generated__/ears';
 import { repository, type Repositories } from '@/__generated__/repository';
-import { clearMemory, filterSystemFields, type Logger } from '@abuddy/host/ears';
-import { createLogger } from '@abuddy/sdk/logger';
+import { filterSystemFields } from '@abuddy/sdk/ears';
+import { resetTestData } from '@abuddy/sdk/testing';
+import { createLogger, type Logger } from '@abuddy/sdk/logger';
 import {
   loadJSON,
   seedCollection, detectChanges,
@@ -185,7 +186,7 @@ describe('Generated repository', () => {
 // These verify that generics flow through the actual delegate chain at runtime.
 
 describe('Generic flow — runtime verification', () => {
-  beforeEach(() => clearMemory());
+  beforeEach(() => resetTestData());
 
   it('findById<T> returns typed result with T properties', () => {
     type ActionEntity = {

@@ -1,8 +1,9 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { generateEntries } from '../../../abuddy-cli/src/commands/generate-entries';
-import type { PackSnapshot, PackTypeManifest } from '../../../abuddy-sdk/src/build';
+import { generateEntries } from '../../src/commands/generate-entries';
+import type { PackSnapshot, PackTypeManifest } from '@abuddy/sdk/build';
 
 let tmpDir: string;
 
