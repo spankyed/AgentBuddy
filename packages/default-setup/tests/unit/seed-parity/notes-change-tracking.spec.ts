@@ -6,33 +6,16 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { compileFormatEntry, type GenericSeedEntry, type SeedRecord } from '@abuddy/sdk/build';
-import { createSeeder, seedHookRegistry } from '@abuddy/sdk/seed';
+import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { dropAttr, getAllEntities, qx } from '@abuddy/host/ears';
-import { noteSeedHooks } from '@/features/notes/be/seed-hooks';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
-const manifestEntry = manifest.boot.seed.notes as string | GenericSeedEntry;
-
-/** The manifest's notes entry once it is an object entry; until then, the entry it will become */
-const NOTES_ENTRY: GenericSeedEntry = typeof manifestEntry === 'object' ? manifestEntry : {
-  format: 'markdown-tree',
-  entity: 'Note',
-  identity: ['title', 'parent'],
-  tree: { branch: 'index.md', relKind: 'contains' },
-  fields: {
-    title: { from: 'frontmatter.title', default: 'filename', type: 'string' },
-    noteType: { from: 'frontmatter.type', default: 'document' },
-    icon: { from: 'frontmatter.icon', default: null, type: 'string' },
-    favorite: { from: 'frontmatter.favorite', default: false },
-    hideCompletedChildren: { from: 'frontmatter.hideCompletedChildren', default: false },
-    completed: { from: 'frontmatter.completed', default: false },
-    content: { from: 'body' },
-  },
-};
+/** default-setup's notes seed entry; the test setup registers its Note seed hooks with the pack */
+const NOTES_ENTRY = manifest.boot.seed.notes as GenericSeedEntry;
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
 const golden = (scenario: string) => JSON.parse(fs.readFileSync(path.join(GOLDEN_DIR, `${scenario}.json`), 'utf-8'));
@@ -53,9 +36,6 @@ function compile(sources: 'v1' | 'v2' | 'default-setup') {
   return compiled.get(sources)!;
 }
 
-beforeAll(() => {
-  if (!seedHookRegistry.get('Note')) seedHookRegistry.register('Note', noteSeedHooks as never, 'default-setup');
-});
 afterAll(() => {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });

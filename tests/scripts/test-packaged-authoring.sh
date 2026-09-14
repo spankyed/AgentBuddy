@@ -2,7 +2,8 @@
 # End state for outside pack authors (docs/issues/goal-external-pack-authoring.md): in a temp
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
 #   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
-#   2. abuddy init → add feature → a flow using keepAlive from default-setup
+#   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a .ts
+#      compiler module, and Notes seeded through default-setup's hooks
 #   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
 #   4. install that bundle into an isolated test data dir
 #   5. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
@@ -105,8 +106,36 @@ export default {
 };
 EOF
 
+step "2. Seeds from abuddy.json: a .ts compiler module, and Notes seeded through default-setup"
+mkdir -p src/seeds/glossary src/seeds/notes
+printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/seeds/glossary/pack.md
+cat > src/seeds/compile-glossary.ts <<'TS'
+import { compileMarkdownTree, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
+
+export default function compileGlossary({ path }: SeedCompileContext): SeedRecord[] {
+  return compileMarkdownTree(path).map((item) => ({ entity: 'DemoPack', term: String(item.frontmatter.term), definition: item.body.trim() }));
+}
+TS
+printf -- '---\ntitle: Demo notes\n---\nSeeded by demo-pack.\n' > src/seeds/notes/demo.md
+node -e '
+  const fs = require("fs");
+  const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
+  m.boot.seed.glossary = { path: "src/seeds/glossary", compiler: "src/seeds/compile-glossary.ts", entity: "DemoPack", identity: ["term"] };
+  m.boot.seed["demo-notes"] = { path: "src/seeds/notes", format: "markdown-tree", entity: "Note", identity: ["title", "parent"],
+    fields: { title: { from: "frontmatter.title", default: "filename", type: "string" }, content: { from: "body" } } };
+  fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
+'
+
 step "3. abuddy build"
 "$ABUDDY" build | tee "$WORK/build.log"
+node -e '
+  const fs = require("fs");
+  const read = (key) => JSON.parse(fs.readFileSync(`dist/runtime/seeds/${key}.seed.json`, "utf8")).records;
+  const [term] = read("glossary");
+  if (term?.entity !== "DemoPack" || term.term !== "Pack" || term.definition !== "A bundle of features.") throw new Error("glossary: " + JSON.stringify(term));
+  const [note] = read("demo-notes");
+  if (note?.entity !== "Note" || note.title !== "Demo notes" || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
+' || fail "the compiler module and markdown seeds were not compiled"
 # The build prints a seed-file count even with no flows; check the compiled flow itself
 node -e '
   const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));

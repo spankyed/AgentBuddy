@@ -1,0 +1,58 @@
+{
+  "$schema": "../../../../abuddy-sdk/abuddy.schema.json",
+  "id": "team-notes",
+  "name": "Team Notes",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "dependencies": {
+    "default-setup": "*"
+  },
+  "boot": {
+    "seed": {
+      "team-notes": {
+        "path": "src/seeds/team-notes",
+        "format": "markdown-tree",
+        "entity": "Note",
+        "identity": [
+          "title",
+          "parent"
+        ],
+        "tree": {
+          "branch": "index.md",
+          "relKind": "contains"
+        },
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "noteType": {
+            "from": "frontmatter.type",
+            "default": "document"
+          },
+          "icon": {
+            "from": "frontmatter.icon",
+            "default": null,
+            "type": "string"
+          },
+          "favorite": {
+            "from": "frontmatter.favorite",
+            "default": false
+          },
+          "hideCompletedChildren": {
+            "from": "frontmatter.hideCompletedChildren",
+            "default": false
+          },
+          "completed": {
+            "from": "frontmatter.completed",
+            "default": false
+          },
+          "content": {
+            "from": "body"
+          }
+        }
+      }
+    }
+  }
+}

@@ -37,3 +37,12 @@ test("renders the host's @abuddy/ui editor inside the pack", async ({ appPage, a
   await appPage.getByTestId('memo-input').fill('typed draft');
   await expect(preview.locator('.ProseMirror')).toContainText('typed draft');
 });
+
+test('seeds memos from abuddy.json: a markdown entry and a compiler module', async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  await app.navigate('memos');
+
+  const list = appPage.getByTestId('memo-list');
+  await expect(list.getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(list.getByText('Seeded by a compiler module', { exact: true })).toBeVisible();
+});

@@ -38,5 +38,35 @@
     }
   ],
   "dependencies": {},
-  "permissions": []
+  "permissions": [],
+  "boot": {
+    "seed": {
+      "memos": {
+        "path": "src/seeds/memos",
+        "format": "markdown-tree",
+        "entity": "Memo",
+        "identity": [
+          "title"
+        ],
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "text": {
+            "from": "body"
+          }
+        }
+      },
+      "quick-memos": {
+        "path": "src/seeds/quick-memos.txt",
+        "compiler": "src/seeds/compile-quick-memos.ts",
+        "entity": "Memo",
+        "identity": [
+          "title"
+        ]
+      }
+    }
+  }
 }
