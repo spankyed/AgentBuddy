@@ -142,6 +142,11 @@
       "types": "./dist/services/inference.d.ts",
       "default": "./dist/services/inference.js"
     },
+    "./models": {
+      "@abuddy/source": "./src/services/models.ts",
+      "types": "./dist/services/models.d.ts",
+      "default": "./dist/services/models.js"
+    },
     "./cron": {
       "@abuddy/source": "./src/utils/cron.ts",
       "types": "./dist/utils/cron.d.ts",
@@ -151,6 +156,11 @@
       "@abuddy/source": "./src/seed/index.ts",
       "types": "./dist/seed/index.d.ts",
       "default": "./dist/seed/index.js"
+    },
+    "./testing": {
+      "@abuddy/source": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
     },
     "./abuddy.schema.json": "./abuddy.schema.json",
     "./ears/internals": {

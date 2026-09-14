@@ -47,6 +47,7 @@ import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
 import * as _sdkEnv from '@abuddy/sdk/env';
 import * as _sdkInference from '@abuddy/sdk/inference';
+import * as _sdkModels from '@abuddy/sdk/models';
 import * as _sdkTemplates from '@abuddy/sdk/runtime';
 import * as _sdkCron from '@abuddy/sdk/cron';
 import * as _sdkCompareVersions from '@abuddy/sdk/utils/compare-versions';
@@ -76,6 +77,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/designations': _sdkDesignations,
   '@abuddy/sdk/env': _sdkEnv,
   '@abuddy/sdk/inference': _sdkInference,
+  '@abuddy/sdk/models': _sdkModels,
   '@abuddy/sdk/runtime': _sdkTemplates,
   // Leaf modules too: an installed pack has no node_modules to resolve them from
   '@abuddy/sdk/cron': _sdkCron,

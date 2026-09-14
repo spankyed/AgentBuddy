@@ -178,6 +178,7 @@ export interface CompilePackOptions {
         settingsPath: string;
     }>;
     importModule?: (file: string) => Promise<Record<string, unknown>>;
+    log?: (message: string) => void;
     // (undocumented)
     outputDir: string;
     // (undocumented)

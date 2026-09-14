@@ -12,7 +12,7 @@ import type {
   NodeKind,
   FlowsConnectedData
 } from '../types';
-import { availableModels } from '@abuddy/sdk/inference';
+import { availableModels } from '@abuddy/sdk/models';
 import { repository } from '@/__generated__/repository';
 import type { CompiledRows } from '@abuddy/sdk/build';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk';

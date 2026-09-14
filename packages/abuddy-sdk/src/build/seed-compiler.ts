@@ -102,11 +102,12 @@ async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
   const importModule = options.importModule ?? importFileModule;
+  const log = options.log ?? console.log;
   const { packConfig, featureSettingsPaths } = await loadPackConfig(options);
 
   if (packConfig.setup) await packConfig.setup();
 
-  console.log(`Compiling pack: ${packConfig.name}`);
+  log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
 
   const specialtyData = new Map<string, unknown>();
@@ -191,7 +192,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   for (const { key, media, output, index } of compiled) {
     fs.writeFileSync(path.join(outputDir, seedFile(key)), `${JSON.stringify(output, null, 2)}\n`);
     if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
-    console.log(`  ${key}: ${index.count}`);
+    log(`  ${key}: ${index.count}`);
   }
   const seedIndex: SeedIndex = { version: 1, seeds: compiled.map(({ index }) => index) };
   fs.writeFileSync(path.join(outputDir, SEED_INDEX_FILE), `${JSON.stringify(seedIndex, null, 2)}\n`);

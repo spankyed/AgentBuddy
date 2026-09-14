@@ -26,6 +26,8 @@ export interface CompilePackOptions {
   featureSettingsPaths?: Array<{ name: string; settingsPath: string }>;
   /** Loads a compiler module (the pack's own source, or a dependency's seed-compilers.mjs); the CLI loads TypeScript modules with tsx. Defaults to import(). */
   importModule?: (file: string) => Promise<Record<string, unknown>>;
+  /** Progress lines (the pack and each key's item count); defaults to console.log */
+  log?: (message: string) => void;
 }
 
 export interface CompilePackResult {
