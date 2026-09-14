@@ -42,7 +42,15 @@ export function registerHostSystem(
 const sdkEntityTypes: ReadonlySet<string> = new Set(Object.values(SDK_ENTITIES));
 const sdkRelKinds: ReadonlySet<string> = new Set(Object.values(SDK_REL_KINDS));
 
-export function registerPack(registration: PackRegistration): void {
+/** A pack's own EARS names. A pack built with an older SDK may still list the SDK's among them. */
+function ownEARS(ears: PackEARS): PackEARS {
+  const own = (names: Record<string, string>, sdkOwned: ReadonlySet<string>) =>
+    Object.fromEntries(Object.entries(names).filter(([, value]) => !sdkOwned.has(value)));
+  return { ...ears, entities: own(ears.entities, sdkEntityTypes), relKinds: own(ears.relKinds, sdkRelKinds) };
+}
+
+export function registerPack(pack: PackRegistration): void {
+  const registration = pack.ears ? { ...pack, ears: ownEARS(pack.ears) } : pack;
   if (registrations.has(registration.id)) {
     throw new Error(`Pack "${registration.id}" is already registered`);
   }
@@ -52,15 +60,12 @@ export function registerPack(registration: PackRegistration): void {
       if (!existing.ears) continue;
       const existingEntValues = Object.values(existing.ears.entities);
       for (const val of Object.values(registration.ears.entities)) {
-        // The SDK's own; a pack built with an older SDK may still list it
-        if (sdkEntityTypes.has(val)) continue;
         if (existingEntValues.includes(val)) {
           throw new Error(`EARS collision: entity type "${val}" — pack "${registration.id}" vs "${existingId}"`);
         }
       }
       const existingRelValues = Object.values(existing.ears.relKinds);
       for (const val of Object.values(registration.ears.relKinds)) {
-        if (sdkRelKinds.has(val)) continue;
         if (existingRelValues.includes(val)) {
           throw new Error(`EARS collision: relation kind "${val}" — pack "${registration.id}" vs "${existingId}"`);
         }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
 
 const registered: string[] = [];
 afterEach(() => {
@@ -53,6 +53,8 @@ describe('registerPack entities', () => {
     registerEntities('first-pack', { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, { CONTAINS: 'contains' });
     expect(() => registerEntities('second-pack', { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, { CONTAINS: 'contains' })).not.toThrow();
     expect([...getRegisteredEntityTypes()].sort()).toEqual(['Action', 'Flow', 'Memo', 'Node', 'Prompt', 'Relation', 'TNode', 'Tag']);
+    // The registration keeps only the pack's own names
+    expect(getPackContributions('first-pack')?.relKinds).toEqual({});
   });
 
   it('keeps TNode out of persistence without any pack asking', () => {
