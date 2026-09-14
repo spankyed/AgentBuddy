@@ -50,11 +50,11 @@ Markdown under `notes/`, seeded by the `notes` entry (`format: "markdown-tree"`,
 
 ## Library
 
-Markdown under `library/`, compiled by `features/library/be/seed/compile.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the seeds, and `![alt](media/file)` links point at the document's media.
+Markdown under `library/`, compiled by `compilers/library.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the seeds, and `![alt](media/file)` links point at the document's media.
 
 ## FAQs
 
-Markdown under `faqs/`, compiled by `features/settings/be/compile-faqs.ts` for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not seeded into the database.
+Markdown under `faqs/`, compiled by `compilers/faqs.ts` for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not seeded into the database.
 
 ## Re-seeding
 

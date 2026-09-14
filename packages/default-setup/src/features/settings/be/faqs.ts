@@ -2,7 +2,7 @@ import { loadJSON } from '@abuddy/sdk/utils';
 import { seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
 
-/** A FAQ, compiled from src/seeds/faqs by src/seeds/compile-faqs.ts */
+/** A FAQ, compiled from src/seeds/faqs by src/seeds/compilers/faqs.ts */
 export interface CompiledFAQ {
   id: string;
   question: string;

@@ -303,7 +303,7 @@
       "flows": "src/seeds/flows",
       "library": {
         "path": "src/seeds/library",
-        "compiler": "src/features/library/be/seed/compile.ts",
+        "compiler": "src/seeds/compilers/library.ts",
         "entity": [
           "Collection",
           "Document"
@@ -359,7 +359,7 @@
       },
       "faqs": {
         "path": "src/seeds/faqs",
-        "compiler": "src/features/settings/be/compile-faqs.ts"
+        "compiler": "src/seeds/compilers/faqs.ts"
       },
       "settings": "src/seeds/default-settings.ts"
     },

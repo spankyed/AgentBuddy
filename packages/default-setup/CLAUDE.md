@@ -90,8 +90,8 @@ Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `boot.seed` de
 
 - `actions/`, `prompts/`, `flows/`, `default-settings.ts` — compiled by the SDK's own compilers (the manifest names only their paths)
 - `notes/` — welcome note: a `markdown-tree` entry for `Note` (frontmatter fields, `index.md` directories)
-- `library/` — internal docs (commands reference): compiled by `features/library/be/seed/compile.ts` into Collection and Document records, with sections parsed from the markdown
-- `faqs/` — markdown FAQ files: compiled by `features/settings/be/compile-faqs.ts`, not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
+- `library/` — internal docs (commands reference): compiled by `seeds/compilers/library.ts` into Collection and Document records, with sections parsed from the markdown
+- `faqs/` — markdown FAQ files: compiled by `seeds/compilers/faqs.ts`, not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
 
 Notes and library rows go through the seed hooks default-setup registers for Note, Document and Collection (`seedHooks` in `abuddy.json`: `features/notes/be/seed-hooks.ts`, `features/library/be/seed-hooks.ts`), which call `noteCommands`/`libraryCommands`. Any pack seeding those entity types gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
 

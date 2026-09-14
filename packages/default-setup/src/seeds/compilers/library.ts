@@ -1,7 +1,7 @@
 // Compiles src/seeds/library (the `library` seed entry in abuddy.json): directories become Collections
 // (named by their _meta.md frontmatter) and markdown files Documents, with their content parsed into sections.
 import { compileMarkdownTree, sourceHash, type MarkdownItem, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
-import { parseMarkdownSections } from '../utils';
+import { parseMarkdownSections } from '../../features/library/be/utils';
 
 const text = (value: unknown): string | undefined => (value === undefined || value === null || value === '' ? undefined : String(value));
 
