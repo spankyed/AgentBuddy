@@ -3,7 +3,10 @@
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
 #   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format
-#      with a .ts compiler module, and default-setup's notes format
+#      with a .ts compiler module, and default-setup's notes format → an llm flow and a service
+#      using default-setup's llm service
+#   3. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
+#      with default-setup's llm service mocked, the llm flow on default-setup's brain with a fake model
 #   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
 #   4. install that bundle into an isolated test data dir
 #   5. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
@@ -128,6 +131,55 @@ node -e '
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 
+step "2. An llm flow on default-setup's brain, and a service using default-setup's llm service"
+"$ABUDDY" add prompt summarize-note >/dev/null
+cat > src/seeds/prompts/summarize-note.ts <<'TS'
+import type { PromptMeta } from '@abuddy/sdk/build';
+
+export const meta: PromptMeta = {
+  label: 'Summarize Note',
+  description: 'Summarizes a note in one line.',
+  category: 'notes',
+  inputs: { text: { name: 'text', type: 'string', description: 'The note', required: true } },
+};
+
+export function template(params: Record<string, any>) {
+  return `Summarize this note: ${params.text}`;
+}
+TS
+cat > src/seeds/flows/notes-summary.ts <<'TS'
+import { on, llm } from '#generated/flow-helpers';
+
+export default {
+  "Notes Summary": [
+    on('notes.summarize', [[
+      llm('Summarize Note', { label: 'summarize', model: 'openai:gpt-4o-mini', map: { text: '$.event.data.payload.text' } }),
+    ]]),
+  ],
+};
+TS
+"$ABUDDY" add service digest --feature notes >/dev/null
+cat > src/features/notes/be/services/digest.ts <<'TS'
+import { services } from '#generated/services';
+
+export function createDigestService() {
+  return {
+    async digest(text: string): Promise<string> {
+      const result = await services.llm.generateText({ model: { provider: 'openai', model: 'gpt-4o-mini' }, prompt: `Digest: ${text}` });
+      return result.text.toUpperCase();
+    },
+  };
+}
+TS
+node -e '
+  const fs = require("fs");
+  const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
+  m.boot.seed = { prompts: "src/seeds/prompts", ...m.boot.seed };
+  fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
+'
+# fakeModel runs the AI SDK against a scripted model: a pack testing llm steps installs ai
+npm install --silent --save-dev ai@^4.3.19
+
 step "3. abuddy build"
 "$ABUDDY" build | tee "$WORK/build.log"
 node -e '
@@ -139,7 +191,7 @@ node -e '
   if (note?.entity !== "Note" || note.title !== "Demo notes" || note.noteType !== "document" || note.icon !== null || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
 ' || fail "the compiler module and markdown seeds were not compiled"
 
-step "3. Unit tests through the harness, with default-setup's seed runtime"
+step "3. Unit tests through the harness, with default-setup's runtime"
 cat > tests/unit/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { seedPack } from '@abuddy/testing/harness';
@@ -154,8 +206,40 @@ describe('demo notes', () => {
   });
 });
 TS
+cat > tests/unit/digest-service.spec.ts <<'TS'
+import { describe, expect, it } from 'vitest';
+import { mockService } from '@abuddy/testing/harness';
+import { services, type Services } from '#generated/services';
+
+describe('digest service', () => {
+  it("uses default-setup's llm service, mocked here", async () => {
+    mockService<Services, 'llm'>('llm', { generateText: async () => ({ text: 'buy milk' }) } as never);
+    expect(await services.digest.digest('Remember to buy milk')).toBe('BUY MILK');
+  });
+});
+TS
+cat > tests/unit/notes-summary.spec.ts <<'TS'
+import { describe, expect, it } from 'vitest';
+import { fakeModel } from '@abuddy/sdk/testing';
+import { seedPack, startApp } from '@abuddy/testing/harness';
+
+describe('notes summary flow', () => {
+  it("runs on default-setup's brain and llm step with a fake model", async () => {
+    await seedPack({ keys: ['prompts', 'flows'] });
+    const model = fakeModel('Buy milk');
+    const app = await startApp({ systems: ['brain', 'settings'] });
+
+    const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
+
+    expect(run.steps).toEqual([expect.objectContaining({ label: 'summarize', status: 'completed' })]);
+    expect(run.steps[0].nodeAttributes.result).toMatchObject({ text: 'Buy milk' });
+    expect(model.calls.map((call) => call.messages)).toEqual([[{ role: 'user', text: 'Summarize this note: Remember to buy milk' }]]);
+  });
+});
+TS
 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
-grep -qE "Tests +3 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
+# The scaffold's seed test (2), the feature's system test, default-setup notes, the service and the flow
+grep -qE "Tests +6 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints a seed-file count even with no flows; check the compiled flow itself
 node -e '
   const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));

@@ -65,6 +65,22 @@ const ${camel}Entry: SystemEntry = { spec: ${camel}Spec, machine: ${camel}System
 export default ${camel}Entry;
 `;
 
+const SYSTEM_SPEC = (name: string) => {
+  const connected = `${name.toUpperCase().replace(/-/g, '_')}_CONNECTED`;
+  return `// The ${name} system under the app's bus, without the app (@abuddy/testing/harness)
+import { describe, expect, it } from 'vitest';
+import { startApp } from '@abuddy/testing/harness';
+
+describe('${name} system', () => {
+  it('sends its connected data when a client connects', async () => {
+    const app = await startApp({ systems: ['${name}'] });
+    await app.connect();
+    expect(await app.nextEmit('${name}', '${connected}')).toMatchObject({ data: {} });
+  });
+});
+`;
+};
+
 const TYPES = (pascal: string) => `export interface ${pascal}ConnectedData {
   // Define connected data shape
 }
@@ -178,6 +194,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
     [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
+    [path.join(root, 'tests', 'unit', `${name}-system.spec.ts`), SYSTEM_SPEC(name)],
   ];
 
   for (const [filePath, content] of files) {

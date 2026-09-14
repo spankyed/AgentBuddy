@@ -181,8 +181,10 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
   if (unknown.length > 0) throw new Error(`No seed entries ${unknown.join(', ')} in abuddy.json`);
 
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-seeds-'));
+  const { register, tsImport } = await import('tsx/esm/api');
+  // The SDK's own compilers import TypeScript sources (flows, actions) that use the pack's #generated imports
+  const unregister = register();
   try {
-    const { tsImport } = await import('tsx/esm/api');
     await compilePack({
       packDir,
       outputDir,
@@ -196,6 +198,7 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
     const result = seedData({ compiledDir: outputDir, mode: options.mode });
     return Object.fromEntries(Object.entries(result).filter(([key]) => seeded.has(key)));
   } finally {
+    await unregister();
     fs.rmSync(outputDir, { recursive: true, force: true });
   }
 }
