@@ -1,6 +1,6 @@
 # @abuddy/testing
 
-Reusable Playwright E2E test fixture for AgentBuddy, and vitest helpers for unit tests that use AgentBuddy's on-disk stores. Extracted from the monorepo's test infrastructure so both the host app and external packs share the same test code.
+Reusable Playwright E2E test fixture for AgentBuddy, a unit test harness for packs' data code, and vitest helpers for unit tests that use AgentBuddy's on-disk stores. Extracted from the monorepo's test infrastructure so both the host app and external packs share the same test code.
 
 ## Architecture
 
@@ -47,6 +47,16 @@ export default defineConfig({
 ```
 
 The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@abuddy/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. default-setup's `vitest.config.ts` uses it.
+
+## Unit test harness (`@abuddy/testing/harness`)
+
+A pack's unit tests run its data code without the app: seeds, repositories and seed hooks against an in-memory EARS, including its dependencies' seeding behaviour. `abuddy init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir` and `sourceConditions`, `tests/setup.ts`, an example seed test).
+
+- **`setupPackTests({ seedRuntime, packDir? })`** — from a vitest setup file. Starts `@abuddy/sdk/testing`'s runtime with the SDK's, the pack's and its dependencies' entity types (dependency types from `.abuddy/deps/<id>/snapshot.json`), registers each dependency's `build/seed-runtime.mjs` and then the pack's own `#generated/seed-runtime`, and empties the database and media store before each test.
+- **`seedPack({ keys?, mode? })`** — compiles the chosen seed entries (every entry naming a format by default) with `compilePack`, the cached dependency manifests and build dirs (dependency compiler modules come from their `seed-compilers.mjs`, the pack's own load with tsx), and seeds them with `seedData`. Returns the counts of the compiled keys.
+- **One SDK instance.** The harness imports `@abuddy/sdk` externally (the published bundle keeps it external for this entry; `scripts/bundle-package.ts` `sdkExternalEntries`), so its registrations are the ones the pack's code and the dependency facets see. In a checkout without the `@abuddy/source` condition the entry resolves to `src/harness-requires-source.ts`, which fails naming the fix.
+- **The seed runtime facet** (`src/__generated__/seed-runtime.ts`, bundled by `abuddy build` into `dist/build/seed-runtime.mjs` with only `@abuddy/sdk` external) holds the pack's entity types, relation kinds, repositories and seed hooks. Everything it imports must load in a plain Node process: no `@abuddy/host` (rejected at build), no native modules, no optional SDK peers (`ai`: the model catalog lives in `@abuddy/sdk/models` for this). `abuddy-sdk/tests/testing/seed-runtime.spec.ts` loads default-setup's facet into a bare runtime (required in CI).
+- **Proofs:** `tests/fixtures/external-pack` unit-tests its memo seeds (`test:external-pack` runs them); `test:packaged-authoring` seeds `default-setup:notes` from the packed tarballs and asserts NOTE shortCodes.
 
 ## Setup for external packs
 

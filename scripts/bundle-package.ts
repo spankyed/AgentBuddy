@@ -8,11 +8,16 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { build, type Plugin } from 'esbuild';
+import { build, type BuildOptions, type Plugin } from 'esbuild';
 
 interface BundleConfig {
   /** Entry name (output dist/<name>.js) → source file, relative to the package */
   entries: Record<string, string>;
+  /**
+   * Entries bundled with @abuddy/sdk external instead of inlined: they run inside a pack's process
+   * and must share the pack's installed SDK instance (its registries), not carry their own copy.
+   */
+  sdkExternalEntries?: Record<string, string>;
   /** Extra files copied verbatim into the published package */
   copy?: string[];
   /** Emit dist/<entry>.d.ts for each entry */
@@ -30,10 +35,12 @@ const CONFIGS: Record<string, BundleConfig> = {
   '@abuddy/testing': {
     // vitest-worker and vitest-teardown are loaded by path from dist/vitest.js's isolatedDataDir()
     entries: { index: 'src/index.ts', vitest: 'src/vitest.ts', 'vitest-worker': 'src/vitest-worker.ts', 'vitest-teardown': 'src/vitest-teardown.ts' },
+    sdkExternalEntries: { harness: 'src/harness.ts' },
     declarations: true,
     manifest: { exports: {
       '.': { types: './dist/index.d.ts', default: './dist/index.js' },
       './vitest': { types: './dist/vitest.d.ts', default: './dist/vitest.js' },
+      './harness': { types: './dist/harness.d.ts', default: './dist/harness.js' },
     } },
   },
 };
@@ -73,6 +80,34 @@ function versionOf(name: string): string {
 
 fs.rmSync(outDir, { recursive: true, force: true });
 
+const externalizeAllButHost: Plugin = {
+  name: 'externalize-all-but-host',
+  setup(b) {
+    b.onResolve({ filter: /^[^./]/ }, (args) => {
+      if (args.kind === 'entry-point' || packageName(args.path) === '@abuddy/host') return undefined;
+      return { path: args.path, external: true };
+    });
+  },
+};
+
+const sharedOptions = {
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  target: 'node20',
+  metafile: true,
+  logLevel: 'warning',
+  conditions: ['@abuddy/source', 'module'],
+  banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
+} satisfies BuildOptions;
+
+const sdkExternal = config.sdkExternalEntries && await build({
+  ...sharedOptions,
+  entryPoints: Object.fromEntries(Object.entries(config.sdkExternalEntries).map(([name, src]) => [name, path.join(pkgDir, src)])),
+  outdir: path.join(outDir, 'dist'),
+  plugins: [externalizeAllButHost],
+});
+
 const result = await build({
   entryPoints: Object.fromEntries(Object.entries(config.entries).map(([name, src]) => [name, path.join(pkgDir, src)])),
   outdir: path.join(outDir, 'dist'),
@@ -91,7 +126,7 @@ const result = await build({
 });
 
 const imported = new Set<string>();
-for (const output of Object.values(result.metafile.outputs)) {
+for (const output of [...Object.values(result.metafile.outputs), ...Object.values(sdkExternal?.metafile?.outputs ?? {})]) {
   for (const imp of output.imports) {
     if (imp.external && !builtins.has(imp.path)) imported.add(packageName(imp.path));
   }
@@ -117,7 +152,7 @@ for (const file of config.copy ?? []) {
 
 if (config.declarations) {
   const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
-  const entryFiles = Object.values(config.entries).map((src) => path.join(pkgDir, src));
+  const entryFiles = [...Object.values(config.entries), ...Object.values(config.sdkExternalEntries ?? {})].map((src) => path.join(pkgDir, src));
   execFileSync(process.execPath, [
     tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(outDir, 'dist'),
     '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions', '--target', 'es2022',
