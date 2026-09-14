@@ -411,15 +411,15 @@ Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` â
 
 ### Change tracking
 
-Seeded rows store their record's `sourceHash`. Re-seeding follows the same rules for every entry:
+Seeded rows store their record's `sourceHash`, and `seededFields`: the names of the record's fields and a hash of the values the seeder wrote to them. A row is edited when those fields no longer hold what the seeder wrote, whatever changed them (the app's editors, the database console, a flow). Fields a record doesn't set aren't tracked: a user can favorite a seeded note and it still takes seed updates. Re-seeding follows the same rules for every entry:
 
 | Import mode | Existing row |
 |---|---|
-| `replace-on-collision` (and boot seeding) | Updated only when the stored hash differs. A row with no stored hash is treated as user-created and left alone. Children are still visited. |
+| `replace-on-collision` (and boot seeding) | Updated only when the stored hash differs and the row isn't edited. A row with no stored hash is treated as user-created, and an edited row is left as it is. Children are still visited. |
 | `keep-existing` | Left alone, with its children. |
 | `wipe-and-replace` | Every row of the entry's entity types is removed first, then all records are created. |
 
-Upgrading from the previous seed format: notes seeded before `sourceHash` existed have no stored hash, so later seeds leave them alone; seeded library documents and collections may be overwritten once, on the first boot after the upgrade.
+Upgrading: rows seeded before `seededFields` was stored can't be checked for edits, so later seeds leave them alone, as they do rows without a `sourceHash` (notes seeded before notes stored one). To take a pack's current version of those rows, import its seeds with `wipe-and-replace`.
 
 ## Commands as actions
 

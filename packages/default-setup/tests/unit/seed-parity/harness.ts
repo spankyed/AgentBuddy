@@ -62,7 +62,8 @@ export interface Snapshot {
 }
 
 const typeOf = (id: string) => id.slice(0, id.indexOf('-'));
-const DROPPED_FIELDS = new Set(['id', 'createdAt', 'updatedAt']);
+// seededFields hashes stored values that hold ids (media links); the edit-detection specs cover it
+const DROPPED_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'seededFields']);
 
 export function snapshot(): Snapshot {
   const ids = getAllEntities() as string[];

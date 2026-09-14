@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
@@ -23,18 +24,44 @@ export interface SeederOptions {
 }
 
 const DEFAULT_REL_KIND = 'contains';
+/** What the seeder last wrote to a row: the record's field names and a hash of their stored values */
+const SEEDED_FIELDS = 'seededFields' as EARS.AttrKind;
 const MEDIA_LINK_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
+
+interface SeededFields {
+  fields: string[];
+  hash: string;
+}
 
 function fieldsOf(record: SeedRecord): Record<string, unknown> {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !RECORD_KEYS.has(key)));
+}
+
+function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
+  const values = fields.map((field) => getAttr(id, field as EARS.AttrKind) ?? null);
+  return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16);
+}
+
+/** Records the row's seeded values, so a later seed can tell whether anything else changed them */
+function stampSeededFields(id: EARS.EntityId, record: SeedRecord): void {
+  const fields = Object.keys(fieldsOf(record)).filter((field) => field !== 'sourceHash').sort();
+  updateAttr(id, SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
+}
+
+/** The row's seeded fields still hold what the seeder wrote; false for rows seeded before this was recorded */
+function holdsSeededValues(id: EARS.EntityId): boolean {
+  const seeded = getAttr(id, SEEDED_FIELDS) as SeededFields | null;
+  return seeded !== null && hashStoredFields(id, seeded.fields) === seeded.hash;
 }
 
 /**
  * Seeds `<key>.seed.json` records: finds each record's existing row, creates, updates or skips it,
  * and walks children under their parent row.
  * - `keep-existing` skips an existing row and its subtree.
- * - Otherwise an existing row is updated only when its stored `sourceHash` differs from the record's;
- *   a row with no stored hash is user-owned and skipped. Children are still visited.
+ * - Otherwise an existing row is updated only when its stored `sourceHash` differs from the record's
+ *   and its seeded fields still hold what the seeder wrote. A row with no stored hash is user-owned,
+ *   and an edited row (or one whose seeded values weren't recorded) is left as it is. Children are
+ *   still visited.
  * - `wipe-and-replace` removes every row of the entry's entity types first.
  */
 export function createSeeder(options: SeederOptions): Seeder {
@@ -87,11 +114,12 @@ export function createSeeder(options: SeederOptions): Seeder {
         else updateEntity(id, fieldsOf(record));
       };
 
-      /** Hooks' repository commands may not store sourceHash; change tracking needs it */
-      const stampHash = (id: EARS.EntityId, record: SeedRecord) => {
+      /** Hooks' repository commands may not store sourceHash; change tracking needs it and the seeded values */
+      const stamp = (id: EARS.EntityId, record: SeedRecord) => {
         if (record.sourceHash && getAttr(id, 'sourceHash' as EARS.AttrKind) !== record.sourceHash) {
           updateAttr(id, 'sourceHash' as EARS.AttrKind, record.sourceHash);
         }
+        stampSeededFields(id, record);
       };
 
       const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined) => {
@@ -110,9 +138,12 @@ export function createSeeder(options: SeederOptions): Seeder {
               if (!existing.sourceHash || existing.sourceHash === record.sourceHash) {
                 counts.skipped++;
                 ctx.log(`  ${key} skipped${existing.sourceHash ? '' : ' (untracked)'}: ${label}`);
+              } else if (!holdsSeededValues(existing.id)) {
+                counts.skipped++;
+                ctx.log(`  ${key} skipped (edited): ${label}`);
               } else {
                 update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, context, hooks);
-                stampHash(existing.id, record);
+                stamp(existing.id, record);
                 counts.updated++;
                 ctx.log(`  ${key} updated: ${label}`);
               }
@@ -122,7 +153,7 @@ export function createSeeder(options: SeederOptions): Seeder {
             const id = create(record, context, hooks);
             const restored = restoreMedia(record, id, mediaDir, ctx.log);
             if (restored.count > 0) update(id, restored.record, context, hooks);
-            stampHash(id, record);
+            stamp(id, record);
             counts.created++;
             ctx.log(`  ${key} created: ${label}`);
             if (record.children) visit(record.children, id);

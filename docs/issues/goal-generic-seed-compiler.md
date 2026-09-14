@@ -235,7 +235,6 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 - External packs' feature settings compile but are ignored at runtime (`HOST_OWNED_SEED_SECTIONS`). Not changed here.
 - Settings/Secrets as an SDK-internal entity category, not in any facade. Planned separately.
 - Entry overrides of a named format (e.g. changing one field of `default-setup:notes`). Not supported: a pack that needs different settings defines its own format. If added later, it's an additive key with objects merged by key (`tree`, `fields` by field name) and scalars, arrays and each field spec replaced.
-- User edits don't clear a row's `sourceHash` (`updateDocument` keeps the stored hash when none is passed), so a later seed change overwrites edited seeded rows. Pre-existing; not changed here.
 
 ## Constraints
 
