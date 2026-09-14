@@ -1,0 +1,1839 @@
+{
+  "fresh": {
+    "rows": {
+      "Action:CC: Answer Question": {
+        "label": "CC: Answer Question",
+        "description": "Sends AskUserQuestion answers to the CLI and resumes streaming.",
+        "sourceHash": "f7d4e676b51fec18",
+        "rowSha256": "3f0d0e8088b42308f2c5452a207f04ae32ac2f6958b9f35ab812655e88318476"
+      },
+      "Action:CC: Approve Plan Clear Context": {
+        "label": "CC: Approve Plan Clear Context",
+        "description": "Approves the plan, kills the session, creates a fresh thread, and re-invokes with the plan.",
+        "sourceHash": "6b210e08f9d098fc",
+        "rowSha256": "3a218bf2e0fe1b0f07fdd6962b107a54f0058bcaed03c43d6e377eb1c7045c86"
+      },
+      "Action:CC: Approve Tool": {
+        "label": "CC: Approve Tool",
+        "description": "Sends tool approval to the CLI and resumes streaming.",
+        "sourceHash": "f2f72769e0c18db9",
+        "rowSha256": "3786adef3d1f1832b2456193b842d62aea1dc657c2b43076e0c216b9db23cfd8"
+      },
+      "Action:CC: Commit Message": {
+        "label": "CC: Commit Message",
+        "description": "Generate a git commit message from a diff using Claude CLI",
+        "sourceHash": "5a6871139b651c4f",
+        "rowSha256": "0d76e8ca738e84a83c640c4d49ec537b68638ae1b69b4e2bc125c8e7b998c809"
+      },
+      "Action:CC: Compact": {
+        "label": "CC: Compact",
+        "description": "Compact a Claude Code session context",
+        "sourceHash": "ca0f066a7628c358",
+        "rowSha256": "1cedca8447d6eaea71702c7714c74cd6269876823068c33fc98bd4d38ee51b78"
+      },
+      "Action:CC: Context": {
+        "label": "CC: Context",
+        "description": "Show context window usage breakdown",
+        "sourceHash": "13370738274b4986",
+        "rowSha256": "7bf6e3c6f79b12ae470d7efd301a443532ce1ffc608974e22bbf18aef89a5008"
+      },
+      "Action:CC: DB Query": {
+        "label": "CC: DB Query",
+        "description": "Generate a read-only EARS database query using Claude CLI",
+        "sourceHash": "2922c75a650eb29b",
+        "rowSha256": "ad80c28d19f2ebee955b1897703116a47c6e0ec7cddaad1f0e50ce91768c58c3"
+      },
+      "Action:CC: DB Transaction": {
+        "label": "CC: DB Transaction",
+        "description": "Generate an EARS database transaction using Claude CLI",
+        "sourceHash": "3f1dcabb1ad7c1f9",
+        "rowSha256": "0585cef953ce4855006184b3845e132c0c17cd356c52d585d30a88765093b8ee"
+      },
+      "Action:CC: Deny Tool": {
+        "label": "CC: Deny Tool",
+        "description": "Kills the CLI subprocess and stops the turn on denial.",
+        "sourceHash": "d97d90fec5b3ff28",
+        "rowSha256": "fc7a5780ca9d7f9f864d3fc9c67fc89a3194bc7ae77365acbde5d8ef78ab7d88"
+      },
+      "Action:CC: Dir Ops": {
+        "label": "CC: Dir Ops",
+        "description": "Dispatcher for directory cc- commands (add-dir, set-dir)",
+        "sourceHash": "3d685e5efd91237a",
+        "rowSha256": "8a34b75c87fb2bb09b97221b54b0827ae6e858db07862aa3f74a6ab6789f66f5"
+      },
+      "Action:CC: Fork": {
+        "label": "CC: Fork",
+        "description": "Fork thread from last assistant message",
+        "sourceHash": "4ecec8c6633d5359",
+        "rowSha256": "82cb3a5a7e3c686dc886b2a8accb9254f55c32d09fd03c647b7c105563d67978"
+      },
+      "Action:CC: Goal": {
+        "label": "CC: Goal",
+        "description": "Set, query, or clear a goal condition on a Claude Code session",
+        "sourceHash": "d293c3643dba5aef",
+        "rowSha256": "5b2017616ad43926aa02a0995e67e85749fba98e534ac2fbd5ac29c50d279e90"
+      },
+      "Action:CC: Handle Directory Select": {
+        "label": "CC: Handle Directory Select",
+        "description": "Saves the user-selected project directory and retries the blocked chat query.",
+        "sourceHash": "30e44a32f3c7606e",
+        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+      },
+      "Action:CC: Handle Fork": {
+        "label": "CC: Handle Fork",
+        "description": "Copies Claude Code session state to a forked thread with CLI-level truncation at the fork point.",
+        "sourceHash": "49cb0423f88e8902",
+        "rowSha256": "8b72b93de3a44dddfe6d51948dec0d35b2a88969f4168c3d64ccc173bc2826e2"
+      },
+      "Action:CC: Handle Revert": {
+        "label": "CC: Handle Revert",
+        "description": "Cleans up Claude Code state and sets up CLI session truncation on revert.",
+        "sourceHash": "ea5b1fdc821c8dd3",
+        "rowSha256": "7219bf3b78f2c47420b1b0a5343fc0d609ca688be979d4dc338a1147a9b4c33a"
+      },
+      "Action:CC: Handle Rewind": {
+        "label": "CC: Handle Rewind",
+        "description": "Revert plus restoring files to their state at the reverted message via `claude --rewind-files`.",
+        "sourceHash": "a65d6d9b9e66e8cd",
+        "rowSha256": "5c05a0a9d385213303406a3356ec0c809ab9802b983146fdddbbd508d4dea070"
+      },
+      "Action:CC: Handle Summarize": {
+        "label": "CC: Handle Summarize",
+        "description": "Truncate the Claude session at a pivot message and run /compact to summarize prior context.",
+        "sourceHash": "43f80334a7c099e7",
+        "rowSha256": "a3d05bce511fbf63b64dce9429c10b1b79406e29b0c05a2f44be6f4ae5d3d206"
+      },
+      "Action:CC: Pause Turn": {
+        "label": "CC: Pause Turn",
+        "description": "Kills the CLI subprocess and ends the turn on user pause.",
+        "sourceHash": "7c47b9fe54e8f61e",
+        "rowSha256": "41ada1b916805e8d8eb43c1a352ae9ee59578e621786e05ea84ce2056a330688"
+      },
+      "Action:CC: Recap": {
+        "label": "CC: Recap",
+        "description": "Summarize the current conversation thread",
+        "sourceHash": "2ae17ca1e8bc1508",
+        "rowSha256": "1a600982923c0551e085a95a8b8da2844651c85a9a1d8079901ad6a186c2e2ad"
+      },
+      "Action:CC: Reconcile State": {
+        "label": "CC: Reconcile State",
+        "description": "Clears stale Claude Code run-state left over from a previous process.",
+        "sourceHash": "de99fb84bb141bc9",
+        "rowSha256": "a1c218350359956c385ba7995a8a7fb29e21abfa52a9fa8d9648dd861ac8a158"
+      },
+      "Action:CC: Route Response": {
+        "label": "CC: Route Response",
+        "description": "Classifies an interactive block response for downstream routing.",
+        "sourceHash": "8bb64f5c574d1c05",
+        "rowSha256": "9eb8538fa7e25846341129d96773dbec314389b5160093cd206adfafab025abf"
+      },
+      "Action:CC: Run Command": {
+        "label": "CC: Run Command",
+        "description": "Unified dispatcher for cc- prefixed chat commands",
+        "sourceHash": "87d8c95917ec0fdf",
+        "rowSha256": "7946ff48ff151fa1249111abac897667fdc75d672cf994284d25a757a1646896"
+      },
+      "Action:CC: Session Ops": {
+        "label": "CC: Session Ops",
+        "description": "Dispatcher for session-heavy cc- commands (resume, import)",
+        "sourceHash": "85f6549c76f3854f",
+        "rowSha256": "0b4c7d3716c451cff94445b13be45f9757e1665a8129a8e72cc8713ea3e2d051"
+      },
+      "Action:CC: Stream Paused": {
+        "label": "CC: Stream Paused",
+        "description": "Updates session artifact status to awaiting-input when the CLI pauses for user input.",
+        "sourceHash": "e09b0445f3df6dfc",
+        "rowSha256": "0dc9987071f8c92834a33bfda8692c10379f45aab9157a26cf512100844e73e7"
+      },
+      "Action:CC: Stream Started": {
+        "label": "CC: Stream Started",
+        "description": "Updates the session artifact with CLI session details when streaming begins.",
+        "sourceHash": "ad340354972513f9",
+        "rowSha256": "65ea16c18d6c7c6001f2fb46609b5c5507b7f831845aa986520bf95c560345d7"
+      },
+      "Action:CC: Turn Completed": {
+        "label": "CC: Turn Completed",
+        "description": "Finalizes session stats and creates diff artifact after a turn.",
+        "sourceHash": "dc3e1b56f552c8c1",
+        "rowSha256": "0e1de5a3c7c318518b81ece5f44336a538320c00c796eed993b8565ce52f2a96"
+      },
+      "Action:CC: Unqueue Message": {
+        "label": "CC: Unqueue Message",
+        "description": "Removes a queued message without affecting the running turn.",
+        "sourceHash": "8c464867b11a6b90",
+        "rowSha256": "1d36b5aeb6567f91013494154457f7133c7dc9c6de00315ca5ea1ecb4dd71db8"
+      },
+      "Action:CC: Update Permission Mode": {
+        "label": "CC: Update Permission Mode",
+        "description": "Persists the permission mode toggle and auto-approves pending requests on bypass.",
+        "sourceHash": "ae4e94536ab5b106",
+        "rowSha256": "dfdddd2dde542b55a403b80584450b721e5e4eff005166d19d80434cde7063d3"
+      },
+      "Action:CC: Update Worktree": {
+        "label": "CC: Update Worktree",
+        "description": "Persists the worktree toggle to thread context.",
+        "sourceHash": "d90cf35ad44bbe95",
+        "rowSha256": "3195e71011637c7058ba2c62a5a674590bf30fb4d5b1e4910b98d76fcec6cc35"
+      },
+      "Action:CDX: Approve Tool": {
+        "label": "CDX: Approve Tool",
+        "description": "Sends approval decision to the Codex app-server for a pending tool request.",
+        "sourceHash": "fc7ce2e7494f0252",
+        "rowSha256": "8336085162ff519940a91cc7bb51101fd3d49e610bce0dbb2d4e04fc951a1e81"
+      },
+      "Action:CDX: Commit Message": {
+        "label": "CDX: Commit Message",
+        "description": "Generate a git commit message from a diff using Codex CLI",
+        "sourceHash": "9d8ed62aff6fd28e",
+        "rowSha256": "f8a8fd86247adea5cda69d49ca86da10ad96a92dee7e60f0e6573caaf16ef5c5"
+      },
+      "Action:CDX: Compact": {
+        "label": "CDX: Compact",
+        "description": "Compact the active Codex thread.",
+        "sourceHash": "79ebf82b06ac9ab6",
+        "rowSha256": "5f272298ea26a31a8fa342f1f56435c1d0392091fcbcced410530567d97011d3"
+      },
+      "Action:CDX: DB Query": {
+        "label": "CDX: DB Query",
+        "description": "Generate a read-only EARS database query using Codex CLI",
+        "sourceHash": "dd73f3b0bcbd9551",
+        "rowSha256": "db5fd1f416684fcbf26e4ecdc48692255d3177a0d12133744eba63700eb42206"
+      },
+      "Action:CDX: DB Transaction": {
+        "label": "CDX: DB Transaction",
+        "description": "Generate an EARS database transaction using Codex CLI",
+        "sourceHash": "f67918e9c23cf950",
+        "rowSha256": "db0e9629579539547903d42c9897f47933cea238aff7bde3d8025d783b4f39dc"
+      },
+      "Action:CDX: Deny Tool": {
+        "label": "CDX: Deny Tool",
+        "description": "Declines a pending Codex approval request.",
+        "sourceHash": "11752091cc109c72",
+        "rowSha256": "fdb39c7204e97a8251513bfc0800eb98f11d24160cb28e9f97f9a6cd13a583d5"
+      },
+      "Action:CDX: Fork": {
+        "label": "CDX: Fork",
+        "description": "Fork Codex thread from the last assistant message.",
+        "sourceHash": "1eba4e70503ab931",
+        "rowSha256": "f8b35d6283584002c421d981e474c34f61bc363f4597c2bba92e96d535c340e6"
+      },
+      "Action:CDX: Goal Continue": {
+        "label": "CDX: Goal Continue",
+        "description": "Auto-continues a Codex turn when the thread goal is active.",
+        "sourceHash": "c6d9cc4c8dd37a04",
+        "rowSha256": "dd3c75a191e100880e04801e819f22c82e7246d510bb0991c53d4cf1301ff40c"
+      },
+      "Action:CDX: Handle Directory Select": {
+        "label": "CDX: Handle Directory Select",
+        "description": "Saves the selected project directory and retries the blocked Codex query.",
+        "sourceHash": "3f78c2ef45f58ebd",
+        "rowSha256": "da9831f6227572320065d58f380af8b1ba671a600b9cf0b2ef7e558d067f33e2"
+      },
+      "Action:CDX: Handle Fork": {
+        "label": "CDX: Handle Fork",
+        "description": "Copies Codex thread state to an AgentBuddy fork using Codex app-server thread/fork.",
+        "sourceHash": "1b0c15e02b112813",
+        "rowSha256": "d29ea865cd2d004ee4de6ffa715e3e71185070fe24a1be6e2ba9e02ebc3fa171"
+      },
+      "Action:CDX: Handle Revert": {
+        "label": "CDX: Handle Revert",
+        "description": "Rolls back Codex thread history after visible messages are reverted.",
+        "sourceHash": "8e00da2b190aaff8",
+        "rowSha256": "ef357df23647f8b9c00b9b81f1b878b0d854d8cee95c06e2e9b60ca9e7a9649c"
+      },
+      "Action:CDX: Handle Rewind Unsupported": {
+        "label": "CDX: Handle Rewind Unsupported",
+        "description": "Performs Codex conversation rollback and explains that file rewind is unsupported.",
+        "sourceHash": "1ca70e1d18cdae37",
+        "rowSha256": "6454f3553df23d9deff78a6edb4d4092afcbb8be6b6fcf77b3f3e12c5c44c61f"
+      },
+      "Action:CDX: Handle Summarize": {
+        "label": "CDX: Handle Summarize",
+        "description": "Rolls back Codex history and starts Codex app-server compaction.",
+        "sourceHash": "e906e5526e20d408",
+        "rowSha256": "4f5026cdc0a072d4a0b545d595e2e5916615bb8fd02d27fc499ebf7dd94e80c1"
+      },
+      "Action:CDX: Pause Turn": {
+        "label": "CDX: Pause Turn",
+        "description": "Interrupts the running Codex turn.",
+        "sourceHash": "265ad2169f77cac1",
+        "rowSha256": "7a4d50eba4f71622bf74f4fb42f0a3c3f3dd6eb6817a30f037a4eb9289a89d3b"
+      },
+      "Action:CDX: Reconcile State": {
+        "label": "CDX: Reconcile State",
+        "description": "Clears stale Codex run-state left over from a previous process.",
+        "sourceHash": "db1d419f9e5f6fdd",
+        "rowSha256": "8756175e08b3dbaff8a99a45b70be88ee043180405f5d28c0d44ef66c35fba5e"
+      },
+      "Action:CDX: Refine Plan": {
+        "label": "CDX: Refine Plan",
+        "description": "Starts a new plan turn with user feedback to refine the plan.",
+        "sourceHash": "d2c4a3b28d24057e",
+        "rowSha256": "ecde71ac98783aabe5f5f694de922c635cf1a19c05029690ea6842baa5e8ccc3"
+      },
+      "Action:CDX: Route Response": {
+        "label": "CDX: Route Response",
+        "description": "Routes interactive block responses to the appropriate Codex handler.",
+        "sourceHash": "f06034a3de705dc4",
+        "rowSha256": "e36cf64048b60f66867fc914ae3f702d8ea4211fcd5745351706cd0f56456a21"
+      },
+      "Action:CDX: Run Command": {
+        "label": "CDX: Run Command",
+        "description": "Unified dispatcher for cdx- prefixed chat commands.",
+        "sourceHash": "324d085fff9b23f7",
+        "rowSha256": "53e1ed098483a738b12937e0fbf4547829b1fd6d507572567e91fd45df0937ae"
+      },
+      "Action:CDX: Session Ops": {
+        "label": "CDX: Session Ops",
+        "description": "Dispatcher for session-heavy cdx- commands.",
+        "sourceHash": "70be6a68b0e96d78",
+        "rowSha256": "303c31667a6de4d9ba7c10c68e34c59e86198b3706cb583bb568d487df84c9ee"
+      },
+      "Action:CDX: Start Server": {
+        "label": "CDX: Start Server",
+        "description": "Starts the Codex app-server subprocess if not already running.",
+        "sourceHash": "c2acdec04a40fd04",
+        "rowSha256": "2f95250807fb5be841aae298439ee6ae1e07bdaa03b4461c73c1cf69dd32c299"
+      },
+      "Action:CDX: Stream Paused": {
+        "label": "CDX: Stream Paused",
+        "description": "Updates chat state to paused when Codex requests approval.",
+        "sourceHash": "e8176c0454d47873",
+        "rowSha256": "c2e0ff2dcca7bdef306f29d43a480241fb89bb81eebcbc52b9bbde6cab4cec9e"
+      },
+      "Action:CDX: Turn Completed": {
+        "label": "CDX: Turn Completed",
+        "description": "Finalizes session stats and creates diff artifact after a Codex turn.",
+        "sourceHash": "9831549cc84e704b",
+        "rowSha256": "9edf2c87b7a08881454e37db4fd10d955b283be6b362c8e0ed7d7826e1af6d43"
+      },
+      "Action:CDX: Unqueue Message": {
+        "label": "CDX: Unqueue Message",
+        "description": "Removes a queued message without affecting the running turn.",
+        "sourceHash": "fbf8d9446f96d62b",
+        "rowSha256": "c100a18dd96ef82f8af5623808016b928764ba29d03767069a81e8c886b6826d"
+      },
+      "Action:CDX: Update Session Settings": {
+        "label": "CDX: Update Session Settings",
+        "description": "Persists Codex session settings to thread context.",
+        "sourceHash": "4c625c043761c0b0",
+        "rowSha256": "7c7fa73669ec25457d3f49061c49870dea9bad1b6f08b173e6c94a0b082e982b"
+      },
+      "Action:Claude Code Auth Status": {
+        "label": "Claude Code Auth Status",
+        "description": "Report whether the Claude Code CLI is currently authenticated.",
+        "sourceHash": "e1a1f503abbe12bc",
+        "rowSha256": "9a5810f5c9565fdfa0e9821518fc08ba91c49e7211c62f583dfd72137a9303a3"
+      },
+      "Action:Claude Code Chat": {
+        "label": "Claude Code Chat",
+        "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
+        "sourceHash": "c09a62f39461912d",
+        "rowSha256": "d4d51eaed990d9f0b0dbcd0e4d609ca67227a4f718f01dcad3ad4ab80a46619a"
+      },
+      "Action:Claude Code List Sessions": {
+        "label": "Claude Code List Sessions",
+        "description": "List saved Claude Code sessions for a working directory.",
+        "sourceHash": "c77ae4b848eb1993",
+        "rowSha256": "abfbf49f4f3d5c17bf1955c81542eaaeb94ec1d03f25a6c117c66aee85092df1"
+      },
+      "Action:Claude Code One-Shot": {
+        "label": "Claude Code One-Shot",
+        "description": "Run a single Claude Code prompt without touching any thread. Returns the final text and optional structured output.",
+        "sourceHash": "4981c91e1481c8d8",
+        "rowSha256": "d94bfedeb042c90748560935e5f9540dbf5916b8508c5b60892756bc0f736a16"
+      },
+      "Action:Claude Code Reset Session": {
+        "label": "Claude Code Reset Session",
+        "description": "Disconnect a thread from its Claude Code session. The next work-mode turn starts fresh.",
+        "sourceHash": "6557ef1356120536",
+        "rowSha256": "89edbb0932919c55ef42d2ffbc1233acced4f6e44b014486358ad4a9a510c887"
+      },
+      "Action:Codex Chat": {
+        "label": "Codex Chat",
+        "description": "Drives Codex via app-server for the current thread.",
+        "sourceHash": "11eab82c27a1b136",
+        "rowSha256": "8ea1e6a5db7e4d2719b88d26eefe8ca2e5e33888c4832ebbabd9213a336cb0ed"
+      },
+      "Action:Handle Choose Mode Step": {
+        "label": "Handle Choose Mode Step",
+        "description": "Sets the default mode based on user choice and finishes onboarding",
+        "sourceHash": "4db6173863e8d2a6",
+        "rowSha256": "dbbf7d1c05b29a40040baa3a18ee23b87feeaaf85d474aa74fbdaa8692245215"
+      },
+      "Action:Handle Import Threads Step": {
+        "label": "Handle Import Threads Step",
+        "description": "Imports sessions from Claude Code and Codex as threads",
+        "sourceHash": "260c1593afccaf85",
+        "rowSha256": "b79547dff26c1bb2000f4d32728b0f15c17c2d34fcb26e4386ef6634f355f8dc"
+      },
+      "Action:Handle Onboarding Response": {
+        "label": "Handle Onboarding Response",
+        "description": "Validates an interactive block response and returns step + response for flow-level branching",
+        "sourceHash": "8362df79b98bb067",
+        "rowSha256": "2a18e6b48a3c3fedb00b6d4f35dcf68fcc2f2c1685777c1f24b572f121972d44"
+      },
+      "Action:Handle Pick Thread Step": {
+        "label": "Handle Pick Thread Step",
+        "description": "Opens a selected thread, then advances to mode chooser or finishes",
+        "sourceHash": "5c3e85b2d62d9726",
+        "rowSha256": "0d292438356f84e97dad5d58c427c16a9ea71b59b5b7c0c1486653d4ea5d06ad"
+      },
+      "Action:Handle Projects Step": {
+        "label": "Handle Projects Step",
+        "description": "Saves selected project directories and offers per-provider import",
+        "sourceHash": "44382eaab282cfb0",
+        "rowSha256": "8ccea111bef475c1f6d0f3be045165e2df48797f0891d5d948d1201c2c1ba658"
+      },
+      "Action:Handle Welcome Step": {
+        "label": "Handle Welcome Step",
+        "description": "Detects CLIs, discovers sessions, and presents project directory selection",
+        "sourceHash": "8c7e023b3437c213",
+        "rowSha256": "c6432f155a316635f997145fa595f0dd74efc4abded873bde67d1457426247c9"
+      },
+      "Action:Ignore Onboarding Message": {
+        "label": "Ignore Onboarding Message",
+        "description": "Marks a user message as cancelled when sent during onboarding",
+        "sourceHash": "3af5a047732c1d2d",
+        "rowSha256": "bc293fd85ed01bee1a0db0f8393d532c9dee41253d7c1dbb566e77b1496a4043"
+      },
+      "Action:Init Onboarding": {
+        "label": "Init Onboarding",
+        "description": "Creates the birth thread and sends the welcome artifact for onboarding",
+        "sourceHash": "e1787325a6231b6a",
+        "rowSha256": "a75648f72ab250efb87c2550aab35261ef093cc3a15a265e3fb6ce003293f07d"
+      },
+      "Action:PR to Markdown": {
+        "label": "PR to Markdown",
+        "description": "Renders PR comments and review threads to a local markdown file",
+        "sourceHash": "e10fe6e9c02659ac",
+        "rowSha256": "24fdb5eca537d5cbbc53cb646427067172bea7dc950287361e92c70924735d34"
+      },
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a new thread with instructions, using the first part as the title",
+        "sourceHash": "e8dca476346c2df1",
+        "rowSha256": "dc4f31ee6fc2754914c6561d9a7d35e714e37a913cc949f0f5c5b674c5ee108f"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "08f76a29861feea7"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "36c6bfb727430718"
+      },
+      "Document:2024": {
+        "content": [
+          {
+            "type": "text",
+            "text": "A document whose quoted name looks like a number."
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "2024",
+        "shortCode": "DOC-3",
+        "sourceHash": "950a0c99b4ad4a53",
+        "tags": [
+          "year"
+        ]
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "ab5447ee2e9df227",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome. ![diagram](media://Document:Getting Started/pic.png)"
+          },
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "Owner",
+                "value": "docs team"
+              },
+              {
+                "key": "Status",
+                "value": "draft"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "first",
+              "second"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "text": "const x = 1;"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "ef063cc892ae028c",
+        "tags": [
+          "intro",
+          "docs"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-2",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Task Two"
+      },
+      "Note:Welcome": {
+        "completed": false,
+        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "favorite": true,
+        "icon": "👋",
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "document",
+        "shortCode": "NOTE-4",
+        "title": "Welcome"
+      },
+      "Prompt:Commit Message": {
+        "label": "Commit Message",
+        "description": "Generate a conventional commit message from a git diff",
+        "sourceHash": "968e39f0a9dabacd",
+        "rowSha256": "5b5ff2d6409a7736c1f772db69bbde9f90e6bc2f20aa48a19dd98607373a6dd4"
+      },
+      "Prompt:DB Query System": {
+        "label": "DB Query System",
+        "description": "Generate a read-only EARS database query from a natural language request",
+        "sourceHash": "067065b6359a4d07",
+        "rowSha256": "644509d171179e9ba3f9d51d69f907dbcfb6b4301717c4f6d5aa6590d08827ae"
+      },
+      "Prompt:DB Transaction System": {
+        "label": "DB Transaction System",
+        "description": "Generate an EARS database transaction from a natural language request",
+        "sourceHash": "1ea5d3d6d4e7d656",
+        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+      },
+      "Prompt:Edit Phase Tips System": {
+        "label": "Edit Phase Tips System",
+        "description": "Behavioral tips injected during edit mode to supplement the CLI system prompt",
+        "sourceHash": "87bc2e05b7f53535",
+        "rowSha256": "7074bb365dd738b1c153af0bf64e9afb5e9ada6ba63bac7c9435ec65fce87f3a"
+      },
+      "Prompt:Plan Phase Tips System": {
+        "label": "Plan Phase Tips System",
+        "description": "Behavioral tips injected during plan mode to supplement the CLI system prompt",
+        "sourceHash": "0579ab0cf6de5356",
+        "rowSha256": "d3b974c43a22a916588207f7070b327fce8450ed448a3c7f74c0eed337f5ce18"
+      },
+      "Prompt:Recap System": {
+        "label": "Recap System",
+        "description": "System prompt for conversation recap — instructs the model how to summarize",
+        "sourceHash": "20879c9c38f1fdf7",
+        "rowSha256": "b054c64a2aec6a4792616e6805226f7065592128fa74fbacefdd9e7c695f6ba4"
+      }
+    },
+    "relations": [
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Welcome --references--> Note-external-plan"
+    ],
+    "media": [
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 69,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 6,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 5,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "unchanged": {
+    "rows": {
+      "Action:CC: Answer Question": {
+        "label": "CC: Answer Question",
+        "description": "Sends AskUserQuestion answers to the CLI and resumes streaming.",
+        "sourceHash": "f7d4e676b51fec18",
+        "rowSha256": "3f0d0e8088b42308f2c5452a207f04ae32ac2f6958b9f35ab812655e88318476"
+      },
+      "Action:CC: Approve Plan Clear Context": {
+        "label": "CC: Approve Plan Clear Context",
+        "description": "Approves the plan, kills the session, creates a fresh thread, and re-invokes with the plan.",
+        "sourceHash": "6b210e08f9d098fc",
+        "rowSha256": "3a218bf2e0fe1b0f07fdd6962b107a54f0058bcaed03c43d6e377eb1c7045c86"
+      },
+      "Action:CC: Approve Tool": {
+        "label": "CC: Approve Tool",
+        "description": "Sends tool approval to the CLI and resumes streaming.",
+        "sourceHash": "f2f72769e0c18db9",
+        "rowSha256": "3786adef3d1f1832b2456193b842d62aea1dc657c2b43076e0c216b9db23cfd8"
+      },
+      "Action:CC: Commit Message": {
+        "label": "CC: Commit Message",
+        "description": "Generate a git commit message from a diff using Claude CLI",
+        "sourceHash": "5a6871139b651c4f",
+        "rowSha256": "0d76e8ca738e84a83c640c4d49ec537b68638ae1b69b4e2bc125c8e7b998c809"
+      },
+      "Action:CC: Compact": {
+        "label": "CC: Compact",
+        "description": "Compact a Claude Code session context",
+        "sourceHash": "ca0f066a7628c358",
+        "rowSha256": "1cedca8447d6eaea71702c7714c74cd6269876823068c33fc98bd4d38ee51b78"
+      },
+      "Action:CC: Context": {
+        "label": "CC: Context",
+        "description": "Show context window usage breakdown",
+        "sourceHash": "13370738274b4986",
+        "rowSha256": "7bf6e3c6f79b12ae470d7efd301a443532ce1ffc608974e22bbf18aef89a5008"
+      },
+      "Action:CC: DB Query": {
+        "label": "CC: DB Query",
+        "description": "Generate a read-only EARS database query using Claude CLI",
+        "sourceHash": "2922c75a650eb29b",
+        "rowSha256": "ad80c28d19f2ebee955b1897703116a47c6e0ec7cddaad1f0e50ce91768c58c3"
+      },
+      "Action:CC: DB Transaction": {
+        "label": "CC: DB Transaction",
+        "description": "Generate an EARS database transaction using Claude CLI",
+        "sourceHash": "3f1dcabb1ad7c1f9",
+        "rowSha256": "0585cef953ce4855006184b3845e132c0c17cd356c52d585d30a88765093b8ee"
+      },
+      "Action:CC: Deny Tool": {
+        "label": "CC: Deny Tool",
+        "description": "Kills the CLI subprocess and stops the turn on denial.",
+        "sourceHash": "d97d90fec5b3ff28",
+        "rowSha256": "fc7a5780ca9d7f9f864d3fc9c67fc89a3194bc7ae77365acbde5d8ef78ab7d88"
+      },
+      "Action:CC: Dir Ops": {
+        "label": "CC: Dir Ops",
+        "description": "Dispatcher for directory cc- commands (add-dir, set-dir)",
+        "sourceHash": "3d685e5efd91237a",
+        "rowSha256": "8a34b75c87fb2bb09b97221b54b0827ae6e858db07862aa3f74a6ab6789f66f5"
+      },
+      "Action:CC: Fork": {
+        "label": "CC: Fork",
+        "description": "Fork thread from last assistant message",
+        "sourceHash": "4ecec8c6633d5359",
+        "rowSha256": "82cb3a5a7e3c686dc886b2a8accb9254f55c32d09fd03c647b7c105563d67978"
+      },
+      "Action:CC: Goal": {
+        "label": "CC: Goal",
+        "description": "Set, query, or clear a goal condition on a Claude Code session",
+        "sourceHash": "d293c3643dba5aef",
+        "rowSha256": "5b2017616ad43926aa02a0995e67e85749fba98e534ac2fbd5ac29c50d279e90"
+      },
+      "Action:CC: Handle Directory Select": {
+        "label": "CC: Handle Directory Select",
+        "description": "Saves the user-selected project directory and retries the blocked chat query.",
+        "sourceHash": "30e44a32f3c7606e",
+        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+      },
+      "Action:CC: Handle Fork": {
+        "label": "CC: Handle Fork",
+        "description": "Copies Claude Code session state to a forked thread with CLI-level truncation at the fork point.",
+        "sourceHash": "49cb0423f88e8902",
+        "rowSha256": "8b72b93de3a44dddfe6d51948dec0d35b2a88969f4168c3d64ccc173bc2826e2"
+      },
+      "Action:CC: Handle Revert": {
+        "label": "CC: Handle Revert",
+        "description": "Cleans up Claude Code state and sets up CLI session truncation on revert.",
+        "sourceHash": "ea5b1fdc821c8dd3",
+        "rowSha256": "7219bf3b78f2c47420b1b0a5343fc0d609ca688be979d4dc338a1147a9b4c33a"
+      },
+      "Action:CC: Handle Rewind": {
+        "label": "CC: Handle Rewind",
+        "description": "Revert plus restoring files to their state at the reverted message via `claude --rewind-files`.",
+        "sourceHash": "a65d6d9b9e66e8cd",
+        "rowSha256": "5c05a0a9d385213303406a3356ec0c809ab9802b983146fdddbbd508d4dea070"
+      },
+      "Action:CC: Handle Summarize": {
+        "label": "CC: Handle Summarize",
+        "description": "Truncate the Claude session at a pivot message and run /compact to summarize prior context.",
+        "sourceHash": "43f80334a7c099e7",
+        "rowSha256": "a3d05bce511fbf63b64dce9429c10b1b79406e29b0c05a2f44be6f4ae5d3d206"
+      },
+      "Action:CC: Pause Turn": {
+        "label": "CC: Pause Turn",
+        "description": "Kills the CLI subprocess and ends the turn on user pause.",
+        "sourceHash": "7c47b9fe54e8f61e",
+        "rowSha256": "41ada1b916805e8d8eb43c1a352ae9ee59578e621786e05ea84ce2056a330688"
+      },
+      "Action:CC: Recap": {
+        "label": "CC: Recap",
+        "description": "Summarize the current conversation thread",
+        "sourceHash": "2ae17ca1e8bc1508",
+        "rowSha256": "1a600982923c0551e085a95a8b8da2844651c85a9a1d8079901ad6a186c2e2ad"
+      },
+      "Action:CC: Reconcile State": {
+        "label": "CC: Reconcile State",
+        "description": "Clears stale Claude Code run-state left over from a previous process.",
+        "sourceHash": "de99fb84bb141bc9",
+        "rowSha256": "a1c218350359956c385ba7995a8a7fb29e21abfa52a9fa8d9648dd861ac8a158"
+      },
+      "Action:CC: Route Response": {
+        "label": "CC: Route Response",
+        "description": "Classifies an interactive block response for downstream routing.",
+        "sourceHash": "8bb64f5c574d1c05",
+        "rowSha256": "9eb8538fa7e25846341129d96773dbec314389b5160093cd206adfafab025abf"
+      },
+      "Action:CC: Run Command": {
+        "label": "CC: Run Command",
+        "description": "Unified dispatcher for cc- prefixed chat commands",
+        "sourceHash": "87d8c95917ec0fdf",
+        "rowSha256": "7946ff48ff151fa1249111abac897667fdc75d672cf994284d25a757a1646896"
+      },
+      "Action:CC: Session Ops": {
+        "label": "CC: Session Ops",
+        "description": "Dispatcher for session-heavy cc- commands (resume, import)",
+        "sourceHash": "85f6549c76f3854f",
+        "rowSha256": "0b4c7d3716c451cff94445b13be45f9757e1665a8129a8e72cc8713ea3e2d051"
+      },
+      "Action:CC: Stream Paused": {
+        "label": "CC: Stream Paused",
+        "description": "Updates session artifact status to awaiting-input when the CLI pauses for user input.",
+        "sourceHash": "e09b0445f3df6dfc",
+        "rowSha256": "0dc9987071f8c92834a33bfda8692c10379f45aab9157a26cf512100844e73e7"
+      },
+      "Action:CC: Stream Started": {
+        "label": "CC: Stream Started",
+        "description": "Updates the session artifact with CLI session details when streaming begins.",
+        "sourceHash": "ad340354972513f9",
+        "rowSha256": "65ea16c18d6c7c6001f2fb46609b5c5507b7f831845aa986520bf95c560345d7"
+      },
+      "Action:CC: Turn Completed": {
+        "label": "CC: Turn Completed",
+        "description": "Finalizes session stats and creates diff artifact after a turn.",
+        "sourceHash": "dc3e1b56f552c8c1",
+        "rowSha256": "0e1de5a3c7c318518b81ece5f44336a538320c00c796eed993b8565ce52f2a96"
+      },
+      "Action:CC: Unqueue Message": {
+        "label": "CC: Unqueue Message",
+        "description": "Removes a queued message without affecting the running turn.",
+        "sourceHash": "8c464867b11a6b90",
+        "rowSha256": "1d36b5aeb6567f91013494154457f7133c7dc9c6de00315ca5ea1ecb4dd71db8"
+      },
+      "Action:CC: Update Permission Mode": {
+        "label": "CC: Update Permission Mode",
+        "description": "Persists the permission mode toggle and auto-approves pending requests on bypass.",
+        "sourceHash": "ae4e94536ab5b106",
+        "rowSha256": "dfdddd2dde542b55a403b80584450b721e5e4eff005166d19d80434cde7063d3"
+      },
+      "Action:CC: Update Worktree": {
+        "label": "CC: Update Worktree",
+        "description": "Persists the worktree toggle to thread context.",
+        "sourceHash": "d90cf35ad44bbe95",
+        "rowSha256": "3195e71011637c7058ba2c62a5a674590bf30fb4d5b1e4910b98d76fcec6cc35"
+      },
+      "Action:CDX: Approve Tool": {
+        "label": "CDX: Approve Tool",
+        "description": "Sends approval decision to the Codex app-server for a pending tool request.",
+        "sourceHash": "fc7ce2e7494f0252",
+        "rowSha256": "8336085162ff519940a91cc7bb51101fd3d49e610bce0dbb2d4e04fc951a1e81"
+      },
+      "Action:CDX: Commit Message": {
+        "label": "CDX: Commit Message",
+        "description": "Generate a git commit message from a diff using Codex CLI",
+        "sourceHash": "9d8ed62aff6fd28e",
+        "rowSha256": "f8a8fd86247adea5cda69d49ca86da10ad96a92dee7e60f0e6573caaf16ef5c5"
+      },
+      "Action:CDX: Compact": {
+        "label": "CDX: Compact",
+        "description": "Compact the active Codex thread.",
+        "sourceHash": "79ebf82b06ac9ab6",
+        "rowSha256": "5f272298ea26a31a8fa342f1f56435c1d0392091fcbcced410530567d97011d3"
+      },
+      "Action:CDX: DB Query": {
+        "label": "CDX: DB Query",
+        "description": "Generate a read-only EARS database query using Codex CLI",
+        "sourceHash": "dd73f3b0bcbd9551",
+        "rowSha256": "db5fd1f416684fcbf26e4ecdc48692255d3177a0d12133744eba63700eb42206"
+      },
+      "Action:CDX: DB Transaction": {
+        "label": "CDX: DB Transaction",
+        "description": "Generate an EARS database transaction using Codex CLI",
+        "sourceHash": "f67918e9c23cf950",
+        "rowSha256": "db0e9629579539547903d42c9897f47933cea238aff7bde3d8025d783b4f39dc"
+      },
+      "Action:CDX: Deny Tool": {
+        "label": "CDX: Deny Tool",
+        "description": "Declines a pending Codex approval request.",
+        "sourceHash": "11752091cc109c72",
+        "rowSha256": "fdb39c7204e97a8251513bfc0800eb98f11d24160cb28e9f97f9a6cd13a583d5"
+      },
+      "Action:CDX: Fork": {
+        "label": "CDX: Fork",
+        "description": "Fork Codex thread from the last assistant message.",
+        "sourceHash": "1eba4e70503ab931",
+        "rowSha256": "f8b35d6283584002c421d981e474c34f61bc363f4597c2bba92e96d535c340e6"
+      },
+      "Action:CDX: Goal Continue": {
+        "label": "CDX: Goal Continue",
+        "description": "Auto-continues a Codex turn when the thread goal is active.",
+        "sourceHash": "c6d9cc4c8dd37a04",
+        "rowSha256": "dd3c75a191e100880e04801e819f22c82e7246d510bb0991c53d4cf1301ff40c"
+      },
+      "Action:CDX: Handle Directory Select": {
+        "label": "CDX: Handle Directory Select",
+        "description": "Saves the selected project directory and retries the blocked Codex query.",
+        "sourceHash": "3f78c2ef45f58ebd",
+        "rowSha256": "da9831f6227572320065d58f380af8b1ba671a600b9cf0b2ef7e558d067f33e2"
+      },
+      "Action:CDX: Handle Fork": {
+        "label": "CDX: Handle Fork",
+        "description": "Copies Codex thread state to an AgentBuddy fork using Codex app-server thread/fork.",
+        "sourceHash": "1b0c15e02b112813",
+        "rowSha256": "d29ea865cd2d004ee4de6ffa715e3e71185070fe24a1be6e2ba9e02ebc3fa171"
+      },
+      "Action:CDX: Handle Revert": {
+        "label": "CDX: Handle Revert",
+        "description": "Rolls back Codex thread history after visible messages are reverted.",
+        "sourceHash": "8e00da2b190aaff8",
+        "rowSha256": "ef357df23647f8b9c00b9b81f1b878b0d854d8cee95c06e2e9b60ca9e7a9649c"
+      },
+      "Action:CDX: Handle Rewind Unsupported": {
+        "label": "CDX: Handle Rewind Unsupported",
+        "description": "Performs Codex conversation rollback and explains that file rewind is unsupported.",
+        "sourceHash": "1ca70e1d18cdae37",
+        "rowSha256": "6454f3553df23d9deff78a6edb4d4092afcbb8be6b6fcf77b3f3e12c5c44c61f"
+      },
+      "Action:CDX: Handle Summarize": {
+        "label": "CDX: Handle Summarize",
+        "description": "Rolls back Codex history and starts Codex app-server compaction.",
+        "sourceHash": "e906e5526e20d408",
+        "rowSha256": "4f5026cdc0a072d4a0b545d595e2e5916615bb8fd02d27fc499ebf7dd94e80c1"
+      },
+      "Action:CDX: Pause Turn": {
+        "label": "CDX: Pause Turn",
+        "description": "Interrupts the running Codex turn.",
+        "sourceHash": "265ad2169f77cac1",
+        "rowSha256": "7a4d50eba4f71622bf74f4fb42f0a3c3f3dd6eb6817a30f037a4eb9289a89d3b"
+      },
+      "Action:CDX: Reconcile State": {
+        "label": "CDX: Reconcile State",
+        "description": "Clears stale Codex run-state left over from a previous process.",
+        "sourceHash": "db1d419f9e5f6fdd",
+        "rowSha256": "8756175e08b3dbaff8a99a45b70be88ee043180405f5d28c0d44ef66c35fba5e"
+      },
+      "Action:CDX: Refine Plan": {
+        "label": "CDX: Refine Plan",
+        "description": "Starts a new plan turn with user feedback to refine the plan.",
+        "sourceHash": "d2c4a3b28d24057e",
+        "rowSha256": "ecde71ac98783aabe5f5f694de922c635cf1a19c05029690ea6842baa5e8ccc3"
+      },
+      "Action:CDX: Route Response": {
+        "label": "CDX: Route Response",
+        "description": "Routes interactive block responses to the appropriate Codex handler.",
+        "sourceHash": "f06034a3de705dc4",
+        "rowSha256": "e36cf64048b60f66867fc914ae3f702d8ea4211fcd5745351706cd0f56456a21"
+      },
+      "Action:CDX: Run Command": {
+        "label": "CDX: Run Command",
+        "description": "Unified dispatcher for cdx- prefixed chat commands.",
+        "sourceHash": "324d085fff9b23f7",
+        "rowSha256": "53e1ed098483a738b12937e0fbf4547829b1fd6d507572567e91fd45df0937ae"
+      },
+      "Action:CDX: Session Ops": {
+        "label": "CDX: Session Ops",
+        "description": "Dispatcher for session-heavy cdx- commands.",
+        "sourceHash": "70be6a68b0e96d78",
+        "rowSha256": "303c31667a6de4d9ba7c10c68e34c59e86198b3706cb583bb568d487df84c9ee"
+      },
+      "Action:CDX: Start Server": {
+        "label": "CDX: Start Server",
+        "description": "Starts the Codex app-server subprocess if not already running.",
+        "sourceHash": "c2acdec04a40fd04",
+        "rowSha256": "2f95250807fb5be841aae298439ee6ae1e07bdaa03b4461c73c1cf69dd32c299"
+      },
+      "Action:CDX: Stream Paused": {
+        "label": "CDX: Stream Paused",
+        "description": "Updates chat state to paused when Codex requests approval.",
+        "sourceHash": "e8176c0454d47873",
+        "rowSha256": "c2e0ff2dcca7bdef306f29d43a480241fb89bb81eebcbc52b9bbde6cab4cec9e"
+      },
+      "Action:CDX: Turn Completed": {
+        "label": "CDX: Turn Completed",
+        "description": "Finalizes session stats and creates diff artifact after a Codex turn.",
+        "sourceHash": "9831549cc84e704b",
+        "rowSha256": "9edf2c87b7a08881454e37db4fd10d955b283be6b362c8e0ed7d7826e1af6d43"
+      },
+      "Action:CDX: Unqueue Message": {
+        "label": "CDX: Unqueue Message",
+        "description": "Removes a queued message without affecting the running turn.",
+        "sourceHash": "fbf8d9446f96d62b",
+        "rowSha256": "c100a18dd96ef82f8af5623808016b928764ba29d03767069a81e8c886b6826d"
+      },
+      "Action:CDX: Update Session Settings": {
+        "label": "CDX: Update Session Settings",
+        "description": "Persists Codex session settings to thread context.",
+        "sourceHash": "4c625c043761c0b0",
+        "rowSha256": "7c7fa73669ec25457d3f49061c49870dea9bad1b6f08b173e6c94a0b082e982b"
+      },
+      "Action:Claude Code Auth Status": {
+        "label": "Claude Code Auth Status",
+        "description": "Report whether the Claude Code CLI is currently authenticated.",
+        "sourceHash": "e1a1f503abbe12bc",
+        "rowSha256": "9a5810f5c9565fdfa0e9821518fc08ba91c49e7211c62f583dfd72137a9303a3"
+      },
+      "Action:Claude Code Chat": {
+        "label": "Claude Code Chat",
+        "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
+        "sourceHash": "c09a62f39461912d",
+        "rowSha256": "d4d51eaed990d9f0b0dbcd0e4d609ca67227a4f718f01dcad3ad4ab80a46619a"
+      },
+      "Action:Claude Code List Sessions": {
+        "label": "Claude Code List Sessions",
+        "description": "List saved Claude Code sessions for a working directory.",
+        "sourceHash": "c77ae4b848eb1993",
+        "rowSha256": "abfbf49f4f3d5c17bf1955c81542eaaeb94ec1d03f25a6c117c66aee85092df1"
+      },
+      "Action:Claude Code One-Shot": {
+        "label": "Claude Code One-Shot",
+        "description": "Run a single Claude Code prompt without touching any thread. Returns the final text and optional structured output.",
+        "sourceHash": "4981c91e1481c8d8",
+        "rowSha256": "d94bfedeb042c90748560935e5f9540dbf5916b8508c5b60892756bc0f736a16"
+      },
+      "Action:Claude Code Reset Session": {
+        "label": "Claude Code Reset Session",
+        "description": "Disconnect a thread from its Claude Code session. The next work-mode turn starts fresh.",
+        "sourceHash": "6557ef1356120536",
+        "rowSha256": "89edbb0932919c55ef42d2ffbc1233acced4f6e44b014486358ad4a9a510c887"
+      },
+      "Action:Codex Chat": {
+        "label": "Codex Chat",
+        "description": "Drives Codex via app-server for the current thread.",
+        "sourceHash": "11eab82c27a1b136",
+        "rowSha256": "8ea1e6a5db7e4d2719b88d26eefe8ca2e5e33888c4832ebbabd9213a336cb0ed"
+      },
+      "Action:Handle Choose Mode Step": {
+        "label": "Handle Choose Mode Step",
+        "description": "Sets the default mode based on user choice and finishes onboarding",
+        "sourceHash": "4db6173863e8d2a6",
+        "rowSha256": "dbbf7d1c05b29a40040baa3a18ee23b87feeaaf85d474aa74fbdaa8692245215"
+      },
+      "Action:Handle Import Threads Step": {
+        "label": "Handle Import Threads Step",
+        "description": "Imports sessions from Claude Code and Codex as threads",
+        "sourceHash": "260c1593afccaf85",
+        "rowSha256": "b79547dff26c1bb2000f4d32728b0f15c17c2d34fcb26e4386ef6634f355f8dc"
+      },
+      "Action:Handle Onboarding Response": {
+        "label": "Handle Onboarding Response",
+        "description": "Validates an interactive block response and returns step + response for flow-level branching",
+        "sourceHash": "8362df79b98bb067",
+        "rowSha256": "2a18e6b48a3c3fedb00b6d4f35dcf68fcc2f2c1685777c1f24b572f121972d44"
+      },
+      "Action:Handle Pick Thread Step": {
+        "label": "Handle Pick Thread Step",
+        "description": "Opens a selected thread, then advances to mode chooser or finishes",
+        "sourceHash": "5c3e85b2d62d9726",
+        "rowSha256": "0d292438356f84e97dad5d58c427c16a9ea71b59b5b7c0c1486653d4ea5d06ad"
+      },
+      "Action:Handle Projects Step": {
+        "label": "Handle Projects Step",
+        "description": "Saves selected project directories and offers per-provider import",
+        "sourceHash": "44382eaab282cfb0",
+        "rowSha256": "8ccea111bef475c1f6d0f3be045165e2df48797f0891d5d948d1201c2c1ba658"
+      },
+      "Action:Handle Welcome Step": {
+        "label": "Handle Welcome Step",
+        "description": "Detects CLIs, discovers sessions, and presents project directory selection",
+        "sourceHash": "8c7e023b3437c213",
+        "rowSha256": "c6432f155a316635f997145fa595f0dd74efc4abded873bde67d1457426247c9"
+      },
+      "Action:Ignore Onboarding Message": {
+        "label": "Ignore Onboarding Message",
+        "description": "Marks a user message as cancelled when sent during onboarding",
+        "sourceHash": "3af5a047732c1d2d",
+        "rowSha256": "bc293fd85ed01bee1a0db0f8393d532c9dee41253d7c1dbb566e77b1496a4043"
+      },
+      "Action:Init Onboarding": {
+        "label": "Init Onboarding",
+        "description": "Creates the birth thread and sends the welcome artifact for onboarding",
+        "sourceHash": "e1787325a6231b6a",
+        "rowSha256": "a75648f72ab250efb87c2550aab35261ef093cc3a15a265e3fb6ce003293f07d"
+      },
+      "Action:PR to Markdown": {
+        "label": "PR to Markdown",
+        "description": "Renders PR comments and review threads to a local markdown file",
+        "sourceHash": "e10fe6e9c02659ac",
+        "rowSha256": "24fdb5eca537d5cbbc53cb646427067172bea7dc950287361e92c70924735d34"
+      },
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a new thread with instructions, using the first part as the title",
+        "sourceHash": "e8dca476346c2df1",
+        "rowSha256": "dc4f31ee6fc2754914c6561d9a7d35e714e37a913cc949f0f5c5b674c5ee108f"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "08f76a29861feea7"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "36c6bfb727430718"
+      },
+      "Document:2024": {
+        "content": [
+          {
+            "type": "text",
+            "text": "A document whose quoted name looks like a number."
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "2024",
+        "shortCode": "DOC-3",
+        "sourceHash": "950a0c99b4ad4a53",
+        "tags": [
+          "year"
+        ]
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "ab5447ee2e9df227",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome. ![diagram](media://Document:Getting Started/pic.png)"
+          },
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "Owner",
+                "value": "docs team"
+              },
+              {
+                "key": "Status",
+                "value": "draft"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "first",
+              "second"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "text": "const x = 1;"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "ef063cc892ae028c",
+        "tags": [
+          "intro",
+          "docs"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-2",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Task Two"
+      },
+      "Note:Welcome": {
+        "completed": false,
+        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "favorite": true,
+        "icon": "👋",
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "document",
+        "shortCode": "NOTE-4",
+        "title": "Welcome"
+      },
+      "Prompt:Commit Message": {
+        "label": "Commit Message",
+        "description": "Generate a conventional commit message from a git diff",
+        "sourceHash": "968e39f0a9dabacd",
+        "rowSha256": "5b5ff2d6409a7736c1f772db69bbde9f90e6bc2f20aa48a19dd98607373a6dd4"
+      },
+      "Prompt:DB Query System": {
+        "label": "DB Query System",
+        "description": "Generate a read-only EARS database query from a natural language request",
+        "sourceHash": "067065b6359a4d07",
+        "rowSha256": "644509d171179e9ba3f9d51d69f907dbcfb6b4301717c4f6d5aa6590d08827ae"
+      },
+      "Prompt:DB Transaction System": {
+        "label": "DB Transaction System",
+        "description": "Generate an EARS database transaction from a natural language request",
+        "sourceHash": "1ea5d3d6d4e7d656",
+        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+      },
+      "Prompt:Edit Phase Tips System": {
+        "label": "Edit Phase Tips System",
+        "description": "Behavioral tips injected during edit mode to supplement the CLI system prompt",
+        "sourceHash": "87bc2e05b7f53535",
+        "rowSha256": "7074bb365dd738b1c153af0bf64e9afb5e9ada6ba63bac7c9435ec65fce87f3a"
+      },
+      "Prompt:Plan Phase Tips System": {
+        "label": "Plan Phase Tips System",
+        "description": "Behavioral tips injected during plan mode to supplement the CLI system prompt",
+        "sourceHash": "0579ab0cf6de5356",
+        "rowSha256": "d3b974c43a22a916588207f7070b327fce8450ed448a3c7f74c0eed337f5ce18"
+      },
+      "Prompt:Recap System": {
+        "label": "Recap System",
+        "description": "System prompt for conversation recap — instructs the model how to summarize",
+        "sourceHash": "20879c9c38f1fdf7",
+        "rowSha256": "b054c64a2aec6a4792616e6805226f7065592128fa74fbacefdd9e7c695f6ba4"
+      }
+    },
+    "relations": [
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Welcome --references--> Note-external-plan",
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started"
+    ],
+    "media": [
+      "Document:(deleted)/pic.png=PNGDATA",
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 69,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 6,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 5,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "changed": {
+    "rows": {
+      "Action:CC: Answer Question": {
+        "label": "CC: Answer Question",
+        "description": "Sends AskUserQuestion answers to the CLI and resumes streaming. (v2)",
+        "sourceHash": "f7d4e676b51fec18-v2",
+        "rowSha256": "c10d1f1f478ea5f379811f32ecbdae24490d310923dcb70a40e568907831595c"
+      },
+      "Action:CC: Approve Plan Clear Context": {
+        "label": "CC: Approve Plan Clear Context",
+        "description": "Approves the plan, kills the session, creates a fresh thread, and re-invokes with the plan.",
+        "sourceHash": "6b210e08f9d098fc",
+        "rowSha256": "3a218bf2e0fe1b0f07fdd6962b107a54f0058bcaed03c43d6e377eb1c7045c86"
+      },
+      "Action:CC: Approve Tool": {
+        "label": "CC: Approve Tool",
+        "description": "Sends tool approval to the CLI and resumes streaming.",
+        "sourceHash": "f2f72769e0c18db9",
+        "rowSha256": "3786adef3d1f1832b2456193b842d62aea1dc657c2b43076e0c216b9db23cfd8"
+      },
+      "Action:CC: Commit Message": {
+        "label": "CC: Commit Message",
+        "description": "Generate a git commit message from a diff using Claude CLI",
+        "sourceHash": "5a6871139b651c4f",
+        "rowSha256": "0d76e8ca738e84a83c640c4d49ec537b68638ae1b69b4e2bc125c8e7b998c809"
+      },
+      "Action:CC: Compact": {
+        "label": "CC: Compact",
+        "description": "Compact a Claude Code session context",
+        "sourceHash": "ca0f066a7628c358",
+        "rowSha256": "1cedca8447d6eaea71702c7714c74cd6269876823068c33fc98bd4d38ee51b78"
+      },
+      "Action:CC: Context": {
+        "label": "CC: Context",
+        "description": "Show context window usage breakdown",
+        "sourceHash": "13370738274b4986",
+        "rowSha256": "7bf6e3c6f79b12ae470d7efd301a443532ce1ffc608974e22bbf18aef89a5008"
+      },
+      "Action:CC: DB Query": {
+        "label": "CC: DB Query",
+        "description": "Generate a read-only EARS database query using Claude CLI",
+        "sourceHash": "2922c75a650eb29b",
+        "rowSha256": "ad80c28d19f2ebee955b1897703116a47c6e0ec7cddaad1f0e50ce91768c58c3"
+      },
+      "Action:CC: DB Transaction": {
+        "label": "CC: DB Transaction",
+        "description": "Generate an EARS database transaction using Claude CLI",
+        "sourceHash": "3f1dcabb1ad7c1f9",
+        "rowSha256": "0585cef953ce4855006184b3845e132c0c17cd356c52d585d30a88765093b8ee"
+      },
+      "Action:CC: Deny Tool": {
+        "label": "CC: Deny Tool",
+        "description": "Kills the CLI subprocess and stops the turn on denial.",
+        "sourceHash": "d97d90fec5b3ff28",
+        "rowSha256": "fc7a5780ca9d7f9f864d3fc9c67fc89a3194bc7ae77365acbde5d8ef78ab7d88"
+      },
+      "Action:CC: Dir Ops": {
+        "label": "CC: Dir Ops",
+        "description": "Dispatcher for directory cc- commands (add-dir, set-dir)",
+        "sourceHash": "3d685e5efd91237a",
+        "rowSha256": "8a34b75c87fb2bb09b97221b54b0827ae6e858db07862aa3f74a6ab6789f66f5"
+      },
+      "Action:CC: Fork": {
+        "label": "CC: Fork",
+        "description": "Fork thread from last assistant message",
+        "sourceHash": "4ecec8c6633d5359",
+        "rowSha256": "82cb3a5a7e3c686dc886b2a8accb9254f55c32d09fd03c647b7c105563d67978"
+      },
+      "Action:CC: Goal": {
+        "label": "CC: Goal",
+        "description": "Set, query, or clear a goal condition on a Claude Code session",
+        "sourceHash": "d293c3643dba5aef",
+        "rowSha256": "5b2017616ad43926aa02a0995e67e85749fba98e534ac2fbd5ac29c50d279e90"
+      },
+      "Action:CC: Handle Directory Select": {
+        "label": "CC: Handle Directory Select",
+        "description": "Saves the user-selected project directory and retries the blocked chat query.",
+        "sourceHash": "30e44a32f3c7606e",
+        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+      },
+      "Action:CC: Handle Fork": {
+        "label": "CC: Handle Fork",
+        "description": "Copies Claude Code session state to a forked thread with CLI-level truncation at the fork point.",
+        "sourceHash": "49cb0423f88e8902",
+        "rowSha256": "8b72b93de3a44dddfe6d51948dec0d35b2a88969f4168c3d64ccc173bc2826e2"
+      },
+      "Action:CC: Handle Revert": {
+        "label": "CC: Handle Revert",
+        "description": "Cleans up Claude Code state and sets up CLI session truncation on revert.",
+        "sourceHash": "ea5b1fdc821c8dd3",
+        "rowSha256": "7219bf3b78f2c47420b1b0a5343fc0d609ca688be979d4dc338a1147a9b4c33a"
+      },
+      "Action:CC: Handle Rewind": {
+        "label": "CC: Handle Rewind",
+        "description": "Revert plus restoring files to their state at the reverted message via `claude --rewind-files`.",
+        "sourceHash": "a65d6d9b9e66e8cd",
+        "rowSha256": "5c05a0a9d385213303406a3356ec0c809ab9802b983146fdddbbd508d4dea070"
+      },
+      "Action:CC: Handle Summarize": {
+        "label": "CC: Handle Summarize",
+        "description": "Truncate the Claude session at a pivot message and run /compact to summarize prior context.",
+        "sourceHash": "43f80334a7c099e7",
+        "rowSha256": "a3d05bce511fbf63b64dce9429c10b1b79406e29b0c05a2f44be6f4ae5d3d206"
+      },
+      "Action:CC: Pause Turn": {
+        "label": "CC: Pause Turn",
+        "description": "Kills the CLI subprocess and ends the turn on user pause.",
+        "sourceHash": "7c47b9fe54e8f61e",
+        "rowSha256": "41ada1b916805e8d8eb43c1a352ae9ee59578e621786e05ea84ce2056a330688"
+      },
+      "Action:CC: Recap": {
+        "label": "CC: Recap",
+        "description": "Summarize the current conversation thread",
+        "sourceHash": "2ae17ca1e8bc1508",
+        "rowSha256": "1a600982923c0551e085a95a8b8da2844651c85a9a1d8079901ad6a186c2e2ad"
+      },
+      "Action:CC: Reconcile State": {
+        "label": "CC: Reconcile State",
+        "description": "Clears stale Claude Code run-state left over from a previous process.",
+        "sourceHash": "de99fb84bb141bc9",
+        "rowSha256": "a1c218350359956c385ba7995a8a7fb29e21abfa52a9fa8d9648dd861ac8a158"
+      },
+      "Action:CC: Route Response": {
+        "label": "CC: Route Response",
+        "description": "Classifies an interactive block response for downstream routing.",
+        "sourceHash": "8bb64f5c574d1c05",
+        "rowSha256": "9eb8538fa7e25846341129d96773dbec314389b5160093cd206adfafab025abf"
+      },
+      "Action:CC: Run Command": {
+        "label": "CC: Run Command",
+        "description": "Unified dispatcher for cc- prefixed chat commands",
+        "sourceHash": "87d8c95917ec0fdf",
+        "rowSha256": "7946ff48ff151fa1249111abac897667fdc75d672cf994284d25a757a1646896"
+      },
+      "Action:CC: Session Ops": {
+        "label": "CC: Session Ops",
+        "description": "Dispatcher for session-heavy cc- commands (resume, import)",
+        "sourceHash": "85f6549c76f3854f",
+        "rowSha256": "0b4c7d3716c451cff94445b13be45f9757e1665a8129a8e72cc8713ea3e2d051"
+      },
+      "Action:CC: Stream Paused": {
+        "label": "CC: Stream Paused",
+        "description": "Updates session artifact status to awaiting-input when the CLI pauses for user input.",
+        "sourceHash": "e09b0445f3df6dfc",
+        "rowSha256": "0dc9987071f8c92834a33bfda8692c10379f45aab9157a26cf512100844e73e7"
+      },
+      "Action:CC: Stream Started": {
+        "label": "CC: Stream Started",
+        "description": "Updates the session artifact with CLI session details when streaming begins.",
+        "sourceHash": "ad340354972513f9",
+        "rowSha256": "65ea16c18d6c7c6001f2fb46609b5c5507b7f831845aa986520bf95c560345d7"
+      },
+      "Action:CC: Turn Completed": {
+        "label": "CC: Turn Completed",
+        "description": "Finalizes session stats and creates diff artifact after a turn.",
+        "sourceHash": "dc3e1b56f552c8c1",
+        "rowSha256": "0e1de5a3c7c318518b81ece5f44336a538320c00c796eed993b8565ce52f2a96"
+      },
+      "Action:CC: Unqueue Message": {
+        "label": "CC: Unqueue Message",
+        "description": "Removes a queued message without affecting the running turn.",
+        "sourceHash": "8c464867b11a6b90",
+        "rowSha256": "1d36b5aeb6567f91013494154457f7133c7dc9c6de00315ca5ea1ecb4dd71db8"
+      },
+      "Action:CC: Update Permission Mode": {
+        "label": "CC: Update Permission Mode",
+        "description": "Persists the permission mode toggle and auto-approves pending requests on bypass.",
+        "sourceHash": "ae4e94536ab5b106",
+        "rowSha256": "dfdddd2dde542b55a403b80584450b721e5e4eff005166d19d80434cde7063d3"
+      },
+      "Action:CC: Update Worktree": {
+        "label": "CC: Update Worktree",
+        "description": "Persists the worktree toggle to thread context.",
+        "sourceHash": "d90cf35ad44bbe95",
+        "rowSha256": "3195e71011637c7058ba2c62a5a674590bf30fb4d5b1e4910b98d76fcec6cc35"
+      },
+      "Action:CDX: Approve Tool": {
+        "label": "CDX: Approve Tool",
+        "description": "Sends approval decision to the Codex app-server for a pending tool request.",
+        "sourceHash": "fc7ce2e7494f0252",
+        "rowSha256": "8336085162ff519940a91cc7bb51101fd3d49e610bce0dbb2d4e04fc951a1e81"
+      },
+      "Action:CDX: Commit Message": {
+        "label": "CDX: Commit Message",
+        "description": "Generate a git commit message from a diff using Codex CLI",
+        "sourceHash": "9d8ed62aff6fd28e",
+        "rowSha256": "f8a8fd86247adea5cda69d49ca86da10ad96a92dee7e60f0e6573caaf16ef5c5"
+      },
+      "Action:CDX: Compact": {
+        "label": "CDX: Compact",
+        "description": "Compact the active Codex thread.",
+        "sourceHash": "79ebf82b06ac9ab6",
+        "rowSha256": "5f272298ea26a31a8fa342f1f56435c1d0392091fcbcced410530567d97011d3"
+      },
+      "Action:CDX: DB Query": {
+        "label": "CDX: DB Query",
+        "description": "Generate a read-only EARS database query using Codex CLI",
+        "sourceHash": "dd73f3b0bcbd9551",
+        "rowSha256": "db5fd1f416684fcbf26e4ecdc48692255d3177a0d12133744eba63700eb42206"
+      },
+      "Action:CDX: DB Transaction": {
+        "label": "CDX: DB Transaction",
+        "description": "Generate an EARS database transaction using Codex CLI",
+        "sourceHash": "f67918e9c23cf950",
+        "rowSha256": "db0e9629579539547903d42c9897f47933cea238aff7bde3d8025d783b4f39dc"
+      },
+      "Action:CDX: Deny Tool": {
+        "label": "CDX: Deny Tool",
+        "description": "Declines a pending Codex approval request.",
+        "sourceHash": "11752091cc109c72",
+        "rowSha256": "fdb39c7204e97a8251513bfc0800eb98f11d24160cb28e9f97f9a6cd13a583d5"
+      },
+      "Action:CDX: Fork": {
+        "label": "CDX: Fork",
+        "description": "Fork Codex thread from the last assistant message.",
+        "sourceHash": "1eba4e70503ab931",
+        "rowSha256": "f8b35d6283584002c421d981e474c34f61bc363f4597c2bba92e96d535c340e6"
+      },
+      "Action:CDX: Goal Continue": {
+        "label": "CDX: Goal Continue",
+        "description": "Auto-continues a Codex turn when the thread goal is active.",
+        "sourceHash": "c6d9cc4c8dd37a04",
+        "rowSha256": "dd3c75a191e100880e04801e819f22c82e7246d510bb0991c53d4cf1301ff40c"
+      },
+      "Action:CDX: Handle Directory Select": {
+        "label": "CDX: Handle Directory Select",
+        "description": "Saves the selected project directory and retries the blocked Codex query.",
+        "sourceHash": "3f78c2ef45f58ebd",
+        "rowSha256": "da9831f6227572320065d58f380af8b1ba671a600b9cf0b2ef7e558d067f33e2"
+      },
+      "Action:CDX: Handle Fork": {
+        "label": "CDX: Handle Fork",
+        "description": "Copies Codex thread state to an AgentBuddy fork using Codex app-server thread/fork.",
+        "sourceHash": "1b0c15e02b112813",
+        "rowSha256": "d29ea865cd2d004ee4de6ffa715e3e71185070fe24a1be6e2ba9e02ebc3fa171"
+      },
+      "Action:CDX: Handle Revert": {
+        "label": "CDX: Handle Revert",
+        "description": "Rolls back Codex thread history after visible messages are reverted.",
+        "sourceHash": "8e00da2b190aaff8",
+        "rowSha256": "ef357df23647f8b9c00b9b81f1b878b0d854d8cee95c06e2e9b60ca9e7a9649c"
+      },
+      "Action:CDX: Handle Rewind Unsupported": {
+        "label": "CDX: Handle Rewind Unsupported",
+        "description": "Performs Codex conversation rollback and explains that file rewind is unsupported.",
+        "sourceHash": "1ca70e1d18cdae37",
+        "rowSha256": "6454f3553df23d9deff78a6edb4d4092afcbb8be6b6fcf77b3f3e12c5c44c61f"
+      },
+      "Action:CDX: Handle Summarize": {
+        "label": "CDX: Handle Summarize",
+        "description": "Rolls back Codex history and starts Codex app-server compaction.",
+        "sourceHash": "e906e5526e20d408",
+        "rowSha256": "4f5026cdc0a072d4a0b545d595e2e5916615bb8fd02d27fc499ebf7dd94e80c1"
+      },
+      "Action:CDX: Pause Turn": {
+        "label": "CDX: Pause Turn",
+        "description": "Interrupts the running Codex turn.",
+        "sourceHash": "265ad2169f77cac1",
+        "rowSha256": "7a4d50eba4f71622bf74f4fb42f0a3c3f3dd6eb6817a30f037a4eb9289a89d3b"
+      },
+      "Action:CDX: Reconcile State": {
+        "label": "CDX: Reconcile State",
+        "description": "Clears stale Codex run-state left over from a previous process.",
+        "sourceHash": "db1d419f9e5f6fdd",
+        "rowSha256": "8756175e08b3dbaff8a99a45b70be88ee043180405f5d28c0d44ef66c35fba5e"
+      },
+      "Action:CDX: Refine Plan": {
+        "label": "CDX: Refine Plan",
+        "description": "Starts a new plan turn with user feedback to refine the plan.",
+        "sourceHash": "d2c4a3b28d24057e",
+        "rowSha256": "ecde71ac98783aabe5f5f694de922c635cf1a19c05029690ea6842baa5e8ccc3"
+      },
+      "Action:CDX: Route Response": {
+        "label": "CDX: Route Response",
+        "description": "Routes interactive block responses to the appropriate Codex handler.",
+        "sourceHash": "f06034a3de705dc4",
+        "rowSha256": "e36cf64048b60f66867fc914ae3f702d8ea4211fcd5745351706cd0f56456a21"
+      },
+      "Action:CDX: Run Command": {
+        "label": "CDX: Run Command",
+        "description": "Unified dispatcher for cdx- prefixed chat commands.",
+        "sourceHash": "324d085fff9b23f7",
+        "rowSha256": "53e1ed098483a738b12937e0fbf4547829b1fd6d507572567e91fd45df0937ae"
+      },
+      "Action:CDX: Session Ops": {
+        "label": "CDX: Session Ops",
+        "description": "Dispatcher for session-heavy cdx- commands.",
+        "sourceHash": "70be6a68b0e96d78",
+        "rowSha256": "303c31667a6de4d9ba7c10c68e34c59e86198b3706cb583bb568d487df84c9ee"
+      },
+      "Action:CDX: Start Server": {
+        "label": "CDX: Start Server",
+        "description": "Starts the Codex app-server subprocess if not already running.",
+        "sourceHash": "c2acdec04a40fd04",
+        "rowSha256": "2f95250807fb5be841aae298439ee6ae1e07bdaa03b4461c73c1cf69dd32c299"
+      },
+      "Action:CDX: Stream Paused": {
+        "label": "CDX: Stream Paused",
+        "description": "Updates chat state to paused when Codex requests approval.",
+        "sourceHash": "e8176c0454d47873",
+        "rowSha256": "c2e0ff2dcca7bdef306f29d43a480241fb89bb81eebcbc52b9bbde6cab4cec9e"
+      },
+      "Action:CDX: Turn Completed": {
+        "label": "CDX: Turn Completed",
+        "description": "Finalizes session stats and creates diff artifact after a Codex turn.",
+        "sourceHash": "9831549cc84e704b",
+        "rowSha256": "9edf2c87b7a08881454e37db4fd10d955b283be6b362c8e0ed7d7826e1af6d43"
+      },
+      "Action:CDX: Unqueue Message": {
+        "label": "CDX: Unqueue Message",
+        "description": "Removes a queued message without affecting the running turn.",
+        "sourceHash": "fbf8d9446f96d62b",
+        "rowSha256": "c100a18dd96ef82f8af5623808016b928764ba29d03767069a81e8c886b6826d"
+      },
+      "Action:CDX: Update Session Settings": {
+        "label": "CDX: Update Session Settings",
+        "description": "Persists Codex session settings to thread context.",
+        "sourceHash": "4c625c043761c0b0",
+        "rowSha256": "7c7fa73669ec25457d3f49061c49870dea9bad1b6f08b173e6c94a0b082e982b"
+      },
+      "Action:Claude Code Auth Status": {
+        "label": "Claude Code Auth Status",
+        "description": "Report whether the Claude Code CLI is currently authenticated.",
+        "sourceHash": "e1a1f503abbe12bc",
+        "rowSha256": "9a5810f5c9565fdfa0e9821518fc08ba91c49e7211c62f583dfd72137a9303a3"
+      },
+      "Action:Claude Code Chat": {
+        "label": "Claude Code Chat",
+        "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
+        "sourceHash": "c09a62f39461912d",
+        "rowSha256": "d4d51eaed990d9f0b0dbcd0e4d609ca67227a4f718f01dcad3ad4ab80a46619a"
+      },
+      "Action:Claude Code List Sessions": {
+        "label": "Claude Code List Sessions",
+        "description": "List saved Claude Code sessions for a working directory.",
+        "sourceHash": "c77ae4b848eb1993",
+        "rowSha256": "abfbf49f4f3d5c17bf1955c81542eaaeb94ec1d03f25a6c117c66aee85092df1"
+      },
+      "Action:Claude Code One-Shot": {
+        "label": "Claude Code One-Shot",
+        "description": "Run a single Claude Code prompt without touching any thread. Returns the final text and optional structured output.",
+        "sourceHash": "4981c91e1481c8d8",
+        "rowSha256": "d94bfedeb042c90748560935e5f9540dbf5916b8508c5b60892756bc0f736a16"
+      },
+      "Action:Claude Code Reset Session": {
+        "label": "Claude Code Reset Session",
+        "description": "Disconnect a thread from its Claude Code session. The next work-mode turn starts fresh.",
+        "sourceHash": "6557ef1356120536",
+        "rowSha256": "89edbb0932919c55ef42d2ffbc1233acced4f6e44b014486358ad4a9a510c887"
+      },
+      "Action:Codex Chat": {
+        "label": "Codex Chat",
+        "description": "Drives Codex via app-server for the current thread.",
+        "sourceHash": "11eab82c27a1b136",
+        "rowSha256": "8ea1e6a5db7e4d2719b88d26eefe8ca2e5e33888c4832ebbabd9213a336cb0ed"
+      },
+      "Action:Handle Choose Mode Step": {
+        "label": "Handle Choose Mode Step",
+        "description": "Sets the default mode based on user choice and finishes onboarding",
+        "sourceHash": "4db6173863e8d2a6",
+        "rowSha256": "dbbf7d1c05b29a40040baa3a18ee23b87feeaaf85d474aa74fbdaa8692245215"
+      },
+      "Action:Handle Import Threads Step": {
+        "label": "Handle Import Threads Step",
+        "description": "Imports sessions from Claude Code and Codex as threads",
+        "sourceHash": "260c1593afccaf85",
+        "rowSha256": "b79547dff26c1bb2000f4d32728b0f15c17c2d34fcb26e4386ef6634f355f8dc"
+      },
+      "Action:Handle Onboarding Response": {
+        "label": "Handle Onboarding Response",
+        "description": "Validates an interactive block response and returns step + response for flow-level branching",
+        "sourceHash": "8362df79b98bb067",
+        "rowSha256": "2a18e6b48a3c3fedb00b6d4f35dcf68fcc2f2c1685777c1f24b572f121972d44"
+      },
+      "Action:Handle Pick Thread Step": {
+        "label": "Handle Pick Thread Step",
+        "description": "Opens a selected thread, then advances to mode chooser or finishes",
+        "sourceHash": "5c3e85b2d62d9726",
+        "rowSha256": "0d292438356f84e97dad5d58c427c16a9ea71b59b5b7c0c1486653d4ea5d06ad"
+      },
+      "Action:Handle Projects Step": {
+        "label": "Handle Projects Step",
+        "description": "Saves selected project directories and offers per-provider import",
+        "sourceHash": "44382eaab282cfb0",
+        "rowSha256": "8ccea111bef475c1f6d0f3be045165e2df48797f0891d5d948d1201c2c1ba658"
+      },
+      "Action:Handle Welcome Step": {
+        "label": "Handle Welcome Step",
+        "description": "Detects CLIs, discovers sessions, and presents project directory selection",
+        "sourceHash": "8c7e023b3437c213",
+        "rowSha256": "c6432f155a316635f997145fa595f0dd74efc4abded873bde67d1457426247c9"
+      },
+      "Action:Ignore Onboarding Message": {
+        "label": "Ignore Onboarding Message",
+        "description": "Marks a user message as cancelled when sent during onboarding",
+        "sourceHash": "3af5a047732c1d2d",
+        "rowSha256": "bc293fd85ed01bee1a0db0f8393d532c9dee41253d7c1dbb566e77b1496a4043"
+      },
+      "Action:Init Onboarding": {
+        "label": "Init Onboarding",
+        "description": "Creates the birth thread and sends the welcome artifact for onboarding",
+        "sourceHash": "e1787325a6231b6a",
+        "rowSha256": "a75648f72ab250efb87c2550aab35261ef093cc3a15a265e3fb6ce003293f07d"
+      },
+      "Action:PR to Markdown": {
+        "label": "PR to Markdown",
+        "description": "Renders PR comments and review threads to a local markdown file",
+        "sourceHash": "e10fe6e9c02659ac",
+        "rowSha256": "24fdb5eca537d5cbbc53cb646427067172bea7dc950287361e92c70924735d34"
+      },
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a new thread with instructions, using the first part as the title",
+        "sourceHash": "e8dca476346c2df1",
+        "rowSha256": "dc4f31ee6fc2754914c6561d9a7d35e714e37a913cc949f0f5c5b674c5ee108f"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "08f76a29861feea7"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "9e77cd769e730ea3"
+      },
+      "Document:2024": {
+        "content": [
+          {
+            "type": "text",
+            "text": "A document whose quoted name looks like a number."
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "2024",
+        "shortCode": "DOC-4",
+        "sourceHash": "950a0c99b4ad4a53",
+        "tags": [
+          "year"
+        ]
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "ab5447ee2e9df227",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome, revised. ![diagram](media://Document:Getting Started/pic.png)"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "4c10c7f6d5d0f9ce",
+        "tags": [
+          "intro",
+          "docs",
+          "updated"
+        ]
+      },
+      "Document:New Doc": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Added in v2.\n"
+          }
+        ],
+        "displayOrder": 3000,
+        "name": "New Doc",
+        "shortCode": "DOC-3",
+        "sourceHash": "2fe501d1e4d0a0fe",
+        "tags": [
+          "default"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-2",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Task Two"
+      },
+      "Note:Welcome": {
+        "completed": false,
+        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "favorite": true,
+        "icon": "👋",
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "document",
+        "shortCode": "NOTE-4",
+        "title": "Welcome"
+      },
+      "Prompt:Commit Message": {
+        "label": "Commit Message",
+        "description": "Generate a conventional commit message from a git diff (v2)",
+        "sourceHash": "968e39f0a9dabacd-v2",
+        "rowSha256": "e57812196ed063abc2fff0fe43859e169000708a213d58ddc92690f3309a217e"
+      },
+      "Prompt:DB Query System": {
+        "label": "DB Query System",
+        "description": "Generate a read-only EARS database query from a natural language request",
+        "sourceHash": "067065b6359a4d07",
+        "rowSha256": "644509d171179e9ba3f9d51d69f907dbcfb6b4301717c4f6d5aa6590d08827ae"
+      },
+      "Prompt:DB Transaction System": {
+        "label": "DB Transaction System",
+        "description": "Generate an EARS database transaction from a natural language request",
+        "sourceHash": "1ea5d3d6d4e7d656",
+        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+      },
+      "Prompt:Edit Phase Tips System": {
+        "label": "Edit Phase Tips System",
+        "description": "Behavioral tips injected during edit mode to supplement the CLI system prompt",
+        "sourceHash": "87bc2e05b7f53535",
+        "rowSha256": "7074bb365dd738b1c153af0bf64e9afb5e9ada6ba63bac7c9435ec65fce87f3a"
+      },
+      "Prompt:Plan Phase Tips System": {
+        "label": "Plan Phase Tips System",
+        "description": "Behavioral tips injected during plan mode to supplement the CLI system prompt",
+        "sourceHash": "0579ab0cf6de5356",
+        "rowSha256": "d3b974c43a22a916588207f7070b327fce8450ed448a3c7f74c0eed337f5ce18"
+      },
+      "Prompt:Recap System": {
+        "label": "Recap System",
+        "description": "System prompt for conversation recap — instructs the model how to summarize",
+        "sourceHash": "20879c9c38f1fdf7",
+        "rowSha256": "b054c64a2aec6a4792616e6805226f7065592128fa74fbacefdd9e7c695f6ba4"
+      }
+    },
+    "relations": [
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Welcome --references--> Note-external-plan",
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started",
+      "Collection:Guides --contains--> Document:New Doc"
+    ],
+    "media": [
+      "Document:(deleted)/pic.png=PNGDATA",
+      "Document:(deleted)/pic.png=PNGDATA",
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 69,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 6,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 6,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  }
+}
