@@ -1,7 +1,7 @@
 // The backend bus: spawns the registered systems, routes client events to them and their events to
 // clients. The app composes it with its event sources and client sink (api/src/systems.ts); the pack
 // test harness runs the same machine with a recording sink.
-import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef } from 'xstate';
+import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
 import { getRegisteredPackSystemIds, getRegisteredSystems } from '../packs/pack-registration.ts';
 
@@ -35,6 +35,8 @@ export type BackendEvents =
 export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'CLIENT_CONNECTED' | 'PACK_CLIENT_CONNECTED' }>;
 
 export interface BusOptions {
+  /** The systems the bus runs, by id; defaults to every registered system */
+  systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers an event a system sent to a frontend plugin */
   onOutgoing(event: OutgoingSystemEvents): void;
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED); returns the unsubscribe */
@@ -68,6 +70,7 @@ function stopSystems(
 
 /** A bus machine; start it with systemId `bus` so systems reach it with `system.get(bus)` */
 export function createBusMachine(options: BusOptions) {
+  const systems = options.systems ?? getRegisteredSystems;
   return setup({
     types: {
       events: {} as BackendEvents,
@@ -88,7 +91,7 @@ export function createBusMachine(options: BusOptions) {
         else console.warn(`[bus] routeIncoming: system "${systemId}" not found (may be reloading), dropping event "${incoming.type}"`);
       },
       sendConnected: ({ system }) => {
-        sendClientConnected(system, getRegisteredSystems().keys());
+        sendClientConnected(system, systems().keys());
         for (const outgoing of options.connectedEvents?.() ?? []) system.get(bus).send({ type: 'OUTGOING', event: outgoing });
       },
       sendPackConnected: ({ event, system }) => {
@@ -98,7 +101,7 @@ export function createBusMachine(options: BusOptions) {
         if (event.type === 'SYSTEMS_SPAWNED') sendClientConnected(system, event.systemIds);
       },
       spawnActors: enqueueActions(({ enqueue }) => {
-        for (const [id, machine] of getRegisteredSystems()) enqueue.spawnChild(machine, { systemId: id });
+        for (const [id, machine] of systems()) enqueue.spawnChild(machine, { systemId: id });
       }),
       reloadPack: enqueueActions(({ enqueue, event, system }) => {
         if (event.type !== 'RELOAD_PACK') return;
