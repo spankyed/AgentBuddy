@@ -9,6 +9,9 @@ export {
 } from './pack-registration.ts';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration.ts';
 
+// Loading pack runtime code on the loader's own @abuddy/sdk
+export { withModuleBridge, type ModuleBridgeOptions } from './module-bridge.ts';
+
 // Discovery
 export {
   discoverBuiltInPacks, discoverPacks, reconcileExternalRegistry,

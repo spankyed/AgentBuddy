@@ -15,6 +15,7 @@ import {
   readBundleInfo,
   resolvePackSeedsDir,
   isHostCompatible,
+  withModuleBridge,
 } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
@@ -231,48 +232,9 @@ export interface LoadedPack {
   features?: import('@abuddy/sdk/framework').PackFeatureDef[];
 }
 
+/** Runs `fn` (a require of pack runtime code) with @abuddy/sdk bridged to the API's instances and host-provided packages resolved from the API */
 export function withHostResolution<T>(fn: () => T): T {
-  const originalResolve = (Module as any)._resolveFilename;
-
-  const hostResolutions = new Map<string, string>();
-  for (const pkg of HOST_PROVIDED_PACKAGES) {
-    try { hostResolutions.set(pkg, esmRequire.resolve(pkg)); } catch {}
-  }
-
-  // Pre-populate esmRequire.cache so SDK requires get the bundled singletons.
-  // These persist — lazy requires inside pack callbacks need them too.
-  // Cache entries are injected at both the bridge key (used while the
-  // _resolveFilename patch is active) and the real resolved path (used by
-  // lazy __esm() initializers that run after withHostResolution returns).
-  for (const [specifier, exports] of Object.entries(SDK_BRIDGE)) {
-    const cacheKey = `__sdk_bridge__/${specifier}`;
-    if (!esmRequire.cache[cacheKey]) {
-      const entry = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
-      esmRequire.cache[cacheKey] = entry;
-      try {
-        const realPath = esmRequire.resolve(specifier);
-        if (!esmRequire.cache[realPath]) {
-          esmRequire.cache[realPath] = entry;
-        }
-      } catch {}
-    }
-  }
-
-  try {
-    (Module as any)._resolveFilename = function (request: string, ...args: any[]) {
-      if (SDK_BRIDGE[request]) {
-        return `__sdk_bridge__/${request}`;
-      }
-      if (hostResolutions.has(request)) {
-        return hostResolutions.get(request)!;
-      }
-      return originalResolve.call(this, request, ...args);
-    };
-
-    return fn();
-  } finally {
-    (Module as any)._resolveFilename = originalResolve;
-  }
+  return withModuleBridge({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url }, fn);
 }
 
 function loadSystemFromCJS(
