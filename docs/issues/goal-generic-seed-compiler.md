@@ -117,7 +117,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
        },
        "media": "media"                    // optional: copied to media/<key>/, links rewritten to media://<id>/
      },
-     "library": { "compiler": "src/seeds/compilers/library.ts", "entity": ["Collection", "Document"], "identity": ["name"], "media": "media" }
+     "library": { "compiler": "src/seeds/_compilers/library.ts", "entity": ["Collection", "Document"], "identity": ["name"], "media": "media" }
    },
    "boot": {
      "seed": {
@@ -144,12 +144,12 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
    - A hooks module may export `find(record, parentId)`, `create(record, parentId)`, `update(id, record)` and `remove(id)`. Hook modules are typed by the SDK's generic `SeedHooks<Record>` type, not by any SDK-owned entity shape.
    - The generic seeder looks hooks up by each record's entity type at seed time, so any pack seeding `Note` (default-setup or a pack that depends on it) gets default-setup's hooks.
    - When a `find` hook is registered, it owns identity and the format's `identity` is ignored. Without hooks the seeder writes rows directly (`createEntityWithDefaults`, `tree.relKind` links), which covers a single relation kind only.
-   - Default-setup registers hooks for Note, Document and Collection that call their repository commands, so shortCodes, display order, `PARENT_OF`/`contains`, title validation, and `REFERENCES` sync on create and update keep working. Seed code lives with the seed sources: hook modules in `src/seeds/hooks/` (`notes.ts`, `library.ts`, importing the features' repositories through `#generated/repository`), compiler modules in `src/seeds/compilers/`. Neither directory is scanned as seed source.
+   - Default-setup registers hooks for Note, Document and Collection that call their repository commands, so shortCodes, display order, `PARENT_OF`/`contains`, title validation, and `REFERENCES` sync on create and update keep working. Seed code lives with the seed sources: hook modules in `src/seeds/hooks/` (`notes.ts`, `library.ts`, importing the features' repositories through `#generated/repository`), compiler modules in `src/seeds/_compilers/`. Neither directory is scanned as seed source.
 5. **Specialty compilers stay** for flows (the flow DSL and steps), actions and prompts (DSL defs), and settings. They keep their current keys, as a path string or `{ "path": … }`.
 6. **Unknown seed keys fail the build.** A string entry whose key isn't a specialty key, and an object entry for a non-specialty key that isn't `{ path, format }` or `{ seeder }`, is an error naming the key, not a silent skip. Migrate default-setup, the fixture pack, the example pack's manifest and the scaffold templates in the same change.
 7. **Library and notes leave the SDK.** Delete `compile-library.ts`, `library-utils.ts`, `compile-notes.ts`, `compile-faq.ts`, `library-seeder.ts`, `notes-seeder.ts`, `import-notes.ts` and any built-in names. `parseMarkdownSections` and the section content types move to default-setup's library compiler module. Move `ExportedItem`/`ExportedNote`/`CompiledFAQ` and the Document/Collection/Note shapes to default-setup, declared in its `abuddy.json` like its other entities. This reverses those parts of `706dc987e`; its Settings/Secret moves stay (see the Settings/Secrets internal-category plan).
 8. **`BuiltinRepositories` loses its library and notes commands.** The SDK reaches them only through default-setup's registered seed hooks.
-9. **FAQs use a default-setup format with a compiler module** (`src/seeds/compilers/faqs.ts`, wrapping `compileMarkdownTree`: the question is the first `# heading`, which no field source expresses), with no `entity`: compiled, not seeded. The output is `faqs.seed.json`; `settings/be/faqs.ts` reads it, typed by `FAQItem` in `settings/be/types.ts`.
+9. **FAQs use a default-setup format with a compiler module** (`src/seeds/_compilers/faqs.ts`, wrapping `compileMarkdownTree`: the question is the first `# heading`, which no field source expresses), with no `entity`: compiled, not seeded. The output is `faqs.seed.json`; `settings/be/faqs.ts` reads it, typed by `FAQItem` in `settings/be/types.ts`.
 10. **Notes get proper change tracking.** Compiled notes carry `sourceHash` like library items, and the generic seeder applies the same rules to every entry:
     - `keep-existing` skips existing items.
     - `replace-on-collision` (and no mode) updates an existing item only when its stored hash differs from the compiled one: an unchanged `sourceHash` skips, and an item with no stored hash is treated as user-owned and skipped. This matches today's actions, prompts and library.

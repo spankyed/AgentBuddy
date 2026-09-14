@@ -407,7 +407,7 @@
       }
     },
     "library": {
-      "compiler": "src/seeds/compilers/library.ts",
+      "compiler": "src/seeds/_compilers/library.ts",
       "entity": [
         "Collection",
         "Document"
@@ -418,7 +418,7 @@
       "media": "media"
     },
     "faqs": {
-      "compiler": "src/seeds/compilers/faqs.ts"
+      "compiler": "src/seeds/_compilers/faqs.ts"
     }
   },
   "seedHooks": {

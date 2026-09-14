@@ -1,6 +1,6 @@
 # Seeds
 
-Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and `boot.seed` describe them. `compilers/` holds the formats' compiler modules and `hooks/` the seed hooks for Note, Document and Collection. Actions, prompts and flows run in a sandboxed scope at runtime: no module system, function bodies are extracted.
+Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and `boot.seed` describe them. `_compilers/` holds the formats' compiler modules and `hooks/` the seed hooks for Note, Document and Collection. Actions, prompts and flows run in a sandboxed scope at runtime: no module system, function bodies are extracted.
 
 ## Actions
 
@@ -50,11 +50,11 @@ Markdown under `notes/`, compiled with the `notes` format (`markdown-tree`, enti
 
 ## Library
 
-Markdown under `library/`, compiled with the `library` format (`compilers/library.ts`) and seeded through `hooks/library.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the seeds, and `![alt](media/file)` links point at the document's media.
+Markdown under `library/`, compiled with the `library` format (`_compilers/library.ts`) and seeded through `hooks/library.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the seeds, and `![alt](media/file)` links point at the document's media.
 
 ## FAQs
 
-Markdown under `faqs/`, compiled with the `faqs` format (`compilers/faqs.ts`) for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not seeded into the database.
+Markdown under `faqs/`, compiled with the `faqs` format (`_compilers/faqs.ts`) for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not seeded into the database.
 
 ## Re-seeding
 
