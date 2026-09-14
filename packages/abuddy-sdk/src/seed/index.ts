@@ -1,3 +1,6 @@
+export { createSeeder, recordLabel, type SeederOptions } from './seeder.ts';
+export { seedHookRegistry, type SeedHooks, type SeedHookContext, type SeedHookMatch } from './hooks.ts';
+export type { SeedRecord } from '../build/seeds/records.ts';
 export { createCollectionSeeder } from './collection-seeder.ts';
 export { createFlowSeeder } from './flow-seeder.ts';
 export { createLibrarySeeder } from './library-seeder.ts';

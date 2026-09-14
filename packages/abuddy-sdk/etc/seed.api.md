@@ -35,6 +35,9 @@ export function createLibrarySeeder(): Seeder;
 // @public (undocumented)
 export function createNotesSeeder(): Seeder;
 
+// @public
+export function createSeeder(options: SeederOptions): Seeder;
+
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
 
@@ -83,6 +86,60 @@ export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes'
 
 // @public (undocumented)
 export function previewPackSeeds(directory: string, seedKeys?: string[]): PackSeedsPreview;
+
+// @public
+export function recordLabel(record: SeedRecord, identity?: readonly string[]): string;
+
+// @public (undocumented)
+export interface SeederOptions {
+    identity?: string[];
+    // (undocumented)
+    key: string;
+    media?: boolean;
+    relKind?: string;
+}
+
+// @public
+export interface SeedHookContext {
+    // (undocumented)
+    index: number;
+    // (undocumented)
+    parentId?: EARS.EntityId;
+}
+
+// @public
+export interface SeedHookMatch {
+    // (undocumented)
+    id: EARS.EntityId;
+    // (undocumented)
+    sourceHash?: unknown;
+}
+
+// @internal
+export const seedHookRegistry: SeedHookRegistry;
+
+// @public
+export interface SeedHooks<R extends SeedRecord = SeedRecord> {
+    // (undocumented)
+    create?(record: R, context: SeedHookContext): EARS.EntityId;
+    find?(record: R, context: SeedHookContext): SeedHookMatch | undefined;
+    // (undocumented)
+    remove?(id: EARS.EntityId): void;
+    // (undocumented)
+    update?(id: EARS.EntityId, record: R, context: SeedHookContext): void;
+}
+
+// @public
+export interface SeedRecord {
+    // (undocumented)
+    [field: string]: unknown;
+    // (undocumented)
+    children?: SeedRecord[];
+    // (undocumented)
+    entity?: string;
+    // (undocumented)
+    sourceHash?: string;
+}
 
 // @public
 export const STANDARD_SEED_DEFAULTS: Record<string, {

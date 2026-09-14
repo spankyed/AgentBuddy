@@ -91,6 +91,9 @@ export function buildPackConfigFromManifest(manifest: PackManifest, packDir: str
 // @public (undocumented)
 export function bundleFile(filePath: string): Promise<BundleResult>;
 
+// @public
+export function checkRecordEntities(key: string, entry: GenericSeedEntry, records: SeedRecord[]): string[];
+
 // @public (undocumented)
 export interface CompilationContext {
     // (undocumented)
@@ -156,6 +159,12 @@ export interface CompiledRows {
     }>;
 }
 
+// @public
+export interface CompiledSeedFile {
+    // (undocumented)
+    records: SeedRecord[];
+}
+
 // @public (undocumented)
 export interface CompileEntry<T> {
     // (undocumented)
@@ -172,8 +181,14 @@ export function compileFaqFromDir(faqsDir: string): CompiledFAQ[];
 // @public (undocumented)
 export function compileFlowDSL(dsl: FlowDSL, options?: CompileOptions): CompiledRows;
 
+// @public
+export function compileFormatEntry(key: string, entry: GenericSeedEntry, sourcePath: string): SeedRecord[];
+
 // @public (undocumented)
 export function compileLibraryFromDir(libraryDir: string): ExportedLibrary;
+
+// @public
+export function compileMarkdownTree(dir: string, options?: MarkdownTreeOptions): MarkdownItem[];
 
 // @public (undocumented)
 export function compileNotesFromDir(notesDir: string): ExportedNotes;
@@ -237,6 +252,9 @@ export function countDocs(items: ExportedItem[]): number;
 // @public (undocumented)
 export function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown>;
 
+// @public
+export function defaultSourceHash(record: SeedRecord): string;
+
 // @public (undocumented)
 export const DslEntrySchema: z.ZodObject<{
     entry: z.ZodString;
@@ -291,6 +309,9 @@ export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 
 
 // @public (undocumented)
 export function entry(...branches: DSLStepNode[][]): Track;
+
+// @public
+export function entryEntities(entry: GenericSeedEntry): string[];
 
 // @public (undocumented)
 export interface ExportedCollection {
@@ -546,6 +567,23 @@ export interface GenerateEntriesOptions {
 
 // @public (undocumented)
 export function generatePackFiles(manifest: PackManifest, opts: GenerateEntriesOptions): Record<string, string>;
+
+// @public
+export interface GenericSeedEntry {
+    compiler?: string;
+    entity?: string | string[];
+    // (undocumented)
+    fields?: Record<string, SeedFieldSpec>;
+    // (undocumented)
+    format?: 'markdown-tree' | 'json';
+    identity?: string[];
+    media?: string;
+    // (undocumented)
+    path?: string;
+    seeder?: string;
+    // (undocumented)
+    tree?: SeedTreeSpec;
+}
 
 // @public (undocumented)
 export function hashFlows(merged: FlowDSL): Record<string, object>;
@@ -1069,6 +1107,32 @@ export interface ManifestValidation {
     warnings: string[];
 }
 
+// @public
+export function markdownDisplayName(filename: string): string;
+
+// @public
+export interface MarkdownItem {
+    body: string;
+    // (undocumented)
+    children: MarkdownItem[];
+    displayName: string;
+    filename: string;
+    // (undocumented)
+    frontmatter: Record<string, unknown>;
+    kind: 'branch' | 'leaf';
+    path: string;
+    text: string;
+}
+
+// @public (undocumented)
+export interface MarkdownTreeOptions {
+    branch?: string;
+    recursive?: boolean;
+}
+
+// @public
+export const MEDIA_DIR = "media";
+
 // @public (undocumented)
 export function mergeRegistries(ownId: string, manifest: PackManifest, depManifests: Map<string, PackTypeManifest>): {
     entities: Map<string, RegistryEntry>;
@@ -1197,6 +1261,12 @@ export function parseFrontmatter(content: string): {
 // @public (undocumented)
 export function parseManifest(raw: unknown): ManifestValidation;
 
+// @public
+export function parseMarkdownFile(text: string, file?: string): {
+    frontmatter: Record<string, unknown>;
+    body: string;
+};
+
 // @public (undocumented)
 export function parseMarkdownSections(body: string): ContentSection[];
 
@@ -1217,6 +1287,9 @@ export interface PromptMeta {
 // @public (undocumented)
 export const promptsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]>;
 
+// @public
+export const RECORD_KEYS: ReadonlySet<string>;
+
 // @public (undocumented)
 export function resolveFeatureSettingsFromManifest(manifest: PackManifest, packDir: string): Array<{
     name: string;
@@ -1225,6 +1298,17 @@ export function resolveFeatureSettingsFromManifest(manifest: PackManifest, packD
 
 // @public (undocumented)
 export function resolveTracks(entry: Track[] | FlowConfig): Track[];
+
+// @public
+export interface SeedCompileContext {
+    // (undocumented)
+    entry: GenericSeedEntry;
+    // (undocumented)
+    key: string;
+    // (undocumented)
+    packDir: string;
+    path: string;
+}
 
 // @public (undocumented)
 export interface SeedCompiler<TCompiled = unknown, TMerged = unknown> {
@@ -1238,6 +1322,9 @@ export interface SeedCompiler<TCompiled = unknown, TMerged = unknown> {
     // (undocumented)
     write(outputDir: string, merged: TMerged): void;
 }
+
+// @public (undocumented)
+export type SeedCompilerModule = (context: SeedCompileContext) => SeedRecord[] | Promise<SeedRecord[]>;
 
 // @public (undocumented)
 export type SeedEntryConfig = z.infer<typeof SeedEntryConfigSchema>;
@@ -1260,11 +1347,41 @@ export const SeedEntryConfigSchema: z.ZodObject<{
     lookupField?: string | undefined;
 }>;
 
+// @public
+export type SeedFieldSource = 'body' | 'filename' | 'path' | `frontmatter.${string}`;
+
+// @public (undocumented)
+export interface SeedFieldSpec {
+    default?: unknown;
+    // (undocumented)
+    from: SeedFieldSource;
+    type?: 'string';
+}
+
 // @public (undocumented)
 export function seedFile(name: string): string;
 
 // @public (undocumented)
 export function seedPath(compiledDir: string, name: string): string;
+
+// @public
+export interface SeedRecord {
+    // (undocumented)
+    [field: string]: unknown;
+    // (undocumented)
+    children?: SeedRecord[];
+    // (undocumented)
+    entity?: string;
+    // (undocumented)
+    sourceHash?: string;
+}
+
+// @public (undocumented)
+export interface SeedTreeSpec {
+    branch?: string;
+    branchEntity?: string;
+    relKind?: string;
+}
 
 // @public (undocumented)
 export const settingsCompiler: SeedCompiler<Record<string, unknown>, Record<string, unknown>>;
@@ -1380,6 +1497,9 @@ export interface ValidationResult {
     // (undocumented)
     valid: boolean;
 }
+
+// @public
+export function withSourceHashes(records: SeedRecord[]): SeedRecord[];
 
 // (No @packageDocumentation comment for this package)
 
