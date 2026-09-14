@@ -37,6 +37,15 @@ export interface SettingsData {
   assistant: AssistantSettings;
 }
 
+/** A Help tab FAQ: the first `# heading` of a src/seeds/faqs file, and the rest as its answer */
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  order?: number;
+}
+
 export interface GeneralSettings {
   personal: PersonalInfo;
   secrets: Secrets;

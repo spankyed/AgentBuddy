@@ -2,12 +2,12 @@
 // `# heading` is the question and the rest the answer, ordered by frontmatter `order`. Compiled, not
 // seeded: loadFaqs reads faqs.seed.json.
 import { compileMarkdownTree, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
-import type { CompiledFAQ } from '../../features/settings/be/faqs';
+import type { FAQItem } from '../../features/settings/be/types';
 
 const HEADING_RE = /^#\s+(.+?)(?:\n|$)/;
 
 export default function compileFaqs({ path }: SeedCompileContext): SeedRecord[] {
-  const faqs: CompiledFAQ[] = [];
+  const faqs: FAQItem[] = [];
   for (const item of compileMarkdownTree(path, { recursive: false })) {
     const heading = item.body.match(HEADING_RE);
     if (!heading) continue;

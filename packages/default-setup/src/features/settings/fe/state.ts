@@ -11,7 +11,7 @@ import { trpc } from '@abuddy/sdk/rpc'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
-import type { CompiledFAQ } from '@/features/settings/be/faqs';
+import type { FAQItem } from '@/features/settings/be/types';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -54,7 +54,7 @@ function freshPackSeeds(): PackSeedsImport {
 
 export interface SettingsContext {
   settings: SettingsData | null;
-  faqs: CompiledFAQ[];
+  faqs: FAQItem[];
   secretsData: any[];
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packSeedsImport: PackSeedsImport;

@@ -59,7 +59,7 @@ import { useSelector } from '@xstate/vue'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
 import { useActorSystem, openInAppBrowser } from '@abuddy/sdk/fe'
-import type { CompiledFAQ } from '@/features/settings/be/faqs'
+import type { FAQItem } from '@/features/settings/be/types'
 
 const actorSystem = useActorSystem()
 
@@ -72,7 +72,7 @@ function openMemorialLink() {
 }
 
 const settingsActor = actorSystem.get('settings')
-const faqItems = useSelector(settingsActor, (state: any): CompiledFAQ[] => state.context.faqs ?? [])
+const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])
 

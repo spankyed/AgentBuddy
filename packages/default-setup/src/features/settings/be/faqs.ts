@@ -1,16 +1,9 @@
 import { loadJSON } from '@abuddy/sdk/utils';
 import { seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
+import type { FAQItem } from './types';
 
-/** A FAQ, compiled from src/seeds/faqs by src/seeds/compilers/faqs.ts */
-export interface CompiledFAQ {
-  id: string;
-  question: string;
-  answer: string;
-  category?: string;
-  order?: number;
-}
-
-export function loadFaqs(): CompiledFAQ[] {
-  return loadJSON<{ records: CompiledFAQ[] }>(seedPath(getCompiledDir(), 'faqs'))?.records ?? [];
+/** The Help tab's FAQs, compiled from src/seeds/faqs by src/seeds/compilers/faqs.ts */
+export function loadFaqs(): FAQItem[] {
+  return loadJSON<{ records: FAQItem[] }>(seedPath(getCompiledDir(), 'faqs'))?.records ?? [];
 }
