@@ -13,6 +13,7 @@
     "./build/discover": "./src/build/discover.ts",
     "./build/shared-deps": "./src/build/shared-deps.ts",
     "./build/source-resolution": "./src/build/source-resolution.ts",
+    "./bus": "./src/bus/index.ts",
     "./data": "./src/data/index.ts",
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
@@ -23,7 +24,8 @@
     "@abuddy/sdk": "*",
     "fs-extra": "^11.4.0",
     "semver": "^7.8.5",
-    "tar": "^7.5.22"
+    "tar": "^7.5.22",
+    "xstate": "^5.19.2"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
