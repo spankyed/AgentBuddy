@@ -1,12 +1,15 @@
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @abuddy/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and seed-hook registries) instead of a copy.
-import { initEARSRuntime, type Logger } from '../ears/runtime.ts';
-import { clearMemory } from '../ears/attribute-storage.ts';
+import { initEARSRuntime } from '../ears/runtime.ts';
+import { clearMemory, dropAttr, getAllEntities } from '../ears/attribute-storage.ts';
 import { registerRepository } from '../ears/repository.ts';
-import { registerHostModule, getHostModule } from '../runtime/host.ts';
 import { seedHookRegistry, type SeedHooks } from '../seed/hooks.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
+import type { EARS } from '../types/entities.ts';
+import { registerTestHostModules } from './host.ts';
+
+export { testRootEvents, takeSystemErrors, type TestRootEvents } from './host.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories
@@ -25,36 +28,19 @@ export interface SeedRuntime {
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
 let started = false;
 
-function hostModuleRegistered(key: string): boolean {
-  try {
-    getHostModule(key);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function consoleLogger(source?: string): Logger {
-  const prefix = source ? `[${source}]` : '[test]';
-  return {
-    debug: (...args: unknown[]) => console.debug(prefix, ...args),
-    info: (...args: unknown[]) => console.info(prefix, ...args),
-    warn: (...args: unknown[]) => console.warn(prefix, ...args),
-    error: (...args: unknown[]) => console.error(prefix, ...args),
-  };
-}
-
 /**
- * Starts the in-memory EARS runtime: entity types are the SDK's plus `entityTypes`, writes aren't
- * persisted, and a console logger backs `createLogger` unless the host registered one. Safe to call
- * again; entity types accumulate.
+ * Starts the in-memory runtime: EARS with the SDK's entity types plus `entityTypes`, writes not
+ * persisted, and in-memory host modules for what systems, services and steps reach (a console logger,
+ * `rootEvents` and `sendToPlugin`/`sendToSystem` on `testRootEvents`, recorded system errors, a test
+ * version, no-op migrations, `appData` that resets the database, and a trace store over it), each
+ * unless the host registered its own. Safe to call again; entity types accumulate.
  */
 export function startTestRuntime(options: { entityTypes?: readonly string[] } = {}): void {
   for (const type of options.entityTypes ?? []) entityTypes.add(type);
   if (started) return;
   started = true;
   initEARSRuntime({ isEntityType: (value: string) => entityTypes.has(value) });
-  if (!hostModuleRegistered('logger')) registerHostModule('logger', { createLogger: consoleLogger });
+  registerTestHostModules(resetTestData);
 }
 
 /** Registers a pack's seed runtime: its entity types, repositories and seed hooks */
@@ -67,4 +53,14 @@ export function registerSeedRuntime(runtime: SeedRuntime): void {
 /** Empties the in-memory database (registrations stay) */
 export function resetTestData(): void {
   clearMemory();
+}
+
+/** Every entity id in the in-memory database, relation rows included */
+export function entityIds(): EARS.EntityId[] {
+  return getAllEntities();
+}
+
+/** Removes an attribute from a row, as data written before the attribute existed would lack it */
+export function dropAttribute(id: EARS.EntityId, kind: string): void {
+  dropAttr(id, kind as EARS.AttrKind);
 }

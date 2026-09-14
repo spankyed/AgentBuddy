@@ -5,6 +5,12 @@
 ```ts
 
 // @public
+export function dropAttribute(id: EARS.EntityId, kind: string): void;
+
+// @public
+export function entityIds(): EARS.EntityId[];
+
+// @public
 export function registerSeedRuntime(runtime: SeedRuntime): void;
 
 // @public
@@ -28,6 +34,24 @@ export interface SeedRuntime {
 export function startTestRuntime(options?: {
     entityTypes?: readonly string[];
 }): void;
+
+// @public
+export function takeSystemErrors(): ReportSystemErrorInput[];
+
+// @public
+export interface TestRootEvents extends RootEvents {
+    // (undocumented)
+    emitConnected(): void;
+    // (undocumented)
+    emitIncoming(event: IncomingSystemEvents): void;
+    // (undocumented)
+    emitPackClientConnected(packId: string): void;
+    // (undocumented)
+    onPackClientConnected(callback: (packId: string) => void): () => void;
+}
+
+// @public
+export const testRootEvents: TestRootEvents;
 
 // (No @packageDocumentation comment for this package)
 
