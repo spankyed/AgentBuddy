@@ -13,5 +13,7 @@ for PACK in "$ROOT/tests/fixtures/external-pack" "$ROOT/tests/fixtures/bundled-u
   "$ABUDDY" validate
   "$ABUDDY" build
   "$ROOT/node_modules/.bin/tsc" --noEmit -p "$PACK"
+  # Unit tests (the harness), where the pack has them
+  if [ -f "$PACK/vitest.config.ts" ]; then "$ROOT/node_modules/.bin/vitest" run --root "$PACK"; fi
   "$ABUDDY" test --app-root "$ROOT" "$@"
 done

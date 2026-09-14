@@ -39,9 +39,9 @@ This scaffolds:
 ```
 my-pack/
   abuddy.json              # Pack manifest — the single source of truth
-  package.json             # depends on @abuddy/sdk, pins @abuddy/cli
+  package.json             # depends on @abuddy/sdk, pins @abuddy/cli and @abuddy/testing
   tsconfig.json
-  vitest.config.ts
+  vitest.config.ts         # unit tests: an isolated data dir per run, the harness setup
   .gitignore
   .github/workflows/
     release.yml            # Publishes a GitHub release when `abuddy release` pushes a tag
@@ -54,13 +54,15 @@ my-pack/
     seeds/
       actions/
       flows/
+      examples/             # markdown rows of the pack's entity type (the `examples` seed format)
     __generated__/          # Auto-generated from manifest — never edit
   .abuddy/
     generated/              # EARS types from deps
     deps/                   # Cached dependency snapshots and step build code
   tests/
+    setup.ts                # starts the unit test harness
     unit/
-      my-pack.spec.ts
+      my-pack.spec.ts       # seeds the examples entry and reads the rows back
 ```
 
 The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `abuddy.json`. `abuddy build` resolves each dependency from a local path, the workspace, the app you configured for `abuddy test` (a checkout or the downloaded beta; `ABUDDY_APP=beta` in CI), the installed AgentBuddy app, or a GitHub release. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `ABUDDY_APP=beta`, so built-in dependencies resolve in CI.
@@ -77,7 +79,7 @@ The build pipeline:
 
 1. `abuddy generate` — resolves dependencies and generates EARS type definitions
 2. `abuddy generate-entries` — reads `abuddy.json` and generates all files in `src/__generated__/`
-3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations) and `dist/build/steps.build.mjs` (step build code for packs that depend on yours)
+3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests)
 4. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to `dist/runtime/seeds/`
 5. Snapshot — writes `dist/types/snapshot.json` (types, defs, manifest) for downstream packs
 6. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
@@ -107,6 +109,39 @@ abuddy install github:user/repo    # GitHub release
 After installing, **restart the app** for the pack to load.
 
 To release a version, run `abuddy release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the bundle without bumping, committing or publishing anything, and `--local` publishes from your machine instead of CI.
+
+## Unit tests
+
+```bash
+npm test
+```
+
+Unit tests run your pack's data code without the app: seeds, repositories and seed hooks against an in-memory database, through `@abuddy/testing/harness`. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`:
+
+```typescript
+// tests/setup.ts
+import '#generated/seeders';
+import { seedRuntime } from '#generated/seed-runtime';
+import { setupPackTests } from '@abuddy/testing/harness';
+
+await setupPackTests({ seedRuntime });
+```
+
+```typescript
+// tests/unit/notes.spec.ts
+import { seedPack } from '@abuddy/testing/harness';
+import { findAll } from '#generated/ears';
+
+it('seeds notes', async () => {
+  expect(await seedPack({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
+  expect(findAll('Note')[0].shortCode).toMatch(/^NOTE-/);
+});
+```
+
+- **What's registered:** your repositories, seed hooks and seeders, and each dependency's seed runtime, so seeding a dependency's entity types (default-setup's `Note`) goes through its real hooks.
+- **`seedPack({ keys?, mode? })`** compiles your seed entries, with your formats and your dependencies', and seeds them. Without `keys` it seeds every entry naming a format; actions, flows and settings need the app.
+- **Each test starts from an empty database.** Run `abuddy build` once first, so dependencies are fetched into `.abuddy/deps/`.
+- Systems, services and the UI are tested in the app with `abuddy test`.
 
 ## Verify it works
 

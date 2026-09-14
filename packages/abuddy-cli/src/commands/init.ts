@@ -105,6 +105,8 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   devDependencies: {
     // Pinned per project: a global, Homebrew or app-bundled `abuddy` hands off to this one
     '@abuddy/cli': `^${cliVersion()}`,
+    // Unit tests run the pack's seeds and repositories in memory (@abuddy/testing/harness)
+    '@abuddy/testing': `^${cliVersion()}`,
     // The scaffold's tsconfig uses Node types
     '@types/node': '^22.15.17',
     typescript: '^5.8.3',
@@ -113,14 +115,35 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
 }, null, 2);
 
 const VITEST_CONFIG_TEMPLATE = `import { defineConfig } from 'vitest/config';
+import { defaultServerConditions } from 'vite';
+import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
+
+// A pack linked to an AgentBuddy checkout resolves its @abuddy/* packages to source; installed packages don't
+const conditions = [...sourceConditions(), ...defaultServerConditions.filter((c) => c !== 'module')];
+// A throwaway data dir per run (media, stores), one subdir per worker
+const dataDir = isolatedDataDir();
 
 export default defineConfig({
+  resolve: { conditions },
+  ssr: { resolve: { conditions } },
   test: {
     globals: true,
     // tests/e2e holds Playwright specs (abuddy init-tests), run with \`abuddy test\`
     include: ['tests/unit/**/*.spec.ts'],
+    env: dataDir.env,
+    globalSetup: dataDir.globalSetup,
+    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],
   },
 });
+`;
+
+// Unit tests run against an in-memory EARS with the pack's repositories, seed hooks and seeders,
+// and its dependencies' (their build/seed-runtime.mjs)
+const TEST_SETUP_TEMPLATE = `import '#generated/seeders';
+import { seedRuntime } from '#generated/seed-runtime';
+import { setupPackTests } from '@abuddy/testing/harness';
+
+await setupPackTests({ seedRuntime });
 `;
 
 // Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs
@@ -138,15 +161,25 @@ export const steps: StepDefinition[] = [
 ];
 `;
 
-const EXAMPLE_TEST_TEMPLATE = (name: string) => `import { describe, it, expect } from 'vitest';
+const EXAMPLE_TEST_TEMPLATE = (name: string) => {
+  const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
+  return `import { describe, it, expect } from 'vitest';
+import { seedPack } from '@abuddy/testing/harness';
+import { EARS, findAll } from '#generated/ears';
 
 describe('${name}', () => {
   it('should have a valid manifest', async () => {
     const manifest = await import('../../abuddy.json', { with: { type: 'json' } });
     expect(manifest.default.id).toBe('${name}');
   });
+
+  it('seeds the examples entry', async () => {
+    expect(await seedPack({ keys: ['${SEED_ROWS_KEY}'] })).toEqual({ ${SEED_ROWS_KEY}: { created: 1, updated: 0, skipped: 0 } });
+    expect(findAll(EARS.Entity.${pascalName}).map((row) => row.title)).toEqual(['Hello']);
+  });
 });
 `;
+};
 
 // Publishes the GitHub release when `abuddy release` pushes a v* tag
 export const RELEASE_WORKFLOW_TEMPLATE = `name: Release
@@ -245,6 +278,7 @@ export async function init(args: string[]) {
     STEPS_REGISTER_TEMPLATE,
   );
   fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
+  fs.writeFileSync(path.join(dir, 'tests', 'setup.ts'), TEST_SETUP_TEMPLATE);
   fs.writeFileSync(
     path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
     EXAMPLE_TEST_TEMPLATE(name),

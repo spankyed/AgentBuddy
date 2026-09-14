@@ -47,7 +47,7 @@ cd "$WORK"
 PACK="$WORK/demo-pack"
 cd "$PACK"
 # The tarballs stand in for the npm registry
-npm pkg set "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ"
+npm pkg set "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ" "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
 npm install --silent
 # @abuddy/sdk carries the platform API only; the component library and its editors come with @abuddy/ui
 for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
@@ -138,6 +138,24 @@ node -e '
   const [note] = read("demo-notes");
   if (note?.entity !== "Note" || note.title !== "Demo notes" || note.noteType !== "document" || note.icon !== null || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
 ' || fail "the compiler module and markdown seeds were not compiled"
+
+step "3. Unit tests through the harness, with default-setup's seed runtime"
+cat > tests/unit/demo-notes.spec.ts <<'TS'
+import { describe, expect, it } from 'vitest';
+import { seedPack } from '@abuddy/testing/harness';
+import { findAll } from '#generated/ears';
+
+describe('demo notes', () => {
+  it("seeds notes with default-setup's format and hooks", async () => {
+    expect(await seedPack({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
+    const [note] = findAll('Note');
+    expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0 });
+    expect(note.shortCode).toMatch(/^NOTE-\d+$/);
+  });
+});
+TS
+node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
+grep -qE "Tests +3 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints a seed-file count even with no flows; check the compiled flow itself
 node -e '
   const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));

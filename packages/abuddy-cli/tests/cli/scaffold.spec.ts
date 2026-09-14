@@ -117,6 +117,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const unit = run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
     expect(unit.code, unit.output).toBe(0);
     expect(unit.output).toMatch(/tests\/unit\/demo-pack\.spec\.ts/);
+    // The scaffold's seed test runs through the harness
+    expect(unit.output.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Tests\s+2 passed/);
   }, 120_000);
 
   it('refuses to build or pack a manifest the installer would reject', () => {
