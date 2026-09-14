@@ -213,6 +213,12 @@ E
 } & Record<string, unknown> : Record<string, unknown>;
 
 // @public (undocumented)
+export function filterSystemFields<T extends Record<string, any>>(updates: T, additionalExcludes?: string[]): Partial<T>;
+
+// @public
+export function findRelations(match?: RelationMatch): RelationRow[];
+
+// @public (undocumented)
 export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string;
 
 // @public (undocumented)
@@ -223,6 +229,9 @@ export const getAll: (id: EARS.EntityId) => Record<string, unknown>;
 
 // @public (undocumented)
 export const getAllAttributeKinds: () => EARS.AttrKind[];
+
+// @public (undocumented)
+export const getAllEntities: () => `${string}-${string}`[];
 
 // @public (undocumented)
 export const getAllEntityTypes: () => EARS.Entity[];
@@ -238,6 +247,9 @@ export const getAttributeStats: (kind: EARS.AttrKind) => {
 
 // @public (undocumented)
 export const getEntitiesOfType: (t: EARS.Entity) => `${string}-${string}`[];
+
+// @public
+export function getRelationStats(kind: EARS.RelKind): RelationStats;
 
 // @public (undocumented)
 export const getRoles: (id: EARS.EntityId) => string[];
@@ -384,10 +396,42 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
 }
 
 // @public (undocumented)
+export const queryEntitiesByAttribute: (k: EARS.AttrKind, v?: unknown) => `${string}-${string}`[];
+
+// @public (undocumented)
+export const queryEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => `${string}-${string}`[];
+
+// @public (undocumented)
+export const queryEntitiesInRelationTo: (target: EARS.EntityId) => `${string}-${string}`[];
+
+// @public (undocumented)
 export type QxSeed = EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[];
 
 // @public
 export function registerRepository(name: string, value: unknown): void;
+
+// @public
+export interface RelationMatch {
+    // (undocumented)
+    relationType?: EARS.RelKind;
+    // (undocumented)
+    sourceEntity?: EARS.EntityId;
+    // (undocumented)
+    targetEntity?: EARS.EntityId;
+}
+
+// @public
+export interface RelationRow extends EARS.RelationDetail {
+    // (undocumented)
+    id: EARS.EntityId;
+}
+
+// @public
+export interface RelationStats {
+    total: number;
+    uniqueSources: number;
+    uniqueTargets: number;
+}
 
 // @public (undocumented)
 export function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
@@ -656,6 +700,24 @@ export interface TypedUpdateEntity<S extends EntityShapes> {
         [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] | null;
     }, skipTimestamp?: boolean): void;
 }
+
+// @public
+export function untypedQx(): QueryBuilder<string>;
+
+// @public (undocumented)
+export function untypedQx<E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E>;
+
+// @public (undocumented)
+export function untypedQx<E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E>;
+
+// @public (undocumented)
+export function untypedQx<E extends EARS.Entity>(seed: E): QueryBuilder<E>;
+
+// @public (undocumented)
+export function untypedQx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
+
+// @public (undocumented)
+export function untypedQx(seed?: QxSeed): QueryBuilder<string>;
 
 // @public (undocumented)
 export function wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;

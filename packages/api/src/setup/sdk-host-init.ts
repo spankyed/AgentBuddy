@@ -13,6 +13,7 @@ import * as eventEmitterMod from '@/core/router/event-emitter';
 import * as versionMod from '@/version';
 import * as migrationsMod from '@/setup/migrations';
 import * as packRegistry from '@abuddy/host/packs';
+import { appDataModule, traceStoreModule } from '@abuddy/host/data';
 
 // EARS engine lives in SDK; inject persistence (done at attribute-storage import)
 // and entity type checker
@@ -34,3 +35,5 @@ registerHostModule('event-emitter', eventEmitterMod);
 registerHostModule('version', versionMod);
 registerHostModule('migrations', migrationsMod);
 registerHostModule('pack-registry', packRegistry);
+registerHostModule('app-data', appDataModule);
+registerHostModule('trace-store', traceStoreModule);

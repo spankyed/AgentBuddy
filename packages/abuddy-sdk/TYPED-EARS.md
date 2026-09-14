@@ -24,7 +24,7 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
 - They're typed as `keyof ShapeOf<S, E> & string`, and picked rows as `Pick<ShapeOf<S, E>, K>`. This covers `where`, `pick`, `pickOne`, `linksPick`, `orderBy`, `distinct`, `groupBy`, `getAttr`, `getAttrs`, `findWithFields`, `findByIdWithFields` and `updateEntity`.
 - This form is what gives editors field-name completions and makes a typo's error list the valid fields.
 - For a union shape, such as `Node` rows, only the fields every member has are accepted.
-- A query whose fields vary by member, or are only known at runtime, uses the untyped `qx` from `@abuddy/host/ears` on purpose. The brain trigger queries in default-setup are the example.
+- A query whose fields vary by member, or are only known at runtime, uses `untypedQx` from `@abuddy/sdk/ears` on purpose. The brain trigger queries in default-setup are the example. (Host code has the same function as `qx` from `@abuddy/host/ears`; packs never import the host package.)
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).

@@ -19,8 +19,16 @@ export {
   prepareEntity,
 } from './repository.ts';
 export {
-  wouldCreateCycle, getTimestamp, generateShortCode, generateLabelWithCount,
+  wouldCreateCycle, getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields,
 } from './helpers.ts';
+export { findRelations, getRelationStats, type RelationMatch, type RelationRow, type RelationStats } from './relations.ts';
+export { getAllEntities, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo } from './attribute-storage.ts';
+/**
+ * The untyped query: entity names and fields aren't checked. Pack code queries with the typed `qx`
+ * from #generated/ears; this is the escape hatch for fields only known at runtime or that vary across
+ * a union shape's members (TYPED-EARS.md).
+ */
+export { qx as untypedQx } from './query.ts';
 // Types that appear in the signatures above, so pack authors can name them.
 export type { CreatedEntityFields } from './transaction-helpers.ts';
 export type { PersistenceSink } from './runtime.ts';

@@ -5,6 +5,30 @@
 ```ts
 
 // @public
+export interface AppDataService {
+    backupInfo(backupPath: string): Promise<BackupInfo | null>;
+    exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
+    importBackup(backupPath: string): Promise<{
+        databases: BackupDatabase[];
+    }>;
+    reset(): Promise<void>;
+}
+
+// @public
+export type BackupDatabase = 'lmdb' | 'volatileLmdb' | 'secretsLmdb';
+
+// @public (undocumented)
+export interface BackupInfo {
+    // (undocumented)
+    databases: BackupDatabase[];
+    // (undocumented)
+    hasMedia: boolean;
+    size: number;
+    // (undocumented)
+    timestamp: number;
+}
+
+// @public
 export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
 
 // @public
@@ -23,6 +47,7 @@ export type HostPluginEvents = {
 
 // @public
 export interface HostServices {
+    appData: AppDataService;
     // (undocumented)
     emitter: {
         sendToPlugin: typeof sendToPlugin;
@@ -35,6 +60,7 @@ export interface HostServices {
     logger: Logger;
     // (undocumented)
     repository: typeof repository;
+    traceStore: TraceStore;
 }
 
 // @public (undocumented)
@@ -76,6 +102,51 @@ export function sendToSystem(systemId: string, event: {
 
 // @public
 export const services: HostServices & Record<string, unknown>;
+
+// @public
+export interface TraceEntityMeta {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    deletedAt?: number;
+    // (undocumented)
+    type: string;
+}
+
+// @public (undocumented)
+export interface TraceRelation {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    info?: unknown;
+    // (undocumented)
+    kind: string;
+    // (undocumented)
+    src: EARS.EntityId;
+    // (undocumented)
+    tgt: EARS.EntityId;
+}
+
+// @public
+export interface TraceStore {
+    entities(): Array<{
+        id: EARS.EntityId;
+        meta: TraceEntityMeta;
+    }>;
+    getAttr(kind: string, id: EARS.EntityId): unknown;
+    // (undocumented)
+    getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
+    relations(filter?: {
+        kind?: string;
+        src?: EARS.EntityId;
+        tgt?: EARS.EntityId;
+        skipDeleted?: boolean;
+        limit?: number;
+    }): Array<{
+        id: string;
+        rel: TraceRelation;
+    }>;
+}
 
 // @public (undocumented)
 export interface TypedEvents<M extends PluginEvents> {

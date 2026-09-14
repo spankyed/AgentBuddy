@@ -14,17 +14,6 @@ export const envs: any = /*#__PURE__*/ new Proxy({} as any, { get(_, p) { return
 export const policy: any = /*#__PURE__*/ new Proxy({} as any, { get(_, p) { return attrStorageMod().policy[p]; } });
 export const persistence: any = /*#__PURE__*/ new Proxy({} as any, { get(_, p) { return attrStorageMod().persistence[p]; } });
 
-let _lmdbQueryMod: any;
-function lmdbQueryMod() {
-  if (!_lmdbQueryMod) _lmdbQueryMod = getHostModule('lmdb-query');
-  return _lmdbQueryMod;
-}
-
-export const LmdbQuery: any = /*#__PURE__*/ new Proxy({} as any, {
-  get(_, prop: string) { return lmdbQueryMod().LmdbQuery[prop]; },
-  construct(_, args) { return new (lmdbQueryMod().LmdbQuery)(...args); },
-});
-
 let _hydrateMod: any;
 function hydrateMod() {
   if (!_hydrateMod) _hydrateMod = getHostModule('hydrate-sharded');

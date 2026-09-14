@@ -4,6 +4,9 @@ import type { EARS } from '../types/entities.ts';
 import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.ts';
 import type { Logger } from '../ears/runtime.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
+import { appData, traceStore, type AppDataService, type TraceStore } from './data.ts';
+
+export type { AppDataService, BackupDatabase, BackupInfo, TraceStore, TraceEntityMeta, TraceRelation } from './data.ts';
 
 function lazyHost(name: string) {
   let m: any;
@@ -87,6 +90,10 @@ export interface HostServices {
     onIncoming: typeof onIncoming;
   };
   repository: typeof repository;
+  /** Reset, back up and restore the app's stored data */
+  appData: AppDataService;
+  /** Read the volatile trace store (flow execution records) */
+  traceStore: TraceStore;
 }
 
 function resolveServices(): HostServices & Record<string, unknown> {
@@ -94,6 +101,8 @@ function resolveServices(): HostServices & Record<string, unknown> {
     logger: logger(),
     emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
     repository,
+    appData,
+    traceStore,
     ...packRegistry().getRegisteredServices(),
   };
 }
