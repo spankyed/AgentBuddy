@@ -26,7 +26,7 @@ import { compilePack, resolveSeeds, SEED_INDEX_FILE, type PackManifest, type Pac
 import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abuddy/sdk/utils';
 
 export { resetTestData, takeSystemErrors, type SeedRuntime };
-export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents } from './app.ts';
+export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
 
