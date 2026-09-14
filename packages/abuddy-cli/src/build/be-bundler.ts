@@ -154,6 +154,53 @@ export async function bundlePackSeedCompilers(
   }
 }
 
+/** The pack's seed runtime bundle in its build dir: what dependents' unit tests register */
+export const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
+
+/**
+ * Bundle the pack's seed runtime (src/__generated__/seed-runtime.ts: entity types, repositories,
+ * seed hooks) into dist/build/seed-runtime.mjs. Only @abuddy/sdk stays external, so a dependent's
+ * unit tests can load it with just their own @abuddy/sdk installed and share its instance.
+ */
+export async function bundlePackSeedRuntime(
+  packDir: string,
+  outputDir: string,
+  options: BundleRuntimeOptions = {},
+): Promise<{ success: boolean; error?: string }> {
+  const entryPath = path.join(packDir, 'src', '__generated__', 'seed-runtime.ts');
+  if (!fs.existsSync(entryPath)) {
+    return { success: false, error: 'No src/__generated__/seed-runtime.ts. Run "abuddy generate-entries" first.' };
+  }
+  const esbuild = await import('esbuild');
+  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const aliases = readTsconfigAliases(packDir);
+  const subpathImports = readSubpathImports(packDir);
+  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
+  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
+  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
+
+  try {
+    await esbuild.build({
+      entryPoints: [entryPath],
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      target: 'node20',
+      outfile: path.join(outputDir, 'build', SEED_RUNTIME_FILE),
+      external: ['@abuddy/sdk', '@abuddy/sdk/*'],
+      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+      plugins,
+      minify: options.release ?? false,
+      logLevel: 'silent',
+      // Bundled CommonJS dependencies may call require(); give the ESM bundle one
+      banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /**
  * Fails the bundle when pack code imports @abuddy/host, the app's private package: installed
  * AgentBuddy doesn't provide it to packs, so it would only fail later, at load. Packs use @abuddy/sdk.

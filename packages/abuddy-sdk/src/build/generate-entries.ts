@@ -868,6 +868,29 @@ ${entries.map(([name]) => `registerRepository('${name}', __repo_${name});`).join
 `;
   }
 
+  /**
+   * The pack's seed runtime (entity types, relation kinds, repositories, seed hooks), what seeding its
+   * entity types needs outside the app. \`abuddy build\` bundles it into dist/build/seed-runtime.mjs for
+   * dependents' unit tests; the pack's own tests import it from #generated/seed-runtime.
+   */
+  function generateSeedRuntime(): string {
+    const repositories = repositoryEntries();
+    const hooks = seedHookEntries();
+    return `${HEADER}
+import type { SeedRuntime } from '@abuddy/sdk/testing';
+${repositories.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
+${hooks.map(([entity, path, exportName]) => `import { ${exportName} as __seedHooks_${entity} } from '${path}';`).join('\n')}
+
+export const seedRuntime: SeedRuntime = {
+  id: ${JSON.stringify(manifest.id)},
+  entities: ${JSON.stringify(manifest.entities ?? {})},
+  relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
+  repositories: { ${repositories.map(([name]) => `${name}: __repo_${name}`).join(', ')} },
+  seedHooks: { ${hooks.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },
+};
+`;
+  }
+
   /** The facade types dependents import, bundled into dist/types/pack-types.d.ts by \`abuddy build\` */
   function generatePackTypes(): string {
     return `${HEADER}
@@ -1211,6 +1234,7 @@ ${registrations.join('\n\n')}
     ...typedDeps.map((depId) => [`src/__generated__/deps/${depId}.d.ts`, `${HEADER}\n${depSnapshots.get(depId)!.defs[PACK_TYPES_DEF]}`]),
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
+    ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
     ['src/__generated__/defs.config.mjs', generateDefsConfig()],

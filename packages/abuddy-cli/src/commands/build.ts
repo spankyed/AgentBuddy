@@ -11,7 +11,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
-import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackStepBuild } from '../build/be-bundler';
+import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundlePackTypes } from '../build/types-bundler';
 import { BUNDLE_PATHS } from '@abuddy/host/packs';
 import { generate, resolveDeps } from './generate';
@@ -141,6 +141,15 @@ export async function build(args: string[]) {
       console.error(`\nStep build bundle failed: ${stepBuild.error}`);
       process.exitCode = 1;
     }
+  }
+
+  // ── Seed runtime (for dependents' unit tests) ─────────────────────────
+  const seedRuntime = await bundlePackSeedRuntime(root, outputDir, { release });
+  if (seedRuntime.success) {
+    console.log(`  seed runtime: dist/${BUNDLE_PATHS.buildDir}/${SEED_RUNTIME_FILE}`);
+  } else {
+    console.error(`\nSeed runtime bundle failed: ${seedRuntime.error}`);
+    process.exitCode = 1;
   }
 
   // ── Seed compiler modules (for dependents' entries naming this pack's formats) ──

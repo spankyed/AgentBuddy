@@ -42,6 +42,12 @@ jobs:
       - name: Build default-setup runtime (for the SDK bridge drift check)
         run: node packages/default-setup/dev-build.mjs
 
+      # Compiled seeds, snapshot and build/ (seed compilers, seed runtime): read by the seed parity,
+      # dependent-pack and seed runtime tests
+      - name: Build default-setup pack artifacts
+        working-directory: packages/default-setup
+        run: npx abuddy build
+
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose
         env:
@@ -52,6 +58,8 @@ jobs:
 
       - name: Unit tests (sdk)
         run: npm test --workspace @abuddy/sdk -- --reporter=verbose
+        env:
+          REQUIRE_SEED_RUNTIME: '1'
 
       - name: Unit tests (host)
         run: npm test --workspace @abuddy/host -- --reporter=verbose

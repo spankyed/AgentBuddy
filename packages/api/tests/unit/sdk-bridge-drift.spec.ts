@@ -43,6 +43,8 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // time (see INLINABLE_PACKAGE_IMPORTS in sdk build/compile-utils.ts); the
   // sandbox that runs those strings has no module loader at all.
   ['@abuddy/sdk/actions', 'compile-time only — inlined into seed strings'],
+  // Test tooling: a pack's unit tests (through @abuddy/testing) load it, never a pack's runtime in the app
+  ['@abuddy/sdk/testing', 'unit-test runtime only'],
   // The engine's host hook; built-in packs reach it through @abuddy/host/ears, which is bridged.
   ['@abuddy/sdk/ears/internals', 're-exported by the bridged @abuddy/host/ears'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
