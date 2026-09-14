@@ -41,6 +41,11 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
 - `tx` from `#generated/ears` checks declared fields' values when it knows the entity: seeded with a declared name or a tagged id.
 - Undeclared fields are accepted, and a plain id leaves every write unchecked.
 
+**Which `EARS` to import.**
+- Pack code imports `EARS` from its `#generated/ears` by default.
+- The SDK's `EARS` (`@abuddy/sdk`) is fine for `EntityId`, the SDK-owned constants and the shared EARS types (`AttrKind`, `RoleKind`, `Blueprint`…). That covers build facets and SDK-level code. Its `EntityId` is the same type the generated one aliases, and a pack's name (`EARS.Entity.Note`) doesn't exist on it, so a wrong import fails to compile.
+- The one hazard is the SDK's `EARS.Entity` as a type. It's open (any string), so a value annotated with it passes the entity-name check unchecked, reads with the generic shape, and compiles with a typo. Use it only when an open name is intended, as in default-setup's create step (`entityTypeTarget`, any entity type a flow names); otherwise annotate with the generated `EARS.Entity` or `EntityName`, which are closed.
+
 **Defaults.**
 - `QueryBuilder<E = string, S = {}, N = string>` and `TransactionBuilder<E = string, S = {}>` keep the helpers from `@abuddy/sdk/ears` and `@abuddy/host/ears` unchecked.
 

@@ -9,6 +9,7 @@ export interface DSLCreateNode extends DSLNodeBase {
 
 export interface CreateNode extends NodeBase {
   nodeType: 'create';
+  // The SDK's open EARS.Entity on purpose: a flow's create step may name any entity type
   entityTypeTarget: EARS.Entity;
   entityId?: string;
   inferLabel?: boolean;
