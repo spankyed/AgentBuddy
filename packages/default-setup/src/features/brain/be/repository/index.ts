@@ -1,6 +1,6 @@
 import { tx, qx, findById } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { edgeStore } from '@abuddy/host/ears';
+import { edgeStore, qx as untypedQx } from '@abuddy/host/ears';
 import type {
   FlowTNodeData,
   EventListenerEntity,
@@ -204,7 +204,8 @@ export const brainQueries = {
     const events: EventListenerEntity[] = [];
     for (const def of stepRegistry.triggers()) {
       const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
-      const triggerNodes = qx(flowId)
+      // Untyped: each trigger names its own fields, which only some step node types have
+      const triggerNodes = untypedQx(flowId)
         .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
         .filter((n: any) => n.nodeType === def.type);
       for (const n of triggerNodes as any[]) {

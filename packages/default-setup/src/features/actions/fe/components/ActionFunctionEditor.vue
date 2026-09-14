@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
-import type { ActionParameter } from '@abuddy/sdk/build';
+import type { ActionParameter } from '@abuddy/sdk';
 
 defineProps<{
   value: string;

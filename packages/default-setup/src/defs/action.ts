@@ -20,6 +20,7 @@ export type Services = typeof services;
 export type ActionParams = Record<string, any>;
 export const params = undefined as unknown as ActionParams;
 
-export type { ActionEntity, SettingsData } from '@/__generated__/types';
+export type { ActionEntity } from '@abuddy/sdk';
+export type { SettingsData } from '@/__generated__/types';
 
 export { z, type z as Z } from 'zod';

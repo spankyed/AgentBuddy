@@ -31,6 +31,20 @@ export interface ActionEntity extends BaseEntity {
 }
 
 // @public (undocumented)
+export interface ActionParameter {
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    placeholder?: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
+
+// @public (undocumented)
 export interface BaseEntity {
     // (undocumented)
     createdAt: number;
@@ -190,6 +204,22 @@ export function getDesignated(role: string): string;
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
 
+// @public
+export interface NodeBase extends BaseEntity {
+    // (undocumented)
+    color?: string;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Node;
+    // (undocumented)
+    final?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeType: string;
+}
+
 // @public (undocumented)
 export interface PromptEntity extends BaseEntity {
     // (undocumented)
@@ -224,6 +254,9 @@ export interface RelationEntity extends BaseEntity {
 }
 
 // @public
+export const ROOT_FLOW_ROLE = "root_flow";
+
+// @public
 export function safeEvents<TEvent extends {
     type: string;
 }>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;
@@ -232,6 +265,7 @@ export function safeEvents<TEvent extends {
 export type SdkEntityShapes = {
     Relation: RelationEntity;
     Flow: FlowEntity;
+    Node: NodeBase;
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
@@ -266,6 +300,24 @@ export interface SystemSpec<Id extends string, TEvents extends {
         context: TContext;
         events: TEvents | SystemEvents;
     };
+}
+
+// @public (undocumented)
+export interface TemplateInput {
+    // (undocumented)
+    commonSources?: string[];
+    // (undocumented)
+    defaultValue?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    example?: unknown;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
 }
 
 // @public (undocumented)

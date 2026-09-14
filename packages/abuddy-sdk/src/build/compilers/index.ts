@@ -19,7 +19,7 @@ export { countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections } fro
 
 // Flow types + utilities
 export type { FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode } from './flow-types.ts';
-export { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
+export { isFlowConfig, resolveTracks } from './flow-types.ts';
 export { validate as validateFlowDSL } from './flow-dsl-validator.ts';
 
 // Flow compiler
@@ -30,11 +30,8 @@ export type { CompiledRows } from './flow-compiler.ts';
 export { exportFlowsToDSL } from './flow-to-dsl.ts';
 export type { ExportFlowsOptions } from './flow-to-dsl.ts';
 
-// Flow infrastructure types (base entities + compiler output)
-export type {
-  FlowEntity, NodeBase, EdgeEntity,
-  CompilerContext, CompiledFlow, CompiledEntity, CompiledRelation, CompiledRole,
-} from './flow-entities.ts';
+// Flow compiler context
+export type { CompilerContext } from './flow-entities.ts';
 
 // Library output types
 export type {

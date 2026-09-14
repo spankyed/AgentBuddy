@@ -7,8 +7,8 @@
  */
 
 import { EARS } from '../../types/entities.ts';
-import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
-import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
+import { isFlowConfig, resolveTracks, type DSLStepNode, type FlowDSL, type Track } from './flow-types.ts';
+import { ROOT_FLOW_ROLE } from '../../types/sdk-entities.ts';
 import type { CompilerContext } from './flow-entities.ts';
 import { stepRegistry, type StepDefinition } from '../../steps/index.ts';
 

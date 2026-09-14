@@ -115,7 +115,7 @@ const displayValue = computed(() => {
   if (isEmpty.value) return props.emptyText
   
   const shortcut = props.modelValue!
-  const parts = []
+  const parts: string[] = []
   
   // Add modifiers in consistent order
   if (shortcut.modifiers.includes('cmd')) parts.push('⌘')
@@ -135,7 +135,7 @@ const tooltipValue = computed(() => {
   if (isEmpty.value) return ''
   
   const shortcut = props.modelValue!
-  const parts = []
+  const parts: string[] = []
   
   // Add modifiers in consistent order with plain text names
   if (shortcut.modifiers.includes('cmd')) parts.push('Command')

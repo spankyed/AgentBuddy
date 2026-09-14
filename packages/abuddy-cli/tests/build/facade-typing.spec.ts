@@ -194,6 +194,9 @@ const action = findAll('Action')[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
 const tNodes = qx(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
 export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
+// Neither pack defines steps, so Node rows read as the SDK's NodeBase
+const node = findAll('Node')[0]!;
+export type NodeFallback = Expect<Equal<typeof node.nodeType, string>>;
 // A plain id leaves writes unchecked
 tx(plainId).put('text', 42);
 // @ts-expect-error undeclared entity name

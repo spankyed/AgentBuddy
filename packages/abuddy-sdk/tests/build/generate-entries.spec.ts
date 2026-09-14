@@ -85,7 +85,22 @@ describe('generated entity shapes', () => {
     const ears = files['src/__generated__/ears.ts'];
     expect(ears).toContain("import type { ItemEntity as __shape_Memo } from '../features/memos/be/types.js';");
     expect(ears).toContain("'Memo': __shape_Memo;");
-    expect(ears).toContain('export type PackShapes = SdkEntityShapes & OwnEntityShapes & __dep_base_pack_PackEntityShapes;');
+    expect(ears).toContain("export type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes & __dep_base_pack_PackEntityShapes, 'Node'> & {");
+  });
+
+  it("reads Node rows as the step node types of the pack and its dependencies, NodeBase when none define any", () => {
+    write('src/steps/ping/types.ts', "import type { NodeBase } from '@abuddy/sdk';\nexport interface PingNode extends NodeBase { nodeType: 'ping' }\n");
+    const withSteps = generate(
+      { steps: { register: 'src/steps/register.ts', definitions: [{ type: 'ping', path: 'src/steps/ping' }] } },
+      { 'base-pack': dependency({}) },
+    )['src/__generated__/ears.ts'];
+    expect(withSteps).toContain("import type { NodeEntity } from './types.js';");
+    expect(withSteps).toContain('type PackNodes = NodeEntity | StepNodesOf<__dep_base_pack_PackEntityShapes>;');
+    expect(withSteps).toContain("Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;");
+
+    const withoutSteps = generate({}, { 'base-pack': dependency({}) })['src/__generated__/ears.ts'];
+    expect(withoutSteps).not.toContain("import type { NodeEntity }");
+    expect(withoutSteps).toContain('type PackNodes = never | StepNodesOf<__dep_base_pack_PackEntityShapes>;');
   });
 
   it('fails when a declared shape type is not exported', () => {

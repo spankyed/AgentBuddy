@@ -118,7 +118,7 @@ import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState'
 import { navigateToPlugin } from '@abuddy/sdk/fe';
 import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
-import type { TemplateInput } from '@abuddy/sdk/build';
+import type { TemplateInput } from '@abuddy/sdk';
 
 const actorSystem = useActorSystem()
 

@@ -22,13 +22,12 @@
       "@/extensions/*": ["./src/extensions/*"]
     }
   },
+  // .vue files are checked by vue-tsc (npm run typecheck). src/defs/ (the Monaco DSL surfaces) is
+  // checked here too; rollup-defs.config.mjs builds it separately under tsconfig.defs.json.
   "include": [
-    "src/**/*.ts", "tests/**/*.ts"
+    "src/**/*.ts", "src/**/*.vue", "tests/**/*.ts"
   ],
   "exclude": [
-    // Monaco DSL type surfaces. Built separately by rollup-defs.config.mjs
-    // under tsconfig.defs.json, which has its own compiler settings.
-    "src/defs/**",
     // Search-index implementation is dormant behind the SEARCH_INDEX_FF flag —
     // every call site in library/be/system.ts is commented out. These three
     // files import usearch / fastembed / openai, which are not installed

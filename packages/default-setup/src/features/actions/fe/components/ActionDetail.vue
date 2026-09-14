@@ -124,7 +124,7 @@ import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';
-import type { ActionParameter } from '@abuddy/sdk/build';
+import type { ActionParameter } from '@abuddy/sdk';
 
 const actorSystem = useActorSystem()
 

@@ -536,6 +536,8 @@ ${regProps.join('\n')}
     const { imports: shapeImports, entries: shapeEntries } = entityShapeEntries();
     const depShapes = depTypeImports('PackEntityShapes');
     const entityNames = [...registry.entities.keys()].map((name) => `'${name}'`);
+    const ownNodes = stepNodeTypes().length > 0;
+    const packNodes = [ownNodes ? 'NodeEntity' : 'never', ...depShapes.aliases.map((a) => `StepNodesOf<${a}>`)].join(' | ');
     return `${emitEARS(manifest.id, registry)}
 // ── Typed EARS helpers ──────────────────────────────────────────
 // The query helpers typed against this pack's entity shapes (its own and its
@@ -544,7 +546,7 @@ ${regProps.join('\n')}
 
 import { defineEars, type ShapeOf } from '@abuddy/sdk/ears';
 import type { SdkEntityShapes } from '@abuddy/sdk';
-${shapeImports.join('\n')}
+${ownNodes ? "import type { NodeEntity } from './types.js';\n" : ''}${shapeImports.join('\n')}
 
 ${depShapes.imports.join('\n')}
 
@@ -553,8 +555,19 @@ export type OwnEntityShapes = {
 ${shapeEntries.join('\n')}
 };
 
-/** Every entity shape this pack can read: the SDK's, its own and its dependencies' */
-export type PackShapes = SdkEntityShapes & OwnEntityShapes${depShapes.aliases.map((a) => ` & ${a}`).join('')};
+/** A dependency's step node types; never when it defines none (its Node rows read as the SDK's NodeBase) */
+type StepNodesOf<S> = S extends { Node: infer N } ? (SdkEntityShapes['Node'] extends N ? never : N) : never;
+
+/** Node rows: the step node types of this pack and its dependencies */
+type PackNodes = ${packNodes};
+
+/**
+ * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
+ * the step node types (NodeBase when no step defines one), not an intersection of each pack's.
+ */
+export type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes${depShapes.aliases.map((a) => ` & ${a}`).join('')}, 'Node'> & {
+  Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;
+};
 
 /** An entity type's shape in this pack; undeclared types read as base fields plus \`unknown\` values. */
 export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
@@ -676,6 +689,16 @@ export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
 `;
   }
 
+  /** Runtime node entities of this pack's steps: each step's types.ts `interface XNode extends NodeBase` */
+  function stepNodeTypes(): Array<{ name: string; importPath: string }> {
+    return stepDefinitions
+      .map(step => ({ step, file: join(root, step.path, 'types.ts') }))
+      .filter(({ file }) => existsSync(file))
+      .flatMap(({ step, file }) =>
+        [...readFileSync(file, 'utf-8').matchAll(/export\s+interface\s+(\w+)\s+extends\s+NodeBase\b/g)]
+          .map(m => ({ name: m[1], importPath: toImportPath(root, step.path + '/types') })));
+  }
+
   function generateTypes(): string {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
@@ -696,13 +719,7 @@ export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
       return lines.join('\n');
     }).join('\n\n');
 
-    // Runtime node entities of this pack's steps: each step's types.ts `interface XNode extends NodeBase`
-    const nodeTypes = stepDefinitions
-      .map(step => ({ step, file: join(root, step.path, 'types.ts') }))
-      .filter(({ file }) => existsSync(file))
-      .flatMap(({ step, file }) =>
-        [...readFileSync(file, 'utf-8').matchAll(/export\s+interface\s+(\w+)\s+extends\s+NodeBase\b/g)]
-          .map(m => ({ name: m[1], importPath: toImportPath(root, step.path + '/types') })));
+    const nodeTypes = stepNodeTypes();
     const nodeEntity = nodeTypes.length
       ? `${nodeTypes.map(n => `import type { ${n.name} } from '${n.importPath}';`).join('\n')}\n\n` +
         "/** Discriminated union (on `nodeType`) of this pack's step node entities. */\n" +

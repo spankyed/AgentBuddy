@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { compile } from '../../src/build/compilers/flow-compiler.ts';
-import { ROOT_FLOW_ROLE, resolveTracks, type DSLStepNode } from '../../src/build/compilers/flow-types.ts';
+import { resolveTracks, type DSLStepNode } from '../../src/build/compilers/flow-types.ts';
+import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
 import { stepRegistry } from '../../src/steps/registry.ts';
 import { createRoundTrip } from './helpers/round-trip.ts';
 import { wrapInFlow } from './helpers/dsl-factories.ts';

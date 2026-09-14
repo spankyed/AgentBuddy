@@ -74,7 +74,7 @@ The model client (`extensions/services/model-client/`) handles LLM streaming, to
 
 ## EARS (Entity types + Relations)
 
-Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers the entity types and relation kinds `abuddy.json` declares, plus partition policy (Secret routed to secrets store). `ears.ts` also names the SDK's own: Relation and the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked), whose shapes the SDK defines (`ActionEntity`, `PromptEntity` and `FlowEntity` in the feature `types.ts` files re-export them). The host keeps TNode out of persistence.
+Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers the entity types and relation kinds `abuddy.json` declares, plus partition policy (Secret routed to secrets store). `ears.ts` also names the SDK's own: Relation and the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked), whose shapes the SDK defines (`ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`; import them from `@abuddy/sdk`, and `TNodeEntity` from `@abuddy/sdk/steps`). `PackShapes['Node']` is the pack's step node union (`NodeEntity`, each step's `XNode extends NodeBase`). The host keeps TNode out of persistence.
 
 Typed facades (no module augmentation):
 - `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations and the database console's transaction executor keep the unchecked `tx` from `@abuddy/sdk/ears`
@@ -153,7 +153,7 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 
 - `rollup-defs.config.mjs` — Rollup config for DSL definition compilation
 - `npm run compile` from repo root compiles all DSLs
-- `tsconfig.json` — uses `@/` path alias pointing to `src/`
+- `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
 - `prepare` script runs `abuddy generate-entries` after `npm install`
 - `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/dev-entry.cjs` (the API's dev-mode loader)

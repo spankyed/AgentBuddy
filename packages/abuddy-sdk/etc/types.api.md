@@ -31,6 +31,20 @@ export interface ActionEntity extends BaseEntity {
 }
 
 // @public (undocumented)
+export interface ActionParameter {
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    placeholder?: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
+
+// @public (undocumented)
 export interface ApplicationHotkeys {
     // (undocumented)
     custom?: CustomHotkey[];
@@ -183,6 +197,22 @@ export interface KeyboardShortcut {
     modifiers: string[];
 }
 
+// @public
+export interface NodeBase extends BaseEntity {
+    // (undocumented)
+    color?: string;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Node;
+    // (undocumented)
+    final?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeType: string;
+}
+
 // @public (undocumented)
 export interface PromptEntity extends BaseEntity {
     // (undocumented)
@@ -213,6 +243,9 @@ export interface RelationEntity extends BaseEntity {
     relationDetails: EARS.RelationDetail;
 }
 
+// @public
+export const ROOT_FLOW_ROLE = "root_flow";
+
 // @public (undocumented)
 export const SDK_ENTITIES: {
     readonly Relation: "Relation";
@@ -239,6 +272,7 @@ export const SDK_REL_KINDS: {
 export type SdkEntityShapes = {
     Relation: RelationEntity;
     Flow: FlowEntity;
+    Node: NodeBase;
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
@@ -250,6 +284,24 @@ E
 ] extends [keyof S] ? S[E] & BaseEntity & {
     id: EARS.EntityId<E>;
 } : BaseEntity & Record<string, unknown>;
+
+// @public (undocumented)
+export interface TemplateInput {
+    // (undocumented)
+    commonSources?: string[];
+    // (undocumented)
+    defaultValue?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    example?: unknown;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
 
 // (No @packageDocumentation comment for this package)
 

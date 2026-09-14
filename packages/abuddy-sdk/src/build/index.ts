@@ -19,16 +19,14 @@ export {
   compileFaqFromDir,
   loadSettingsFromFile, deepMerge,
   countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections,
-  isFlowConfig, resolveTracks, ROOT_FLOW_ROLE,
+  isFlowConfig, resolveTracks,
   validateFlowDSL,
   compileFlowDSL,
   exportFlowsToDSL,
 } from './compilers/index.ts';
 export type {
   FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
-  FlowEntity, NodeBase, EdgeEntity,
-  CompilerContext, CompiledFlow, CompiledEntity, CompiledRelation, CompiledRole,
-  CompiledRows, ExportFlowsOptions,
+  CompilerContext, CompiledRows, ExportFlowsOptions,
   ContentSection, ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
   ExportedLibrary,
   ExportedNote, ExportedNotes,
@@ -54,7 +52,7 @@ export { seedFile, seedPath } from './manifest.ts';
 export { entry, on } from './flow-helpers.ts';
 
 // Seed authoring types
-export type { ActionParameter, ActionMeta, TemplateInput, PromptMeta } from './seed-types.ts';
+export type { ActionMeta, PromptMeta } from './seed-types.ts';
 
 // Entry codegen
 export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF } from './generate-entries.ts';

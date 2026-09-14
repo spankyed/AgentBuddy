@@ -1,4 +1,5 @@
 import { qx } from '@/__generated__/ears';
+import { qx as untypedQx } from '@abuddy/host/ears';
 import { services as appServices } from '@/__generated__/services';
 import { setup, sendParent, enqueueActions, raise } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';
@@ -191,7 +192,8 @@ export function createFlowNodeSystem(
   const rawTriggerNodes: FlowTriggerNode[] = [];
   for (const def of stepRegistry.triggers()) {
     const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
-    const triggerNodes = qx(actualFlowId)
+    // Untyped: each trigger names its own fields, which only some step node types have
+    const triggerNodes = untypedQx(actualFlowId)
       .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
       .filter((n: any) => n.nodeType === def.type);
     for (const n of triggerNodes as any[]) {

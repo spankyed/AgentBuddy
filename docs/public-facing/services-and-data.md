@@ -262,7 +262,8 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
 - Entity types and relation kinds must be globally unique across all installed packs.
 - The SDK owns a few entity types and relation kinds, which every pack has and none declares:
   - `Relation`: every link between entities is stored as one (`RelationEntity`).
-  - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `TNodeEntity`, `ActionEntity`, `PromptEntity`; a `Node`'s shape is your pack's step node types), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
+  - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
+  - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types, or as `NodeBase` when none define any.
   - `TNode` rows are execution records and are never persisted.
 - External packs cannot use `partitionPolicy` (entity routing to excluded/secrets stores is reserved for the built-in pack).
 

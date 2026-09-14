@@ -16,7 +16,7 @@ import type {
 import { availableModels } from '@abuddy/sdk/inference';
 import { repository } from '@/__generated__/repository';
 import type { CompiledRows } from '@abuddy/sdk/build';
-import { ROOT_FLOW_ROLE } from '@abuddy/sdk/build';
+import { ROOT_FLOW_ROLE } from '@abuddy/sdk';
 import type { FlowEntity } from '@abuddy/sdk';
 
 const logger = createLogger('flows-repository');

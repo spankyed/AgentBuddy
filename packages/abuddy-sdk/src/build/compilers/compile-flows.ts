@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pathToFileURL } from 'url';
-import type { FlowDSL, FlowConfig, ValidationResult } from './flow-types.ts';
-import { isFlowConfig } from './flow-types.ts';
+import type { ValidationResult } from '../seed-compiler.ts';
+import { isFlowConfig, type FlowConfig, type FlowDSL } from './flow-types.ts';
 import { validate } from './flow-dsl-validator.ts';
 
 export interface FlowCompileResult {

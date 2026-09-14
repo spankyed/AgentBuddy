@@ -43,7 +43,7 @@ import { id, type ActionsState } from './state';
 import ActionsList from './components/ActionsList.vue';
 import ActionDetail from './components/ActionDetail.vue';
 import type { EARS } from '@abuddy/sdk';
-import type { ActionParameter } from '@abuddy/sdk/build';
+import type { ActionParameter } from '@abuddy/sdk';
 
 const actorSystem = useActorSystem()
 

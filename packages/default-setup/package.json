@@ -7,7 +7,7 @@
     "#generated/*": "./src/__generated__/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "prepare": "abuddy generate-entries",
     "generate:entries": "abuddy generate-entries",
@@ -48,6 +48,7 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
+    "vue-tsc": "^3.0.4",
     "zod": "^3.24.0"
   }
 }

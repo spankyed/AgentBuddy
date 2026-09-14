@@ -22,20 +22,6 @@ export interface ActionMeta {
 }
 
 // @public (undocumented)
-export interface ActionParameter {
-    // (undocumented)
-    default?: unknown;
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    placeholder?: string;
-    // (undocumented)
-    required?: boolean;
-    // (undocumented)
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-}
-
-// @public (undocumented)
 export const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]>;
 
 // @public (undocumented)
@@ -130,16 +116,6 @@ export interface CompileConfig {
 }
 
 // @public (undocumented)
-export interface CompiledEntity {
-    // (undocumented)
-    [key: string]: unknown;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    id: string;
-}
-
-// @public (undocumented)
 export interface CompiledEntry {
     // (undocumented)
     [key: string]: unknown;
@@ -165,36 +141,6 @@ export interface CompiledFAQ {
     order?: number;
     // (undocumented)
     question: string;
-}
-
-// @public (undocumented)
-export interface CompiledFlow {
-    // (undocumented)
-    entity: CompiledEntity[];
-    // (undocumented)
-    relation: CompiledRelation[];
-    // (undocumented)
-    role: CompiledRole[];
-}
-
-// @public (undocumented)
-export interface CompiledRelation {
-    // (undocumented)
-    info?: Record<string, unknown>;
-    // (undocumented)
-    kind: EARS.RelKind;
-    // (undocumented)
-    source: string;
-    // (undocumented)
-    target: string;
-}
-
-// @public (undocumented)
-export interface CompiledRole {
-    // (undocumented)
-    entityId: string;
-    // (undocumented)
-    role: string;
 }
 
 // @public (undocumented)
@@ -258,7 +204,7 @@ export interface CompilePackResult {
     warnings: string[];
 }
 
-// @public (undocumented)
+// @public
 export interface CompilerContext {
     // (undocumented)
     actions: Map<string, string>;
@@ -338,17 +284,6 @@ export interface DSLStepNode extends DSLNodeBase {
     // (undocumented)
     type: string;
 }
-
-// @public (undocumented)
-export type EdgeEntity = {
-    id: EARS.EntityId;
-    kind: EARS.RelKind;
-    source: EARS.EntityId;
-    target: EARS.EntityId;
-    sourceHandle?: string;
-    targetHandle?: string;
-    info?: Record<string, unknown>;
-};
 
 // @public (undocumented)
 export function emitDepTypes(depSnapshots: Map<string, {
@@ -603,22 +538,6 @@ export interface FlowConfig {
 
 // @public (undocumented)
 export type FlowDSL = Record<string, Track[] | FlowConfig>;
-
-// @public (undocumented)
-export interface FlowEntity extends BaseEntity {
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    flowType: 'workflow' | 'integration';
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    shortCode: string;
-    // (undocumented)
-    sourceHash?: string;
-}
 
 // @public (undocumented)
 export const flowsCompiler: SeedCompiler<FlowsCompiled, FlowDSL>;
@@ -1165,22 +1084,6 @@ export function mergeRegistries(ownId: string, manifest: PackManifest, depManife
 };
 
 // @public (undocumented)
-export interface NodeBase extends BaseEntity {
-    // (undocumented)
-    color?: string;
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    final?: boolean;
-    // (undocumented)
-    label: string;
-    // (undocumented)
-    nodeType: string;
-}
-
-// @public (undocumented)
 export const notesCompiler: SeedCompiler<ExportedNotes, NotesMerged>;
 
 // @public (undocumented)
@@ -1332,9 +1235,6 @@ export function resolveFeatureSettingsFromManifest(manifest: PackManifest, packD
 export function resolveTracks(entry: Track[] | FlowConfig): Track[];
 
 // @public (undocumented)
-export const ROOT_FLOW_ROLE = "root_flow";
-
-// @public (undocumented)
 export interface SeedCompiler<TCompiled = unknown, TMerged = unknown> {
     collectErrors?(compiled: TCompiled): string[];
     // (undocumented)
@@ -1441,24 +1341,6 @@ export const StepEntrySchema: z.ZodObject<{
         custom?: true | undefined;
     } | undefined;
 }>;
-
-// @public (undocumented)
-export interface TemplateInput {
-    // (undocumented)
-    commonSources?: string[];
-    // (undocumented)
-    defaultValue?: unknown;
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    example?: unknown;
-    // (undocumented)
-    name: string;
-    // (undocumented)
-    required?: boolean;
-    // (undocumented)
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-}
 
 // @public (undocumented)
 export function toDisplayName(str: string): string;

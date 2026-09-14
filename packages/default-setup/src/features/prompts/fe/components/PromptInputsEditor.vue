@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
 import { ref } from 'vue';
-import type { TemplateInput } from '@abuddy/sdk/build';
+import type { TemplateInput } from '@abuddy/sdk';
 import ParameterRow from '@abuddy/ui/design/ParameterRow';
 
 const props = defineProps<{

@@ -4,7 +4,6 @@
  * them, and no pack declares them. The generator, the manifest schema and the host all read this module.
  */
 import type { BaseEntity, EARS } from './entities.ts';
-import type { ActionParameter, TemplateInput } from '../build/seed-types.ts';
 import type { TNodeEntity } from '../steps/types.ts';
 
 export const SDK_ENTITIES = {
@@ -29,8 +28,42 @@ export const SDK_REL_KINDS = {
   TRACKED: 'tracked',
 } as const;
 
+/** The role of the flow that starts when the app boots */
+export const ROOT_FLOW_ROLE = 'root_flow';
+
 /** Entity types kept out of persistence */
 export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[] = [SDK_ENTITIES.TNode];
+
+export interface ActionParameter {
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+  description?: string;
+  required?: boolean;
+  default?: unknown;
+  placeholder?: string;
+}
+
+export interface TemplateInput {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+  description?: string;
+  required?: boolean;
+  defaultValue?: unknown;
+  commonSources?: string[];
+  example?: unknown;
+}
+
+/**
+ * The fields every Node row has. A pack's step node types extend it (`interface FireNode extends
+ * NodeBase`), and `abuddy generate-entries` unions them into the pack's shape for Node.
+ */
+export interface NodeBase extends BaseEntity {
+  entityType: typeof SDK_ENTITIES.Node;
+  nodeType: string;
+  label: string;
+  description?: string;
+  color?: string;
+  final?: boolean;
+}
 
 export interface RelationEntity extends BaseEntity {
   relationDetails: EARS.RelationDetail;
@@ -89,12 +122,13 @@ export interface PromptEntity extends BaseEntity {
 }
 
 /**
- * Shapes of the SDK's entities; every pack's generated PackShapes includes them. Node has none here:
- * its shape is the union of a pack's step node types, generated per pack.
+ * Shapes of the SDK's entities; every pack's generated PackShapes includes them. A pack that defines
+ * steps reads Node rows as its step node types (and its dependencies') instead of NodeBase.
  */
 export type SdkEntityShapes = {
   Relation: RelationEntity;
   Flow: FlowEntity;
+  Node: NodeBase;
   TNode: TNodeEntity;
   Action: ActionEntity;
   Prompt: PromptEntity;
@@ -102,7 +136,7 @@ export type SdkEntityShapes = {
 
 /** The keys of SdkEntityShapes, at runtime */
 export const SDK_SHAPED_ENTITIES = [
-  SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.TNode, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
+  SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.TNode, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
 ] as const;
 
 // Fails to compile when SDK_SHAPED_ENTITIES and SdkEntityShapes list different entities

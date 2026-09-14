@@ -1,10 +1,5 @@
-import type {
-  FlowConfig,
-  Track,
-  ValidationError,
-  ValidationResult,
-} from './flow-types.ts';
-import { isFlowConfig, resolveTracks } from './flow-types.ts';
+import type { ValidationError, ValidationResult } from '../seed-compiler.ts';
+import { isFlowConfig, resolveTracks, type FlowConfig, type Track } from './flow-types.ts';
 import { stepRegistry } from '../../steps/registry.ts';
 import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types.ts';
 

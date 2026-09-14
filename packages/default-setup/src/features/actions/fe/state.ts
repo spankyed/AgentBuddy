@@ -11,7 +11,7 @@ import type {
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
-import type { ActionParameter } from '@abuddy/sdk/build'
+import type { ActionParameter } from '@abuddy/sdk'
 import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'

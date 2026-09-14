@@ -2,7 +2,8 @@
 // generated entity shape regresses to `any` or loses its declared field types.
 import { describe, expectTypeOf, it } from 'vitest';
 import type { BaseEntity } from '@abuddy/sdk/types';
-import type { SdkEntityShapes, ActionEntity, FlowEntity } from '@abuddy/sdk';
+import type { SdkEntityShapes, ActionEntity, FlowEntity, NodeBase } from '@abuddy/sdk';
+import type { NodeEntity } from '@/__generated__/types';
 import type { EntityShape, OwnEntityShapes, PackShapes } from '@/__generated__/ears';
 import type { MessageEntity, ThreadEntity } from '@/features/threads/be/types';
 
@@ -17,6 +18,11 @@ describe('PackShapes', () => {
     expectTypeOf<PackShapes['Action']>().toEqualTypeOf<ActionEntity>();
     expectTypeOf<PackShapes['Flow']>().toEqualTypeOf<FlowEntity>();
     expectTypeOf<PackShapes['Relation']>().toEqualTypeOf<SdkEntityShapes['Relation']>();
+  });
+
+  it("reads Node rows as the pack's step node types, not the SDK's NodeBase", () => {
+    expectTypeOf<SdkEntityShapes['Node']>().toEqualTypeOf<NodeBase>();
+    expectTypeOf<PackShapes['Node']>().toEqualTypeOf<NodeEntity>();
   });
 
   it('has no key for an undeclared entity', () => {
