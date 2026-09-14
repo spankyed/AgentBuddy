@@ -7,7 +7,8 @@ import { repository } from '#generated/repository';
 import type { MemoDTO } from './types';
 
 type IncomingMemosEvents =
-  | { type: 'ADD_MEMO'; text: string };
+  | { type: 'ADD_MEMO'; text: string }
+  | { type: 'GET_MEMOS' };
 
 export type OutgoingMemosEvents =
   | { type: 'MEMOS_CONNECTED'; memos: MemoDTO[] }
@@ -32,6 +33,8 @@ export const memosSystem = setup({
   initial: 'idle',
   on: {
     ADD_MEMO: { actions: 'addMemo' },
+    // The plugin asks when it starts: its bundle can load after CLIENT_CONNECTED was broadcast
+    GET_MEMOS: { actions: 'sendConnectedData' },
   },
   states: {
     idle: {

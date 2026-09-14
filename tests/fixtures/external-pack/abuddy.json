@@ -39,33 +39,41 @@
   ],
   "dependencies": {},
   "permissions": [],
+  "seedFormats": {
+    "memos": {
+      "format": "markdown-tree",
+      "entity": "Memo",
+      "identity": [
+        "title"
+      ],
+      "fields": {
+        "title": {
+          "from": "frontmatter.title",
+          "default": "filename",
+          "type": "string"
+        },
+        "text": {
+          "from": "body"
+        }
+      }
+    },
+    "quick-memos": {
+      "compiler": "src/seeds/compilers/quick-memos.ts",
+      "entity": "Memo",
+      "identity": [
+        "title"
+      ]
+    }
+  },
   "boot": {
     "seed": {
       "memos": {
         "path": "src/seeds/memos",
-        "format": "markdown-tree",
-        "entity": "Memo",
-        "identity": [
-          "title"
-        ],
-        "fields": {
-          "title": {
-            "from": "frontmatter.title",
-            "default": "filename",
-            "type": "string"
-          },
-          "text": {
-            "from": "body"
-          }
-        }
+        "format": "memos"
       },
       "quick-memos": {
         "path": "src/seeds/quick-memos.txt",
-        "compiler": "src/seeds/compile-quick-memos.ts",
-        "entity": "Memo",
-        "identity": [
-          "title"
-        ]
+        "format": "quick-memos"
       }
     }
   }

@@ -27,6 +27,9 @@ const memosState = setup({
         return context.memos.some(m => m.id === memo.id) ? context.memos : [...context.memos, memo];
       },
     }),
+    requestMemos: () => {
+      trpc.bus.send.mutate({ systemId: busId.memos, type: 'GET_MEMOS' });
+    },
     sendAdd: ({ event }) => {
       trpc.bus.send.mutate({ systemId: busId.memos, type: 'ADD_MEMO', text: typeOf('MEMOS.ADD', event).text });
     },
@@ -34,6 +37,7 @@ const memosState = setup({
 }).createMachine({
   id,
   context: { memos: [] },
+  entry: 'requestMemos',
   on: {
     MEMOS_CONNECTED: { actions: 'setMemos' },
     MEMO_ADDED: { actions: 'addMemo' },

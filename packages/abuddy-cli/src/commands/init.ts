@@ -23,16 +23,18 @@ const MANIFEST_TEMPLATE = (name: string) => {
       seed: {
         actions: 'src/seeds/actions',
         flows: 'src/seeds/flows',
-        // Rows of the pack's own entity type, from markdown: no seeding code needed
-        [SEED_ROWS_KEY]: {
-          path: `src/seeds/${SEED_ROWS_KEY}`,
-          format: 'markdown-tree',
-          entity: pascalName,
-          identity: ['title'],
-          fields: {
-            title: { from: 'frontmatter.title', default: 'filename', type: 'string' },
-            content: { from: 'body' },
-          },
+        // Rows of the pack's own entity type, from markdown, with the format below: no seeding code needed
+        [SEED_ROWS_KEY]: { path: `src/seeds/${SEED_ROWS_KEY}`, format: SEED_ROWS_KEY },
+      },
+    },
+    seedFormats: {
+      [SEED_ROWS_KEY]: {
+        format: 'markdown-tree',
+        entity: pascalName,
+        identity: ['title'],
+        fields: {
+          title: { from: 'frontmatter.title', default: 'filename', type: 'string' },
+          content: { from: 'body' },
         },
       },
     },
@@ -45,7 +47,7 @@ const SEED_ROWS_KEY = 'examples';
 const EXAMPLE_SEED_ROW_TEMPLATE = `---
 title: Hello
 ---
-Seeded from src/seeds/${SEED_ROWS_KEY}/hello.md by the "${SEED_ROWS_KEY}" entry in abuddy.json.
+Seeded from src/seeds/${SEED_ROWS_KEY}/hello.md by the "${SEED_ROWS_KEY}" seed entry and format in abuddy.json.
 `;
 
 const TSCONFIG_TEMPLATE = JSON.stringify({
