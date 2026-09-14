@@ -142,6 +142,12 @@ export function hasDesignation(role: string): boolean;
 export function registerDesignations(designations: Designations): void;
 
 // @public
+export interface RelationEntity extends BaseEntity {
+    // (undocumented)
+    relationDetails: EARS.RelationDetail;
+}
+
+// @public
 export function safeEvents<TEvent extends {
     type: string;
 }>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;

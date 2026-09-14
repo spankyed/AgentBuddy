@@ -260,6 +260,7 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
 ### Constraints
 
 - Entity types and relation kinds must be globally unique across all installed packs.
+- `Relation` is the SDK's own entity (every link is stored as one). Every pack has it, typed as `RelationEntity`, and no pack declares it.
 - External packs cannot use `partitionPolicy` (entity routing to excluded/secrets stores is reserved for the built-in pack).
 
 ---

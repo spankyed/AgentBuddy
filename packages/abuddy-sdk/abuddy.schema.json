@@ -67,7 +67,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers."
+      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. Relation is defined by the SDK and can't be declared."
     },
     "relKinds": {
       "type": "object",

@@ -12,6 +12,14 @@ describe('parseManifest', () => {
     expect(result.errors).toEqual([]);
   });
 
+  it('rejects declaring the SDK-owned Relation entity, by name or value', () => {
+    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }]) {
+      const result = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities });
+      expect(result.errors).toEqual([expect.stringMatching(/"entities": Relation is defined by the SDK/)]);
+    }
+    expect(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' } }).errors).toEqual([]);
+  });
+
   it('accepts a minimal valid manifest', () => {
     const result = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
     expect(result.errors).toEqual([]);

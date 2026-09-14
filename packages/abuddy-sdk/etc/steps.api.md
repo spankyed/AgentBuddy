@@ -56,6 +56,7 @@ export interface RuntimeServices {
 // @public
 export type SdkEntityShapes = {
     TNode: TNodeEntity;
+    Relation: RelationEntity;
 };
 
 // @public (undocumented)

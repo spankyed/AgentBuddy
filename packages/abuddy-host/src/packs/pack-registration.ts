@@ -7,6 +7,7 @@
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
 import type { HostServices } from '@abuddy/sdk/services';
+import { EARS } from '@abuddy/sdk/types';
 import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
@@ -47,6 +48,8 @@ export function registerPack(registration: PackRegistration): void {
       if (!existing.ears) continue;
       const existingEntValues = Object.values(existing.ears.entities);
       for (const val of Object.values(registration.ears.entities)) {
+        // The engine's own Relation; a pack built with an older SDK may still list it
+        if (val === EARS.Entity.Relation) continue;
         if (existingEntValues.includes(val)) {
           throw new Error(`EARS collision: entity type "${val}" — pack "${registration.id}" vs "${existingId}"`);
         }
@@ -149,7 +152,7 @@ export function unregisterPack(packId: string): void {
 
 export function getRegisteredEntityTypes(): ReadonlySet<string> {
   if (!_entityTypeCache) {
-    _entityTypeCache = new Set<string>(['Relation']);
+    _entityTypeCache = new Set<string>([EARS.Entity.Relation]);
     for (const reg of registrations.values()) {
       if (reg.ears) {
         for (const val of Object.values(reg.ears.entities)) {

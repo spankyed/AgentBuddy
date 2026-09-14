@@ -8,7 +8,6 @@
   "hostVersion": ">=0.3.0",
   "license": "MIT",
   "entities": {
-    "Relation": "Relation",
     "Agent": "Agent",
     "Thread": "Thread",
     "Message": "Message",

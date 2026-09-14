@@ -678,7 +678,7 @@ export const ManifestSchema: z.ZodObject<{
     license: z.ZodOptional<z.ZodString>;
     dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
-    entities: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    entities: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
     relKinds: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     partitionPolicy: z.ZodOptional<z.ZodObject<{
         excludedEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;

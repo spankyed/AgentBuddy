@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+/** Entity types the EARS engine itself defines; every pack has them and none may declare them */
+export const SDK_ENTITIES: Record<string, string> = { Relation: 'Relation' };
+
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
 export const StepDSLMetaSchema = z.object({
@@ -125,7 +128,11 @@ export const ManifestSchema = z.object({
     .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   entities: z.record(z.string(), z.string())
-    .describe('EARS entity types this pack registers. Keys are enum names, values are string identifiers.').optional(),
+    .refine(
+      (entities) => Object.entries(entities).every(([key, value]) => !(key in SDK_ENTITIES) && !Object.values(SDK_ENTITIES).includes(value)),
+      { message: `${Object.keys(SDK_ENTITIES).join(', ')} is defined by the SDK and available to every pack; remove it from entities` },
+    )
+    .describe(`EARS entity types this pack registers. Keys are enum names, values are string identifiers. ${Object.keys(SDK_ENTITIES).join(', ')} is defined by the SDK and can't be declared.`).optional(),
   relKinds: z.record(z.string(), z.string())
     .describe('EARS relation kinds this pack registers. Keys are enum names, values are string identifiers.').optional(),
   partitionPolicy: PartitionPolicySchema.optional(),

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
 
 const registered: string[] = [];
 afterEach(() => {
@@ -27,5 +27,25 @@ describe('registerPack services', () => {
     register('first-pack', { llm: 1 });
     register('second-pack', { search: 2 });
     expect(getRegisteredServices()).toEqual({ llm: 1, search: 2 });
+  });
+});
+
+describe('registerPack entities', () => {
+  const registerEntities = (id: string, entities: Record<string, string>) => {
+    registerPack({ id, systems: [], ears: { entities, relKinds: {} } } as unknown as PackRegistration);
+    registered.push(id);
+  };
+
+  it('rejects an entity type another pack registered', () => {
+    registerEntities('first-pack', { Memo: 'Memo' });
+    expect(() => registerEntities('second-pack', { Memo: 'Memo' })).toThrow('EARS collision: entity type "Memo" — pack "second-pack" vs "first-pack"');
+  });
+
+  it("treats the engine's Relation as every pack's, not a collision", () => {
+    expect(getRegisteredEntityTypes().has('Relation')).toBe(true);
+    // Packs built with an older SDK list it
+    registerEntities('first-pack', { Relation: 'Relation', Memo: 'Memo' });
+    expect(() => registerEntities('second-pack', { Relation: 'Relation', Tag: 'Tag' })).not.toThrow();
+    expect([...getRegisteredEntityTypes()].sort()).toEqual(['Memo', 'Relation', 'Tag']);
   });
 });

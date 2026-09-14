@@ -132,6 +132,12 @@ export interface KeyboardShortcut {
 }
 
 // @public
+export interface RelationEntity extends BaseEntity {
+    // (undocumented)
+    relationDetails: EARS.RelationDetail;
+}
+
+// @public
 export type ShapeOf<S extends EntityShapes, E extends string> = [
 E
 ] extends [keyof S] ? S[E] & BaseEntity & {

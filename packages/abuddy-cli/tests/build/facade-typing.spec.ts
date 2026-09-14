@@ -88,7 +88,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
+import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
 import { emit, sendToPlugin } from '#generated/events.js';
 import { services } from '#generated/services.js';
 import { repository } from '#generated/repository.js';
@@ -185,6 +185,10 @@ tx('Memo').batchPut({ pinned: 'yes' });
 // A dependency's entity is checked the same way
 // @ts-expect-error Tag.name is a string
 tx(tags[0]!.id).put('name', 1);
+// Relation is the SDK's: available and shaped though neither pack declares it
+const relationType: 'Relation' = PackEARS.Entity.Relation;
+const relation = findAll(relationType)[0]!;
+export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceEntity, EARS.EntityId>>;
 // A plain id leaves writes unchecked
 tx(plainId).put('text', 42);
 // @ts-expect-error undeclared entity name

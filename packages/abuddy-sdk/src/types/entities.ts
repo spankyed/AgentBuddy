@@ -110,6 +110,14 @@ export interface BaseEntity {
 export type EntityShapes = { [entityType: string]: object };
 
 /**
+ * A relation between two entities. The EARS engine stores every link as a Relation entity, so the
+ * type is part of every pack: packs don't declare it.
+ */
+export interface RelationEntity extends BaseEntity {
+  relationDetails: EARS.RelationDetail;
+}
+
+/**
  * An entity type's shape in `S`. A type `S` doesn't declare reads as its base fields plus
  * `unknown` values: never `any`, so undeclared data has to be narrowed before use.
  *

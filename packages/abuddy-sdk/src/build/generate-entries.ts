@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { extname, join } from 'path';
 import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest.ts';
+import { SDK_ENTITIES } from './manifest-schema.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -8,6 +9,9 @@ const HEADER = `// @generated from abuddy.json — do not edit by hand
 // ── EARS emitter ─────────────────────────────────────────────────
 
 interface RegistryEntry { value: string; source: string }
+
+/** The registry source of the entities the SDK owns */
+const SDK_SOURCE = '@abuddy/sdk';
 
 export function mergeRegistries(
   ownId: string,
@@ -17,6 +21,8 @@ export function mergeRegistries(
   function merge(own: Record<string, string> | undefined, kind: string) {
     const map = new Map<string, RegistryEntry>();
     const errors: string[] = [];
+    // The engine's own entities (Relation) are in every pack
+    const sdkOwned = kind === 'entity' ? SDK_ENTITIES : {};
 
     if (own) {
       for (const [key, value] of Object.entries(own))
@@ -26,6 +32,8 @@ export function mergeRegistries(
     for (const [depId, dep] of depManifests) {
       const depEntries = kind === 'entity' ? dep.entities : dep.relKinds;
       for (const [key, value] of Object.entries(depEntries)) {
+        // A dependency built before the SDK owned this entity still lists it
+        if (key in sdkOwned) continue;
         const existing = map.get(key);
         if (existing && existing.source !== depId) {
           errors.push(`${kind} "${key}" declared by both "${existing.source}" and "${depId}"`);
@@ -33,6 +41,11 @@ export function mergeRegistries(
         }
         map.set(key, { value, source: depId });
       }
+    }
+
+    for (const [key, value] of Object.entries(sdkOwned)) {
+      if (map.get(key)?.source === ownId) errors.push(`${kind} "${key}" is declared by the SDK; remove it from abuddy.json`);
+      map.set(key, { value, source: SDK_SOURCE });
     }
 
     if (errors.length > 0) throw new Error(`Type conflicts:\n  ${errors.join('\n  ')}`);
@@ -81,7 +94,10 @@ export function emitEARS(ownId: string, registry: ReturnType<typeof mergeRegistr
   const entityMembers = emitNamespaceMembers(ownId, registry.entities);
   const relKindMembers = emitNamespaceMembers(ownId, registry.relKinds);
 
-  const entityUnion = [...registry.entities.keys()].map(k => `Entity.${k}`).join(' | ') || 'string';
+  // A pack with no entities of its own or its dependencies' keeps an open Entity type; the SDK's
+  // Relation alone doesn't close it
+  const declaresEntities = [...registry.entities.values()].some(({ source }) => source !== SDK_SOURCE);
+  const entityUnion = declaresEntities ? [...registry.entities.keys()].map(k => `Entity.${k}`).join(' | ') : 'string';
   const relUnion = [...registry.relKinds.keys()].map(k => `RelKind.${k}`).join(' | ');
   const relType = relUnion ? `${relUnion} | (string & {})` : '(string & {})';
 
@@ -232,7 +248,7 @@ function toImportPath(root: string, manifestPath: string): string {
 const HOST_PLUGIN_IDS = ['application'];
 
 /** Entity types whose shapes the SDK declares itself (SdkEntityShapes in @abuddy/sdk/steps) */
-const SDK_ENTITY_SHAPES = ['TNode'];
+const SDK_ENTITY_SHAPES = ['TNode', ...Object.keys(SDK_ENTITIES)];
 
 /** This pack's entities with no shape (in entityShapes or the SDK's), whose fields read as unknown values */
 export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[] {
@@ -413,12 +429,9 @@ ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
   ears: {
-    entities: Object.fromEntries(
-      Object.entries(EARS.Entity as Record<string, unknown>).filter(([k, v]) => typeof v === 'string' && k !== 'Custom') as [string, string][]
-    ),
-    relKinds: Object.fromEntries(
-      Object.entries(EARS.RelKind as Record<string, unknown>).filter(([k, v]) => typeof v === 'string' && k !== 'Custom') as [string, string][]
-    ),
+    // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
+    entities: ${JSON.stringify(manifest.entities ?? {})},
+    relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
     partitionPolicy: {
       excludedEntityTypes: ${JSON.stringify(manifest.partitionPolicy?.excludedEntityTypes ?? [])},
       secretEntityTypes: ${JSON.stringify(manifest.partitionPolicy?.secretEntityTypes ?? [])},
