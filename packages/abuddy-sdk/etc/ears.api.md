@@ -628,13 +628,13 @@ export interface TypedQx<S extends EntityShapes, N extends string = string> {
     // (undocumented)
     (): QueryBuilder<string, S, N>;
     // (undocumented)
-    <E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E, S, N>;
-    // (undocumented)
-    <E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
-    // (undocumented)
     <E extends string>(seed: Name<N, E>): QueryBuilder<E, S, N>;
     // (undocumented)
     <E extends string>(seed: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
+    // (undocumented)
+    <E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E, S, N>;
+    // (undocumented)
+    <E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
     // (undocumented)
     <E extends string>(seed: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
 }

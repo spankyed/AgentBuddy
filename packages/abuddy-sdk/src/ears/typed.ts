@@ -24,12 +24,15 @@ import { tx } from './transaction.ts';
 /** An entity name argument: a declared name, or a name only known at runtime (see EntityNameArg) */
 type Name<N extends string, E extends string> = EntityNameArg<N, E>;
 
+// Name seeds come before id seeds: editors offer the entity names in qx('…') only then, and it's the
+// order the runtime resolves a seed in (a registered entity type first, then an id). An id can't match
+// a name overload, so ids still take theirs.
 export interface TypedQx<S extends EntityShapes, N extends string = string> {
   (): QueryBuilder<string, S, N>;
-  <E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E, S, N>;
-  <E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
   <E extends string>(seed: Name<N, E>): QueryBuilder<E, S, N>;
   <E extends string>(seed: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
+  <E extends string>(seed: EARS.EntityId<E>): QueryBuilder<E, S, N>;
+  <E extends string>(seed: readonly EARS.EntityId<E>[]): QueryBuilder<E, S, N>;
   // Seeds that may be undefined at the call site
   <E extends string>(seed: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
 }

@@ -30,7 +30,7 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
 - The explicit-shape overloads (`findAll<T>(name)`) also accept a runtime name.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
-- Overload order in `typed.ts` is part of the contract.
+- Overload order in `typed.ts` is part of the contract. `qx`'s name overloads come before its id overloads: in the other order, editors offer no entity names in `qx('…')`. It's also the order the runtime resolves a seed in (a registered entity type first, then an id).
 
 **Ids.**
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
@@ -58,9 +58,9 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
    - default-setup: `tests/unit/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
    - `@abuddy/cli`: `tests/build/facade-typing.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed SDK) and `tests/build/published-sdk-any.spec.ts`
 3. **Mutation-check every rule you touch.** Break it on purpose and confirm a test fails.
-4. **Check editor completions and error messages.** No test covers them, and this is where regressions have slipped through.
+4. **Check editor completions and error messages.** `tests/build/facade-typing.spec.ts` in `@abuddy/cli` checks the positions below with the TypeScript language service, under both module resolutions and against the published package. Extend it when you add a field or name parameter, and still look at anything it doesn't cover.
    - Field positions should list the entity's fields: `qx(EARS.Entity.X).pick(['|'])`, `.where('|')`, `.orderBy('|')`, `getAttr(id, '|')`, `findWithFields(EARS.Entity.X, ['|'])`.
-   - Entity-name positions should list entity names: `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`.
+   - Entity-name positions should list entity names: `qx('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.
 5. **Update the API report** (`npm run api:update`) and review the `etc/ears.api.md` diff as part of the change.
@@ -70,4 +70,5 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
 - **Union field typing (2026-09-14).**
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
-  - Resolution: reverted, and the two queries use the untyped host `qx`.
+  - Resolution: reverted, and the two queries use the untyped host `qx`. The completions test in `facade-typing.spec.ts` now guards these positions.
+- **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first; the seed resolution matrix in `typed-query-builder.spec.ts` pins that nothing else changed.

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
 
@@ -226,6 +227,87 @@ function buildPacks(published: boolean): string {
   return parent;
 }
 
+/**
+ * Editor completions in a pack, from the TypeScript language service. The typed EARS types can
+ * compile and pass every type check while suggestions disappear (packages/abuddy-sdk/TYPED-EARS.md,
+ * Incidents), so these positions are checked directly. `|name|` marks a position in the source.
+ */
+const COMPLETIONS = `
+import { EARS, qx, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.js';
+declare const memoId: EARS.EntityId<'Memo'>;
+qx('Memo').pick(['|pick|']);
+qx('Memo').pickOne(['|pickOne|']);
+qx(memoId).linksPick('related', ['|linksPick|'], 'Memo');
+qx('Memo').where('|where|');
+qx('Memo').orderBy('|orderBy|');
+qx('Memo').distinct('|distinct|');
+qx('Memo').groupBy('|groupBy|');
+getAttr(memoId, '|getAttr|');
+getAttrs(memoId, '|getAttrs|');
+findWithFields('Memo', ['|findWithFields|']);
+findByIdWithFields(memoId, ['|findByIdWithFields|']);
+findAll('|findAll|');
+createEntity('|createEntity|');
+qx(memoId).linksTo('related', '|linksTo|');
+qx().ofType('|ofType|');
+qx('|qx|');
+qx('Memo').where('txet');
+`;
+const FIELD_POSITIONS = ['pick', 'pickOne', 'linksPick', 'where', 'orderBy', 'distinct', 'groupBy', 'getAttr', 'getAttrs', 'findWithFields', 'findByIdWithFields'];
+const NAME_POSITIONS = ['findAll', 'createEntity', 'linksTo', 'ofType'];
+
+/** String completions at each marked position of COMPLETIONS, and the file's diagnostics */
+function completionsIn(app: string, tsconfig: string): { at: Record<string, string[]>; diagnostics: string[] } {
+  const file = path.join(app, 'src', 'completions.ts');
+  const markers: Record<string, number> = {};
+  let removed = 0;
+  const text = COMPLETIONS.replace(/\|(\w+)\|/g, (marker: string, name: string, offset: number) => {
+    markers[name] = offset - removed;
+    removed += marker.length;
+    return '';
+  });
+  fs.writeFileSync(file, text);
+  const config = ts.getParsedCommandLineOfConfigFile(path.join(app, tsconfig), {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} })!;
+  const files = [...config.fileNames, file];
+  const service = ts.createLanguageService({
+    getScriptFileNames: () => files,
+    getScriptVersion: () => '1',
+    getScriptSnapshot: (name) => (fs.existsSync(name) ? ts.ScriptSnapshot.fromString(fs.readFileSync(name, 'utf-8')) : undefined),
+    getCurrentDirectory: () => app,
+    getCompilationSettings: () => config.options,
+    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    fileExists: ts.sys.fileExists,
+    readFile: ts.sys.readFile,
+    readDirectory: ts.sys.readDirectory,
+    directoryExists: ts.sys.directoryExists,
+    getDirectories: ts.sys.getDirectories,
+    realpath: ts.sys.realpath,
+  });
+  const at = Object.fromEntries(Object.entries(markers).map(([name, position]) => [
+    name,
+    (service.getCompletionsAtPosition(file, position, {})?.entries ?? []).filter((entry) => entry.kind === ts.ScriptElementKind.string).map((entry) => entry.name),
+  ]));
+  const diagnostics = service.getSemanticDiagnostics(file).map((d) => ts.flattenDiagnosticMessageText(d.messageText, ' '));
+  return { at, diagnostics };
+}
+
+/** tsconfig for the app pack's consumer under a moduleResolution: the workspace source or the packed SDK */
+function writeTsconfig(app: string, moduleResolution: 'bundler' | 'node16', published: boolean): string {
+  const name = `tsconfig.${moduleResolution}.json`;
+  fs.writeFileSync(path.join(app, name), JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
+      strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
+      ...(published ? {} : { customConditions: ['@abuddy/source'], allowImportingTsExtensions: true }),
+      ...(moduleResolution === 'bundler' ? { paths: { '#generated/*': ['./src/__generated__/*'] } } : {}),
+    },
+    // Every generated facade, not only the ones the consumer imports
+    include: ['src/__generated__/**/*.ts', 'src/consumer.ts'],
+    exclude: ['src/__generated__/pack-entry-fe.ts', 'src/__generated__/contributions.ts'],
+  }));
+  return name;
+}
+
 const LAYOUTS = [
   { name: 'workspace source', published: false },
   ...(PACKAGES_BUILT ? [{ name: 'published package', published: true }] : []),
@@ -243,18 +325,25 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
 
   it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
-    fs.writeFileSync(path.join(app, `tsconfig.${moduleResolution}.json`), JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
-        strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
-        ...(published ? {} : { customConditions: ['@abuddy/source'], allowImportingTsExtensions: true }),
-        ...(moduleResolution === 'bundler' ? { paths: { '#generated/*': ['./src/__generated__/*'] } } : {}),
-      },
-      // Every generated facade, not only the ones the consumer imports
-      include: ['src/__generated__/**/*.ts', 'src/consumer.ts'],
-      exclude: ['src/__generated__/pack-entry-fe.ts', 'src/__generated__/contributions.ts'],
-    }));
-    const result = run(TSC, ['-p', `tsconfig.${moduleResolution}.json`], app);
+    const result = run(TSC, ['-p', writeTsconfig(app, moduleResolution, published)], app);
     expect(result.code, result.output).toBe(0);
+  }, 120_000);
+
+  it.each(['bundler', 'node16'] as const)('offers field and entity-name completions under moduleResolution %s', (moduleResolution) => {
+    const app = path.join(parent, 'app-pack');
+    const { at, diagnostics } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
+    const missing = (positions: string[], expected: string[]) =>
+      positions.filter((position) => !expected.every((name) => at[position]?.includes(name)));
+    expect(missing(FIELD_POSITIONS, ['text', 'pinned']), 'positions without Memo field completions').toEqual([]);
+    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation']), 'positions without entity-name completions').toEqual([]);
+    // A typo's error lists the fields it could have been
+    expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
+  }, 120_000);
+
+  // qx's name overloads come before its id overloads; in the other order a name seed gets no suggestions
+  it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
+    const app = path.join(parent, 'app-pack');
+    const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
+    expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation']));
   }, 120_000);
 });
