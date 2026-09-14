@@ -82,7 +82,7 @@ export type ApplicationEvent =
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
-  | { type: 'PACK_PLUGINS_LOADED'; plugins: Plugin[] }
+  | { type: 'PACK_PLUGINS_LOADED'; packId: string; plugins: Plugin[] }
   | { type: 'PACK_PLUGINS_UNLOADED'; pluginIds: string[] }
   | { type: 'NOOP' }
 
@@ -338,14 +338,19 @@ export const createApplicationState = () => setup({
       }
     }),
 
-    removePackPlugins: enqueueActions(({ event, context, enqueue }) => {
+    // The pack's plugin actors now exist; its systems resend their startup data, which the connection's
+    // CLIENT_CONNECTED broadcast sent before this pack's frontend had loaded
+    announcePackClientReady: ({ event }) => {
+      const { packId } = typeOf('PACK_PLUGINS_LOADED', event);
+      trpc.bus.packClientReady.mutate({ packId }).catch((err: unknown) => {
+        console.warn(`[pack-loader] Couldn't request startup data for pack ${packId}:`, err);
+      });
+    },
+
+    removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
       const { pluginIds } = typeOf('PACK_PLUGINS_UNLOADED', event);
       const removeSet = new Set(pluginIds);
       if (removeSet.size === 0) return;
-
-      for (const id of pluginIds) {
-        (enqueue as any).stopChild(id);
-      }
 
       const remaining = context.plugins.filter(p => !removeSet.has(p.id));
       const pluginVisibility = { ...context.pluginVisibility };
@@ -353,6 +358,12 @@ export const createApplicationState = () => setup({
 
       const needsNavigate = removeSet.has(context.activePlugin.id);
       const activePlugin = needsNavigate ? (remaining[0] ?? context.defaultPlugin) : context.activePlugin;
+
+      // Plugin children are spawned by system id only, so stop them by reference
+      for (const id of pluginIds) {
+        const plugin = system.get(id);
+        if (plugin) enqueue.stopChild(plugin);
+      }
 
       enqueue.assign({
         plugins: remaining,
@@ -824,7 +835,7 @@ export const createApplicationState = () => setup({
       actions: 'updateHotkeys'
     },
     PACK_PLUGINS_LOADED: {
-      actions: 'mergePackPlugins'
+      actions: ['mergePackPlugins', 'announcePackClientReady']
     },
     PACK_PLUGINS_UNLOADED: {
       actions: 'removePackPlugins'

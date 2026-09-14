@@ -1,7 +1,7 @@
 // Registration
 export {
   registerPack, unregisterPack, registerHostSystem,
-  getRegisteredSystems, buildRegisteredEventValidationMap,
+  getRegisteredSystems, getRegisteredPackSystemIds, buildRegisteredEventValidationMap,
   getRegisteredEntityTypes, getRegisteredEARS, getRegisteredEARSPolicy,
   getRegisteredServices, getRegisteredMigrations,
   getBootHooks, getPackBootHooks, runRegisteredBootSeeds,

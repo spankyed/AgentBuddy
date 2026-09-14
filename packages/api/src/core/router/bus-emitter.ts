@@ -35,6 +35,11 @@ class RootEventEmitter extends EventEmitter {
     this.emit('connected');
   }
 
+  /** A client has loaded a pack's frontend (its plugin actors exist) and is ready for its systems' data */
+  emitPackClientConnected(packId: string) {
+    this.emit('pack-connected', packId);
+  }
+
   // System bus events
   emitIncoming(event: IncomingSystemEvents) {
     this.emit('incoming', event);
@@ -52,6 +57,11 @@ class RootEventEmitter extends EventEmitter {
   onConnected(callback: () => void) {
     this.on('connected', callback);
     return () => this.off('connected', callback);
+  }
+
+  onPackClientConnected(callback: (packId: string) => void) {
+    this.on('pack-connected', callback);
+    return () => this.off('pack-connected', callback);
   }
 
   // Subscribe to outgoing events

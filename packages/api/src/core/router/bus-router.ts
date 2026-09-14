@@ -46,6 +46,15 @@ export const systemBusRouter = router({
       logger.info(`→ Incoming: "${input.type}"`, { event: summarizeEventForLog(input) });
       rootEvents.emitIncoming(input);
     }),
+  /**
+   * The client finished loading a pack's frontend, after the connection's CLIENT_CONNECTED broadcast:
+   * the pack's systems get CLIENT_CONNECTED again, so their startup data reaches its plugin actors.
+   */
+  packClientReady: procedure
+    .input(z.object({ packId: z.string().min(1) }))
+    .mutation(({ input }) => {
+      rootEvents.emitPackClientConnected(input.packId);
+    }),
   sub: procedure
     .subscription(() =>
       observable<OutgoingSystemEvents>((emit) => {

@@ -173,10 +173,10 @@ trpc.packs.registry.query().then(async (registry) => {
     if (pack.feEntry) {
       const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
       if (registration) {
-        registerPackFE(registration);
+        registerPackFE(registration, pack.id);
         const plugins = registration.plugins ?? [];
         if (plugins.length > 0) {
-          applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+          applicationState.send({ type: 'PACK_PLUGINS_LOADED', packId: pack.id, plugins });
         }
       }
       continue;
@@ -188,8 +188,8 @@ trpc.packs.registry.query().then(async (registry) => {
       packBaseUrl,
     );
     if (plugins.length > 0) {
-      registerPackFE({ plugins });
-      applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+      registerPackFE({ plugins }, pack.id);
+      applicationState.send({ type: 'PACK_PLUGINS_LOADED', packId: pack.id, plugins });
     }
   }
 }).catch(err => {

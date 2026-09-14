@@ -46,3 +46,20 @@ test('seeds memos from abuddy.json: a markdown entry and a compiler module', asy
   await expect(list.getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(list.getByText('Seeded by a compiler module', { exact: true })).toBeVisible();
 });
+
+test("a re-enabled pack's plugin gets its startup data again", async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  const pluginIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.plugins.map((p: { id: string }) => p.id) as string[]);
+  const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('packs').send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
+
+  // Disabled while active: its plugin actor must stop, or re-enabling can't spawn it again
+  await app.navigate('memos');
+  await toggle();
+  await expect.poll(pluginIds, { timeout: 15_000 }).not.toContain('memos');
+
+  // Loaded after the connection: its data comes from the pack's client-ready handshake
+  await toggle();
+  await app.waitForPlugin('memos');
+  await app.navigate('memos');
+  await expect(appPage.getByTestId('memo-list').getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
+});

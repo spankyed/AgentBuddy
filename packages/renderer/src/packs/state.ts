@@ -119,7 +119,7 @@ const packsState = setup({
             registerPackFE(registration, ev.packId);
             const plugins = registration.plugins ?? [];
             if (plugins.length > 0) {
-              appActor.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+              appActor.send({ type: 'PACK_PLUGINS_LOADED', packId: ev.packId, plugins });
             }
           }
           return;
@@ -132,7 +132,7 @@ const packsState = setup({
           );
           if (plugins.length > 0) {
             registerPackFE({ plugins }, ev.packId);
-            appActor.send({ type: 'PACK_PLUGINS_LOADED', plugins });
+            appActor.send({ type: 'PACK_PLUGINS_LOADED', packId: ev.packId, plugins });
           }
         }
       }).catch((err: unknown) => {

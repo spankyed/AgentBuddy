@@ -194,6 +194,11 @@ export function getRegisteredSystems(): Map<string, import('xstate').AnyStateMac
   return systems;
 }
 
+/** The bus ids of a registered pack's systems (external packs' are `<packId>.<featureId>`) */
+export function getRegisteredPackSystemIds(packId: string): string[] {
+  return (registrations.get(packId)?.systems ?? []).map((sys) => sys.id);
+}
+
 export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   for (const [id, entry] of hostSystems) {
