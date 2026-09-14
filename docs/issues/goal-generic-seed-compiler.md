@@ -11,13 +11,17 @@ compatibility: change formats and signatures, migrate every in-repo manifest,
 fixture and template in the same change, and fix forward.
 
 Finished when:
-- Phases 1–5 are implemented and each meets its "Done when"; every new guard
+- Phases 1–6 are implemented and each meets its "Done when"; every new guard
   or test is mutation-checked.
 - Seeding a new entity type from markdown or JSON needs only `abuddy.json`
-  (plus optional seed hooks from the pack that owns the type), with no change
-  under packages/abuddy-sdk. The fixture pack proves it.
-- A pack that depends on default-setup can seed a Note and gets the same rows
-  default-setup's own seeds get (the owner's hooks). A fixture proves it.
+  (a format in `seedFormats`, an entry naming it, and optional seed hooks from
+  the pack that owns the type), with no change under packages/abuddy-sdk. The
+  fixture pack proves it.
+- A pack that depends on default-setup seeds Notes and library documents with
+  entries naming default-setup's formats (`{ "path", "format":
+  "default-setup:notes" }`), no field maps or compiler modules of its own, and
+  gets the same rows default-setup's own seeds get. A fixture proves it, and
+  `test:packaged-authoring` proves it against a built dependency.
 - The SDK has no library- or notes-specific compiler, seeder, importer, entity
   names or shapes. Flows, actions, prompts and settings keep specialty compilers.
 - The parity gate passes against golden snapshots recorded from the old
@@ -50,6 +54,8 @@ Never:
 ## Background
 
 Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-check each point against the branch when starting.
+
+**Status (2026-09-14, at `15553c837`).** Phases 1–5 are done (`7ea8bb8cf`…`15553c837`). Seed entries carry their format settings inline (`format`, `fields`, `identity`, `tree`, `media`, `compiler` on each `boot.seed` entry), so a pack that depends on default-setup repeats default-setup's whole notes field map to seed a Note, and can't seed library documents without copying its compiler module. Default-setup's compiler modules live in `src/seeds/compilers/`; its seed hooks are still in the features (`features/notes/be/seed-hooks.ts`, `features/library/be/seed-hooks.ts`). Phase 6 replaces inline settings with named formats (Decisions 1, 6, 11 and 12 describe the result).
 
 **The problem.** Every seeded entity type is hardcoded in the SDK. Adding one (a pack's own markdown-seeded type, or a new built-in) means a new compiler, a new seeder, a generator entry and usually entity names or shapes in `@abuddy/sdk`. `706dc987e` went further in the same direction: it moved Document, Collection and Note into `SDK_ENTITIES` so the SDK's seeders could type them, and added `libraryCommands`/`noteCommands` to `BuiltinRepositories`. This goal takes the other direction: the SDK owns a generic mechanism, and packs describe their seeds in `abuddy.json`.
 
@@ -91,48 +97,59 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 ## Decisions
 
-1. **Seed entries describe themselves.** A `boot.seed` value is a path string (the specialty keys) or an object:
+1. **Formats are named in `seedFormats`; seed entries name a format.** A format says how a source becomes records. It's always defined in the manifest's top-level `seedFormats`, never inline in an entry:
    ```jsonc
-   "notes": {
-     "path": "src/seeds/notes",
-     "format": "markdown-tree",          // "markdown-tree" | "json"
-     "entity": "Note",                   // omitted: compile-only (FAQs)
-     "identity": ["title", "parent"],    // fields matched on; "parent" = the tree parent
-     "tree": {
-       "branch": "index.md",             // a directory's own file (library: "_meta.md")
-       "branchEntity": "Note",           // defaults to `entity`
-       "relKind": "contains"
+   "seedFormats": {
+     "notes": {
+       "format": "markdown-tree",          // a built-in format: "markdown-tree" | "json" (or "compiler" instead)
+       "entity": "Note",                   // omitted: compile-only (FAQs)
+       "identity": ["title", "parent"],    // fields matched on; "parent" = the tree parent
+       "tree": {
+         "branch": "index.md",             // a directory's own file (library: "_meta.md")
+         "branchEntity": "Note",           // defaults to `entity`
+         "relKind": "contains"
+       },
+       "fields": {
+         "title":    { "from": "frontmatter.title", "default": "filename", "type": "string" },  // "filename" = its display name
+         "icon":     { "from": "frontmatter.icon", "type": "string" },
+         "favorite": { "from": "frontmatter.favorite", "default": false },
+         "content":  { "from": "body" }
+       },
+       "media": "media"                    // optional: copied to media/<key>/, links rewritten to media://<id>/
      },
-     "fields": {
-       "title":    { "from": "frontmatter.title", "default": "filename", "type": "string" },  // "filename" = its display name
-       "icon":     { "from": "frontmatter.icon", "type": "string" },
-       "favorite": { "from": "frontmatter.favorite", "default": false },
-       "content":  { "from": "body" }
-     },
-     "media": "media",                   // optional: copied to media/<key>/, links rewritten to media://<id>/
-     "compiler": "…",                    // a pack compile module (see below)
-     "seeder": "…"                       // a pack seeder module
+     "library": { "compiler": "src/seeds/compilers/library.ts", "entity": ["Collection", "Document"], "identity": ["name"], "media": "media" }
+   },
+   "boot": {
+     "seed": {
+       "actions": "src/seeds/actions",                                   // specialty keys: a path
+       "notes":   { "path": "src/seeds/notes", "format": "notes" },       // this pack's format
+       "team":    { "path": "src/seeds/team", "format": "default-setup:notes" },  // a dependency's format
+       "custom":  { "seeder": "src/seeds/custom-seeder.ts" }             // a pack seeder module
+     }
    }
    ```
-   - The schema is the source of truth (`manifest-schema.ts` → `abuddy.schema.json`). `entityType` and `lookupField` are removed: flat JSON seeds use `format: "json"` with `entity` and `identity`.
-   - Specialty keys (`actions`, `prompts`, `flows`, `settings`) accept a path string or `{ "path": … }`, nothing else.
-   - Validation rejects unknown keys, a `fields` source that isn't `frontmatter.<name>`, `body`, `filename` or `path`, and an `entity` that neither the pack, its dependencies nor the SDK declares.
+   - The schema is the source of truth (`manifest-schema.ts` → `abuddy.schema.json`). `entityType` and `lookupField` are removed: flat JSON seeds use a format with `format: "json"`, `entity` and `identity`.
+   - **A seed entry is `{ path, format }` or `{ seeder }`.** Any other key on an entry (`fields`, `identity`, `tree`, `entity`, `media`, `compiler`) is a validation error. Specialty keys (`actions`, `prompts`, `flows`, `settings`) accept a path string or `{ "path": … }`, nothing else.
+   - **Format references.** An entry's `format` is a name in the pack's own `seedFormats` (`"notes"`), or `"<dependency id>:<name>"` for a format a dependency defines. The built-in formats (`markdown-tree`, `json`) are used only inside a `seedFormats` definition, never named by an entry.
+   - **No overrides.** An entry can't change any part of the format it names. A pack that needs different settings (other frontmatter keys, another branch file, other defaults) defines its own format. Overrides may be added later as an additive key; see Deferred.
+   - **Formats don't need ownership.** A pack can define a format for any entity type it can seed: its own, a dependency's or the SDK's. Rows still go through the owning pack's seed hooks (Decision 4), so the owner keeps control of what a valid row is.
+   - Validation rejects: an unknown key on an entry or a format; a `fields` source that isn't `frontmatter.<name>`, `body`, `filename` or `path`; `fields` outside `markdown-tree`; a format with both or neither of `format` and `compiler`; an entry naming a format that doesn't exist, or a `<pack>:` prefix that isn't one of the pack's dependencies; and a format `entity` that neither the pack, its dependencies nor the SDK declares.
    - **Types.** Frontmatter is parsed as YAML 1.2, so an unquoted `2024` is a number. A field with `"type": "string"` is coerced to a string, so `title: 2024` stays the title the regexes read today.
    - **Records carry their entity type.** `entity` and `tree` produce records tagged with `entity` or `branchEntity`. `fields` and `identity` configure the generic `markdown-tree` compiler and the no-hooks seeder; they describe one field map, so a type whose branches and leaves need different fields (library's Collections and Documents) uses a compiler module that tags each record itself.
-   - **Compiler modules.** `compiler` names a pack module whose default export compiles the entry's `path` into records, each with its `entity`. The SDK exports the generic walker (`compileMarkdownTree(dir, options)`: sorted walk, frontmatter parsed with an established YAML/frontmatter library, branch files, display-name defaults, media) so a module can call it and post-process the items. The module also decides what each record's `sourceHash` covers; the generic default hashes the record's mapped fields and, for branches, its children's hashes. The build loads compiler modules with `tsx/esm/api`, in the packaged app's CLI as well as in the monorepo.
-2. **Formats are limited.** `markdown-tree` and `json` (an array of records, or a tree with `children`), plus `compiler` modules. No other formats until a pack needs one. The generic compiler emits raw bodies; type-specific body parsing (library sections, FAQ headings) belongs in the pack's compiler module.
+   - **Compiler modules.** A format's `compiler` names a module (in the pack defining the format) whose default export compiles the entry's `path` into records, each with its `entity`. The SDK exports the generic walker (`compileMarkdownTree(dir, options)`: sorted walk, frontmatter parsed with an established YAML/frontmatter library, branch files, display-name defaults, media) so a module can call it and post-process the items. The module also decides what each record's `sourceHash` covers; the generic default hashes the record's mapped fields and, for branches, its children's hashes. The build loads a pack's own compiler modules with `tsx/esm/api`, in the packaged app's CLI as well as in the monorepo; a dependency's come from its bundle (Decision 12).
+2. **Built-in formats are limited.** `markdown-tree` and `json` (an array of records, or a tree with `children`), plus `compiler` modules. No other built-in formats until a pack needs one; packs name their own in `seedFormats`. The generic compiler emits raw bodies; type-specific body parsing (library sections, FAQ headings) belongs in the pack's compiler module.
 3. **One generic seeder** in the SDK handles trees and flat arrays: the walk, identity lookup, `sourceHash` skipping, import modes, include sets, media, counts and preview items. It knows nothing about any pack's entity types. `createCollectionSeeder` and `seed/standard-seeds.ts` are deleted; actions and prompts use the generic seeder through their specialty keys' defaults.
 4. **Seed hooks belong to the pack that owns the entity type.** Hooks are not part of a seed entry.
-   - A pack declares them per entity type in its manifest (`seedHooks: { "Note": "src/features/notes/be/seed-hooks.ts" }`). Its generated pack entry registers them in the SDK's seed-hook registry, keyed by entity type, the way steps are registered.
+   - A pack declares them per entity type in its manifest (`seedHooks: { "Note": "src/seeds/hooks/notes.ts#noteSeedHooks" }`), only for entity types in its own `entities`. They stay separate from `seedFormats`: formats are per source and anyone may define one; hooks are per entity type and only the owner may. Its generated pack entry registers them in the SDK's seed-hook registry, keyed by entity type, the way steps are registered.
    - A hooks module may export `find(record, parentId)`, `create(record, parentId)`, `update(id, record)` and `remove(id)`. Hook modules are typed by the SDK's generic `SeedHooks<Record>` type, not by any SDK-owned entity shape.
    - The generic seeder looks hooks up by each record's entity type at seed time, so any pack seeding `Note` (default-setup or a pack that depends on it) gets default-setup's hooks.
-   - When a `find` hook is registered, it owns identity and the entry's `identity` is ignored. Without hooks the seeder writes rows directly (`createEntityWithDefaults`, `tree.relKind` links), which covers a single relation kind only.
-   - Default-setup registers hooks for Note, Document and Collection that call their repository commands, so shortCodes, display order, `PARENT_OF`/`contains`, title validation, and `REFERENCES` sync on create and update keep working.
+   - When a `find` hook is registered, it owns identity and the format's `identity` is ignored. Without hooks the seeder writes rows directly (`createEntityWithDefaults`, `tree.relKind` links), which covers a single relation kind only.
+   - Default-setup registers hooks for Note, Document and Collection that call their repository commands, so shortCodes, display order, `PARENT_OF`/`contains`, title validation, and `REFERENCES` sync on create and update keep working. Seed code lives with the seed sources: hook modules in `src/seeds/hooks/` (`notes.ts`, `library.ts`, importing the features' repositories through `#generated/repository`), compiler modules in `src/seeds/compilers/`. Neither directory is scanned as seed source.
 5. **Specialty compilers stay** for flows (the flow DSL and steps), actions and prompts (DSL defs), and settings. They keep their current keys, as a path string or `{ "path": … }`.
-6. **Unknown seed keys fail the build.** A string entry whose key isn't a specialty key, and an object entry for a non-specialty key without `format`, `compiler` or `seeder`, is an error naming the key, not a silent skip. Migrate default-setup, the fixture pack, the example pack's manifest and the scaffold templates in the same change.
+6. **Unknown seed keys fail the build.** A string entry whose key isn't a specialty key, and an object entry for a non-specialty key that isn't `{ path, format }` or `{ seeder }`, is an error naming the key, not a silent skip. Migrate default-setup, the fixture pack, the example pack's manifest and the scaffold templates in the same change.
 7. **Library and notes leave the SDK.** Delete `compile-library.ts`, `library-utils.ts`, `compile-notes.ts`, `compile-faq.ts`, `library-seeder.ts`, `notes-seeder.ts`, `import-notes.ts` and any built-in names. `parseMarkdownSections` and the section content types move to default-setup's library compiler module. Move `ExportedItem`/`ExportedNote`/`CompiledFAQ` and the Document/Collection/Note shapes to default-setup, declared in its `abuddy.json` like its other entities. This reverses those parts of `706dc987e`; its Settings/Secret moves stay (see the Settings/Secrets internal-category plan).
 8. **`BuiltinRepositories` loses its library and notes commands.** The SDK reaches them only through default-setup's registered seed hooks.
-9. **FAQs use a default-setup compiler module** wrapping `compileMarkdownTree` (the question is the first `# heading`, which no field source expresses), with no `entity`: compiled, not seeded. The output is `faqs.seed.json`; `settings/be/faqs.ts` reads it.
+9. **FAQs use a default-setup format with a compiler module** (`src/seeds/compilers/faqs.ts`, wrapping `compileMarkdownTree`: the question is the first `# heading`, which no field source expresses), with no `entity`: compiled, not seeded. The output is `faqs.seed.json`; `settings/be/faqs.ts` reads it, typed by `FAQItem` in `settings/be/types.ts`.
 10. **Notes get proper change tracking.** Compiled notes carry `sourceHash` like library items, and the generic seeder applies the same rules to every entry:
     - `keep-existing` skips existing items.
     - `replace-on-collision` (and no mode) updates an existing item only when its stored hash differs from the compiled one: an unchanged `sourceHash` skips, and an item with no stored hash is treated as user-owned and skipped. This matches today's actions, prompts and library.
@@ -143,7 +160,11 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
     - Notes seeded before this change have no stored hash, so they count as user-owned and are never updated by seeds again (the welcome note included).
     - Library hashes aren't required to match the old ones. If they differ, seeded documents and collections are overwritten once, on the first boot after the upgrade, including user edits to them.
     Don't add code to avoid either.
-11. **The orchestrator owns seed files.** `compilePack` iterates the manifest's keys, and seeds live under `packConfig.seeds` rather than being spread onto `PackConfig`. It writes `<key>.seed.json` and `media/<key>/` itself (compilers return data, not files), and a seed index (keys, labels, counts) that preview and the import dialog read. `compile.config.ts` support is deleted.
+12. **A pack's compiler modules ship with its bundle.** A dependency's source tree isn't installed, so `abuddy build` bundles every compiler module named in the pack's `seedFormats` into `dist/build/seed-compilers.mjs` (exports keyed by format name), next to `steps.build.mjs`, with the same bundler and no FE or runtime imports.
+    - A dependent's build resolves `"<dep>:<name>"` formats from the dependency's snapshot manifest, and loads a compiler module from the dependency's `build/seed-compilers.mjs` (the build dir `resolveDepArtifacts` already returns for step modules). Its own formats' compiler modules still load from source with `tsx/esm/api`.
+    - Built-in packs build the same file into `dist/build/`, so default-setup's formats work for dependents in the monorepo and in the packaged app alike.
+    - Because every pack compiles a named format with the same settings and module, records and `sourceHash` for the same sources match across packs.
+11. **The orchestrator owns seed files.** `compilePack` iterates the manifest's keys, and seeds live under `packConfig.seeds` rather than being spread onto `PackConfig`, each entry resolved to its format's settings (from the pack or a dependency) before compiling and code generation. It writes `<key>.seed.json` and `media/<key>/` itself (compilers return data, not files), and a seed index (keys, labels, counts) that preview and the import dialog read. `compile.config.ts` support is deleted.
 
 ## Phases
 
@@ -197,11 +218,23 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Done when:** docs describe only the new mechanism and the scaffold's example uses it.
 
+### Phase 6 — Named formats
+
+- Schema: top-level `seedFormats` (name → format definition, name `^[a-z][a-z0-9-]*$`) and the Decision 1 entry shape (`{ path, format }` or `{ seeder }`); the old inline entry keys are removed. Every Decision 1 validation error has a test. `abuddy.schema.json`, `api:update`.
+- Resolution: one SDK function resolves a pack's `boot.seed` against its own `seedFormats` and its dependencies' snapshot manifests, used by `buildPackConfigFromManifest`, `compilePack` and `generate-entries` (seeder registration options, seeded keys, entity validation). A dependency format carries where its compiler module loads from (Decision 12).
+- Build (Decision 12): `abuddy build` writes `dist/build/seed-compilers.mjs` for packs whose formats name compiler modules; a dependent's build loads dependency compiler modules from it. The CLI passes dependency manifests and build dirs to the bridge.
+- Move default-setup's seed hooks to `src/seeds/hooks/` (`features/notes/be/seed-hooks.ts` → `notes.ts`, `features/library/be/seed-hooks.ts` → `library.ts`) and update `seedHooks` paths, specs and docs.
+- Migrate default-setup (`notes`, `library`, `faqs` formats; entries `{ path, format }`), the external fixture pack (a `memos` markdown format and a `quick-memos` compiler format), the dependent-pack fixture (`default-setup:notes` and `default-setup:library`, no field maps or compiler modules), `test:packaged-authoring` (its own compiler format, and `default-setup:notes` through the built dependency), the scaffold template, the parity harness and specs, and the import-pack-seeds E2E.
+- The dependent-pack spec asserts identical rows (including `sourceHash`) to default-setup's own `notes` and `library` entries over the same sources, and that library media and sections come through default-setup's bundled compiler module.
+- Docs: `seeds.md` and `manifest.md` describe `seedFormats`, entry references, no overrides, and which pack may define formats versus hooks; default-setup's `CLAUDE.md` and `src/seeds/CLAUDE.md` (including `hooks/` and `compilers/`).
+
+**Done when:** no in-repo entry carries format settings; default-setup's seed hooks and compiler modules live under `src/seeds/`; the dependent-pack fixture and `test:packaged-authoring` seed default-setup's notes and library through `"default-setup:<name>"` with no field maps or compiler modules of their own; the parity gate, dependent-pack spec, external-pack test, import-pack-seeds E2E and example pack pass; and resolution, the bundled compiler loading and each validation error are mutation-checked.
+
 ## Deferred
 
 - External packs' feature settings compile but are ignored at runtime (`HOST_OWNED_SEED_SECTIONS`). Not changed here.
 - Settings/Secrets as an SDK-internal entity category, not in any facade. Planned separately.
-- Reusable compiler formats: a pack exporting its compiler (e.g. a dependent writing `format: "library"`). Dependents ship their own compiler modules for now.
+- Entry overrides of a named format (e.g. changing one field of `default-setup:notes`). Not supported: a pack that needs different settings defines its own format. If added later, it's an additive key with objects merged by key (`tree`, `fields` by field name) and scalars, arrays and each field spec replaced.
 - User edits don't clear a row's `sourceHash` (`updateDocument` keeps the stored hash when none is passed), so a later seed change overwrites edited seeded rows. Pre-existing; not changed here.
 
 ## Constraints
