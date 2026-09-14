@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
+import { findHostImports, findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -94,5 +94,27 @@ describe('findRawPackHelpers', () => {
     write('pack/feature.ts', "import { emit } from '#generated/events';\nimport { getActor } from '@abuddy/sdk/helpers';\nimport { tx } from '@abuddy/sdk/ears';\n");
     write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/sdk/ears';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
+  });
+});
+
+describe('findHostImports', () => {
+  it.each([
+    ["import { edgeStore } from '@abuddy/host/ears';", '@abuddy/host/ears'],
+    ["import type { PackRegistration } from '@abuddy/host/packs';", '@abuddy/host/packs'],
+    ["export { clearMemory } from '@abuddy/host/ears';", '@abuddy/host/ears'],
+    ["const backup = await import('@abuddy/host/backup');", '@abuddy/host/backup'],
+    ["const { envs } = require('@abuddy/host/ears');", '@abuddy/host/ears'],
+    ["import '@abuddy/host';", '@abuddy/host'],
+    // A CLI template writes this as pack source
+    ["const REPO = `import { edgeStore } from '@abuddy/host/ears';`;", '@abuddy/host/ears'],
+  ])('flags %s', (code, specifier) => {
+    write('pack/feature.ts', code);
+    expect(findHostImports(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${specifier}`]);
+  });
+
+  it('checks generated files and allows the SDK', () => {
+    write('pack/feature.ts', "import { findRelations, untypedQx } from '@abuddy/sdk/ears';\nimport { services } from '#generated/services';\n");
+    write('pack/__generated__/ears.ts', "import { qx } from '@abuddy/host/ears';\n");
+    expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @abuddy/host/ears']);
   });
 });

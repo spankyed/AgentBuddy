@@ -38,7 +38,7 @@ export async function bundlePackRuntime(
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   const aliases = readTsconfigAliases(packDir);
   const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [stubFrontendAssetsPlugin()];
+  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
   if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
   if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
 
@@ -83,7 +83,7 @@ export async function bundlePackStepBuild(
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   const aliases = readTsconfigAliases(packDir);
   const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [stubFrontendAssetsPlugin()];
+  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
   if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
   if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
 
@@ -127,7 +127,7 @@ export async function bundlePackSeedCompilers(
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   const aliases = readTsconfigAliases(packDir);
   const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [stubFrontendAssetsPlugin()];
+  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
   if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
   if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
   const contents = Object.entries(compilers)
@@ -152,6 +152,21 @@ export async function bundlePackSeedCompilers(
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/**
+ * Fails the bundle when pack code imports @abuddy/host, the app's private package: installed
+ * AgentBuddy doesn't provide it to packs, so it would only fail later, at load. Packs use @abuddy/sdk.
+ */
+export function rejectHostImportsPlugin(): import('esbuild').Plugin {
+  return {
+    name: 'reject-host-imports',
+    setup(build) {
+      build.onResolve({ filter: /^@abuddy\/host(?:\/|$)/ }, (args) => ({
+        errors: [{ text: `${args.path} is the app's private host package; packs import @abuddy/sdk instead (imported from ${path.relative(process.cwd(), args.importer) || args.importer})` }],
+      }));
+    },
+  };
 }
 
 /**

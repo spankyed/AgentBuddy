@@ -307,6 +307,17 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
       root: packDir,
       configFile: false,
       plugins: [
+        {
+          // The app's private host package isn't provided to packs; they import @abuddy/sdk
+          name: 'reject-host-imports',
+          enforce: 'pre',
+          resolveId(id: string, importer?: string) {
+            if (/^@abuddy\/host(?:\/|$)/.test(id)) {
+              this.error(`${id} is the app's private host package; packs import @abuddy/sdk instead${importer ? ` (imported from ${importer})` : ''}`);
+            }
+            return null;
+          },
+        },
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
         vue(),

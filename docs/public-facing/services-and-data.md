@@ -61,7 +61,7 @@ There is no fixed interface — the shape is pack-specific. Services are typical
 
 1. Imports all feature and pack-level services
 2. Exports a `featureServices` object aggregating them
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, and `repository` typed with your repositories)
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
@@ -73,6 +73,17 @@ services.repository.bookmarkQueries;    // repositories (see below)
 ```
 
 Actions access services via the `services` parameter. Service names are global across installed packs: the host refuses to register a pack whose service name another pack or the host already uses.
+
+### Host data services
+
+The host implements operations on the app's stored data as a whole; packs call them through `services`:
+
+| Service | Methods |
+|---|---|
+| `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
+| `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
+
+Pack code never imports `@abuddy/host`, the app's private package: `abuddy build` fails a bundle that does.
 
 ---
 
@@ -128,6 +139,19 @@ tx(plainId).put('title', 42)       // ok: a plain id doesn't say which entity it
 ```
 
 `tx` from `@abuddy/sdk/ears` is the same function, unchecked.
+
+`qx(id).links(kinds)` returns the ids an entity links to. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
+
+```typescript
+import { findRelations, getRelationStats, removeRelationById } from '@abuddy/sdk/ears';
+
+const [edge] = findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO });
+edge.info;                         // { sourceHandle: 'yes' }
+removeRelationById(edge.id);
+getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTargets }
+```
+
+`untypedQx` from `@abuddy/sdk/ears` is the unchecked query, for fields only known at runtime.
 
 ### Repository pattern
 
