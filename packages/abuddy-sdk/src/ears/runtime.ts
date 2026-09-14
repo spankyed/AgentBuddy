@@ -5,7 +5,7 @@
  * host (api) provides at boot via initEARSRuntime(). The in-memory engine
  * and helpers import getters from here to access host-provided services.
  */
-import type { EARS, EntityShapes, ShapeOf } from '../types/entities.ts';
+import type { EARS, EntityNameArg, EntityShapes, ShapeOf } from '../types/entities.ts';
 
 // ─── PersistenceSink interface ─────────────────────────────────────────
 
@@ -54,33 +54,35 @@ export function getEntityTypeChecker(): (v: string) => boolean { return _isEntit
 // ─── QueryBuilder fluent interface ─────────────────────────────────────
 
 /**
- * `S` is the entity shape map reads are typed against: `{}` (untyped) from `@abuddy/sdk/ears`,
- * the pack's `PackShapes` from its `#generated/ears`.
+ * `S` is the entity shape map reads are typed against and `N` the entity names accepted as
+ * arguments: `{}` and `string` (unchecked) from `@abuddy/sdk/ears`, the pack's `PackShapes` and
+ * `EntityName` from its `#generated/ears`.
  */
-export interface QueryBuilder<E extends string = string, S extends EntityShapes = {}> {
-  ofType<T extends string>(t: T): QueryBuilder<T, S>;
-  inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E, S>;
-  where<K extends keyof ShapeOf<S, E> & string>(k: K, v?: ShapeOf<S, E>[K]): QueryBuilder<E, S>;
-  withRole(r: string): QueryBuilder<E, S>;
-  relatedTo(target: EARS.EntityId): QueryBuilder<E, S>;
-  related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E, S>;
+export interface QueryBuilder<E extends string = string, S extends EntityShapes = {}, N extends string = string> {
+  ofType<T extends string>(t: EntityNameArg<N, T>): QueryBuilder<T, S, N>;
+  inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E, S, N>;
+  where<K extends keyof ShapeOf<S, E> & string>(k: K, v?: ShapeOf<S, E>[K]): QueryBuilder<E, S, N>;
+  withRole(r: string): QueryBuilder<E, S, N>;
+  relatedTo(target: EARS.EntityId): QueryBuilder<E, S, N>;
+  related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E, S, N>;
   /**
    * Navigates to the entities related to the current set — unlike `relatedTo`
    * and `related`, which filter it. The result therefore holds `tgtType`
    * entities, not `E`; with `tgtType` omitted the target is unknown.
    */
-  linksTo<T extends EARS.Entity>(
+  linksTo<T extends string>(
     relKinds: string | readonly string[],
-    tgtType: T | readonly T[],
+    tgtType: EntityNameArg<N, T> | readonly EntityNameArg<N, T>[] | undefined,
     asSrc?: boolean,
-  ): QueryBuilder<T, S>;
-  // Target absent or not statically known — the resulting entity type is unknown.
+  ): QueryBuilder<T, S, N>;
+  // Target absent — the resulting entity type is unknown. A target known only at runtime
+  // (typed string) takes the overload above and yields QueryBuilder<string>.
   linksTo(
     relKinds: string | readonly string[],
-    tgtType?: EARS.Entity | readonly EARS.Entity[],
+    tgtType?: undefined,
     asSrc?: boolean,
-  ): QueryBuilder<string, S>;
-  links<K extends string>(relKinds: K | readonly K[], tgtType?: EARS.Entity | EARS.Entity[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId }>;
+  ): QueryBuilder<string, S, N>;
+  links<K extends string, T extends string = string>(relKinds: K | readonly K[], tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId }>;
   edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
   pick<A extends readonly (keyof ShapeOf<S, E> & string)[]>(
     fields: A,
@@ -97,22 +99,22 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
    * Two overloads because the implementation only tags rows with `relation`
    * when more than one relation kind is requested.
    */
-  linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof ShapeOf<S, T> & string)[]>(
+  linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(
     relKinds: readonly [K, K, ...K[]],
     fields: A,
-    tgtType?: T | T[],
+    tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[],
   ): ({ id: EARS.EntityId; relation: K } & Pick<ShapeOf<S, T>, A[number]>)[];
-  linksPick<K extends string, T extends EARS.Entity, A extends readonly (keyof ShapeOf<S, T> & string)[]>(
+  linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(
     relKinds: K | readonly [K],
     fields: A,
-    tgtType?: T | T[],
+    tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[],
   ): ({ id: EARS.EntityId } & Pick<ShapeOf<S, T>, A[number]>)[];
-  orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S>;
-  reverse(): QueryBuilder<E, S>;
-  limit(n: number): QueryBuilder<E, S>;
+  orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S, N>;
+  reverse(): QueryBuilder<E, S, N>;
+  limit(n: number): QueryBuilder<E, S, N>;
   page(size: number, cursor?: string | null): { items: EARS.EntityId[]; nextCursor: string | null };
-  distinct(field?: keyof ShapeOf<S, E> & string): QueryBuilder<E, S>;
-  groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S>>;
+  distinct(field?: keyof ShapeOf<S, E> & string): QueryBuilder<E, S, N>;
+  groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S, N>>;
   ids(): EARS.EntityId[];
   id(): EARS.EntityId | null;
   count(): number;
@@ -120,7 +122,7 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
   last(): EARS.EntityId | null;
   exists(): boolean;
   map<T>(fn: (id: EARS.EntityId) => T): T[];
-  forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E, S>;
+  forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E, S, N>;
   reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
 }
 

@@ -20,7 +20,7 @@ export interface BaseEntity {
 export const bus: "bus";
 
 // @public
-export function defineEars<S extends EntityShapes>(): TypedEars<S>;
+export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N>;
 
 // @public
 export function defineSystem<Id extends string>(id: Id, opts?: {

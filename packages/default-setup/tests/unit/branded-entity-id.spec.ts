@@ -38,8 +38,14 @@ describe('Branded EntityId — createEntity overloads', () => {
     expectTypeOf(createEntity(EARS.Entity.Flow)).toEqualTypeOf<EARS.EntityId<'Flow'>>();
   });
 
-  it('createEntity with unregistered entity returns EntityId<string>', () => {
-    expectTypeOf(createEntity('SomeUnregistered')).toEqualTypeOf<EARS.EntityId>();
+  it('createEntity with an entity name only known at runtime returns EntityId<string>', () => {
+    const entityType: string = 'SomeUnregistered';
+    expectTypeOf(createEntity(entityType)).toEqualTypeOf<EARS.EntityId>();
+  });
+
+  it('createEntity rejects a literal entity name the pack does not declare', () => {
+    // @ts-expect-error not an entity this pack or its dependencies declare
+    createEntity('SomeUnregistered');
   });
 });
 

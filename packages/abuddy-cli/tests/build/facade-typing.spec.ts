@@ -126,9 +126,27 @@ sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActiv
 emit('threads', { type: 'MEMO_ADDED', text: 'x' });
 
 export type Undeclared = Expect<Equal<EntityShape<'Nope'>['anything'], unknown>>;
-const other = findAll('Nope')[0]!;
+// An entity name only known at runtime is accepted, and reads as unknown values
+declare const runtimeName: string;
+const other = findAll(runtimeName)[0]!;
 // @ts-expect-error unknown field can't be used without narrowing
 other.anything.length;
+qx('Memo').linksTo('contains', runtimeName).pickAll();
+findAll<{ title: string }>('Item');
+
+// A literal must name an entity this pack or its dependency declares
+// @ts-expect-error undeclared entity name
+findAll('Nope');
+// @ts-expect-error an explicit shape doesn't let an undeclared name through
+findAll<{ title: string }>('Nope');
+// @ts-expect-error undeclared entity name
+qx('Nope');
+// @ts-expect-error undeclared entity name in a seed list
+qx(['Memo', 'Nope']);
+// @ts-expect-error undeclared relation target
+qx('Memo').linksTo('contains', 'Nope');
+// @ts-expect-error undeclared entity name
+createEntity('Nope');
 `;
 
 function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {

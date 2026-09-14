@@ -517,6 +517,7 @@ ${regProps.join('\n')}
     const registry = mergeRegistries(manifest.id, manifest, depTypes);
     const { imports: shapeImports, entries: shapeEntries } = entityShapeEntries();
     const depShapes = depTypeImports('PackEntityShapes');
+    const entityNames = [...registry.entities.keys()].map((name) => `'${name}'`);
     return `${emitEARS(manifest.id, registry)}
 // ── Typed EARS helpers ──────────────────────────────────────────
 // The query helpers typed against this pack's entity shapes (its own and its
@@ -540,11 +541,17 @@ export type PackShapes = SdkEntityShapes & OwnEntityShapes${depShapes.aliases.ma
 /** An entity type's shape in this pack; undeclared types read as base fields plus \`unknown\` values. */
 export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 
+/**
+ * Entity names the helpers below accept as literals: this pack's and its dependencies'. A name
+ * known only at runtime (typed \`string\`) is accepted unchecked.
+ */
+export type EntityName = ${[...entityNames, 'keyof PackShapes & string'].join(' | ')};
+
 export const {
   qx, findById, findByIdRaw, findAll, findWhere, findFirst,
   findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
   createEntity, createEntityWithDefaults, updateEntity, getAttr, getAttrs,
-} = /*#__PURE__*/ defineEars<PackShapes>();
+} = /*#__PURE__*/ defineEars<PackShapes, EntityName>();
 `;
   }
 

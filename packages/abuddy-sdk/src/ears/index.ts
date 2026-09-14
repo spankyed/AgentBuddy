@@ -25,7 +25,7 @@ export {
 export type { CreatedEntityFields } from './transaction-helpers.ts';
 export type { PersistenceSink } from './runtime.ts';
 export { EARS } from '../types/entities.ts';
-export type { EntityShapes, ShapeOf, BaseEntity } from '../types/entities.ts';
+export type { EntityShapes, ShapeOf, EntityNameArg, BaseEntity } from '../types/entities.ts';
 export {
   defineEars,
   type TypedEars, type TypedQx, type TypedFindById, type TypedFindAll, type TypedFindWhere, type TypedFindFirst, type TypedCreateEntity,

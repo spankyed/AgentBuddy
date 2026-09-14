@@ -117,3 +117,12 @@ export type ShapeOf<S extends EntityShapes, E extends string> =
   [E] extends [keyof S]
     ? S[E] & BaseEntity
     : BaseEntity & Record<string, unknown>;
+
+/**
+ * An entity name parameter checked against the names `N` a pack declares; `E` is inferred from the
+ * argument. A literal must be one of `N`: an undeclared name isn't a registered type at runtime, so
+ * it matches nothing. A name only known at runtime (typed `string` or the open `EARS.Entity`) passes
+ * unchecked, and so does everything when `N` is `string`.
+ */
+export type EntityNameArg<N extends string, E extends string> =
+  string extends E ? E : [E] extends [N] ? E : N;
