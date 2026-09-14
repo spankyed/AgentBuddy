@@ -79,7 +79,7 @@ The build pipeline:
 
 1. `abuddy generate` — resolves dependencies and generates EARS type definitions
 2. `abuddy generate-entries` — reads `abuddy.json` and generates all files in `src/__generated__/`
-3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests)
+3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and seed hooks can't use native modules or optional `@abuddy/sdk` peers such as `ai`
 4. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to `dist/runtime/seeds/`
 5. Snapshot — writes `dist/types/snapshot.json` (types, defs, manifest) for downstream packs
 6. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite

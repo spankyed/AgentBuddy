@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SHARED_DEPS } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
+import { checkSeedRuntimeLoads } from './seed-runtime-check';
 
 export interface BundleRuntimeOptions {
   /** Minify for release bundles; dev builds keep readable output with source maps. */
@@ -160,7 +161,8 @@ export const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
 /**
  * Bundle the pack's seed runtime (src/__generated__/seed-runtime.ts: entity types, repositories,
  * seed hooks) into dist/build/seed-runtime.mjs. Only @abuddy/sdk stays external, so a dependent's
- * unit tests can load it with just their own @abuddy/sdk installed and share its instance.
+ * unit tests can load it with just their own @abuddy/sdk installed and share its instance. The
+ * build then loads it that way, so a bundle that can't load fails here.
  */
 export async function bundlePackSeedRuntime(
   packDir: string,
@@ -179,6 +181,7 @@ export async function bundlePackSeedRuntime(
   if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
   if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
 
+  const outfile = path.join(outputDir, 'build', SEED_RUNTIME_FILE);
   try {
     await esbuild.build({
       entryPoints: [entryPath],
@@ -186,7 +189,7 @@ export async function bundlePackSeedRuntime(
       format: 'esm',
       platform: 'node',
       target: 'node20',
-      outfile: path.join(outputDir, 'build', SEED_RUNTIME_FILE),
+      outfile,
       external: ['@abuddy/sdk', '@abuddy/sdk/*'],
       tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
       plugins,
@@ -195,10 +198,10 @@ export async function bundlePackSeedRuntime(
       // Bundled CommonJS dependencies may call require(); give the ESM bundle one
       banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
     });
-    return { success: true };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
+  return checkSeedRuntimeLoads(packDir, outfile);
 }
 
 /**
