@@ -98,7 +98,7 @@ import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
 import type { DocumentDTO, CollectionDTO } from '@/__generated__/types'
-import type { ContentSection } from '@abuddy/sdk'
+import type { ContentSection } from '@/features/library/be/types'
 
 const actorSystem = useActorSystem()
 

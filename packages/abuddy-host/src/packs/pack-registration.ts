@@ -12,6 +12,7 @@ import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/design
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
+import { seedHookRegistry } from '@abuddy/sdk/seed';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -114,7 +115,12 @@ export function registerPack(pack: PackRegistration): void {
         registeredBlocks.push(block.type);
       }
     }
+
+    for (const [entity, hooks] of Object.entries(registration.seedHooks ?? {})) {
+      seedHookRegistry.register(entity, hooks, registration.id);
+    }
   } catch (err) {
+    seedHookRegistry.unregisterAll(registration.id);
     for (const type of registeredSteps) stepRegistry.unregister(type);
     for (const type of registeredArtifacts) artifactRegistry.unregister(type);
     for (const type of registeredBlocks) blockRegistry.unregister(type);
@@ -147,6 +153,7 @@ export function unregisterPack(packId: string): void {
   if (reg.blocks) {
     for (const block of reg.blocks) blockRegistry.unregister(block.type);
   }
+  seedHookRegistry.unregisterAll(packId);
 
   const systemDesignations = reg.systems.filter(s => s.designation).map(s => s.designation!);
   const featureDesignations = (reg.features ?? []).filter(f => f.designation).map(f => f.designation!);

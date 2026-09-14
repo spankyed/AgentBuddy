@@ -2,7 +2,7 @@ import { readFileSync, existsSync, readdirSync } from 'fs';
 import { extname, join } from 'path';
 import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
-import { STANDARD_SEED_DEFAULTS as COLLECTION_DEFAULTS } from '../seed/standard-seeds.ts';
+import { entryEntities } from './seeds/records.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -166,6 +166,14 @@ export function parseExportedTypeNames(content: string): string[] {
   return [...new Set(names)];
 }
 
+/** The SDK seeders of the specialty seed keys */
+const SPECIALTY_SEEDERS: Record<string, { factory: string; args: string }> = {
+  actions: { factory: 'createSeeder', args: `{ key: 'actions', identity: ['label'] }` },
+  prompts: { factory: 'createSeeder', args: `{ key: 'prompts', identity: ['label'] }` },
+  flows: { factory: 'createFlowSeeder', args: '' },
+  settings: { factory: 'createSettingsSeeder', args: '' },
+};
+
 const COMPILED_DIR_ACCESSORS = `let _compiledDir = '';
 export function setCompiledDir(dir: string): void { _compiledDir = dir; }
 export function getCompiledDir(): string {
@@ -269,6 +277,10 @@ function exportsName(content: string, name: string): boolean {
   const listed = [...content.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}/g)]
     .some((m) => m[1].split(',').some((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim() === name));
   return declared.test(content) || listed;
+}
+
+function toIdentifier(key: string): string {
+  return key.replace(/\W/g, '_');
 }
 
 function toPascalCase(id: string): string {
@@ -397,9 +409,8 @@ export function generatePackFiles(
       ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
       : '';
 
-    const seed = manifest.boot?.seed ?? {};
-    const seedKeys = Object.keys(seed).filter(k => k !== 'settings' && k !== 'faqs');
-    const artifactsList = seedKeys.map(k => `'${k}'`).join(', ');
+    const artifactsList = seededKeys().map(k => JSON.stringify(k)).join(', ');
+    const hookEntries = seedHookEntries();
     const seedPolicy = manifest.boot?.seedPolicy;
     const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
 
@@ -413,6 +424,7 @@ import { featureServices } from './services.js';
 import { EARS } from './ears.js';
 ${hooksImport}
 import './seeders.js';
+${hookEntries.map(([entity, path, exportName]) => `import { ${exportName} as __seedHooks_${entity} } from '${path}';`).join('\n')}
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
@@ -427,6 +439,7 @@ export const registration: PackRegistration = {
 ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
+${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},
@@ -528,13 +541,17 @@ ${regProps.join('\n')}
 
   // The generated PackShapes, EntityName and Node override are part of the typed EARS contract
   // (packages/abuddy-sdk/TYPED-EARS.md)
-  function generateEars(): string {
+  function packRegistry() {
     let depTypes = opts.depTypes;
     if (!depTypes) {
       depTypes = new Map<string, PackTypeManifest>();
       for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
     }
-    const registry = mergeRegistries(manifest.id, manifest, depTypes);
+    return mergeRegistries(manifest.id, manifest, depTypes);
+  }
+
+  function generateEars(): string {
+    const registry = packRegistry();
     const { imports: shapeImports, entries: shapeEntries } = entityShapeEntries();
     const depShapes = depTypeImports('PackEntityShapes');
     const entityNames = [...registry.entities.keys()].map((name) => `'${name}'`);
@@ -904,63 +921,51 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
   }
 
   function generateSeeders(): string {
-    const seed = manifest.boot?.seed;
-    // pack-entry.ts always imports the compiledDir accessors, so emit them even without seeds
-    if (!seed || typeof seed !== 'object') return `${HEADER}\n${COMPILED_DIR_ACCESSORS}`;
-
+    const seed = manifest.boot?.seed ?? {};
+    const entityNames = new Set(packRegistry().entities.keys());
     const seedImports = new Set<string>();
     const packImports: string[] = [];
     const registrations: string[] = [];
 
-
     for (const [key, value] of Object.entries(seed)) {
-      const config: SeedEntryConfig = typeof value === 'string' ? {} : value;
-      const customSeeder = config.seeder;
-
-      if (customSeeder) {
-        const importName = `${key}Seeder`;
-        packImports.push(`import { seed as ${importName} } from '${toImportPath(root, customSeeder)}';`);
-        registrations.push(`registerSeeder({ key: '${key}', seed: ${importName} });`);
-        continue;
-      }
-
-      if (key in COLLECTION_DEFAULTS || config.entityType) {
-        const defaults = COLLECTION_DEFAULTS[key] ?? {} as Partial<{ entityType: string; lookupField: string }>;
-        const entityType = config.entityType ?? defaults.entityType;
-        const lookupField = config.lookupField ?? defaults.lookupField;
-        if (!entityType || !lookupField) {
-          throw new Error(`Seed "${key}": collection seeder requires entityType and lookupField`);
+      const entry: SeedEntryConfig = typeof value === 'string' ? { path: value } : value;
+      for (const entity of entryEntities(entry)) {
+        if (!entityNames.has(entity)) {
+          throw new Error(`Seed "${key}": entity "${entity}" isn't declared by this pack, its dependencies or the SDK`);
         }
-        seedImports.add('createCollectionSeeder');
-        // String literal: the entity (e.g. Action) may belong to a dependency this pack's EARS doesn't declare
-        registrations.push(
-          `registerSeeder(createCollectionSeeder({ key: '${key}', entityType: '${entityType}', lookupField: '${lookupField}' }));`
-        );
+      }
+
+      if (entry.seeder) {
+        const importName = `__seeder_${toIdentifier(key)}`;
+        packImports.push(`import { seed as ${importName} } from '${toImportPath(root, entry.seeder)}';`);
+        registrations.push(`registerSeeder({ key: ${JSON.stringify(key)}, seed: ${importName} });`);
         continue;
       }
 
-      const SEEDER_FACTORIES: Record<string, string> = {
-        flows: 'createFlowSeeder',
-        library: 'createLibrarySeeder',
-        notes: 'createNotesSeeder',
-        settings: 'createSettingsSeeder',
+      const specialty = SPECIALTY_SEEDERS[key];
+      if (specialty) {
+        seedImports.add(specialty.factory);
+        registrations.push(`registerSeeder(${specialty.factory}(${specialty.args}));`);
+        continue;
+      }
+
+      // A compile-only entry (no entity): pack code reads its seed file
+      if (entryEntities(entry).length === 0) continue;
+
+      seedImports.add('createSeeder');
+      const options = {
+        key,
+        ...(entry.identity && { identity: entry.identity }),
+        ...(entry.tree?.relKind && { relKind: entry.tree.relKind }),
+        ...(entry.media && { media: true }),
       };
-
-      const factory = SEEDER_FACTORIES[key];
-      if (factory) {
-        seedImports.add(factory);
-        // Flows, library and notes are stored under default-setup's entity names, not this pack's EARS
-        registrations.push(`registerSeeder(${factory}());`);
-        continue;
-      }
-
-      if (key === 'faqs') continue;
-
-      throw new Error(`Seed "${key}": unknown standard seed type and no "seeder" path provided`);
+      registrations.push(`registerSeeder(createSeeder(${JSON.stringify(options)}));`);
     }
 
+    if (registrations.length === 0) return `${HEADER}\n${COMPILED_DIR_ACCESSORS}`;
+
     return `${HEADER}
-import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';
+${seedImports.size > 0 ? `import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';` : ''}
 import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 ${packImports.join('\n')}
 
@@ -971,6 +976,29 @@ export { seedData };
 export type { SeedCounts, SeedIncludeSet };
 export type { ImportMode } from '@abuddy/sdk/utils';
 `;
+  }
+
+  /** The seed keys the host seeds into the database: entries with a seeder */
+  function seededKeys(): string[] {
+    return Object.entries(manifest.boot?.seed ?? {})
+      .filter(([key, value]) => {
+        const entry: SeedEntryConfig = typeof value === 'string' ? { path: value } : value;
+        return entry.seeder !== undefined || key in SPECIALTY_SEEDERS || entryEntities(entry).length > 0;
+      })
+      .map(([key]) => key);
+  }
+
+  /** [entity, source module specifier, export name] of each seed hook the manifest declares */
+  function seedHookEntries(): [string, string, string][] {
+    return Object.entries(manifest.seedHooks ?? {}).map(([entity, target]) => {
+      const [source, exportName] = target.split('#');
+      const normalized = source.split('\\').join('/');
+      const file = [normalized, `${normalized}.ts`, join(normalized, 'index.ts')].map(p => join(root, p)).find(p => /\.ts$/.test(p) && existsSync(p));
+      if (!file || !exportsName(readFileSync(file, 'utf-8'), exportName)) {
+        throw new Error(`Seed hooks for "${entity}": ${source} doesn't export "${exportName}"`);
+      }
+      return [entity, toImportPath(root, normalized), exportName] as [string, string, string];
+    });
   }
 
   /** Imports and map entries for this pack's own entity shapes. Dependencies' come from their facade types. */

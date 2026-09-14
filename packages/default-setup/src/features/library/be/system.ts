@@ -16,7 +16,7 @@ import * as symlink from './repository/symlink'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
-import type { ContentSection, FieldContent } from '@abuddy/sdk';
+import type { ContentSection, FieldContent } from '@/features/library/be/types';
 
 type IncomingLibraryEvents =
   | { type: 'LIST_DOCUMENTS'; collectionId?: string }

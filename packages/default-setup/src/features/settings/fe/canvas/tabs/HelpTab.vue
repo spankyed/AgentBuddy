@@ -59,7 +59,7 @@ import { useSelector } from '@xstate/vue'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
 import { useActorSystem, openInAppBrowser } from '@abuddy/sdk/fe'
-import type { CompiledFAQ } from '@abuddy/sdk/build'
+import type { CompiledFAQ } from '@/features/settings/be/faqs'
 
 const actorSystem = useActorSystem()
 

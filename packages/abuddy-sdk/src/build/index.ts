@@ -2,14 +2,14 @@
 export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
-export { compilePack } from './seed-compiler.ts';
-export { compileMarkdownTree, parseMarkdownFile, toDisplayName as markdownDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
+export { compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
+export { compileMarkdownTree, parseMarkdownFile, toDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
   compileFormatEntry, checkRecordEntities, entryEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
   type SeedRecord, type CompiledSeedFile, type SeedFieldSource, type SeedFieldSpec, type SeedTreeSpec,
   type GenericSeedEntry, type SeedCompileContext, type SeedCompilerModule,
 } from './seeds/records.ts';
-export type { SeedCompiler, CompileEntry, CompilationContext, ValidationError, ValidationResult } from './seed-compiler.ts';
+export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, SeedIndex, SeedIndexEntry } from './seed-compiler.ts';
 
 // Compile utilities
 export { compileSourceDir, bundleFile, sourceHash } from './compile-utils.ts';
@@ -17,14 +17,9 @@ export type { CompileConfig, CompiledEntry, CompileResult } from './compile-util
 
 // Compilers: standard instances, build utilities, types
 export {
-  actionsCompiler, promptsCompiler, flowsCompiler,
-  libraryCompiler, notesCompiler, faqCompiler, settingsCompiler,
+  actionsCompiler, promptsCompiler, flowsCompiler, settingsCompiler, SPECIALTY_COMPILERS,
   loadFlowsFromDir, validateFlows, hashFlows,
-  compileLibraryFromDir, copyLibraryMedia,
-  compileNotesFromDir, copyNotesMedia,
-  compileFaqFromDir,
   loadSettingsFromFile, deepMerge,
-  countDocs, toDisplayName, parseFrontmatter, parseMarkdownSections,
   isFlowConfig, resolveTracks,
   validateFlowDSL,
   compileFlowDSL,
@@ -32,11 +27,7 @@ export {
 } from './compilers/index.ts';
 export type {
   FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
-  CompilerContext, CompiledRows, ExportFlowsOptions,
-  ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
-  ExportedLibrary,
-  ExportedNote, ExportedNotes,
-  CompiledFAQ,
+  CompilerContext, CompiledRows, ExportFlowsOptions, CompiledSeedEntry,
 } from './compilers/index.ts';
 
 // Pack preview types

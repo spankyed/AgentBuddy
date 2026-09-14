@@ -17,8 +17,15 @@ import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './ha
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
 const UPDATE = process.env.UPDATE_SEED_GOLDEN === '1';
 
-/** Steps whose notes rows the old pipeline wrote differently on purpose: compared by the Decision 10 rules */
-export const NOTES_INTENDED_DIFFERENCES = new Set(['keep-existing/changed', 'untracked/untracked']);
+/**
+ * Steps where the old pipeline rewrote existing notes (every re-seed, whatever the mode or hash) and
+ * the Decision 10 rules leave them alone: compared by those rules in notes-change-tracking.spec.ts.
+ * Wipe re-seeds leave notes out, so they aren't listed.
+ */
+export const NOTES_INTENDED_DIFFERENCES = new Set([
+  ...['default', 'replace-on-collision', 'keep-existing'].flatMap((mode) => [`${mode}/unchanged`, `${mode}/changed`]),
+  'untracked/untracked',
+]);
 
 type Step = { name: string; snapshot: Snapshot; counts: Record<string, SeedCounts> };
 
@@ -30,9 +37,10 @@ async function compiledDir(sources: 'v1' | 'v2' | 'default-setup'): Promise<stri
       // Actions and prompts come from the pack's own sources; change one of each so re-seeds see an edit
       for (const key of ['actions', 'prompts']) {
         const file = path.join(dir, `${key}.seed.json`);
-        const items = JSON.parse(fs.readFileSync(file, 'utf-8')) as Array<Record<string, unknown>>;
-        items[0] = { ...items[0], description: `${items[0].description} (v2)`, sourceHash: `${items[0].sourceHash}-v2` };
-        fs.writeFileSync(file, JSON.stringify(items, null, 2));
+        const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: Array<Record<string, unknown>> };
+        const [first] = data.records;
+        data.records[0] = { ...first, description: `${first.description} (v2)`, sourceHash: `${first.sourceHash}-v2` };
+        fs.writeFileSync(file, JSON.stringify(data, null, 2));
       }
     }
     compiled.set(sources, dir);
@@ -83,7 +91,14 @@ function checkGolden(scenario: string, steps: Step[]) {
     return;
   }
   expect(fs.existsSync(file), `missing golden ${path.relative(process.cwd(), file)}`).toBe(true);
-  expect(actual).toEqual(JSON.parse(fs.readFileSync(file, 'utf-8')));
+  const golden = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, ReturnType<typeof forGolden>>;
+  // The goldens hold the old pipeline's notes for every step; leave them out where the rules differ
+  for (const [name, step] of Object.entries(golden)) {
+    if (!NOTES_INTENDED_DIFFERENCES.has(`${scenario}/${name}`)) continue;
+    step.rows = Object.fromEntries(Object.entries(step.rows).filter(([alias]) => !alias.startsWith('Note:')));
+    step.relations = step.relations.filter((relation) => !relation.includes('Note:'));
+  }
+  expect(actual).toEqual(golden);
 }
 
 async function run(

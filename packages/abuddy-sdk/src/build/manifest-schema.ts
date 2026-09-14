@@ -32,19 +32,60 @@ export const DslEntrySchema = z.object({
   globals: z.record(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
 }).strict();
 
-export const SeedEntryConfigSchema = z.object({
-  path: z.string().describe('Directory containing seed source files.').optional(),
-  seeder: z.string().describe('Custom seeder module path.').optional(),
-  entityType: z.string().describe('EARS entity type for collection seeders.').optional(),
-  lookupField: z.string().describe('Field used to deduplicate seeded entities.').optional(),
+/** Seed keys compiled and seeded by the SDK's own compilers; they take a path, as a string or `{ path }` */
+export const SPECIALTY_SEED_KEYS: readonly string[] = ['actions', 'prompts', 'flows', 'settings'];
+
+const SeedFieldSpecSchema = z.object({
+  from: z.string().regex(/^(body|filename|path|frontmatter\.[\w-]+)$/, 'Must be "body", "filename", "path" or "frontmatter.<name>"')
+    .describe('Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field.'),
+  default: z.unknown().describe('Used when the source is absent. The string "filename" means the display name.').optional(),
+  type: z.literal('string').describe('Coerce a present value to a string (YAML reads an unquoted 2024 as a number).').optional(),
 }).strict();
+
+const SeedTreeSpecSchema = z.object({
+  branch: z.string().describe('A directory\'s own markdown file (e.g. "index.md"), giving the directory\'s frontmatter and body.').optional(),
+  branchEntity: z.string().describe('The entity type directories seed. Defaults to `entity`.').optional(),
+  relKind: z.string().describe('The relation from a parent row to each child row. Defaults to "contains".').optional(),
+}).strict();
+
+export const SeedEntryConfigSchema = z.object({
+  path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
+  format: z.enum(['markdown-tree', 'json']).describe('Compile `path` with the generic compiler: a directory of markdown, or a JSON array of records.').optional(),
+  entity: z.union([z.string(), z.array(z.string()).min(1)])
+    .describe('The entity types this entry seeds. Omitted, the entry is compiled but not seeded.').optional(),
+  identity: z.array(z.string()).min(1)
+    .describe('Fields matched to find an existing row ("parent" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook.').optional(),
+  tree: SeedTreeSpecSchema.describe('Walk subdirectories as parent rows.').optional(),
+  fields: z.record(z.string(), SeedFieldSpecSchema).describe('Record fields for markdown-tree: field name → where its value comes from.').optional(),
+  media: z.string().describe('A directory under `path` copied with the seeds; media/<file> links become media://<id>/<file>.').optional(),
+  compiler: z.string().describe('A pack module whose default export compiles `path` into records.').optional(),
+  seeder: z.string().describe('A pack module exporting seed(ctx), used instead of the generic seeder.').optional(),
+}).strict().superRefine((entry, ctx) => {
+  if (entry.format && entry.compiler) ctx.addIssue({ code: 'custom', message: 'Use either "format" or "compiler", not both' });
+  if ((entry.format || entry.compiler) && !entry.path) ctx.addIssue({ code: 'custom', message: '"path" is required with "format" or "compiler"' });
+  if (entry.fields && entry.format !== 'markdown-tree') ctx.addIssue({ code: 'custom', path: ['fields'], message: '"fields" applies only to format "markdown-tree"' });
+});
+
+const SeedSectionSchema = z.record(z.string(), z.union([z.string(), SeedEntryConfigSchema])).superRefine((seed, ctx) => {
+  for (const [key, entry] of Object.entries(seed)) {
+    if (SPECIALTY_SEED_KEYS.includes(key)) {
+      if (typeof entry === 'object' && Object.keys(entry).some((field) => field !== 'path')) {
+        ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" is compiled by the SDK: give its source as a path or { "path": … }` });
+      }
+    } else if (typeof entry === 'string') {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Unknown seed key "${key}": only ${SPECIALTY_SEED_KEYS.join(', ')} take a path; describe other seeds with an object ("format", "compiler" or "seeder")` });
+    } else if (!entry.format && !entry.compiler && !entry.seeder) {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Seed "${key}" needs "format", "compiler" or "seeder"` });
+    }
+  }
+});
 
 export const BootConfigSchema = z.object({
   earlySystem: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
   createDefaultSettings: z.string().describe('Module that ensures default settings exist.').optional(),
   hooks: z.string().describe('Module providing lifecycle hooks (e.g. shutdown).').optional(),
-  seed: z.record(z.string(), z.union([z.string(), SeedEntryConfigSchema]))
-    .describe('Seed data sources. Keys are seed type names, values are paths or config objects.').optional(),
+  seed: SeedSectionSchema
+    .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows, settings) take a path, other keys an entry object.').optional(),
   seedPolicy: z.object({
     skipAtBoot: z.array(z.string()).describe('Seed types to skip during boot.').optional(),
     skipAfterOnboarding: z.array(z.string()).describe('Seed types to skip after onboarding completes.').optional(),
@@ -155,4 +196,13 @@ export const ManifestSchema = z.object({
   migrations: z.string().describe('Path to migrations index module.').optional(),
   fe: FEConfigSchema.optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
-}).strict();
+  seedHooks: z.record(z.string(), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
+    .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
+}).strict().superRefine((manifest, ctx) => {
+  const declared = new Set(Object.values(manifest.entities ?? {}));
+  for (const entity of Object.keys(manifest.seedHooks ?? {})) {
+    if (!declared.has(entity)) {
+      ctx.addIssue({ code: 'custom', path: ['seedHooks', entity], message: `Seed hooks for "${entity}": only entity types this pack declares in "entities" can have seed hooks` });
+    }
+  }
+});

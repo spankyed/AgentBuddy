@@ -3,7 +3,7 @@ import { EARS } from '@/__generated__/ears';
 
 import type { NoteDTO } from '../types';
 import { REFERENCES } from '../types';
-import type { NoteEntity } from '@abuddy/sdk';
+import type { NoteEntity } from '@/features/notes/be/types';
 
 function toDTO(note: NoteEntity): NoteDTO {
   // Find parent: who CONTAINS this note?

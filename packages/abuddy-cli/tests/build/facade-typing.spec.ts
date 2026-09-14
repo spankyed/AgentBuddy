@@ -193,15 +193,14 @@ export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceE
 // So is the flow model, without depending on default-setup
 const action = findAll('Action')[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
-// And the library, notes, settings and secrets the SDK's seeders and services use
-const note = findAll('Note')[0]!;
-export type NoteShape = Expect<Equal<typeof note.title, string>>;
-const document = findAll('Document')[0]!;
-export type DocumentShape = Expect<Equal<Extract<(typeof document.content)[number], { type: 'code' }>['language'], string>>;
+// And the settings and secrets the SDK's services use
 const settings = findAll('Settings')[0]!;
 export type SettingsShape = Expect<Equal<typeof settings.data, unknown>>;
 const secret = findAll('Secret')[0]!;
 export type SecretShape = Expect<Equal<typeof secret.encryptedValue, string>>;
+// Library and notes entities belong to default-setup, not the SDK
+// @ts-expect-error Note isn't declared by either pack or the SDK
+findAll('Note');
 const tNodes = qx(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
 export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
 // Neither pack defines steps, so Node rows read as the SDK's NodeBase
@@ -344,7 +343,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     const missing = (positions: string[], expected: string[]) =>
       positions.filter((position) => !expected.every((name) => at[position]?.includes(name)));
     expect(missing(FIELD_POSITIONS, ['text', 'pinned']), 'positions without Memo field completions').toEqual([]);
-    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Note', 'Settings']), 'positions without entity-name completions').toEqual([]);
+    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Settings']), 'positions without entity-name completions').toEqual([]);
     // A typo's error lists the fields it could have been
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
   }, 120_000);
@@ -353,6 +352,6 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Note', 'Settings']));
+    expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Settings']));
   }, 120_000);
 });

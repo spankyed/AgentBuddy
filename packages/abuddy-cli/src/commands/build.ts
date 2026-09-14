@@ -18,14 +18,10 @@ import { resolveDepArtifacts } from './fetch-deps';
 import { generateEntries } from './generate-entries';
 import { findPackRoot, readManifest, sdkVersion } from '../utils';
 
-async function loadPackConfig(root: string): Promise<PackConfig | null> {
-  const configPath = path.join(root, 'compile.config.ts');
-  if (!fs.existsSync(configPath)) return null;
-
-  console.warn('Warning: compile.config.ts is deprecated. Move seed paths to the "seeds" section in abuddy.json.');
+/** Loads a pack's seed compiler module, which may be TypeScript */
+async function importPackModule(file: string): Promise<Record<string, unknown>> {
   const { tsImport } = await import('tsx/esm/api');
-  const mod = await tsImport(configPath, import.meta.url);
-  return (mod.default ?? mod) as PackConfig;
+  return tsImport(file, import.meta.url) as Promise<Record<string, unknown>>;
 }
 
 export async function build(args: string[]) {
@@ -71,11 +67,7 @@ export async function build(args: string[]) {
     packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules });
     featureSettingsPaths = resolveFeatureSettingsFromManifest(manifest, root);
   } else {
-    packConfig = await loadPackConfig(root);
-  }
-
-  if (!packConfig) {
-    console.log('No boot.seed in manifest and no compile.config.ts found. Skipping seed compilation.');
+    console.log('No boot.seed in manifest. Skipping seed compilation.');
   }
 
   const packDir = root;
@@ -90,6 +82,7 @@ export async function build(args: string[]) {
       outputDir: seedsOutputDir,
       packConfig,
       featureSettingsPaths,
+      importModule: importPackModule,
     };
 
     result = await compilePack(options);

@@ -50,7 +50,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 
 export const id = 'library' as const
 import type { SnapshotFrom } from 'xstate'
-import type { ContentSection } from '@abuddy/sdk';
+import type { ContentSection } from '@/features/library/be/types';
 
 export type LibraryState = SnapshotFrom<typeof librarySystem>
 

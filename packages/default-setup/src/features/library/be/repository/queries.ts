@@ -13,7 +13,7 @@ import {
   getContentLength
 } from './helpers'
 import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink'
-import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
+import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {

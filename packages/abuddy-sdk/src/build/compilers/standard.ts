@@ -1,270 +1,95 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { compileSourceDir } from '../compile-utils.ts';
-import { seedFile } from '../manifest.ts';
-import type { SeedCompiler, CompilationContext, ValidationResult } from '../seed-compiler.ts';
-import type { CompiledEntry } from '../compile-utils.ts';
+import type { SpecialtyCompiler, CompilationContext, ValidationResult } from '../seed-compiler.ts';
+import type { CompiledEntry, CompileResult } from '../compile-utils.ts';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
-import { compileLibraryFromDir, copyLibraryMedia } from './compile-library.ts';
-import { compileNotesFromDir, copyNotesMedia } from './compile-notes.ts';
-import { compileFaqFromDir } from './compile-faq.ts';
 import { loadSettingsFromFile, deepMerge } from './compile-settings.ts';
 import type { FlowDSL } from './flow-types.ts';
 import { stepRegistry } from '../../steps/registry.ts';
-import type { CompiledFAQ } from './compile-faq.ts';
-import type { ExportedLibrary } from './compile-library.ts';
-import type { ExportedNotes } from './compile-notes.ts';
-import { countDocs } from './library-utils.ts';
 
-function writeJson(filePath: string, data: unknown): void {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');
+/** Entries from a source directory of DSL functions, with duplicate labels rejected */
+function uniqueEntries(kind: string, compiled: CompileResult): CompiledEntry[] {
+  const seen = new Set<string>();
+  for (const entry of compiled.entries) {
+    if (seen.has(entry.label)) throw new Error(`Duplicate ${kind} label "${entry.label}"`);
+    seen.add(entry.label);
+  }
+  for (const warning of compiled.warnings) console.warn(`  ! ${warning}`);
+  return compiled.entries;
 }
 
-// ============================================================================
-// Actions Compiler
-// ============================================================================
+/** A compiled action or prompt, tagged with the entity type it seeds */
+export type CompiledSeedEntry = CompiledEntry & { entity: string };
 
-interface ActionsCompiled {
-  entries: CompiledEntry[];
-  warnings: string[];
+interface DslCompiled {
+  records: CompiledSeedEntry[];
   errors: string[];
 }
 
-function collectSourceErrors(compiled: ActionsCompiled): string[] {
-  return compiled.errors;
-}
-
-export const actionsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
+export const actionsCompiler: SpecialtyCompiler<DslCompiled> = {
   async compile(dir) {
-    return compileSourceDir(dir, {
+    const compiled = await compileSourceDir(dir, {
       functionName: 'action',
       isAsync: true,
       fields: { metaInput: 'input', fnBody: 'actionFn', output: 'output' },
     });
+    return { records: uniqueEntries('action', compiled).map((entry) => ({ entity: 'Action', ...entry })), errors: compiled.errors };
   },
-
-  collectErrors: collectSourceErrors,
-
-  merge(results) {
-    const all: CompiledEntry[] = [];
-    const seen = new Set<string>();
-    for (const { data, packName } of results) {
-      for (const entry of data.entries) {
-        if (seen.has(entry.label)) {
-          throw new Error(`Duplicate action label "${entry.label}" (in ${packName})`);
-        }
-        seen.add(entry.label);
-        all.push(entry);
-      }
-      if (data.warnings.length) {
-        for (const w of data.warnings) console.warn(`  ! ${w}`);
-      }
-    }
-    return all;
-  },
-
-  write(outputDir, merged) {
-    writeJson(path.join(outputDir, seedFile('actions')), merged);
-    console.log(`  ${merged.length} action(s)`);
-  },
+  collectErrors: (data) => data.errors,
+  output: (data) => ({ records: data.records }),
+  count: (data) => data.records.length,
 };
 
-// ============================================================================
-// Prompts Compiler
-// ============================================================================
-
-export const promptsCompiler: SeedCompiler<ActionsCompiled, CompiledEntry[]> = {
+export const promptsCompiler: SpecialtyCompiler<DslCompiled> = {
   async compile(dir) {
-    return compileSourceDir(dir, {
+    const compiled = await compileSourceDir(dir, {
       functionName: 'template',
       isAsync: false,
       fields: { metaInput: 'inputs', fnBody: 'templateFn', output: 'outputSchema' },
     });
+    return { records: uniqueEntries('prompt', compiled).map((entry) => ({ entity: 'Prompt', ...entry })), errors: compiled.errors };
   },
-
-  collectErrors: collectSourceErrors,
-
-  merge(results) {
-    const all: CompiledEntry[] = [];
-    const seen = new Set<string>();
-    for (const { data, packName } of results) {
-      for (const entry of data.entries) {
-        if (seen.has(entry.label)) {
-          throw new Error(`Duplicate prompt label "${entry.label}" (in ${packName})`);
-        }
-        seen.add(entry.label);
-        all.push(entry);
-      }
-      if (data.warnings.length) {
-        for (const w of data.warnings) console.warn(`  ! ${w}`);
-      }
-    }
-    return all;
-  },
-
-  write(outputDir, merged) {
-    writeJson(path.join(outputDir, seedFile('prompts')), merged);
-    console.log(`  ${merged.length} prompt(s)`);
-  },
+  collectErrors: (data) => data.errors,
+  output: (data) => ({ records: data.records }),
+  count: (data) => data.records.length,
 };
 
-// ============================================================================
-// Flows Compiler
-// ============================================================================
-
-interface FlowsCompiled {
-  merged: FlowDSL;
-  loaded: number;
-}
-
-export const flowsCompiler: SeedCompiler<FlowsCompiled, FlowDSL> = {
+export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
   async compile(dir) {
-    return loadFlowsFromDir(dir);
+    return (await loadFlowsFromDir(dir)).merged;
   },
 
-  merge(results) {
-    const merged: FlowDSL = {};
-    for (const { data, packName } of results) {
-      for (const [name, entry] of Object.entries(data.merged)) {
-        if (merged[name]) {
-          throw new Error(`Duplicate flow name "${name}" (in ${packName})`);
-        }
-        merged[name] = entry;
-      }
-    }
-    return merged;
-  },
-
-  validate(merged: FlowDSL, context: CompilationContext): ValidationResult {
-    if (Object.keys(merged).length === 0) return { valid: true, errors: [] };
-
-    const actions = context.getCompiled<CompiledEntry[]>('actions') ?? [];
-    const prompts = context.getCompiled<CompiledEntry[]>('prompts') ?? [];
+  validate(flows: FlowDSL, context: CompilationContext): ValidationResult {
+    if (Object.keys(flows).length === 0) return { valid: true, errors: [] };
+    const actions = context.getCompiled<DslCompiled>('actions')?.records ?? [];
+    const prompts = context.getCompiled<DslCompiled>('prompts')?.records ?? [];
     return validateFlows(
-      merged,
-      actions.map(a => a.label),
-      prompts.map(p => p.label),
+      flows,
+      actions.map((action) => action.label),
+      prompts.map((prompt) => prompt.label),
       { steps: stepRegistry.all() },
     );
   },
 
-  write(outputDir, merged) {
-    const output = Object.keys(merged).length > 0 ? hashFlows(merged) : {};
-    writeJson(path.join(outputDir, seedFile('flows')), output);
-    console.log(`  ${Object.keys(merged).length} flow(s)`);
-  },
+  output: (flows) => (Object.keys(flows).length > 0 ? hashFlows(flows) : {}),
+  count: (flows) => Object.keys(flows).length,
 };
 
-// ============================================================================
-// Library Compiler
-// ============================================================================
-
-interface LibraryMerged {
-  data: ExportedLibrary;
-  sourcePaths: string[];
-}
-
-export const libraryCompiler: SeedCompiler<ExportedLibrary, LibraryMerged> = {
-  async compile(dir) {
-    return compileLibraryFromDir(dir);
-  },
-
-  merge(results) {
-    const items: ExportedLibrary['items'] = [];
-    const sourcePaths: string[] = [];
-    for (const { data, sourcePath } of results) {
-      items.push(...data.items);
-      sourcePaths.push(sourcePath);
-    }
-    return { data: { version: 1, items }, sourcePaths };
-  },
-
-  write(outputDir, merged) {
-    writeJson(path.join(outputDir, seedFile('library')), merged.data);
-    for (const src of merged.sourcePaths) {
-      copyLibraryMedia(src, outputDir);
-    }
-    console.log(`  ${countDocs(merged.data.items)} library doc(s)`);
-  },
-};
-
-// ============================================================================
-// Notes Compiler
-// ============================================================================
-
-interface NotesMerged {
-  data: ExportedNotes;
-  sourcePaths: string[];
-}
-
-export const notesCompiler: SeedCompiler<ExportedNotes, NotesMerged> = {
-  async compile(dir) {
-    return compileNotesFromDir(dir);
-  },
-
-  merge(results) {
-    const notes: ExportedNotes['notes'] = [];
-    const sourcePaths: string[] = [];
-    for (const { data, sourcePath } of results) {
-      notes.push(...data.notes);
-      sourcePaths.push(sourcePath);
-    }
-    return { data: { version: 1, notes }, sourcePaths };
-  },
-
-  write(outputDir, merged) {
-    writeJson(path.join(outputDir, seedFile('notes')), merged.data);
-    for (const src of merged.sourcePaths) {
-      copyNotesMedia(src, outputDir);
-    }
-    const count = merged.data.notes.reduce((s: number, n: any) => s + 1 + (n.children?.length ?? 0), 0);
-    console.log(`  ${count} note(s)`);
-  },
-};
-
-// ============================================================================
-// FAQ Compiler
-// ============================================================================
-
-export const faqCompiler: SeedCompiler<CompiledFAQ[], CompiledFAQ[]> = {
-  async compile(dir) {
-    return compileFaqFromDir(dir);
-  },
-
-  merge(results) {
-    const all: CompiledFAQ[] = [];
-    for (const { data } of results) {
-      all.push(...data);
-    }
-    all.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
-    return all;
-  },
-
-  write(outputDir, merged) {
-    writeJson(path.join(outputDir, seedFile('faq')), merged);
-    console.log(`  ${merged.length} faq(s)`);
-  },
-};
-
-// ============================================================================
-// Settings Compiler
-// ============================================================================
-
-export const settingsCompiler: SeedCompiler<Record<string, unknown>, Record<string, unknown>> = {
-  async compile(filePath) {
-    return loadSettingsFromFile(filePath);
-  },
-
-  merge(results) {
-    let merged: Record<string, unknown> = {};
-    for (const { data } of results) {
-      merged = deepMerge(merged, data);
+/** The pack's base settings file merged with each feature's settings */
+export const settingsCompiler: SpecialtyCompiler<Record<string, unknown>> = {
+  async compile(filePath, { featureSettingsPaths }) {
+    let merged = await loadSettingsFromFile(filePath);
+    for (const feature of featureSettingsPaths) {
+      merged = deepMerge(merged, await loadSettingsFromFile(feature.settingsPath));
     }
     return merged;
   },
+  count: () => 1,
+};
 
-  write(outputDir, merged) {
-    writeJson(path.join(outputDir, seedFile('settings')), merged);
-    console.log(`  settings compiled`);
-  },
+/** Seed keys the SDK compiles itself */
+export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler> = {
+  actions: actionsCompiler as SpecialtyCompiler,
+  prompts: promptsCompiler as SpecialtyCompiler,
+  flows: flowsCompiler as SpecialtyCompiler,
+  settings: settingsCompiler as SpecialtyCompiler,
 };

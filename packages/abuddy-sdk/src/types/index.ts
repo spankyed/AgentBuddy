@@ -1,8 +1,6 @@
 export { EARS, type BaseEntity, type EntityShapes, type ShapeOf } from './entities.ts';
 export type {
   SdkEntityShapes, RelationEntity, FlowEntity, NodeBase, ActionEntity, ActionParameter, PromptEntity, TemplateInput,
-  DocumentEntity, CollectionEntity, ContentSection, FieldContent, ListContent, MarkdownContent, TextContent, CodeContent,
-  ContentType, DocumentShortCode, NoteEntity,
   SettingsEntity, SettingsScope, SecretEntity, SecretProvider,
 } from './sdk-entities.ts';
 export type { TNodeEntity, TNodeKind } from '../steps/types.ts';

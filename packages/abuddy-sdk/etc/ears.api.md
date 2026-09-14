@@ -101,9 +101,6 @@ export namespace EARS {
         readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
-        readonly Document: "Document";
-        readonly Collection: "Collection";
-        readonly Note: "Note";
         readonly Settings: "Settings";
         readonly Secret: "Secret";
     };

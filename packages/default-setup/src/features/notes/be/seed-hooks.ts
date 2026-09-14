@@ -3,7 +3,6 @@
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
 import { EARS, findWhere, qx } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { NoteEntity } from '@abuddy/sdk';
 
 export interface NoteSeedRecord extends SeedRecord {
   title: string;
@@ -33,7 +32,7 @@ export const noteSeedHooks: SeedHooks<NoteSeedRecord> = {
       const parents = qx(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
       return (parents[0] as string | undefined) === parentId;
     });
-    return match && { id: match.id, sourceHash: (match as NoteEntity & { sourceHash?: string }).sourceHash };
+    return match && { id: match.id, sourceHash: match.sourceHash };
   },
 
   create(record, { parentId, index }) {

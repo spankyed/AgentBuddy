@@ -3,7 +3,7 @@ import { repository } from '@/__generated__/repository';
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '@/features/library/be/types';
 import { EARS } from '@/__generated__/ears';
 import * as symlink from '@/features/library/be/repository/symlink';
-import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
+import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
 
 
 // ---------------------------------------------------------------------------

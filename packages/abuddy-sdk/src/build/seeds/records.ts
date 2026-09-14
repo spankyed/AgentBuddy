@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sourceHash } from '../compile-utils.ts';
 import { compileMarkdownTree, type MarkdownItem } from './markdown-tree.ts';
+import type { SeedEntryConfig } from '../manifest.ts';
 
 /**
  * One item a seed entry seeds: an entity row's fields, tagged with its entity type, plus its
@@ -25,40 +26,10 @@ export const RECORD_KEYS: ReadonlySet<string> = new Set(['entity', 'children']);
 /** Where a field's value comes from in a markdown item */
 export type SeedFieldSource = 'body' | 'filename' | 'path' | `frontmatter.${string}`;
 
-export interface SeedFieldSpec {
-  from: SeedFieldSource;
-  /** Used when the source is absent. The string `"filename"` means the item's display name. */
-  default?: unknown;
-  /** `"string"` coerces a present, non-null value to a string (YAML reads `title: 2024` as a number) */
-  type?: 'string';
-}
-
-export interface SeedTreeSpec {
-  /** A directory's own file (e.g. `index.md`), giving the directory's frontmatter and body */
-  branch?: string;
-  /** The entity type directories seed; defaults to the entry's `entity` */
-  branchEntity?: string;
-  /** The relation from a parent row to each child row */
-  relKind?: string;
-}
-
-/** A `boot.seed` object entry for a non-specialty key */
-export interface GenericSeedEntry {
-  path?: string;
-  format?: 'markdown-tree' | 'json';
-  /** The entity types the entry seeds; omitted, the entry is compiled but not seeded */
-  entity?: string | string[];
-  /** Fields matched to find an existing row; `parent` means the tree parent */
-  identity?: string[];
-  tree?: SeedTreeSpec;
-  fields?: Record<string, SeedFieldSpec>;
-  /** A directory under `path` copied to `media/<key>/`; `media/<file>` links are rewritten to `media://<id>/<file>` */
-  media?: string;
-  /** A pack module whose default export compiles `path` into records */
-  compiler?: string;
-  /** A pack module exporting `seed(ctx)`, replacing the generic seeder */
-  seeder?: string;
-}
+/** A `boot.seed` object entry (its schema is SeedEntryConfigSchema in manifest-schema.ts) */
+export type GenericSeedEntry = SeedEntryConfig;
+export type SeedFieldSpec = NonNullable<SeedEntryConfig['fields']>[string];
+export type SeedTreeSpec = NonNullable<SeedEntryConfig['tree']>;
 
 /** What a compiler module's default export receives */
 export interface SeedCompileContext {
@@ -79,11 +50,12 @@ export function entryEntities(entry: GenericSeedEntry): string[] {
 }
 
 function fieldValue(item: MarkdownItem, spec: SeedFieldSpec): unknown {
+  const from = spec.from as SeedFieldSource;
   let value: unknown;
-  if (spec.from === 'body') value = item.body;
-  else if (spec.from === 'filename') value = item.displayName;
-  else if (spec.from === 'path') value = item.path;
-  else value = item.frontmatter[spec.from.slice('frontmatter.'.length)];
+  if (from === 'body') value = item.body;
+  else if (from === 'filename') value = item.displayName;
+  else if (from === 'path') value = item.path;
+  else value = item.frontmatter[from.slice('frontmatter.'.length)];
   if (value === undefined) value = spec.default === 'filename' ? item.displayName : spec.default;
   if (spec.type === 'string' && value !== undefined && value !== null) value = String(value);
   return value;

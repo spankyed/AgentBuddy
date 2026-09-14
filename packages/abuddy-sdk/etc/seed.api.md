@@ -20,41 +20,13 @@ export function createBootSeed(config: BootSeedConfig): (options?: {
 }) => Record<string, SeedCounts> | null;
 
 // @public (undocumented)
-export function createCollectionSeeder(config: {
-    key: string;
-    entityType: EARS.Entity;
-    lookupField: string;
-}): Seeder;
-
-// @public (undocumented)
 export function createFlowSeeder(): Seeder;
-
-// @public (undocumented)
-export function createLibrarySeeder(): Seeder;
-
-// @public (undocumented)
-export function createNotesSeeder(): Seeder;
 
 // @public
 export function createSeeder(options: SeederOptions): Seeder;
 
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
-
-// @public (undocumented)
-export function importNotesFromData(data: ExportedNotes): NotesImportResult;
-
-// @public (undocumented)
-export interface NotesImportResult {
-    // (undocumented)
-    created: number;
-    // (undocumented)
-    errors: string[];
-    // (undocumented)
-    skipped: number;
-    // (undocumented)
-    updated: number;
-}
 
 // @public (undocumented)
 export type PackSeedItemKind = 'collection' | 'document' | 'tasklist' | 'task';
@@ -115,6 +87,16 @@ export interface SeedHookMatch {
     sourceHash?: unknown;
 }
 
+// @public
+export interface SeedHookRegistry {
+    // (undocumented)
+    get(entity: string): SeedHooks | undefined;
+    // (undocumented)
+    register(entity: string, hooks: SeedHooks, packId: string): void;
+    // (undocumented)
+    unregisterAll(packId: string): void;
+}
+
 // @internal
 export const seedHookRegistry: SeedHookRegistry;
 
@@ -140,12 +122,6 @@ export interface SeedRecord {
     // (undocumented)
     sourceHash?: string;
 }
-
-// @public
-export const STANDARD_SEED_DEFAULTS: Record<string, {
-    entityType: string;
-    lookupField: string;
-}>;
 
 // (No @packageDocumentation comment for this package)
 

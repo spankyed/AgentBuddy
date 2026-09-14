@@ -29,7 +29,7 @@ export async function buildPackConfigFromManifest(
 ): Promise<PackConfig> {
   const config: PackConfig = {
     name: manifest.id,
-    ...(manifest.boot?.seed as Record<string, string> | undefined),
+    seeds: manifest.boot?.seed ?? {},
     async setup() {
       // Step type → dependency module defining it; a pack step with the same type would silently
       // merge over the dependency's definition in the registry

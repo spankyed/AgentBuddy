@@ -61,5 +61,7 @@ export interface PackRegistration {
   steps?: import('../steps/types.ts').StepDefinition[];
   artifacts?: import('../artifacts/types.ts').ArtifactDefinition[];
   blocks?: import('../blocks/types.ts').BlockDefinition[];
+  /** Seed hooks for the entity types this pack owns (abuddy.json `seedHooks`) */
+  seedHooks?: Record<string, import('../seed/hooks.ts').SeedHooks>;
   features?: PackFeatureDef[];
 }

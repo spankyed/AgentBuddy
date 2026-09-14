@@ -1,22 +1,12 @@
-/**
- * Pack seed declaration.
- * A pack declares what seed types it provides.
- * Paths are relative to the compile.config.ts file location.
- */
+import type { SeedEntryConfig } from './manifest.ts';
+
+/** A pack's seed sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
 export interface PackConfig {
   name: string;
-  actions?: string;     // directory path, e.g. './actions'
-  prompts?: string;     // directory path
-  flows?: string;       // directory path
-  library?: string;     // directory path
-  notes?: string;       // directory path
-  faqs?: string;        // directory path
-  settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
-  features?: string;    // directory path, e.g. './src/features' — scanned for per-feature settings
-  compilers?: Array<{ type: string; compiler: import('./seed-compiler.ts').SeedCompiler }>;
-  steps?: import('../steps/types.ts').StepDefinition[];
+  /** `boot.seed`: seed key → path (specialty keys) or entry */
+  seeds: Record<string, string | SeedEntryConfig>;
+  /** Registers what compiling needs first, such as the step types flows validate against */
   setup?: () => void | Promise<void>;
-  [key: string]: unknown;
 }
 
 /**
@@ -34,9 +24,12 @@ export interface CompilePackOptions {
   outputDir: string;
   packConfig?: PackConfig;
   featureSettingsPaths?: Array<{ name: string; settingsPath: string }>;
+  /** Loads a pack's compiler module; the CLI loads TypeScript modules with tsx. Defaults to import(). */
+  importModule?: (file: string) => Promise<Record<string, unknown>>;
 }
 
 export interface CompilePackResult {
+  /** Items compiled per seed key */
   seeds: Record<string, number>;
   warnings: string[];
 }

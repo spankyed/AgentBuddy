@@ -4,8 +4,8 @@
  * Common functions used across library export, import, and default-setup compilation.
  */
 
-import type { ExportedItem } from '@abuddy/sdk/build';
-import type { ContentSection } from '@abuddy/sdk';
+import type { ExportedItem } from '@/features/library/be/export-types';
+import type { ContentSection } from '@/features/library/be/types';
 
 
 export function toDisplayName(str: string): string {

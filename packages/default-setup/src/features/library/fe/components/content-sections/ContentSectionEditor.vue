@@ -76,7 +76,7 @@ import ListEditor from './ListEditor.vue'
 import MarkdownEditor from './MarkdownEditor.vue'
 import TextEditor from './TextEditor.vue'
 import CodeEditor from './CodeEditor.vue'
-import type { CodeContent, ContentSection, ContentType } from '@abuddy/sdk'
+import type { CodeContent, ContentSection, ContentType } from '@/features/library/be/types'
 
 const props = defineProps<{
   section?: ContentSection

@@ -11,7 +11,7 @@ import { trpc } from '@abuddy/sdk/rpc'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview, PackSeedType } from '@abuddy/sdk/build'
-import type { CompiledFAQ } from '@abuddy/sdk/build';
+import type { CompiledFAQ } from '@/features/settings/be/faqs';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

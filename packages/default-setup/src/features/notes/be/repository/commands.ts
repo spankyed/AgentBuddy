@@ -5,7 +5,7 @@ import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
-import type { NoteEntity } from '@abuddy/sdk';
+import type { NoteEntity } from '@/features/notes/be/types';
 
 function reparent(id: EARS.EntityId, oldParentId: string | null, newParentId: EARS.EntityId | null, noteType: string): void {
   // Remove old CONTAINS relation and strip sub-document link from old parent content

@@ -17,7 +17,7 @@ import {
   formatFileSize,
   getContentLength,
 } from './helpers'
-import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
+import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
 
 const logger = createLogger('library')
 

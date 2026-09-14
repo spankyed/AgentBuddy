@@ -26,27 +26,32 @@ export interface SeedHooks<R extends SeedRecord = SeedRecord> {
   remove?(id: EARS.EntityId): void;
 }
 
-class SeedHookRegistry {
-  #hooks = new Map<string, { hooks: SeedHooks; packId: string }>();
+/** The seed hooks registered per entity type, and the pack that registered each */
+export interface SeedHookRegistry {
+  register(entity: string, hooks: SeedHooks, packId: string): void;
+  unregisterAll(packId: string): void;
+  get(entity: string): SeedHooks | undefined;
+}
 
-  register(entity: string, hooks: SeedHooks, packId: string): void {
-    const existing = this.#hooks.get(entity);
+const registered = new Map<string, { hooks: SeedHooks; packId: string }>();
+
+/** @internal Host-only registration; seeders read it */
+export const seedHookRegistry: SeedHookRegistry = {
+  register(entity, hooks, packId) {
+    const existing = registered.get(entity);
     if (existing && existing.packId !== packId) {
       throw new Error(`Seed hooks for "${entity}" are already registered by pack "${existing.packId}"`);
     }
-    this.#hooks.set(entity, { hooks, packId });
-  }
+    registered.set(entity, { hooks, packId });
+  },
 
-  unregisterAll(packId: string): void {
-    for (const [entity, entry] of this.#hooks) {
-      if (entry.packId === packId) this.#hooks.delete(entity);
+  unregisterAll(packId) {
+    for (const [entity, entry] of registered) {
+      if (entry.packId === packId) registered.delete(entity);
     }
-  }
+  },
 
-  get(entity: string): SeedHooks | undefined {
-    return this.#hooks.get(entity)?.hooks;
-  }
-}
-
-/** @internal Host-only registration; seeders read it */
-export const seedHookRegistry = new SeedHookRegistry();
+  get(entity) {
+    return registered.get(entity)?.hooks;
+  },
+};

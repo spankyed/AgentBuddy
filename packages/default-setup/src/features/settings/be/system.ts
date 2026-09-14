@@ -19,7 +19,7 @@ import { resetLmdbFiles } from '@abuddy/host/ears';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@abuddy/sdk/utils';
 import { mergeSecretReferences } from './secrets/merge-secret-settings';
-import type { CompiledFAQ } from '@abuddy/sdk/build';
+import type { CompiledFAQ } from '@/features/settings/be/faqs';
 
 /**
  * Convert the JSON-safe include shape from the frontend

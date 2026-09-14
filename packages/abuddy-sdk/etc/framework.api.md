@@ -88,6 +88,7 @@ export interface PackRegistration {
     id: string;
     // (undocumented)
     migrations?: PackMigration[];
+    seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
     // (undocumented)

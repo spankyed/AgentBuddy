@@ -59,37 +59,6 @@ export interface BaseEntity {
 // @public (undocumented)
 export const bus: "bus";
 
-// @public (undocumented)
-export interface CodeContent {
-    // (undocumented)
-    language: string;
-    // (undocumented)
-    text: string;
-    // (undocumented)
-    type: 'code';
-}
-
-// @public (undocumented)
-export interface CollectionEntity extends BaseEntity {
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    displayOrder?: number;
-    // (undocumented)
-    name: string;
-    sourceHash?: string;
-    // (undocumented)
-    symlinkPath?: string;
-    // (undocumented)
-    _type: typeof SDK_ENTITIES.Collection;
-}
-
-// @public
-export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
-
-// @public (undocumented)
-export type ContentType = ContentSection['type'];
-
 // @public
 export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N>;
 
@@ -106,25 +75,6 @@ export function defineSystem<Id extends string>(id: Id, opts?: {
 export type Designations = readonly string[] | Record<string, string>;
 
 // @public (undocumented)
-export interface DocumentEntity extends BaseEntity {
-    // (undocumented)
-    content: ContentSection[];
-    // (undocumented)
-    displayOrder?: number;
-    // (undocumented)
-    name: string;
-    // (undocumented)
-    shortCode: DocumentShortCode;
-    sourceHash?: string;
-    tags?: string[];
-    // (undocumented)
-    _type: typeof SDK_ENTITIES.Document;
-}
-
-// @public (undocumented)
-export type DocumentShortCode = `DOC-${number}`;
-
-// @public (undocumented)
 export namespace EARS {
     const // (undocumented)
     Entity: {
@@ -134,9 +84,6 @@ export namespace EARS {
         readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
-        readonly Document: "Document";
-        readonly Collection: "Collection";
-        readonly Note: "Note";
         readonly Settings: "Settings";
         readonly Secret: "Secret";
     };
@@ -236,17 +183,6 @@ export function emit<P extends string, E extends {
 };
 
 // @public (undocumented)
-export interface FieldContent {
-    // (undocumented)
-    fields: Array<{
-        key: string;
-        value: string;
-    }>;
-    // (undocumented)
-    type: 'field';
-}
-
-// @public (undocumented)
 export interface FlowEntity extends BaseEntity {
     // (undocumented)
     createdAt: number;
@@ -270,22 +206,6 @@ export function getDesignated(role: string): string;
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
 
-// @public (undocumented)
-export interface ListContent {
-    // (undocumented)
-    items: string[];
-    // (undocumented)
-    type: 'list';
-}
-
-// @public (undocumented)
-export interface MarkdownContent {
-    // (undocumented)
-    text: string;
-    // (undocumented)
-    type: 'markdown';
-}
-
 // @public
 export interface NodeBase extends BaseEntity {
     // (undocumented)
@@ -300,42 +220,6 @@ export interface NodeBase extends BaseEntity {
     label: string;
     // (undocumented)
     nodeType: string;
-}
-
-// @public (undocumented)
-export interface NoteEntity extends BaseEntity {
-    // (undocumented)
-    completed: boolean;
-    // (undocumented)
-    content: string;
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    deleted?: boolean;
-    // (undocumented)
-    deletedAt?: number;
-    // (undocumented)
-    displayOrder: number;
-    // (undocumented)
-    entityType: typeof SDK_ENTITIES.Note;
-    // (undocumented)
-    favorite?: boolean;
-    // (undocumented)
-    hideCompletedChildren: boolean;
-    // (undocumented)
-    icon: string | null;
-    label?: string;
-    // (undocumented)
-    lastSeen: number;
-    // (undocumented)
-    noteType: 'document' | 'tasklist' | 'task';
-    // (undocumented)
-    savedDisplayOrder?: number;
-    shortCode?: string;
-    // (undocumented)
-    title: string;
-    // (undocumented)
-    updatedAt: number;
 }
 
 // @public (undocumented)
@@ -387,9 +271,6 @@ export type SdkEntityShapes = {
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
-    Document: DocumentEntity;
-    Collection: CollectionEntity;
-    Note: NoteEntity;
     Settings: SettingsEntity;
     Secret: SecretEntity;
 };
@@ -472,14 +353,6 @@ export interface TemplateInput {
     required?: boolean;
     // (undocumented)
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-}
-
-// @public (undocumented)
-export interface TextContent {
-    // (undocumented)
-    text: string;
-    // (undocumented)
-    type: 'text';
 }
 
 // @public (undocumented)

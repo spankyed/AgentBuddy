@@ -1,6 +1,6 @@
 import { repository } from './repository.ts';
 import type { EARS } from '../types/entities.ts';
-import type { ContentSection, PromptEntity, SecretEntity } from '../types/sdk-entities.ts';
+import type { PromptEntity, SecretEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 
 /**
@@ -32,37 +32,6 @@ export interface BuiltinRepositories {
   };
   promptQueries: {
     all(): PromptEntity[];
-  };
-  libraryCommands: {
-    createDocument(name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, sourceHash?: string): { id: EARS.EntityId };
-    updateDocument(id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, sourceHash?: string): unknown;
-    deleteDocument(id: EARS.EntityId): void;
-    createCollection(name: string, description?: string, parentId?: EARS.EntityId, id?: string, sourceHash?: string): { id: EARS.EntityId };
-    updateCollection(id: EARS.EntityId, name: string, description?: string, sourceHash?: string): unknown;
-    deleteCollection(id: EARS.EntityId): void;
-  };
-  noteCommands: {
-    create(input: {
-      title: string;
-      content?: string;
-      icon?: string | null;
-      parentId?: string;
-      displayOrder?: number;
-      noteType?: 'document' | 'tasklist' | 'task';
-      completed?: boolean;
-      id?: string;
-    }): { id: EARS.EntityId };
-    update(id: EARS.EntityId, updates: {
-      title?: string;
-      content?: string;
-      icon?: string | null;
-      displayOrder?: number;
-      savedDisplayOrder?: number | null;
-      completed?: boolean;
-      hideCompletedChildren?: boolean;
-      favorite?: boolean;
-    }): void;
-    delete(id: EARS.EntityId): void;
   };
 }
 

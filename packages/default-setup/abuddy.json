@@ -19,7 +19,10 @@
     "Directory": "Directory",
     "FAQ": "FAQ",
     "BrowserTab": "BrowserTab",
-    "BrowserBookmark": "BrowserBookmark"
+    "BrowserBookmark": "BrowserBookmark",
+    "Document": "Document",
+    "Collection": "Collection",
+    "Note": "Note"
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
@@ -298,9 +301,66 @@
       "actions": "src/seeds/actions",
       "prompts": "src/seeds/prompts",
       "flows": "src/seeds/flows",
-      "library": "src/seeds/library",
-      "notes": "src/seeds/notes",
-      "faqs": "src/seeds/faqs",
+      "library": {
+        "path": "src/seeds/library",
+        "compiler": "src/features/library/be/seed/compile.ts",
+        "entity": [
+          "Collection",
+          "Document"
+        ],
+        "identity": [
+          "name"
+        ],
+        "media": "media"
+      },
+      "notes": {
+        "path": "src/seeds/notes",
+        "format": "markdown-tree",
+        "entity": "Note",
+        "identity": [
+          "title",
+          "parent"
+        ],
+        "tree": {
+          "branch": "index.md",
+          "relKind": "contains"
+        },
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "noteType": {
+            "from": "frontmatter.type",
+            "default": "document"
+          },
+          "icon": {
+            "from": "frontmatter.icon",
+            "default": null,
+            "type": "string"
+          },
+          "favorite": {
+            "from": "frontmatter.favorite",
+            "default": false
+          },
+          "hideCompletedChildren": {
+            "from": "frontmatter.hideCompletedChildren",
+            "default": false
+          },
+          "completed": {
+            "from": "frontmatter.completed",
+            "default": false
+          },
+          "content": {
+            "from": "body"
+          }
+        }
+      },
+      "faqs": {
+        "path": "src/seeds/faqs",
+        "compiler": "src/features/settings/be/compile-faqs.ts"
+      },
       "settings": "src/seeds/default-settings.ts"
     },
     "seedPolicy": {
@@ -336,7 +396,24 @@
     "BrowserBookmark": {
       "source": "src/features/browser/be/types.ts",
       "type": "BrowserBookmarkEntity"
+    },
+    "Document": {
+      "source": "src/features/library/be/types.ts",
+      "type": "DocumentEntity"
+    },
+    "Collection": {
+      "source": "src/features/library/be/types.ts",
+      "type": "CollectionEntity"
+    },
+    "Note": {
+      "source": "src/features/notes/be/types.ts",
+      "type": "NoteEntity"
     }
+  },
+  "seedHooks": {
+    "Collection": "src/features/library/be/seed-hooks.ts#collectionSeedHooks",
+    "Document": "src/features/library/be/seed-hooks.ts#documentSeedHooks",
+    "Note": "src/features/notes/be/seed-hooks.ts#noteSeedHooks"
   },
   "steps": {
     "register": "src/extensions/steps/register.ts",
