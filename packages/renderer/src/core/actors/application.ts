@@ -326,12 +326,10 @@ export const createApplicationState = () => setup({
       const allPlugins = packsIdx >= 0
         ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
         : [...context.plugins, ...newPlugins];
-      const pluginVisibility = { ...context.pluginVisibility };
-      for (const p of newPlugins) pluginVisibility[p.id] = true;
+      // Visibility comes from settings (the user's choice, else the feature's default); unset shows the plugin
       enqueue.assign({
         plugins: allPlugins,
-        visiblePlugins: allPlugins.filter(p => pluginVisibility[p.id] !== false),
-        pluginVisibility,
+        visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
       });
       for (const plugin of newPlugins) {
         enqueue.spawnChild(plugin.state, { systemId: plugin.id });

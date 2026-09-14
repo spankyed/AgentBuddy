@@ -226,6 +226,9 @@ export interface LoadedPack {
   ears?: import('@abuddy/sdk/framework').PackEARS;
   boot?: import('@abuddy/sdk/framework').PackBootHooks;
   migrations?: import('@abuddy/sdk/framework').PackMigration[];
+  seedHooks?: import('@abuddy/sdk/framework').PackRegistration['seedHooks'];
+  /** Feature definitions, with each feature's default settings */
+  features?: import('@abuddy/sdk/framework').PackFeatureDef[];
 }
 
 export function withHostResolution<T>(fn: () => T): T {
@@ -432,6 +435,8 @@ function loadBundledRuntime(
     ears: registration.ears,
     boot: registration.boot ? { ...registration.boot } : undefined,
     migrations: registration.migrations,
+    seedHooks: registration.seedHooks,
+    features: registration.features,
   };
 }
 
@@ -539,6 +544,8 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
         ears: pack.ears,
         boot: pack.boot,
         migrations: pack.migrations,
+        seedHooks: pack.seedHooks,
+        features: pack.features,
       });
       registered.push(pack);
       logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);

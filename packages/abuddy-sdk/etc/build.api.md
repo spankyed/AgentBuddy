@@ -362,13 +362,13 @@ export const FeatureEntrySchema: z.ZodObject<{
     contributions: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
+    settings?: string | undefined;
     plugin?: {
         entry: string;
         label: string;
         icon: string;
         isPinned?: boolean | undefined;
     } | undefined;
-    settings?: string | undefined;
     earlySystem?: boolean | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
@@ -386,13 +386,13 @@ export const FeatureEntrySchema: z.ZodObject<{
     contributions?: string | undefined;
 }, {
     id: string;
+    settings?: string | undefined;
     plugin?: {
         entry: string;
         label: string;
         icon: string;
         isPinned?: boolean | undefined;
     } | undefined;
-    settings?: string | undefined;
     earlySystem?: boolean | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
@@ -551,13 +551,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         contributions: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
+        settings?: string | undefined;
         plugin?: {
             entry: string;
             label: string;
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        settings?: string | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -575,13 +575,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         contributions?: string | undefined;
     }, {
         id: string;
+        settings?: string | undefined;
         plugin?: {
             entry: string;
             label: string;
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        settings?: string | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -894,13 +894,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
         plugin?: {
             entry: string;
             label: string;
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        settings?: string | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1005,13 +1005,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
         plugin?: {
             entry: string;
             label: string;
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        settings?: string | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1116,13 +1116,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
         plugin?: {
             entry: string;
             label: string;
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        settings?: string | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1227,13 +1227,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
         plugin?: {
             entry: string;
             label: string;
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        settings?: string | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;

@@ -121,6 +121,15 @@ describe('generated entity shapes', () => {
   });
 });
 
+describe('generated feature settings', () => {
+  it("passes each feature's settings module to its registration, which registers them as defaults", () => {
+    const entry = generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] })['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("import __settings_Memos from '../features/memos/settings.js';");
+    expect(entry).toMatch(/id: 'memos',[^}]*services: \[\],\n {4}settings: __settings_Memos,\n {2}\}/);
+    expect(entry).toMatch(/id: 'todos',[^}]*services: \[\],\n {2}\}/);
+  });
+});
+
 describe('generated repositories', () => {
   it('types repositories from their declarations and registers them from the backend entry', () => {
     write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');

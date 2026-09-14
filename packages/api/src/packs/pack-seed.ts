@@ -60,9 +60,9 @@ function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
 }
 
 /**
- * Seed sections the host owns. The settings seeder resets the whole settings entity to the
- * host's defaults (it never reads a pack's settings file), so running it for a pack would
- * wipe the user's settings.
+ * The settings seeder resets the user's settings to the app's defaults. External packs have no
+ * settings seed (their manifest can't declare one; feature settings register as defaults with the
+ * pack), and a settings.seed.json that got into a pack's directory anyway is never seeded.
  */
 const HOST_OWNED_SEED_SECTIONS: Record<string, SeedIncludeSet> = { settings: new Set() };
 

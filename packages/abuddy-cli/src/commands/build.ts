@@ -14,6 +14,7 @@ import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundlePackTypes } from '../build/types-bundler';
 import { BUNDLE_PATHS } from '@abuddy/host/packs';
+import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { generate, resolveDeps } from './generate';
 import { resolveDepArtifacts } from './fetch-deps';
 import { generateEntries } from './generate-entries';
@@ -23,6 +24,24 @@ import { findPackRoot, readManifest, sdkVersion } from '../utils';
 async function importPackModule(file: string): Promise<Record<string, unknown>> {
   const { tsImport } = await import('tsx/esm/api');
   return tsImport(file, import.meta.url) as Promise<Record<string, unknown>>;
+}
+
+/**
+ * Problems with the pack's feature settings files. The app registers each feature's settings as
+ * defaults when the pack loads, and refuses settings that set anything but the feature's own plugin's.
+ */
+export async function featureSettingsProblems(root: string, features: ReadonlyArray<{ id: string; settings?: string }>): Promise<string[]> {
+  const problems: string[] = [];
+  for (const feature of features) {
+    if (!feature.settings) continue;
+    const file = path.resolve(root, feature.settings);
+    if (!fs.existsSync(file)) {
+      problems.push(`Feature "${feature.id}" settings: ${feature.settings} doesn't exist`);
+      continue;
+    }
+    problems.push(...checkFeatureSettings(feature.id, (await importPackModule(file)).default));
+  }
+  return problems;
 }
 
 /** A built-in pack's snapshot, in its in-repo dist/ layout */
@@ -59,6 +78,11 @@ export async function build(args: string[]) {
     const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
     await generate([], undefined, depSnapshots);
     await generateEntries([], undefined, depTypes, depSnapshots);
+  }
+
+  const settingsProblems = await featureSettingsProblems(root, manifest.features ?? []);
+  if (settingsProblems.length > 0) {
+    throw new Error(`Invalid feature settings:\n${settingsProblems.map(p => `  - ${p}`).join('\n')}`);
   }
 
   const release = args.includes('--release');

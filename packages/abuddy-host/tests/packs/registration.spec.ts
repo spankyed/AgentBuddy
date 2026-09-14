@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { PackRegistration } from '@abuddy/sdk/framework';
+import { getPackSettingsDefaults, type PackRegistration } from '@abuddy/sdk/framework';
+import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
 
@@ -61,5 +62,26 @@ describe('registerPack entities', () => {
 
   it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {
     expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'], secretEntityTypes: ['Secret'] });
+  });
+});
+
+describe('registerPack feature settings', () => {
+  const memos = { id: 'memos', hasSystem: false, services: [], settings: { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' } } } };
+
+  it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
+    registerPack({ id: 'memo-pack', systems: [], features: [memos] } as unknown as PackRegistration);
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { memos: { sort: 'newest' }, _meta: { visibility: { memos: false } } } });
+    unregisterPack('memo-pack');
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+  });
+
+  it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
+    const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: {} } };
+    const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
+    expect(() => registerPack({ id: 'bad-pack', systems: [], ...hooks, features: [invalid] } as unknown as PackRegistration))
+      .toThrow('Feature "memos" settings set "plugins.threads"');
+    expect(getPackContributions('bad-pack')).toBeNull();
+    expect(seedHookRegistry.get('Memo')).toBeUndefined();
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
   });
 });

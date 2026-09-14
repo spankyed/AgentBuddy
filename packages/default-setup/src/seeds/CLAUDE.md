@@ -27,7 +27,7 @@ Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and
 
 ## Settings
 
-Each feature has a `settings.ts` (`src/features/<name>/settings.ts`) that declares its slice of the default settings. The compiler deep-merges the base settings (`src/seeds/default-settings.ts`) with all 13 per-feature files into a single compiled object.
+Each feature has a `settings.ts` (`src/features/<name>/settings.ts`) that declares its slice of the default settings. The compiler deep-merges the base settings (`src/seeds/default-settings.ts`) with all 13 per-feature files into a single compiled object. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@abuddy/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
 
 Every feature settings file follows this shape:
 

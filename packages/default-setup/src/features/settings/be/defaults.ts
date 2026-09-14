@@ -4,11 +4,35 @@ import { getAppVersion } from '@abuddy/sdk/utils';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
 import type { SettingsScope } from '@abuddy/sdk';
+import { getPackSettingsDefaults, type PackSettingsDefaults } from '@abuddy/sdk/framework';
 
-let _resolved: SettingsData | null = null;
+let _base: SettingsData | null = null;
+let _resolved: { revision: number; data: SettingsData } | null = null;
+
+/** The app's defaults with registered packs' feature settings added; the app's own win */
+function withPackDefaults(base: SettingsData, packs: PackSettingsDefaults['settings']): SettingsData {
+  const { _meta: packMeta, ...packPlugins } = packs.plugins;
+  const baseMeta = base.plugins._meta ?? {};
+  return {
+    ...base,
+    plugins: {
+      ...packPlugins,
+      ...base.plugins,
+      _meta: { ...baseMeta, visibility: { ...packMeta?.visibility, ...baseMeta.visibility } },
+    },
+  };
+}
 
 export function getDefaultSettings(): SettingsData {
-  if (!_resolved) {
+  const packs = getPackSettingsDefaults();
+  if (_resolved?.revision !== packs.revision) {
+    _resolved = { revision: packs.revision, data: withPackDefaults(getBaseSettings(), packs.settings) };
+  }
+  return _resolved.data;
+}
+
+function getBaseSettings(): SettingsData {
+  if (!_base) {
     const settingsPath = seedPath(getCompiledDir(), 'settings');
     let baseSettings: SettingsData;
     try {
@@ -19,10 +43,10 @@ export function getDefaultSettings(): SettingsData {
         `Run \`npm run compile:settings\` before starting the backend. (${(err as Error).message})`
       );
     }
-    _resolved = { ...baseSettings };
-    _resolved.internal = { ...(baseSettings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
+    _base = { ...baseSettings };
+    _base.internal = { ...(baseSettings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
   }
-  return _resolved;
+  return _base;
 }
 
 export const getDefaultsByLabel = (type: SettingsScope, label: string) => {

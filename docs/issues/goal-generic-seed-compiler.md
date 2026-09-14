@@ -93,7 +93,7 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Preview.** `seed/preview.ts` special-cases library and notes items to build the import dialog's tree.
 
-**Settings.** Compiled from default-setup's `default-settings.ts` plus each feature's `settings.ts`. External packs' feature settings compile but are ignored at runtime (`api/src/packs/pack-seed.ts` `HOST_OWNED_SEED_SECTIONS`). Out of scope here beyond keeping it working; see Deferred.
+**Settings.** Compiled from default-setup's `default-settings.ts` plus each feature's `settings.ts`. External packs' feature settings register as defaults with the pack (`@abuddy/sdk/framework` `packSettingsRegistry`); only built-in packs have a settings seed.
 
 ## Decisions
 
@@ -232,7 +232,6 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 ## Deferred
 
-- External packs' feature settings compile but are ignored at runtime (`HOST_OWNED_SEED_SECTIONS`). Not changed here.
 - Settings/Secrets as an SDK-internal entity category, not in any facade. Planned separately.
 - Entry overrides of a named format (e.g. changing one field of `default-setup:notes`). Not supported: a pack that needs different settings defines its own format. If added later, it's an additive key with objects merged by key (`tree`, `fields` by field name) and scalars, arrays and each field spec replaced.
 

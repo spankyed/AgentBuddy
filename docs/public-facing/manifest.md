@@ -136,7 +136,7 @@ The `boot` object configures hooks that run during app startup:
 |---|---|---|
 | `earlySystem` | `string` | System that boots before EARS hydration (built-in only) |
 | `createDefaultSettings` | `string` | Module that ensures default settings exist |
-| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts`, `flows` and `settings` take a path; any other key is `{ path, format }` or `{ seeder }` |
+| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts`, `flows` and `settings` take a path; any other key is `{ path, format }` or `{ seeder }`. `settings` (the app's defaults) is for built-in packs only; declare a feature's defaults with `features[].settings` |
 | `seedPolicy` | `object` | Controls which seed types to skip at boot or after onboarding |
 | `hooks` | `string` | Module providing lifecycle hooks (e.g. shutdown) |
 

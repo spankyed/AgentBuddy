@@ -47,6 +47,19 @@ test('seeds memos from abuddy.json: a markdown entry and a compiler module', asy
   await expect(list.getByText('Seeded by a compiler module', { exact: true })).toBeVisible();
 });
 
+/** The memos plugin's settings, as the app's settings plugin holds them */
+const memoSettings = (page: import('@playwright/test').Page) => () =>
+  page.evaluate(() => (window as any).applicationState.system.get('settings').getSnapshot().context.settings?.plugins?.memos);
+
+test("the pack's feature settings are defaults in the app", async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  await expect.poll(memoSettings(appPage)).toEqual({ listTitle: 'Memos' });
+  // Its settings hide its sidebar tab by default; the plugin is still there to open
+  const visibleIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.visiblePlugins.map((p: { id: string }) => p.id) as string[]);
+  await expect.poll(visibleIds).toContain('threads');
+  await expect.poll(visibleIds).not.toContain('memos');
+});
+
 test("a re-enabled pack's plugin gets its startup data again", async ({ appPage, app }) => {
   await app.waitForPlugin('memos');
   const pluginIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.plugins.map((p: { id: string }) => p.id) as string[]);
@@ -56,10 +69,13 @@ test("a re-enabled pack's plugin gets its startup data again", async ({ appPage,
   await app.navigate('memos');
   await toggle();
   await expect.poll(pluginIds, { timeout: 15_000 }).not.toContain('memos');
+  // Its feature settings leave the app's defaults with it, and come back when it's enabled
+  await expect.poll(memoSettings(appPage)).toBeUndefined();
 
   // Loaded after the connection: its data comes from the pack's client-ready handshake
   await toggle();
   await app.waitForPlugin('memos');
+  await expect.poll(memoSettings(appPage)).toEqual({ listTitle: 'Memos' });
   await app.navigate('memos');
   await expect(appPage.getByTestId('memo-list').getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
 });

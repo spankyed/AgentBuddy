@@ -204,7 +204,9 @@ export default {
 
 - `_meta.visibility` controls whether the plugin's sidebar tab is visible by default.
 - Feature-specific settings go under the plugin ID key.
-- All feature settings files are deep-merged at build time into a single settings object.
+- A feature sets only its own slice: `plugins.<feature id>` and `plugins._meta.visibility.<feature id>`. `abuddy build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
+- The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
+- Read them at runtime with default-setup's settings service, `services.settings.getPluginSettings('<feature id>')`, which returns the user's values over the defaults.
 
 ## Feature config
 

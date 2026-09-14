@@ -64,7 +64,7 @@ Full build pipeline:
 
 1. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
 2. Compiles seeds (actions, prompts, flows) to JSON in `dist/`
-3. Merges feature settings into a default settings object
+3. Checks each feature's settings file (`features[].settings`) sets only its own plugin's slice
 4. Writes `dist/snapshot.json` (types, manifest, SDK version)
 5. Bundles `src/__generated__/pack-entry-fe.ts` into `dist/fe.js` via Vite (with Vue SFC support)
 

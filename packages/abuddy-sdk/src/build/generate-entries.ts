@@ -293,6 +293,10 @@ function toPascalCase(id: string): string {
  * imported the same way plugins are — by default export — so the manifest does
  * not carry an export name.
  */
+function settingsBinding(id: string): string {
+  return `__settings_${toPascalCase(id)}`;
+}
+
 function systemBinding(id: string): string {
   const pascal = toPascalCase(id);
   return `${pascal.charAt(0).toLowerCase()}${pascal.slice(1)}Entry`;
@@ -399,12 +403,18 @@ export function generatePackFiles(
         parts.push(`    plugin: { ${pluginParts.join(', ')} }`);
       }
       parts.push(`    services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
+      if (f.settings) parts.push(`    settings: ${settingsBinding(f.id)}`);
       return `  {\n${parts.join(',\n')},\n  }`;
     }).join(',\n');
 
     const earlySystemLine = earlyFeature?.system
       ? `    earlySystem: ${systemBinding(earlyFeature.id)}.machine,`
       : '';
+
+    const settingsImports = features
+      .filter(f => f.settings)
+      .map(f => `import ${settingsBinding(f.id)} from '${toImportPath(root, f.settings!)}';`)
+      .join('\n');
 
     const hooksImport = manifest.boot?.hooks
       ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
@@ -426,6 +436,7 @@ import { EARS } from './ears.js';
 ${hooksImport}
 import './seeders.js';
 ${hookEntries.map(([entity, path, exportName]) => `import { ${exportName} as __seedHooks_${entity} } from '${path}';`).join('\n')}
+${settingsImports}
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}

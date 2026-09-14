@@ -292,6 +292,26 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(mod.compiledDirSeen).toBe(path.join(dir, 'runtime', 'seeds'));
   });
 
+  it("registers the runtime's seed hooks and feature settings with the pack", async () => {
+    const { registerExternalPacks } = await import('@/packs/pack-loader');
+    const { getPackSettingsDefaults } = await import('@abuddy/sdk/framework');
+    const { seedHookRegistry } = await import('@abuddy/sdk/seed');
+    const { unregisterPack } = await import('@abuddy/host/packs');
+    makeBundledPack('settings-pack', registration('settings-pack', `
+      seedHooks: { Widget: { find() { return undefined; } } },
+      features: [{ id: 'widget', hasSystem: true, services: [], settings: { plugins: { _meta: { visibility: { widget: false } }, widget: { size: 3 } } } }],
+    `));
+
+    const [pack] = loadExternalPacks();
+    expect(registerExternalPacks([pack])).toEqual([pack]);
+    try {
+      expect(seedHookRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
+      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { widget: { size: 3 }, _meta: { visibility: { widget: false } } } });
+    } finally {
+      unregisterPack('settings-pack');
+    }
+  });
+
   it('strips the declarative boot seed and an empty partition policy', () => {
     makeBundledPack('strip-pack', registration('strip-pack'));
     const [pack] = loadExternalPacks();

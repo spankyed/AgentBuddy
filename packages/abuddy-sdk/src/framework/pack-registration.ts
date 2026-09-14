@@ -49,6 +49,8 @@ export interface PackFeatureDef {
   hasSystem: boolean;
   plugin?: { label: string; icon: string; isPinned?: boolean };
   services: string[];
+  /** The feature's default settings (abuddy.json `features[].settings`) */
+  settings?: import('./pack-settings.ts').FeatureSettings;
 }
 
 export interface PackRegistration {

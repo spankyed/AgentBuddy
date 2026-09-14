@@ -9,6 +9,9 @@ import type { AnyStateMachine } from 'xstate';
 import { z } from 'zod';
 
 // @public
+export function checkFeatureSettings(featureId: string, settings: unknown): string[];
+
+// @public
 export function defineSystem<Id extends string>(id: Id, opts?: {
     designation?: string;
 }): <TEvents extends {
@@ -16,6 +19,18 @@ export function defineSystem<Id extends string>(id: Id, opts?: {
 }, TOutgoing extends {
     type: string;
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+
+// @public
+export interface FeatureSettings {
+    // (undocumented)
+    plugins?: Record<string, unknown>;
+}
+
+// @public
+export function getPackSettingsDefaults(): PackSettingsDefaults;
+
+// @public
+export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
 export interface PackBootHooks {
@@ -60,6 +75,7 @@ export interface PackFeatureDef {
     };
     // (undocumented)
     services: string[];
+    settings?: FeatureSettings;
 }
 
 // @public (undocumented)
@@ -109,6 +125,29 @@ export interface PackSeedManifest {
         skipAfterOnboarding?: string[];
     };
 }
+
+// @public
+export interface PackSettingsDefaults {
+    // (undocumented)
+    revision: number;
+    // (undocumented)
+    settings: {
+        plugins: Record<string, unknown> & {
+            _meta?: {
+                visibility: Record<string, boolean>;
+            };
+        };
+    };
+}
+
+// @internal
+export const packSettingsRegistry: {
+    register(packId: string, features: ReadonlyArray<{
+        id: string;
+        settings?: FeatureSettings;
+    }>): void;
+    unregister(packId: string): void;
+};
 
 // @public (undocumented)
 export interface PackSystemDef {

@@ -21,26 +21,22 @@ function deepMerge(defaults: any, stored: any): any {
 // The ID "Settings-app" has a bug where updates don't persist
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId<'Settings'>;
 
-// Get or create the single settings entity
-const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
-  // Always query first
+// The entity stores only what differs from the defaults (the user's changes), so a changed
+// default, or a pack's feature settings coming and going, applies to every key the user didn't set
+const getStoredSettings = (): Partial<SettingsData> => {
   const existing = qx(SETTINGS_ID).pickOne(['data']);
-
-  // If doesn't exist at all, create it
-  if (!existing) {
-    tx(SETTINGS_ID, true) // treatAsNew=true to add createdAt timestamp
-      .put('entityType', EARS.Entity.Settings)
-      .put('data', getDefaultSettings());
-
-    return { id: SETTINGS_ID, data: getDefaultSettings() };
-  }
-
-  // Merge defaults with stored data so new default fields backfill automatically
-  return {
-    id: SETTINGS_ID,
-    data: deepMerge(getDefaultSettings(), existing.data)
-  };
+  if (existing) return (existing.data ?? {}) as Partial<SettingsData>;
+  tx(SETTINGS_ID, true) // treatAsNew=true to add createdAt timestamp
+    .put('entityType', EARS.Entity.Settings)
+    .put('data', {});
+  return {};
 };
+
+// The settings in effect: the defaults with the stored changes over them
+const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
+  id: SETTINGS_ID,
+  data: deepMerge(getDefaultSettings(), getStoredSettings()),
+});
 
 // Helper to update nested values
 const setNestedValue = (obj: any, path: string[], value: any): any => {
@@ -88,7 +84,7 @@ export const settingsQueries = {
 // COMMANDS
 export const settingsCommands = {
   updateSettings(type: string, label: string | null, path: string[], value: any): void {
-    const entity = getSettingsEntity();
+    const stored = getStoredSettings();
 
     // General & plugin settings are grouped by label (e.g., general.secrets, plugin.flows)
     // Internal & assistant settings don't use labels
@@ -103,9 +99,9 @@ export const settingsCommands = {
       ? [dataKey, label!, ...path]
       : [dataKey, ...path];
 
-    const newData = setNestedValue(entity.data, fullPath, value);
+    const newData = setNestedValue(stored, fullPath, value);
 
-    tx(entity.id)
+    tx(SETTINGS_ID)
       .put('data', newData)
       .put('updatedAt', Date.now());
   },
@@ -118,8 +114,8 @@ export const settingsCommands = {
   },
 
   resetSettings: () => {
-    const entity = getSettingsEntity();
-    tx(entity.id).put('data', getDefaultSettings());
+    getStoredSettings();
+    tx(SETTINGS_ID).put('data', {});
   }
 };
 

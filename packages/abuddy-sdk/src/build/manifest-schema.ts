@@ -212,6 +212,9 @@ export const ManifestSchema = z.object({
   seedHooks: z.record(z.string(), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
+  if (!manifest.builtIn && manifest.boot?.seed?.settings !== undefined) {
+    ctx.addIssue({ code: 'custom', path: ['boot', 'seed', 'settings'], message: 'The "settings" seed holds the app\'s own defaults, so only built-in packs have one; declare a feature\'s default settings with features[].settings' });
+  }
   for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
     if (typeof entry !== 'object' || !entry.format) continue;
     const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];

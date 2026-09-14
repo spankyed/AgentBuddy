@@ -1,6 +1,6 @@
 import { emit } from '@/__generated__/events';
-import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
+import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/__generated__/system-ids';
@@ -46,6 +46,7 @@ type IncomingSettingsEvents =
 
 type SettingsInternalEvents =
   | SecretsOutputEvents // Events from child secrets actor
+  | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
@@ -68,6 +69,7 @@ export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
     secretsActor,
+    packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
     resetAppActor: fromPromise(async () => {
       await services.appData.reset();
       createDefaultSettings();
@@ -110,6 +112,11 @@ export const settingsSystem = setup({
       }
     },
     
+    // A pack enabled, disabled or reloaded while the app runs changes the defaults (a plugin's visibility)
+    sendPackSettingsUpdate: ({ system }) => {
+      system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() }));
+    },
+
     getSettings: ({ system, event }) => {
       const data = settingsQueries.getSettings();
       const faqs = loadFaqs();
@@ -368,6 +375,10 @@ export const settingsSystem = setup({
   initial: 'idle',
   context: {},
   entry: ['spawnSecretsActor'],
+  invoke: { src: 'packSettingsListener' },
+  on: {
+    PACK_SETTINGS_CHANGED: { actions: 'sendPackSettingsUpdate' },
+  },
   states: {
     idle: {
       on: {

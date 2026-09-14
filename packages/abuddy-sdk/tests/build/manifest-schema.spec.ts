@@ -104,6 +104,11 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor({ memos: { path: 'p', format: 'memos', entity: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entity/)]);
   });
 
+  it('accepts a settings seed only in a built-in pack: it holds the app\'s defaults', () => {
+    expect(errorsFor({ settings: 'src/seeds/default-settings.ts' })).toEqual([expect.stringMatching(/"boot\.seed\.settings": The "settings" seed holds the app's own defaults, so only built-in packs have one/)]);
+    expect(parseManifest({ ...pack, builtIn: true, boot: { seed: { settings: 'src/seeds/default-settings.ts' } } }).errors).toEqual([]);
+  });
+
   it('rejects anything but a path on a specialty key', () => {
     expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });
