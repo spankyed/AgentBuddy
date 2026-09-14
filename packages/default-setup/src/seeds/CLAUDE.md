@@ -1,6 +1,6 @@
 # Seeds
 
-Actions, prompts, flows, library, notes, and faqs compiled to JSON for runtime execution. No module system at runtime — function bodies are extracted and run in a sandboxed scope.
+Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `boot.seed` describes them. Actions, prompts and flows run in a sandboxed scope at runtime: no module system, function bodies are extracted.
 
 ## Actions
 
@@ -43,6 +43,22 @@ export default {
 - `_meta.visibility` controls whether the plugin's sidebar tab is shown by default
 - Feature-specific defaults (hotkeys, modes, display preferences) go under the plugin id key
 - Features with no settings beyond visibility still need the file (e.g., `settings/settings.ts` just sets `visibility: { settings: true }`)
+
+## Notes
+
+Markdown under `notes/`, seeded by the `notes` entry (`format: "markdown-tree"`, entity `Note`). Frontmatter (YAML): `title` (default: the file name, dashes as spaces), `type` (`document` | `tasklist` | `task`), `icon`, `favorite`, `hideCompletedChildren`, `completed`. A directory is a parent note, its `index.md` giving the parent's frontmatter and content.
+
+## Library
+
+Markdown under `library/`, compiled by `features/library/be/seed/compile.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the seeds, and `![alt](media/file)` links point at the document's media.
+
+## FAQs
+
+Markdown under `faqs/`, compiled by `features/settings/be/compile-faqs.ts` for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not seeded into the database.
+
+## Re-seeding
+
+Seeded rows keep their record's `sourceHash`. A re-seed updates a row only when the hash changed, and leaves rows without a stored hash (user-created) alone; `keep-existing` skips existing rows, `wipe-and-replace` removes the entry's rows first. See `docs/public-facing/seeds.md`.
 
 ## Commands
 

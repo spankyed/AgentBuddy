@@ -1,12 +1,15 @@
-# Seeds — Actions, Prompts & Flows
+# Seeds
 
-Seeds are DSL source files that get compiled to JSON at build time and executed in a sandboxed runtime. They are the primary way to add behavior to a pack without writing new backend systems.
+Seeds are source files compiled to JSON at build time and written into the database when a pack is installed or updated. `abuddy.json` `boot.seed` names each one.
 
-There are three seed types:
+The SDK compiles four keys itself:
 
 - **Actions** — async functions that do work (call LLMs, query data, emit events)
 - **Prompts** — parameterized text templates for LLM calls
 - **Flows** — declarative event-driven workflows that orchestrate actions
+- **Settings** — the pack's default settings
+
+Any other entity type — yours, a dependency's, or the SDK's — is seeded from markdown or JSON with an entry object in `abuddy.json`, and no SDK code (see [Seeding entities](#seeding-entities)).
 
 ## Actions
 
@@ -278,7 +281,108 @@ Point your manifest at the seed directories:
 }
 ```
 
-Seeds are compiled during `abuddy build` into JSON files in `dist/`. At boot time, the seeder hashes the compiled output and skips re-seeding when nothing has changed.
+`abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, an index of the keys and their items that Settings → Import Pack Seeds previews. At boot, the app hashes the compiled output and skips re-seeding when nothing has changed.
+
+## Seeding entities
+
+Seed rows of an entity type from markdown or JSON with an entry object. The keys are yours to name.
+
+### Markdown
+
+```json
+{
+  "entities": { "Memo": "Memo" },
+  "boot": {
+    "seed": {
+      "memos": {
+        "path": "src/seeds/memos",
+        "format": "markdown-tree",
+        "entity": "Memo",
+        "identity": ["title", "parent"],
+        "tree": { "branch": "index.md", "relKind": "contains" },
+        "fields": {
+          "title": { "from": "frontmatter.title", "default": "filename", "type": "string" },
+          "pinned": { "from": "frontmatter.pinned", "default": false },
+          "text": { "from": "body" }
+        },
+        "media": "media"
+      }
+    }
+  }
+}
+```
+
+- Each `.md` file is a record. Frontmatter is YAML 1.2, so `title: 2024` reads as a number; `"type": "string"` coerces it back.
+- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to `path`) or `frontmatter.<name>`. `default` applies when the source is absent; `"filename"` as a default means the display name.
+- With `tree`, each subdirectory is a parent record (its `branch` file gives its frontmatter and body, `branchEntity` its type) and its files are children, linked with `relKind`. Without `tree`, only the top-level files are read.
+- `media` is copied with the seeds; `![alt](media/pic.png)` links are rewritten to the row's `media://<id>/pic.png`.
+
+### JSON
+
+```json
+"tags": { "path": "src/seeds/tags.json", "format": "json", "entity": "Tag", "identity": ["name"] }
+```
+
+The file holds an array of records (or `{ "records": [...] }`); a record may carry its own `entity` and `children`.
+
+### Compiler modules
+
+When a source needs parsing that field sources can't express, point `compiler` at a module. Its default export gets `{ key, path, packDir, entry }` and returns records, each tagged with its `entity`:
+
+```typescript
+import { compileMarkdownTree, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
+
+export default function compileGlossary({ path }: SeedCompileContext): SeedRecord[] {
+  return compileMarkdownTree(path).map((item) => ({
+    entity: 'Term',
+    term: String(item.frontmatter.term ?? item.displayName),
+    definition: item.body.trim(),
+  }));
+}
+```
+
+```json
+"glossary": { "path": "src/seeds/glossary", "compiler": "src/seeds/compile-glossary.ts", "entity": "Term", "identity": ["term"] }
+```
+
+The build loads TypeScript compiler modules itself. A record's `sourceHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. An entry without `entity` is compiled but not seeded: pack code reads `<key>.seed.json` (default-setup's FAQs work this way). `seeder` replaces the generic seeder with a module exporting `seed(ctx)`.
+
+### Seed hooks
+
+Without hooks, the seeder writes rows directly: it matches existing rows on `identity`, creates new ones with their fields, and links children with `tree.relKind`. When an entity type needs more — shortCodes, ordering, validation, derived links — the pack that declares the type registers seed hooks for it:
+
+```json
+{
+  "entities": { "Memo": "Memo" },
+  "seedHooks": { "Memo": "src/features/memos/be/seed-hooks.ts#memoSeedHooks" }
+}
+```
+
+```typescript
+import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
+import { repository } from '#generated/repository';
+
+export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string }> = {
+  find: (record) => repository.memoQueries.byTitle(record.title),       // { id, sourceHash } | undefined
+  create: (record, { parentId, index }) => repository.memoCommands.add(record.text, record.title).id,
+  update: (id, record) => repository.memoCommands.update(id, record.text),
+  remove: (id) => repository.memoCommands.delete(id),
+};
+```
+
+Hooks are looked up by entity type, so every pack that seeds `Memo` — yours or one depending on it — goes through them. A `find` hook replaces the entry's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`: a pack depending on default-setup seeds notes with a `markdown-tree` entry for `Note` and gets the same shortCodes, display order and links as default-setup's own notes.
+
+### Change tracking
+
+Seeded rows store their record's `sourceHash`. Re-seeding follows the same rules for every entry:
+
+| Import mode | Existing row |
+|---|---|
+| `replace-on-collision` (and boot seeding) | Updated only when the stored hash differs. A row with no stored hash is treated as user-created and left alone. Children are still visited. |
+| `keep-existing` | Left alone, with its children. |
+| `wipe-and-replace` | Every row of the entry's entity types is removed first, then all records are created. |
+
+Upgrading from the previous seed format: notes seeded before `sourceHash` existed have no stored hash, so later seeds leave them alone; seeded library documents and collections may be overwritten once, on the first boot after the upgrade.
 
 ## Commands as actions
 

@@ -70,6 +70,9 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(build.code, build.output).toBe(0);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'fe.js'))).toBe(true);
+    // The scaffold's example entry seeds the pack's own entity type from markdown
+    const examples = JSON.parse(fs.readFileSync(path.join(pack, 'dist', 'runtime', 'seeds', 'examples.seed.json'), 'utf-8'));
+    expect(examples.records).toEqual([expect.objectContaining({ entity: 'DemoPack', title: 'Hello', content: expect.stringContaining('hello.md') })]);
 
     const tsc = run(TSC, TSC_ARGS, pack);
     expect(tsc.code, tsc.output).toBe(0);

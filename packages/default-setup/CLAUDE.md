@@ -74,7 +74,7 @@ The model client (`extensions/services/model-client/`) handles LLM streaming, to
 
 ## EARS (Entity types + Relations)
 
-Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers the entity types and relation kinds `abuddy.json` declares. `ears.ts` also names the SDK's own: Relation, the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked), and the library, notes, settings and secrets data the SDK's seeders and services use (Document, Collection, Note, Settings, Secret). The SDK defines their shapes: import `ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`, `TNodeEntity`, `DocumentEntity`, `CollectionEntity`, `ContentSection` (and its section types), `NoteEntity`, `SettingsEntity`, `SecretEntity` from `@abuddy/sdk`, and the compiled seed formats (`ExportedItem`, `ExportedNote`, `CompiledFAQ`) from `@abuddy/sdk/build`. The SDK's seeders call default-setup's repositories through `BuiltinRepositories` (`@abuddy/sdk/ears/internals`); `tests/unit/builtin-repositories.spec.ts` fails when a repository stops satisfying it. `PackShapes['Node']` is the pack's step node union (`NodeEntity`, each step's `XNode extends NodeBase`). The host keeps TNode out of persistence and routes Secret to the secrets store.
+Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers the entity types and relation kinds `abuddy.json` declares. `ears.ts` also names the SDK's own: Relation, the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked), and the settings and secrets data the SDK's seeders and services use (Settings, Secret). The SDK defines their shapes: import `ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`, `TNodeEntity`, `SettingsEntity`, `SecretEntity` from `@abuddy/sdk`. Document, Collection and Note are default-setup's, declared in `abuddy.json` with their shapes (`DocumentEntity`, `CollectionEntity`, `ContentSection` in `features/library/be/types.ts`; `NoteEntity` in `features/notes/be/types.ts`). The SDK's seeders and services call default-setup's repositories through `BuiltinRepositories` (`@abuddy/sdk/ears/internals`); `tests/unit/builtin-repositories.spec.ts` fails when a repository stops satisfying it. `PackShapes['Node']` is the pack's step node union (`NodeEntity`, each step's `XNode extends NodeBase`). The host keeps TNode out of persistence and routes Secret to the secrets store.
 
 Import `EARS` from `@/__generated__/ears` by default. The SDK's `EARS` (`@abuddy/sdk`) is fine for `EntityId`, SDK-owned constants and shared EARS types (build facets use it), but its `EARS.Entity` type is open: annotate with it only when any entity name is intended, as the create step's `entityTypeTarget` does (see `packages/abuddy-sdk/TYPED-EARS.md`).
 
@@ -86,17 +86,16 @@ Typed facades (no module augmentation):
 
 ## Seeds
 
-DSL source files compiled to JSON at build time. Located in `src/seeds/`:
+Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `boot.seed` describes them. Located in `src/seeds/`:
 
-- `actions/` — claude-code actions, codex actions, command actions, onboarding
-- `prompts/` — system prompts (db-query, db-transaction, recap, commit-message, edit/plan phase tips)
-- `flows/` — root-flow, onboarding-flow, claude-code-flow, codex-flow, command-listener-flow
-- `library/` — internal docs (commands reference)
-- `notes/` — welcome note
-- `faqs/` — markdown FAQ files
-- `default-settings.ts` — full default settings object
+- `actions/`, `prompts/`, `flows/`, `default-settings.ts` — compiled by the SDK's own compilers (the manifest names only their paths)
+- `notes/` — welcome note: a `markdown-tree` entry for `Note` (frontmatter fields, `index.md` directories)
+- `library/` — internal docs (commands reference): compiled by `features/library/be/seed/compile.ts` into Collection and Document records, with sections parsed from the markdown
+- `faqs/` — markdown FAQ files: compiled by `features/settings/be/compile-faqs.ts`, not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
 
-Seed registration: `__generated__/seeders.ts` registers seeders for actions, prompts, flows, library, notes, and settings with the core seed framework. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged.
+Notes and library rows go through the seed hooks default-setup registers for Note, Document and Collection (`seedHooks` in `abuddy.json`: `features/notes/be/seed-hooks.ts`, `features/library/be/seed-hooks.ts`), which call `noteCommands`/`libraryCommands`. Any pack seeding those entity types gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
+
+Seed registration: `__generated__/seeders.ts` registers the SDK's generic seeder for actions, prompts, library and notes, and the flow and settings seeders. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged. See `docs/public-facing/seeds.md` for entry fields, hooks and change tracking.
 
 See `src/seeds/CLAUDE.md` for authoring details.
 

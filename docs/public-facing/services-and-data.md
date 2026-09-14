@@ -264,7 +264,7 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
   - `Relation`: every link between entities is stored as one (`RelationEntity`).
   - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
   - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types, or as `NodeBase` when none define any.
-  - The data the SDK's library, notes and settings seeders and its services write and read: `Document` and `Collection` (`DocumentEntity`, `CollectionEntity`, with `ContentSection` content), `Note` (`NoteEntity`), `Settings` (`SettingsEntity`) and `Secret` (`SecretEntity`).
+  - The data the SDK's settings seeder and its services write and read: `Settings` (`SettingsEntity`) and `Secret` (`SecretEntity`). Library documents and notes belong to default-setup (`Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities.
   - `TNode` rows are execution records and are never persisted, and `Secret` rows are kept in the secrets store.
 - External packs cannot use `partitionPolicy` (entity routing to excluded/secrets stores is reserved for the built-in pack).
 

@@ -23,10 +23,30 @@ const MANIFEST_TEMPLATE = (name: string) => {
       seed: {
         actions: 'src/seeds/actions',
         flows: 'src/seeds/flows',
+        // Rows of the pack's own entity type, from markdown: no seeding code needed
+        [SEED_ROWS_KEY]: {
+          path: `src/seeds/${SEED_ROWS_KEY}`,
+          format: 'markdown-tree',
+          entity: pascalName,
+          identity: ['title'],
+          fields: {
+            title: { from: 'frontmatter.title', default: 'filename', type: 'string' },
+            content: { from: 'body' },
+          },
+        },
       },
     },
   }, null, 2);
 };
+
+/** The scaffold's example seed entry key */
+const SEED_ROWS_KEY = 'examples';
+
+const EXAMPLE_SEED_ROW_TEMPLATE = `---
+title: Hello
+---
+Seeded from src/seeds/${SEED_ROWS_KEY}/hello.md by the "${SEED_ROWS_KEY}" entry in abuddy.json.
+`;
 
 const TSCONFIG_TEMPLATE = JSON.stringify({
   compilerOptions: {
@@ -202,10 +222,12 @@ export async function init(args: string[]) {
 
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'seeds', SEED_ROWS_KEY), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests', 'unit'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
+  fs.writeFileSync(path.join(dir, 'src', 'seeds', SEED_ROWS_KEY, 'hello.md'), EXAMPLE_SEED_ROW_TEMPLATE);
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
