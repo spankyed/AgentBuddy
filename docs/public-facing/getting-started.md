@@ -116,32 +116,7 @@ To release a version, run `abuddy release [patch|minor|major] [--beta]`: it chec
 npm test
 ```
 
-Unit tests run your pack's data code without the app: seeds, repositories and seed hooks against an in-memory database, through `@abuddy/testing/harness`. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`:
-
-```typescript
-// tests/setup.ts
-import '#generated/seeders';
-import { seedRuntime } from '#generated/seed-runtime';
-import { setupPackTests } from '@abuddy/testing/harness';
-
-await setupPackTests({ seedRuntime });
-```
-
-```typescript
-// tests/unit/notes.spec.ts
-import { seedPack } from '@abuddy/testing/harness';
-import { findAll } from '#generated/ears';
-
-it('seeds notes', async () => {
-  expect(await seedPack({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
-  expect(findAll('Note')[0].shortCode).toMatch(/^NOTE-/);
-});
-```
-
-- **What's registered:** your repositories, seed hooks and seeders, and each dependency's seed runtime, so seeding a dependency's entity types (default-setup's `Note`) goes through its real hooks.
-- **`seedPack({ keys?, mode? })`** compiles your seed entries, with your formats and your dependencies', and seeds them. Without `keys` it seeds every entry naming a format; actions, flows and settings need the app.
-- **Each test starts from an empty database.** Run `abuddy build` once first, so dependencies are fetched into `.abuddy/deps/`.
-- Systems, services and the UI are tested in the app with `abuddy test`.
+Unit tests run your pack without the app, through `@abuddy/testing/harness`: seeds and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with a scripted model, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `abuddy build` once first, so dependencies are fetched. See [Testing](testing.md).
 
 ## Verify it works
 

@@ -157,6 +157,6 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `rollup-defs.config.mjs` — Rollup config for DSL definition compilation
 - `npm run compile` from repo root compiles all DSLs
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
-- Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
+- Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `runFlow` (`tests/unit/helpers/flows.ts` seeds default-setup's flows or imports DSL), and services the code under test reaches outside the process (CLIs, Codex, the model) are mocked with `mockService`/`fakeModel`
 - `prepare` script runs `abuddy generate-entries` after `npm install`
 - `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

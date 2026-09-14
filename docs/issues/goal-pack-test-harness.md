@@ -42,5 +42,4 @@ Pack authors unit-test their seeds, repositories and seed hooks against a real i
 
 ## Deferred
 
-- Unit-testing systems, services and flows with the harness.
-- Moving default-setup's tests onto the harness.
+- Unit-testing systems, services and flows with the harness, and moving default-setup's tests onto it: done in `goal-harness-systems-flows.md`.
