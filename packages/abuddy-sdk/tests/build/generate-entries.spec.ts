@@ -228,14 +228,18 @@ describe('entitiesWithoutShapes', () => {
 });
 
 describe('generated seeders', () => {
-  it('registers the generic seeder for entries that seed, and SDK seeders for specialty keys', () => {
+  it('registers the generic seeder with its format settings, and SDK seeders for specialty keys', () => {
     const files = generate({
       entities: { Memo: 'Memo' },
+      seedFormats: {
+        memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
+        faqs: { compiler: 'src/seeds/compilers/faqs.ts' },
+      },
       boot: { seed: {
         actions: 'src/seeds/actions',
         flows: { path: 'src/seeds/flows' },
-        memos: { path: 'src/seeds/memos', format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
-        faqs: { path: 'src/seeds/faqs', compiler: 'src/seeds/compile-faqs.ts' },
+        memos: { path: 'src/seeds/memos', format: 'memos' },
+        faqs: { path: 'src/seeds/faqs', format: 'faqs' },
       } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
@@ -246,21 +250,30 @@ describe('generated seeders', () => {
     expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["actions", "flows", "memos"],');
   });
 
+  it("uses a dependency's format settings for an entry naming it", () => {
+    const deps = { 'base-pack': { ...dependency({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
+    const seeders = generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'src/seeds/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/seeders.ts'];
+    expect(seeders).toContain('registerSeeder(createSeeder({"key":"team","identity":["title"]}));');
+    expect(() => generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
+      .toThrow('Seed "team": dependency "base-pack" has no format "missing"');
+  });
+
   it("registers a pack seeder module under a seed key that isn't an identifier", () => {
     const seeders = generate({ boot: { seed: { 'my-memos': { seeder: 'src/seeds/memos.ts' } } } })['src/__generated__/seeders.ts'];
     expect(seeders).toContain("import { seed as __seeder_my_memos } from '../seeds/memos.js';");
     expect(seeders).toContain('registerSeeder({ key: "my-memos", seed: __seeder_my_memos });');
   });
 
-  it("accepts entities from the SDK and dependencies, and rejects one nobody declares", () => {
+  it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {
     const deps = { 'base-pack': { ...dependency({}), types: { entities: { Note: 'Note' }, relKinds: {} } } };
-    expect(() => generate({ dependencies: { 'base-pack': '*' }, boot: { seed: {
-      notes: { path: 'n', format: 'markdown-tree', entity: 'Note' },
-      actions2: { path: 'a.json', format: 'json', entity: 'Action', identity: ['label'] },
-    } } }, deps)).not.toThrow();
-    expect(() => generate({ boot: { seed: { memos: { path: 'm', format: 'json', entity: 'Memo' } } } }))
-      .toThrow(`Seed "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
-    expect(() => generate({ boot: { seed: { memos: { path: 'm', format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } } }))
+    expect(() => generate({ dependencies: { 'base-pack': '*' }, seedFormats: {
+      notes: { format: 'markdown-tree', entity: 'Note' },
+      actions2: { format: 'json', entity: 'Action', identity: ['label'] },
+    } }, deps)).not.toThrow();
+    // Unused formats are checked too: dependents may use them
+    expect(() => generate({ seedFormats: { memos: { format: 'json', entity: 'Memo' } } }))
+      .toThrow(`Seed format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+    expect(() => generate({ seedFormats: { memos: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } }))
       .toThrow(`entity "Folder" isn't declared`);
   });
 

@@ -6,10 +6,9 @@ import type { PackSeedPreviewItem } from './preview.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';
 import { seedFile } from './manifest.ts';
-import type { SeedEntryConfig } from './manifest.ts';
 import {
-  checkRecordEntities, compileFormatEntry, entryEntities, recordLabel, withSourceHashes,
-  type SeedCompileContext, type SeedRecord,
+  checkRecordEntities, compileBuiltinFormat, formatEntities, recordLabel, withSourceHashes,
+  type SeedCompileContext, type SeedCompilerModule, type SeedRecord,
 } from './seeds/records.ts';
 
 // ============================================================================
@@ -83,10 +82,6 @@ function countRecords(records: SeedRecord[]): number {
   return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
 }
 
-function normalizeEntry(raw: string | SeedEntryConfig): SeedEntryConfig {
-  return typeof raw === 'string' ? { path: raw } : raw;
-}
-
 async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig: PackConfig; featureSettingsPaths: SpecialtyCompileContext['featureSettingsPaths'] }> {
   if (options.packConfig) {
     return { packConfig: options.packConfig, featureSettingsPaths: options.featureSettingsPaths ?? [] };
@@ -102,7 +97,7 @@ async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig
 
 /**
  * Compiles a pack's `boot.seed` entries into `outputDir`: `<key>.seed.json` for each entry,
- * `media/<key>/` for entries with media, and `seeds.json` indexing them.
+ * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them.
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
@@ -115,22 +110,21 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   fs.mkdirSync(outputDir, { recursive: true });
 
   const specialtyData = new Map<string, unknown>();
-  const compiled: Array<{ key: string; entry: SeedEntryConfig; output: unknown; index: SeedIndexEntry }> = [];
+  const compiled: Array<{ key: string; media?: string; output: unknown; index: SeedIndexEntry }> = [];
   const errors: string[] = [];
 
-  for (const [key, raw] of Object.entries(packConfig.seeds)) {
-    const entry = normalizeEntry(raw);
-    const sourcePath = entry.path ? path.resolve(packDir, entry.path) : undefined;
-    const specialty = SPECIALTY_COMPILERS[key];
+  for (const [key, seed] of Object.entries(packConfig.seeds)) {
+    if (seed.kind === 'seeder') continue; // the pack's seeder reads its own sources
 
-    if (specialty) {
-      if (!sourcePath || !fs.existsSync(sourcePath)) continue;
+    const sourcePath = path.resolve(packDir, seed.path);
+    if (seed.kind === 'specialty') {
+      const specialty = SPECIALTY_COMPILERS[key];
+      if (!fs.existsSync(sourcePath)) continue;
       const data = await specialty.compile(sourcePath, { packDir, featureSettingsPaths });
       for (const message of specialty.collectErrors?.(data) ?? []) errors.push(`${key}: ${message}`);
       specialtyData.set(key, data);
       compiled.push({
         key,
-        entry,
         output: specialty.output ? specialty.output(data) : data,
         index: {
           key,
@@ -143,33 +137,35 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       continue;
     }
 
+    const { format } = seed;
     let records: SeedRecord[];
-    if (entry.compiler) {
-      const modulePath = path.resolve(packDir, entry.compiler);
-      const mod = await importModule(modulePath);
-      const compile = mod.default;
-      if (typeof compile !== 'function') throw new Error(`Seed "${key}": ${entry.compiler} has no default export compiling records`);
-      const context: SeedCompileContext = { key, path: sourcePath!, packDir, entry };
-      records = withSourceHashes(await (compile as (context: SeedCompileContext) => SeedRecord[] | Promise<SeedRecord[]>)(context));
-    } else if (entry.format) {
-      records = compileFormatEntry(key, entry, sourcePath!);
+    if (seed.compiler) {
+      if (!seed.compiler.module) {
+        throw new Error(`Seed "${key}": format "${seed.formatRef}" compiles with a module, but its pack's build dir wasn't resolved (build the dependency first)`);
+      }
+      const mod = await importModule(seed.compiler.module);
+      const compile = mod[seed.compiler.exportName];
+      if (typeof compile !== 'function') {
+        throw new Error(`Seed "${key}": format "${seed.formatRef}" has no compiler export "${seed.compiler.exportName}" in ${seed.compiler.module}`);
+      }
+      const context: SeedCompileContext = { key, path: sourcePath, packDir, format };
+      records = withSourceHashes(await (compile as SeedCompilerModule)(context));
     } else {
-      // A seeder-only entry: the pack's seeder reads its own sources
-      continue;
+      records = compileBuiltinFormat(key, format, sourcePath);
     }
-    errors.push(...checkRecordEntities(key, entry, records));
-    const seeded = entryEntities(entry).length > 0 || entry.seeder !== undefined;
+    errors.push(...checkRecordEntities(key, format, records));
+    const seeded = formatEntities(format).length > 0;
     compiled.push({
       key,
-      entry,
+      ...(format.media && { media: path.join(sourcePath, format.media) }),
       output: { records },
       index: {
         key,
         seeded,
-        ...(entry.identity && { identity: entry.identity }),
+        ...(format.identity && { identity: format.identity }),
         count: countRecords(records),
         items: !seeded ? [] : records.map((record) => ({
-          key: recordLabel(record, entry.identity),
+          key: recordLabel(record, format.identity),
           ...(typeof record.description === 'string' && { description: record.description }),
           ...(record.children && { childCount: record.children.length }),
         })),
@@ -192,12 +188,9 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   }
 
   const mediaRoot = path.join(outputDir, 'media');
-  for (const { key, entry, output, index } of compiled) {
+  for (const { key, media, output, index } of compiled) {
     fs.writeFileSync(path.join(outputDir, seedFile(key)), `${JSON.stringify(output, null, 2)}\n`);
-    if (entry.media && entry.path) {
-      const mediaSource = path.join(packDir, entry.path, entry.media);
-      if (fs.existsSync(mediaSource)) fs.cpSync(mediaSource, path.join(mediaRoot, key), { recursive: true });
-    }
+    if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
     console.log(`  ${key}: ${index.count}`);
   }
   const seedIndex: SeedIndex = { version: 1, seeds: compiled.map(({ index }) => index) };

@@ -291,91 +291,12 @@
                   },
                   "format": {
                     "type": "string",
-                    "enum": [
-                      "markdown-tree",
-                      "json"
-                    ],
-                    "description": "Compile `path` with the generic compiler: a directory of markdown, or a JSON array of records."
-                  },
-                  "entity": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "minItems": 1
-                      }
-                    ],
-                    "description": "The entity types this entry seeds. Omitted, the entry is compiled but not seeded."
-                  },
-                  "identity": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "description": "Fields matched to find an existing row (\"parent\" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook."
-                  },
-                  "tree": {
-                    "type": "object",
-                    "properties": {
-                      "branch": {
-                        "type": "string",
-                        "description": "A directory's own markdown file (e.g. \"index.md\"), giving the directory's frontmatter and body."
-                      },
-                      "branchEntity": {
-                        "type": "string",
-                        "description": "The entity type directories seed. Defaults to `entity`."
-                      },
-                      "relKind": {
-                        "type": "string",
-                        "description": "The relation from a parent row to each child row. Defaults to \"contains\"."
-                      }
-                    },
-                    "additionalProperties": false,
-                    "description": "Walk subdirectories as parent rows."
-                  },
-                  "fields": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "object",
-                      "properties": {
-                        "from": {
-                          "type": "string",
-                          "pattern": "^(body|filename|path|frontmatter\\.[\\w-]+)$",
-                          "description": "Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field."
-                        },
-                        "default": {
-                          "description": "Used when the source is absent. The string \"filename\" means the display name."
-                        },
-                        "type": {
-                          "type": "string",
-                          "const": "string",
-                          "description": "Coerce a present value to a string (YAML reads an unquoted 2024 as a number)."
-                        }
-                      },
-                      "required": [
-                        "from"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "description": "Record fields for markdown-tree: field name → where its value comes from."
-                  },
-                  "media": {
-                    "type": "string",
-                    "description": "A directory under `path` copied with the seeds; media/<file> links become media://<id>/<file>."
-                  },
-                  "compiler": {
-                    "type": "string",
-                    "description": "A pack module whose default export compiles `path` into records."
+                    "pattern": "^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$",
+                    "description": "The format compiling `path`: a name in this pack's seedFormats, or \"<dependency id>:<name>\" for a dependency's."
                   },
                   "seeder": {
                     "type": "string",
-                    "description": "A pack module exporting seed(ctx), used instead of the generic seeder."
+                    "description": "A pack module exporting seed(ctx), used instead of a format and the generic seeder."
                   }
                 },
                 "additionalProperties": false
@@ -558,6 +479,103 @@
         "additionalProperties": false
       },
       "description": "DSL type definitions for Monaco editor intellisense."
+    },
+    "seedFormats": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown-tree",
+              "json"
+            ],
+            "description": "A built-in format: a directory of markdown, or a JSON array of records."
+          },
+          "compiler": {
+            "type": "string",
+            "description": "A module in this pack whose default export compiles an entry's path into records. Used instead of \"format\"."
+          },
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            ],
+            "description": "The entity types the format's records seed. Omitted, entries using it are compiled but not seeded."
+          },
+          "identity": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Fields matched to find an existing row (\"parent\" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook."
+          },
+          "tree": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string",
+                "description": "A directory's own markdown file (e.g. \"index.md\"), giving the directory's frontmatter and body."
+              },
+              "branchEntity": {
+                "type": "string",
+                "description": "The entity type directories seed. Defaults to `entity`."
+              },
+              "relKind": {
+                "type": "string",
+                "description": "The relation from a parent row to each child row. Defaults to \"contains\"."
+              }
+            },
+            "additionalProperties": false,
+            "description": "Walk subdirectories as parent rows."
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "pattern": "^(body|filename|path|frontmatter\\.[\\w-]+)$",
+                  "description": "Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field."
+                },
+                "default": {
+                  "description": "Used when the source is absent. The string \"filename\" means the display name."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "string",
+                  "description": "Coerce a present value to a string (YAML reads an unquoted 2024 as a number)."
+                }
+              },
+              "required": [
+                "from"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Record fields for markdown-tree: field name → where its value comes from."
+          },
+          "media": {
+            "type": "string",
+            "description": "A directory under an entry's path copied with the seeds; media/<file> links become media://<id>/<file>."
+          }
+        },
+        "additionalProperties": false
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "description": "Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as \"<pack id>:<name>\"."
     },
     "seedHooks": {
       "type": "object",

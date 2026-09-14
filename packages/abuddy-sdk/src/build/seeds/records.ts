@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sourceHash } from '../compile-utils.ts';
 import { compileMarkdownTree, type MarkdownItem } from './markdown-tree.ts';
-import type { SeedEntryConfig } from '../manifest.ts';
+import type { SeedFormatConfig } from '../manifest.ts';
 
 /**
  * One item a seed entry seeds: an entity row's fields, tagged with its entity type, plus its
@@ -26,18 +26,17 @@ export const RECORD_KEYS: ReadonlySet<string> = new Set(['entity', 'children']);
 /** Where a field's value comes from in a markdown item */
 export type SeedFieldSource = 'body' | 'filename' | 'path' | `frontmatter.${string}`;
 
-/** A `boot.seed` object entry (its schema is SeedEntryConfigSchema in manifest-schema.ts) */
-export type GenericSeedEntry = SeedEntryConfig;
-export type SeedFieldSpec = NonNullable<SeedEntryConfig['fields']>[string];
-export type SeedTreeSpec = NonNullable<SeedEntryConfig['tree']>;
+export type SeedFieldSpec = NonNullable<SeedFormatConfig['fields']>[string];
+export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
 
 /** What a compiler module's default export receives */
 export interface SeedCompileContext {
   key: string;
   /** Absolute path of the entry's `path` */
   path: string;
+  /** The pack seeding the entry (a dependency's format still compiles the seeding pack's sources) */
   packDir: string;
-  entry: GenericSeedEntry;
+  format: SeedFormatConfig;
 }
 
 export type SeedCompilerModule = (context: SeedCompileContext) => SeedRecord[] | Promise<SeedRecord[]>;
@@ -48,10 +47,10 @@ export function recordLabel(record: SeedRecord, identity: readonly string[] = []
   return String((field ? record[field] : undefined) ?? record.name ?? record.title ?? record.label ?? '');
 }
 
-/** The entity types an entry seeds */
-export function entryEntities(entry: GenericSeedEntry): string[] {
-  const own = entry.entity === undefined ? [] : Array.isArray(entry.entity) ? entry.entity : [entry.entity];
-  const branch = entry.tree?.branchEntity;
+/** The entity types a format's records seed */
+export function formatEntities(format: SeedFormatConfig): string[] {
+  const own = format.entity === undefined ? [] : Array.isArray(format.entity) ? format.entity : [format.entity];
+  const branch = format.tree?.branchEntity;
   return [...new Set(branch ? [...own, branch] : own)];
 }
 
@@ -84,11 +83,11 @@ export function withSourceHashes(records: SeedRecord[]): SeedRecord[] {
   });
 }
 
-function markdownRecords(items: MarkdownItem[], entry: GenericSeedEntry, entity: string | undefined): SeedRecord[] {
-  const branchEntity = entry.tree?.branchEntity ?? entity;
+function markdownRecords(items: MarkdownItem[], format: SeedFormatConfig, entity: string | undefined): SeedRecord[] {
+  const branchEntity = format.tree?.branchEntity ?? entity;
   return items.map((item) => {
     const fields = Object.fromEntries(
-      Object.entries(entry.fields ?? {})
+      Object.entries(format.fields ?? {})
         .map(([name, spec]) => [name, fieldValue(item, spec)] as const)
         .filter(([, value]) => value !== undefined),
     );
@@ -96,19 +95,19 @@ function markdownRecords(items: MarkdownItem[], entry: GenericSeedEntry, entity:
     return {
       ...(recordEntity && { entity: recordEntity }),
       ...fields,
-      ...(item.kind === 'branch' && { children: markdownRecords(item.children, entry, entity) }),
+      ...(item.kind === 'branch' && { children: markdownRecords(item.children, format, entity) }),
     };
   });
 }
 
-/** Compiles a `format` entry's source into records */
-export function compileFormatEntry(key: string, entry: GenericSeedEntry, sourcePath: string): SeedRecord[] {
-  const entity = typeof entry.entity === 'string' ? entry.entity : undefined;
-  if (entry.format === 'markdown-tree') {
-    const items = compileMarkdownTree(sourcePath, { branch: entry.tree?.branch, recursive: entry.tree !== undefined });
-    return withSourceHashes(markdownRecords(items, entry, entity));
+/** Compiles an entry's source with a built-in format */
+export function compileBuiltinFormat(key: string, format: SeedFormatConfig, sourcePath: string): SeedRecord[] {
+  const entity = typeof format.entity === 'string' ? format.entity : undefined;
+  if (format.format === 'markdown-tree') {
+    const items = compileMarkdownTree(sourcePath, { branch: format.tree?.branch, recursive: format.tree !== undefined });
+    return withSourceHashes(markdownRecords(items, format, entity));
   }
-  if (entry.format === 'json') {
+  if (format.format === 'json') {
     if (!fs.existsSync(sourcePath)) return [];
     const data = JSON.parse(fs.readFileSync(sourcePath, 'utf-8')) as unknown;
     const records = Array.isArray(data) ? data : (data as { records?: unknown }).records;
@@ -120,17 +119,17 @@ export function compileFormatEntry(key: string, entry: GenericSeedEntry, sourceP
     }));
     return withSourceHashes(tag(records as SeedRecord[]));
   }
-  throw new Error(`Seed "${key}": unknown format "${String(entry.format)}"`);
+  throw new Error(`Seed "${key}": unknown built-in format "${String(format.format)}"`);
 }
 
-/** Checks each record's entity type against the entry's declared entities */
-export function checkRecordEntities(key: string, entry: GenericSeedEntry, records: SeedRecord[]): string[] {
-  const allowed = entryEntities(entry);
+/** Checks each record's entity type against the format's declared entities */
+export function checkRecordEntities(key: string, format: SeedFormatConfig, records: SeedRecord[]): string[] {
+  const allowed = formatEntities(format);
   const errors: string[] = [];
   const visit = (items: SeedRecord[], trail: string) => items.forEach((record, index) => {
     const at = `${trail}[${index}]`;
     if (allowed.length === 0) {
-      if (record.entity !== undefined) errors.push(`Seed "${key}" ${at}: has entity "${record.entity}", but the entry declares no entity`);
+      if (record.entity !== undefined) errors.push(`Seed "${key}" ${at}: has entity "${record.entity}", but its format declares no entity`);
     } else if (record.entity === undefined || !allowed.includes(record.entity)) {
       errors.push(`Seed "${key}" ${at}: entity ${record.entity === undefined ? 'is missing' : `"${record.entity}" isn't one of ${allowed.join(', ')}`}`);
     }

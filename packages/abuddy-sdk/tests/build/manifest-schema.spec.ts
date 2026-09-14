@@ -61,24 +61,30 @@ describe('parseManifest', () => {
   });
 });
 
-describe('boot.seed entries', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' } };
-  const errorsFor = (seed: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
-    parseManifest({ ...pack, ...extra, boot: { seed } }).errors;
+describe('seedFormats and boot.seed entries', () => {
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } };
+  const memos = {
+    format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'],
+    tree: { branch: 'index.md', relKind: 'contains' },
+    fields: { title: { from: 'frontmatter.title', default: 'filename', type: 'string' }, body: { from: 'body' } },
+    media: 'media',
+  };
+  const errorsFor = (seed: Record<string, unknown>, seedFormats: Record<string, unknown> = { memos }) =>
+    parseManifest({ ...pack, seedFormats, boot: { seed } }).errors;
 
-  it('accepts specialty paths, format, compiler and seeder entries', () => {
+  it('accepts specialty paths, entries naming own or dependency formats, and seeder entries', () => {
     expect(errorsFor({
       actions: 'src/seeds/actions',
       flows: { path: 'src/seeds/flows' },
-      memos: {
-        path: 'src/seeds/memos', format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'],
-        tree: { branch: 'index.md', relKind: 'contains' },
-        fields: { title: { from: 'frontmatter.title', default: 'filename', type: 'string' }, body: { from: 'body' } },
-        media: 'media',
-      },
-      tags: { path: 'src/seeds/tags.json', format: 'json', entity: 'Memo', identity: ['name'] },
-      docs: { path: 'src/seeds/docs', compiler: 'src/seeds/compile-docs.ts', entity: ['Memo'] },
+      memos: { path: 'src/seeds/memos', format: 'memos' },
+      tags: { path: 'src/seeds/tags.json', format: 'tags' },
+      docs: { path: 'src/seeds/docs', format: 'docs' },
+      notes: { path: 'src/seeds/notes', format: 'base-pack:notes' },
       custom: { seeder: 'src/seeds/custom.ts' },
+    }, {
+      memos,
+      tags: { format: 'json', entity: 'Memo', identity: ['name'] },
+      docs: { compiler: 'src/seeds/compilers/docs.ts', entity: ['Memo'] },
     })).toEqual([]);
   });
 
@@ -86,24 +92,37 @@ describe('boot.seed entries', () => {
     expect(errorsFor({ library: 'src/seeds/library' })).toEqual([expect.stringMatching(/"boot\.seed\.library": Unknown seed key "library"/)]);
   });
 
-  it('rejects an object entry without format, compiler or seeder', () => {
-    expect(errorsFor({ memos: { path: 'src/seeds/memos', entity: 'Memo' } })).toEqual([expect.stringMatching(/Seed "memos" needs "format", "compiler" or "seeder"/)]);
+  it('rejects an entry that is neither { path, format } nor { seeder }', () => {
+    const shape = /Seed "memos" must be \{ "path", "format" \} or \{ "seeder" \}/;
+    expect(errorsFor({ memos: { path: 'src/seeds/memos' } })).toEqual([expect.stringMatching(shape)]);
+    expect(errorsFor({ memos: { format: 'memos' } })).toEqual([expect.stringMatching(shape)]);
+    expect(errorsFor({ memos: { seeder: 's.ts', path: 'p' } })).toEqual([expect.stringMatching(shape)]);
+  });
+
+  it('rejects format settings on an entry: they belong to a seedFormats format', () => {
+    expect(errorsFor({ memos: { path: 'p', format: 'memos', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/Unrecognized key.*fields/)]);
+    expect(errorsFor({ memos: { path: 'p', format: 'memos', entity: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entity/)]);
   });
 
   it('rejects anything but a path on a specialty key', () => {
-    expect(errorsFor({ actions: { path: 'src/seeds/actions', entity: 'Action' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
+    expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });
 
-  it('rejects unknown entry fields and field sources', () => {
-    expect(errorsFor({ memos: { path: 'p', format: 'json', entityType: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entityType/)]);
-    expect(errorsFor({ memos: { path: 'p', format: 'markdown-tree', fields: { title: { from: 'heading' } } } }))
-      .toEqual([expect.stringMatching(/"boot\.seed\.memos\.fields\.title\.from": Must be "body", "filename", "path" or "frontmatter\.<name>"/)]);
+  it("rejects a format name that isn't in seedFormats, or a dependency prefix that isn't a dependency", () => {
+    expect(errorsFor({ memos: { path: 'p', format: 'notes' } })).toEqual([expect.stringMatching(/"boot\.seed\.memos\.format": Seed "memos": no format "notes" in seedFormats/)]);
+    expect(errorsFor({ memos: { path: 'p', format: 'other-pack:notes' } })).toEqual([expect.stringMatching(/format "other-pack:notes" names "other-pack", which isn't a dependency/)]);
+    expect(errorsFor({ memos: { path: 'p', format: 'Not A Name' } })).toEqual([expect.stringMatching(/Must be a seedFormats name, or "<dependency id>:<name>"/)]);
   });
 
-  it('rejects format with compiler, a missing path, and fields outside markdown-tree', () => {
-    expect(errorsFor({ memos: { path: 'p', format: 'json', compiler: 'c.ts' } })).toEqual([expect.stringMatching(/either "format" or "compiler"/)]);
-    expect(errorsFor({ memos: { format: 'json' } })).toEqual([expect.stringMatching(/"path" is required/)]);
-    expect(errorsFor({ memos: { path: 'p', format: 'json', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/"fields" applies only to format "markdown-tree"/)]);
+  it('rejects unknown format keys, bad field sources, and format/compiler misuse', () => {
+    const seed = { memos: { path: 'p', format: 'memos' } };
+    expect(errorsFor(seed, { memos: { format: 'json', entityType: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entityType/)]);
+    expect(errorsFor(seed, { memos: { format: 'markdown-tree', fields: { title: { from: 'heading' } } } }))
+      .toEqual([expect.stringMatching(/"seedFormats\.memos\.fields\.title\.from": Must be "body", "filename", "path" or "frontmatter\.<name>"/)]);
+    expect(errorsFor(seed, { memos: { format: 'json', compiler: 'c.ts' } })).toEqual([expect.stringMatching(/needs "format" or "compiler", not both/)]);
+    expect(errorsFor(seed, { memos: { entity: 'Memo' } })).toEqual([expect.stringMatching(/needs "format" or "compiler", not both/)]);
+    expect(errorsFor(seed, { memos: { format: 'json', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/"fields" applies only to format "markdown-tree"/)]);
+    expect(errorsFor({}, { Memos: { format: 'json' } })).toEqual([expect.stringMatching(/Must be lowercase alphanumeric with hyphens/)]);
   });
 });
 

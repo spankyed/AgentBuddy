@@ -7,10 +7,11 @@ import {
   resolveFeatureSettingsFromManifest,
   PACK_TYPES_DEF,
   entitiesWithoutShapes,
-  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
+  SEED_COMPILERS_FILE,
+  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
-import { bundlePackRuntime, bundlePackStepBuild } from '../build/be-bundler';
+import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackStepBuild } from '../build/be-bundler';
 import { bundlePackTypes } from '../build/types-bundler';
 import { BUNDLE_PATHS } from '@abuddy/host/packs';
 import { generate, resolveDeps } from './generate';
@@ -53,18 +54,21 @@ export async function build(args: string[]) {
   let packConfig: PackConfig | null = null;
   let featureSettingsPaths: Array<{ name: string; settingsPath: string }> | undefined;
 
-  // Dependencies' step build code, so this pack's flows validate against real step definitions
+  // Dependencies' step build code, so this pack's flows validate against real step definitions,
+  // and their manifests and build dirs, so entries naming their seed formats compile with them
   const dependencyStepModules: string[] = [];
+  const dependencies = new Map<string, SeedDependency>();
   for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
     const artifacts = await resolveDepArtifacts(root, depId, depValue);
     if (!artifacts) throw new Error(`Dependency "${depId}" could not be resolved`);
     const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
+    dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
   }
 
   const seeds = manifest.boot?.seed;
   if (seeds && Object.keys(seeds).length > 0) {
-    packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules });
+    packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules, dependencies });
     featureSettingsPaths = resolveFeatureSettingsFromManifest(manifest, root);
   } else {
     console.log('No boot.seed in manifest. Skipping seed compilation.');
@@ -135,6 +139,20 @@ export async function build(args: string[]) {
       console.log(`  step build: dist/${BUNDLE_PATHS.stepsBuild}`);
     } else {
       console.error(`\nStep build bundle failed: ${stepBuild.error}`);
+      process.exitCode = 1;
+    }
+  }
+
+  // ── Seed compiler modules (for dependents' entries naming this pack's formats) ──
+  const seedCompilers = Object.fromEntries(
+    Object.entries(manifest.seedFormats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
+  );
+  if (Object.keys(seedCompilers).length > 0) {
+    const bundled = await bundlePackSeedCompilers(root, outputDir, seedCompilers, { release });
+    if (bundled.success) {
+      console.log(`  seed compilers: dist/${BUNDLE_PATHS.buildDir}/${SEED_COMPILERS_FILE}`);
+    } else {
+      console.error(`\nSeed compiler bundle failed: ${bundled.error}`);
       process.exitCode = 1;
     }
   }

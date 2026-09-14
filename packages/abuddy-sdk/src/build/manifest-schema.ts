@@ -48,34 +48,45 @@ const SeedTreeSpecSchema = z.object({
   relKind: z.string().describe('The relation from a parent row to each child row. Defaults to "contains".').optional(),
 }).strict();
 
-export const SeedEntryConfigSchema = z.object({
-  path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
-  format: z.enum(['markdown-tree', 'json']).describe('Compile `path` with the generic compiler: a directory of markdown, or a JSON array of records.').optional(),
+const SEED_FORMAT_NAME = /^[a-z][a-z0-9-]*$/;
+
+/** A format name in the pack's own `seedFormats`, or `<dependency id>:<name>` */
+const SEED_FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
+
+/** How a source becomes records: a built-in format or a compiler module, with the settings it uses */
+export const SeedFormatSchema = z.object({
+  format: z.enum(['markdown-tree', 'json']).describe('A built-in format: a directory of markdown, or a JSON array of records.').optional(),
+  compiler: z.string().describe('A module in this pack whose default export compiles an entry\'s path into records. Used instead of "format".').optional(),
   entity: z.union([z.string(), z.array(z.string()).min(1)])
-    .describe('The entity types this entry seeds. Omitted, the entry is compiled but not seeded.').optional(),
+    .describe('The entity types the format\'s records seed. Omitted, entries using it are compiled but not seeded.').optional(),
   identity: z.array(z.string()).min(1)
     .describe('Fields matched to find an existing row ("parent" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook.').optional(),
   tree: SeedTreeSpecSchema.describe('Walk subdirectories as parent rows.').optional(),
   fields: z.record(z.string(), SeedFieldSpecSchema).describe('Record fields for markdown-tree: field name → where its value comes from.').optional(),
-  media: z.string().describe('A directory under `path` copied with the seeds; media/<file> links become media://<id>/<file>.').optional(),
-  compiler: z.string().describe('A pack module whose default export compiles `path` into records.').optional(),
-  seeder: z.string().describe('A pack module exporting seed(ctx), used instead of the generic seeder.').optional(),
-}).strict().superRefine((entry, ctx) => {
-  if (entry.format && entry.compiler) ctx.addIssue({ code: 'custom', message: 'Use either "format" or "compiler", not both' });
-  if ((entry.format || entry.compiler) && !entry.path) ctx.addIssue({ code: 'custom', message: '"path" is required with "format" or "compiler"' });
-  if (entry.fields && entry.format !== 'markdown-tree') ctx.addIssue({ code: 'custom', path: ['fields'], message: '"fields" applies only to format "markdown-tree"' });
+  media: z.string().describe('A directory under an entry\'s path copied with the seeds; media/<file> links become media://<id>/<file>.').optional(),
+}).strict().superRefine((format, ctx) => {
+  if (!format.format === !format.compiler) ctx.addIssue({ code: 'custom', message: 'A seed format needs "format" or "compiler", not both' });
+  if (format.fields && format.format !== 'markdown-tree') ctx.addIssue({ code: 'custom', path: ['fields'], message: '"fields" applies only to format "markdown-tree"' });
 });
+
+/** A `boot.seed` entry: a source and the format that compiles it, or a pack seeder module */
+export const SeedEntryConfigSchema = z.object({
+  path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
+  format: z.string().regex(SEED_FORMAT_REF, 'Must be a seedFormats name, or "<dependency id>:<name>"')
+    .describe('The format compiling `path`: a name in this pack\'s seedFormats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
+  seeder: z.string().describe('A pack module exporting seed(ctx), used instead of a format and the generic seeder.').optional(),
+}).strict();
 
 const SeedSectionSchema = z.record(z.string(), z.union([z.string(), SeedEntryConfigSchema])).superRefine((seed, ctx) => {
   for (const [key, entry] of Object.entries(seed)) {
     if (SPECIALTY_SEED_KEYS.includes(key)) {
-      if (typeof entry === 'object' && Object.keys(entry).some((field) => field !== 'path')) {
+      if (typeof entry === 'object' && (!entry.path || Object.keys(entry).some((field) => field !== 'path'))) {
         ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" is compiled by the SDK: give its source as a path or { "path": … }` });
       }
     } else if (typeof entry === 'string') {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Unknown seed key "${key}": only ${SPECIALTY_SEED_KEYS.join(', ')} take a path; describe other seeds with an object ("format", "compiler" or "seeder")` });
-    } else if (!entry.format && !entry.compiler && !entry.seeder) {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Seed "${key}" needs "format", "compiler" or "seeder"` });
+      ctx.addIssue({ code: 'custom', path: [key], message: `Unknown seed key "${key}": only ${SPECIALTY_SEED_KEYS.join(', ')} take a path; other seeds are { "path", "format" } or { "seeder" }` });
+    } else if (entry.seeder ? entry.path !== undefined || entry.format !== undefined : !entry.path || !entry.format) {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Seed "${key}" must be { "path", "format" } or { "seeder" }` });
     }
   }
 });
@@ -196,9 +207,21 @@ export const ManifestSchema = z.object({
   migrations: z.string().describe('Path to migrations index module.').optional(),
   fe: FEConfigSchema.optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
+  seedFormats: z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be lowercase alphanumeric with hyphens'), SeedFormatSchema)
+    .describe('Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as "<pack id>:<name>".').optional(),
   seedHooks: z.record(z.string(), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
+  for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
+    if (typeof entry !== 'object' || !entry.format) continue;
+    const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];
+    if (!name) continue;
+    if (pack === undefined && !manifest.seedFormats?.[name]) {
+      ctx.addIssue({ code: 'custom', path: ['boot', 'seed', key, 'format'], message: `Seed "${key}": no format "${name}" in seedFormats` });
+    } else if (pack !== undefined && !(pack in (manifest.dependencies ?? {}))) {
+      ctx.addIssue({ code: 'custom', path: ['boot', 'seed', key, 'format'], message: `Seed "${key}": format "${entry.format}" names "${pack}", which isn't a dependency` });
+    }
+  }
   const declared = new Set(Object.values(manifest.entities ?? {}));
   for (const entity of Object.keys(manifest.seedHooks ?? {})) {
     if (!declared.has(entity)) {

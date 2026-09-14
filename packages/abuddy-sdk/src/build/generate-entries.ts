@@ -1,8 +1,9 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { extname, join } from 'path';
-import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, SeedEntryConfig, StepEntry } from './manifest.ts';
+import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
-import { entryEntities } from './seeds/records.ts';
+import { formatEntities } from './seeds/records.ts';
+import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -921,43 +922,50 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
   }
 
   function generateSeeders(): string {
-    const seed = manifest.boot?.seed ?? {};
     const entityNames = new Set(packRegistry().entities.keys());
     const seedImports = new Set<string>();
     const packImports: string[] = [];
     const registrations: string[] = [];
 
-    for (const [key, value] of Object.entries(seed)) {
-      const entry: SeedEntryConfig = typeof value === 'string' ? { path: value } : value;
-      for (const entity of entryEntities(entry)) {
+    // This pack's own formats are checked whether or not an entry uses them: dependents may
+    for (const [name, format] of Object.entries(manifest.seedFormats ?? {})) {
+      for (const entity of formatEntities(format)) {
         if (!entityNames.has(entity)) {
-          throw new Error(`Seed "${key}": entity "${entity}" isn't declared by this pack, its dependencies or the SDK`);
+          throw new Error(`Seed format "${name}": entity "${entity}" isn't declared by this pack, its dependencies or the SDK`);
         }
       }
+    }
 
-      if (entry.seeder) {
+    for (const [key, seed] of Object.entries(resolvedSeeds())) {
+      if (seed.kind === 'seeder') {
         const importName = `__seeder_${toIdentifier(key)}`;
-        packImports.push(`import { seed as ${importName} } from '${toImportPath(root, entry.seeder)}';`);
+        packImports.push(`import { seed as ${importName} } from '${toImportPath(root, seed.seeder)}';`);
         registrations.push(`registerSeeder({ key: ${JSON.stringify(key)}, seed: ${importName} });`);
         continue;
       }
 
-      const specialty = SPECIALTY_SEEDERS[key];
-      if (specialty) {
+      if (seed.kind === 'specialty') {
+        const specialty = SPECIALTY_SEEDERS[key];
         seedImports.add(specialty.factory);
         registrations.push(`registerSeeder(${specialty.factory}(${specialty.args}));`);
         continue;
       }
 
-      // A compile-only entry (no entity): pack code reads its seed file
-      if (entryEntities(entry).length === 0) continue;
+      const { format } = seed;
+      for (const entity of formatEntities(format)) {
+        if (!entityNames.has(entity)) {
+          throw new Error(`Seed "${key}": format "${seed.formatRef}" seeds entity "${entity}", which isn't declared by this pack, its dependencies or the SDK`);
+        }
+      }
+      // A compile-only format (no entity): pack code reads its seed file
+      if (formatEntities(format).length === 0) continue;
 
       seedImports.add('createSeeder');
       const options = {
         key,
-        ...(entry.identity && { identity: entry.identity }),
-        ...(entry.tree?.relKind && { relKind: entry.tree.relKind }),
-        ...(entry.media && { media: true }),
+        ...(format.identity && { identity: format.identity }),
+        ...(format.tree?.relKind && { relKind: format.tree.relKind }),
+        ...(format.media && { media: true }),
       };
       registrations.push(`registerSeeder(createSeeder(${JSON.stringify(options)}));`);
     }
@@ -978,13 +986,16 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 `;
   }
 
+  /** `boot.seed` resolved against this pack's formats and its dependencies' (compiler modules aren't loaded here) */
+  function resolvedSeeds(): Record<string, ResolvedSeed> {
+    const dependencies = new Map([...depSnapshots].map(([id, snap]) => [id, { manifest: snap.manifest }]));
+    return resolveSeeds(manifest, root, dependencies);
+  }
+
   /** The seed keys the host seeds into the database: entries with a seeder */
   function seededKeys(): string[] {
-    return Object.entries(manifest.boot?.seed ?? {})
-      .filter(([key, value]) => {
-        const entry: SeedEntryConfig = typeof value === 'string' ? { path: value } : value;
-        return entry.seeder !== undefined || key in SPECIALTY_SEEDERS || entryEntities(entry).length > 0;
-      })
+    return Object.entries(resolvedSeeds())
+      .filter(([, seed]) => seed.kind !== 'format' || formatEntities(seed.format).length > 0)
       .map(([key]) => key);
   }
 

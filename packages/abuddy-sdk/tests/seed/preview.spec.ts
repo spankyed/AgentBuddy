@@ -23,10 +23,12 @@ describe('previewPackSeeds', () => {
     write('faqs.json', JSON.stringify([{ question: 'Why?' }]));
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const out = path.join(root, 'dist');
-    await compilePack({ packDir: root, outputDir: out, packConfig: { name: 'demo', seeds: {
-      glossary: { path: 'glossary.json', format: 'json', entity: 'Term', identity: ['term'] },
-      faqs: { path: 'faqs.json', format: 'json' },
-    } } });
+    write('abuddy.json', JSON.stringify({
+      id: 'demo', name: 'Demo', version: '1.0.0',
+      seedFormats: { terms: { format: 'json', entity: 'Term', identity: ['term'] }, records: { format: 'json' } },
+      boot: { seed: { glossary: { path: 'glossary.json', format: 'terms' }, faqs: { path: 'faqs.json', format: 'records' } } },
+    }));
+    await compilePack({ packDir: root, outputDir: out });
 
     expect(previewPackSeeds(out)).toEqual({
       directory: out,

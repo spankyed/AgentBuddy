@@ -6,6 +6,7 @@ import type { PackManifest } from './manifest.ts';
 import { stepRegistry } from '../steps/registry.ts';
 import { artifactRegistry } from '../artifacts/registry.ts';
 import { blockRegistry } from '../blocks/registry.ts';
+import { resolveSeeds, type SeedDependency } from './seeds/resolve.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   for (const value of Object.values(mod)) {
@@ -20,6 +21,8 @@ export interface PackConfigOptions {
    * steps so flows can use dependency steps and are validated with their real code.
    */
   dependencyStepModules?: string[];
+  /** Dependencies whose seed formats this pack's entries may name */
+  dependencies?: ReadonlyMap<string, SeedDependency>;
 }
 
 export async function buildPackConfigFromManifest(
@@ -29,7 +32,7 @@ export async function buildPackConfigFromManifest(
 ): Promise<PackConfig> {
   const config: PackConfig = {
     name: manifest.id,
-    seeds: manifest.boot?.seed ?? {},
+    seeds: resolveSeeds(manifest, packDir, options.dependencies),
     async setup() {
       // Step type → dependency module defining it; a pack step with the same type would silently
       // merge over the dependency's definition in the registry

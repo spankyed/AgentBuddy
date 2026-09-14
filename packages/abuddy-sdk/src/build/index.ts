@@ -5,10 +5,11 @@ export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult }
 export { compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
-  compileFormatEntry, checkRecordEntities, recordLabel, entryEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
+  compileBuiltinFormat, checkRecordEntities, recordLabel, formatEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
   type SeedRecord, type CompiledSeedFile, type SeedFieldSource, type SeedFieldSpec, type SeedTreeSpec,
-  type GenericSeedEntry, type SeedCompileContext, type SeedCompilerModule,
+  type SeedCompileContext, type SeedCompilerModule,
 } from './seeds/records.ts';
+export { resolveSeeds, type ResolvedSeed, type SeedDependency, type SeedCompilerModuleRef } from './seeds/resolve.ts';
 export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, SeedIndex, SeedIndexEntry } from './seed-compiler.ts';
 
 // Compile utilities
@@ -40,10 +41,10 @@ export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from 
 export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackPermission,
   PackSystemEntry, PackPluginEntry,
-  PackFeatureEntry, PackBootConfig, SeedEntryConfig,
+  PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';
@@ -65,7 +66,7 @@ export type { ManifestValidation } from './validate.ts';
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
-  BootConfigSchema, SeedEntryConfigSchema, StepEntrySchema, StepDSLMetaSchema,
+  BootConfigSchema, SeedEntryConfigSchema, SeedFormatSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema,
 } from './manifest-schema.ts';
 

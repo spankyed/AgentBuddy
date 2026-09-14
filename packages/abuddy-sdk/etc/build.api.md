@@ -29,147 +29,25 @@ export const BootConfigSchema: z.ZodObject<{
     earlySystem: z.ZodOptional<z.ZodString>;
     createDefaultSettings: z.ZodOptional<z.ZodString>;
     hooks: z.ZodOptional<z.ZodString>;
-    seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodEffects<z.ZodObject<{
+    seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
         path: z.ZodOptional<z.ZodString>;
-        format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
-        entity: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString, "many">]>>;
-        identity: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-        tree: z.ZodOptional<z.ZodObject<{
-            branch: z.ZodOptional<z.ZodString>;
-            branchEntity: z.ZodOptional<z.ZodString>;
-            relKind: z.ZodOptional<z.ZodString>;
-        }, "strict", z.ZodTypeAny, {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        }, {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        }>>;
-        fields: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-            from: z.ZodString;
-            default: z.ZodOptional<z.ZodUnknown>;
-            type: z.ZodOptional<z.ZodLiteral<"string">>;
-        }, "strict", z.ZodTypeAny, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }>>>;
-        media: z.ZodOptional<z.ZodString>;
-        compiler: z.ZodOptional<z.ZodString>;
+        format: z.ZodOptional<z.ZodString>;
         seeder: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
+        format?: string | undefined;
         seeder?: string | undefined;
     }, {
         path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
-        seeder?: string | undefined;
-    }>, {
-        path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
-        seeder?: string | undefined;
-    }, {
-        path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
+        format?: string | undefined;
         seeder?: string | undefined;
     }>]>>, Record<string, string | {
         path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
+        format?: string | undefined;
         seeder?: string | undefined;
     }>, Record<string, string | {
         path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
+        format?: string | undefined;
         seeder?: string | undefined;
     }>>>;
     seedPolicy: z.ZodOptional<z.ZodObject<{
@@ -188,21 +66,7 @@ export const BootConfigSchema: z.ZodObject<{
     hooks?: string | undefined;
     seed?: Record<string, string | {
         path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
+        format?: string | undefined;
         seeder?: string | undefined;
     }> | undefined;
     seedPolicy?: {
@@ -215,21 +79,7 @@ export const BootConfigSchema: z.ZodObject<{
     hooks?: string | undefined;
     seed?: Record<string, string | {
         path?: string | undefined;
-        format?: "markdown-tree" | "json" | undefined;
-        entity?: string | string[] | undefined;
-        identity?: string[] | undefined;
-        tree?: {
-            branch?: string | undefined;
-            branchEntity?: string | undefined;
-            relKind?: string | undefined;
-        } | undefined;
-        fields?: Record<string, {
-            from: string;
-            type?: "string" | undefined;
-            default?: unknown;
-        }> | undefined;
-        media?: string | undefined;
-        compiler?: string | undefined;
+        format?: string | undefined;
         seeder?: string | undefined;
     }> | undefined;
     seedPolicy?: {
@@ -245,12 +95,15 @@ export function buildPackConfigFromManifest(manifest: PackManifest, packDir: str
 export function bundleFile(filePath: string): Promise<BundleResult>;
 
 // @public
-export function checkRecordEntities(key: string, entry: GenericSeedEntry, records: SeedRecord[]): string[];
+export function checkRecordEntities(key: string, format: SeedFormatConfig, records: SeedRecord[]): string[];
 
 // @public (undocumented)
 export interface CompilationContext {
     getCompiled<T = unknown>(key: string): T | undefined;
 }
+
+// @public
+export function compileBuiltinFormat(key: string, format: SeedFormatConfig, sourcePath: string): SeedRecord[];
 
 // @public (undocumented)
 export interface CompileConfig {
@@ -310,9 +163,6 @@ export interface CompiledSeedFile {
 
 // @public (undocumented)
 export function compileFlowDSL(dsl: FlowDSL, options?: CompileOptions): CompiledRows;
-
-// @public
-export function compileFormatEntry(key: string, entry: GenericSeedEntry, sourcePath: string): SeedRecord[];
 
 // @public
 export function compileMarkdownTree(dir: string, options?: MarkdownTreeOptions): MarkdownItem[];
@@ -424,9 +274,6 @@ export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 
 
 // @public (undocumented)
 export function entry(...branches: DSLStepNode[][]): Track;
-
-// @public
-export function entryEntities(entry: GenericSeedEntry): string[];
 
 // @public (undocumented)
 export interface ExportFlowsOptions {
@@ -578,6 +425,9 @@ export type FlowDSL = Record<string, Track[] | FlowConfig>;
 // @public (undocumented)
 export const flowsCompiler: SpecialtyCompiler<FlowDSL>;
 
+// @public
+export function formatEntities(format: SeedFormatConfig): string[];
+
 // @public (undocumented)
 export interface GenerateEntriesOptions {
     // (undocumented)
@@ -590,9 +440,6 @@ export interface GenerateEntriesOptions {
 
 // @public (undocumented)
 export function generatePackFiles(manifest: PackManifest, opts: GenerateEntriesOptions): Record<string, string>;
-
-// @public
-export type GenericSeedEntry = SeedEntryConfig;
 
 // @public (undocumented)
 export function hashFlows(merged: FlowDSL): Record<string, object>;
@@ -756,147 +603,25 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem: z.ZodOptional<z.ZodString>;
         createDefaultSettings: z.ZodOptional<z.ZodString>;
         hooks: z.ZodOptional<z.ZodString>;
-        seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodEffects<z.ZodObject<{
+        seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
             path: z.ZodOptional<z.ZodString>;
-            format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
-            entity: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString, "many">]>>;
-            identity: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-            tree: z.ZodOptional<z.ZodObject<{
-                branch: z.ZodOptional<z.ZodString>;
-                branchEntity: z.ZodOptional<z.ZodString>;
-                relKind: z.ZodOptional<z.ZodString>;
-            }, "strict", z.ZodTypeAny, {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            }, {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            }>>;
-            fields: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
-                from: z.ZodString;
-                default: z.ZodOptional<z.ZodUnknown>;
-                type: z.ZodOptional<z.ZodLiteral<"string">>;
-            }, "strict", z.ZodTypeAny, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }>>>;
-            media: z.ZodOptional<z.ZodString>;
-            compiler: z.ZodOptional<z.ZodString>;
+            format: z.ZodOptional<z.ZodString>;
             seeder: z.ZodOptional<z.ZodString>;
         }, "strict", z.ZodTypeAny, {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }, {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
-            seeder?: string | undefined;
-        }>, {
-            path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
-            seeder?: string | undefined;
-        }, {
-            path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }>]>>, Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }>, Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }>>>;
         seedPolicy: z.ZodOptional<z.ZodObject<{
@@ -915,21 +640,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
         seedPolicy?: {
@@ -942,21 +653,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
         seedPolicy?: {
@@ -1068,6 +765,103 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
     }>>>;
+    seedFormats: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
+        format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
+        compiler: z.ZodOptional<z.ZodString>;
+        entity: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString, "many">]>>;
+        identity: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        tree: z.ZodOptional<z.ZodObject<{
+            branch: z.ZodOptional<z.ZodString>;
+            branchEntity: z.ZodOptional<z.ZodString>;
+            relKind: z.ZodOptional<z.ZodString>;
+        }, "strict", z.ZodTypeAny, {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        }, {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        }>>;
+        fields: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            from: z.ZodString;
+            default: z.ZodOptional<z.ZodUnknown>;
+            type: z.ZodOptional<z.ZodLiteral<"string">>;
+        }, "strict", z.ZodTypeAny, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }>>>;
+        media: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }>, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }>>>;
     seedHooks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -1130,21 +924,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
         seedPolicy?: {
@@ -1176,6 +956,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
+    seedFormats?: Record<string, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
     id: string;
@@ -1238,21 +1035,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
         seedPolicy?: {
@@ -1284,6 +1067,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
+    seedFormats?: Record<string, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }>, {
     id: string;
@@ -1346,21 +1146,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
         seedPolicy?: {
@@ -1392,6 +1178,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
+    seedFormats?: Record<string, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
     id: string;
@@ -1454,21 +1257,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
-            format?: "markdown-tree" | "json" | undefined;
-            entity?: string | string[] | undefined;
-            identity?: string[] | undefined;
-            tree?: {
-                branch?: string | undefined;
-                branchEntity?: string | undefined;
-                relKind?: string | undefined;
-            } | undefined;
-            fields?: Record<string, {
-                from: string;
-                type?: "string" | undefined;
-                default?: unknown;
-            }> | undefined;
-            media?: string | undefined;
-            compiler?: string | undefined;
+            format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
         seedPolicy?: {
@@ -1500,6 +1289,23 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
+    seedFormats?: Record<string, {
+        format?: "markdown-tree" | "json" | undefined;
+        compiler?: string | undefined;
+        entity?: string | string[] | undefined;
+        identity?: string[] | undefined;
+        tree?: {
+            branch?: string | undefined;
+            branchEntity?: string | undefined;
+            relKind?: string | undefined;
+        } | undefined;
+        fields?: Record<string, {
+            from: string;
+            type?: "string" | undefined;
+            default?: unknown;
+        }> | undefined;
+        media?: string | undefined;
+    }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }>;
 
@@ -1553,7 +1359,7 @@ export type PackBootConfig = z.infer<typeof BootConfigSchema>;
 export interface PackConfig {
     // (undocumented)
     name: string;
-    seeds: Record<string, string | SeedEntryConfig>;
+    seeds: Record<string, ResolvedSeed>;
     setup?: () => void | Promise<void>;
 }
 
@@ -1643,14 +1449,35 @@ export const RECORD_KEYS: ReadonlySet<string>;
 // @public
 export function recordLabel(record: SeedRecord, identity?: readonly string[]): string;
 
+// @public
+export type ResolvedSeed = {
+    kind: 'specialty';
+    path: string;
+} | {
+    kind: 'seeder';
+    seeder: string;
+} | {
+    kind: 'format';
+    path: string;
+    formatRef: string;
+    format: SeedFormatConfig;
+    compiler?: SeedCompilerModuleRef;
+};
+
 // @public (undocumented)
 export function resolveFeatureSettingsFromManifest(manifest: PackManifest, packDir: string): Array<{
     name: string;
     settingsPath: string;
 }>;
 
+// @public
+export function resolveSeeds(manifest: PackManifest, packDir: string, dependencies?: ReadonlyMap<string, SeedDependency>): Record<string, ResolvedSeed>;
+
 // @public (undocumented)
 export function resolveTracks(entry: Track[] | FlowConfig): Track[];
+
+// @public
+export const SEED_COMPILERS_FILE = "seed-compilers.mjs";
 
 // @public (undocumented)
 export const SEED_INDEX_FILE = "seeds.json";
@@ -1658,10 +1485,9 @@ export const SEED_INDEX_FILE = "seeds.json";
 // @public
 export interface SeedCompileContext {
     // (undocumented)
-    entry: GenericSeedEntry;
+    format: SeedFormatConfig;
     // (undocumented)
     key: string;
-    // (undocumented)
     packDir: string;
     path: string;
 }
@@ -1669,13 +1495,54 @@ export interface SeedCompileContext {
 // @public (undocumented)
 export type SeedCompilerModule = (context: SeedCompileContext) => SeedRecord[] | Promise<SeedRecord[]>;
 
+// @public
+export interface SeedCompilerModuleRef {
+    // (undocumented)
+    exportName: string;
+    module?: string;
+}
+
+// @public
+export interface SeedDependency {
+    buildDir?: string;
+    // (undocumented)
+    manifest: PackManifest;
+}
+
 // @public (undocumented)
 export type SeedEntryConfig = z.infer<typeof SeedEntryConfigSchema>;
 
-// @public (undocumented)
-export const SeedEntryConfigSchema: z.ZodEffects<z.ZodObject<{
+// @public
+export const SeedEntryConfigSchema: z.ZodObject<{
     path: z.ZodOptional<z.ZodString>;
+    format: z.ZodOptional<z.ZodString>;
+    seeder: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    path?: string | undefined;
+    format?: string | undefined;
+    seeder?: string | undefined;
+}, {
+    path?: string | undefined;
+    format?: string | undefined;
+    seeder?: string | undefined;
+}>;
+
+// @public
+export type SeedFieldSource = 'body' | 'filename' | 'path' | `frontmatter.${string}`;
+
+// @public (undocumented)
+export type SeedFieldSpec = NonNullable<SeedFormatConfig['fields']>[string];
+
+// @public (undocumented)
+export function seedFile(name: string): string;
+
+// @public (undocumented)
+export type SeedFormatConfig = z.infer<typeof SeedFormatSchema>;
+
+// @public
+export const SeedFormatSchema: z.ZodEffects<z.ZodObject<{
     format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
+    compiler: z.ZodOptional<z.ZodString>;
     entity: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodString, "many">]>>;
     identity: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     tree: z.ZodOptional<z.ZodObject<{
@@ -1705,11 +1572,9 @@ export const SeedEntryConfigSchema: z.ZodEffects<z.ZodObject<{
         default?: unknown;
     }>>>;
     media: z.ZodOptional<z.ZodString>;
-    compiler: z.ZodOptional<z.ZodString>;
-    seeder: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    path?: string | undefined;
     format?: "markdown-tree" | "json" | undefined;
+    compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -1723,11 +1588,9 @@ export const SeedEntryConfigSchema: z.ZodEffects<z.ZodObject<{
         default?: unknown;
     }> | undefined;
     media?: string | undefined;
-    compiler?: string | undefined;
-    seeder?: string | undefined;
 }, {
-    path?: string | undefined;
     format?: "markdown-tree" | "json" | undefined;
+    compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -1741,11 +1604,9 @@ export const SeedEntryConfigSchema: z.ZodEffects<z.ZodObject<{
         default?: unknown;
     }> | undefined;
     media?: string | undefined;
-    compiler?: string | undefined;
-    seeder?: string | undefined;
 }>, {
-    path?: string | undefined;
     format?: "markdown-tree" | "json" | undefined;
+    compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -1759,11 +1620,9 @@ export const SeedEntryConfigSchema: z.ZodEffects<z.ZodObject<{
         default?: unknown;
     }> | undefined;
     media?: string | undefined;
-    compiler?: string | undefined;
-    seeder?: string | undefined;
 }, {
-    path?: string | undefined;
     format?: "markdown-tree" | "json" | undefined;
+    compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
     tree?: {
@@ -1777,18 +1636,7 @@ export const SeedEntryConfigSchema: z.ZodEffects<z.ZodObject<{
         default?: unknown;
     }> | undefined;
     media?: string | undefined;
-    compiler?: string | undefined;
-    seeder?: string | undefined;
 }>;
-
-// @public
-export type SeedFieldSource = 'body' | 'filename' | 'path' | `frontmatter.${string}`;
-
-// @public (undocumented)
-export type SeedFieldSpec = NonNullable<SeedEntryConfig['fields']>[string];
-
-// @public (undocumented)
-export function seedFile(name: string): string;
 
 // @public
 export interface SeedIndex {
@@ -1825,7 +1673,7 @@ export interface SeedRecord {
 }
 
 // @public (undocumented)
-export type SeedTreeSpec = NonNullable<SeedEntryConfig['tree']>;
+export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
 
 // @public
 export const settingsCompiler: SpecialtyCompiler<Record<string, unknown>>;

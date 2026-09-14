@@ -1,10 +1,10 @@
-import type { SeedEntryConfig } from './manifest.ts';
+import type { ResolvedSeed } from './seeds/resolve.ts';
 
 /** A pack's seed sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
 export interface PackConfig {
   name: string;
-  /** `boot.seed`: seed key → path (specialty keys) or entry */
-  seeds: Record<string, string | SeedEntryConfig>;
+  /** `boot.seed`, each entry resolved to its path, seeder, or format settings */
+  seeds: Record<string, ResolvedSeed>;
   /** Registers what compiling needs first, such as the step types flows validate against */
   setup?: () => void | Promise<void>;
 }
@@ -24,7 +24,7 @@ export interface CompilePackOptions {
   outputDir: string;
   packConfig?: PackConfig;
   featureSettingsPaths?: Array<{ name: string; settingsPath: string }>;
-  /** Loads a pack's compiler module; the CLI loads TypeScript modules with tsx. Defaults to import(). */
+  /** Loads a compiler module (the pack's own source, or a dependency's seed-compilers.mjs); the CLI loads TypeScript modules with tsx. Defaults to import(). */
   importModule?: (file: string) => Promise<Record<string, unknown>>;
 }
 

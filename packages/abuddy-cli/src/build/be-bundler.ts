@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SHARED_DEPS } from '@abuddy/host/build/shared-deps';
+import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 
 export interface BundleRuntimeOptions {
   /** Minify for release bundles; dev builds keep readable output with source maps. */
@@ -94,6 +95,53 @@ export async function bundlePackStepBuild(
       platform: 'node',
       target: 'node20',
       outfile: path.join(outputDir, 'build', 'steps.build.mjs'),
+      external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
+      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+      plugins,
+      minify: options.release ?? false,
+      logLevel: 'silent',
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * Bundle the compiler modules named in the pack's seedFormats into dist/build/seed-compilers.mjs,
+ * one export per format name. Dependent packs' `abuddy build` compiles this pack's formats with it,
+ * since the pack's sources aren't installed. @abuddy/sdk and host-shared packages stay external.
+ */
+export async function bundlePackSeedCompilers(
+  packDir: string,
+  outputDir: string,
+  compilers: Record<string, string>,
+  options: BundleRuntimeOptions = {},
+): Promise<{ success: boolean; error?: string }> {
+  for (const [name, modulePath] of Object.entries(compilers)) {
+    if (!fs.existsSync(path.resolve(packDir, modulePath))) {
+      return { success: false, error: `seed format "${name}": compiler module not found: ${modulePath}` };
+    }
+  }
+  const esbuild = await import('esbuild');
+  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const aliases = readTsconfigAliases(packDir);
+  const subpathImports = readSubpathImports(packDir);
+  const plugins: import('esbuild').Plugin[] = [stubFrontendAssetsPlugin()];
+  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
+  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
+  const contents = Object.entries(compilers)
+    .map(([name, modulePath]) => `export { default as ${JSON.stringify(name)} } from ${JSON.stringify(path.resolve(packDir, modulePath))};`)
+    .join('\n');
+
+  try {
+    await esbuild.build({
+      stdin: { contents, resolveDir: packDir, sourcefile: 'seed-compilers.ts', loader: 'ts' },
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      target: 'node20',
+      outfile: path.join(outputDir, 'build', SEED_COMPILERS_FILE),
       external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
       tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
       plugins,

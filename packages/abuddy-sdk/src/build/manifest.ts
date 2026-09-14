@@ -1,7 +1,7 @@
 import * as path from 'path';
 import type { z } from 'zod';
 import type {
-  ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema,
+  ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema, SeedFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
 } from './manifest-schema.ts';
 
@@ -13,6 +13,7 @@ export type PackManifest = z.infer<typeof ManifestSchema>;
 export type PackFeatureEntry = z.infer<typeof FeatureEntrySchema>;
 export type PackBootConfig = z.infer<typeof BootConfigSchema>;
 export type SeedEntryConfig = z.infer<typeof SeedEntryConfigSchema>;
+export type SeedFormatConfig = z.infer<typeof SeedFormatSchema>;
 export type StepEntry = z.infer<typeof StepEntrySchema>;
 export type StepDSLMeta = z.infer<typeof StepDSLMetaSchema>;
 export type DslEntry = z.infer<typeof DslEntrySchema>;
@@ -33,6 +34,9 @@ export interface PackSnapshot {
   manifest: PackManifest;
   sdkVersion?: string;
 }
+
+/** The bundle of a pack's seed compiler modules, in its build dir: dependents compile its formats with it */
+export const SEED_COMPILERS_FILE = 'seed-compilers.mjs';
 
 export function seedFile(name: string): string {
   return `${name}.seed.json`;
