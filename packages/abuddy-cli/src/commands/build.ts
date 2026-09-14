@@ -38,7 +38,7 @@ export async function build(args: string[]) {
   // External packs build into the bundle layout (runtime/, build/, types/). dist/ is pure
   // output, so clear it before anything can fail: a failed build must never leave an older
   // build behind for `abuddy pack` or the test fixture to ship.
-  // Built-in packs keep their in-repo layout (dist/*.seed.json, dist/snapshot.json, dev-entry.cjs).
+  // Built-in packs keep their in-repo layout (dist/*.seed.json, dist/snapshot.json, dist/build/; dist/runtime/index.cjs from dev-build.mjs).
   const external = !manifest.builtIn;
   if (external) fs.rmSync(outputDir, { recursive: true, force: true });
 

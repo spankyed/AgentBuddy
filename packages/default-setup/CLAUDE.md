@@ -159,4 +159,4 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
 - `prepare` script runs `abuddy generate-entries` after `npm install`
-- `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/dev-entry.cjs` (the API's dev-mode loader)
+- `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

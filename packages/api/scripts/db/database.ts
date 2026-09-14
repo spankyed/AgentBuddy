@@ -13,7 +13,7 @@ export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.u
 
 /** Registers the built-in packs; `hydrate: false` leaves LMDB untouched (e.g. before a reset). */
 export async function openDatabase({ hydrate = true } = {}): Promise<void> {
-  await loadBuiltInPacks(packagesDir, { devEntry: 'only' });
+  await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
   if (hydrate) await hydrateSharded({ envs, policy, shardedPersistence: persistence });
 }
 

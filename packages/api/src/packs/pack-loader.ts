@@ -134,22 +134,26 @@ export { computePackSeedHash, seedPackData } from './pack-seed';
 // built-in packs from their dev entries instead
 const loadBuiltInLoaders = async () => (await import('virtual:built-in-pack-loaders')).default;
 
-const DEV_ENTRY_FILENAME = 'dev-entry.cjs';
+/** A built-in pack's built backend runtime (dist/runtime/index.cjs, the bundle layout's runtime entry) */
+export function builtInRuntimeEntry(packDir: string): string {
+  return path.join(packDir, 'dist', BUNDLE_PATHS.runtimeEntry);
+}
 
 let _builtInPackInfos: BuiltInPackInfo[] = [];
 export function getBuiltInPackInfos(): BuiltInPackInfo[] { return _builtInPackInfos; }
 
 export interface LoadBuiltInPacksOptions {
   /**
-   * `prefer` (default in development) loads each pack's dist/dev-entry.cjs when it exists and falls
-   * back to the bundled loaders; `only` requires it (unbundled tools, which have no bundled loaders).
+   * `prefer` (default in development) loads each pack's built runtime (dist/runtime/index.cjs) when it
+   * exists and falls back to the bundled loaders; `only` requires it (unbundled tools, which have no
+   * bundled loaders).
    */
-  devEntry?: 'prefer' | 'only' | 'never';
+  runtimeEntry?: 'prefer' | 'only' | 'never';
 }
 
 export async function loadBuiltInPacks(
   packagesDir: string,
-  { devEntry = process.env.NODE_ENV === 'development' ? 'prefer' : 'never' }: LoadBuiltInPacksOptions = {},
+  { runtimeEntry = process.env.NODE_ENV === 'development' ? 'prefer' : 'never' }: LoadBuiltInPacksOptions = {},
 ): Promise<BuiltInPackInfo[]> {
   const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
@@ -158,15 +162,15 @@ export async function loadBuiltInPacks(
   }
   const loaded: BuiltInPackInfo[] = [];
   for (const pack of discovered) {
-    // Dev mode: load from CJS on disk (enables hot reload)
-    if (devEntry !== 'never') {
-      const devEntryPath = path.join(pack.dir, 'dist', DEV_ENTRY_FILENAME);
-      if (devEntry === 'only' && !fs.existsSync(devEntryPath)) {
-        throw new Error(`Built-in pack ${pack.id} has no ${path.relative(packagesDir, devEntryPath)}. Run: npm run build -w @app/default-setup`);
+    // Dev mode: load the built runtime from disk (enables hot reload)
+    if (runtimeEntry !== 'never') {
+      const runtimeEntryPath = builtInRuntimeEntry(pack.dir);
+      if (runtimeEntry === 'only' && !fs.existsSync(runtimeEntryPath)) {
+        throw new Error(`Built-in pack ${pack.id} has no ${path.relative(packagesDir, runtimeEntryPath)}. Run: npm run build -w @app/default-setup`);
       }
-      if (fs.existsSync(devEntryPath)) {
+      if (fs.existsSync(runtimeEntryPath)) {
         try {
-          const mod = withHostResolution(() => esmRequire(devEntryPath));
+          const mod = withHostResolution(() => esmRequire(runtimeEntryPath));
           if (mod.registration) {
             mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
             registerPack(mod.registration);
@@ -175,8 +179,8 @@ export async function loadBuiltInPacks(
             continue;
           }
         } catch (err) {
-          if (devEntry === 'only') throw err;
-          logger.warn(`Dev entry failed for ${pack.id}, falling back to bundle:`, err as Error);
+          if (runtimeEntry === 'only') throw err;
+          logger.warn(`Built runtime failed for ${pack.id}, falling back to the bundled loader:`, err as Error);
         }
       }
     }

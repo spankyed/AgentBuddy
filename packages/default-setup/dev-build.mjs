@@ -5,7 +5,9 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
-const outfile = path.resolve(__dirname, 'dist/dev-entry.cjs');
+// The pack's backend runtime, in the bundle layout (runtime/index.cjs): the API loads it in development,
+// and the app publishes it with the snapshot and build/ for packs depending on default-setup
+const outfile = path.resolve(__dirname, 'dist/runtime/index.cjs');
 
 import * as os from 'os';
 const watchMode = process.argv.includes('--watch');

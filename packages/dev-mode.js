@@ -47,7 +47,7 @@ const rendererWatchServer = await createServer({
 });
 await rendererWatchServer.listen();
 
-// Wait for dev-build initial compile (so dev-entry.cjs exists before API boots)
+// Wait for dev-build initial compile (so dist/runtime/index.cjs exists before API boots)
 await devBuildReady;
 
 // ── 2. Renderer watch server provider plugin ──

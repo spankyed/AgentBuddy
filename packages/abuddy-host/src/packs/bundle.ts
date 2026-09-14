@@ -204,16 +204,22 @@ export async function extractBundleArchive(archive: string, destDir: string, exp
 }
 
 /**
- * Publish a built-in pack's build-time artifacts (dist/snapshot.json → types/snapshot.json,
- * dist/build/ → build/) so pack authors' `abuddy build` can resolve it as a dependency from
- * the installed app. Returns false when the destination was already current.
+ * Publish a built-in pack's artifacts in the bundle layout (dist/snapshot.json → types/snapshot.json,
+ * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs) so pack authors resolve it as a
+ * dependency from the installed app: builds use its types and build code, tests its runtime.
+ * Returns false when the destination was already current.
  */
 export function publishHostPackArtifacts(builtInPackDir: string, destDir: string): boolean {
   const snapshot = path.join(builtInPackDir, 'dist', 'snapshot.json');
   if (!fs.existsSync(snapshot)) return false;
   const buildDir = path.join(builtInPackDir, 'dist', 'build');
+  const runtimeEntry = path.join(builtInPackDir, 'dist', BUNDLE_PATHS.runtimeEntry);
 
-  const sources = [snapshot, ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : [])];
+  const sources = [
+    snapshot,
+    ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : []),
+    ...(fs.existsSync(runtimeEntry) ? [runtimeEntry] : []),
+  ];
   const fingerprint = sources.map(f => `${path.relative(builtInPackDir, f)}:${sha256File(f)}`).join('\n');
   const fingerprintFile = path.join(destDir, '.fingerprint');
   if (fs.existsSync(fingerprintFile) && fs.readFileSync(fingerprintFile, 'utf-8') === fingerprint) return false;
@@ -224,6 +230,10 @@ export function publishHostPackArtifacts(builtInPackDir: string, destDir: string
   fs.mkdirSync(path.join(staging, BUNDLE_PATHS.typesDir), { recursive: true });
   fs.copyFileSync(snapshot, path.join(staging, BUNDLE_PATHS.snapshot));
   if (fs.existsSync(buildDir)) fs.cpSync(buildDir, path.join(staging, BUNDLE_PATHS.buildDir), { recursive: true });
+  if (fs.existsSync(runtimeEntry)) {
+    fs.mkdirSync(path.join(staging, BUNDLE_PATHS.runtimeDir), { recursive: true });
+    fs.copyFileSync(runtimeEntry, path.join(staging, BUNDLE_PATHS.runtimeEntry));
+  }
   fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);
   fs.rmSync(destDir, { recursive: true, force: true });
   fs.mkdirSync(path.dirname(destDir), { recursive: true });

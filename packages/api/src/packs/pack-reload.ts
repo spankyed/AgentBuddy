@@ -17,6 +17,7 @@ import {
   clearPackRequireCache,
   registerExternalPacks,
   getBuiltInPackInfos,
+  builtInRuntimeEntry,
   withHostResolution,
 } from './pack-loader';
 import { seedPackData } from './pack-seed';
@@ -127,15 +128,15 @@ export async function reloadBuiltInPack(
   const packInfo = getBuiltInPackInfos().find(p => p.id === packId);
   if (!packInfo) throw new Error(`Built-in pack not found: ${packId}`);
 
-  const devEntry = path.join(packInfo.dir, 'dist', 'dev-entry.cjs');
-  if (!fs.existsSync(devEntry)) {
-    throw new Error(`Dev entry not found: ${devEntry}`);
+  const runtimeEntry = builtInRuntimeEntry(packInfo.dir);
+  if (!fs.existsSync(runtimeEntry)) {
+    throw new Error(`Built runtime not found: ${runtimeEntry}`);
   }
 
   await reloadPack(packId, backendActor, () => {
-    const mod = withHostResolution(() => esmRequire(devEntry));
+    const mod = withHostResolution(() => esmRequire(runtimeEntry));
     if (!mod.registration) {
-      logger.error(`Dev entry for ${packId} has no registration export`);
+      logger.error(`Built runtime for ${packId} has no registration export`);
       return null;
     }
 

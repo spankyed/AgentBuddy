@@ -6,7 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
-import { extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
+import { BUNDLE_PATHS, extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 
@@ -35,11 +35,13 @@ function parseDepValue(value: string): DepSource {
 
 // ── Artifact discovery ──
 
-/** A dependency's build-time artifacts: its snapshot, plus step build code when it ships any. */
+/** A dependency's artifacts: its snapshot, plus build code and a backend runtime when it ships them. */
 export interface DepArtifacts {
   snapshot: PackSnapshot;
-  /** Directory with the dependency's build-time code (build/steps.build.mjs), if present. */
+  /** Directory with the dependency's build-time code (build/steps.build.mjs, build/seed-compilers.mjs), if present. */
   buildDir?: string;
+  /** The dependency's backend runtime (runtime/index.cjs), if present: what a dependent's tests load. */
+  runtimeEntry?: string;
 }
 
 function tryReadSnapshot(filePath: string): PackSnapshot | null {
@@ -56,17 +58,29 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
  */
 export function findDepArtifacts(dir: string): DepArtifacts | null {
   const candidates = [
-    { snapshot: path.join(dir, 'types', 'snapshot.json'), build: path.join(dir, 'build') },
-    { snapshot: path.join(dir, 'dist', 'types', 'snapshot.json'), build: path.join(dir, 'dist', 'build') },
-    { snapshot: path.join(dir, 'dist', 'snapshot.json'), build: path.join(dir, 'dist', 'build') },
+    { root: dir, snapshot: path.join(dir, 'types', 'snapshot.json') },
+    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'types', 'snapshot.json') },
+    // A built-in pack's dist: its snapshot at the top, build/ and runtime/ in the bundle layout
+    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'snapshot.json') },
     // .abuddy/deps/<id>/ cache
-    { snapshot: path.join(dir, 'snapshot.json'), build: path.join(dir, 'build') },
+    { root: dir, snapshot: path.join(dir, 'snapshot.json') },
   ];
   for (const c of candidates) {
     const snapshot = tryReadSnapshot(c.snapshot);
-    if (snapshot) return { snapshot, buildDir: fs.existsSync(c.build) ? c.build : undefined };
+    if (snapshot) return withBuildAndRuntime(snapshot, c.root);
   }
   return null;
+}
+
+/** The snapshot plus the build dir and runtime entry under `root`, where they exist */
+function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepArtifacts {
+  const buildDir = path.join(root, BUNDLE_PATHS.buildDir);
+  const runtimeEntry = path.join(root, BUNDLE_PATHS.runtimeEntry);
+  return {
+    snapshot,
+    ...(fs.existsSync(buildDir) && { buildDir }),
+    ...(fs.existsSync(runtimeEntry) && { runtimeEntry }),
+  };
 }
 
 // ── Local cache ──
@@ -78,9 +92,7 @@ function depCacheDir(root: string, depId: string): string {
 function resolveFromLocal(root: string, depId: string): DepArtifacts | null {
   const dir = depCacheDir(root, depId);
   const snapshot = tryReadSnapshot(path.join(dir, 'snapshot.json'));
-  if (!snapshot) return null;
-  const buildDir = path.join(dir, 'build');
-  return { snapshot, buildDir: fs.existsSync(buildDir) ? buildDir : undefined };
+  return snapshot && withBuildAndRuntime(snapshot, dir);
 }
 
 // ── Workspace resolution ──
@@ -256,7 +268,7 @@ async function lookupRegistry(_depId: string): Promise<string | null> {
 
 function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
   const depDir = depCacheDir(root, depId);
-  const { snapshot, buildDir } = artifacts;
+  const { snapshot, buildDir, runtimeEntry } = artifacts;
   fs.mkdirSync(depDir, { recursive: true });
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
@@ -276,6 +288,16 @@ function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
   } else if (!buildDir) {
     fs.rmSync(cachedBuild, { recursive: true, force: true });
   }
+
+  // Only the backend runtime entry: the FE bundle and compiled seeds aren't used from a dependency
+  const cachedRuntime = path.join(depDir, BUNDLE_PATHS.runtimeEntry);
+  if (runtimeEntry && path.resolve(runtimeEntry) !== path.resolve(cachedRuntime)) {
+    fs.rmSync(path.join(depDir, BUNDLE_PATHS.runtimeDir), { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(cachedRuntime), { recursive: true });
+    fs.copyFileSync(runtimeEntry, cachedRuntime);
+  } else if (!runtimeEntry) {
+    fs.rmSync(path.join(depDir, BUNDLE_PATHS.runtimeDir), { recursive: true, force: true });
+  }
 }
 
 // ── Resolution chain ──
@@ -291,11 +313,15 @@ async function resolveFromMachine(root: string, depId: string, range: string): P
 
   const configured = await resolveFromConfiguredApp(root, depId);
   if (configured && inRange(configured, range)) {
-    return { snapshot: configured.snapshot, buildDir: configured.buildDir, source: configured.label };
+    const { label, ...artifacts } = configured;
+    return { ...artifacts, source: label };
   }
 
   const installed = resolveFromInstalledApp(depId, range);
-  if (installed) return { snapshot: installed.snapshot, buildDir: installed.buildDir, source: `installed app (${installed.env})` };
+  if (installed) {
+    const { env, ...artifacts } = installed;
+    return { ...artifacts, source: `installed app (${env})` };
+  }
   return null;
 }
 
@@ -326,7 +352,7 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 }
 
 /**
- * Resolve a dependency's artifacts (snapshot + optional build code). Sources on this machine
+ * Resolve a dependency's artifacts (snapshot, plus build code and backend runtime when it ships them). Sources on this machine
  * win and refresh the .abuddy/deps cache; the cache only stands in for a network source, and
  * only while it satisfies the declared range.
  */
@@ -334,7 +360,9 @@ export async function resolveDepArtifacts(root: string, depId: string, depValue:
   const { github, filePath, range } = parseDepValue(depValue);
   if (filePath) {
     const found = await resolveFromUpstream(root, depId, depValue);
-    return found && { snapshot: found.snapshot, buildDir: found.buildDir };
+    if (!found) return null;
+    const { source: _source, ...artifacts } = found;
+    return artifacts;
   }
 
   const local = await resolveFromMachine(root, depId, range);
