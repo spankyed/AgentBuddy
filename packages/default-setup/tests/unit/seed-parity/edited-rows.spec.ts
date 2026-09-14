@@ -88,6 +88,46 @@ describe('re-seeding edited rows', () => {
     expect(snapshot().rows['Note:Welcome']).toEqual(before.rows['Note:Welcome']);
   });
 
+  it('finds renamed rows instead of seeding a copy, and leaves them as renamed', () => {
+    resetDatabase();
+    seed(v1);
+    repository.noteCommands.update(note('Welcome').id, { title: 'My welcome' });
+    repository.noteCommands.update(note('Projects').id, { title: 'My projects' });
+    repository.libraryCommands.renameItem(document('Getting Started').id, 'My guide', 'document');
+    const before = snapshot();
+    const counts = seed(v2, { mode: 'replace-on-collision' });
+    const after = snapshot();
+    expect([counts.notes.errors, counts.library.errors]).toEqual([undefined, undefined]);
+    expect(after.rows['Note:Welcome'], 'no copy of the renamed note').toBeUndefined();
+    expect(after.rows['Document:Getting Started'], 'no copy of the renamed document').toBeUndefined();
+    expect(after.rows['Note:My welcome']).toEqual(before.rows['Note:My welcome']);
+    expect(after.rows['Document:My guide']).toEqual(before.rows['Document:My guide']);
+    // The renamed parent's children are still found under it, and v2's new child is created there
+    expect(Object.keys(after.rows).filter((alias) => alias.startsWith('Note:')).sort()).toEqual([
+      'Note:My projects', 'Note:My projects/Task Three', 'Note:My projects/Task Two', 'Note:My projects/task one', 'Note:My welcome',
+    ]);
+  });
+
+  it("doesn't take another seeded row for a record because it was renamed to that record's name", () => {
+    resetDatabase();
+    seed(v1);
+    repository.libraryCommands.deleteDocument(document('2024').id);
+    repository.libraryCommands.renameItem(document('Getting Started').id, '2024', 'document');
+    seed(v2, { mode: 'replace-on-collision' });
+    // The deleted document is seeded again, beside the renamed one
+    expect(findWhere('Document' as never, 'name', '2024')).toHaveLength(2);
+  });
+
+  it('gives rows seeded before seed keys theirs on the next seed, so a later rename is found', () => {
+    resetDatabase();
+    seed(v1);
+    dropAttr(note('Welcome').id, 'seedKey' as never);
+    seed(v1, { mode: 'replace-on-collision' });
+    repository.noteCommands.update(note('Welcome').id, { title: 'My welcome' });
+    seed(v2, { mode: 'replace-on-collision' });
+    expect(snapshot().rows['Note:Welcome']).toBeUndefined();
+  });
+
   it("leaves rows alone whose seeded values weren't recorded (seeded before edits were detected)", () => {
     resetDatabase();
     seed(v1);

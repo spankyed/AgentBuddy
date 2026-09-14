@@ -26,6 +26,8 @@ export interface SeederOptions {
 const DEFAULT_REL_KIND = 'contains';
 /** What the seeder last wrote to a row: the record's field names and a hash of their stored values */
 const SEEDED_FIELDS = 'seededFields' as EARS.AttrKind;
+/** Which record a seeded row came from, independent of fields a user can change (a renamed row keeps it) */
+export const SEED_KEY = 'seedKey' as EARS.AttrKind;
 const MEDIA_LINK_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
 
 interface SeededFields {
@@ -40,6 +42,13 @@ function fieldsOf(record: SeedRecord): Record<string, unknown> {
 function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
   const values = fields.map((field) => getAttr(id, field as EARS.AttrKind) ?? null);
   return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16);
+}
+
+/** A record's place in its entry: the entry key, then each ancestor's and its own entity and identity */
+export function childSeedKey(parentKey: string, record: SeedRecord, identity: readonly string[]): string {
+  const fields = identity.filter((name) => name !== 'parent');
+  const values = fields.length > 0 ? fields.map((name) => record[name] ?? null) : [recordLabel(record, identity)];
+  return `${parentKey}/${encodeURIComponent(JSON.stringify([record.entity ?? null, ...values]))}`;
 }
 
 /** Records the row's seeded values, so a later seed can tell whether anything else changed them */
@@ -89,7 +98,16 @@ export function createSeeder(options: SeederOptions): Seeder {
       const mediaDir = options.media ? path.join(ctx.compiledDir, 'media', key) : undefined;
       const errors: string[] = [];
 
-      const find = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): SeedHookMatch | undefined => {
+      /** The row seeded from this record, however it's been renamed since; rows seeded before seed keys were stored match by identity */
+      const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): { match: SeedHookMatch; byKey: boolean } | undefined => {
+        const keyed = record.entity ? findWhere<{ id: EARS.EntityId; sourceHash?: string }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
+        if (keyed) return { match: { id: keyed.id, sourceHash: keyed.sourceHash }, byKey: true };
+        const match = findByIdentity(record, context, hooks);
+        // A row carrying another record's seed key isn't this record's, whatever its name
+        return match && getAttr(match.id, SEED_KEY) === null ? { match, byKey: false } : undefined;
+      };
+
+      const findByIdentity = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): SeedHookMatch | undefined => {
         if (hooks?.find) return hooks.find(record, context);
         const fields = identity.filter((name) => name !== 'parent');
         if (fields.length === 0) throw new Error(`Seed "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
@@ -114,21 +132,26 @@ export function createSeeder(options: SeederOptions): Seeder {
         else updateEntity(id, fieldsOf(record));
       };
 
-      /** Hooks' repository commands may not store sourceHash; change tracking needs it and the seeded values */
-      const stamp = (id: EARS.EntityId, record: SeedRecord) => {
+      /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
+      const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
         if (record.sourceHash && getAttr(id, 'sourceHash' as EARS.AttrKind) !== record.sourceHash) {
           updateAttr(id, 'sourceHash' as EARS.AttrKind, record.sourceHash);
         }
         stampSeededFields(id, record);
+        updateAttr(id, SEED_KEY, seedKey);
       };
 
-      const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined) => {
+      const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined, parentKey: string) => {
         items.forEach((record, index) => {
           const context: SeedHookContext = { parentId, index };
           const hooks = record.entity ? seedHookRegistry.get(record.entity) : undefined;
           const label = recordLabel(record, identity);
+          const seedKey = childSeedKey(parentKey, record, identity);
           try {
-            const existing = find(record, context, hooks);
+            const found = find(record, seedKey, context, hooks);
+            const existing = found?.match;
+            // A seeded row matched by identity gets its seed key now, so renaming it later doesn't duplicate it
+            if (found && !found.byKey && existing!.sourceHash) updateAttr(existing!.id, SEED_KEY, seedKey);
             if (existing) {
               if (ctx.mode === 'keep-existing') {
                 counts.skipped++;
@@ -143,20 +166,20 @@ export function createSeeder(options: SeederOptions): Seeder {
                 ctx.log(`  ${key} skipped (edited): ${label}`);
               } else {
                 update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, context, hooks);
-                stamp(existing.id, record);
+                stamp(existing.id, record, seedKey);
                 counts.updated++;
                 ctx.log(`  ${key} updated: ${label}`);
               }
-              if (record.children) visit(record.children, existing.id);
+              if (record.children) visit(record.children, existing.id, seedKey);
               return;
             }
             const id = create(record, context, hooks);
             const restored = restoreMedia(record, id, mediaDir, ctx.log);
             if (restored.count > 0) update(id, restored.record, context, hooks);
-            stamp(id, record);
+            stamp(id, record, seedKey);
             counts.created++;
             ctx.log(`  ${key} created: ${label}`);
-            if (record.children) visit(record.children, id);
+            if (record.children) visit(record.children, id, seedKey);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             errors.push(`${record.entity ?? key} "${label}": ${message}`);
@@ -165,7 +188,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         });
       };
 
-      visit(records, undefined);
+      visit(records, undefined, key);
       if (errors.length > 0) counts.errors = errors;
       return counts;
     },

@@ -58,7 +58,7 @@ Markdown under `faqs/`, compiled with the `faqs` format (`_compilers/faqs.ts`) f
 
 ## Re-seeding
 
-Seeded rows keep their record's `sourceHash` and `seededFields` (a hash of the values the seeder wrote). A re-seed updates a row only when the hash changed and the row's seeded fields still hold those values; it leaves edited rows, rows seeded before `seededFields` existed, and rows without a stored hash (user-created) alone; `keep-existing` skips existing rows, `wipe-and-replace` removes the entry's rows first. See `docs/public-facing/seeds.md`.
+Seeded rows keep their record's `sourceHash` and `seededFields` (a hash of the values the seeder wrote). A re-seed updates a row only when the hash changed and the row's seeded fields still hold those values; it leaves edited rows, rows seeded before `seededFields` existed, and rows without a stored hash (user-created) alone. Rows are found by `seedKey` (entry key and source identity), so a renamed row isn't seeded again. Flows store `seededGraph` (their row, nodes and relations) for the same edit check; `keep-existing` skips existing rows, `wipe-and-replace` removes the entry's rows first. See `docs/public-facing/seeds.md`.
 
 ## Commands
 

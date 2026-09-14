@@ -411,7 +411,13 @@ Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` â
 
 ### Change tracking
 
-Seeded rows store their record's `sourceHash`, and `seededFields`: the names of the record's fields and a hash of the values the seeder wrote to them. A row is edited when those fields no longer hold what the seeder wrote, whatever changed them (the app's editors, the database console, a flow). Fields a record doesn't set aren't tracked: a user can favorite a seeded note and it still takes seed updates. Re-seeding follows the same rules for every entry:
+Seeded rows store their record's `sourceHash`, and `seededFields`: the names of the record's fields and a hash of the values the seeder wrote to them. A row is edited when those fields no longer hold what the seeder wrote, whatever changed them (the app's editors, the database console, a flow). Fields a record doesn't set aren't tracked: a user can favorite a seeded note and it still takes seed updates.
+
+Seeded rows also store a `seedKey`: the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `seedKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not seeded again as a copy. Rows seeded before `seedKey` was stored are matched by identity and given one then.
+
+Flows follow the same rules. A seeded flow stores `seededGraph`, a hash of what the seeder wrote for it: its row's fields, its nodes' fields, and the relations between them (independent of their order). Editing, adding or removing a node or transition, or renaming the flow, makes it edited. Moving nodes in the editor doesn't.
+
+Re-seeding follows the same rules for every entry:
 
 | Import mode | Existing row |
 |---|---|
@@ -419,7 +425,7 @@ Seeded rows store their record's `sourceHash`, and `seededFields`: the names of 
 | `keep-existing` | Left alone, with its children. |
 | `wipe-and-replace` | Every row of the entry's entity types is removed first, then all records are created. |
 
-Upgrading: rows seeded before `seededFields` was stored can't be checked for edits, so later seeds leave them alone, as they do rows without a `sourceHash` (notes seeded before notes stored one). To take a pack's current version of those rows, import its seeds with `wipe-and-replace`.
+Upgrading: rows seeded before `seededFields` (flows: `seededGraph`) was stored can't be checked for edits, so later seeds leave them alone, as they do rows without a `sourceHash` (notes seeded before notes stored one). To take a pack's current version of those rows, import its seeds with `wipe-and-replace`.
 
 ## Commands as actions
 
