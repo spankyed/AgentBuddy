@@ -88,7 +88,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { qx, findById, findAll, createEntity, type EntityShape } from '#generated/ears.js';
+import { qx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
 import { emit, sendToPlugin } from '#generated/events.js';
 import { services } from '#generated/services.js';
 import { repository } from '#generated/repository.js';
@@ -133,12 +133,18 @@ const other = findAll(runtimeName)[0]!;
 other.anything.length;
 qx('Memo').linksTo('contains', runtimeName).pickAll();
 findAll<{ title: string }>('Item');
+// An explicit shape reads rows of an entity named only at runtime
+const shaped = findAll<{ title: string }>(runtimeName);
+export type ExplicitShape = Expect<Equal<(typeof shaped)[number]['title'], string>>;
+// A generic helper constrained to the declared names is checked, and its rows typed
+export function memosOf<E extends EntityName>(entityType: E) { return findAll(entityType); }
+export type GenericHelper = Expect<Equal<ReturnType<typeof memosOf<'Memo'>>[number]['text'], string>>;
 
 // A literal must name an entity this pack or its dependency declares
 // @ts-expect-error undeclared entity name
 findAll('Nope');
-// @ts-expect-error an explicit shape doesn't let an undeclared name through
-findAll<{ title: string }>('Nope');
+// @ts-expect-error a generic over any string can't be checked (constrain it to EntityName)
+export function anyOf<E extends string>(entityType: E) { return findAll(entityType); }
 // @ts-expect-error undeclared entity name
 qx('Nope');
 // @ts-expect-error undeclared entity name in a seed list

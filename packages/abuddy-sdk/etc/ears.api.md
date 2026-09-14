@@ -545,7 +545,7 @@ export interface TypedFindAll<S extends EntityShapes, N extends string = string>
     // (undocumented)
     <E extends string>(entityType: Name<N, E>): ShapeOf<S, E>[];
     // (undocumented)
-    <T>(entityType: N): T[];
+    <T, E extends string = string>(entityType: Name<N, E>): T[];
 }
 
 // @public (undocumented)
@@ -564,7 +564,7 @@ export interface TypedFindFirst<S extends EntityShapes, N extends string = strin
     // (undocumented)
     <E extends string>(entityType: Name<N, E>, field: string, value: unknown): ShapeOf<S, E> | undefined;
     // (undocumented)
-    <T>(entityType: N, field: string, value: unknown): T | undefined;
+    <T, E extends string = string>(entityType: Name<N, E>, field: string, value: unknown): T | undefined;
 }
 
 // @public (undocumented)
@@ -575,7 +575,7 @@ export interface TypedFindWhere<S extends EntityShapes, N extends string = strin
     // (undocumented)
     <E extends string>(entityType: Name<N, E>, field: string, value: unknown): ShapeOf<S, E>[];
     // (undocumented)
-    <T>(entityType: N, field: string, value: unknown): T[];
+    <T, E extends string = string>(entityType: Name<N, E>, field: string, value: unknown): T[];
 }
 
 // @public (undocumented)

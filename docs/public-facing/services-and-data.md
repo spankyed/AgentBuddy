@@ -194,6 +194,34 @@ unbranded ids (`EARS.EntityId`) and `qx()` with no seed read as undeclared.
 Declare every attribute you actually write. A field written at runtime but missing from
 the interface (a soft-delete marker, say) becomes a compile error at its read sites.
 
+### Entity names
+
+The helpers take an entity type as a literal only when your pack or a dependency declares it:
+an undeclared name isn't registered at runtime, so a query for it silently matches nothing.
+`#generated/ears` exports the accepted names as `EntityName`. A name known only at runtime
+(typed `string`) is accepted and reads as undeclared.
+
+```ts
+import { EARS, findAll, type EntityName } from '#generated/ears';
+
+findAll(EARS.Entity.Bookmark)          // ok
+findAll('Bookmark')                    // ok: declared
+findAll('Bookmrk')                     // compile error
+findAll(nameFromSettings)              // ok: a string, rows read as undeclared
+findAll<Bookmark>(nameFromSettings)    // ok: rows read as the shape you pass
+
+// A generic helper constrains its entity type to EntityName
+function newestOf<E extends EntityName>(entityType: E) {
+  return findAll(entityType).sort((a, b) => b.createdAt - a.createdAt);  // fields every entity has
+}
+newestOf(EARS.Entity.Bookmark)[0].title  // callers get the Bookmark shape
+```
+
+A helper generic over any string (`<E extends string>(entityType: E)`) is rejected, because
+TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`, or pass
+`entityType as string` to opt out. To use another pack's entities, declare that pack in
+`dependencies`: this also brings in its shapes.
+
 ### Constraints
 
 - Entity types and relation kinds must be globally unique across all installed packs.

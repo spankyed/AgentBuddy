@@ -123,6 +123,22 @@ export type ShapeOf<S extends EntityShapes, E extends string> =
  * argument. A literal must be one of `N`: an undeclared name isn't a registered type at runtime, so
  * it matches nothing. A name only known at runtime (typed `string` or the open `EARS.Entity`) passes
  * unchecked, and so does everything when `N` is `string`.
+ *
+ * TypeScript can't check a name whose type is an unresolved type parameter, so a generic helper
+ * constrains it to the pack's `EntityName`. Its callers get the rows typed with the entity's shape;
+ * inside the helper only the fields every entity has are known:
+ *
+ * ```ts
+ * import { findAll, type EntityName } from '#generated/ears';
+ *
+ * function newestOf<E extends EntityName>(entityType: E) {
+ *   return findAll(entityType).sort((a, b) => b.createdAt - a.createdAt);
+ * }
+ * newestOf('Note')[0].title; // typed with the Note shape
+ * ```
+ *
+ * A helper over any string (`<E extends string>`) is rejected; pass `entityType as string` to
+ * opt out of the check.
  */
 export type EntityNameArg<N extends string, E extends string> =
   string extends E ? E : [E] extends [N] ? E : N;

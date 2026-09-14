@@ -32,21 +32,22 @@ export interface TypedFindById<S extends EntityShapes> {
   <T>(id: EARS.EntityId): T | undefined;
 }
 
-// The `<T>` overloads take a declared name only: a literal that isn't one would otherwise fall
-// through to them unchecked.
+// The `<T>` overloads read rows as an explicit shape. A call without a type argument that fails the
+// first overload infers `E` here too, so an undeclared literal is still rejected; passing `T` leaves
+// `E` at its default (`string`), which lets a name known only at runtime through.
 export interface TypedFindAll<S extends EntityShapes, N extends string = string> {
   <E extends string>(entityType: Name<N, E>): ShapeOf<S, E>[];
-  <T>(entityType: N): T[];
+  <T, E extends string = string>(entityType: Name<N, E>): T[];
 }
 
 export interface TypedFindWhere<S extends EntityShapes, N extends string = string> {
   <E extends string>(entityType: Name<N, E>, field: string, value: unknown): ShapeOf<S, E>[];
-  <T>(entityType: N, field: string, value: unknown): T[];
+  <T, E extends string = string>(entityType: Name<N, E>, field: string, value: unknown): T[];
 }
 
 export interface TypedFindFirst<S extends EntityShapes, N extends string = string> {
   <E extends string>(entityType: Name<N, E>, field: string, value: unknown): ShapeOf<S, E> | undefined;
-  <T>(entityType: N, field: string, value: unknown): T | undefined;
+  <T, E extends string = string>(entityType: Name<N, E>, field: string, value: unknown): T | undefined;
 }
 
 /** Brands the id with the entity type when `S` declares its shape; other types stay unbranded. */
