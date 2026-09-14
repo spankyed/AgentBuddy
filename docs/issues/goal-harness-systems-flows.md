@@ -169,6 +169,24 @@ If A.1 or A.2 fails, stop and record why in this doc. If B needs more than the r
 
 **Done when:** the spike results are recorded and both spikes pass.
 
+### Spike results (2026-09-14)
+
+Both spikes pass, run from the fixture pack's vitest process (in-memory harness setup, checkout packages resolved from source).
+
+**A. Dependency runtime in vitest.** default-setup's `dist/runtime/index.cjs` loaded with `require` under a `Module._resolveFilename` patch. The patch maps every `@abuddy/sdk` subpath, `xstate` and `zod` to the namespaces the test process imported, through `require.cache` entries.
+1. **One SDK instance: yes.** `repository.noteCommands.create` (registered by the runtime through host `registerPack`) wrote a Note that test code read back with `untypedQx`.
+2. **One xstate: yes.** The runtime's `settings` system machine spawned under a test-code parent registered as `bus`. `CLIENT_CONNECTED` made it send `SETTINGS_LOADED` to that parent.
+3. **Optional peers: all 24 SDK subpaths imported in the checkout** (`ai` is installed there). The runtime is built with `packages: 'external'` (`dev-build.mjs`), so every npm package it uses must resolve from the test process. Here only `bufferutil` didn't, and a stub that throws on use let the runtime load. In a pack without `ai`, `node-pty`, `playwright`, `croner` and the rest, those resolve to the same throwing stubs.
+
+   Findings that shape the implementation:
+   - Bridge `xstate` and `zod` with the SDK. Not bridging them would give the runtime xstate's CJS build next to the test's ESM build.
+   - Stub a dependency runtime's unresolvable npm modules. The module stays loadable, and the error names the module when it's used.
+   - Call the runtime's `setCompiledDir` with its cached dir.
+   - `@abuddy/sdk/inference` must not import `ai` at module scope (Decision 7's seam), so the harness can import it in a pack without `ai`.
+   - default-setup's systems need the `version` host module and a `bus` actor as soon as they start.
+
+**B. Bus core.** The fixture's `memos` system, spawned by a machine registered as `bus` that routes `INCOMING` to `system.get(systemId)` and records `OUTGOING`. `CLIENT_CONNECTED` → `MEMOS_CONNECTED`; `INCOMING ADD_MEMO` → a Memo row and `MEMO_ADDED`. Nothing beyond Decision 3's core was needed.
+
 ### Phase 1 — Host pieces
 
 - Extract `createBusMachine` into `@abuddy/host`, with `api/src/systems.ts` composing on top. Behaviour stays unchanged.
