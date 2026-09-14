@@ -53,6 +53,9 @@ export function getEntityTypeChecker(): (v: string) => boolean { return _isEntit
 
 // ─── QueryBuilder fluent interface ─────────────────────────────────────
 
+/** `T` without being an inference site (TypeScript 5.4's NoInfer, for 5.3) */
+type NoInferType<T> = [T][T extends unknown ? 0 : never];
+
 /**
  * `S` is the entity shape map reads are typed against and `N` the entity names accepted as
  * arguments: `{}` and `string` (unchecked) from `@abuddy/sdk/ears`, the pack's `PackShapes` and
@@ -82,14 +85,14 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
     tgtType?: undefined,
     asSrc?: boolean,
   ): QueryBuilder<string, S, N>;
-  links<K extends string, T extends string = string>(relKinds: K | readonly K[], tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId }>;
+  links<K extends string, T extends string = string>(relKinds: K | readonly K[], tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[], asSrc?: boolean): Array<{ relation: K; id: EARS.EntityId<NoInferType<T>> }>;
   edgeIds(kinds?: string | readonly string[], asSrc?: boolean): EARS.EntityId[];
   pick<A extends readonly (keyof ShapeOf<S, E> & string)[]>(
     fields: A,
-  ): ({ id: EARS.EntityId } & Pick<ShapeOf<S, E>, A[number]>)[];
+  ): ({ id: EARS.EntityId<E> } & Pick<ShapeOf<S, E>, A[number]>)[];
   pickOne<A extends readonly (keyof ShapeOf<S, E> & string)[]>(
     f: A,
-  ): ({ id: EARS.EntityId } & Pick<ShapeOf<S, E>, A[number]>) | null;
+  ): ({ id: EARS.EntityId<E> } & Pick<ShapeOf<S, E>, A[number]>) | null;
   pickAll(): ShapeOf<S, E>[];
   /**
    * Fields here describe the relation's TARGET entity, not `E`, so they are
@@ -103,27 +106,27 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
     relKinds: readonly [K, K, ...K[]],
     fields: A,
     tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[],
-  ): ({ id: EARS.EntityId; relation: K } & Pick<ShapeOf<S, T>, A[number]>)[];
+  ): ({ id: EARS.EntityId<NoInferType<T>>; relation: K } & Pick<ShapeOf<S, T>, A[number]>)[];
   linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(
     relKinds: K | readonly [K],
     fields: A,
     tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[],
-  ): ({ id: EARS.EntityId } & Pick<ShapeOf<S, T>, A[number]>)[];
+  ): ({ id: EARS.EntityId<NoInferType<T>> } & Pick<ShapeOf<S, T>, A[number]>)[];
   orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S, N>;
   reverse(): QueryBuilder<E, S, N>;
   limit(n: number): QueryBuilder<E, S, N>;
-  page(size: number, cursor?: string | null): { items: EARS.EntityId[]; nextCursor: string | null };
+  page(size: number, cursor?: string | null): { items: EARS.EntityId<E>[]; nextCursor: string | null };
   distinct(field?: keyof ShapeOf<S, E> & string): QueryBuilder<E, S, N>;
   groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S, N>>;
-  ids(): EARS.EntityId[];
-  id(): EARS.EntityId | null;
+  ids(): EARS.EntityId<E>[];
+  id(): EARS.EntityId<E> | null;
   count(): number;
-  first(): EARS.EntityId | null;
-  last(): EARS.EntityId | null;
+  first(): EARS.EntityId<E> | null;
+  last(): EARS.EntityId<E> | null;
   exists(): boolean;
-  map<T>(fn: (id: EARS.EntityId) => T): T[];
-  forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E, S, N>;
-  reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
+  map<T>(fn: (id: EARS.EntityId<E>) => T): T[];
+  forEach(fn: (id: EARS.EntityId<E>) => void): QueryBuilder<E, S, N>;
+  reduce<T>(fn: (acc: T, id: EARS.EntityId<E>) => T, init: T): T;
 }
 
 // ─── TransactionBuilder fluent interface ───────────────────────────────
@@ -134,29 +137,45 @@ export interface SafeLinkOptions {
   acyclicGroup?: readonly EARS.RelKind[];
 }
 
-export interface TransactionBuilder {
-  put(k: string, v: unknown, allowMultiple?: boolean): TransactionBuilder;
-  add(k: string, v: unknown): TransactionBuilder;
-  batchPut(attrs: Record<string, unknown>): TransactionBuilder;
-  merge(k: string, v: unknown, i?: number): TransactionBuilder;
-  drop(k: string, i?: number): TransactionBuilder;
-  dropIf(k: string, c: unknown): TransactionBuilder;
-  update(k: string, v: unknown): TransactionBuilder;
-  updateBatch(attrs: Record<string, unknown>): TransactionBuilder;
-  grant(r: string): TransactionBuilder;
-  revoke(r: string): TransactionBuilder;
-  ensure(r: string, scope?: readonly EARS.EntityId[]): TransactionBuilder;
-  link(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder;
-  relPatch(rel: EARS.EntityId, u: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown }): TransactionBuilder;
-  unlink(rel: EARS.EntityId): TransactionBuilder;
-  linkOne(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder;
-  safeLink(k: string, t: EARS.EntityId, options?: SafeLinkOptions): TransactionBuilder;
-  patchLink(k: string, t: EARS.EntityId, u: { newTarget: EARS.EntityId; newInfo?: unknown }): TransactionBuilder;
-  unlinkIf(k: string, t?: EARS.EntityId): TransactionBuilder;
-  unlinkWhere(c?: { kind?: string; target?: EARS.EntityId }): TransactionBuilder;
-  define(def: { attributes?: Record<string, unknown>; links?: [string, EARS.EntityId] | Array<[string, EARS.EntityId]>; roles?: string | string[] }): TransactionBuilder;
+/**
+ * What a write may store under field `K`: the declared field's type when `S` declares `E`'s shape
+ * and the field, anything otherwise (an undeclared field, or an id with no entity type).
+ */
+export type FieldValue<S extends EntityShapes, E extends string, K extends string> =
+  [E] extends [keyof S] ? (K extends keyof ShapeOf<S, E> ? ShapeOf<S, E>[K] : unknown) : unknown;
+
+/** Fields for a batch write: declared fields take their declared types, other fields anything */
+export type FieldValues<S extends EntityShapes, E extends string> =
+  [E] extends [keyof S] ? { [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] } & Record<string, unknown> : Record<string, unknown>;
+
+/**
+ * `E` and `S` type the writes: `tx` from a pack's `#generated/ears`, seeded with a declared entity
+ * type or an id tagged with one, checks the values of declared fields. Seeded with a plain id (or
+ * from `@abuddy/sdk/ears`) every write is unchecked.
+ */
+export interface TransactionBuilder<E extends string = string, S extends EntityShapes = {}> {
+  put<K extends string>(k: K, v: FieldValue<S, E, K>, allowMultiple?: boolean): TransactionBuilder<E, S>;
+  add<K extends string>(k: K, v: FieldValue<S, E, K>): TransactionBuilder<E, S>;
+  batchPut(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
+  merge(k: string, v: unknown, i?: number): TransactionBuilder<E, S>;
+  drop(k: string, i?: number): TransactionBuilder<E, S>;
+  dropIf(k: string, c: unknown): TransactionBuilder<E, S>;
+  update<K extends string>(k: K, v: FieldValue<S, E, K>): TransactionBuilder<E, S>;
+  updateBatch(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
+  grant(r: string): TransactionBuilder<E, S>;
+  revoke(r: string): TransactionBuilder<E, S>;
+  ensure(r: string, scope?: readonly EARS.EntityId[]): TransactionBuilder<E, S>;
+  link(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder<E, S>;
+  relPatch(rel: EARS.EntityId, u: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown }): TransactionBuilder<E, S>;
+  unlink(rel: EARS.EntityId): TransactionBuilder<E, S>;
+  linkOne(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder<E, S>;
+  safeLink(k: string, t: EARS.EntityId, options?: SafeLinkOptions): TransactionBuilder<E, S>;
+  patchLink(k: string, t: EARS.EntityId, u: { newTarget: EARS.EntityId; newInfo?: unknown }): TransactionBuilder<E, S>;
+  unlinkIf(k: string, t?: EARS.EntityId): TransactionBuilder<E, S>;
+  unlinkWhere(c?: { kind?: string; target?: EARS.EntityId }): TransactionBuilder<E, S>;
+  define(def: { attributes?: Record<string, unknown>; links?: [string, EARS.EntityId] | Array<[string, EARS.EntityId]>; roles?: string | string[] }): TransactionBuilder<E, S>;
   destroy(skipPersistence?: boolean): never;
-  id(): EARS.EntityId;
+  id(): EARS.EntityId<E>;
 }
 
 // ─── Logger interface ──────────────────────────────────────────────────

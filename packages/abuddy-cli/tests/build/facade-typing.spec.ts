@@ -88,7 +88,7 @@ const APP_PACK = {
 };
 
 const CONSUMER = `
-import { qx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
+import { qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
 import { emit, sendToPlugin } from '#generated/events.js';
 import { services } from '#generated/services.js';
 import { repository } from '#generated/repository.js';
@@ -153,6 +153,42 @@ qx(['Memo', 'Nope']);
 qx('Memo').linksTo('contains', 'Nope');
 // @ts-expect-error undeclared entity name
 createEntity('Nope');
+
+// Ids from queries and rows carry their entity type, so the next lookup is typed
+const firstMemo = qx('Memo').first()!;
+export type QueryIdTagged = Expect<Equal<typeof firstMemo, EARS.EntityId<'Memo'>>>;
+const memoFromQuery = findById(firstMemo)!;
+export type LookupFromQueryId = Expect<Equal<typeof memoFromQuery.text, string>>;
+export type RowIdTagged = Expect<Equal<(typeof tags)[number]['id'], EARS.EntityId<'Tag'>>>;
+// A plain id is accepted where a tagged one is expected; another entity's id is not
+const openMemo = (id: EARS.EntityId<'Memo'>) => id;
+declare const plainId: EARS.EntityId;
+openMemo(plainId);
+[firstMemo].includes(plainId);
+// @ts-expect-error a Tag id where a Memo id is expected
+openMemo(tags[0]!.id);
+// A tagged link result passed straight to a generic function still infers the target's shape
+const uniqueById = <T extends { id?: EARS.EntityId }>(nodes: T[]): T[] => nodes;
+const linkedMemos = uniqueById(qx(memoId).linksPick('related', ['text'], ['Memo']));
+export type ContextualLinkPick = Expect<Equal<(typeof linkedMemos)[number]['text'], string>>;
+
+// tx checks the values of declared fields when it knows the entity; other fields are free
+tx(memoId).put('text', 'x').put('pinned', true).put('undeclared', 42);
+tx(firstMemo).update('pinned', false);
+tx('Memo').batchPut({ text: 'x', extra: 1 });
+const createdMemo = tx('Memo').id();
+export type TxIdTagged = Expect<Equal<typeof createdMemo, EARS.EntityId<'Memo'>>>;
+// @ts-expect-error a declared field's value is checked
+tx(memoId).put('text', 42);
+// @ts-expect-error in batch writes too
+tx('Memo').batchPut({ pinned: 'yes' });
+// A dependency's entity is checked the same way
+// @ts-expect-error Tag.name is a string
+tx(tags[0]!.id).put('name', 1);
+// A plain id leaves writes unchecked
+tx(plainId).put('text', 42);
+// @ts-expect-error undeclared entity name
+tx('Nope');
 `;
 
 function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {

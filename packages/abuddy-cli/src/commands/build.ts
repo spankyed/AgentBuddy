@@ -6,6 +6,7 @@ import {
   parseManifest,
   resolveFeatureSettingsFromManifest,
   PACK_TYPES_DEF,
+  entitiesWithoutShapes,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -126,6 +127,12 @@ export async function build(args: string[]) {
         console.log(`  ! ${w}`);
       }
     }
+  }
+
+  // Informational: nothing is rejected, but these entities' fields read as unknown values
+  const unshaped = entitiesWithoutShapes(manifest);
+  if (unshaped.length > 0) {
+    console.log(`\nNote: ${unshaped.length} ${unshaped.length === 1 ? 'entity has' : 'entities have'} no shape in entityShapes, so ${unshaped.length === 1 ? 'its' : 'their'} fields read as unknown values: ${unshaped.join(', ')}`);
   }
 
   // ── Step build facets (for dependents' flow validation) ─────────────

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
+import { entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
 let root: string;
@@ -154,5 +154,25 @@ describe('generated imports', () => {
     write('src/features/memos/be/memo.types.ts', 'export interface MemoEntity { text: string }\n');
     const ears = generate({ entityShapes: { Memo: { source: 'src\\features\\memos\\be\\memo.types', type: 'MemoEntity' } } })['src/__generated__/ears.ts'];
     expect(ears).toContain("from '../features/memos/be/memo.types.js';");
+  });
+});
+
+describe('generated EARS facade', () => {
+  it('names the declared entities and passes them to the typed helpers, with tx', () => {
+    write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
+    const ears = generate({ entities: { Memo: 'Memo', Tag: 'Tag' }, entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } } })['src/__generated__/ears.ts'];
+    expect(ears).toContain("export type EntityName = 'Memo' | 'Tag' | keyof PackShapes & string;");
+    expect(ears).toContain('defineEars<PackShapes, EntityName>()');
+    expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
+  });
+});
+
+describe('entitiesWithoutShapes', () => {
+  it("lists the pack's entities with no shape, leaving out those the SDK shapes", () => {
+    expect(entitiesWithoutShapes({
+      entities: { Memo: 'Memo', Tag: 'Tag', TNode: 'TNode' },
+      entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } },
+    })).toEqual(['Tag']);
+    expect(entitiesWithoutShapes({})).toEqual([]);
   });
 });

@@ -1,7 +1,6 @@
-import { qx } from '@/__generated__/ears';
+import { tx, qx } from '@/__generated__/ears';
 import { Index } from 'usearch'
 
-import { tx } from '@abuddy/sdk/ears';
 import { EARS } from '@/__generated__/ears'
 import { randomId } from '@abuddy/sdk/utils'
 import { createLogger } from '@abuddy/sdk/logger'

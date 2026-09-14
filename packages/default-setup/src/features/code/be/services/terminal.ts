@@ -1,5 +1,5 @@
+import { tx } from '@/__generated__/ears';
 import * as pty from 'node-pty'
-import { tx } from '@abuddy/sdk/ears';
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'

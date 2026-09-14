@@ -132,14 +132,14 @@ describe('Typed QueryBuilder — groupBy returns typed Map', () => {
 // ─── terminal methods ──────────────────────────────────────────────────
 
 describe('Typed QueryBuilder — terminal methods', () => {
-  it('ids() returns EntityId[]', () => {
+  it('ids() returns ids tagged with the entity type', () => {
     type Result = ReturnType<QueryBuilder<'Action', PackShapes>['ids']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId[]>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'>[]>();
   });
 
-  it('id() returns EntityId | null', () => {
+  it('id() returns a tagged id | null', () => {
     type Result = ReturnType<QueryBuilder<'Action', PackShapes>['id']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId | null>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | null>();
   });
 
   it('count() returns number', () => {
@@ -152,14 +152,19 @@ describe('Typed QueryBuilder — terminal methods', () => {
     expectTypeOf<Result>().toBeBoolean();
   });
 
-  it('first() returns EntityId | null', () => {
+  it('first() returns a tagged id | null', () => {
     type Result = ReturnType<QueryBuilder<'Action', PackShapes>['first']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId | null>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | null>();
   });
 
-  it('last() returns EntityId | null', () => {
+  it('last() returns a tagged id | null', () => {
     type Result = ReturnType<QueryBuilder<'Action', PackShapes>['last']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId | null>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'> | null>();
+  });
+
+  it('ids() of an untyped builder stay plain', () => {
+    type Result = ReturnType<QueryBuilder<string, PackShapes>['ids']>;
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId[]>();
   });
 });
 

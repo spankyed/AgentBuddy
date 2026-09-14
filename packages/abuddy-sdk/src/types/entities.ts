@@ -19,7 +19,13 @@ export namespace EARS {
   } as const;
 
   export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-  export type EntityId<E extends string = string> = `${string}-${string}` & { readonly __entity?: E };
+  /**
+   * An entity id, tagged with its entity type when that's known (`EntityId<'Note'>`). A plain id
+   * (`EntityId`) carries no tag, so it's accepted wherever a tagged one is expected; only an id tagged
+   * with a different entity type is rejected.
+   */
+  export type EntityId<E extends string = string> =
+    string extends E ? `${string}-${string}` : `${string}-${string}` & { readonly __entity?: E };
 
   // ─── RelKind ───────────────────────────────────────────────────────────
   // Concrete values registered by the host; SDK provides just the type framework.
@@ -115,7 +121,7 @@ export type EntityShapes = { [entityType: string]: object };
  */
 export type ShapeOf<S extends EntityShapes, E extends string> =
   [E] extends [keyof S]
-    ? S[E] & BaseEntity
+    ? S[E] & BaseEntity & { id: EARS.EntityId<E> }
     : BaseEntity & Record<string, unknown>;
 
 /**

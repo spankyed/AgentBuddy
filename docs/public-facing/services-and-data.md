@@ -109,13 +109,25 @@ EARS.RelKind.TAGGED_WITH  // "tagged_with"
 EARS queries (`qx`) and transactions (`tx`) are **synchronous** — do not `await` them.
 
 ```typescript
-import { EARS, qx, createEntityWithDefaults } from '#generated/ears';
-import { tx } from '@abuddy/sdk/ears';
+import { EARS, qx, tx, createEntityWithDefaults } from '#generated/ears';
 
 const bookmarks = qx(EARS.Entity.Bookmark).pickAll();                 // typed with the Bookmark shape
-const id = tx(EARS.Entity.Bookmark).batchPut({ url, title }).id();
+const id = tx(EARS.Entity.Bookmark).batchPut({ url, title }).id();   // EARS.EntityId<'Bookmark'>
 const created = createEntityWithDefaults(EARS.Entity.Bookmark, { url, title }, 'BKM');
 ```
+
+`tx` from `#generated/ears` checks the values of declared fields when it knows the entity:
+seeded with an entity type, or with an id that carries one (see *Entity ids* below). Fields
+the shape doesn't declare are still accepted, and a plain id leaves every write unchecked.
+
+```typescript
+tx(id).put('title', 'Docs')        // ok
+tx(id).put('title', 42)            // compile error: title is a string
+tx(id).put('clickCount', 3)        // ok: not declared, not checked
+tx(plainId).put('title', 42)       // ok: a plain id doesn't say which entity it is
+```
+
+`tx` from `@abuddy/sdk/ears` is the same function, unchecked.
 
 ### Repository pattern
 
@@ -190,6 +202,29 @@ you have to narrow a value before using it. An id carries its entity type when i
 from a typed helper (`createEntity(EARS.Entity.Bookmark)` returns `EARS.EntityId<'Bookmark'>`),
 so builders seeded with it (`qx(id)`, `findById(id)`, `updateEntity(id, …)`) are typed too;
 unbranded ids (`EARS.EntityId`) and `qx()` with no seed read as undeclared.
+
+### Entity ids
+
+Ids carry their entity type when it's known: from `createEntity` and `tx(entityType).id()`, and
+from typed queries (`ids()`, `first()`, `pick` and a row's `id`). The next call is then typed
+without naming the shape:
+
+```ts
+const first = qx(EARS.Entity.Bookmark).first();   // EARS.EntityId<'Bookmark'> | null
+if (first) findById(first)?.title;                 // typed with the Bookmark shape
+```
+
+A plain `EARS.EntityId` (from an event, JSON or a route) carries no entity type and is accepted
+anywhere a typed one is, including `includes`/`Set.has` on a list of typed ids. Only an id of a
+*different* entity type is rejected:
+
+```ts
+const openBookmark = (id: EARS.EntityId<'Bookmark'>) => { … };
+openBookmark(idFromEvent);     // ok: a plain id
+openBookmark(tagId);           // compile error: an EARS.EntityId<'Tag'>
+```
+
+`abuddy build` lists your entities without a shape, whose fields read as `unknown` values.
 
 Declare every attribute you actually write. A field written at runtime but missing from
 the interface (a soft-delete marker, say) becomes a compile error at its read sites.

@@ -1,5 +1,4 @@
-import { qx, findById } from '@/__generated__/ears';
-import { tx } from '@abuddy/sdk/ears';
+import { tx, qx, findById } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 import { edgeStore } from '@abuddy/host/ears';
 import type {

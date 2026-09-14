@@ -94,8 +94,7 @@ export namespace EARS {
     };
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-    // (undocumented)
-    export type EntityId<E extends string = string> = `${string}-${string}` & {
+    export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
         readonly __entity?: E;
     };
     // (undocumented)

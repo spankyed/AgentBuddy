@@ -359,6 +359,9 @@ export function emitDepTypes(depSnapshots: Map<string, {
 // @public (undocumented)
 export function emitEARS(ownId: string, registry: ReturnType<typeof mergeRegistries>): string;
 
+// @public
+export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[];
+
 // @public (undocumented)
 export function entry(...branches: DSLStepNode[][]): Track;
 

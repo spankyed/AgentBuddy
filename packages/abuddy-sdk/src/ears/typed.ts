@@ -5,7 +5,7 @@
  * global registry, so each pack's typing depends only on what it declares.
  */
 import type { EARS, EntityNameArg, EntityShapes, ShapeOf } from '../types/entities.ts';
-import type { QueryBuilder } from './runtime.ts';
+import type { QueryBuilder, TransactionBuilder } from './runtime.ts';
 import { qx } from './query.ts';
 import { createEntity, getAttr, getAttrs } from './attribute-storage.ts';
 import {
@@ -13,6 +13,7 @@ import {
   findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
 } from './query-helpers.ts';
 import { createEntityWithDefaults, updateEntity, type CreatedEntityFields } from './transaction-helpers.ts';
+import { tx } from './transaction.ts';
 
 /** An entity name argument: a declared name, or a name only known at runtime (see EntityNameArg) */
 type Name<N extends string, E extends string> = EntityNameArg<N, E>;
@@ -25,6 +26,15 @@ export interface TypedQx<S extends EntityShapes, N extends string = string> {
   <E extends string>(seed: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
   // Seeds that may be undefined at the call site
   <E extends string>(seed: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
+}
+
+/**
+ * A transaction on an entity. Seeded with an id tagged with its entity type, or with a declared entity
+ * type (which creates the entity), writes to declared fields are checked; a plain id leaves them unchecked.
+ */
+export interface TypedTx<S extends EntityShapes, N extends string = string> {
+  <E extends string>(id: EARS.EntityId<E>, useProvidedId?: boolean): TransactionBuilder<E, S>;
+  <E extends string>(entityType: Name<N, E>, useProvidedId?: boolean): TransactionBuilder<E, S>;
 }
 
 export interface TypedFindById<S extends EntityShapes> {
@@ -93,6 +103,7 @@ export interface TypedUpdateEntity<S extends EntityShapes> {
 
 export interface TypedEars<S extends EntityShapes, N extends string = string> {
   qx: TypedQx<S, N>;
+  tx: TypedTx<S, N>;
   findById: TypedFindById<S>;
   findByIdRaw: TypedFindById<S>;
   findAll: TypedFindAll<S, N>;
@@ -115,7 +126,7 @@ export interface TypedEars<S extends EntityShapes, N extends string = string> {
  */
 export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N> {
   return {
-    qx, findById, findByIdRaw, findAll, findWhere, findFirst,
+    qx, tx, findById, findByIdRaw, findAll, findWhere, findFirst,
     findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
     createEntity, createEntityWithDefaults, updateEntity, getAttr, getAttrs,
   } as unknown as TypedEars<S, N>;

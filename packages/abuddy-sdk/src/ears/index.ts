@@ -1,5 +1,5 @@
 export type {
-  EARSRuntimeDeps, QueryBuilder, TransactionBuilder, SafeLinkOptions,
+  EARSRuntimeDeps, QueryBuilder, TransactionBuilder, SafeLinkOptions, FieldValue, FieldValues,
 } from './runtime.ts';
 export { b64Encode, b64Decode, type QxSeed } from './query.ts';
 export { tx } from './transaction.ts';
@@ -28,7 +28,7 @@ export { EARS } from '../types/entities.ts';
 export type { EntityShapes, ShapeOf, EntityNameArg, BaseEntity } from '../types/entities.ts';
 export {
   defineEars,
-  type TypedEars, type TypedQx, type TypedFindById, type TypedFindAll, type TypedFindWhere, type TypedFindFirst, type TypedCreateEntity,
+  type TypedEars, type TypedQx, type TypedTx, type TypedFindById, type TypedFindAll, type TypedFindWhere, type TypedFindFirst, type TypedCreateEntity,
   type TypedGetAttr, type TypedGetAttrs, type TypedFindWithFields, type TypedFindByIdWithFields, type TypedFindWithRole,
   type TypedFindFirstWithRole, type TypedCreateEntityWithDefaults, type TypedUpdateEntity,
 } from './typed.ts';

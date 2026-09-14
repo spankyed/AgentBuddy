@@ -151,8 +151,7 @@ export namespace EARS {
     };
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-    // (undocumented)
-    export type EntityId<E extends string = string> = `${string}-${string}` & {
+    export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
         readonly __entity?: E;
     };
     // (undocumented)
@@ -191,6 +190,18 @@ export type EntityShapes = {
 // @public (undocumented)
 export function exists(id: EARS.EntityId): boolean;
 
+// @public
+export type FieldValue<S extends EntityShapes, E extends string, K extends string> = [
+E
+] extends [keyof S] ? (K extends keyof ShapeOf<S, E> ? ShapeOf<S, E>[K] : unknown) : unknown;
+
+// @public
+export type FieldValues<S extends EntityShapes, E extends string> = [
+E
+] extends [keyof S] ? {
+    [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K];
+} & Record<string, unknown> : Record<string, unknown>;
+
 // @public (undocumented)
 export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string;
 
@@ -216,7 +227,7 @@ export const getAttributeStats: (kind: EARS.AttrKind) => {
 };
 
 // @public (undocumented)
-export const getEntitiesOfType: (t: EARS.Entity) => EARS.EntityId<string>[];
+export const getEntitiesOfType: (t: EARS.Entity) => `${string}-${string}`[];
 
 // @public (undocumented)
 export const getRoles: (id: EARS.EntityId) => string[];
@@ -296,60 +307,60 @@ export interface QueryBuilder<E extends string = string, S extends EntityShapes 
     // (undocumented)
     exists(): boolean;
     // (undocumented)
-    first(): EARS.EntityId | null;
+    first(): EARS.EntityId<E> | null;
     // (undocumented)
-    forEach(fn: (id: EARS.EntityId) => void): QueryBuilder<E, S, N>;
+    forEach(fn: (id: EARS.EntityId<E>) => void): QueryBuilder<E, S, N>;
     // (undocumented)
     groupBy(field: keyof ShapeOf<S, E> & string): Map<unknown, QueryBuilder<E, S, N>>;
     // (undocumented)
-    id(): EARS.EntityId | null;
+    id(): EARS.EntityId<E> | null;
     // (undocumented)
-    ids(): EARS.EntityId[];
+    ids(): EARS.EntityId<E>[];
     // (undocumented)
     inIds(sub: readonly EARS.EntityId[]): QueryBuilder<E, S, N>;
     // (undocumented)
-    last(): EARS.EntityId | null;
+    last(): EARS.EntityId<E> | null;
     // (undocumented)
     limit(n: number): QueryBuilder<E, S, N>;
     // (undocumented)
     links<K extends string, T extends string = string>(relKinds: K | readonly K[], tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[], asSrc?: boolean): Array<{
         relation: K;
-        id: EARS.EntityId;
+        id: EARS.EntityId<NoInferType<T>>;
     }>;
     linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(relKinds: readonly [K, K, ...K[]], fields: A, tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[]): ({
-        id: EARS.EntityId;
+        id: EARS.EntityId<NoInferType<T>>;
         relation: K;
     } & Pick<ShapeOf<S, T>, A[number]>)[];
     // (undocumented)
     linksPick<K extends string, T extends string, A extends readonly (keyof ShapeOf<S, T> & string)[]>(relKinds: K | readonly [K], fields: A, tgtType?: EntityNameArg<N, T> | EntityNameArg<N, T>[]): ({
-        id: EARS.EntityId;
+        id: EARS.EntityId<NoInferType<T>>;
     } & Pick<ShapeOf<S, T>, A[number]>)[];
     linksTo<T extends string>(relKinds: string | readonly string[], tgtType: EntityNameArg<N, T> | readonly EntityNameArg<N, T>[] | undefined, asSrc?: boolean): QueryBuilder<T, S, N>;
     // (undocumented)
     linksTo(relKinds: string | readonly string[], tgtType?: undefined, asSrc?: boolean): QueryBuilder<string, S, N>;
     // (undocumented)
-    map<T>(fn: (id: EARS.EntityId) => T): T[];
+    map<T>(fn: (id: EARS.EntityId<E>) => T): T[];
     // (undocumented)
     ofType<T extends string>(t: EntityNameArg<N, T>): QueryBuilder<T, S, N>;
     // (undocumented)
     orderBy(field: keyof ShapeOf<S, E> & string, dir?: 'asc' | 'desc'): QueryBuilder<E, S, N>;
     // (undocumented)
     page(size: number, cursor?: string | null): {
-        items: EARS.EntityId[];
+        items: EARS.EntityId<E>[];
         nextCursor: string | null;
     };
     // (undocumented)
     pick<A extends readonly (keyof ShapeOf<S, E> & string)[]>(fields: A): ({
-        id: EARS.EntityId;
+        id: EARS.EntityId<E>;
     } & Pick<ShapeOf<S, E>, A[number]>)[];
     // (undocumented)
     pickAll(): ShapeOf<S, E>[];
     // (undocumented)
     pickOne<A extends readonly (keyof ShapeOf<S, E> & string)[]>(f: A): ({
-        id: EARS.EntityId;
+        id: EARS.EntityId<E>;
     } & Pick<ShapeOf<S, E>, A[number]>) | null;
     // (undocumented)
-    reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T): T;
+    reduce<T>(fn: (acc: T, id: EARS.EntityId<E>) => T, init: T): T;
     // (undocumented)
     related(kind: string, other: EARS.EntityId, asSrc?: boolean): QueryBuilder<E, S, N>;
     // (undocumented)
@@ -422,7 +433,9 @@ export interface SafeLinkOptions {
 // @public
 export type ShapeOf<S extends EntityShapes, E extends string> = [
 E
-] extends [keyof S] ? S[E] & BaseEntity : BaseEntity & Record<string, unknown>;
+] extends [keyof S] ? S[E] & BaseEntity & {
+    id: EARS.EntityId<E>;
+} : BaseEntity & Record<string, unknown>;
 
 // @public (undocumented)
 export function shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null;
@@ -435,66 +448,66 @@ export function spawn(root: Blueprint, input?: {
 // @public (undocumented)
 export function topoSort(roots: EARS.EntityId[], kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
 
-// @public (undocumented)
-export interface TransactionBuilder {
+// @public
+export interface TransactionBuilder<E extends string = string, S extends EntityShapes = {}> {
     // (undocumented)
-    add(k: string, v: unknown): TransactionBuilder;
+    add<K extends string>(k: K, v: FieldValue<S, E, K>): TransactionBuilder<E, S>;
     // (undocumented)
-    batchPut(attrs: Record<string, unknown>): TransactionBuilder;
+    batchPut(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
     // (undocumented)
     define(def: {
         attributes?: Record<string, unknown>;
         links?: [string, EARS.EntityId] | Array<[string, EARS.EntityId]>;
         roles?: string | string[];
-    }): TransactionBuilder;
+    }): TransactionBuilder<E, S>;
     // (undocumented)
     destroy(skipPersistence?: boolean): never;
     // (undocumented)
-    drop(k: string, i?: number): TransactionBuilder;
+    drop(k: string, i?: number): TransactionBuilder<E, S>;
     // (undocumented)
-    dropIf(k: string, c: unknown): TransactionBuilder;
+    dropIf(k: string, c: unknown): TransactionBuilder<E, S>;
     // (undocumented)
-    ensure(r: string, scope?: readonly EARS.EntityId[]): TransactionBuilder;
+    ensure(r: string, scope?: readonly EARS.EntityId[]): TransactionBuilder<E, S>;
     // (undocumented)
-    grant(r: string): TransactionBuilder;
+    grant(r: string): TransactionBuilder<E, S>;
     // (undocumented)
-    id(): EARS.EntityId;
+    id(): EARS.EntityId<E>;
     // (undocumented)
-    link(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder;
+    link(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder<E, S>;
     // (undocumented)
-    linkOne(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder;
+    linkOne(k: string, t: EARS.EntityId, info?: unknown): TransactionBuilder<E, S>;
     // (undocumented)
-    merge(k: string, v: unknown, i?: number): TransactionBuilder;
+    merge(k: string, v: unknown, i?: number): TransactionBuilder<E, S>;
     // (undocumented)
     patchLink(k: string, t: EARS.EntityId, u: {
         newTarget: EARS.EntityId;
         newInfo?: unknown;
-    }): TransactionBuilder;
+    }): TransactionBuilder<E, S>;
     // (undocumented)
-    put(k: string, v: unknown, allowMultiple?: boolean): TransactionBuilder;
+    put<K extends string>(k: K, v: FieldValue<S, E, K>, allowMultiple?: boolean): TransactionBuilder<E, S>;
     // (undocumented)
     relPatch(rel: EARS.EntityId, u: {
         sourceEntity?: EARS.EntityId;
         targetEntity?: EARS.EntityId;
         info?: unknown;
-    }): TransactionBuilder;
+    }): TransactionBuilder<E, S>;
     // (undocumented)
-    revoke(r: string): TransactionBuilder;
+    revoke(r: string): TransactionBuilder<E, S>;
     // (undocumented)
-    safeLink(k: string, t: EARS.EntityId, options?: SafeLinkOptions): TransactionBuilder;
+    safeLink(k: string, t: EARS.EntityId, options?: SafeLinkOptions): TransactionBuilder<E, S>;
     // (undocumented)
-    unlink(rel: EARS.EntityId): TransactionBuilder;
+    unlink(rel: EARS.EntityId): TransactionBuilder<E, S>;
     // (undocumented)
-    unlinkIf(k: string, t?: EARS.EntityId): TransactionBuilder;
+    unlinkIf(k: string, t?: EARS.EntityId): TransactionBuilder<E, S>;
     // (undocumented)
     unlinkWhere(c?: {
         kind?: string;
         target?: EARS.EntityId;
-    }): TransactionBuilder;
+    }): TransactionBuilder<E, S>;
     // (undocumented)
-    update(k: string, v: unknown): TransactionBuilder;
+    update<K extends string>(k: K, v: FieldValue<S, E, K>): TransactionBuilder<E, S>;
     // (undocumented)
-    updateBatch(attrs: Record<string, unknown>): TransactionBuilder;
+    updateBatch(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
 }
 
 // @public (undocumented)
@@ -536,6 +549,8 @@ export interface TypedEars<S extends EntityShapes, N extends string = string> {
     getAttrs: TypedGetAttrs<S>;
     // (undocumented)
     qx: TypedQx<S, N>;
+    // (undocumented)
+    tx: TypedTx<S, N>;
     // (undocumented)
     updateEntity: TypedUpdateEntity<S>;
 }
@@ -614,6 +629,14 @@ export interface TypedQx<S extends EntityShapes, N extends string = string> {
     <E extends string>(seed: readonly Name<N, E>[]): QueryBuilder<string, S, N>;
     // (undocumented)
     <E extends string>(seed: Name<N, E> | readonly Name<N, E>[] | EARS.EntityId | readonly EARS.EntityId[] | undefined): QueryBuilder<string, S, N>;
+}
+
+// @public
+export interface TypedTx<S extends EntityShapes, N extends string = string> {
+    // (undocumented)
+    <E extends string>(id: EARS.EntityId<E>, useProvidedId?: boolean): TransactionBuilder<E, S>;
+    // (undocumented)
+    <E extends string>(entityType: Name<N, E>, useProvidedId?: boolean): TransactionBuilder<E, S>;
 }
 
 // @public

@@ -96,8 +96,7 @@ export namespace EARS {
     };
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-    // (undocumented)
-    export type EntityId<E extends string = string> = `${string}-${string}` & {
+    export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
         readonly __entity?: E;
     };
     // (undocumented)
@@ -135,7 +134,9 @@ export interface KeyboardShortcut {
 // @public
 export type ShapeOf<S extends EntityShapes, E extends string> = [
 E
-] extends [keyof S] ? S[E] & BaseEntity : BaseEntity & Record<string, unknown>;
+] extends [keyof S] ? S[E] & BaseEntity & {
+    id: EARS.EntityId<E>;
+} : BaseEntity & Record<string, unknown>;
 
 // (No @packageDocumentation comment for this package)
 

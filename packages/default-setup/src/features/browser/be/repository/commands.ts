@@ -1,5 +1,4 @@
-import { qx } from '@/__generated__/ears';
-import { tx } from '@abuddy/sdk/ears';
+import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 import type { BrowserTabId, SavedTab, SavedBookmark } from '../types';

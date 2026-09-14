@@ -1,11 +1,10 @@
-import { findById, findAll, qx } from '@/__generated__/ears';
+import { tx, findById, findAll, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
 import { updateEntity } from '@/__generated__/ears';
 import { wouldCreateCycle } from '@abuddy/sdk/ears';
 import { b64Encode, b64Decode } from '@abuddy/sdk/ears';
-import { tx } from '@abuddy/sdk/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,

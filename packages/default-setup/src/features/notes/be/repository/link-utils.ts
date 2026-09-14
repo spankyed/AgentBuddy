@@ -1,7 +1,6 @@
-import { qx } from '@/__generated__/ears';
+import { tx, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 
-import { tx } from '@abuddy/sdk/ears';
 import { REFERENCES } from '../types';
 
 /**

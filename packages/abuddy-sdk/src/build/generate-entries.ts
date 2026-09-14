@@ -234,6 +234,12 @@ const HOST_PLUGIN_IDS = ['application'];
 /** Entity types whose shapes the SDK declares itself (SdkEntityShapes in @abuddy/sdk/steps) */
 const SDK_ENTITY_SHAPES = ['TNode'];
 
+/** This pack's entities with no shape (in entityShapes or the SDK's), whose fields read as unknown values */
+export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[] {
+  return Object.keys(manifest.entities ?? {})
+    .filter((entity) => !(entity in (manifest.entityShapes ?? {})) && !SDK_ENTITY_SHAPES.includes(entity));
+}
+
 /** The type-bundle key in a pack's snapshot defs, written by `abuddy build` */
 export const PACK_TYPES_DEF = 'pack-types';
 
@@ -548,7 +554,7 @@ export type EntityShape<E extends string> = ShapeOf<PackShapes, E>;
 export type EntityName = ${[...entityNames, 'keyof PackShapes & string'].join(' | ')};
 
 export const {
-  qx, findById, findByIdRaw, findAll, findWhere, findFirst,
+  qx, tx, findById, findByIdRaw, findAll, findWhere, findFirst,
   findWithFields, findByIdWithFields, findWithRole, findFirstWithRole,
   createEntity, createEntityWithDefaults, updateEntity, getAttr, getAttrs,
 } = /*#__PURE__*/ defineEars<PackShapes, EntityName>();

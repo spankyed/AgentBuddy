@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
 import type { QueryBuilder } from '@abuddy/sdk/ears';
-import { EARS, createEntity, findById, type EntityShape, type PackShapes } from '@/__generated__/ears';
+import { EARS, createEntity, findAll, findById, qx, type EntityShape, type PackShapes } from '@/__generated__/ears';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────
 
@@ -20,6 +20,24 @@ describe('Branded EntityId — phantom type parameter', () => {
 
   it('EntityId<"Action"> is distinct from EntityId<"Thread">', () => {
     expectTypeOf<EARS.EntityId<'Action'>>().not.toEqualTypeOf<EARS.EntityId<'Thread'>>();
+  });
+
+  it('a plain id is accepted where a tagged one is expected; another entity\'s id is not', () => {
+    const openNote = (id: EARS.EntityId<'Note'>) => id;
+    const plain = 'note-1' as EARS.EntityId;
+    openNote(plain);
+    // @ts-expect-error a Thread id where a Note id is expected
+    openNote('thread-1' as EARS.EntityId<'Thread'>);
+    // @ts-expect-error a raw string isn't an id
+    openNote('note-1' as string);
+  });
+
+  it('tagged id collections accept plain ids in membership checks', () => {
+    const noteIds: EARS.EntityId<'Note'>[] = [];
+    const plain = 'note-1' as EARS.EntityId;
+    noteIds.includes(plain);
+    new Set(noteIds).has(plain);
+    new Map(noteIds.map((id) => [id, 1])).get(plain);
   });
 });
 
@@ -82,9 +100,22 @@ describe('Branded EntityId — findById inference', () => {
 // ─── branded id flows through QueryBuilder ─────────────────────────────
 
 describe('Branded EntityId — integration with QueryBuilder', () => {
-  it('qx(Entity.Action) ids should be branded EntityId', () => {
+  it('qx(Entity.Action) ids are tagged with Action', () => {
     type Result = ReturnType<QueryBuilder<'Action', PackShapes>['ids']>;
-    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId[]>();
+    expectTypeOf<Result>().toEqualTypeOf<EARS.EntityId<'Action'>[]>();
+  });
+
+  it('an id from a query types the next lookup without an explicit shape', () => {
+    // Type-level only: never called, since the EARS runtime isn't initialized here
+    const check = () => {
+      const first = qx(EARS.Entity.Note).first();
+      if (first) expectTypeOf(findById(first)).toEqualTypeOf<EntityShape<'Note'> | undefined>();
+      const row = findAll(EARS.Entity.Note)[0];
+      if (row) expectTypeOf(row.id).toEqualTypeOf<EARS.EntityId<'Note'>>();
+      const picked = qx(EARS.Entity.Note).pickOne(['title']);
+      if (picked) expectTypeOf(picked.id).toEqualTypeOf<EARS.EntityId<'Note'>>();
+    };
+    expectTypeOf(check).toBeFunction();
   });
 
   it('createEntity returns branded id compatible with qx input', () => {
