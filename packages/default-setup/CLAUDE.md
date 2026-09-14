@@ -86,14 +86,16 @@ Typed facades (no module augmentation):
 
 ## Seeds
 
-Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `boot.seed` describes them. Located in `src/seeds/`:
+Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `seedFormats` and `boot.seed` describe them. Located in `src/seeds/`:
 
 - `actions/`, `prompts/`, `flows/`, `default-settings.ts` — compiled by the SDK's own compilers (the manifest names only their paths)
-- `notes/` — welcome note: a `markdown-tree` entry for `Note` (frontmatter fields, `index.md` directories)
-- `library/` — internal docs (commands reference): compiled by `seeds/compilers/library.ts` into Collection and Document records, with sections parsed from the markdown
-- `faqs/` — markdown FAQ files: compiled by `seeds/compilers/faqs.ts`, not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
+- `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
+- `library/` — internal docs (commands reference), compiled with the `library` format: `compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
+- `faqs/` — markdown FAQ files, compiled with the `faqs` format (`compilers/faqs.ts`), not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
+- `compilers/` — the formats' compiler modules, bundled into `dist/build/seed-compilers.mjs` so dependents can use the formats
+- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`
 
-Notes and library rows go through the seed hooks default-setup registers for Note, Document and Collection (`seedHooks` in `abuddy.json`: `features/notes/be/seed-hooks.ts`, `features/library/be/seed-hooks.ts`), which call `noteCommands`/`libraryCommands`. Any pack seeding those entity types gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
+Rows go through those hooks, which call `noteCommands`/`libraryCommands`, whatever pack seeds them. A pack depending on default-setup seeds with its formats by naming them (`{ "path": "src/seeds/notes", "format": "default-setup:notes" }`) and gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
 
 Seed registration: `__generated__/seeders.ts` registers the SDK's generic seeder for actions, prompts, library and notes, and the flow and settings seeders. Boot seed (`runBootSeed`) hashes compiled artifacts and skips seeding when unchanged. See `docs/public-facing/seeds.md` for entry fields, hooks and change tracking.
 

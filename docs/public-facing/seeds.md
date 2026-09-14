@@ -9,7 +9,7 @@ The SDK compiles four keys itself:
 - **Flows** — declarative event-driven workflows that orchestrate actions
 - **Settings** — the pack's default settings
 
-Any other entity type — yours, a dependency's, or the SDK's — is seeded from markdown or JSON with an entry object in `abuddy.json`, and no SDK code (see [Seeding entities](#seeding-entities)).
+Any other entity type — yours, a dependency's, or the SDK's — is seeded from markdown or JSON with a format and a seed entry in `abuddy.json`, and no SDK code (see [Seeding entities](#seeding-entities)).
 
 ## Actions
 
@@ -285,51 +285,60 @@ Point your manifest at the seed directories:
 
 ## Seeding entities
 
-Seed rows of an entity type from markdown or JSON with an entry object. The keys are yours to name.
+Seed rows of an entity type from markdown or JSON in two parts of `abuddy.json`:
 
-### Markdown
+- **A format** in `seedFormats` says how a source becomes records: a built-in format (`markdown-tree` or `json`) or a compiler module, and the settings it uses.
+- **A seed entry** in `boot.seed` names a source and the format that compiles it: `{ "path", "format" }`. The entry key is yours to name.
 
 ```json
 {
   "entities": { "Memo": "Memo" },
+  "seedFormats": {
+    "memos": {
+      "format": "markdown-tree",
+      "entity": "Memo",
+      "identity": ["title", "parent"],
+      "tree": { "branch": "index.md", "relKind": "contains" },
+      "fields": {
+        "title": { "from": "frontmatter.title", "default": "filename", "type": "string" },
+        "pinned": { "from": "frontmatter.pinned", "default": false },
+        "text": { "from": "body" }
+      },
+      "media": "media"
+    }
+  },
   "boot": {
     "seed": {
-      "memos": {
-        "path": "src/seeds/memos",
-        "format": "markdown-tree",
-        "entity": "Memo",
-        "identity": ["title", "parent"],
-        "tree": { "branch": "index.md", "relKind": "contains" },
-        "fields": {
-          "title": { "from": "frontmatter.title", "default": "filename", "type": "string" },
-          "pinned": { "from": "frontmatter.pinned", "default": false },
-          "text": { "from": "body" }
-        },
-        "media": "media"
-      }
+      "memos": { "path": "src/seeds/memos", "format": "memos" }
     }
   }
 }
 ```
 
+An entry can't set or change any format settings; a pack that needs different settings defines its own format. Format names are lowercase with hyphens.
+
+### Markdown
+
 - Each `.md` file is a record. Frontmatter is YAML 1.2, so `title: 2024` reads as a number; `"type": "string"` coerces it back.
-- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to `path`) or `frontmatter.<name>`. `default` applies when the source is absent; `"filename"` as a default means the display name.
+- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to the entry's `path`) or `frontmatter.<name>`. `default` applies when the source is absent; `"filename"` as a default means the display name.
 - With `tree`, each subdirectory is a parent record (its `branch` file gives its frontmatter and body, `branchEntity` its type) and its files are children, linked with `relKind`. Without `tree`, only the top-level files are read.
-- `media` is copied with the seeds; `![alt](media/pic.png)` links are rewritten to the row's `media://<id>/pic.png`.
+- `media` is a directory under the entry's `path`, copied with the seeds; `![alt](media/pic.png)` links are rewritten to the row's `media://<id>/pic.png`.
 
 ### JSON
 
 ```json
-"tags": { "path": "src/seeds/tags.json", "format": "json", "entity": "Tag", "identity": ["name"] }
+"seedFormats": { "tags": { "format": "json", "entity": "Tag", "identity": ["name"] } },
+"boot": { "seed": { "tags": { "path": "src/seeds/tags.json", "format": "tags" } } }
 ```
 
 The file holds an array of records (or `{ "records": [...] }`); a record may carry its own `entity` and `children`.
 
 ### Compiler modules
 
-When a source needs parsing that field sources can't express, point `compiler` at a module. Its default export gets `{ key, path, packDir, entry }` and returns records, each tagged with its `entity`:
+When a source needs parsing that field sources can't express, give the format a `compiler` module instead of a built-in `format`. Its default export gets `{ key, path, packDir, format }` and returns records, each tagged with its `entity`:
 
 ```typescript
+// src/seeds/compilers/glossary.ts
 import { compileMarkdownTree, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
 
 export default function compileGlossary({ path }: SeedCompileContext): SeedRecord[] {
@@ -342,23 +351,51 @@ export default function compileGlossary({ path }: SeedCompileContext): SeedRecor
 ```
 
 ```json
-"glossary": { "path": "src/seeds/glossary", "compiler": "src/seeds/compile-glossary.ts", "entity": "Term", "identity": ["term"] }
+"seedFormats": { "glossary": { "compiler": "src/seeds/compilers/glossary.ts", "entity": "Term", "identity": ["term"] } },
+"boot": { "seed": { "glossary": { "path": "src/seeds/glossary", "format": "glossary" } } }
 ```
 
-The build loads TypeScript compiler modules itself. A record's `sourceHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. An entry without `entity` is compiled but not seeded: pack code reads `<key>.seed.json` (default-setup's FAQs work this way). `seeder` replaces the generic seeder with a module exporting `seed(ctx)`.
+The build loads TypeScript compiler modules itself, and bundles every compiler module your formats name into `dist/build/seed-compilers.mjs` so packs depending on yours can use those formats. A record's `sourceHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. A format without `entity` is compiled but not seeded: pack code reads `<key>.seed.json` (default-setup's FAQs work this way). An entry `{ "seeder": "src/seeds/custom.ts" }` replaces the format and generic seeder with a module exporting `seed(ctx)`.
+
+### A dependency's formats
+
+An entry can name a format of a pack it depends on as `"<pack id>:<name>"`. It compiles your sources with that pack's settings and compiler module, so you get the same records it would:
+
+```json
+{
+  "dependencies": { "default-setup": "*" },
+  "boot": {
+    "seed": {
+      "team-notes": { "path": "src/seeds/notes", "format": "default-setup:notes" },
+      "team-docs": { "path": "src/seeds/docs", "format": "default-setup:library" }
+    }
+  }
+}
+```
+
+default-setup's formats:
+
+| Format | Seeds | Sources |
+|---|---|---|
+| `notes` | `Note` | Markdown notes; frontmatter `title`, `type` (`document`, `tasklist`, `task`), `icon`, `favorite`, `hideCompletedChildren`, `completed`. A directory is a parent note, its `index.md` giving the parent's frontmatter and content |
+| `library` | `Collection`, `Document` | A directory is a collection (`_meta.md` frontmatter `name`, `description`); a file is a document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content). `media/` links become the document's media |
+| `faqs` | none (compiled only) | The Help tab's FAQs; not useful to other packs |
+
+Any pack can define a format for any entity type it can seed (its own, a dependency's or the SDK's). Only the pack that declares an entity type defines its seed hooks.
 
 ### Seed hooks
 
-Without hooks, the seeder writes rows directly: it matches existing rows on `identity`, creates new ones with their fields, and links children with `tree.relKind`. When an entity type needs more — shortCodes, ordering, validation, derived links — the pack that declares the type registers seed hooks for it:
+Without hooks, the seeder writes rows directly: it matches existing rows on the format's `identity`, creates new ones with their fields, and links children with `tree.relKind`. When an entity type needs more — shortCodes, ordering, validation, derived links — the pack that declares the type registers seed hooks for it:
 
 ```json
 {
   "entities": { "Memo": "Memo" },
-  "seedHooks": { "Memo": "src/features/memos/be/seed-hooks.ts#memoSeedHooks" }
+  "seedHooks": { "Memo": "src/seeds/hooks/memos.ts#memoSeedHooks" }
 }
 ```
 
 ```typescript
+// src/seeds/hooks/memos.ts
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
 import { repository } from '#generated/repository';
 
@@ -370,7 +407,7 @@ export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string
 };
 ```
 
-Hooks are looked up by entity type, so every pack that seeds `Memo` — yours or one depending on it — goes through them. A `find` hook replaces the entry's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`: a pack depending on default-setup seeds notes with a `markdown-tree` entry for `Note` and gets the same shortCodes, display order and links as default-setup's own notes.
+Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so rows seeded with its formats get the same shortCodes, display order and links as default-setup's own.
 
 ### Change tracking
 

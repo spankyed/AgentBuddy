@@ -30,6 +30,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `fe` | `object` | no | FE-only registrations |
 | `partitionPolicy` | `object` | no | EARS persistence routing (built-in only) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
+| `seedFormats` | `Record<string, SeedFormatConfig>` | no | Named seed formats: how a source becomes records. `boot.seed` entries name them, dependents as `<pack id>:<name>`; see [Seeds](seeds.md#seeding-entities) |
 | `seedHooks` | `Record<string, string>` | no | Seed hooks for entity types this pack declares (`Entity` -> `path#exportName`). Every pack seeding that type goes through them; see [Seeds](seeds.md#seed-hooks) |
 | `dsl` | `Record<string, DslEntry>` | no | DSL definitions for build-time compilation |
 
@@ -135,25 +136,34 @@ The `boot` object configures hooks that run during app startup:
 |---|---|---|
 | `earlySystem` | `string` | System that boots before EARS hydration (built-in only) |
 | `createDefaultSettings` | `string` | Module that ensures default settings exist |
-| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts`, `flows` and `settings` take a path; any other key is an entry object |
+| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts`, `flows` and `settings` take a path; any other key is `{ path, format }` or `{ seeder }` |
 | `seedPolicy` | `object` | Controls which seed types to skip at boot or after onboarding |
 | `hooks` | `string` | Module providing lifecycle hooks (e.g. shutdown) |
 
 ### SeedEntryConfig
 
-`actions`, `prompts`, `flows` and `settings` accept only `{ "path": … }`. Any other key needs `format`, `compiler` or `seeder`; an unknown key given a path string fails validation. See [Seeds](seeds.md#seeding-entities) for examples.
+`actions`, `prompts`, `flows` and `settings` accept a path or `{ "path": … }`. Any other key is one of:
+
+| Shape | Description |
+|---|---|
+| `{ "path", "format" }` | `path`: source directory or file, relative to the pack root. `format`: a name in this pack's `seedFormats`, or `"<dependency id>:<name>"` for a dependency's |
+| `{ "seeder" }` | A pack module exporting `seed(ctx)`, used instead of a format and the generic seeder |
+
+An entry can't carry format settings, and an unknown key given a path string fails validation. See [Seeds](seeds.md#seeding-entities) for examples.
+
+### SeedFormatConfig
+
+A `seedFormats` value. It needs exactly one of `format` and `compiler`.
 
 | Field | Type | Description |
 |---|---|---|
-| `path` | `string` | Source directory or file, relative to the pack root |
-| `format` | `"markdown-tree" \| "json"` | Compile `path` with the SDK's generic compiler |
-| `compiler` | `string` | A pack module whose default export compiles `path` into records (instead of `format`) |
-| `seeder` | `string` | A pack module exporting `seed(ctx)`, used instead of the generic seeder |
-| `entity` | `string \| string[]` | Entity types the entry seeds (the pack's, a dependency's or the SDK's). Omitted, the entry is compiled but not seeded |
+| `format` | `"markdown-tree" \| "json"` | Compile an entry's source with a built-in format |
+| `compiler` | `string` | A module in this pack whose default export compiles an entry's source into records. Bundled into `dist/build/seed-compilers.mjs` for dependents |
+| `entity` | `string \| string[]` | Entity types the records seed (the pack's, a dependency's or the SDK's). Omitted, entries are compiled but not seeded |
 | `identity` | `string[]` | Fields matched to find an existing row (`"parent"` = the tree parent). Ignored when the type's owning pack registers a `find` seed hook |
 | `tree` | `{ branch?, branchEntity?, relKind? }` | Walk subdirectories as parent rows: a directory's own file, its entity type, and the parent → child relation (default `contains`) |
 | `fields` | `Record<string, { from, default?, type? }>` | `markdown-tree` only: record field → `body`, `filename`, `path` or `frontmatter.<name>` |
-| `media` | `string` | Directory under `path` copied with the seeds; `media/<file>` links become `media://<id>/<file>` |
+| `media` | `string` | Directory under an entry's `path` copied with the seeds; `media/<file>` links become `media://<id>/<file>` |
 
 ## Frontend configuration
 
