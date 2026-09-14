@@ -11,6 +11,7 @@ import type { Logger } from '../ears/runtime.ts';
 import type { LogEvent } from '../logger/index.ts';
 import type { ReportSystemErrorInput } from '../utils/index.ts';
 import type { AppDataService, TraceStore } from '../services/data.ts';
+import { restoreModelProvider } from './fake-model.ts';
 
 /** The test app's root event bus: what clients (and the test) send the backend, and what it sends them */
 export interface TestRootEvents extends RootEvents {
@@ -121,5 +122,7 @@ export function registerTestHostModules(resetData: () => void): void {
   for (const [key, mod] of Object.entries(modules)) {
     if (!registered(key)) registerHostModule(key, mod);
   }
+  // No test reaches a real model: until one calls fakeModel(), inference fails naming it
+  restoreModelProvider();
   initRpc();
 }

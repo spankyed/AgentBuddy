@@ -13,7 +13,12 @@ export interface HostInternalSettings {
  * typed against this view instead of the pack's generated repository types.
  */
 export interface HostSettingsRepositories {
-  settingsQueries: { getInternalSettings(): HostInternalSettings };
+  settingsQueries: {
+    getInternalSettings(): HostInternalSettings;
+    /** The model provider reads API key secret ids from `secrets` */
+    getGeneralSettings(): { secrets?: Record<string, string | undefined> };
+  };
+  secretsQueries: { getSecret(id: string): { encryptedValue?: string } | undefined };
   settingsCommands: { updateSettings(type: 'internal', label: null, path: string[], value: unknown): void };
 }
 

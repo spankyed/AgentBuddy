@@ -10,11 +10,50 @@ export function dropAttribute(id: EARS.EntityId, kind: string): void;
 // @public
 export function entityIds(): EARS.EntityId[];
 
+// @public (undocumented)
+export interface FakeModel {
+    readonly calls: readonly FakeModelCall[];
+}
+
+// @public
+export function fakeModel(reply: FakeModelReply | ((call: FakeModelCall) => FakeModelReply | Promise<FakeModelReply>)): FakeModel;
+
+// @public
+export interface FakeModelCall {
+    messages: Array<{
+        role: 'user' | 'assistant' | 'tool';
+        text: string;
+    }>;
+    model: ModelConfig;
+    stream: boolean;
+    // (undocumented)
+    system?: string;
+    tools: string[];
+}
+
+// @public
+export type FakeModelReply = string | {
+    text?: string;
+    toolCalls?: FakeToolCall[];
+    finishReason?: 'stop' | 'length' | 'tool-calls';
+};
+
+// @public
+export interface FakeToolCall {
+    // (undocumented)
+    args: Record<string, unknown>;
+    // (undocumented)
+    toolName: string;
+}
+
 // @public
 export function registerSeedRuntime(runtime: SeedRuntime): void;
 
 // @public
 export function resetTestData(): void;
+
+// @internal
+export function restoreModelProvider(): void;
 
 // @public
 export interface SeedRuntime {

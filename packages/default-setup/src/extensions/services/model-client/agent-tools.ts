@@ -9,7 +9,7 @@
  * paths that escape cwd via `../` are rejected.
  */
 
-import { tool } from 'ai'
+import { tool } from '@abuddy/sdk/inference'
 import { z } from 'zod'
 import { execFile } from 'child_process'
 import { rgPath } from '@vscode/ripgrep'

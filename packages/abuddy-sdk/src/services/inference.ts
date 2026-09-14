@@ -1,11 +1,7 @@
-import { streamText as aiStreamText, generateText as aiGenerateText, streamObject as aiStreamObject, generateObject as aiGenerateObject } from 'ai';
-import type { LanguageModel, Schema } from 'ai';
+import { streamText as aiStreamText, generateText as aiGenerateText, streamObject as aiStreamObject, generateObject as aiGenerateObject, tool as aiTool } from 'ai';
+import type { LanguageModel, Schema, Tool } from 'ai';
 import type { z } from 'zod';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
-import { builtinRepository } from '../ears/builtin-repositories.ts';
-import type { EARS } from '../types/entities.ts';
+import { getHostModule } from '../runtime/host.ts';
 
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
 export type Provider = ProviderName | 'openai.responses' | string;
@@ -13,63 +9,44 @@ export type ModelConfig = {
   provider: Provider;
   model: string;
   apiKey?: string;
+  /** Overrides the provider's API endpoint */
+  baseURL?: string;
+  /** Extra request headers (OAuth-issued credentials) */
+  headers?: Record<string, string>;
 };
 
-const PROVIDER_ALIASES: Record<string, ProviderName> = {
-  'openai.responses': 'openai',
+/** Options for OpenAI's built-in web search tool */
+export type WebSearchToolOptions = {
+  searchContextSize?: 'low' | 'medium' | 'high';
+  userLocation?: { type: 'approximate'; city?: string; state?: string; country?: string };
 };
 
-export function resolveProvider(provider: string): ProviderName {
-  return (PROVIDER_ALIASES[provider] || provider) as ProviderName;
+/**
+ * Resolves models for inference. The app registers it as host module "model-provider" (the AI SDK
+ * providers with the user's API keys); unit tests register a fake (`fakeModel` from `@abuddy/sdk/testing`).
+ */
+export interface ModelProvider {
+  languageModel(config: ModelConfig): LanguageModel;
+  /** OpenAI's built-in web search tool for the Responses API */
+  webSearchTool(options?: WebSearchToolOptions): Tool;
 }
 
-function getApiKeyFromStore(baseProvider: ProviderName): string {
-  try {
-    const settings = builtinRepository.settingsQueries.getGeneralSettings();
-    const secretId = settings.secrets?.[baseProvider] as EARS.EntityId | undefined;
-    if (secretId) {
-      const secret = builtinRepository.secretsQueries.getSecret(secretId);
-      if (secret?.encryptedValue) return secret.encryptedValue;
-    }
-  } catch { /* settings not available — fall through to env */ }
-
-  const envKey = process.env[`${baseProvider.toUpperCase()}_API_KEY`];
-  if (envKey) return envKey;
-
-  throw new Error(`API key not found for provider: ${baseProvider}`);
+function modelProvider(): ModelProvider {
+  return getHostModule<ModelProvider>('model-provider');
 }
 
-export function getApiKey(providerName: string, explicitApiKey?: string): string {
-  if (explicitApiKey) return explicitApiKey;
-  return getApiKeyFromStore(resolveProvider(providerName));
+/** The AI SDK model a config names, from the registered model provider */
+export function languageModel(config: ModelConfig): LanguageModel {
+  return modelProvider().languageModel(config);
 }
 
-const PROVIDER_CONFIGS = {
-  anthropic: (apiKey: string) => createAnthropic({ apiKey }),
-  google: (apiKey: string) => createGoogleGenerativeAI({ apiKey }),
-  openai: (apiKey: string) => createOpenAI({ apiKey }),
-  groq: (apiKey: string) => createOpenAI({ apiKey, baseURL: 'https://api.groq.com/openai/v1' }),
-  mistral: (apiKey: string) => createOpenAI({ apiKey, baseURL: 'https://api.mistral.ai/v1' }),
-  cohere: () => { throw new Error('Cohere provider not yet implemented'); },
-} as const;
-
-function getProvider(providerName: string, explicitApiKey?: string): (modelId: string) => LanguageModel {
-  const apiKey = getApiKey(providerName, explicitApiKey);
-
-  if (providerName === 'openai.responses') {
-    return (modelId: string) => createOpenAI({ apiKey }).responses(modelId);
-  }
-
-  const baseProvider = resolveProvider(providerName);
-  const createFn = PROVIDER_CONFIGS[baseProvider];
-  if (!createFn) throw new Error(`Unknown provider: ${providerName}`);
-
-  return createFn(apiKey) as (modelId: string) => LanguageModel;
+/** OpenAI's built-in web search tool, from the registered model provider */
+export function webSearchTool(options?: WebSearchToolOptions): Tool {
+  return modelProvider().webSearchTool(options);
 }
 
-function getModel(config: ModelConfig) {
-  return getProvider(config.provider, config.apiKey)(config.model);
-}
+/** Defines a tool the model can call (the AI SDK's `tool`) */
+export const tool: typeof aiTool = aiTool;
 
 type TextCallOptions = Omit<Parameters<typeof aiGenerateText>[0], 'model'>;
 
@@ -89,22 +66,22 @@ export type ObjectCallOptions<T> = Pick<TextCallOptions,
 
 export async function streamText(params: StreamTextOptions) {
   const { model, ...aiParams } = params;
-  return aiStreamText({ model: getModel(model), ...aiParams });
+  return aiStreamText({ model: languageModel(model), ...aiParams });
 }
 
 export async function generateText(params: GenerateTextOptions) {
   const { model, ...aiParams } = params;
-  return aiGenerateText({ model: getModel(model), ...aiParams });
+  return aiGenerateText({ model: languageModel(model), ...aiParams });
 }
 
 export async function streamObject<T>(params: ObjectCallOptions<T>) {
   const { model, ...aiParams } = params;
-  return aiStreamObject<T>({ model: getModel(model), ...aiParams });
+  return aiStreamObject<T>({ model: languageModel(model), ...aiParams });
 }
 
 export async function generateObject<T>(params: ObjectCallOptions<T>) {
   const { model, ...aiParams } = params;
-  return aiGenerateObject<T>({ model: getModel(model), ...aiParams });
+  return aiGenerateObject<T>({ model: languageModel(model), ...aiParams });
 }
 
 export type { CoreMessage } from 'ai';

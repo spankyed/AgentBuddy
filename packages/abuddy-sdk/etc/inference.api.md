@@ -9,10 +9,13 @@ import { DeepPartial } from 'ai';
 import { GenerateObjectResult } from 'ai';
 import { generateText as generateText_2 } from 'ai';
 import { GenerateTextResult } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { Schema } from 'ai';
 import { StreamObjectResult } from 'ai';
 import { streamText as streamText_2 } from 'ai';
 import { StreamTextResult } from 'ai';
+import type { Tool } from 'ai';
+import { tool as tool_2 } from 'ai';
 import { ToolSet } from 'ai';
 import type { z } from 'zod';
 
@@ -33,13 +36,13 @@ export type GenerateTextOptions = TextCallOptions & {
 };
 
 // @public (undocumented)
-export function getApiKey(providerName: string, explicitApiKey?: string): string;
-
-// @public (undocumented)
 export function getModelById(modelId: string): ModelCatalogEntry | undefined;
 
 // @public (undocumented)
 export function getModelsByProvider(provider: string): ModelCatalogEntry[];
+
+// @public
+export function languageModel(config: ModelConfig): LanguageModel;
 
 // @public (undocumented)
 export interface ModelCatalogEntry {
@@ -68,7 +71,16 @@ export type ModelConfig = {
     provider: Provider;
     model: string;
     apiKey?: string;
+    baseURL?: string;
+    headers?: Record<string, string>;
 };
+
+// @public
+export interface ModelProvider {
+    // (undocumented)
+    languageModel(config: ModelConfig): LanguageModel;
+    webSearchTool(options?: WebSearchToolOptions): Tool;
+}
 
 // @public (undocumented)
 export type ObjectCallOptions<T> = Pick<TextCallOptions, 'system' | 'prompt' | 'messages' | 'maxTokens' | 'temperature' | 'topP' | 'topK' | 'presencePenalty' | 'frequencyPenalty' | 'seed' | 'maxRetries' | 'abortSignal' | 'headers' | 'providerOptions' | 'experimental_telemetry'> & {
@@ -86,9 +98,6 @@ export type Provider = ProviderName | 'openai.responses' | string;
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
 // @public (undocumented)
-export function resolveProvider(provider: string): ProviderName;
-
-// @public (undocumented)
 export function streamObject<T>(params: ObjectCallOptions<T>): Promise<StreamObjectResult<DeepPartial<T>, T, never>>;
 
 // @public (undocumented)
@@ -97,6 +106,23 @@ export function streamText(params: StreamTextOptions): Promise<StreamTextResult<
 // @public (undocumented)
 export type StreamTextOptions = Omit<Parameters<typeof streamText_2>[0], 'model'> & {
     model: ModelConfig;
+};
+
+// @public
+export const tool: typeof tool_2;
+
+// @public
+export function webSearchTool(options?: WebSearchToolOptions): Tool;
+
+// @public
+export type WebSearchToolOptions = {
+    searchContextSize?: 'low' | 'medium' | 'high';
+    userLocation?: {
+        type: 'approximate';
+        city?: string;
+        state?: string;
+        country?: string;
+    };
 };
 
 // (No @packageDocumentation comment for this package)

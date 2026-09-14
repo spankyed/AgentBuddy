@@ -13,10 +13,9 @@
  * conversations, tools, and streaming over the Responses API.
  */
 
-import { streamText as aiStreamText, generateText as aiGenerateText } from 'ai'
+import { streamText, generateText, type ModelConfig } from '@abuddy/sdk/inference'
 import type { CoreMessage, ToolSet } from 'ai'
 import type { JSONValue, LanguageModelV1ProviderMetadata } from '@ai-sdk/provider'
-import { createOpenAI } from '@ai-sdk/openai'
 import { getCredentials } from '../auth'
 import { Conversation } from './conversation'
 import { adaptStream } from './streaming'
@@ -64,14 +63,16 @@ export type {
 
 // ─── Stateless helpers ───────────────────────────────────────────────────────
 
-async function getModel(config: ModelClientConfig) {
+/** The Responses API model, with the credentials the provider resolves to (an API key or ChatGPT OAuth) */
+async function getModel(config: { provider: string; model: string; apiKey?: string; baseURL?: string }): Promise<ModelConfig> {
   const creds = await getCredentials(config.provider, config.apiKey)
-  const provider = createOpenAI({
+  return {
+    provider: 'openai.responses',
+    model: config.model,
     apiKey: creds.token,
     ...(creds.headers && { headers: creds.headers }),
     ...(config.baseURL && { baseURL: config.baseURL }),
-  })
-  return provider.responses(config.model)
+  }
 }
 
 function normalizeInput(input: string | CoreMessage[]): { prompt?: string; messages?: CoreMessage[] } {
@@ -100,7 +101,7 @@ async function* streamTurn(
 
   const providerOptions = buildStatelessProviderOptions(params)
 
-  const result = aiStreamText({
+  const result = await streamText({
     model,
     ...(prompt && { prompt }),
     ...(messages && { messages }),
@@ -122,7 +123,7 @@ async function generateTurn(
   const tools = params.tools ?? {} as ToolSet
   const providerOptions = buildStatelessProviderOptions(params)
 
-  const result = await aiGenerateText({
+  const result = await generateText({
     model,
     ...(prompt && { prompt }),
     ...(messages && { messages }),

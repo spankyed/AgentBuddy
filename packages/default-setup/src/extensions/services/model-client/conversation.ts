@@ -6,9 +6,8 @@
  * and cumulative usage across turns. State is purely in-memory.
  */
 
-import { streamText as aiStreamText, generateText as aiGenerateText } from 'ai'
+import { streamText, generateText, type ModelConfig } from '@abuddy/sdk/inference'
 import type { CoreMessage, LanguageModelUsage, ToolSet } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
 import { getCredentials } from '../auth'
 import { adaptStream } from './streaming'
 import { compact as compactApi } from './compact'
@@ -59,14 +58,16 @@ function buildReasoningOptions(reasoning: ReasoningConfig) {
   }
 }
 
-async function getModel(config: ConversationConfig) {
+/** The Responses API model, with the credentials the provider resolves to (an API key or ChatGPT OAuth) */
+async function getModel(config: { provider: string; model: string; apiKey?: string; baseURL?: string }): Promise<ModelConfig> {
   const creds = await getCredentials(config.provider, config.apiKey)
-  const provider = createOpenAI({
+  return {
+    provider: 'openai.responses',
+    model: config.model,
     apiKey: creds.token,
     ...(creds.headers && { headers: creds.headers }),
     ...(config.baseURL && { baseURL: config.baseURL }),
-  })
-  return provider.responses(config.model)
+  }
 }
 
 function normalizeInput(input: string | CoreMessage[]): { prompt?: string; messages?: CoreMessage[] } {
@@ -102,7 +103,7 @@ export class Conversation {
     const { prompt, messages } = normalizeInput(params.input)
     const tools = { ...this._config.tools, ...params.tools } as ToolSet
 
-    const result = aiStreamText({
+    const result = await streamText({
       model,
       ...(prompt && { prompt }),
       ...(messages && { messages }),
@@ -141,7 +142,7 @@ export class Conversation {
     const { prompt, messages } = normalizeInput(params.input)
     const tools = { ...this._config.tools, ...params.tools } as ToolSet
 
-    const result = await aiGenerateText({
+    const result = await generateText({
       model,
       ...(prompt && { prompt }),
       ...(messages && { messages }),

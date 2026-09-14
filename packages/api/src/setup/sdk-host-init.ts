@@ -14,6 +14,7 @@ import * as versionMod from '@/version';
 import * as migrationsMod from '@/setup/migrations';
 import * as packRegistry from '@abuddy/host/packs';
 import { appDataModule, traceStoreModule } from '@abuddy/host/data';
+import { modelProvider } from '@/core/inference/model-provider';
 
 // EARS engine lives in SDK; inject persistence (done at attribute-storage import)
 // and entity type checker
@@ -37,3 +38,4 @@ registerHostModule('migrations', migrationsMod);
 registerHostModule('pack-registry', packRegistry);
 registerHostModule('app-data', appDataModule);
 registerHostModule('trace-store', traceStoreModule);
+registerHostModule('model-provider', modelProvider);

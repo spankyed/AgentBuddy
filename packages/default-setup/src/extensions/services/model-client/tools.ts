@@ -1,12 +1,11 @@
 /**
  * Tool definition helpers for the model-client service.
  *
- * Thin wrappers around the Vercel AI SDK's tool() function and
+ * Thin wrappers around the AI SDK's tool() function (through @abuddy/sdk/inference) and
  * OpenAI-specific built-in tools.
  */
 
-import { tool } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { tool, webSearchTool as providerWebSearchTool } from '@abuddy/sdk/inference'
 import type { z } from 'zod'
 
 /**
@@ -35,5 +34,5 @@ export function webSearchTool(opts?: {
   searchContextSize?: 'low' | 'medium' | 'high'
   userLocation?: { type: 'approximate'; city?: string; state?: string; country?: string }
 }) {
-  return openai.tools.webSearchPreview(opts)
+  return providerWebSearchTool(opts)
 }
