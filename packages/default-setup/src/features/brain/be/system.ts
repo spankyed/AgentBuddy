@@ -13,7 +13,7 @@ import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorId
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
-import { clearAllSchedules } from './services/scheduler';
+import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
 
 type IncomingBrainEvents =
@@ -118,6 +118,12 @@ export const brainSystem = setup({
       
       // Get the current root flow ID
       const currentRootFlowId = repository.flowsQueries.rootFlow();
+      // No flow to run (every flow deleted, or none seeded yet): the brain waits for a root flow and a restart
+      if (!currentRootFlowId) {
+        logger.warn('No root flow to run; the brain starts once a flow has the root role');
+        enqueue.assign({ brainActor: undefined });
+        return;
+      }
       
       // Update brain settings to track which flow is running via settings system
       if (currentRootFlowId) {
@@ -177,7 +183,7 @@ export const brainSystem = setup({
         removeAllAdHocListeners();
 
         // Clear all cron schedules
-        clearAllSchedules();
+        services.scheduler.clearAllSchedules();
 
         // Defensive: drop any lingering flow actor references. Exit actions
         // on the stopped actor should unregister themselves, but if pending
@@ -222,7 +228,7 @@ export const brainSystem = setup({
       removeAllAdHocListeners();
 
       // Clear all cron schedules
-      clearAllSchedules();
+      services.scheduler.clearAllSchedules();
 
       // Defensive: drop any lingering flow actor references. Exit actions
       // on the stopped actor should unregister themselves, but if pending
@@ -242,6 +248,12 @@ export const brainSystem = setup({
       
       // Get the current root flow ID
       const currentRootFlowId = repository.flowsQueries.rootFlow();
+      // No flow to run (every flow deleted, or none seeded yet): the brain waits for a root flow and a restart
+      if (!currentRootFlowId) {
+        logger.warn('No root flow to run; the brain starts once a flow has the root role');
+        enqueue.assign({ brainActor: undefined });
+        return;
+      }
       
       // Update brain settings to track which flow is running via settings system
       if (currentRootFlowId) {

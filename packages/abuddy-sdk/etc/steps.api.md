@@ -275,6 +275,7 @@ export interface StepRuntimeFacet {
     // (undocumented)
     isAsync?: boolean;
     spawnsSubflow?: boolean;
+    waits?: boolean;
 }
 
 // @public (undocumented)

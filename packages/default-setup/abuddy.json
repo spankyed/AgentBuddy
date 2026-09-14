@@ -222,7 +222,8 @@
       },
       "services": {
         "llm": "src/features/brain/be/services/llm",
-        "brain": "src/features/brain/be/services/brain"
+        "brain": "src/features/brain/be/services/brain",
+        "scheduler": "src/features/brain/be/services/scheduler"
       },
       "repositories": {
         "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",

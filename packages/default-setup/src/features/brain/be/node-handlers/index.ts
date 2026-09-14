@@ -6,6 +6,13 @@ import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const logger = createLogger('node-executor');
 
+/** Completes a step with nothing to run, after the spawn that runs it finishes */
+function completeLater(actor: { send(event: { type: string; result?: unknown }): void }): void {
+  queueMicrotask(() => {
+    try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
+  });
+}
+
 export function executeNode(
   tNode: TNodeEntity,
   node: NodeEntity,
@@ -14,18 +21,14 @@ export function executeNode(
 ) {
   if (stepRegistry.isTrigger(node.nodeType)) {
     logger.warn(`Trigger node "${node.label}" executed as step — this shouldn't happen`);
-    setTimeout(() => {
-      try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
-    }, 100);
+    completeLater(actor);
     return;
   }
 
   const stepDef = stepRegistry.get(node.nodeType);
   if (!stepDef?.runtime?.handler) {
     logger.warn(`No runtime handler for node type: ${node.nodeType}`);
-    setTimeout(() => {
-      try { actor.send({ type: 'COMPLETE', result: { executed: true } }); } catch { /* actor gone */ }
-    }, 100);
+    completeLater(actor);
     return;
   }
 

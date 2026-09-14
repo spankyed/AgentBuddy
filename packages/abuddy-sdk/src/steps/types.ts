@@ -183,6 +183,8 @@ export interface StepRuntimeFacet {
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;
+  /** The step never completes on its own (keep-alive): its track stays open while the flow runs */
+  waits?: boolean;
 }
 
 /*─────────────────────────────────────────────────────────────────
