@@ -1,42 +1,26 @@
+import { vi, describe, expect, it } from 'vitest';
+import { mockService } from '@abuddy/testing/harness';
+import { services, type Services } from '@/__generated__/services';
+import { repository } from '@/__generated__/repository';
 import { action as updateSessionSettings } from '../../src/seeds/actions/codex/update-session-settings';
 
-function createServices(codexState: any) {
-  const thread = {
-    id: 'thread-1',
-    context: { codex: codexState },
-    tags: [],
-  };
-
-  return {
-    codex: {
-      respondToApproval: vi.fn().mockResolvedValue(undefined),
-    },
-    repository: {
-      threadQueries: {
-        byId: vi.fn(() => thread),
-      },
-      threadCommands: {
-        update: vi.fn((_threadId, updates) => {
-          thread.context = updates.context;
-          thread.tags = updates.tags ?? thread.tags;
-        }),
-      },
-    },
-    chat: {
-      updateMessageState: vi.fn(),
-    },
-    threads: {
-      updateChatState: vi.fn(),
-    },
-    emitter: {
-      sendToPlugin: vi.fn(),
-    },
-  } as any;
+// The action runs on the harness's services: a real thread in the in-memory database, with the Codex
+// app server and the chat and threads services it drives mocked
+function createThread(codexState: Record<string, unknown>) {
+  const { id } = repository.threadCommands.create({ topic: 'Codex', instructions: '', tags: [] });
+  repository.threadCommands.update(id, { context: { codex: codexState } });
+  mockService<Services, 'codex'>('codex', { respondToApproval: vi.fn().mockResolvedValue(undefined) } as never);
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn() } as never);
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never);
+  return id;
 }
+
+const codexState = (threadId: string) =>
+  (repository.threadQueries.byId(threadId as never)?.context as { codex?: Record<string, unknown> } | undefined)?.codex;
 
 describe('CDX: Update Session Settings', () => {
   it('approves a pending Codex tool approval when switching to auto', async () => {
-    const services = createServices({
+    const threadId = createThread({
       pendingApproval: {
         requestId: 0,
         method: 'item/commandExecution/requestApproval',
@@ -45,30 +29,21 @@ describe('CDX: Update Session Settings', () => {
       isRunning: false,
     });
 
-    const result = await updateSessionSettings({
-      threadId: 'thread-1',
-      approvalMode: 'auto_review',
-    }, services);
+    const result = await updateSessionSettings({ threadId, approvalMode: 'auto_review' }, services);
 
     expect(result).toEqual({ success: true });
     expect(services.codex.respondToApproval).toHaveBeenCalledWith(0, 'acceptForSession');
     expect(services.chat.updateMessageState).toHaveBeenCalledWith('approval-1', expect.objectContaining({
       blockResponse: { approved: true, decision: 'acceptForSession' },
     }));
-    expect(services.threads.updateChatState).toHaveBeenCalledWith('thread-1', 'working');
-    expect(services.repository.threadCommands.update).toHaveBeenLastCalledWith('thread-1', expect.objectContaining({
-      context: expect.objectContaining({
-        codex: expect.objectContaining({
-          approvalMode: 'auto_review',
-          pendingApproval: undefined,
-          isRunning: true,
-        }),
-      }),
-    }));
+    expect(services.threads.updateChatState).toHaveBeenCalledWith(threadId, 'working');
+    const state = codexState(threadId);
+    expect(state).toMatchObject({ approvalMode: 'auto_review', isRunning: true });
+    expect(state?.pendingApproval).toBeUndefined();
   });
 
   it('does not approve a pending plan approval when switching to auto', async () => {
-    const services = createServices({
+    const threadId = createThread({
       pendingApproval: {
         requestId: -1,
         method: 'plan/approval',
@@ -77,22 +52,15 @@ describe('CDX: Update Session Settings', () => {
       isRunning: false,
     });
 
-    const result = await updateSessionSettings({
-      threadId: 'thread-1',
-      approvalMode: 'auto_review',
-    }, services);
+    const result = await updateSessionSettings({ threadId, approvalMode: 'auto_review' }, services);
 
     expect(result).toEqual({ success: true });
     expect(services.codex.respondToApproval).not.toHaveBeenCalled();
     expect(services.chat.updateMessageState).not.toHaveBeenCalled();
     expect(services.threads.updateChatState).not.toHaveBeenCalled();
-    expect(services.repository.threadCommands.update).toHaveBeenLastCalledWith('thread-1', expect.objectContaining({
-      context: expect.objectContaining({
-        codex: expect.objectContaining({
-          approvalMode: 'auto_review',
-          pendingApproval: expect.objectContaining({ method: 'plan/approval' }),
-        }),
-      }),
-    }));
+    expect(codexState(threadId)).toMatchObject({
+      approvalMode: 'auto_review',
+      pendingApproval: expect.objectContaining({ method: 'plan/approval' }),
+    });
   });
 });
