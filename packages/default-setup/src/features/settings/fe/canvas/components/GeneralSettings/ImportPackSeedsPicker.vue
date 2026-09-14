@@ -170,7 +170,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-vue-next'
-import type { PackSeedsPreview, PackSeedType } from '@/__generated__/types'
+import type { PackSeedsPreview, PackSeedType } from '@abuddy/sdk/build'
 
 type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'
 

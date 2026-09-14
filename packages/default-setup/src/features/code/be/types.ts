@@ -1,5 +1,5 @@
 import { EARS } from '@/__generated__/ears'
-import type { KeyboardShortcut } from '@/__generated__/types'
+import type { KeyboardShortcut } from '@abuddy/sdk/types'
 
 export interface FileInfo {
   name: string

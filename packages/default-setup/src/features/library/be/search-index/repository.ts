@@ -2,7 +2,7 @@ import { tx, qx } from '@/__generated__/ears';
 import { Index } from 'usearch'
 
 import { EARS } from '@/__generated__/ears'
-import { randomId } from '@abuddy/sdk/utils'
+import { getIndexFilePath, randomId } from '@abuddy/sdk/utils'
 import { createLogger } from '@abuddy/sdk/logger'
 import type {
   SearchIndex,
@@ -397,7 +397,7 @@ export async function indexDocumentsInFolder(
   // Get or create index
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
   
@@ -424,7 +424,7 @@ export async function indexDocumentsInFolder(
   tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
   
   if (mappings.size > 0) {
-    await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+    await searchService.saveIndex(index, getIndexFilePath(indexId))
   }
   searchService.saveMappings(indexId, mappings)
   searchService.saveMetadata(indexId, searchIndex)
@@ -445,7 +445,7 @@ export async function indexDocument(
   // Get or load index
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
 
@@ -464,7 +464,7 @@ export async function indexDocument(
   searchIndex.documentCount = mappings.size
   tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
 
-  await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+  await searchService.saveIndex(index, getIndexFilePath(indexId))
   searchService.saveMappings(indexId, mappings)
 }
 
@@ -477,14 +477,14 @@ export async function removeDocumentFromIndex(
   
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
   
   const mappings = searchService.loadMappings(indexId)
   
   if (removeDocumentChunks(documentId, indexId, index, mappings)) {
-    await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+    await searchService.saveIndex(index, getIndexFilePath(indexId))
     searchService.saveMappings(indexId, mappings)
     
     searchIndex.documentCount = mappings.size
@@ -503,7 +503,7 @@ export async function searchInIndex(
   // Get or load the index
   let index = indexCache.get(indexId)
   if (!index) {
-    index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
+    index = await searchService.loadIndex(getIndexFilePath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
 

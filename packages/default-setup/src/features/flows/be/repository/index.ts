@@ -6,7 +6,6 @@ import { edgeStore, filterSystemFields } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import type {
-  FlowEntity,
   NodeEntity,
   EdgeEntity,
   FlowExtendedData,
@@ -18,6 +17,7 @@ import { availableModels } from '@abuddy/sdk/inference';
 import { repository } from '@/__generated__/repository';
 import type { CompiledRows } from '@abuddy/sdk/build';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/build';
+import type { FlowEntity } from '@abuddy/sdk';
 
 const logger = createLogger('flows-repository');
 

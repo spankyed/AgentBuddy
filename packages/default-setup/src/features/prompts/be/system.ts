@@ -4,12 +4,13 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 
 import { EARS } from '@/__generated__/ears';
-import type { PromptsConnectedData, PromptEntity } from './types';
+import type { PromptsConnectedData } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import './repository';
 import { exportPrompts } from './repository/export-prompts';
+import type { PromptEntity } from '@abuddy/sdk';
 
 const logger = createLogger('prompts');
 

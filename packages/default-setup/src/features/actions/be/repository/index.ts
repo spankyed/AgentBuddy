@@ -3,7 +3,7 @@ import { findById, findByIdRaw, findAll, findWhere } from '@/__generated__/ears'
 import { EARS } from '@/__generated__/ears';
 import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
-import type { ActionEntity } from '../types';
+import type { ActionEntity } from '@abuddy/sdk';
 
 /**
  * Action Repository - Dead simple CRUD operations

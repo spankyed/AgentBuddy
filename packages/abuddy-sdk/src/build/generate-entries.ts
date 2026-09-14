@@ -709,10 +709,8 @@ export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
         `export type NodeEntity = ${nodeTypes.map(n => n.name).join(' | ')};\n`
       : '';
 
+    // Only this pack's own types: SDK types are imported from the SDK
     return `${HEADER}
-export type { EARS } from '@abuddy/sdk';
-export type { PackSeedsPreview, PackSeedPreviewItem, PackSeedType } from '@abuddy/sdk/build';
-
 ${perFeature}
 ${nodeEntity}`;
   }

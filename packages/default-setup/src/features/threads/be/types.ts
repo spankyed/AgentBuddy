@@ -78,7 +78,6 @@ export interface LinkConfig {
 }
 
 // Button-group block types — canonical definitions live in the SDK
-export type { ButtonConfig, ButtonGroupResponse } from '@abuddy/sdk/blocks';
 
 export interface FileReference {
   name: string;
@@ -437,5 +436,3 @@ export interface PlanArtifactContent {
   }>;
 }
 
-// ArtifactItem — canonical definition lives in the SDK
-export type { ArtifactItem } from '@abuddy/sdk/artifacts';

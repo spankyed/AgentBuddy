@@ -1,8 +1,6 @@
 import type { EARS } from '@/__generated__/ears';
 import type { Category } from '@/__generated__/types';
 
-// The SDK owns the Action entity and its shape
-export type { ActionEntity } from '@abuddy/sdk';
 import type { ActionEntity } from '@abuddy/sdk';
 
 export interface ActionsStartupData {

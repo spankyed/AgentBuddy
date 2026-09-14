@@ -7,7 +7,7 @@ import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
-import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@/__generated__/types';
+import type { OutgoingCodeEvents, CodeSettings } from '@/__generated__/types';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';
@@ -17,6 +17,7 @@ import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
 import { actionsState, type ActionTab } from './features/actions/state';
 import { promptsState, type PromptTab } from './features/prompts/state';
+import type { KeyboardShortcut } from '@abuddy/sdk/types';
 
 export const id = 'code' as const;
 

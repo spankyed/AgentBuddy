@@ -7,9 +7,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  PromptEntity,
   OutgoingPromptEvents,
-  EARS,
   Category,
   PromptsSettings,
 } from '@/__generated__/types'
@@ -17,6 +15,7 @@ import type { TemplateInput } from '@abuddy/sdk/build'
 import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
+import type { PromptEntity, EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

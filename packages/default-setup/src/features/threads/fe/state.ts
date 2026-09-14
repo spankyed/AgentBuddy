@@ -6,7 +6,7 @@ import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, c
 import type { ActorRefFrom } from 'xstate';
 import type {
   ThreadEntity, OutgoingThreadsEvents,
-  ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS,
+  ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings,
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
@@ -19,6 +19,7 @@ import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abudd
 import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
+import type { EARS } from '@abuddy/sdk';
 
 export const id = 'threads' as const;
 

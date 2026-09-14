@@ -7,7 +7,7 @@ import { repository } from '@/__generated__/repository';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
 import { EARS } from '@/__generated__/ears';
-import type { ExecutionContext } from './types';
+import type { ExecutionContext } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';

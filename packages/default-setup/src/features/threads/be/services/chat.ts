@@ -1,11 +1,12 @@
 import { sendToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
+import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
 
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
 import { blockRegistry } from '@abuddy/sdk/blocks';
+import type { ButtonConfig } from '@abuddy/sdk/blocks';
 
 /**
  * Block-based interaction helpers for creating composable messages

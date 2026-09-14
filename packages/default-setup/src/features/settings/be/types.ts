@@ -73,7 +73,6 @@ export interface Secrets {
   cliPaths?: Record<string, string>; // e.g., { 'claude-code': '/usr/local/bin/claude' }
 }
 
-export type { KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
 
 export interface AppSettings {

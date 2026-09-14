@@ -2,10 +2,8 @@
 // generated entity shape regresses to `any` or loses its declared field types.
 import { describe, expectTypeOf, it } from 'vitest';
 import type { BaseEntity } from '@abuddy/sdk/types';
-import type { SdkEntityShapes } from '@abuddy/sdk';
+import type { SdkEntityShapes, ActionEntity, FlowEntity } from '@abuddy/sdk';
 import type { EntityShape, OwnEntityShapes, PackShapes } from '@/__generated__/ears';
-import type { ActionEntity } from '@/features/actions/be/types';
-import type { FlowEntity } from '@/features/flows/be/types';
 import type { MessageEntity, ThreadEntity } from '@/features/threads/be/types';
 
 describe('PackShapes', () => {

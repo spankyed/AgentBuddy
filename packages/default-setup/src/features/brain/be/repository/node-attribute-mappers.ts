@@ -1,7 +1,8 @@
 import type { NodeEntity } from '@/__generated__/types';
-import type { ExecutionContext, FieldMapping, SourceResolver } from '../types';
+import type { FieldMapping, SourceResolver } from '../types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '../utils/result-truncator';
+import type { ExecutionContext } from '@abuddy/sdk/steps';
 
 /*─────────────────────────────────────────────────────────────
  * Field Mapping Utilities

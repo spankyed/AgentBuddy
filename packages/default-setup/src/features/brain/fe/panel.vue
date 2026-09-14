@@ -85,7 +85,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
-import type { TrackTree } from '@/__generated__/types'
+import type { TrackTree } from '@abuddy/sdk/steps'
 import { trpc } from '@abuddy/sdk/rpc'
 
 const actorSystem = useActorSystem()

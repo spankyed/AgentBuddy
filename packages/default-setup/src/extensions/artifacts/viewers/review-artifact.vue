@@ -35,7 +35,12 @@
 import { CheckSquare } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
+interface ReviewContent {
+  message?: string;
+  items?: string[];
+}
+
 defineProps<{
-  artifact: ArtifactItem;
+  artifact: ArtifactItem<ReviewContent>;
 }>();
 </script>

@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
-import type { TNodeEntity } from '@/__generated__/types';
+import type { TNodeEntity } from '@abuddy/sdk/steps';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 

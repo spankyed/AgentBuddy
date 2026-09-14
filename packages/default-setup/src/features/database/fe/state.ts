@@ -7,13 +7,13 @@ import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
   OutgoingDatabaseEvents,
-  EARS,
-  TNodeEntity,
   DatabaseSettings,
 } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
+import type { TNodeEntity } from '@abuddy/sdk/steps'
+import type { EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

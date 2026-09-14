@@ -6,7 +6,7 @@ import { bus } from '@abuddy/sdk/ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
 import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
-import type { StepRuntimeError, FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
+import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
@@ -14,6 +14,7 @@ import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-ins
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
 import { clearAllSchedules } from './services/scheduler';
+import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }

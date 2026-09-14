@@ -12,7 +12,7 @@ import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/host/backup';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { TNodeEntity } from '@/__generated__/types';
+import type { TNodeEntity } from '@abuddy/sdk/steps';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/host/ears';
 import { repository } from '@/__generated__/repository';
 

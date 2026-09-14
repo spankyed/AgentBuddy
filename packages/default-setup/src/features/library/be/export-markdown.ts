@@ -7,11 +7,11 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia } from '@abuddy/sdk/utils'
+import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia, toSlug, uniqueFilename } from '@abuddy/sdk/utils'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
-import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
+import { buildFrontmatter, serializeContentToMarkdown } from './utils'
 
 function escapeQuotes(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')

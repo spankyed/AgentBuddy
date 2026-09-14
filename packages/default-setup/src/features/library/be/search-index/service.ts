@@ -412,4 +412,3 @@ export function deleteIndexFiles(indexId: EARS.EntityId): void {
 
 // Export commonly used functions
 export { getModelDimensions as getVectorDimensions } from './config/embedding-models'
-export { getIndexFilePath as getIndexPath } from '@abuddy/sdk/utils'

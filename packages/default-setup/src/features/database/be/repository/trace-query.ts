@@ -1,6 +1,6 @@
 import { LmdbQuery, envs } from '@abuddy/host/ears';
 import { EARS } from '@/__generated__/ears';
-import type { TNodeEntity, TrackTree } from '@/__generated__/types';
+import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('database:trace');

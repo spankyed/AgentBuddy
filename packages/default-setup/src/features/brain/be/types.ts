@@ -1,18 +1,5 @@
 import type { EARS } from '@/__generated__/ears';
 
-/** ── Re-export SDK runtime types ────────────────────────────────────────── */
-export type {
-  TimestampMs,
-  EntityStatus,
-  TNodeKind,
-  TNodeEntity,
-  TrackTree,
-  ExecutionEvent,
-  StepRun,
-  RuntimeServices,
-  ExecutionContext,
-} from '@abuddy/sdk/steps';
-
 import type { TimestampMs, TrackTree, TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
 
 export type JsonPath = string;
@@ -41,7 +28,6 @@ export interface TNodeUpdate {
   eventTNodeId?: EARS.EntityId;
 }
 
-export type { StepRuntimeError } from '@abuddy/sdk/steps';
 
 /** ── Schema definition types ────────────────────────────────────────────── */
 export interface FieldSchema {

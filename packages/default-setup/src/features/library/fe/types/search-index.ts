@@ -1,4 +1,5 @@
-import type { EARS, EmbeddingModelId } from '@/__generated__/types'
+import type { EmbeddingModelId } from '@/__generated__/types'
+import type { EARS } from '@abuddy/sdk'
 
 type ContentType = 'field' | 'list' | 'markdown' | 'text'
 

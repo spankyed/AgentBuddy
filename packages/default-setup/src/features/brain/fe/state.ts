@@ -7,8 +7,9 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type {
   OutgoingBrainEvents,
 } from '@/__generated__/types'
-import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackTree } from '@/__generated__/types';
+import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
 import { trpc } from '@abuddy/sdk/rpc';
+import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import {
   applyTNodeSpawn,
   denormalizeTNodeTree,

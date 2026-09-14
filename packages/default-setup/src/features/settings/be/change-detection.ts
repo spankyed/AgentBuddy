@@ -1,5 +1,3 @@
-export * from '@abuddy/sdk/utils/pure';
-
 // Backward-compat wrappers with settings-specific types
 import { detectChanges } from '@abuddy/sdk/utils';
 import type { ThreadStatusOption, ThreadTagOption, Category } from './types';

@@ -3,18 +3,17 @@ import { EARS } from '@/__generated__/ears';
 import { edgeStore } from '@abuddy/host/ears';
 import type {
   FlowTNodeData,
-  TNodeEntity,
-  TrackTree,
   EventListenerEntity,
   TNodeUpdate,
-  ExecutionContext
 } from '../types';
-import type { FlowEntity, NodeEntity } from '@/__generated__/types';
+import type { NodeEntity } from '@/__generated__/types';
 import type { FlowNode } from '@/extensions/steps/subflow/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
+import type { TNodeEntity, TrackTree, ExecutionContext } from '@abuddy/sdk/steps';
+import type { FlowEntity } from '@abuddy/sdk';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context

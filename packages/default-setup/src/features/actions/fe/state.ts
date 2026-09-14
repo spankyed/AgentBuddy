@@ -7,9 +7,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  ActionEntity,
   OutgoingActionEvents,
-  EARS,
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
@@ -17,6 +15,7 @@ import type { ActionParameter } from '@abuddy/sdk/build'
 import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
+import type { ActionEntity, EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

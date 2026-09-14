@@ -15,7 +15,7 @@
 import { switchNodeHandler } from '@/extensions/steps/switch/runtime'
 import { BinaryOperator } from '@abuddy/sdk/utils'
 import type { Condition, SwitchNode } from '@/extensions/steps/switch/types'
-import type { ExecutionContext, TNodeEntity } from '@/features/brain/be/types'
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps'
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
-import type { TemplateInput } from '@/__generated__/types';
+import type { TemplateInput } from '@abuddy/sdk/build';
 
 defineProps<{
   value: string;

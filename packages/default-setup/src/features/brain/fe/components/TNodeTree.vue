@@ -32,7 +32,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import type { TrackTree } from '@/__generated__/types'
+import type { TrackTree } from '@abuddy/sdk/steps';
 import TNodeListItem from '@abuddy/ui/components/TNodeListItem';
 
 interface Props {

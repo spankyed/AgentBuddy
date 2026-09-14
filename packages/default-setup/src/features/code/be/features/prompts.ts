@@ -4,7 +4,7 @@ import { setup } from 'xstate'
 import { rootEvents } from '@abuddy/sdk/rpc'
 import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
-import type { PromptEntity } from '@/__generated__/types'
+import type { PromptEntity } from '@abuddy/sdk'
 
 const pluginId = 'code' as const
 

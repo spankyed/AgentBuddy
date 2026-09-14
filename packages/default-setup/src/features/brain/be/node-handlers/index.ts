@@ -1,5 +1,5 @@
 import type { NodeEntity } from '@/__generated__/types';
-import type { ExecutionContext, TNodeEntity } from '../types';
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';

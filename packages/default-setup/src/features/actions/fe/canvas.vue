@@ -42,7 +42,8 @@ import { useSelector } from '@xstate/vue';
 import { id, type ActionsState } from './state';
 import ActionsList from './components/ActionsList.vue';
 import ActionDetail from './components/ActionDetail.vue';
-import type { EARS, ActionParameter } from '@/__generated__/types';
+import type { EARS } from '@abuddy/sdk';
+import type { ActionParameter } from '@abuddy/sdk/build';
 
 const actorSystem = useActorSystem()
 

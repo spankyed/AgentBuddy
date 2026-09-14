@@ -11,10 +11,11 @@ import type {
   ThreadExtendedData,
   ThreadTypeShortCode,
   ThreadConnectedData,
-  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
+  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
 } from '../types';
 import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
 import { repository } from '@/__generated__/repository';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 /**
  * Threads Repository

@@ -10,7 +10,7 @@ import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
-import { detectAllArrayChanges } from './change-detection';
+import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
 // TODO: move seedData orchestration out of settings — belongs in core API (packs system)
 import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';

@@ -122,7 +122,4 @@ export const settingsCommands = {
   }
 };
 
-// Re-export change detection utilities
-export { detectAllArrayChanges, detectChanges, detectStatusChanges, detectCategoryChanges } from '../change-detection';
-export type { DiffResult } from '../change-detection';
 

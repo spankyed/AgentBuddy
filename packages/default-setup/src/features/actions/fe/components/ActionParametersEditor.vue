@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import type { ActionParameter } from '@/__generated__/types';
+import type { ActionParameter } from '@abuddy/sdk/build';
 import ParameterRow from '@abuddy/ui/design/ParameterRow';
 
 const props = defineProps<{

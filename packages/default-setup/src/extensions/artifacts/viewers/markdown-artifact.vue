@@ -36,7 +36,7 @@ import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
 
 const props = defineProps<{
-  artifact: ArtifactItem
+  artifact: ArtifactItem<string | { notes?: string }>
 }>()
 
 const content = computed(() =>

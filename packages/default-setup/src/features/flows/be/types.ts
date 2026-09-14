@@ -1,18 +1,12 @@
 import { type NodeEntity } from '@/__generated__/types';
 import { EARS } from '@/__generated__/ears';
-import type { ActionEntity, PromptEntity } from '@/__generated__/types';
 import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
-
-export { BinaryOperator } from '@abuddy/sdk/utils';
-export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
 
 /*─────────────────────────────────────────────────────────────────
  * Flow & Edge entities
  *─────────────────────────────────────────────────────────────────*/
 
-// The SDK owns the Flow entity and its shape
-export type { FlowEntity } from '@abuddy/sdk';
-import type { FlowEntity } from '@abuddy/sdk';
+import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 
 export type EdgeEntity = {
   id: EARS.EntityId;

@@ -6,8 +6,6 @@ import type { Category } from '@/__generated__/types';
 
 
 
-// The SDK owns the Prompt entity and its shape
-export type { PromptEntity } from '@abuddy/sdk';
 import type { PromptEntity } from '@abuddy/sdk';
 
 /**

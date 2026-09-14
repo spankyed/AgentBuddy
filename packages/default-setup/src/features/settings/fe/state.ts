@@ -6,8 +6,11 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, PackSeedsPreview, PackSeedType, FAQItem } from '@/__generated__/types'
+import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, PluginSettings, FAQItem } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
+import type { ApplicationHotkeys } from '@abuddy/sdk/types'
+import type { EARS } from '@abuddy/sdk'
+import type { PackSeedsPreview, PackSeedType } from '@abuddy/sdk/build'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

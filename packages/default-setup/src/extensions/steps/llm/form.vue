@@ -221,8 +221,10 @@ import {
 } from 'reka-ui'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
-import type { ModelCatalogEntry, PromptEntity, NodeEntity } from '@/__generated__/types'
+import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
+import type { ModelCatalogEntry } from '@abuddy/sdk/inference'
+import type { PromptEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
   node: NodeEntity
