@@ -28,9 +28,13 @@ const CONFIGS: Record<string, BundleConfig> = {
     manifest: { bin: { abuddy: 'bin/abuddy.mjs' } },
   },
   '@abuddy/testing': {
-    entries: { index: 'src/index.ts' },
+    // vitest-worker and vitest-teardown are loaded by path from dist/vitest.js's isolatedDataDir()
+    entries: { index: 'src/index.ts', vitest: 'src/vitest.ts', 'vitest-worker': 'src/vitest-worker.ts', 'vitest-teardown': 'src/vitest-teardown.ts' },
     declarations: true,
-    manifest: { exports: { '.': { types: './dist/index.d.ts', default: './dist/index.js' } } },
+    manifest: { exports: {
+      '.': { types: './dist/index.d.ts', default: './dist/index.js' },
+      './vitest': { types: './dist/vitest.d.ts', default: './dist/vitest.js' },
+    } },
   },
 };
 

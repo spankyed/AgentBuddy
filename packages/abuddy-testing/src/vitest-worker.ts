@@ -1,6 +1,6 @@
-// Each test worker gets its own data dir under the run's (vitest.config.ts), so specs in parallel
-// workers don't share on-disk stores: a spec resetting the media store would delete another
-// worker's seeded media mid-test. Runs before tests/setup.ts, which opens those stores.
+// A vitest setup file (isolatedDataDir().setupFiles): each worker gets its own data dir under the
+// run's, so specs in parallel workers don't share on-disk stores. A spec resetting the media store
+// would otherwise delete another worker's media mid-test. List it before setup files that open stores.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

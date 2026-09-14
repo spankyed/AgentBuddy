@@ -1,6 +1,6 @@
 # @abuddy/testing
 
-Reusable Playwright E2E test fixture for AgentBuddy. Extracted from the monorepo's test infrastructure so both the host app and external packs share the same fixture code.
+Reusable Playwright E2E test fixture for AgentBuddy, and vitest helpers for unit tests that use AgentBuddy's on-disk stores. Extracted from the monorepo's test infrastructure so both the host app and external packs share the same test code.
 
 ## Architecture
 
@@ -26,6 +26,27 @@ External packs add `@abuddy/testing` and `@playwright/test` as devDependencies (
 ```ts
 import { test, expect } from '@abuddy/testing';
 ```
+
+## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
+
+Unit tests that open EARS or the media store need `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`. `isolatedDataDir(prefix)` creates a throwaway data dir for the run and returns the vitest settings that use it:
+
+```ts
+import { defineConfig } from 'vitest/config';
+import { isolatedDataDir } from '@abuddy/testing/vitest';
+
+const dataDir = isolatedDataDir('my-pack-tests-');
+
+export default defineConfig({
+  test: {
+    env: dataDir.env,                                          // ABUDDY_ENV=test, ABUDDY_USER_DATA_DIR=<run dir>
+    globalSetup: dataDir.globalSetup,                          // removes the run dir when the run ends
+    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],   // first: each worker uses <run dir>/worker-<n>
+  },
+});
+```
+
+The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@abuddy/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. default-setup's `vitest.config.ts` uses it.
 
 ## Setup for external packs
 

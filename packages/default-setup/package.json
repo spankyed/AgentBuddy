@@ -41,6 +41,7 @@
     "vue-arrange": "^1.5.0"
   },
   "devDependencies": {
+    "@abuddy/testing": "*",
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
     "rollup": "^4.34.0",

@@ -2,13 +2,17 @@
   "name": "@abuddy/testing",
   "version": "0.1.0",
   "private": true,
-  "description": "Playwright E2E fixture for AgentBuddy and AgentBuddy packs",
+  "description": "Playwright E2E fixture and vitest helpers for AgentBuddy and AgentBuddy packs",
   "type": "module",
   "exports": {
     ".": {
       "@abuddy/source": "./src/index.ts",
       "types": "./src/index.ts",
       "default": "./src/requires-source.ts"
+    },
+    "./vitest": {
+      "types": "./src/vitest.ts",
+      "default": "./src/vitest.ts"
     }
   },
   "engines": {
