@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import type { PackSnapshot } from '@abuddy/sdk/build';
+import { SEED_INDEX_FILE, type PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { BUNDLE_PATHS, extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
@@ -42,6 +42,8 @@ export interface DepArtifacts {
   buildDir?: string;
   /** The dependency's backend runtime (runtime/index.cjs), if present: what a dependent's tests load. */
   runtimeEntry?: string;
+  /** The compiled seeds its runtime reads (runtime/seeds/, or a built-in pack's dist/), with the runtime */
+  seedsDir?: string;
 }
 
 function tryReadSnapshot(filePath: string): PackSnapshot | null {
@@ -72,14 +74,18 @@ export function findDepArtifacts(dir: string): DepArtifacts | null {
   return null;
 }
 
-/** The snapshot plus the build dir and runtime entry under `root`, where they exist */
+/** The snapshot plus the build dir, runtime entry and its seeds under `root`, where they exist */
 function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepArtifacts {
   const buildDir = path.join(root, BUNDLE_PATHS.buildDir);
   const runtimeEntry = path.join(root, BUNDLE_PATHS.runtimeEntry);
+  // A bundle's seeds are under runtime/; a built-in pack's dist keeps them at its top
+  const seedsDir = [path.join(root, BUNDLE_PATHS.seedsDir), root].find((dir) => fs.existsSync(path.join(dir, SEED_INDEX_FILE)));
+  const hasRuntime = fs.existsSync(runtimeEntry);
   return {
     snapshot,
     ...(fs.existsSync(buildDir) && { buildDir }),
-    ...(fs.existsSync(runtimeEntry) && { runtimeEntry }),
+    ...(hasRuntime && { runtimeEntry }),
+    ...(hasRuntime && seedsDir && { seedsDir }),
   };
 }
 
@@ -268,7 +274,7 @@ async function lookupRegistry(_depId: string): Promise<string | null> {
 
 function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
   const depDir = depCacheDir(root, depId);
-  const { snapshot, buildDir, runtimeEntry } = artifacts;
+  const { snapshot, buildDir, runtimeEntry, seedsDir } = artifacts;
   fs.mkdirSync(depDir, { recursive: true });
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
@@ -289,14 +295,27 @@ function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
     fs.rmSync(cachedBuild, { recursive: true, force: true });
   }
 
-  // Only the backend runtime entry: the FE bundle and compiled seeds aren't used from a dependency
+  // The backend runtime entry and the compiled seeds it reads; a dependency's FE bundle isn't used
   const cachedRuntime = path.join(depDir, BUNDLE_PATHS.runtimeEntry);
   if (runtimeEntry && path.resolve(runtimeEntry) !== path.resolve(cachedRuntime)) {
     fs.rmSync(path.join(depDir, BUNDLE_PATHS.runtimeDir), { recursive: true, force: true });
     fs.mkdirSync(path.dirname(cachedRuntime), { recursive: true });
     fs.copyFileSync(runtimeEntry, cachedRuntime);
+    if (seedsDir) copySeeds(seedsDir, path.join(depDir, BUNDLE_PATHS.seedsDir));
   } else if (!runtimeEntry) {
     fs.rmSync(path.join(depDir, BUNDLE_PATHS.runtimeDir), { recursive: true, force: true });
+  }
+}
+
+/** Copies compiled seeds (`*.seed.json`, `seeds.json`, `media/`) without the rest of a built-in pack's dist */
+function copySeeds(from: string, to: string): void {
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    if (entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === SEED_INDEX_FILE)) {
+      fs.copyFileSync(path.join(from, entry.name), path.join(to, entry.name));
+    } else if (entry.isDirectory() && entry.name === 'media') {
+      fs.cpSync(path.join(from, entry.name), path.join(to, entry.name), { recursive: true });
+    }
   }
 }
 

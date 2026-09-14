@@ -203,22 +203,37 @@ export async function extractBundleArchive(archive: string, destDir: string, exp
   return path.join(destDir, dirs[0].name);
 }
 
+/** A built-in pack's compiled seed files in its dist/ (`*.seed.json`, `seeds.json`, `media/`), relative to it */
+function builtInSeedFiles(distDir: string): string[] {
+  if (!fs.existsSync(distDir)) return [];
+  const top = fs.readdirSync(distDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === 'seeds.json'))
+    .map((entry) => entry.name);
+  const mediaDir = path.join(distDir, 'media');
+  const media = fs.existsSync(mediaDir) ? listFiles(mediaDir).map((file) => `media/${file}`) : [];
+  return [...top, ...media].sort();
+}
+
 /**
  * Publish a built-in pack's artifacts in the bundle layout (dist/snapshot.json → types/snapshot.json,
- * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs) so pack authors resolve it as a
- * dependency from the installed app: builds use its types and build code, tests its runtime.
- * Returns false when the destination was already current.
+ * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
+ * pack authors resolve it as a dependency from the installed app: builds use its types and build
+ * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
+ * destination was already current.
  */
 export function publishHostPackArtifacts(builtInPackDir: string, destDir: string): boolean {
-  const snapshot = path.join(builtInPackDir, 'dist', 'snapshot.json');
+  const distDir = path.join(builtInPackDir, 'dist');
+  const snapshot = path.join(distDir, 'snapshot.json');
   if (!fs.existsSync(snapshot)) return false;
-  const buildDir = path.join(builtInPackDir, 'dist', 'build');
-  const runtimeEntry = path.join(builtInPackDir, 'dist', BUNDLE_PATHS.runtimeEntry);
+  const buildDir = path.join(distDir, 'build');
+  const runtimeEntry = path.join(distDir, BUNDLE_PATHS.runtimeEntry);
+  const seedFiles = fs.existsSync(runtimeEntry) ? builtInSeedFiles(distDir) : [];
 
   const sources = [
     snapshot,
     ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : []),
     ...(fs.existsSync(runtimeEntry) ? [runtimeEntry] : []),
+    ...seedFiles.map((file) => path.join(distDir, file)),
   ];
   const fingerprint = sources.map(f => `${path.relative(builtInPackDir, f)}:${sha256File(f)}`).join('\n');
   const fingerprintFile = path.join(destDir, '.fingerprint');
@@ -233,6 +248,11 @@ export function publishHostPackArtifacts(builtInPackDir: string, destDir: string
   if (fs.existsSync(runtimeEntry)) {
     fs.mkdirSync(path.join(staging, BUNDLE_PATHS.runtimeDir), { recursive: true });
     fs.copyFileSync(runtimeEntry, path.join(staging, BUNDLE_PATHS.runtimeEntry));
+    for (const file of seedFiles) {
+      const target = path.join(staging, BUNDLE_PATHS.seedsDir, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(distDir, file), target);
+    }
   }
   fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);
   fs.rmSync(destDir, { recursive: true, force: true });

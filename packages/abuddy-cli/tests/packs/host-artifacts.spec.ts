@@ -30,6 +30,13 @@ function builtInPack(snapshot = { types: { entities: {}, relKinds: {} }, defs: {
   fs.writeFileSync(path.join(dir, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [];');
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
+  // Compiled seeds at the top of a built-in pack's dist, beside files that aren't seeds
+  fs.writeFileSync(path.join(dir, 'dist', 'settings.seed.json'), '{"theme":"dark"}');
+  fs.writeFileSync(path.join(dir, 'dist', 'seeds.json'), '{"version":1,"seeds":[]}');
+  fs.mkdirSync(path.join(dir, 'dist', 'media', 'library'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', 'media', 'library', 'pic.png'), 'PNG');
+  fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
   return dir;
 }
 
@@ -42,7 +49,14 @@ describe('publishHostPackArtifacts', () => {
     expect(fs.readFileSync(path.join(dest, 'types', 'snapshot.json'), 'utf-8')).toContain('base-pack');
     expect(fs.existsSync(path.join(dest, 'build', 'steps.build.mjs'))).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('registration');
+    // The compiled seeds its runtime reads (settings defaults), and nothing else from dist
+    expect(fs.readdirSync(path.join(dest, 'runtime', 'seeds')).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
+    expect(fs.existsSync(path.join(dest, 'runtime', 'seeds', 'media', 'library', 'pic.png'))).toBe(true);
     expect(publishHostPackArtifacts(src, dest)).toBe(false);
+
+    fs.writeFileSync(path.join(src, 'dist', 'settings.seed.json'), '{"theme":"light"}');
+    expect(publishHostPackArtifacts(src, dest)).toBe(true);
+    expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'settings.seed.json'), 'utf-8')).toContain('light');
 
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [1];');
     expect(publishHostPackArtifacts(src, dest)).toBe(true);
@@ -68,6 +82,8 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
     expect(artifacts?.runtimeEntry).toBe(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime', 'index.cjs'));
     expect(fs.readFileSync(artifacts!.runtimeEntry!, 'utf-8')).toContain('registration');
+    expect(artifacts?.seedsDir).toBe(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime', 'seeds'));
+    expect(fs.readdirSync(artifacts!.seedsDir!).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
   });
 
   it("drops a cached runtime when the dependency stops shipping one", async () => {
