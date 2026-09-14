@@ -1,13 +1,10 @@
-import type { EARS } from '../types/entities.ts';
-import { repository, hasIdCollision } from '../ears/index.ts';
+import { EARS } from '../types/entities.ts';
+import type { NoteEntity } from '../types/sdk-entities.ts';
+import { hasIdCollision } from '../ears/index.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import { findWhere } from '../ears/query-helpers.ts';
 import { qx } from '../ears/query.ts';
 import type { ExportedNote, ExportedNotes } from '../build/compilers/compile-notes.ts';
-
-export interface NotesEARS {
-  Entity: Record<'Note', EARS.Entity>;
-  RelKind: Record<'CONTAINS', EARS.RelKind>;
-}
 
 export interface NotesImportResult {
   created: number;
@@ -16,40 +13,35 @@ export interface NotesImportResult {
   errors: string[];
 }
 
-function findExistingNote(
-  title: string,
-  parentId: string | undefined,
-  ears: NotesEARS,
-): any | undefined {
-  const candidates = findWhere(ears.Entity.Note, 'title', title);
-  return candidates.find((note: any) => {
-    const parents = qx(note.id).linksTo(ears.RelKind.CONTAINS, ears.Entity.Note, false).ids();
+function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
+  const candidates = findWhere<NoteEntity>(EARS.Entity.Note, 'title', title);
+  return candidates.find((note) => {
+    const parents = qx(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
     const noteParentId = parents.length > 0 ? parents[0] : undefined;
     return noteParentId === parentId;
   });
 }
 
 function applyNoteUpdates(
-  noteId: string,
+  noteId: EARS.EntityId,
   opts: { favorite?: boolean; hideCompletedChildren?: boolean; content?: string },
 ): void {
-  const repo = repository as any;
-  const updates: Record<string, any> = {};
+  const updates: { favorite?: boolean; hideCompletedChildren?: boolean; content?: string } = {};
   if (opts.favorite) updates.favorite = true;
   if (opts.hideCompletedChildren) updates.hideCompletedChildren = true;
   if (opts.content !== undefined) updates.content = opts.content;
   if (Object.keys(updates).length > 0) {
-    repo.noteCommands.update(noteId, updates);
+    builtinRepository.noteCommands.update(noteId, updates);
   }
 }
 
-export function importNotesFromData(data: ExportedNotes, ears: NotesEARS): NotesImportResult {
+export function importNotesFromData(data: ExportedNotes): NotesImportResult {
   const result: NotesImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
   if (!data?.notes || !Array.isArray(data.notes)) {
     result.errors.push('Invalid import data: expected object with "notes" array');
     return result;
   }
-  importNoteNodes(data.notes, undefined, result, ears);
+  importNoteNodes(data.notes, undefined, result);
   return result;
 }
 
@@ -57,9 +49,8 @@ function importNoteNodes(
   nodes: ExportedNote[],
   parentId: string | undefined,
   result: NotesImportResult,
-  ears: NotesEARS,
 ): void {
-  const repo = repository as any;
+  const repo = builtinRepository;
 
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
@@ -69,7 +60,7 @@ function importNoteNodes(
       continue;
     }
 
-    const existing = findExistingNote(node.title, parentId, ears);
+    const existing = findExistingNote(node.title, parentId);
     if (existing) {
       try {
         repo.noteCommands.update(existing.id, {
@@ -78,7 +69,7 @@ function importNoteNodes(
           completed: node.completed ?? false,
           displayOrder: node.displayOrder ?? i,
         });
-        applyNoteUpdates(existing.id as string, {
+        applyNoteUpdates(existing.id, {
           favorite: node.favorite,
           hideCompletedChildren: node.hideCompletedChildren,
         });
@@ -88,7 +79,7 @@ function importNoteNodes(
         result.updated++;
 
         if (node.children && node.children.length > 0) {
-          importNoteNodes(node.children, existing.id as string, result, ears);
+          importNoteNodes(node.children, existing.id, result);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -98,7 +89,7 @@ function importNoteNodes(
       continue;
     }
 
-    if (node.id && hasIdCollision(node.id as any)) {
+    if (node.id && hasIdCollision(node.id as EARS.EntityId)) {
       result.errors.push(`Skipped note "${node.title}": entity ID already exists (${node.id})`);
       result.skipped++;
       continue;
@@ -126,7 +117,7 @@ function importNoteNodes(
       }
 
       if (node.children && node.children.length > 0) {
-        importNoteNodes(node.children, note.id, result, ears);
+        importNoteNodes(node.children, note.id, result);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

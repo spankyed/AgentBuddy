@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { repository } from '../ears/index.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import { seedData, type SeedCounts, type SeedIncludeSet } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 
@@ -21,12 +21,11 @@ function computeSeedHash(compiledDir: string, artifacts: string[]): string {
 
 export function createBootSeed(config: BootSeedConfig): (options?: { verbose?: boolean }) => Record<string, SeedCounts> | null {
   const { artifacts, compiledDir, getIncludeOverrides } = config;
-  const repo = repository as any;
 
   return function runBootSeed(options?: { verbose?: boolean }): Record<string, SeedCounts> | null {
     const log = options?.verbose ? console.log.bind(console) : () => {};
     const currentHash = computeSeedHash(compiledDir, artifacts);
-    const storedHash = repo.settingsQueries.getInternalSettings().seedHash;
+    const storedHash = builtinRepository.settingsQueries.getInternalSettings().seedHash;
 
     if (storedHash === currentHash) {
       log('  seed skipped: data unchanged');
@@ -35,7 +34,7 @@ export function createBootSeed(config: BootSeedConfig): (options?: { verbose?: b
 
     const include = getIncludeOverrides?.() ?? {};
     const result = seedData({ compiledDir, include, verbose: options?.verbose });
-    repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
+    builtinRepository.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
     return result;
   };
 }

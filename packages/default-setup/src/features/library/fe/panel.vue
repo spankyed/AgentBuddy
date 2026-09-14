@@ -247,8 +247,8 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
+import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextContent } from '@abuddy/sdk'
 // [SEARCH_INDEX_FF] import { getModelConfig } from './config/embedding-models'
-import type { ContentSection, MarkdownContent, TextContent, FieldContent, ListContent } from '@/__generated__/types'
 
 const actorSystem = useActorSystem()
 

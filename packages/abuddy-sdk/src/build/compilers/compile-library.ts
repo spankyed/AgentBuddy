@@ -2,11 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { toDisplayName, parseMarkdownSections, parseFrontmatter } from './library-utils.ts';
 import { sourceHash } from '../compile-utils.ts';
-
-export interface ContentSection {
-  type: 'field' | 'list' | 'markdown' | 'text' | 'code';
-  [key: string]: unknown;
-}
+import type { ContentSection } from '../../types/sdk-entities.ts';
 
 export interface ExportedDocument {
   id?: string;

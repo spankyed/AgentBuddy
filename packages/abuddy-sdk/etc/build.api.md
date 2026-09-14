@@ -226,14 +226,6 @@ export interface CompileResult {
 export function compileSourceDir(sourceDir: string, config: Omit<CompileConfig, 'sourceDir' | 'outputFile'>): Promise<CompileResult>;
 
 // @public (undocumented)
-export interface ContentSection {
-    // (undocumented)
-    [key: string]: unknown;
-    // (undocumented)
-    type: 'field' | 'list' | 'markdown' | 'text' | 'code';
-}
-
-// @public (undocumented)
 export function copyLibraryMedia(libraryDir: string, outputDir: string): void;
 
 // @public (undocumented)
@@ -478,6 +470,12 @@ export const FeatureEntrySchema: z.ZodObject<{
     contributions: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
+    plugin?: {
+        entry: string;
+        label: string;
+        icon: string;
+        isPinned?: boolean | undefined;
+    } | undefined;
     earlySystem?: boolean | undefined;
     designation?: string | undefined;
     settings?: string | undefined;
@@ -490,18 +488,18 @@ export const FeatureEntrySchema: z.ZodObject<{
             incoming?: string[] | undefined;
             outgoing?: string[] | undefined;
         } | undefined;
-    } | undefined;
-    plugin?: {
-        entry: string;
-        label: string;
-        icon: string;
-        isPinned?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
     contributions?: string | undefined;
 }, {
     id: string;
+    plugin?: {
+        entry: string;
+        label: string;
+        icon: string;
+        isPinned?: boolean | undefined;
+    } | undefined;
     earlySystem?: boolean | undefined;
     designation?: string | undefined;
     settings?: string | undefined;
@@ -514,12 +512,6 @@ export const FeatureEntrySchema: z.ZodObject<{
             incoming?: string[] | undefined;
             outgoing?: string[] | undefined;
         } | undefined;
-    } | undefined;
-    plugin?: {
-        entry: string;
-        label: string;
-        icon: string;
-        isPinned?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -667,6 +659,12 @@ export const ManifestSchema: z.ZodObject<{
         contributions: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
+        plugin?: {
+            entry: string;
+            label: string;
+            icon: string;
+            isPinned?: boolean | undefined;
+        } | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
@@ -679,18 +677,18 @@ export const ManifestSchema: z.ZodObject<{
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         contributions?: string | undefined;
     }, {
         id: string;
+        plugin?: {
+            entry: string;
+            label: string;
+            icon: string;
+            isPinned?: boolean | undefined;
+        } | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
@@ -703,12 +701,6 @@ export const ManifestSchema: z.ZodObject<{
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -787,31 +779,31 @@ export const ManifestSchema: z.ZodObject<{
                 defaultLabel: z.ZodOptional<z.ZodString>;
                 custom: z.ZodOptional<z.ZodLiteral<true>>;
             }, "strict", z.ZodTypeAny, {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             }, {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             type: string;
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }, {
             type: string;
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }>, "many">;
     }, "strict", z.ZodTypeAny, {
@@ -821,9 +813,9 @@ export const ManifestSchema: z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -834,9 +826,9 @@ export const ManifestSchema: z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -909,6 +901,12 @@ export const ManifestSchema: z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        plugin?: {
+            entry: string;
+            label: string;
+            icon: string;
+            isPinned?: boolean | undefined;
+        } | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
@@ -921,12 +919,6 @@ export const ManifestSchema: z.ZodObject<{
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -956,9 +948,9 @@ export const ManifestSchema: z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1003,6 +995,12 @@ export const ManifestSchema: z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        plugin?: {
+            entry: string;
+            label: string;
+            icon: string;
+            isPinned?: boolean | undefined;
+        } | undefined;
         earlySystem?: boolean | undefined;
         designation?: string | undefined;
         settings?: string | undefined;
@@ -1015,12 +1013,6 @@ export const ManifestSchema: z.ZodObject<{
                 incoming?: string[] | undefined;
                 outgoing?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -1050,9 +1042,9 @@ export const ManifestSchema: z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
+                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
-                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1292,13 +1284,13 @@ export const StepDSLMetaSchema: z.ZodObject<{
     defaultLabel: z.ZodOptional<z.ZodString>;
     custom: z.ZodOptional<z.ZodLiteral<true>>;
 }, "strict", z.ZodTypeAny, {
+    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
-    custom?: true | undefined;
 }, {
+    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
-    custom?: true | undefined;
 }>;
 
 // @public (undocumented)
@@ -1314,31 +1306,31 @@ export const StepEntrySchema: z.ZodObject<{
         defaultLabel: z.ZodOptional<z.ZodString>;
         custom: z.ZodOptional<z.ZodLiteral<true>>;
     }, "strict", z.ZodTypeAny, {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     }, {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     type: string;
     path: string;
     kind?: "step" | "trigger" | undefined;
     dsl?: {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     } | undefined;
 }, {
     type: string;
     path: string;
     kind?: "step" | "trigger" | undefined;
     dsl?: {
+        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
-        custom?: true | undefined;
     } | undefined;
 }>;
 

@@ -67,7 +67,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt."
+      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt, Document, Collection, Note, Settings, Secret."
     },
     "relKinds": {
       "type": "object",

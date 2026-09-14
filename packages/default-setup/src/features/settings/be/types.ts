@@ -30,8 +30,6 @@ export interface CommandItem {
 
 // ── Settings types ────────────────────────────────────────────────────────
 
-export type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
-
 export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
@@ -201,14 +199,6 @@ export interface AssistantSettings {
   birthdate: string | null;
 }
 
-export interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-  category?: string;
-  order?: number;
-}
-
 export interface AgentSettings {
   modes: AgentMode[];
   hotkeys: {
@@ -224,10 +214,3 @@ export interface AgentSettings {
 }
 
 // System-private entity type
-export interface SettingsEntity extends BaseEntity {
-  entityType: EARS.Entity.Settings;
-  name: string; // e.g., 'internal', 'general.secrets', 'plugin.flows'
-  data: any; // Flexible data structure
-  type?: SETTINGS_SCOPE; // Optional for backward compatibility
-  label?: string; // Optional for backward compatibility
-}

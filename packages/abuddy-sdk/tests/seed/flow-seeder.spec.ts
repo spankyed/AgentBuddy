@@ -3,9 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/ears/index.ts', () => ({
-  findAll: () => [],
-  repository: { promptQueries: { all: () => [] }, flowsCommands: {} },
+vi.mock('../../src/ears/builtin-repositories.ts', () => ({
+  builtinRepository: { promptQueries: { all: () => [] }, flowsCommands: {} },
 }));
 
 const { createFlowSeeder } = await import('../../src/seed/flow-seeder.ts');

@@ -1,23 +1,5 @@
 import { EARS } from '@/__generated__/ears';
-
-export interface SecretEntity {
-  id: EARS.EntityId;
-  entityType: EARS.Entity.Secret;
-  provider: SecretProvider;
-  encryptedValue: string; // Will store plain text for now, encryption to be added later
-  customName?: string;
-  createdAt: number;
-  updatedAt?: number;
-}
-
-export type SecretProvider = 
-  | 'google'
-  | 'anthropic' 
-  | 'openai'
-  | 'groq'
-  | 'mistral'
-  | 'cohere'
-  | 'custom';
+import type { SecretProvider } from '@abuddy/sdk';
 
 export interface CreateSecretParams {
   provider: SecretProvider;

@@ -35,7 +35,7 @@ export type { CompilerContext } from './flow-entities.ts';
 
 // Library output types
 export type {
-  ContentSection, ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
+  ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
   ExportedLibrary,
 } from './compile-library.ts';
 

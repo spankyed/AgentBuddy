@@ -18,8 +18,8 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { FieldContent } from '@/__generated__/types';
 import { reportSystemError } from '@abuddy/sdk/utils';
+import type { FieldContent } from '@abuddy/sdk';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;

@@ -30,26 +30,16 @@ export function createCollectionSeeder(config: {
 export function createFlowSeeder(): Seeder;
 
 // @public (undocumented)
-export function createLibrarySeeder(ears?: {
-    Entity: Record<'Collection' | 'Document', EARS.Entity>;
-}): Seeder;
+export function createLibrarySeeder(): Seeder;
 
 // @public (undocumented)
-export function createNotesSeeder(ears?: NotesEARS): Seeder;
+export function createNotesSeeder(): Seeder;
 
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
 
 // @public (undocumented)
-export function importNotesFromData(data: ExportedNotes, ears: NotesEARS): NotesImportResult;
-
-// @public (undocumented)
-export interface NotesEARS {
-    // (undocumented)
-    Entity: Record<'Note', EARS.Entity>;
-    // (undocumented)
-    RelKind: Record<'CONTAINS', EARS.RelKind>;
-}
+export function importNotesFromData(data: ExportedNotes): NotesImportResult;
 
 // @public (undocumented)
 export interface NotesImportResult {

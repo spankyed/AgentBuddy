@@ -2,7 +2,7 @@
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent, ContentSection } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'
 import { repository } from '@/__generated__/repository';
@@ -16,6 +16,7 @@ import * as symlink from './repository/symlink'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
+import type { ContentSection, FieldContent } from '@abuddy/sdk';
 
 type IncomingLibraryEvents =
   | { type: 'LIST_DOCUMENTS'; collectionId?: string }

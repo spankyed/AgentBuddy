@@ -6,7 +6,8 @@
  */
 
 import { repository } from '@/__generated__/repository';
-import type { SETTINGS_SCOPE, SettingsData } from '@/features/settings/be/types';
+import type { SettingsData } from '@/features/settings/be/types';
+import type { SettingsScope } from '@abuddy/sdk';
 
 export class SettingsService {
   /**
@@ -89,7 +90,7 @@ export class SettingsService {
    * @param label - The setting label/category
    * @param path - Path to the specific value
    */
-  getSettingValue(type: SETTINGS_SCOPE, label: string, path: string[]): any {
+  getSettingValue(type: SettingsScope, label: string, path: string[]): any {
     const settings = type === 'general' 
       ? this.getGeneralSettings()[label as keyof SettingsData['general']]
       : type === 'plugin'

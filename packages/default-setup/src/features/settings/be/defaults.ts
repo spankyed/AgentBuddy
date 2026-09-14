@@ -1,8 +1,9 @@
 import * as fs from 'fs';
-import type { SETTINGS_SCOPE, SettingsData } from './types';
+import type { SettingsData } from './types';
 import { getAppVersion } from '@abuddy/sdk/utils';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
+import type { SettingsScope } from '@abuddy/sdk';
 
 let _resolved: SettingsData | null = null;
 
@@ -24,7 +25,7 @@ export function getDefaultSettings(): SettingsData {
   return _resolved;
 }
 
-export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) => {
+export const getDefaultsByLabel = (type: SettingsScope, label: string) => {
   const ds = getDefaultSettings();
   return {
     internal: ds.internal,

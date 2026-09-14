@@ -14,8 +14,8 @@ describe('parseManifest', () => {
 
   it("rejects declaring the SDK's entities or relation kinds, by name or value", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }]) {
-      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt are defined by the SDK/)]);
+    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }, { Note: 'Note' }, { Key: 'Secret' }]) {
+      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt, Document, Collection, Note, Settings, Secret are defined by the SDK/)]);
     }
     for (const relKinds of [{ CONTAINS: 'contains' }, { NEXT: 'transitions_to' }]) {
       expect(parseManifest({ ...pack, relKinds }).errors).toEqual([expect.stringMatching(/"relKinds": CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED are defined by the SDK/)]);

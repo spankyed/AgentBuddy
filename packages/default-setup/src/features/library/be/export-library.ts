@@ -10,12 +10,12 @@ import { EARS } from '@/__generated__/ears'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
-import type { ContentSection } from './types'
-import type { ExportedItem } from './export-types'
 import type { ExportFormat } from './export-types'
 import { exportLibraryMarkdown } from './export-markdown'
 import { countExportedItems } from './utils'
 import { writeExportJson } from '@abuddy/sdk/utils'
+import type { ContentSection } from '@abuddy/sdk';
+import type { ExportedItem } from '@abuddy/sdk/build';
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]

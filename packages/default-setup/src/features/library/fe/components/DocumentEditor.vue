@@ -97,7 +97,8 @@ import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
-import type { DocumentDTO, CollectionDTO, ContentSection } from '@/__generated__/types'
+import type { DocumentDTO, CollectionDTO } from '@/__generated__/types'
+import type { ContentSection } from '@abuddy/sdk'
 
 const actorSystem = useActorSystem()
 

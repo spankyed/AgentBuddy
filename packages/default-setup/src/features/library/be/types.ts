@@ -1,58 +1,5 @@
 import type { EARS, BaseEntity } from '@/__generated__/ears'
-
-export type DocumentShortCode = `DOC-${number}`;
-
-export type ContentType = 'field' | 'list' | 'markdown' | 'text' | 'code'
-
-export interface FieldContent {
-  type: 'field'
-  fields: Array<{ key: string; value: string }>
-}
-
-export interface ListContent {
-  type: 'list'
-  items: string[]
-}
-
-export interface MarkdownContent {
-  type: 'markdown'
-  text: string
-}
-
-export interface TextContent {
-  type: 'text'
-  text: string
-}
-
-export interface CodeContent {
-  type: 'code'
-  text: string
-  language: string
-}
-
-export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent
-
-export interface Document extends BaseEntity {
-  _type: EARS.Entity.Document
-  name: string
-  content: ContentSection[]
-  shortCode: DocumentShortCode
-  displayOrder?: number
-  /** Free-form tags, stored directly on the document as a string array. */
-  tags?: string[]
-  /** SHA256 hash of DSL source at last seed. Absent on user-created documents. */
-  sourceHash?: string
-}
-
-export interface Collection extends BaseEntity {
-  _type: EARS.Entity.Collection
-  name: string
-  description?: string
-  displayOrder?: number
-  symlinkPath?: string
-  /** SHA256 hash of DSL source at last seed. Absent on user-created collections. */
-  sourceHash?: string
-}
+import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
 
 export interface DocumentDTO {
   id: EARS.EntityId

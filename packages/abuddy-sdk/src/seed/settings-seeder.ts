@@ -1,11 +1,9 @@
 import * as fs from 'fs';
-import { repository } from '../ears/index.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import type { Seeder, SeederContext, SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 
 export function createSettingsSeeder(): Seeder {
-  const repo = repository as any;
-
   return {
     key: 'settings',
     seed(ctx: SeederContext): SeedCounts {
@@ -19,7 +17,7 @@ export function createSettingsSeeder(): Seeder {
         ctx.log('  settings skipped (existing)');
         counts.skipped = 1;
       } else {
-        repo.settingsCommands.resetSettings();
+        builtinRepository.settingsCommands.resetSettings();
         ctx.log('  settings reset to defaults');
         counts.updated = 1;
       }

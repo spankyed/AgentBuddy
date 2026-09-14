@@ -7,8 +7,9 @@ import { EARS } from '@/__generated__/ears'
 import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@abuddy/sdk/utils'
 import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@abuddy/sdk/utils'
-import type { NoteEntity } from './types'
-import type { ExportedNote, NotesExportFormat } from './export-types'
+import type { NotesExportFormat } from './export-types'
+import type { ExportedNote } from '@abuddy/sdk/build';
+import type { NoteEntity } from '@abuddy/sdk';
 
 function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
   const allNotes = repository.noteQueries.all()

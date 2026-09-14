@@ -27,7 +27,7 @@ export {
 export type {
   FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
   CompilerContext, CompiledRows, ExportFlowsOptions,
-  ContentSection, ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
+  ExportedDocument, ExportedCollection, ExportedSymlink, ExportedItem,
   ExportedLibrary,
   ExportedNote, ExportedNotes,
   CompiledFAQ,

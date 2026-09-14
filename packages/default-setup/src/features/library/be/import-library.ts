@@ -15,8 +15,8 @@ import { repository } from '@/__generated__/repository';
 import type { EARS } from '@/__generated__/ears'
 import { hasIdCollision } from '@abuddy/sdk/ears';
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
-import type { ContentSection } from './types'
 import { toDisplayName, parseFrontmatter, parseMarkdownSections } from './utils'
+import type { ContentSection } from '@abuddy/sdk';
 
 interface ImportResult {
   created: number

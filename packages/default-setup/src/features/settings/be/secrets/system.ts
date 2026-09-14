@@ -1,7 +1,8 @@
 import { setup } from 'xstate';
 import { EARS } from '@/__generated__/ears';
 import { secretsQueries, secretsCommands } from './repository';
-import type { SecretProvider, CreateSecretParams, SecretData } from './types';
+import type { CreateSecretParams, SecretData } from './types';
+import type { SecretProvider } from '@abuddy/sdk';
 
 // Events this child actor can receive from its parent (settings system)
 export type SecretsEvents = 

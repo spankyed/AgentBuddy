@@ -56,10 +56,10 @@
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import type { FAQItem } from '@/__generated__/types'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
 import { useActorSystem, openInAppBrowser } from '@abuddy/sdk/fe'
+import type { CompiledFAQ } from '@abuddy/sdk/build'
 
 const actorSystem = useActorSystem()
 
@@ -72,7 +72,7 @@ function openMemorialLink() {
 }
 
 const settingsActor = actorSystem.get('settings')
-const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
+const faqItems = useSelector(settingsActor, (state: any): CompiledFAQ[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])
 

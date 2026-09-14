@@ -3,7 +3,7 @@ import * as path from 'path'
 import { edgeStore } from '@abuddy/host/ears'
 import { EARS } from '@/__generated__/ears'
 import { createLogger } from '@abuddy/sdk/logger'
-import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection, FolderItem } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem } from '../types'
 // TODO: [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository'
 import { libraryQueries } from './queries'
 import {
@@ -17,6 +17,7 @@ import {
   formatFileSize,
   getContentLength,
 } from './helpers'
+import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
 
 const logger = createLogger('library')
 

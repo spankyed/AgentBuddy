@@ -61,6 +61,11 @@ export type SdkEntityShapes = {
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
+    Document: DocumentEntity;
+    Collection: CollectionEntity;
+    Note: NoteEntity;
+    Settings: SettingsEntity;
+    Secret: SecretEntity;
 };
 
 // @public (undocumented)

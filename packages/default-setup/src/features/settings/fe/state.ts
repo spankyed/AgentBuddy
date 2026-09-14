@@ -6,11 +6,12 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, PluginSettings, FAQItem } from '@/__generated__/types'
+import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, PluginSettings } from '@/__generated__/types'
 import { trpc } from '@abuddy/sdk/rpc'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview, PackSeedType } from '@abuddy/sdk/build'
+import type { CompiledFAQ } from '@abuddy/sdk/build';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -61,7 +62,7 @@ function freshPackSeeds(): PackSeedsImport {
 
 export interface SettingsContext {
   settings: SettingsData | null;
-  faqs: FAQItem[];
+  faqs: CompiledFAQ[];
   secretsData: any[];
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packSeedsImport: PackSeedsImport;

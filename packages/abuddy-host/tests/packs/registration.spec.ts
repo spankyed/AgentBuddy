@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PackRegistration } from '@abuddy/sdk/framework';
+import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
 
 const registered: string[] = [];
@@ -47,17 +48,18 @@ describe('registerPack entities', () => {
   });
 
   it("has the SDK's entities and relation kinds with no pack registered, and doesn't count them as collisions", () => {
-    expect([...getRegisteredEntityTypes()].sort()).toEqual(['Action', 'Flow', 'Node', 'Prompt', 'Relation', 'TNode']);
+    const sdkEntities = Object.values(SDK_ENTITIES);
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities].sort());
     expect(getRegisteredEARS().relKinds).toMatchObject({ CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to' });
     // Packs built with an older SDK list them
     registerEntities('first-pack', { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, { CONTAINS: 'contains' });
     expect(() => registerEntities('second-pack', { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, { CONTAINS: 'contains' })).not.toThrow();
-    expect([...getRegisteredEntityTypes()].sort()).toEqual(['Action', 'Flow', 'Memo', 'Node', 'Prompt', 'Relation', 'TNode', 'Tag']);
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities, 'Memo', 'Tag'].sort());
     // The registration keeps only the pack's own names
     expect(getPackContributions('first-pack')?.relKinds).toEqual({});
   });
 
-  it('keeps TNode out of persistence without any pack asking', () => {
-    expect(getRegisteredEARSPolicy().excludedEntityTypes).toEqual(['TNode']);
+  it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {
+    expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'], secretEntityTypes: ['Secret'] });
   });
 });

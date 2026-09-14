@@ -2,7 +2,7 @@ import { qx } from '@/__generated__/ears';
 import * as fs from 'fs/promises'
 
 import { EARS } from '@/__generated__/ears'
-import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
 import {
   findParentCollection,
   isRootCollection,
@@ -13,6 +13,7 @@ import {
   getContentLength
 } from './helpers'
 import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents, resolveSymlinkPath } from './symlink'
+import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {

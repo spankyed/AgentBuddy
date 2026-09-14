@@ -1,18 +1,18 @@
-import { repository } from '../ears/index.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
+import { EARS } from '../types/entities.ts';
+import type { NoteEntity } from '../types/sdk-entities.ts';
+import type { ExportedNotes } from '../build/compilers/compile-notes.ts';
 import { findAll } from '../ears/query-helpers.ts';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
-import { importNotesFromData, type NotesEARS } from './import-notes.ts';
-import { NOTES_NAMES } from './built-in-names.ts';
+import { importNotesFromData } from './import-notes.ts';
 
-export function createNotesSeeder(ears: NotesEARS = NOTES_NAMES): Seeder {
-  const repo = repository as any;
-
+export function createNotesSeeder(): Seeder {
   return {
     key: 'notes',
     seed(ctx: SeederContext): SeedCounts {
       const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-      const notesData: any = loadJSON(seedPath(ctx.compiledDir, 'notes'));
+      const notesData = loadJSON<ExportedNotes>(seedPath(ctx.compiledDir, 'notes'));
       if (!notesData) {
         ctx.log('  notes artifact not found, skipping notes');
         return counts;
@@ -21,15 +21,15 @@ export function createNotesSeeder(ears: NotesEARS = NOTES_NAMES): Seeder {
         ? notesData
         : {
             ...notesData,
-            notes: (notesData.notes ?? []).filter((n: any) =>
+            notes: (notesData.notes ?? []).filter((n) =>
               (ctx.include as ReadonlySet<string>).has(n.title),
             ),
           };
       if (ctx.mode === 'wipe-and-replace') {
-        for (const n of findAll(ears.Entity.Note)) repo.noteCommands.delete((n as any).id);
+        for (const n of findAll<NoteEntity>(EARS.Entity.Note)) builtinRepository.noteCommands.delete(n.id);
         ctx.log('  notes wiped');
       }
-      const importResult = importNotesFromData(filteredNotes, ears);
+      const importResult = importNotesFromData(filteredNotes);
       counts.created = importResult.created;
       counts.updated = importResult.updated;
       counts.skipped = importResult.skipped;

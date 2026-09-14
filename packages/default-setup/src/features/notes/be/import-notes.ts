@@ -7,8 +7,8 @@ import { hasIdCollision } from '@abuddy/sdk/ears';
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
 import { toDisplayName } from '@abuddy/sdk/utils'
-import type { ExportedNote, ExportedNotes } from './export-types'
-import type { NoteEntity } from './types'
+import type { ExportedNote, ExportedNotes } from '@abuddy/sdk/build';
+import type { NoteEntity } from '@abuddy/sdk';
 
 interface ImportResult {
   created: number

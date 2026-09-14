@@ -6,7 +6,13 @@ export { safeEvents, emit } from './helpers/index.ts';
 export type { Simplify } from './helpers/index.ts';
 
 // Types
-export { EARS, type BaseEntity, type RelationEntity, type FlowEntity, type NodeBase, type ActionEntity, type ActionParameter, type PromptEntity, type TemplateInput, type SdkEntityShapes } from './types/index.ts';
+export {
+  EARS, type BaseEntity, type SdkEntityShapes, type RelationEntity, type FlowEntity, type NodeBase, type TNodeEntity, type TNodeKind,
+  type ActionEntity, type ActionParameter, type PromptEntity, type TemplateInput,
+  type DocumentEntity, type CollectionEntity, type ContentSection, type FieldContent, type ListContent, type MarkdownContent,
+  type TextContent, type CodeContent, type ContentType, type DocumentShortCode, type NoteEntity,
+  type SettingsEntity, type SettingsScope, type SecretEntity, type SecretProvider,
+} from './types/index.ts';
 export { ROOT_FLOW_ROLE } from './types/index.ts';
 
 // Designations

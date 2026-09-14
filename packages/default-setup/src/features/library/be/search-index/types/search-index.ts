@@ -1,6 +1,6 @@
 import type { EARS } from '@/__generated__/ears'
-import type { ContentSection } from '../../types'
 import type { EmbeddingModelId } from './embedding-models'
+import type { ContentSection } from '@abuddy/sdk';
 
 export type EmbeddingModel = EmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'

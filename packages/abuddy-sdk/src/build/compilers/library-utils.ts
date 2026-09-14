@@ -1,4 +1,5 @@
-import type { ExportedItem, ContentSection } from './compile-library.ts';
+import type { ExportedItem } from './compile-library.ts';
+import type { ContentSection } from '../../types/sdk-entities.ts';
 
 export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ');

@@ -1,8 +1,9 @@
 import { findById, findAll, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 
-import type { NoteEntity, NoteDTO } from '../types';
+import type { NoteDTO } from '../types';
 import { REFERENCES } from '../types';
+import type { NoteEntity } from '@abuddy/sdk';
 
 function toDTO(note: NoteEntity): NoteDTO {
   // Find parent: who CONTAINS this note?

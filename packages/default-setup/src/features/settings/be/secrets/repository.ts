@@ -2,7 +2,8 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import type { SecretEntity, SecretProvider, CreateSecretParams, SecretData } from './types';
+import type { CreateSecretParams, SecretData } from './types';
+import type { SecretEntity, SecretProvider } from '@abuddy/sdk';
 
 export const secretsQueries = {
   getAllSecrets: (): SecretEntity[] => {

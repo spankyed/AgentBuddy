@@ -3,8 +3,9 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 
 import { EARS } from '@/__generated__/ears'
-import type { LibraryItem, FolderItem, DocumentItem, DocumentShortCode, FolderContents, BreadcrumbItem } from '../types'
+import type { LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
 import { formatFileSize, findParentCollection } from './helpers'
+import type { DocumentShortCode } from '@abuddy/sdk';
 
 const SYMLINK_PREFIX = 'symlink:'
 

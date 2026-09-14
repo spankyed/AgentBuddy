@@ -2,8 +2,9 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import type { SettingsEntity, SettingsData } from '../types';
+import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
+import type { SettingsEntity } from '@abuddy/sdk';
 
 // Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
 function deepMerge(defaults: any, stored: any): any {

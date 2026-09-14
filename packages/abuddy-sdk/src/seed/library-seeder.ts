@@ -1,8 +1,9 @@
-import type { EARS } from '../types/entities.ts';
-import { LIBRARY_NAMES } from './built-in-names.ts';
+import { EARS } from '../types/entities.ts';
+import type { CollectionEntity, ContentSection, DocumentEntity } from '../types/sdk-entities.ts';
+import type { ExportedItem } from '../build/compilers/compile-library.ts';
 import * as fs from 'fs';
 import * as path from 'path';
-import { repository } from '../ears/index.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import { findAll, findWhere } from '../ears/query-helpers.ts';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts, type ImportMode } from '../utils/index.ts';
 import { getMediaPath } from '../utils/index.ts';
@@ -11,14 +12,14 @@ import { seedPath } from '../build/manifest.ts';
 const RELATIVE_MEDIA_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
 
 function restoreDocMedia(
-  content: any[],
+  content: ContentSection[],
   docId: string,
   mediaDir: string,
-  log: (...a: any[]) => void,
-): { content: any[]; mediaCount: number } {
+  log: (...a: unknown[]) => void,
+): { content: ContentSection[]; mediaCount: number } {
   let mediaCount = 0;
-  const updated = content.map((section: any) => {
-    if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
+  const updated = content.map((section): ContentSection => {
+    if (section.type === 'markdown' || section.type === 'text') {
       let text = section.text;
       for (const match of section.text.matchAll(RELATIVE_MEDIA_RE)) {
         const filename = match[3];
@@ -44,19 +45,18 @@ function shouldSkipByHash(existingHash: string | undefined, compiledHash: string
 }
 
 function seedLibraryTree(
-  items: any[],
-  parentId: any,
+  items: ExportedItem[],
+  parentId: EARS.EntityId | undefined,
   counts: SeedCounts,
-  log: (...a: any[]) => void,
+  log: (...a: unknown[]) => void,
   mediaDir: string,
-  ears: any,
   mode?: ImportMode,
 ): void {
-  const repo = repository as any;
+  const repo = builtinRepository;
 
   for (const item of items) {
     if (item.type === 'document') {
-      const existing = findWhere(ears.Entity.Document, 'name', item.name)[0] as any;
+      const existing = findWhere<DocumentEntity>(EARS.Entity.Document, 'name', item.name)[0];
       if (existing && mode === 'keep-existing') {
         counts.skipped++;
         log(`  library doc skipped (existing): ${item.name}`);
@@ -82,18 +82,18 @@ function seedLibraryTree(
         log(`  library doc created: ${item.name}`);
       }
     } else if (item.type === 'collection') {
-      const existing = findWhere(ears.Entity.Collection, 'name', item.name)[0] as any;
+      const existing = findWhere<CollectionEntity>(EARS.Entity.Collection, 'name', item.name)[0];
       if (existing && mode === 'keep-existing') {
         counts.skipped++;
         log(`  library collection skipped (existing): ${item.name}`);
         continue;
       }
-      let colId: any;
+      let colId: EARS.EntityId;
       if (existing) {
         if (shouldSkipByHash(existing.sourceHash, item.sourceHash)) {
           counts.skipped++;
           log(`  library collection skipped: ${item.name}`);
-          seedLibraryTree(item.children, existing.id, counts, log, mediaDir, ears, mode);
+          seedLibraryTree(item.children, existing.id, counts, log, mediaDir, mode);
           continue;
         }
         colId = existing.id;
@@ -106,19 +106,18 @@ function seedLibraryTree(
         counts.created++;
         log(`  library collection created: ${item.name}`);
       }
-      seedLibraryTree(item.children, colId, counts, log, mediaDir, ears, mode);
+      seedLibraryTree(item.children, colId, counts, log, mediaDir, mode);
     }
   }
 }
 
-export function createLibrarySeeder(ears: { Entity: Record<'Collection' | 'Document', EARS.Entity> } = LIBRARY_NAMES): Seeder {
+export function createLibrarySeeder(): Seeder {
   return {
     key: 'library',
     seed(ctx: SeederContext): SeedCounts {
-      const repo = repository as any;
       const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
       const libraryFile = seedPath(ctx.compiledDir, 'library');
-      const libraryData: any = loadJSON(libraryFile);
+      const libraryData = loadJSON<ExportedItem[] | { items?: ExportedItem[] }>(libraryFile);
       if (!libraryData) {
         ctx.log('  library artifact not found, skipping library');
         return counts;
@@ -126,14 +125,14 @@ export function createLibrarySeeder(ears: { Entity: Record<'Collection' | 'Docum
       const allItems = Array.isArray(libraryData) ? libraryData : libraryData.items;
       const items = shouldSeedAll(ctx.include)
         ? (allItems ?? [])
-        : (allItems ?? []).filter((i: any) => (ctx.include as ReadonlySet<string>).has(i.name));
+        : (allItems ?? []).filter((i) => (ctx.include as ReadonlySet<string>).has(i.name));
       if (ctx.mode === 'wipe-and-replace') {
-        for (const d of findAll(ears.Entity.Document)) repo.libraryCommands.deleteDocument((d as any).id);
-        for (const c of findAll(ears.Entity.Collection)) repo.libraryCommands.deleteCollection((c as any).id);
+        for (const d of findAll<DocumentEntity>(EARS.Entity.Document)) builtinRepository.libraryCommands.deleteDocument(d.id);
+        for (const c of findAll<CollectionEntity>(EARS.Entity.Collection)) builtinRepository.libraryCommands.deleteCollection(c.id);
         ctx.log('  library wiped');
       }
       const mediaDir = path.join(ctx.compiledDir, 'media');
-      seedLibraryTree(items, undefined, counts, ctx.log, mediaDir, ears, ctx.mode);
+      seedLibraryTree(items, undefined, counts, ctx.log, mediaDir, ctx.mode);
       return counts;
     },
   };

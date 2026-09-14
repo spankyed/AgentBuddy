@@ -13,18 +13,13 @@
     "Message": "Message",
     "Artifact": "Artifact",
     "Brain": "Brain",
-    "Document": "Document",
-    "Collection": "Collection",
     "SearchIndex": "SearchIndex",
     "IndexedDoc": "IndexedDoc",
     "Terminal": "Terminal",
     "Directory": "Directory",
-    "Settings": "Settings",
-    "Secret": "Secret",
     "FAQ": "FAQ",
     "BrowserTab": "BrowserTab",
-    "BrowserBookmark": "BrowserBookmark",
-    "Note": "Note"
+    "BrowserBookmark": "BrowserBookmark"
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
@@ -38,9 +33,7 @@
   },
   "partitionPolicy": {
     "excludedEntityTypes": [],
-    "secretEntityTypes": [
-      "Secret"
-    ]
+    "secretEntityTypes": []
   },
   "features": [
     {
@@ -328,33 +321,13 @@
       "source": "src/features/threads/be/types.ts",
       "type": "MessageEntity"
     },
-    "Document": {
-      "source": "src/features/library/be/types.ts",
-      "type": "Document"
-    },
-    "Note": {
-      "source": "src/features/notes/be/types.ts",
-      "type": "NoteEntity"
-    },
     "Artifact": {
       "source": "src/features/threads/be/types.ts",
       "type": "ArtifactEntity"
     },
-    "Collection": {
-      "source": "src/features/library/be/types.ts",
-      "type": "Collection"
-    },
-    "Secret": {
-      "source": "src/features/settings/be/secrets/types.ts",
-      "type": "SecretEntity"
-    },
     "Terminal": {
       "source": "src/features/code/be/repository/index.ts",
       "type": "TerminalEntity"
-    },
-    "Settings": {
-      "source": "src/features/settings/be/types.ts",
-      "type": "SettingsEntity"
     },
     "BrowserTab": {
       "source": "src/features/browser/be/types.ts",

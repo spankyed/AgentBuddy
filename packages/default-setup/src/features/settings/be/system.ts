@@ -5,7 +5,7 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/__generated__/system-ids';
 
-import type { SettingsData, FAQItem } from './types';
+import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
@@ -19,6 +19,7 @@ import { resetLmdbFiles } from '@abuddy/host/ears';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@abuddy/sdk/utils';
 import { mergeSecretReferences } from './secrets/merge-secret-settings';
+import type { CompiledFAQ } from '@abuddy/sdk/build';
 
 /**
  * Convert the JSON-safe include shape from the frontend
@@ -64,7 +65,7 @@ type SettingsInternalEvents =
   | SecretsOutputEvents // Events from child secrets actor
 
 export type OutgoingSettingsEvents =
-  | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
+  | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: CompiledFAQ[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }

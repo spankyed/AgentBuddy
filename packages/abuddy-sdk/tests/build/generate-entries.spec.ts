@@ -177,7 +177,7 @@ describe('generated EARS facade', () => {
   it('names the declared entities and passes them to the typed helpers, with tx', () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
     const ears = generate({ entities: { Memo: 'Memo', Tag: 'Tag' }, entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } } })['src/__generated__/ears.ts'];
-    expect(ears).toContain("export type EntityName = 'Memo' | 'Tag' | 'Relation' | 'Flow' | 'Node' | 'TNode' | 'Action' | 'Prompt';");
+    expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain('defineEars<PackShapes, EntityName>()');
     expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
   });
@@ -188,7 +188,7 @@ describe("the SDK's entities and relation kinds", () => {
     const ears = generate({})['src/__generated__/ears.ts'];
     for (const entity of Object.values(SDK_ENTITIES)) expect(ears).toContain(`export const ${entity} = '${entity}';`);
     for (const [name, kind] of Object.entries(SDK_REL_KINDS)) expect(ears).toContain(`export const ${name} = '${kind}';`);
-    expect(ears).toContain("export type EntityName = 'Relation' | 'Flow' | 'Node' | 'TNode' | 'Action' | 'Prompt';");
+    expect(ears).toContain(`export type EntityName = ${Object.values(SDK_ENTITIES).map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain("import type { SdkEntityShapes } from '@abuddy/sdk';");
     // Relation alone doesn't close the pack's Entity type
     expect(ears).toContain('export type Entity = string;');

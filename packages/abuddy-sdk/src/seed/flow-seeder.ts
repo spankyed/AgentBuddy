@@ -1,4 +1,4 @@
-import { repository } from '../ears/index.ts';
+import { builtinRepository } from '../ears/builtin-repositories.ts';
 import { findAll } from '../ears/query-helpers.ts';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
@@ -6,14 +6,13 @@ import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
+import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 
-function buildLabelMap(entities: any[]): Map<string, string> {
-  return new Map(entities.map((e: any) => [e.label, e.id]));
+function buildLabelMap(entities: Array<{ label: string; id: EARS.EntityId }>): Map<string, string> {
+  return new Map(entities.map((e) => [e.label, e.id]));
 }
 
 export function createFlowSeeder(): Seeder {
-  const repo = repository as any;
-
   return {
     key: 'flows',
     seed(ctx: SeederContext): SeedCounts {
@@ -25,16 +24,16 @@ export function createFlowSeeder(): Seeder {
       }
 
       if (ctx.mode === 'wipe-and-replace') {
-        for (const flow of findAll(EARS.Entity.Flow)) {
-          try { repo.flowsCommands.deleteFlow((flow as any).id); } catch {}
+        for (const flow of findAll<FlowEntity>(EARS.Entity.Flow)) {
+          try { builtinRepository.flowsCommands.deleteFlow(flow.id); } catch {}
         }
         ctx.log('  flows wiped');
       }
 
-      const existingFlows = findAll(EARS.Entity.Flow) as any[];
+      const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
       const existingByLabel = new Map(existingFlows.map((f: any) => [f.label, f]));
-      const actionMap = buildLabelMap(findAll(EARS.Entity.Action) as any[]);
-      const promptMap = buildLabelMap(repo.promptQueries.all());
+      const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
+      const promptMap = buildLabelMap(builtinRepository.promptQueries.all());
 
       const validFlowDSL: Record<string, any> = {};
       const replacedLabels = new Set<string>();
@@ -79,7 +78,7 @@ export function createFlowSeeder(): Seeder {
           }
 
           try {
-            repo.flowsCommands.deleteFlow(existing.id, { allowRoot: true });
+            builtinRepository.flowsCommands.deleteFlow(existing.id, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced${existing.sourceHash ? ' (hash mismatch)' : ' (no prior hash)'}: ${key}`);
           } catch (error: any) {
@@ -98,7 +97,7 @@ export function createFlowSeeder(): Seeder {
         return counts;
       }
 
-      repo.flowsCommands.importFromDSL(
+      builtinRepository.flowsCommands.importFromDSL(
         compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap })
       );
       for (const name of flowNames) {
