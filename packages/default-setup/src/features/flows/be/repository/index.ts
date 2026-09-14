@@ -1,8 +1,7 @@
 import { tx, qx } from '@/__generated__/ears';
-import { RepositoryError, RepositoryErrorCode, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode, removeRelationById, getTimestamp, generateShortCode, generateLabelWithCount, findRelations, filterSystemFields } from '@abuddy/sdk/ears';
 import { getAttr } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { edgeStore, filterSystemFields } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import type {
@@ -198,20 +197,16 @@ export const flowsQueries = {
         // Only include edges where target is also in this flow - might not be necessary if all nodes are in the flow
         .filter(({ id: targetId }) => nodeIds.includes(targetId))
         .forEach(({ relation, id: target }) => {
-          // Get full relation details including info (for handle data)
-          const relDetails = edgeStore.find({
+          // The relation itself, for its id and info (handle data)
+          const [relDetails] = findRelations({
             sourceEntity: source,
             relationType: relation,
             targetEntity: target,
-          })[0];
+          });
 
           if (!relDetails) return;
 
-          const relId = edgeStore.relIds({
-            sourceEntity: source,
-            relationType: relation,
-            targetEntity: target,
-          })[0];
+          const relId = relDetails.id;
 
           if (seen.has(relId)) return;
           seen.add(relId);
@@ -386,7 +381,7 @@ export const flowsCommands = {
       );
     }
 
-    const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
+    const existingEdges = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
     const exactDuplicate = existingEdges.some((rel: any) => {
       if (rel.targetEntity !== targetId) return false;
       return edgeInfoMatches(rel.info, options);
@@ -424,16 +419,11 @@ export const flowsCommands = {
     tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, info);
 
     // Get the relation ID that was just created
-    const relIds = edgeStore.relIds({
+    const relId = findRelations({
       sourceEntity: sourceId,
       relationType: EARS.RelKind.TRANSITIONS_TO,
       targetEntity: targetId,
-    });
-
-    const relId = relIds.find((id: any) => {
-      const rel = getAttr(id, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
-      return rel && edgeInfoMatches(rel.info, options);
-    });
+    }).find((rel) => edgeInfoMatches(rel.info, options))?.id;
 
     if (!relId) {
       throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
@@ -520,11 +510,11 @@ export const flowsCommands = {
         .links(FLOW_EDGE_KINDS, EARS.Entity.Node)
         .filter(({ id: targetId }) => nodeIds.includes(targetId))
         .forEach(({ relation, id: target }) => {
-          const relId = edgeStore.relIds({
+          const relId = findRelations({
             sourceEntity: nodeId,
             relationType: relation,
             targetEntity: target,
-          })[0];
+          })[0]?.id;
           if (relId) edgesToRemove.push(relId);
         });
       
@@ -536,11 +526,11 @@ export const flowsCommands = {
           .links(FLOW_EDGE_KINDS, EARS.Entity.Node)
           .filter(({ id: targetId }) => targetId === nodeId)
           .forEach(({ relation }) => {
-            const relId = edgeStore.relIds({
+            const relId = findRelations({
               sourceEntity: sourceId,
               relationType: relation,
               targetEntity: nodeId,
-            })[0];
+            })[0]?.id;
             if (relId) edgesToRemove.push(relId);
           });
       });
@@ -549,12 +539,11 @@ export const flowsCommands = {
       edgesToRemove.forEach(edgeId => removeRelationById(edgeId));
       
       // Remove the CONTAINS relationship from flow to node
-      const containsRelIds = edgeStore.relIds({
+      findRelations({
         sourceEntity: flowId,
         relationType: EARS.RelKind.CONTAINS,
         targetEntity: nodeId,
-      });
-      containsRelIds.forEach((relId: any) => removeRelationById(relId));
+      }).forEach((rel) => removeRelationById(rel.id));
 
       // Remove INSTANCE_OF relationships (for action/llm nodes)
       const instanceOfTargets = qx(nodeId)
@@ -562,12 +551,11 @@ export const flowsCommands = {
         .map(({ id }) => id);
         
       instanceOfTargets.forEach(targetId => {
-        const instanceOfRelIds = edgeStore.relIds({
+        findRelations({
           sourceEntity: nodeId,
           relationType: EARS.RelKind.INSTANCE_OF,
           targetEntity: targetId,
-        });
-        instanceOfRelIds.forEach((relId: any) => removeRelationById(relId));
+        }).forEach((rel) => removeRelationById(rel.id));
       });
       
       // Finally, delete the node entity
@@ -593,17 +581,17 @@ export const flowsCommands = {
     tx(newSource).link(EARS.RelKind.TRANSITIONS_TO, newTarget);
     
     // Get the new relation ID
-    const relIds = edgeStore.relIds({
+    const [newRelation] = findRelations({
       sourceEntity: newSource,
       relationType: EARS.RelKind.TRANSITIONS_TO,
       targetEntity: newTarget,
     });
     
-    if (relIds.length === 0) {
+    if (!newRelation) {
       throw new RepositoryError('Failed to retrieve updated edge ID', RepositoryErrorCode.OPERATION_FAILED);
     }
     
-    return { newRelId: relIds[0] };
+    return { newRelId: newRelation.id };
   },
   
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
@@ -646,10 +634,8 @@ export const flowsCommands = {
     });
 
     // Remove any remaining relationships
-    const remainingRelations = edgeStore.relIds({
-      sourceEntity: flowId,
-    });
-    remainingRelations.forEach((relId: any) => {
+    const remainingRelations = findRelations({ sourceEntity: flowId }).map((rel) => rel.id);
+    remainingRelations.forEach((relId) => {
       try {
         removeRelationById(relId);
       } catch (error) {
@@ -668,7 +654,7 @@ export const flowsCommands = {
     // Insert (direction=1): shift indices >= pivotIndex up
     // Remove (direction=-1): shift indices > pivotIndex down
     const threshold = direction === 1 ? pivotIndex : pivotIndex + 1
-    const relDetails = edgeStore.find({
+    const relDetails = findRelations({
       sourceEntity: nodeId,
       relationType: EARS.RelKind.TRANSITIONS_TO,
     })
@@ -681,10 +667,10 @@ export const flowsCommands = {
       const idx = parseInt(match[1], 10)
       if (idx < threshold) continue
 
-      edgeStore.patchOne(
-        { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
-        { newInfo: { ...info, sourceHandle: `${prefix}-${idx + direction}` } }
-      )
+      tx(nodeId).patchLink(EARS.RelKind.TRANSITIONS_TO, rel.targetEntity, {
+        newTarget: rel.targetEntity,
+        newInfo: { ...info, sourceHandle: `${prefix}-${idx + direction}` },
+      })
     }
   },
 

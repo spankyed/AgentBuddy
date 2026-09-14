@@ -1,5 +1,4 @@
 import { tx, qx } from '@/__generated__/ears';
-import { edgeStore } from '@abuddy/host/ears'
 import { EARS } from '@/__generated__/ears'
 import type { ContentSection } from '@/features/library/be/types';
 

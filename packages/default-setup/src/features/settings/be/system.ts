@@ -15,7 +15,7 @@ import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
 import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
-import { resetLmdbFiles } from '@abuddy/host/ears';
+import { services } from '@/__generated__/services';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@abuddy/sdk/utils';
 import { mergeSecretReferences } from './secrets/merge-secret-settings';
@@ -69,7 +69,7 @@ export const settingsSystem = setup({
   actors: {
     secretsActor,
     resetAppActor: fromPromise(async () => {
-      await resetLmdbFiles();
+      await services.appData.reset();
       createDefaultSettings();
       seedData({ compiledDir: getCompiledDir(), verbose: true });
       runMigrations();

@@ -7,8 +7,9 @@ import {
   queryEntitiesByRelationTo,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
-  relationIndex,
-} from '@abuddy/host/ears';
+  findRelations,
+  getRelationStats,
+} from '@abuddy/sdk/ears';
 
 /**
  * Execute a user-provided transaction against the EARS database
@@ -42,7 +43,8 @@ export async function executeTransaction(code: string): Promise<any> {
       'getEntitiesOfType',
       'queryEntitiesByAttribute',
       'queryEntitiesInRelationTo',
-      'relationIndex',
+      'findRelations',
+      'getRelationStats',
       // Transaction utilities (write)
       'tx',
       'destroyEntity',
@@ -71,7 +73,8 @@ export async function executeTransaction(code: string): Promise<any> {
       getEntitiesOfType,
       queryEntitiesByAttribute,
       queryEntitiesInRelationTo,
-      relationIndex,
+      findRelations,
+      getRelationStats,
       // Transaction utilities
       tx,
       destroyEntity,

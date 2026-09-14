@@ -17,10 +17,8 @@ export {
   getSchemaStats, isEntity,
   descendants, ancestors, rootParent, linkSymmetric,
   topoSort, shortestPath, leaves, lowestCommonAncestor,
-  type QueryBuilder,
-} from '@abuddy/sdk/ears';
-
-export {
   getAllEntities,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
-} from '@abuddy/host/ears';
+  findRelations, getRelationStats,
+  type QueryBuilder, type RelationMatch, type RelationRow, type RelationStats,
+} from '@abuddy/sdk/ears';
