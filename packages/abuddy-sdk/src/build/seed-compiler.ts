@@ -95,12 +95,25 @@ async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig
   };
 }
 
+/** Removes what compilePack writes, so a key or media dropped from the sources doesn't linger */
+function clearCompiledSeeds(outputDir: string): void {
+  if (!fs.existsSync(outputDir)) return;
+  for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
+    if (entry.isFile() && (entry.name.endsWith(seedFile('')) || entry.name === SEED_INDEX_FILE)) {
+      fs.rmSync(path.join(outputDir, entry.name));
+    }
+  }
+  fs.rmSync(path.join(outputDir, 'media'), { recursive: true, force: true });
+}
+
 /**
  * Compiles a pack's `boot.seed` entries into `outputDir`: `<key>.seed.json` for each entry,
- * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them.
+ * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them. Earlier
+ * output there is removed first, including when compiling fails.
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
+  clearCompiledSeeds(outputDir);
   const importModule = options.importModule ?? importFileModule;
   const log = options.log ?? console.log;
   const { packConfig, featureSettingsPaths } = await loadPackConfig(options);

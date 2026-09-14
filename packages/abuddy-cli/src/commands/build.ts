@@ -25,6 +25,23 @@ async function importPackModule(file: string): Promise<Record<string, unknown>> 
   return tsImport(file, import.meta.url) as Promise<Record<string, unknown>>;
 }
 
+/** A built-in pack's snapshot, in its in-repo dist/ layout */
+const BUILT_IN_SNAPSHOT = 'snapshot.json';
+
+/**
+ * Removes the previous build's output before anything can fail, so a failed build or a dropped
+ * output never leaves an older file behind.
+ * - External packs build into the bundle layout (runtime/, build/, types/); dist/ is pure output,
+ *   cleared whole, so `abuddy pack` and the test fixture never ship an older build.
+ * - Built-in packs keep their in-repo layout, where other tools write too (dist/runtime/ from
+ *   dev-build.mjs, dist/defs/ from rollup): only this build's build/, types/ and snapshot go.
+ *   compilePack clears the compiled seeds. build/ matters most: the app publishes all of it to dependents.
+ */
+export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
+  const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, BUILT_IN_SNAPSHOT] : ['.'];
+  for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
+}
+
 export async function build(args: string[]) {
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
@@ -35,12 +52,8 @@ export async function build(args: string[]) {
   }
 
   const outputDir = path.join(root, 'dist');
-  // External packs build into the bundle layout (runtime/, build/, types/). dist/ is pure
-  // output, so clear it before anything can fail: a failed build must never leave an older
-  // build behind for `abuddy pack` or the test fixture to ship.
-  // Built-in packs keep their in-repo layout (dist/*.seed.json, dist/snapshot.json, dist/build/; dist/runtime/index.cjs from dev-build.mjs).
   const external = !manifest.builtIn;
-  if (external) fs.rmSync(outputDir, { recursive: true, force: true });
+  clearBuildOutput(outputDir, { builtIn: !external });
 
   if (!args.includes('--skip-generate')) {
     const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
@@ -76,7 +89,7 @@ export async function build(args: string[]) {
 
   const packDir = root;
   const seedsOutputDir = external ? path.join(outputDir, BUNDLE_PATHS.seedsDir) : outputDir;
-  const snapshotPath = external ? path.join(outputDir, BUNDLE_PATHS.snapshot) : path.join(outputDir, 'snapshot.json');
+  const snapshotPath = path.join(outputDir, external ? BUNDLE_PATHS.snapshot : BUILT_IN_SNAPSHOT);
 
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 

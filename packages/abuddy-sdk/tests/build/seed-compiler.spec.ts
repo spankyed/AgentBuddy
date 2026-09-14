@@ -64,6 +64,24 @@ describe('compilePack', () => {
     expect(result.seeds).toEqual({ memos: 3 });
   });
 
+  it("replaces its earlier output: a dropped key or media doesn't linger, other files in the dir stay", async () => {
+    write('seeds/memos/first.md', 'Hello\n');
+    write('seeds/memos/media/pic.png', 'PNG');
+    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    fs.mkdirSync(path.join(out, 'runtime'));
+    fs.writeFileSync(path.join(out, 'runtime/index.cjs'), '');
+    fs.writeFileSync(path.join(out, 'notes.json'), '{}');
+
+    fs.rmSync(path.join(root, 'seeds/memos/media'), { recursive: true });
+    await compile({ memos: memosFormat }, { notes: { path: 'seeds/memos', format: 'memos' } });
+    expect(fs.readdirSync(out).sort()).toEqual(['notes.json', 'notes.seed.json', 'runtime', SEED_INDEX_FILE]);
+
+    // A failed compile leaves no seeds from the previous one
+    write('seeds/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
+    await expect(compile({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'seeds/items.json', format: 'items' } })).rejects.toThrow(/isn't one of Item/);
+    expect(fs.readdirSync(out).sort()).toEqual(['notes.json', 'runtime']);
+  });
+
   it("compiles with the pack's own compiler module, which may leave sourceHash to the default", async () => {
     write('seeds/tags.txt', 'red\nblue\n');
     write('compile-tags.mjs', `import * as fs from 'node:fs';
