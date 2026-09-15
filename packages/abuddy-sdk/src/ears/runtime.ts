@@ -55,6 +55,9 @@ export function getPersistence(): PersistenceSink { return _persistence; }
 export function setPersistence(sink: PersistenceSink) { _persistence = sink; }
 export function getEntityTypeChecker(): (v: string) => boolean { return _isEntityType; }
 
+/** Whether `name` is an entity type the running app has registered: the SDK's and every registered pack's */
+export function isEntityType(name: string): boolean { return _isEntityType(name); }
+
 // ─── QueryBuilder fluent interface ─────────────────────────────────────
 
 /** `T` without being an inference site (TypeScript 5.4's NoInfer, for 5.3) */

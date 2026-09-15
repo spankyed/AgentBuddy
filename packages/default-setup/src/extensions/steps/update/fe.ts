@@ -1,9 +1,11 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { RefreshCw } from 'lucide-vue-next';
 
 export const updateStepFE: StepDefinition = {
   type: 'update',
   fe: {
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'purple',
     nodeConfig: {
       label: 'Update',
@@ -15,7 +17,7 @@ export const updateStepFE: StepDefinition = {
       connectionRules: { inputs: 1, outputs: 1 },
       component: 'VariableNode',
       category: 'data',
-      isImplemented: false,
+      isImplemented: true,
     },
     defaults: { onMissing: 'fail' },
   },

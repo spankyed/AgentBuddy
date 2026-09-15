@@ -272,6 +272,9 @@ export function hasIdCollision(providedId: string | undefined): boolean;
 // @public (undocumented)
 export function isEntity(value: unknown): value is EARS.Entity;
 
+// @public
+export function isEntityType(name: string): boolean;
+
 // @public (undocumented)
 export function leaves(kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
 

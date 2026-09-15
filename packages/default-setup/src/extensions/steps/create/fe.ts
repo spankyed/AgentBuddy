@@ -17,7 +17,7 @@ export const createStepFE: StepDefinition = {
       connectionRules: { inputs: 1, outputs: 1 },
       component: 'VariableNode',
       category: 'data',
-      isImplemented: false,
+      isImplemented: true,
     },
     defaults: { inferLabel: true },
   },
