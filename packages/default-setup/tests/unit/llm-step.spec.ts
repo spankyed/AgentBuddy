@@ -6,6 +6,9 @@ import type { Services } from '@/__generated__/services';
 import { repository } from '@/__generated__/repository';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { handler } from '../../src/extensions/steps/llm/runtime';
+import { DEFAULT_MODEL } from '../../src/extensions/steps/llm/model';
+import { llmStepFE } from '../../src/extensions/steps/llm/fe';
+import { availableModels } from '@abuddy/sdk/models';
 
 function run(nodeAttributes: Record<string, unknown>) {
   const sent: Array<{ type: string; result?: { text?: string }; error?: { message?: string } }> = [];
@@ -29,7 +32,7 @@ describe('llm step', () => {
     const inference = fakeInference('ok');
     mockService<Services, 'inference'>('inference', inference);
     await run({ prompt: 'Summarize the memo' });
-    expect(inference.calls[0].model).toBe('anthropic:claude-3-haiku-20240307');
+    expect(inference.calls[0].model).toBe(DEFAULT_MODEL);
   });
 
   it("fails the step, naming the node, when its model isn't provider:model", async () => {
@@ -38,7 +41,7 @@ describe('llm step', () => {
 
     const sent = await run({ model: 'gpt-4-turbo', prompt: 'Summarize the memo' });
 
-    expect(sent).toEqual([expect.objectContaining({ type: 'ERROR', error: expect.objectContaining({ message: 'LLM node "Summarize" names model "gpt-4-turbo": expected provider:model, e.g. anthropic:claude-3-haiku-20240307' }) })]);
+    expect(sent).toEqual([expect.objectContaining({ type: 'ERROR', error: expect.objectContaining({ message: `LLM node "Summarize" names model "gpt-4-turbo": expected provider:model, e.g. ${DEFAULT_MODEL}` }) })]);
     expect(inference.calls).toEqual([]);
   });
 });
@@ -55,5 +58,13 @@ describe('llm step models from the editor', () => {
       expect(sent, entry.id).toEqual([expect.objectContaining({ type: 'COMPLETE' })]);
       expect(inference.calls.map((call) => call.model)).toEqual([entry.id]);
     }
+  });
+});
+
+describe('llm default model', () => {
+  it('is a model the editor offers, for nodes that name none and for new nodes', () => {
+    const catalogIds = availableModels.map((entry) => entry.id);
+    expect(catalogIds).toContain(DEFAULT_MODEL);
+    expect(catalogIds).toContain((llmStepFE.fe?.defaults as { model?: string } | undefined)?.model);
   });
 });

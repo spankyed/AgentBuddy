@@ -31,7 +31,7 @@ type ModelOf<P extends ProviderName> = {
 export type ModelCatalogEntry = { [P in ProviderName]: ModelOf<P> }[ProviderName] & {
   name: string;
   description?: string;
-  contextWindow: number;
+  contextWindow?: number;
   maxOutput?: number;
   costPer1kInput?: number;
   costPer1kOutput?: number;
@@ -39,96 +39,54 @@ export type ModelCatalogEntry = { [P in ProviderName]: ModelOf<P> }[ProviderName
 };
 
 export const availableModels: ModelCatalogEntry[] = [
-  // OpenAI Models
+  // Ids that track each provider's current model where one exists (undated, `-latest`), so entries age slowly
+  // Anthropic
   {
-    id: 'openai:gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    provider: 'openai',
-    description: 'Most capable GPT-4 model with vision capabilities',
-    contextWindow: 128000,
-    maxOutput: 4096,
-    costPer1kInput: 0.01,
-    costPer1kOutput: 0.03,
+    id: 'anthropic:claude-opus-5',
+    name: 'Claude Opus 5',
+    provider: 'anthropic',
+    description: 'Most capable Claude for complex reasoning and agentic work',
+    contextWindow: 1_000_000,
+    maxOutput: 128_000,
+    costPer1kInput: 0.005,
+    costPer1kOutput: 0.025,
     capabilities: ['text', 'vision', 'function-calling'],
   },
   {
-    id: 'openai:gpt-4',
-    name: 'GPT-4',
-    provider: 'openai',
-    description: 'Advanced reasoning and complex task handling',
-    contextWindow: 8192,
-    maxOutput: 4096,
-    costPer1kInput: 0.03,
-    costPer1kOutput: 0.06,
-    capabilities: ['text', 'function-calling'],
-  },
-  {
-    id: 'openai:gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
-    provider: 'openai',
-    description: 'Fast and cost-effective for most tasks',
-    contextWindow: 16384,
-    maxOutput: 4096,
-    costPer1kInput: 0.0005,
-    costPer1kOutput: 0.0015,
-    capabilities: ['text', 'function-calling'],
-  },
-  // Anthropic Models
-  {
-    id: 'anthropic:claude-3-opus-20240229',
-    name: 'Claude 3 Opus',
+    id: 'anthropic:claude-sonnet-5',
+    name: 'Claude Sonnet 5',
     provider: 'anthropic',
-    description: 'Most capable Claude model for complex tasks',
-    contextWindow: 200000,
-    maxOutput: 4096,
-    costPer1kInput: 0.015,
-    costPer1kOutput: 0.075,
-    capabilities: ['text', 'vision'],
+    description: 'Fast, capable Claude at a lower cost',
+    contextWindow: 1_000_000,
+    maxOutput: 128_000,
+    costPer1kInput: 0.002,
+    costPer1kOutput: 0.01,
+    capabilities: ['text', 'vision', 'function-calling'],
   },
   {
-    id: 'anthropic:claude-3-sonnet-20240229',
-    name: 'Claude 3 Sonnet',
+    id: 'anthropic:claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
     provider: 'anthropic',
-    description: 'Balanced performance and cost',
-    contextWindow: 200000,
-    maxOutput: 4096,
-    costPer1kInput: 0.003,
-    costPer1kOutput: 0.015,
-    capabilities: ['text', 'vision'],
+    description: 'Fastest, lowest-cost Claude',
+    contextWindow: 200_000,
+    costPer1kInput: 0.001,
+    costPer1kOutput: 0.005,
+    capabilities: ['text', 'vision', 'function-calling'],
   },
-  {
-    id: 'anthropic:claude-3-haiku-20240307',
-    name: 'Claude 3 Haiku',
-    provider: 'anthropic',
-    description: 'Fast and efficient for simple tasks',
-    contextWindow: 200000,
-    maxOutput: 4096,
-    costPer1kInput: 0.00025,
-    costPer1kOutput: 0.00125,
-    capabilities: ['text', 'vision'],
-  },
-  // Google Models
-  {
-    id: 'google:gemini-pro',
-    name: 'Gemini Pro',
-    provider: 'google',
-    description: "Google's advanced multimodal model",
-    contextWindow: 32768,
-    maxOutput: 8192,
-    costPer1kInput: 0.00025,
-    costPer1kOutput: 0.0005,
-    capabilities: ['text', 'vision'],
-  },
-  // Mistral Models
-  {
-    id: 'mistral:open-mistral-7b',
-    name: 'Mistral 7B',
-    provider: 'mistral',
-    description: 'Efficient open-weight model',
-    contextWindow: 8192,
-    maxOutput: 4096,
-    capabilities: ['text'],
-  },
+  // OpenAI
+  { id: 'openai:gpt-5.5', name: 'GPT-5.5', provider: 'openai', description: "OpenAI's flagship model", capabilities: ['text', 'vision', 'function-calling'] },
+  { id: 'openai:gpt-5.4-mini', name: 'GPT-5.4 mini', provider: 'openai', description: 'Smaller, faster GPT-5.4', capabilities: ['text', 'vision', 'function-calling'] },
+  // Google
+  { id: 'google:gemini-pro-latest', name: 'Gemini Pro (latest)', provider: 'google', description: "Google's current Gemini Pro", capabilities: ['text', 'vision', 'function-calling'] },
+  { id: 'google:gemini-flash-latest', name: 'Gemini Flash (latest)', provider: 'google', description: "Google's current Gemini Flash", capabilities: ['text', 'vision', 'function-calling'] },
+  // Groq
+  { id: 'groq:llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'groq', description: 'Open-weight Llama on Groq', capabilities: ['text', 'function-calling'] },
+  { id: 'groq:openai/gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'groq', description: "OpenAI's open-weight model on Groq", capabilities: ['text', 'function-calling'] },
+  // Mistral
+  { id: 'mistral:mistral-large-latest', name: 'Mistral Large (latest)', provider: 'mistral', description: "Mistral's current large model", capabilities: ['text', 'function-calling'] },
+  { id: 'mistral:mistral-small-latest', name: 'Mistral Small (latest)', provider: 'mistral', description: "Mistral's current small model", capabilities: ['text', 'function-calling'] },
+  // Cohere
+  { id: 'cohere:command-a-03-2025', name: 'Command A', provider: 'cohere', description: "Cohere's flagship model", capabilities: ['text', 'function-calling'] },
 ];
 
 export function getModelById(modelId: string): ModelCatalogEntry | undefined {

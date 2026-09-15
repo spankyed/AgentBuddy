@@ -17,7 +17,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 
 | Package | What it is |
 |---|---|
-| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) are peer dependencies, and so is TypeScript (5.7 or later). Packs that call models through `services.inference` with tools or structured output also add `ai` (7.x) for `tool` and `Output`. |
+| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
 | `@abuddy/testing` | The Playwright fixture for pack E2E tests (`@playwright/test` is a peer). |
@@ -79,7 +79,7 @@ The build pipeline:
 
 1. `abuddy generate` — resolves dependencies and generates EARS type definitions
 2. `abuddy generate-entries` — reads `abuddy.json` and generates all files in `src/__generated__/`
-3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and seed hooks can't use native modules or optional `@abuddy/sdk` peers such as `ai`
+3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and seed hooks can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
 4. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to `dist/runtime/seeds/`
 5. Snapshot — writes `dist/types/snapshot.json` (types, defs, manifest) for downstream packs
 6. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite

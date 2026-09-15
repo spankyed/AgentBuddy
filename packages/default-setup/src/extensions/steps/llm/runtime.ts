@@ -6,12 +6,10 @@ import { createInspectLogger } from '@abuddy/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
 import { services } from '@abuddy/sdk/services';
 import type { ModelId } from '@abuddy/sdk/models';
+import { DEFAULT_MODEL } from './model';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
-
-/** The model a node without one runs */
-const DEFAULT_MODEL: ModelId = 'anthropic:claude-3-haiku-20240307';
 
 interface LLMNodeConfig {
   model?: string;

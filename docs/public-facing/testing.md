@@ -90,7 +90,7 @@ Give only the members the code under test uses. Code that imports a service modu
 
 ## Models
 
-Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. Mock it with `fakeInference` from `@abuddy/sdk/testing`, which runs the AI SDK's real calls on a scripted model (install `ai`):
+Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. Mock it with `fakeInference` from `@abuddy/sdk/testing`, which runs the AI SDK's real calls on a scripted model (`ai` comes with `@abuddy/sdk` as a peer dependency):
 
 ```typescript
 import { fakeInference } from '@abuddy/sdk/testing';

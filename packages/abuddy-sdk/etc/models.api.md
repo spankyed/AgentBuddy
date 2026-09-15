@@ -19,7 +19,7 @@ export type ModelCatalogEntry = {
 }[ProviderName] & {
     name: string;
     description?: string;
-    contextWindow: number;
+    contextWindow?: number;
     maxOutput?: number;
     costPer1kInput?: number;
     costPer1kOutput?: number;
