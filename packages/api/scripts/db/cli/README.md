@@ -36,7 +36,7 @@ All `db:*` scripts are defined in `packages/api/package.json`, and `packages/api
 | `db:seed` | no | yes |
 | `db:clearSettings` | no | yes |
 
-The root scripts run `cd packages/api && npm run <script>`, so script paths are relative to `packages/api` either way. Flags after `--` don't reach the script from the root (the inner `npm run` consumes them); pass a second `--` there (`npm run db:script scripts/db/inspect-relations.ts -- -- --type Settings`), or run from `packages/api`. The examples below run from `packages/api`.
+The root scripts run `npm run <script> -w @app/api --`, so they run in `packages/api`, script paths are relative to it either way, and arguments after a single `--` reach the command from both places (`npm run db:cli -- --no-confirm -e "return 1"`). The examples below run from `packages/api`.
 
 ## db:cli
 
@@ -45,14 +45,15 @@ npm run db:cli                                  # interactive REPL
 npm run db:cli -- -e "return qx('Settings').count()"
 npm run db:cli -- "return qx('Settings').ids()" # positional arguments are joined into one command
 npm run db:cli -- -s scripts/db/inspect-relations.ts
+npm run db:cli -- --no-confirm -s scripts/db/inspect-relations.ts --type Flow # CLI options before -s, the script's after its path
 ```
 
-`db:exec` is `db:cli --exec` and `db:script` is `db:cli --script`: `npm run db:exec "<command>"`, `npm run db:script <path>`.
+`db:exec` is `db:cli --exec` and `db:script` is `db:cli --script`: `npm run db:exec "<command>"`, `npm run db:script <path> -- <script arguments>`.
 
 | Flag | Description |
 | --- | --- |
 | `-e, --exec <command>` | Run one command and exit |
-| `-s, --script <path>` | Run a script and exit: a `.ts`/`.mts`/`.js`/`.mjs` file is imported as a module with the database already open; any other file's contents run as a command |
+| `-s, --script <path> [args...]` | Run a script and exit: a `.ts`/`.mts`/`.js`/`.mjs` file is imported as a module with the database already open, and sees the arguments after its path as `process.argv.slice(2)`; any other file's contents run as a command. Every argument after the path goes to the script, so put the CLI's own options before `-s` |
 | `-o, --output <format>` | `json`, `csv` or `pretty` (default `pretty`). With `-f`, `csv` writes CSV and anything else writes JSON; without `-f`, `json` prints JSON and anything else prints the pretty format |
 | `-f, --output-file <path>` | Write an exec command's result to a file instead of printing it |
 | `--no-confirm` | Don't ask before a command or script that looks destructive (its text contains `.destroy()`, `.drop(`, `.revoke(`, `.unlink(`, `.clear(`, `dropAttr(`, `destroyEntity(` or `removeRelation(`) |
@@ -180,14 +181,15 @@ Prints relation statistics per entity type, or an entity's outgoing and incoming
 npm run db:script scripts/db/inspect-relations.ts                           # stats per entity type
 npm run db:script scripts/db/inspect-relations.ts -- --entity Flow-123 --depth 2
 npm run db:script scripts/db/inspect-relations.ts -- --type Flow            # the first 5 Flows
+npm run db:script scripts/db/inspect-relations.ts -- -e Flow-123 --incoming # only what points at Flow-123
 ```
 
 | Flag | Description |
 | --- | --- |
 | `-e, --entity <id>` | Inspect one entity |
 | `-t, --type <type>` | Inspect the first five entities of a type |
-| `-d, --depth <n>` | How many levels of outgoing relations to follow (default 1) |
-| `--incoming`, `--outgoing` | Accepted, but currently have no effect: both directions are always shown |
+| `-d, --depth <n>` | How many levels of relations to follow in the directions shown (default 1) |
+| `--incoming`, `--outgoing` | Show only incoming or only outgoing relations (default, or both flags: both directions) |
 
 ### scripts/db/cleanup-settings.ts
 
@@ -206,7 +208,7 @@ npm run db:script scripts/db/export-data.ts -- --output ./backup --format json
 npm run db:script scripts/db/export-data.ts -- --entities Settings,Thread --format csv --verbose
 ```
 
-Flags: `-o, --output <dir>` (default `./exports`), `-e, --entities <a,b>` (default every registered type), `-f, --format json|csv`, `-v, --verbose`. Use the long forms: `db:script` parses the same arguments, and it reads `-e` as its own `--exec`.
+Flags: `-o, --output <dir>` (default `./exports`), `-e, --entities <a,b>` (default every registered type), `-f, --format json|csv`, `-v, --verbose`.
 
 ### scripts/db/cleanup-corrupt-data.ts
 
@@ -245,4 +247,3 @@ npx tsx packages/api/scripts/db/cleanup-export-subdoclinks.ts <export-dir>
 - **`App environment unknown`**: set `ABUDDY_ENV` (and `ABUDDY_USER_DATA_DIR`), see [Before you run anything](#before-you-run-anything).
 - **Database won't open**: close the app; check that the data dir has LMDB files under `.data/`.
 - **`Missing script`**: `db:export`, `db:import`, `db:seed` and `db:clearSettings` exist only in `packages/api`.
-- **A flag is ignored when run from the root**: pass a second `--`, or run from `packages/api`.
