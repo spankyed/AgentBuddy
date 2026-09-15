@@ -1121,8 +1121,9 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 
   // ── Flow helpers ───────────────────────────────────────────────
 
+  /** A step type or track field as a helper name: `-` and `_` separate words (`keep_alive`, `keep-alive` → `keepAlive`) */
   function toCamelCase(s: string): string {
-    return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    return s.replace(/[-_]+([A-Za-z0-9])/g, (_, c: string) => c.toUpperCase());
   }
 
   /** A step's helper: its name and code, or a re-export of its custom helpers module */

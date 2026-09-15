@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { depTypesFile, depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
@@ -379,6 +380,26 @@ describe('generated flow helpers', () => {
     expect(files['src/__generated__/flow-helpers.ts']).toContain(
       "export function pour(cup: string, opts?: { [K in keyof DSLPourNode as K extends 'type' | 'cup' ? never : K]: DSLPourNode[K] }): DSLStepNode {",
     );
+  });
+
+  it('names helpers in camelCase, splitting step types and track fields on - and _', () => {
+    write('src/steps/pour-cup/types.ts', "export interface DSLPourCupNode { type: 'pour-cup'; cup: string; [key: string]: unknown }\n");
+    write('src/steps/every-day/build.ts', "export const everyDay = { trigger: { trackField: 'every_day' } };\n");
+    const files = generate({ steps: { register: 'src/steps/register.ts', definitions: [
+      { type: 'pour-cup', path: 'src/steps/pour-cup', dsl: { primaryField: 'cup' } },
+      { type: 'keep_alive', path: 'src/steps/keep-alive', dsl: {} },
+      { type: 'stop-now', path: 'src/steps/stop-now', dsl: { defaultLabel: 'Stop' } },
+      { type: 'every-day', path: 'src/steps/every-day', kind: 'trigger' },
+    ] } });
+    const flowHelpers = files['src/__generated__/flow-helpers.ts'];
+
+    expect(flowHelpers).toContain('export function pourCup(cup: string, opts?:');
+    expect(flowHelpers).toContain("return { type: 'pour-cup', cup, ...opts };");
+    expect(flowHelpers).toContain('export function keepAlive(label?: string): DSLStepNode {');
+    expect(flowHelpers).toContain("export function stopNow(label: string = 'Stop'): DSLStepNode {");
+    expect(flowHelpers).toContain('export function everyDay(every_day: string, exits: DSLStepNode[][], label?: string): Track {');
+    const { diagnostics } = ts.transpileModule(flowHelpers, { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.ESNext } });
+    expect(diagnostics?.map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
   });
 
   it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", () => {
