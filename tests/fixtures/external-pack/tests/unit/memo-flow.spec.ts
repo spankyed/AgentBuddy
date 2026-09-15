@@ -6,7 +6,8 @@ import { repository } from '#generated/repository';
 describe('memo flow', () => {
   it('stores the memo a memo.requested event carries', async () => {
     await seedPack({ keys: ['actions', 'flows'] });
-    const app = await startApp({ systems: ['brain', 'settings'] });
+    // The pack's flows have no root flow of their own (in the app, default-setup's is): the test names it
+    const app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Memo Flow' });
 
     const run = await app.runFlow('Memo Flow', { event: 'memo.requested', data: { text: 'from a flow' } });
 

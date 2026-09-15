@@ -16,6 +16,12 @@ export interface StartAppOptions {
    * bus ids, or `'*'` for all.
    */
   systems: readonly string[] | '*';
+  /**
+   * The flow (by label) that has the root role when the systems start, as a seeded root flow has in the app: the
+   * brain starts running it. A test that seeds flows without a root flow names one, or the brain reports that none
+   * has the role.
+   */
+  rootFlow?: string;
 }
 
 /** A step a flow ran: its trace node (TNode) as it is in the database */
@@ -119,12 +125,31 @@ function stepTrace(spawned: TNodeSpawned, lastSeen: ReadonlyMap<string, Record<s
 }
 const SETTLE_LIMIT = 1000;
 
+/** The id of the flow labelled `label` */
+function flowId(label: string): string {
+  const flows = (untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>);
+  const flow = flows.find((candidate) => candidate.label === label);
+  if (!flow) throw new Error(`No flow "${label}". Flows: ${flows.map((f) => f.label).join(', ') || 'none (seed them first)'}`);
+  return flow.id;
+}
+
+const rootFlowId = () => untypedQx().withRole(ROOT_FLOW_ROLE).first() as string | undefined;
+
+/** Gives a flow the root role, through default-setup's flows repository */
+function grantRootFlow(id: string): void {
+  if (rootFlowId() === id) return;
+  const flowsCommands = (repository as unknown as { flowsCommands?: { grantRootFlowRole(id: string): void } }).flowsCommands;
+  if (!flowsCommands) throw new Error('Making a flow the root flow needs the flows repository (default-setup)');
+  flowsCommands.grantRootFlowRole(id);
+}
+
 /** Starts the named registered systems under the bus. The harness stops it after the test. */
 export async function startApp(options: StartAppOptions): Promise<TestApp> {
   const registered = getRegisteredSystems();
   // In registration order, as the app spawns them (a pack's settings system before the systems that use it)
   const named = options.systems === '*' ? undefined : new Set(options.systems.map((id) => resolveSystemId(id, registered)));
   const systems = named ? new Map([...registered].filter(([id]) => named.has(id))) : registered;
+  if (options.rootFlow !== undefined) grantRootFlow(flowId(options.rootFlow));
 
   const emitted: OutgoingSystemEvents[] = [];
   const taken = new Set<number>();
@@ -240,9 +265,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       if (!brainId || !settingsId || !systems.has(brainId) || !systems.has(settingsId)) {
         throw new Error("runFlow runs flows on the brain: start the app with the brain and settings systems, startApp({ systems: ['brain', 'settings', …] })");
       }
-      const flows = (untypedQx('Flow' as never).pickAll() as Array<Record<string, unknown>>).map((row) => ({ id: String(row.id), label: String(row.label) }));
-      const flow = flows.find((candidate) => candidate.label === label);
-      if (!flow) throw new Error(`No flow "${label}". Flows: ${flows.map((f) => f.label).join(', ') || 'none (seed them first)'}`);
+      const id = flowId(label);
 
       const deadline = Date.now() + timeoutMs;
       let cursor = emitted.length;
@@ -259,16 +282,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         await settle(deadline, timedOut);
       };
 
-      const rootFlowId = untypedQx().withRole(ROOT_FLOW_ROLE).first() as string | undefined;
       // The brain stops when it has no flow to run
       const brainRunning = (app.system(brainId).getSnapshot() as { matches(state: string): boolean }).matches('running');
-      const runningThisFlow = brainRunning && rootFlowId === flow.id;
-      if (!runningThisFlow || event === 'flow.entry') {
-        if (rootFlowId !== flow.id) {
-          const flowsCommands = (repository as unknown as { flowsCommands?: { grantRootFlowRole(id: string): void } }).flowsCommands;
-          if (!flowsCommands) throw new Error('runFlow needs the flows repository (default-setup) to make a flow the root flow');
-          flowsCommands.grantRootFlowRole(flow.id);
-        }
+      if (!(brainRunning && rootFlowId() === id) || event === 'flow.entry') {
+        grantRootFlow(id);
         await sendToBrain({ type: brainRunning ? 'RESTART_BRAIN' : 'START_BRAIN' });
       }
       if (event !== 'flow.entry') {

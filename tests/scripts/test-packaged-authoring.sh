@@ -236,7 +236,7 @@ describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {
     await seedPack({ keys: ['prompts', 'flows'] });
     const inference = mockInference('Buy milk');
-    const app = await startApp({ systems: ['brain', 'settings'] });
+    const app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Notes Summary' });
 
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 

@@ -9,6 +9,7 @@ import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
+import { reportSystemError } from '@abuddy/sdk/utils';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
@@ -65,25 +66,32 @@ export const brainRuntime = 'brain-runtime' as const;
 const logger = createLogger('brain');
 
 /**
- * The flow the brain runs: the root flow, or the first flow (granted the root role) when none has it.
- * Keeps the flows plugin's `rootFlowId` setting in step. Undefined when there are no flows.
+ * The flow the brain runs: the flow with the root role, keeping the flows plugin's `rootFlowId` setting in step.
+ * Undefined when there's nothing to run, and the brain stops: no flows yet, or flows without a root flow (an
+ * error the user sees; the brain never picks one).
  */
-function ensureRootFlow(): EARS.EntityId | undefined {
+function rootFlowToRun(): EARS.EntityId | undefined {
   const rootFlowId = repository.flowsQueries.rootFlow();
-  const flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
-  if (rootFlowId) {
-    if (flowsSettings.rootFlowId !== rootFlowId) {
-      repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], rootFlowId);
-      logger.info('Updated settings to reflect actual root flow', { flowId: rootFlowId });
+  if (!rootFlowId) {
+    const flowCount = repository.flowsQueries.connectedData().flows.length;
+    if (flowCount === 0) {
+      logger.warn('No flow to run; start the brain once a flow exists');
+    } else {
+      reportSystemError({
+        error: new Error(`No flow has the root role (${flowCount} flows exist): mark one \`root: true\` in its flow source, or make one the root flow in Flows`),
+        title: 'Could not start the brain',
+        source: 'brain',
+        operation: 'start',
+      });
     }
-    return rootFlowId;
+    return undefined;
   }
-  const firstFlowId = repository.flowsQueries.connectedData().flows[0]?.id as EARS.EntityId | undefined;
-  if (!firstFlowId) return undefined;
-  repository.flowsCommands.grantRootFlowRole(firstFlowId);
-  repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], firstFlowId);
-  logger.info('Initialized first flow as root flow', { flowId: firstFlowId });
-  return firstFlowId;
+  const flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
+  if (flowsSettings.rootFlowId !== rootFlowId) {
+    repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], rootFlowId);
+    logger.info('Updated settings to reflect actual root flow', { flowId: rootFlowId });
+  }
+  return rootFlowId;
 }
 
 export const brainSystem = setup({
@@ -106,10 +114,9 @@ export const brainSystem = setup({
       // Starts unpaused (a pause from an earlier run doesn't carry over)
       setBrainPausedState(false);
 
-      const currentRootFlowId = ensureRootFlow();
-      // No flow to run (every flow deleted, or none seeded yet): `running` leaves for `stopped` without a brain actor
+      const currentRootFlowId = rootFlowToRun();
+      // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        logger.warn('No flow to run; start the brain once a flow exists');
         enqueue.assign({ brainActor: undefined });
         enqueue(({ system }) => system.get(bus).send(emit(brain, { type: 'BRAIN_KILLED' })));
         return;
@@ -234,10 +241,9 @@ export const brainSystem = setup({
         }
       }));
       
-      const currentRootFlowId = ensureRootFlow();
-      // No flow to run (every flow deleted, or none seeded yet): `running` leaves for `stopped` without a brain actor
+      const currentRootFlowId = rootFlowToRun();
+      // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        logger.warn('No flow to run; start the brain once a flow exists');
         enqueue.assign({ brainActor: undefined });
         enqueue(({ system }) => system.get(bus).send(emit(brain, { type: 'BRAIN_KILLED' })));
         return;

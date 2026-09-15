@@ -123,7 +123,7 @@ import { mockInference, seedPack, startApp } from '@abuddy/testing/harness';
 it('summarizes a note', async () => {
   await seedPack({ keys: ['prompts', 'flows'] });
   mockInference('Buy milk');
-  const app = await startApp({ systems: ['brain', 'settings'] });
+  const app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Notes Summary' });
 
   const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
@@ -136,5 +136,5 @@ it('summarizes a note', async () => {
   - It resolves once every track the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
   - It returns the steps those tracks ran: `label`, `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event).
 - **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it).
-- **A brain with no flow to run** stops; `runFlow` starts it.
+- **The root flow:** the brain starts running the flow with the root role. Seeded flows without one (a pack's flows, whose root flow in the app is default-setup's) need `startApp({ …, rootFlow: label })`; otherwise the brain reports that no flow has the role. With no flows at all, the brain stops, and `runFlow` starts it.
 - **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track.

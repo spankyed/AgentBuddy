@@ -1,7 +1,7 @@
 // Flows on the brain through @abuddy/testing's runFlow: waiting steps, schedule ticks through the
 // scheduler service, the trace of a flow's steps, and what runFlow needs
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockService, startApp, type TestApp } from '@abuddy/testing/harness'
+import { mockService, startApp, takeSystemErrors, type TestApp } from '@abuddy/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '@/__generated__/flow-helpers'
 import { EARS, findWhere } from '@/__generated__/ears'
 import { repository } from '@/__generated__/repository'
@@ -90,33 +90,46 @@ describe('brain start', () => {
     const snapshot = app.system('brain').getSnapshot() as { matches(state: string): boolean; context: { brainActor?: unknown } }
     return { running: snapshot.matches('running'), hasActor: snapshot.context.brainActor !== undefined }
   }
-  const firstFlowIsRoot = () => repository.flowsQueries.rootFlow() === findWhere(EARS.Entity.Flow, 'label', 'First')[0]?.id
+  const importRootFlow = () => {
+    importFlows({ First: [entry([keepAlive('stay')])] })
+    repository.flowsCommands.grantRootFlowRole(findWhere(EARS.Entity.Flow, 'label', 'First')[0].id)
+  }
 
-  it('stops with no flow to run, and starts from START_BRAIN once a flow exists', async () => {
+  it('stops with no flow to run, and starts from START_BRAIN once a root flow exists', async () => {
     expect(brainState()).toEqual({ running: false, hasActor: false })
     await app.connect()
     expect(app.emitted('brain').map((e) => e.type)).toContain('BRAIN_KILLED')
 
-    importFlows({ First: [entry([keepAlive('stay')])] })
+    importRootFlow()
     await app.send('brain', { type: 'START_BRAIN' })
 
     expect(brainState()).toEqual({ running: true, hasActor: true })
-    expect(firstFlowIsRoot()).toBe(true)
   })
 
-  it('runs the first flow when flows exist but none has the root role', async () => {
+  it('reports an error and stays stopped when flows exist but none has the root role, rather than running one', async () => {
     app.stop()
     importFlows({ First: [entry([keepAlive('stay')])] })
-    expect(repository.flowsQueries.rootFlow()).toBeUndefined()
 
     app = await startApp({ systems: ['brain', 'settings'] })
 
-    expect(firstFlowIsRoot()).toBe(true)
+    expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role (1 flows exist)') }) })])
+    expect(repository.flowsQueries.rootFlow()).toBeUndefined()
+    expect(brainState()).toEqual({ running: false, hasActor: false })
+  })
+
+  it('runs the root flow startApp names, for seeded flows without one', async () => {
+    app.stop()
+    importFlows({ First: [entry([keepAlive('stay')])], Second: [entry([keepAlive('stay')])] })
+
+    app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Second' })
+
+    expect(repository.flowsQueries.rootFlow()).toBe(findWhere(EARS.Entity.Flow, 'label', 'Second')[0].id)
     expect(brainState()).toEqual({ running: true, hasActor: true })
+    await expect(startApp({ systems: ['brain', 'settings'], rootFlow: 'Third' })).rejects.toThrow('No flow "Third". Flows: First, Second')
   })
 
   it("doesn't carry a pause into a later start", async () => {
-    importFlows({ First: [entry([keepAlive('stay')])] })
+    importRootFlow()
     await app.connect()
     await app.send('brain', { type: 'START_BRAIN' })
     await app.send('brain', { type: 'PAUSE_BRAIN' })
