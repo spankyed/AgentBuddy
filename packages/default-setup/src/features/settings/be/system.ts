@@ -211,12 +211,11 @@ export const settingsSystem = setup({
       }));
     },
     
-    // The stored keys changed: refresh the plugin, tell threads, and start the birth flow once a required provider has a key
+    // The stored keys changed: refresh the plugin, and start the birth flow once a required provider has a key
     secretsChanged: ({ system }) => {
       sendSecrets(system);
       const threadsActor = system.get(threads);
       if (!threadsActor) return;
-      threadsActor.send({ type: 'API_KEYS_CHANGED' });
       const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
       if (!settingsQueries.getAssistantSettings().birthdate && hasRequiredKey) {
         threadsActor.send({ type: 'BIRTH_FLOW_START' });

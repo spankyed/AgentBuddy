@@ -15,8 +15,6 @@ import type {
 } from '../types';
 import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
 import { repository } from '@/__generated__/repository';
-import { services } from '@abuddy/sdk/services';
-import { REQUIRED_PROVIDERS } from '@/features/settings/constants';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 /**
@@ -530,10 +528,6 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
 }
 
 export const chatQueries = {
-  /** Whether a provider the assistant needs has a selected key */
-  hasRequiredApiKeys: (): boolean =>
-    services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider)),
-
   threadArtifacts: (threadId: EARS.EntityId) => {
     return getThreadArtifacts(threadId);
   },
@@ -612,7 +606,6 @@ export const chatQueries = {
       recentThreads: getRecentThreads(),
       tabs,
       settings: chatSettings,
-      hasRequiredApiKeys: chatQueries.hasRequiredApiKeys(),
     };
   },
 

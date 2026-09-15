@@ -56,7 +56,6 @@ type IncomingThreadsEvents =
 export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
-  | { type: 'API_KEYS_CHANGED' }
   | { type: 'BIRTH_FLOW_START' }
   | { type: 'THREAD_DELETED'; threadId: string }
 
@@ -80,7 +79,6 @@ export type OutgoingThreadsEvents =
   | { type: 'ARTIFACT_UPDATED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
-  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
@@ -485,13 +483,6 @@ export const threadsSystem = setup({
       system.get(bus).send(emit(threads, {
         type: 'AGENT_CONNECTED',
         data: { ...data, commands },
-      }));
-    },
-    sendApiKeyStatus: ({ system }) => {
-      const hasRequiredApiKeys = repository.chatQueries.hasRequiredApiKeys();
-      system.get(bus).send(emit(threads, {
-        type: 'API_KEYS_STATUS',
-        hasRequiredApiKeys
       }));
     },
     sendThreadChatData: ({ system, event }) => {
@@ -985,9 +976,6 @@ export const threadsSystem = setup({
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
-      },
-      API_KEYS_CHANGED: {
-        actions: 'sendApiKeyStatus',
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',

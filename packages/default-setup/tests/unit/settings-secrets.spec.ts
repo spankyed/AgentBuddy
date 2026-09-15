@@ -1,14 +1,13 @@
-// API keys in default-setup: the settings system refreshes its plugin and threads when the host's stored keys change
+// API keys in default-setup: the settings system refreshes its plugin when the host's stored keys change
 // (never with values), CLI paths live in the code plugin, and 0.3.15 moves old settings.
 import { describe, expect, it } from 'vitest';
 import { addTestSecret, startApp } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
-import { services } from '@/__generated__/services';
 import { migration } from '../../src/migrations/0.3.15';
 
 describe('settings and stored API keys', () => {
-  it('sends its plugin the keys without values, and threads the key status, when the stored keys change', async () => {
-    const app = await startApp({ systems: ['settings', 'threads', 'brain'] });
+  it('sends its plugin the keys without values when the stored keys change', async () => {
+    const app = await startApp({ systems: ['settings'] });
     await app.connect();
     expect(app.emitted('settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)).toMatchObject({ secrets: [] });
 
@@ -18,17 +17,6 @@ describe('settings and stored API keys', () => {
     const updated = app.emitted('settings').filter((e) => e.type === 'SECRETS_UPDATED').at(-1)!;
     expect(updated).toMatchObject({ secrets: [{ id: work.id, provider: 'anthropic', label: 'Work', selected: true }], status: { protection: 'os-keystore' } });
     expect(JSON.stringify(updated)).not.toContain('value');
-    expect(app.emitted('threads').filter((e) => e.type === 'API_KEYS_STATUS').at(-1)).toMatchObject({ hasRequiredApiKeys: true });
-  });
-
-  it('reports no required key when the required providers have keys but none selected', async () => {
-    const work = addTestSecret('openai', 'Work');
-    addTestSecret('openai', 'Personal');
-    services.secrets.delete(work.id);
-    addTestSecret('groq', 'Fast');
-    expect(repository.chatQueries.hasRequiredApiKeys()).toBe(false);
-    services.secrets.select(services.secrets.list().find((secret) => secret.label === 'Personal')!.id);
-    expect(repository.chatQueries.hasRequiredApiKeys()).toBe(true);
   });
 
   it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {
