@@ -31,7 +31,7 @@ src/
   extensions/              # Cross-cutting concerns
     artifacts/             # Artifact viewer definitions + Vue components
     blocks/                # Message block definitions (display + input)
-    services/              # Pack-level services (text-stream, filesystem)
+    services/              # Pack-level services (text-stream, filesystem, agent-tools)
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
     Welcome.vue            # Welcome screen app extension
@@ -68,9 +68,9 @@ System IDs re-exported from `__generated__/system-ids.ts`. System specs (identit
 
 Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/extensions/services/` (pack-level services). These are stateless modules that systems and actions can call:
 
-`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `textStream`, `filesystem`
+`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `textStream`, `filesystem`, `agentTools`
 
-Model calls go through the host's `services.inference` (AI SDK 7, `provider:model` ids): the `llm` step calls it with the node's `model`, and the pack has no model code or `ai` dependency of its own.
+Model calls go through the host's `services.inference` (AI SDK 7, `provider:model` ids): the `llm` step calls it with the node's `model`. `agentTools` (`src/extensions/services/agent-tools/`) gives its agents coding tools as `ai` tools: `agentTools.coding({ cwd })` (shell, files, grep, patch, plan, goal, images, and `user_input` given `requestInput`) for `inference.createAgent`, whose `toolApproval: agentTools.codingApproval` stops before `shell`, `write_file` and `patch`; the caller continues with `agentTools.approvalResponse(result, approved)`. Paths resolve inside `cwd`, symlinks followed.
 
 ## EARS (Entity types + Relations)
 

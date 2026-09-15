@@ -54,5 +54,6 @@ describe('Services — augmented types', () => {
     expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
     expectTypeOf<'codex'>().toMatchTypeOf<Keys>();
     expectTypeOf<'textStream'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'agentTools'>().toMatchTypeOf<Keys>();
   });
 });
