@@ -176,7 +176,6 @@ export async function testCli(
 
 /** Convenience: read stored path from settings and resolve. Used by CLI service modules. */
 export async function resolveForService(cli: CliName): Promise<string> {
-  const settings = builtinRepository.settingsQueries.getSettings()
-  const storedPath = settings.general.secrets.cliPaths?.[cli]
+  const storedPath = builtinRepository.settingsQueries.getPluginSettings('code')?.cliPaths?.[cli]
   return resolveCliPath(cli, storedPath)
 }

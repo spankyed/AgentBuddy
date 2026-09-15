@@ -32,6 +32,7 @@ export default {
       showStashes: true,
       showCommits: true,
       showWorktrees: false,
+      cliPaths: {},
     }
   }
 }

@@ -281,9 +281,7 @@
       },
       "repositories": {
         "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
-        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands",
-        "secretsQueries": "src/features/settings/be/secrets/repository.ts#secretsQueries",
-        "secretsCommands": "src/features/settings/be/secrets/repository.ts#secretsCommands"
+        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands"
       }
     }
   ],
