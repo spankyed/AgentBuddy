@@ -5,11 +5,12 @@
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format
 #      with a .ts compiler module, and default-setup's notes format → an llm flow and a service
 #      calling services.inference
-#   3. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
+#   3. abuddy build
+#   4. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
 #      and the llm flow on default-setup's brain, with inference mocked by mockInference
-#   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
-#   4. install that bundle into an isolated test data dir
-#   5. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
+#   5. abuddy release --local --dry-run produces a verified bundle
+#   6. install that bundle into an isolated test data dir
+#   7. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
 # KEEP_WORK=1 keeps the temp dir.
 set -euo pipefail
@@ -199,7 +200,7 @@ node -e '
   if (note?.entity !== "Note" || note.title !== "Demo notes" || note.noteType !== "document" || note.icon !== null || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
 ' || fail "the compiler module and markdown seeds were not compiled"
 
-step "3. Unit tests through the harness, with default-setup's runtime"
+step "4. Unit tests through the harness, with default-setup's runtime"
 cat > tests/unit/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { seedPack } from '@abuddy/testing/harness';
@@ -256,7 +257,7 @@ node -e '
 ' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
 
-step "3. abuddy release --local --dry-run"
+step "5. abuddy release --local --dry-run"
 git init --quiet -b main
 git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
@@ -267,7 +268,7 @@ BUNDLE="$(sed -n 's/^Bundle: //p' "$WORK/release.log")"
 (cd "$(dirname "$BUNDLE")" && shasum -a 256 -c "$(basename "$BUNDLE").sha256")
 [ -z "$(git status --porcelain)" ] || fail "a dry run changed the pack's files"
 
-step "4. Install the bundle into an isolated test data dir"
+step "6. Install the bundle into an isolated test data dir"
 DATA="$WORK/test-data"
 ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$BUNDLE"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/bundle.json' | head -n 1)"
@@ -278,7 +279,7 @@ node -e '
 ' "$INSTALLED"
 [ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed bundle has no runtime"
 
-step "5. abuddy test (the saved app)"
+step "7. abuddy test (the saved app)"
 "$ABUDDY" test
 
 step "No symlinks into the monorepo"

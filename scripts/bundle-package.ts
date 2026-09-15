@@ -93,7 +93,7 @@ const sharedOptions = {
   bundle: true,
   format: 'esm',
   platform: 'node',
-  target: 'node20',
+  target: 'node22',
   metafile: true,
   logLevel: 'warning',
   conditions: ['@abuddy/source', 'module'],
@@ -114,7 +114,7 @@ const result = await build({
   splitting: true,
   format: 'esm',
   platform: 'node',
-  target: 'node20',
+  target: 'node22',
   metafile: true,
   logLevel: 'warning',
   // Inlined workspace packages bundle from source (see their package.json exports)
