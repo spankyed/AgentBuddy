@@ -273,6 +273,8 @@ export const settingsSystem = setup({
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result }));
+        // Seeds can add, change or remove slash command documents
+        system.get(threads)?.send({ type: 'COMMANDS_CHANGED' });
         if (ev.restartBrain) {
           system.get('brain').send({ type: 'RESTART_BRAIN' });
         }
@@ -284,6 +286,7 @@ export const settingsSystem = setup({
 
     onResetComplete: ({ system }) => {
       system.get('brain').send({ type: 'RESTART_BRAIN' });
+      system.get(threads)?.send({ type: 'COMMANDS_CHANGED' });
       system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
     },
 

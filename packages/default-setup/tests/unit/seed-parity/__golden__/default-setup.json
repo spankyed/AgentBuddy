@@ -415,20 +415,21 @@
         "sourceHash": "e8dca476346c2df1",
         "rowSha256": "dc4f31ee6fc2754914c6561d9a7d35e714e37a913cc949f0f5c5b674c5ee108f"
       },
+      "Collection:commands": {
+        "displayOrder": 1000,
+        "name": "commands",
+        "sourceHash": "fee1f09e36116c43"
+      },
       "Collection:internal": {
         "displayOrder": 1000,
         "name": "internal",
-        "sourceHash": "23b155b0e148e9ec"
+        "sourceHash": "cb4fe037084b49c6"
       },
-      "Document:commands": {
+      "Document:Claude Code commands": {
         "content": [
           {
             "type": "field",
             "fields": [
-              {
-                "key": "pr2md",
-                "value": "PR number or GitHub URL (optional)"
-              },
               {
                 "key": "cc-sessions",
                 "value": "Session ID (optional, lists all if omitted)"
@@ -512,7 +513,23 @@
               {
                 "key": "cc-goal",
                 "value": "<condition> | clear | (no args for status)"
-              },
+              }
+            ]
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "Claude Code commands",
+        "shortCode": "DOC-1",
+        "sourceHash": "3fc83fb798ad55f1",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Codex commands": {
+        "content": [
+          {
+            "type": "field",
+            "fields": [
               {
                 "key": "cdx-sessions",
                 "value": "Limit (optional, lists recent sessions)"
@@ -568,6 +585,26 @@
               {
                 "key": "cdx-goal",
                 "value": "set|show|edit|pause|resume|clear <objective>"
+              }
+            ]
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Codex commands",
+        "shortCode": "DOC-2",
+        "sourceHash": "be84d534decc5f7d",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:General commands": {
+        "content": [
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "pr2md",
+                "value": "PR number or GitHub URL (optional)"
               },
               {
                 "key": "instructions",
@@ -576,10 +613,10 @@
             ]
           }
         ],
-        "displayOrder": 1000,
-        "name": "commands",
-        "shortCode": "DOC-1",
-        "sourceHash": "76fe465717331420",
+        "displayOrder": 3000,
+        "name": "General commands",
+        "shortCode": "DOC-3",
+        "sourceHash": "5ae0b6666b9bd288",
         "tags": [
           "default"
         ]
@@ -634,7 +671,10 @@
       }
     },
     "relations": [
-      "Collection:internal --contains--> Document:commands"
+      "Collection:internal --parent_of--> Collection:commands",
+      "Collection:commands --contains--> Document:Claude Code commands",
+      "Collection:commands --contains--> Document:Codex commands",
+      "Collection:commands --contains--> Document:General commands"
     ],
     "media": [],
     "counts": {
@@ -649,7 +689,7 @@
         "skipped": 0
       },
       "library": {
-        "created": 2,
+        "created": 5,
         "updated": 0,
         "skipped": 0
       }

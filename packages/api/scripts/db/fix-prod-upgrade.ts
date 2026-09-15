@@ -30,7 +30,9 @@
  *    Keys are entered again in Settings → Secrets.
  * 2. Moves the CLI path overrides from general.secrets.cliPaths to plugins.code.cliPaths, and removes
  *    general.secrets.
- * 3. Gives default-setup's seeded rows (actions, prompts, library, notes and flows) their seed key and a
+ * 3. Deletes the seeded library document internal/commands: slash commands now come from the documents of an
+ *    internal/commands folder, which the next launch seeds.
+ * 4. Gives default-setup's seeded rows (actions, prompts, library, notes and flows) their seed key and a
  *    record of their seeded values, which the seeders now need to find a row and to tell whether it was edited:
  *    - a row whose record hasn't changed since it was seeded is recorded against the record's values, so a row
  *      that still holds them takes later seed changes, and a row that doesn't (edited) is left alone by them;
@@ -164,7 +166,27 @@ function moveCliPaths(): void {
   write(description, () => tx(SETTINGS_ID).put('data', stored).put('updatedAt', Date.now()));
 }
 
-// ── 3. Seeded rows ──────────────────────────────────────────────────────────
+// ── 3. The old commands document ────────────────────────────────────────────
+
+/**
+ * Slash commands moved from one seeded document, internal/commands, to the documents of an internal/commands folder,
+ * which the next launch seeds. The old document would sit beside that folder with the same name: delete it.
+ */
+function removeOldCommandsDocument(): void {
+  console.log('\n3. Old commands document');
+  const inInternal = new Set(findWhere<{ id: EARS.EntityId }>('Collection' as EARS.Entity, 'name', 'internal')
+    .flatMap((collection) => findRelations({ sourceEntity: collection.id, relationType: 'contains' as EARS.RelKind }).map((r) => r.targetEntity as string)));
+  const old = findWhere<{ id: EARS.EntityId }>('Document' as EARS.Entity, 'name', 'commands').find((document) => inInternal.has(document.id));
+  if (!old) {
+    console.log('  internal/commands: not there');
+    return;
+  }
+  const remove = seedHookRegistry.get('Document')?.remove;
+  if (!remove) throw new Error('The Document seed hook is not registered: is default-setup built?');
+  write('delete the document internal/commands (its commands now come from the internal/commands folder)', () => remove(old.id));
+}
+
+// ── 4. Seeded rows ──────────────────────────────────────────────────────────
 
 /** The seed key the generic seeder gives a record (seeder.ts childSeedKey), under its parent's */
 function childSeedKey(parentKey: string, record: SeedRecord, identity: readonly string[]): string {
@@ -189,7 +211,7 @@ function withRowMedia(value: unknown, id: EARS.EntityId, mediaDir: string): unkn
 
 function stampGenericRows(): void {
   for (const entry of ENTRIES) {
-    console.log(`\n3. Seeded ${entry.key}`);
+    console.log(`\n4. Seeded ${entry.key}`);
     const file = path.join(COMPILED_DIR, `${entry.key}.seed.json`);
     const { records } = readJSON<{ records: SeedRecord[] }>(file);
     const mediaDir = path.join(COMPILED_DIR, 'media', entry.key);
@@ -286,7 +308,7 @@ function hashGraph(flowId: EARS.EntityId, seeded: { flowFields: string[]; nodeFi
 }
 
 function stampFlows(): void {
-  console.log('\n3. Seeded flows');
+  console.log('\n4. Seeded flows');
   const flowsDSL = readJSON<Record<string, unknown>>(path.join(COMPILED_DIR, 'flows.seed.json'));
   const labelMap = (entity: string) => new Map<string, string>(findAll<{ id: string; label: string }>(entity as EARS.Entity).map((row) => [row.label, row.id]));
   const maps = { actions: labelMap('Action'), prompts: labelMap('Prompt'), flows: labelMap('Flow') };
@@ -351,6 +373,7 @@ async function run(): Promise<void> {
   let flushFailed = false;
   try {
     moveCliPaths();
+    removeOldCommandsDocument();
     stampGenericRows();
     stampFlows();
     // The adapter logs a failed flush instead of throwing: flush now and check, so closing has nothing left to write

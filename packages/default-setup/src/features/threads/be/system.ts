@@ -19,7 +19,6 @@ import { runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
 import { reportSystemError } from '@abuddy/sdk/utils';
-import type { FieldContent } from '@/features/library/be/types';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -58,6 +57,8 @@ export type ThreadsInternalEvents =
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'BIRTH_FLOW_START' }
   | { type: 'THREAD_DELETED'; threadId: string }
+  /** The library's commands folder changed (sent by the library system) */
+  | { type: 'COMMANDS_CHANGED' }
 
 export type OutgoingThreadsEvents =
   // Thread management events
@@ -464,25 +465,14 @@ export const threadsSystem = setup({
         payload: {},
       });
     },
-    sendChatConnectedData: async ({ system }) => {
+    sendCommands: ({ system }) => {
+      system.get(bus).send(emit(threads, { type: 'COMMANDS_UPDATED', commands: services.library.commands() }));
+    },
+    sendChatConnectedData: ({ system }) => {
       const data = repository.chatQueries.connectedData();
-
-      let commands: CommandItem[] = [];
-      try {
-        const doc = await services.library.getByPath(['internal'], 'commands');
-        if (doc) {
-          const fieldSection = doc.content.find((s: any): s is FieldContent => s.type === 'field');
-          if (fieldSection) {
-            commands = fieldSection.fields.map((f: any) => ({ name: f.key, placeholder: f.value }));
-          }
-        }
-      } catch {
-        // Gracefully return empty commands if document doesn't exist
-      }
-
       system.get(bus).send(emit(threads, {
         type: 'AGENT_CONNECTED',
-        data: { ...data, commands },
+        data: { ...data, commands: services.library.commands() },
       }));
     },
     sendThreadChatData: ({ system, event }) => {
@@ -979,6 +969,9 @@ export const threadsSystem = setup({
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      COMMANDS_CHANGED: {
+        actions: 'sendCommands',
       },
       THREAD_DELETED: {
         // Internal notification (e.g., refresh chat if active thread deleted)

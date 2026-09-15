@@ -92,7 +92,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.chat` | Chat messages and blocks (`sendBlockMessage`, `sendSystemMessage`, `sendChoiceBlock`, `sendQuestionBlock`, `createThreadAndNotify`, …) |
 | `services.threads` | Thread chat state (`updateChatState`) |
 | `services.artifact` | Artifact creation and updates (`createAndNotify`, `updateAndNotify`, `findOrCreateByType`) |
-| `services.library` | Library documents and folders (`get`, `getByCode`, `getByName`, `getByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`) |
+| `services.library` | Library documents and folders (`get`, `getByCode`, `getByName`, `getByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`), and the chat's slash commands (`commands`; see [Slash commands](#slash-commands)) |
 | `services.prompt` | Prompt templates (`usePrompt`, `getByLabel`, `executeTemplate`) |
 | `services.action` | Look up and run actions (`getById`, `getByLabel`, `getByCategory`, `executeAction`, `getAndExecute`) |
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
@@ -453,10 +453,14 @@ Re-seeding follows the same rules for every entry:
 
 Rows without a stored `sourceHash` (rows users created) stay user-owned. A seeded row without `seededFields` (flows: `seededGraph`) can't be checked for edits, so it's left alone like an edited one.
 
-## Commands as actions
+## Slash commands
 
-Commands are actions with `category: 'commands'` triggered by `/name` in chat. To add one:
+A slash command is a `/name` the chat composer recognizes. The composer lists the commands of every document in the library's `internal/commands` folder: each document has a field section with one `**name**: placeholder` line per command, and a name two documents define keeps the first. default-setup seeds three (`General commands`, `Claude Code commands`, `Codex commands`) from `src/seeds/library/internal/commands/`. The threads system sends the list when a client connects, and again whenever a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted), so users can add, edit or hide commands from the Library.
 
-1. Create an action in `src/seeds/actions/commands/`
-2. Add an `on("user.command", ...)` branch in a flow
-3. Register the command in your documentation or help text
+Sending `/name args` fires a `user.command` event (`$.event.data.payload.command` is the name). To add a command:
+
+1. Write the action that does the work (its `category` only groups it in the Actions UI).
+2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
+3. List it: add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/seeds/library/internal/commands/`).
+
+A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.

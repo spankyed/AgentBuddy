@@ -1,7 +1,7 @@
 // The facade types report of a built-in pack (etc/pack-types.api.md): the declarations `abuddy build`
 // bundled into dist/types/pack-types.d.ts, which packs depending on this one compile against. Normalized
-// so it changes only with the facade: imports first and sorted, declarations in name order, no
-// absolute paths. Without --local, fails when the committed report differs from the built bundle.
+// so it changes only with the facade: imports first and sorted, declarations in name order, literal unions
+// sorted, no absolute paths. Without --local, fails when the committed report differs from the built bundle.
 //
 //   tsx scripts/facade-report.ts packages/default-setup [--local]
 import { spawnSync } from 'node:child_process';
@@ -33,7 +33,27 @@ function sortImportNames(text: string): string {
   return text.replace(/\{([^}]*)\}/, (_, names: string) => `{ ${names.split(',').map((n) => n.trim()).filter(Boolean).sort().join(', ')} }`);
 }
 
-function report(bundle: string): string {
+/**
+ * Literal unions (`"a" | "b"`, `1 | 2`) with their members sorted. TypeScript prints an inferred union in the
+ * order it created the member types, which changes between builds; a union's order doesn't change the type.
+ */
+function sortLiteralUnions(bundle: string): string {
+  const file = ts.createSourceFile(bundleFile, bundle, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const edits: Array<{ start: number; end: number; text: string }> = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isUnionTypeNode(node) && node.types.every((member) => ts.isLiteralTypeNode(member))) {
+      const members = node.types.map((member) => member.getText(file)).sort();
+      edits.push({ start: node.getStart(file), end: node.end, text: members.join(' | ') });
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return edits.reverse().reduce((text, edit) => text.slice(0, edit.start) + edit.text + text.slice(edit.end), bundle);
+}
+
+function report(built: string): string {
+  const bundle = sortLiteralUnions(built);
   const file = ts.createSourceFile(bundleFile, bundle, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const chunks = file.statements.map((statement, index) => {
     const text = bundle.slice(statement.getFullStart(), statement.end).trim();
