@@ -61,6 +61,12 @@ describe('re-seeding edited flows', () => {
     expect(flow('Codex')[0].sourceHash).not.toMatch(/^changed-/);
   });
 
+  it("runs the flows a replaced flow's subflows name, when this seed doesn't replace those flows", () => {
+    expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 })
+    const subflowRefs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef)
+    expect(subflowRefs.sort()).toEqual(['Claude Code', 'Codex', 'Command Listener', 'Onboarding Flow'].map((label) => flow(label)[0].id).sort())
+  });
+
   it('leaves a flow alone when a node was removed from it', () => {
     repository.flowsCommands.deleteNode(nodesOf('Codex').at(-1)!.id);
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 0 });
