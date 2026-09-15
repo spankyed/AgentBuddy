@@ -13,6 +13,8 @@ import type { ReportSystemErrorInput } from '../utils/index.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
+import type { SecretInfo, SecretProvider, SecretsService } from '../services/secrets.ts';
+import { secretRules } from '../services/secrets-rules.ts';
 
 /** The test app's root event bus: what clients (and the test) send the backend, and what it sends them */
 export interface TestRootEvents extends RootEvents {
@@ -45,6 +47,30 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
 export const testRootEvents: TestRootEvents = new TestEventBus();
 
 const systemErrors: ReportSystemErrorInput[] = [];
+
+let testSecrets: SecretInfo[] = [];
+let testSecretCount = 0;
+
+/** Stores a key (no value: unit tests never reach a provider) as Settings → Secrets would; returns it */
+export function addTestSecret(provider: SecretProvider, label: string): SecretInfo {
+  const id = `Secret-test-${++testSecretCount}`;
+  testSecrets = secretRules.add(testSecrets, { id, provider, label, createdAt: Date.now() });
+  return testSecrets.find((secret) => secret.id === id)!;
+}
+
+/** @internal Empties the test host's stored keys */
+export function resetTestSecrets(): void {
+  testSecrets = [];
+}
+
+/** The user's keys in memory, keeping the host's rules */
+const memorySecrets: SecretsService = {
+  status: () => ({ protection: 'os-keystore', backend: 'memory' }),
+  list: () => testSecrets.map((secret) => ({ ...secret })),
+  select: (id) => { testSecrets = secretRules.select(testSecrets, id, Date.now()); },
+  rename: (id, label) => { testSecrets = secretRules.rename(testSecrets, id, label, Date.now()); },
+  delete: (id) => { testSecrets = secretRules.remove(testSecrets, id); },
+};
 
 /** Errors systems and steps reported with `reportSystemError` since the last call; clears them */
 export function takeSystemErrors(): ReportSystemErrorInput[] {
@@ -129,6 +155,7 @@ export function registerTestHostModules(resetData: () => void): void {
       embed: unmockedInference, embedMany: unmockedInference, generateImage: unmockedInference,
       generateSpeech: unmockedInference, transcribe: unmockedInference, rerank: unmockedInference,
     } satisfies Record<keyof InferenceService, unknown>,
+    secrets: memorySecrets,
   };
   for (const [key, mod] of Object.entries(modules)) {
     if (!registered(key)) registerHostModule(key, mod);

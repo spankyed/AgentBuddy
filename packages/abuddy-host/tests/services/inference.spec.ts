@@ -1,30 +1,40 @@
 // The app's services.inference: `provider:model` ids resolve to that provider's AI SDK model, built with
-// the key the user stored for the provider. Local HTTP servers stand in for the providers.
+// the key the user selected for the provider in Settings → Secrets. Local HTTP servers stand in for the providers.
+import * as fs from 'node:fs';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { availableModels, parseModelId, providerCapabilities, providerLabels, type ModelKind } from '@abuddy/sdk/models';
+import { availableModels, parseModelId, providerCapabilities, providerLabels, type ModelKind, type ProviderName } from '@abuddy/sdk/models';
 
-const secrets = new Map<string, string>();
-vi.mock('../../src/settings/index.ts', () => ({
-  settingsRepository: {
-    settingsQueries: { getGeneralSettings: () => ({ secrets: Object.fromEntries([...secrets.keys()].map((provider) => [provider, `secret-${provider}`])) }) },
-    secretsQueries: { getSecret: (id: string) => ({ encryptedValue: secrets.get(id.replace('secret-', '')) }) },
-  },
-}));
+// The app's store, on a temporary file with keys in memory
+vi.mock('../../src/secrets/index.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/secrets/index.ts')>();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'inference-secrets-'));
+  const vault = actual.memoryKeyVault();
+  const secretsStore = actual.createSecretsStore({ filePath: path.join(dir, 'secrets.json'), osVault: () => vault, fileVault: () => vault });
+  return { ...actual, secretsStore };
+});
 
+const { secretsStore } = await import('../../src/secrets/index.ts');
 const { inference, model: resolveModel } = await import('../../src/services/inference.ts');
 const languageModel = (id: string) => resolveModel('language', id as never);
 
-const PROVIDERS = Object.keys(providerLabels);
-/** The variables the provider packages read keys from */
-const API_KEY_VARIABLES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY', 'GROQ_API_KEY', 'MISTRAL_API_KEY', 'COHERE_API_KEY'];
+const PROVIDERS = Object.keys(providerLabels) as ProviderName[];
+
+/** Stores a key for a provider as Settings → Secrets would, replacing the value of one already stored */
+const secrets = {
+  set(provider: string, value: string) {
+    const existing = secretsStore.list().find((secret) => secret.provider === provider);
+    if (existing) secretsStore.replaceValue(existing.id, value);
+    else secretsStore.add(provider as ProviderName, 'Test', value);
+  },
+};
 
 let server: http.Server | undefined;
 beforeEach(() => {
-  secrets.clear();
-  // No test reaches a provider with a real key, whatever the environment holds
-  for (const variable of API_KEY_VARIABLES) vi.stubEnv(variable, '');
+  secretsStore.clearAll();
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -111,15 +121,17 @@ describe("the app's inference service", () => {
     await expect(languageModel('gpt-5' as never)).rejects.toThrow('as provider:model');
   });
 
-  it("names the provider and where to add a key when the user hasn't stored one", async () => {
-    await expect(languageModel('anthropic:claude-sonnet-4-5')).rejects.toThrow('No API key for anthropic: add one in Settings → Secrets, or set ANTHROPIC_API_KEY');
-    await expect(languageModel('google:gemini-pro-latest')).rejects.toThrow('No API key for google: add one in Settings → Secrets, or set GOOGLE_GENERATIVE_AI_API_KEY');
+  it("names the provider and where to add a key when the user hasn't stored one, whatever the environment holds", async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'env-anthropic-key');
+    await expect(languageModel('anthropic:claude-sonnet-4-5')).rejects.toThrow('No Anthropic key: add one in Settings → Secrets');
+    await expect(languageModel('google:gemini-pro-latest')).rejects.toThrow('No Google key: add one in Settings → Secrets');
   });
 
-  it("reads a key from the environment variable the provider's package documents", async () => {
-    vi.stubEnv('GOOGLE_GENERATIVE_AI_API_KEY', 'env-google-key');
-    const model = await languageModel('google:gemini-pro-latest') as { provider: string };
-    expect(model.provider).toBe('google.generative-ai');
+  it('names the keys to choose from when none is selected', async () => {
+    const work = secretsStore.add('openai', 'Work', 'sk-work-1234567890');
+    secretsStore.add('openai', 'Personal', 'sk-personal-0987654321');
+    secretsStore.delete(work.id);
+    await expect(languageModel('openai:gpt-5')).rejects.toThrow('No OpenAI key selected (Personal): choose one in Settings → Secrets');
   });
 
   it('calls Anthropic with the key stored for it', async () => {
@@ -137,15 +149,19 @@ describe("the app's inference service", () => {
     expect(requests.map((headers) => headers['x-api-key'])).toEqual(['stored-anthropic-key']);
   });
 
-  it('calls OpenAI with the environment key when none is stored', async () => {
+  it("calls OpenAI with the selected key, switching on the next call when another is selected", async () => {
     const { baseURL, requests } = await provider(openaiReply('Hello from OpenAI'));
     vi.stubEnv('OPENAI_BASE_URL', baseURL);
     vi.stubEnv('OPENAI_API_KEY', 'env-openai-key');
+    secretsStore.add('openai', 'Work', 'sk-work-1234567890');
+    const personal = secretsStore.add('openai', 'Personal', 'sk-personal-0987654321');
 
     const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' });
+    secretsStore.select(personal.id);
+    await inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' });
 
     expect(result.text).toBe('Hello from OpenAI');
-    expect(requests.map((headers) => headers.authorization)).toEqual(['Bearer env-openai-key']);
+    expect(requests.map((headers) => headers.authorization)).toEqual(['Bearer sk-work-1234567890', 'Bearer sk-personal-0987654321']);
   });
 
   it('embeds through OpenAI with the key stored for it', async () => {

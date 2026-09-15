@@ -18,7 +18,7 @@ import { packSettingsRegistry } from '@abuddy/sdk/framework';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
 /** Services the host supplies itself; a pack service with one of these names would replace it */
-const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference'] as const satisfies readonly (keyof HostServices)[];
+const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets'] as const satisfies readonly (keyof HostServices)[];
 // Fails to compile when HostServices gains a service this list doesn't name
 const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
 void _allHostServicesNamed;

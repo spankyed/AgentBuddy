@@ -1,5 +1,6 @@
 import { getHostModule } from '../runtime/host.ts';
 import type { LogEvent } from '../logger/index.ts';
+import type { SecretInfo, SecretProvider, SecretsStatus } from '../services/secrets.ts';
 
 /** An event for a backend system, as the bus receives it */
 export type IncomingSystemEvents = { type: string; systemId: string; [key: string]: unknown };
@@ -7,10 +8,30 @@ export type IncomingSystemEvents = { type: string; systemId: string; [key: strin
 /** An event for a frontend plugin, as the bus sends it */
 export type OutgoingSystemEvents = { type: string; pluginId: string; [key: string]: unknown };
 
+/** The user's stored keys (without values) and how they're protected */
+export interface SecretsSnapshot {
+  secrets: SecretInfo[];
+  status: SecretsStatus;
+}
+
 /** The tRPC procedures a pack's frontend calls */
 export interface RpcClient {
   bus: {
     send: { mutate(event: IncomingSystemEvents): Promise<void> };
+  };
+  /**
+   * The user's API keys. Values go in through `add` and `replaceValue` only, off the event bus, so they reach no
+   * log, event or listener; no procedure returns one.
+   */
+  secrets: {
+    list: { query(): Promise<SecretsSnapshot> };
+    add: { mutate(input: { provider: SecretProvider; label: string; value: string }): Promise<SecretsSnapshot> };
+    replaceValue: { mutate(input: { id: string; value: string }): Promise<SecretsSnapshot> };
+    select: { mutate(input: { id: string }): Promise<SecretsSnapshot> };
+    rename: { mutate(input: { id: string; label: string }): Promise<SecretsSnapshot> };
+    delete: { mutate(input: { id: string }): Promise<SecretsSnapshot> };
+    /** Where there's no OS credential store: store keys with a data key kept in a file, as the user chose */
+    allowUnprotected: { mutate(): Promise<SecretsSnapshot> };
   };
 }
 

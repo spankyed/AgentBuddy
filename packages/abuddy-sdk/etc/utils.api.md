@@ -109,6 +109,9 @@ export const getLmdbPath: () => string;
 export const getMediaPath: () => string;
 
 // @internal
+export const getSecretsFilePath: () => string;
+
+// @internal
 export const getSecretsLmdbPath: () => string;
 
 // @public (undocumented)

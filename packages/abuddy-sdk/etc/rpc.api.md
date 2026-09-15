@@ -48,6 +48,51 @@ export interface RpcClient {
             mutate(event: IncomingSystemEvents): Promise<void>;
         };
     };
+    secrets: {
+        list: {
+            query(): Promise<SecretsSnapshot>;
+        };
+        add: {
+            mutate(input: {
+                provider: SecretProvider;
+                label: string;
+                value: string;
+            }): Promise<SecretsSnapshot>;
+        };
+        replaceValue: {
+            mutate(input: {
+                id: string;
+                value: string;
+            }): Promise<SecretsSnapshot>;
+        };
+        select: {
+            mutate(input: {
+                id: string;
+            }): Promise<SecretsSnapshot>;
+        };
+        rename: {
+            mutate(input: {
+                id: string;
+                label: string;
+            }): Promise<SecretsSnapshot>;
+        };
+        delete: {
+            mutate(input: {
+                id: string;
+            }): Promise<SecretsSnapshot>;
+        };
+        allowUnprotected: {
+            mutate(): Promise<SecretsSnapshot>;
+        };
+    };
+}
+
+// @public
+export interface SecretsSnapshot {
+    // (undocumented)
+    secrets: SecretInfo[];
+    // (undocumented)
+    status: SecretsStatus;
 }
 
 // @public (undocumented)
