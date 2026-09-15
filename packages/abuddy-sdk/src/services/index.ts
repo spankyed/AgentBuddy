@@ -4,11 +4,13 @@ import type { EARS } from '../types/entities.ts';
 import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.ts';
 import type { Logger } from '../ears/runtime.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
-import { appData, traceStore, type AppDataService, type TraceStore } from './data.ts';
-import { inference, type InferenceService } from './inference-service.ts';
+import { appData, type AppDataService } from './app-data.ts';
+import { traceStore, type TraceStore } from './trace-store.ts';
+import { inference, type InferenceService } from './inference.ts';
 
-export type { AppDataService, BackupDatabase, BackupInfo, TraceStore, TraceEntityMeta, TraceRelation } from './data.ts';
-export { toAiOutput, type InferenceService, type OutputOf, type OutputSpec } from './inference-service.ts';
+export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
+export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
+export { toAiOutput, type InferenceService, type OutputOf, type OutputSpec } from './inference.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
 function lazyHost(name: string) {

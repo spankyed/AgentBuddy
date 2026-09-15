@@ -17,7 +17,7 @@ import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { seedData } from '@abuddy/sdk/utils';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { setLoadedPacks, setBuiltInPacksForRegistry } from '@/packs/pack-api';

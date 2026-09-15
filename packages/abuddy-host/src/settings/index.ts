@@ -1,3 +1,4 @@
+// A typed view of the settings and secrets default-setup registers, as far as the host reads and writes them
 import { repository } from '@abuddy/sdk/ears';
 
 /** The internal settings the host reads and writes (owned by the built-in default-setup pack). */

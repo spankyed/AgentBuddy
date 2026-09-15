@@ -3,7 +3,7 @@ import { createBusMachine, type IncomingSystemEvents, type OutgoingSystemEvents 
 import type { ApplicationOutgoingEvents } from '@/core/shared/system-errors';
 import type { SystemEvents } from '@abuddy/sdk/framework';
 import { rootEvents } from '@/core/router/bus-emitter';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 import { getDesignated, hasDesignation } from '@abuddy/sdk';
 
 export type {

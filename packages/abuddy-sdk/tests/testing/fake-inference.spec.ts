@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isStepCount, Output, tool } from 'ai';
 import { z } from 'zod';
 import { fakeInference, startTestRuntime } from '../../src/testing/index.ts';
-import { inference as hostInference } from '../../src/services/inference-service.ts';
+import { inference as hostInference } from '../../src/services/inference.ts';
 
 describe('fakeInference', () => {
   it('answers generateText with its reply and records the call', async () => {

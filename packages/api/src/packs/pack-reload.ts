@@ -23,7 +23,7 @@ import {
 import { seedPackData } from './pack-seed';
 import { updateLoadedPack } from './pack-api';
 import { seedData } from '@abuddy/sdk/utils';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 import type { PackManifest } from '@abuddy/host/packs';
 
 const esmRequire = Module.createRequire(import.meta.url);

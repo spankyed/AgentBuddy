@@ -143,6 +143,7 @@ Final.
    - Catalog entries carry `id: ModelId` and `provider: ProviderName`, so the `llm` form stores ids the runtime resolves.
    - `@abuddy/sdk/services` imports the types from there.
 6. **The app's implementation** (`api/src/core/inference/inference.ts`, registered as host module `inference`):
+   - *Amended after implementation:* it moved to `@abuddy/host/services/inference.ts`, next to `appData` and `traceStore`, with the settings view in `@abuddy/host/settings` and the provider packages as `@abuddy/host` dependencies. The API registers all three with `registerHostServices()`.
    ```ts
    const PROVIDERS = { anthropic: createAnthropic, openai: createOpenAI, google: createGoogle,
                        groq: createGroq, mistral: createMistral, cohere: createCohere } satisfies Record<ProviderName, …>;

@@ -1,7 +1,7 @@
 // A scripted `services.inference` for unit tests: the AI SDK's real generateText/streamText on its test
 // model, so results, steps, `output` parsing, tool execution and stream parts behave as in the app.
 // `ai` loads on the first call, so @abuddy/sdk/testing loads in packs that don't install it.
-import { toAiOutput, type InferenceService } from '../services/inference-service.ts';
+import { toAiOutput, type InferenceService } from '../services/inference.ts';
 import type { ModelId } from '../services/models.ts';
 
 /** A model call the code under test made */

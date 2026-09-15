@@ -1,5 +1,5 @@
-// The app's `services.inference` (host module "inference"): AI SDK 7 calls on the provider a
-// `provider:model` id names, with the user's key for that provider.
+// services.inference: AI SDK 7 calls on the provider a `provider:model` id names, with the user's key
+// for that provider.
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createCohere } from '@ai-sdk/cohere';
 import { createGoogle } from '@ai-sdk/google';
@@ -8,7 +8,7 @@ import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText, type LanguageModel } from 'ai';
 import { toAiOutput, type InferenceService, type ModelId, type ProviderName } from '@abuddy/sdk/services';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '../settings/index.ts';
 
 const PROVIDERS = {
   anthropic: createAnthropic,

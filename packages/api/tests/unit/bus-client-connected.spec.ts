@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 
-vi.mock('@/core/settings-repository', () => ({
+vi.mock('@abuddy/host/settings', () => ({
   settingsRepository: { settingsQueries: { getInternalSettings: () => ({ hasOnboarded: true }) } },
 }));
 

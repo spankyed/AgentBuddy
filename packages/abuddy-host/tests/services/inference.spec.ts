@@ -6,14 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { availableModels } from '@abuddy/sdk/models';
 
 const secrets = new Map<string, string>();
-vi.mock('@/core/settings-repository', () => ({
+vi.mock('../../src/settings/index.ts', () => ({
   settingsRepository: {
     settingsQueries: { getGeneralSettings: () => ({ secrets: Object.fromEntries([...secrets.keys()].map((provider) => [provider, `secret-${provider}`])) }) },
     secretsQueries: { getSecret: (id: string) => ({ encryptedValue: secrets.get(id.replace('secret-', '')) }) },
   },
 }));
 
-const { inference, languageModel } = await import('@/core/inference/inference');
+const { inference, languageModel } = await import('../../src/services/inference.ts');
 
 const PROVIDERS = ['anthropic', 'openai', 'google', 'groq', 'mistral', 'cohere'] as const;
 
