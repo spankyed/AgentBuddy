@@ -1,8 +1,8 @@
 ```
 # Goal: clean package boundaries — @abuddy/ears, a typed host port, and one owner per concern
 
-Implement docs/issues/goal-package-boundaries.md on a branch cut from AS/inference-service
-(fb06e736a or later): Background, Spike results, Decisions, Phases, Constraints. Read it first.
+Implement docs/issues/goal-package-boundaries.md on a branch cut after
+docs/issues/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
 specified, pick the conventional option, note it in the final summary, and keep going. No
 backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -306,6 +306,8 @@ Final.
 - Mutation: skipping `setPersistence` in composition fails a restart-persistence spec.
 
 ### Phase 3 — The `HostRuntime` port and SDK plumbing
+- Replace the organization goal's interim `event-transport` host module with `HostRuntime.transport` (backend) and `bindFeHost`'s `rpc` (frontend).
+- **The one behaviour change in this goal:** `sendToPlugin` and `services.emitter.sendToPlugin` send `OUTGOING` through the bus actor, so every backend-to-frontend send is dropped until a client connects, as `emit` inside systems already is. E2E covers the code and browser systems' early sends (terminal output, file watchers), and a harness spec shows a send before `connect()` doesn't reach the client.
 - Add `HostRuntime`, `bindHost` and `bindFeHost` (Decision 5).
 - Move event sends, logging and error reports into the SDK over `transport` (Decision 6), with their specs. `getAppVersion()` reads `appVersion`.
 - Convert the remaining SDK readers to the bound runtime: `rootEvents` and `trpc` (`rpc`), `services`, and `navigateToPlugin` (`fe/delegates`). Delete `initRpc()`, the renderer's Vite alias for `@abuddy/sdk/rpc` and the backend `trpc` key.
