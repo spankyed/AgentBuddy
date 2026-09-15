@@ -149,10 +149,11 @@ export function template(params: Record<string, any>) {
 }
 TS
 cat > src/seeds/flows/notes-summary.ts <<'TS'
-import { on, llm } from '#generated/flow-helpers';
+import { entry, keepAlive, on, llm } from '#generated/flow-helpers';
 
 export default {
   "Notes Summary": [
+    entry([keepAlive()]),
     on('notes.summarize', [[
       llm('Summarize Note', { label: 'summarize', model: 'openai:gpt-4o-mini', map: { text: '$.event.data.payload.text' } }),
     ]]),
@@ -230,13 +231,16 @@ describe('digest service', () => {
 TS
 cat > tests/unit/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers';
 
 describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {
     await seedPack({ keys: ['prompts', 'flows'] });
     const inference = mockInference('Buy milk');
-    const app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Notes Summary' });
+    // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
+    importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
+    const app = await startApp({ systems: ['brain', 'settings'] });
 
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 

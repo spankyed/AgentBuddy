@@ -115,15 +115,18 @@ mockInference('unused', { embedding: (value) => [value.length, 0], image: pngByt
 
 ## Flows
 
-`runFlow` runs a flow on the brain. Your pack or a dependency (default-setup) must provide the brain and settings systems:
+Flows run in unit tests as they do in the app. The brain runs the root flow, the one flow marked `root: true`, when the app starts, and every other flow runs as a subflow something spawned: default-setup's `Root Flow` spawns its long-running work modes, each kept alive by `entry([keepAlive()])`. An event reaches every running flow. Your pack or a dependency (default-setup) must provide the brain and settings systems:
 
 ```typescript
-import { mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers';
 
 it('summarizes a note', async () => {
   await seedPack({ keys: ['prompts', 'flows'] });
+  // The app's root flow is default-setup's: host your flow the way it hosts long-running flows
+  importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
   mockInference('Buy milk');
-  const app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Notes Summary' });
+  const app = await startApp({ systems: ['brain', 'settings'] });
 
   const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
@@ -132,9 +135,12 @@ it('summarizes a note', async () => {
 });
 ```
 
-- **`runFlow(label, { event?, data?, timeoutMs? })`** makes the flow the root flow and starts the brain if it isn't running it. It triggers `event` (by default `flow.entry`, which starts the flow again) with `data` as its payload.
-  - It resolves once every track the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
+- **`importFlows(dsl)`** compiles flow DSL and imports it as the flow seeder does. Import before `startApp`: the brain starts the root flow when the app starts.
+- **`runFlow(label, { event?, data?, timeoutMs? })`** sends `event` with `data` as its payload, as a client sends an event to the brain, and waits for the flow labelled `label`, which must be running (the root flow or a subflow).
+  - It resolves once every track of that flow the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
+  - Without `event`, it resolves with the entry tracks the flow ran when it started.
   - It returns the steps those tracks ran: `label`, `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event).
+  - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
 - **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it).
-- **The root flow:** the brain starts running the flow with the root role. Seeded flows without one (a pack's flows, whose root flow in the app is default-setup's) need `startApp({ …, rootFlow: label })`; otherwise the brain reports that no flow has the role. With no flows at all, the brain stops, and `runFlow` starts it.
+- **Without a root flow** the brain doesn't start: it reports that no flow has the root role when flows exist, and stays stopped with no flows at all.
 - **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track.

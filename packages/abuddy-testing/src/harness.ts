@@ -22,7 +22,8 @@ import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { setAppPackId, stopRunningApps } from './app.ts';
-import { compilePack, resolveSeeds, SEED_INDEX_FILE, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { repository, untypedQx } from '@abuddy/sdk/ears';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abuddy/sdk/utils';
 
 export { resetTestData, takeSystemErrors, type SeedRuntime };
@@ -217,4 +218,25 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
     await unregister();
     fs.rmSync(outputDir, { recursive: true, force: true });
   }
+}
+
+interface FlowRepositories {
+  flowsCommands?: { importFromDSL(compiled: ReturnType<typeof compileFlowDSL>): void };
+  actionQueries?: { all(): Array<{ id: string; label: string }> };
+  promptQueries?: { all(): Array<{ id: string; label: string }> };
+}
+
+/**
+ * Compiles flow DSL and imports it as the flow seeder does (default-setup's flows repository): steps name actions and
+ * prompts and flows already in the database, and a flow marked `root: true` is the root flow the brain runs when the app starts.
+ * Import before `startApp`. In the app, other flows run as subflows the root flow spawns:
+ *
+ *   importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Memo Flow')], [keepAlive()])] } });
+ */
+export function importFlows(dsl: FlowDSL): void {
+  const { flowsCommands, actionQueries, promptQueries } = repository as unknown as FlowRepositories;
+  if (!flowsCommands) throw new Error('importFlows needs the flows repository: run the tests with default-setup (a dependency, or the pack)');
+  const byLabel = (rows: Array<{ id: string; label?: string }> = []) => new Map(rows.map((row) => [String(row.label), row.id]));
+  const flows = byLabel(untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>);
+  flowsCommands.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionQueries?.all()), prompts: byLabel(promptQueries?.all()), flows }));
 }

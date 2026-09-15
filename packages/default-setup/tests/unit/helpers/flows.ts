@@ -1,15 +1,8 @@
-// Flows for brain tests: DSL compiled and imported as rows (as the flow seeder imports them), or default-setup's own
+// default-setup's own flows for brain tests, and reading what they ran (flows as DSL: importFlows from the harness)
 import * as path from 'node:path';
-import { compileFlowDSL, type FlowDSL } from '@abuddy/sdk/build';
 import { seedData } from '@abuddy/sdk/utils';
 import type { FlowStepTrace } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
-
-export function importFlows(dsl: FlowDSL): void {
-  const actions = new Map(repository.actionQueries.all().map((a: { label: string; id: string }) => [a.label, a.id]));
-  const prompts = new Map(repository.promptQueries.all().map((p: { label: string; id: string }) => [p.label, p.id]));
-  repository.flowsCommands.importFromDSL(compileFlowDSL(dsl, { actions, prompts }));
-}
 
 /** default-setup's compiled actions, prompts and flows, seeded as the app's boot seed seeds them */
 export function seedDefaultFlows(): void {

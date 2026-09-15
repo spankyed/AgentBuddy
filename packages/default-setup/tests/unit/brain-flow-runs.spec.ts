@@ -1,42 +1,65 @@
-// Flows on the brain through @abuddy/testing's runFlow: waiting steps, schedule ticks through the
-// scheduler service, the trace of a flow's steps, and what runFlow needs
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockService, startApp, takeSystemErrors, type TestApp } from '@abuddy/testing/harness'
+// Flows on the brain through @abuddy/testing, run as the app runs them: the brain starts the root flow (root: true)
+// and the subflows it spawns, runFlow sends an event and waits for one flow's tracks. Also waiting steps, schedule
+// ticks through the scheduler service, the trace of a flow's steps, and how the brain starts.
+import { describe, expect, it, vi } from 'vitest'
+import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@abuddy/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '@/__generated__/flow-helpers'
-import { EARS, findWhere } from '@/__generated__/ears'
 import { repository } from '@/__generated__/repository'
 import type { Services } from '@/__generated__/services'
 import { isBrainPaused } from '@/features/brain/be/utils/brain-pause'
-import { importFlows } from './helpers/flows'
 
 const step = (label: string) => transform('return true', { label })
-
-let app: TestApp
-beforeEach(async () => {
-  app = await startApp({ systems: ['brain', 'settings'] })
-})
+const startBrain = () => startApp({ systems: ['brain', 'settings'] })
 
 describe('runFlow', () => {
-  it('runs a flow entry, finishing a track whose other step waits by design (keep-alive)', async () => {
-    importFlows({ 'Long Running': [entry([step('setup'), step('ready')], [keepAlive('stay')])] })
+  it("returns the root flow's entry tracks, finishing a track whose other step waits by design (keep-alive)", async () => {
+    importFlows({ 'Long Running': { root: true, tracks: [entry([step('setup'), step('ready')], [keepAlive('stay')])] } })
+    const app = await startBrain()
+
     const run = await app.runFlow('Long Running')
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['setup', 'completed'], ['stay', 'active'], ['ready', 'completed']])
   })
 
-  it('runs every step of a track in order, with each step completed', async () => {
-    importFlows({ Chain: [on('go', [[step('first'), step('second'), step('third')]])] })
+  it('runs every step of the track an event triggers, in order', async () => {
+    importFlows({ Chain: { root: true, tracks: [on('go', [[step('first'), step('second'), step('third')]])] } })
+    const app = await startBrain()
+
     const run = await app.runFlow('Chain', { event: 'go' })
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['first', 'completed'], ['second', 'completed'], ['third', 'completed']])
     expect(app.flowTrace('Chain').map((s) => s.label)).toEqual(['first', 'second', 'third'])
   })
 
+  it('runs an event through a subflow the root flow spawned, as the app runs its work modes', async () => {
+    importFlows({
+      'Root Flow': { root: true, tracks: [entry([subflow('Listener')], [keepAlive()])] },
+      Listener: { tracks: [entry([keepAlive('listening')]), on('ping', [[step('pong')]])] },
+    })
+    const app = await startBrain()
+
+    expect((await app.runFlow('Listener')).steps.map((s) => [s.label, s.status])).toEqual([['listening', 'active']])
+    const run = await app.runFlow('Listener', { event: 'ping' })
+
+    expect(run.steps.map((s) => [s.label, s.status])).toEqual([['pong', 'completed']])
+    expect(app.flowTrace('Listener').map((s) => s.label)).toEqual(['listening', 'pong'])
+  })
+
+  it('runs a flow imported earlier as a subflow of a root flow imported after it, as a pack test hosts its flows', async () => {
+    importFlows({ Listener: { tracks: [entry([keepAlive()]), on('ping', [[step('pong')]])] } })
+    importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Listener')], [keepAlive()])] } })
+    const app = await startBrain()
+
+    expect((await app.runFlow('Listener', { event: 'ping' })).steps.map((s) => [s.label, s.status])).toEqual([['pong', 'completed']])
+  })
+
   it("traces a subflow's steps under the flow's label, not the subflow step's", async () => {
     importFlows({
-      Outer: [on('go', [[subflow('Inner', { label: 'run inner' })]])],
+      Outer: { root: true, tracks: [on('go', [[subflow('Inner', { label: 'run inner' })]])] },
       Inner: [entry([step('i1'), step('i2')])],
     })
+    const app = await startBrain()
+
     await app.runFlow('Outer', { event: 'go' })
 
     expect(app.flowTrace('Inner').map((s) => s.label)).toEqual(['i1', 'i2'])
@@ -47,7 +70,8 @@ describe('runFlow', () => {
     // A step with a runtime handler reports completion before its flow starts the next step
     repository.actionCommands.create({ label: 'Fast', actionFn: 'return { fast: true }' })
     repository.actionCommands.create({ label: 'Slow', actionFn: 'await new Promise((resolve) => setTimeout(resolve, 30)); return { slow: true }' })
-    importFlows({ Chain: [on('go', [[action('Fast', { label: 'fast' }), action('Slow', { label: 'slow' }), step('last')]])] })
+    importFlows({ Chain: { root: true, tracks: [on('go', [[action('Fast', { label: 'fast' }), action('Slow', { label: 'slow' }), step('last')]])] } })
+    const app = await startBrain()
 
     const run = await app.runFlow('Chain', { event: 'go' })
 
@@ -56,7 +80,8 @@ describe('runFlow', () => {
 
   it('waits for slow steps beside a step that waits by design', async () => {
     repository.actionCommands.create({ label: 'Slow', actionFn: 'await new Promise((resolve) => setTimeout(resolve, 30)); return { slow: true }' })
-    importFlows({ 'Long Running': [entry([keepAlive('stay')], [action('Slow', { label: 'first' }), action('Slow', { label: 'second' })])] })
+    importFlows({ 'Long Running': { root: true, tracks: [entry([keepAlive('stay')], [action('Slow', { label: 'first' }), action('Slow', { label: 'second' })])] } })
+    const app = await startBrain()
 
     const run = await app.runFlow('Long Running')
 
@@ -64,7 +89,8 @@ describe('runFlow', () => {
   })
 
   it('keeps to its timeout while the systems stay busy', async () => {
-    importFlows({ Chain: [on('go', [[step('first')]])] })
+    importFlows({ Chain: { root: true, tracks: [on('go', [[step('first')]])] } })
+    const app = await startBrain()
     await app.connect()
     const busy = setInterval(() => app.system('brain').send({ type: 'TOGGLE_INSPECT' }), 1)
     const started = Date.now()
@@ -76,67 +102,68 @@ describe('runFlow', () => {
     expect(Date.now() - started).toBeLessThan(500)
   })
 
-  it('fails naming what it needs: the flow, a track for the event, the brain', async () => {
-    importFlows({ Chain: [on('go', [[step('first')]])] })
-    await expect(app.runFlow('Missing')).rejects.toThrow('No flow "Missing". Flows: Chain')
+  it('fails naming what it needs: the flow, a running flow, a track for the event, the brain', async () => {
+    importFlows({
+      Chain: { root: true, tracks: [on('go', [[step('first')]])] },
+      Unhosted: [on('go', [[step('never')]])],
+    })
+    const app = await startBrain()
+
+    await expect(app.runFlow('Missing')).rejects.toThrow('No flow "Missing". Flows: Chain, Unhosted')
+    await expect(app.runFlow('Unhosted', { event: 'go' })).rejects.toThrow('Flow "Unhosted" isn\'t running. Running: Chain')
     await expect(app.runFlow('Chain', { event: 'stop' })).rejects.toThrow('Flow "Chain" has no track for "stop"')
     const withoutBrain = await startApp({ systems: ['settings'] })
-    await expect(withoutBrain.runFlow('Chain', { event: 'go' })).rejects.toThrow("start the app with the brain and settings systems")
+    await expect(withoutBrain.runFlow('Chain', { event: 'go' })).rejects.toThrow('start the app with the brain and settings systems')
   })
 })
 
 describe('brain start', () => {
-  const brainState = () => {
+  const brainState = (app: TestApp) => {
     const snapshot = app.system('brain').getSnapshot() as { matches(state: string): boolean; context: { brainActor?: unknown } }
     return { running: snapshot.matches('running'), hasActor: snapshot.context.brainActor !== undefined }
   }
-  const importRootFlow = () => {
-    importFlows({ First: [entry([keepAlive('stay')])] })
-    repository.flowsCommands.grantRootFlowRole(findWhere(EARS.Entity.Flow, 'label', 'First')[0].id)
-  }
+  /** A root flow's tracks that keep it running, as the app's root flow does */
+  const staysRunning = [entry([keepAlive()])]
+
+  it('runs the root flow when it starts', async () => {
+    importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
+    const app = await startBrain()
+
+    expect(brainState(app)).toEqual({ running: true, hasActor: true })
+    expect((await app.runFlow('Root Flow')).steps.map((s) => s.status)).toEqual(['active'])
+  })
 
   it('stops with no flow to run, and starts from START_BRAIN once a root flow exists', async () => {
-    expect(brainState()).toEqual({ running: false, hasActor: false })
+    const app = await startBrain()
+    expect(brainState(app)).toEqual({ running: false, hasActor: false })
     await app.connect()
     expect(app.emitted('brain').map((e) => e.type)).toContain('BRAIN_KILLED')
 
-    importRootFlow()
+    importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
     await app.send('brain', { type: 'START_BRAIN' })
 
-    expect(brainState()).toEqual({ running: true, hasActor: true })
+    expect(brainState(app)).toEqual({ running: true, hasActor: true })
   })
 
-  it('reports an error and stays stopped when flows exist but none has the root role, rather than running one', async () => {
-    app.stop()
-    importFlows({ First: [entry([keepAlive('stay')])] })
+  it('reports an error and stays stopped when flows exist but none is the root flow, rather than running one', async () => {
+    importFlows({ 'Root Flow': { tracks: staysRunning } })
 
-    app = await startApp({ systems: ['brain', 'settings'] })
+    const app = await startBrain()
 
     expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role (1 flows exist)') }) })])
     expect(repository.flowsQueries.rootFlow()).toBeUndefined()
-    expect(brainState()).toEqual({ running: false, hasActor: false })
-  })
-
-  it('runs the root flow startApp names, for seeded flows without one', async () => {
-    app.stop()
-    importFlows({ First: [entry([keepAlive('stay')])], Second: [entry([keepAlive('stay')])] })
-
-    app = await startApp({ systems: ['brain', 'settings'], rootFlow: 'Second' })
-
-    expect(repository.flowsQueries.rootFlow()).toBe(findWhere(EARS.Entity.Flow, 'label', 'Second')[0].id)
-    expect(brainState()).toEqual({ running: true, hasActor: true })
-    await expect(startApp({ systems: ['brain', 'settings'], rootFlow: 'Third' })).rejects.toThrow('No flow "Third". Flows: First, Second')
+    expect(brainState(app)).toEqual({ running: false, hasActor: false })
   })
 
   it("doesn't carry a pause into a later start", async () => {
-    importRootFlow()
-    await app.connect()
-    await app.send('brain', { type: 'START_BRAIN' })
-    await app.send('brain', { type: 'PAUSE_BRAIN' })
+    importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
+    const paused = await startBrain()
+    await paused.connect()
+    await paused.send('brain', { type: 'PAUSE_BRAIN' })
     expect(isBrainPaused()).toBe(true)
-    app.stop()
+    paused.stop()
 
-    app = await startApp({ systems: ['brain', 'settings'] })
+    await startBrain()
 
     expect(isBrainPaused()).toBe(false)
   })
@@ -153,10 +180,10 @@ describe('schedule triggers', () => {
       unregisterByPrefix: vi.fn(),
       clearAllSchedules: vi.fn(),
     })
-    importFlows({ Nightly: [schedule('0 3 * * *', [[step('cleanup')]])] })
-    repository.flowsCommands.grantRootFlowRole(findWhere(EARS.Entity.Flow, 'label', 'Nightly')[0].id)
+    importFlows({ Nightly: { root: true, tracks: [schedule('0 3 * * *', [[step('cleanup')]])] } })
+    const app = await startBrain()
+    // A tick reaches the brain through the bus, which routes events once a client is connected
     await app.connect()
-    await app.send('brain', { type: 'RESTART_BRAIN' })
     await scheduled
 
     expect([...ticks.keys()]).toEqual([expect.stringMatching(/^TNode-Root:/)])

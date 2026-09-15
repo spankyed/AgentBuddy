@@ -3,7 +3,7 @@ import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 
 import { createBusMachine, type OutgoingSystemEvents } from '@abuddy/host/bus';
 import { getRegisteredSystems } from '@abuddy/host/packs';
 import { testRootEvents } from '@abuddy/sdk/testing';
-import { repository, untypedQx } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/sdk/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
@@ -16,12 +16,6 @@ export interface StartAppOptions {
    * bus ids, or `'*'` for all.
    */
   systems: readonly string[] | '*';
-  /**
-   * The flow (by label) that has the root role when the systems start, as a seeded root flow has in the app: the
-   * brain starts running it. A test that seeds flows without a root flow names one, or the brain reports that none
-   * has the role.
-   */
-  rootFlow?: string;
 }
 
 /** A step a flow ran: its trace node (TNode) as it is in the database */
@@ -38,7 +32,7 @@ export interface FlowStepTrace {
 }
 
 export interface RunFlowOptions {
-  /** The event to trigger; `flow.entry` (the default) starts the flow again */
+  /** The event to send, as a client sends one to the brain; without one, the entry tracks the flow ran when it started */
   event?: string;
   /** The event's payload */
   data?: unknown;
@@ -46,7 +40,7 @@ export interface RunFlowOptions {
 }
 
 export interface FlowRun {
-  /** The trace nodes of the tracks the event triggered */
+  /** The trace nodes of the flow's tracks the event triggered */
   eventTNodeIds: string[];
   /** The steps those tracks ran, in the order they started */
   steps: FlowStepTrace[];
@@ -64,10 +58,11 @@ export interface TestApp {
   /** Resolves once the actors have no queued work left (zero-delay raises and settled promises included) */
   settle(): Promise<void>;
   /**
-   * Runs a flow on the brain (the app's designated `brain` and `settings` systems must be running):
-   * makes it the root flow and starts the brain if it isn't running it, triggers `event`, and resolves
-   * once every track the event triggered has finished: its steps completed or failed, apart from steps
-   * that wait by design (keep-alive) and subflows left only waiting.
+   * Runs an event through a running flow on the brain (the app's designated `brain` and `settings` systems must be
+   * running), as the app does: the brain runs the root flow (`root: true`) and the subflows it spawns, and an event
+   * reaches every running flow. Resolves once every track of the flow labelled `label` that the event triggered
+   * has finished: its steps completed or failed, apart from steps that wait by design (keep-alive) and subflows
+   * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
   /** The steps a flow (the root flow or a subflow, by label) has run so far in this app */
@@ -125,42 +120,26 @@ function stepTrace(spawned: TNodeSpawned, lastSeen: ReadonlyMap<string, Record<s
 }
 const SETTLE_LIMIT = 1000;
 
-/** The id of the flow labelled `label` */
-function flowId(label: string): string {
-  const flows = (untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>);
-  const flow = flows.find((candidate) => candidate.label === label);
-  if (!flow) throw new Error(`No flow "${label}". Flows: ${flows.map((f) => f.label).join(', ') || 'none (seed them first)'}`);
-  return flow.id;
-}
-
-const rootFlowId = () => untypedQx().withRole(ROOT_FLOW_ROLE).first() as string | undefined;
-
-/** Gives a flow the root role, through default-setup's flows repository */
-function grantRootFlow(id: string): void {
-  if (rootFlowId() === id) return;
-  const flowsCommands = (repository as unknown as { flowsCommands?: { grantRootFlowRole(id: string): void } }).flowsCommands;
-  if (!flowsCommands) throw new Error('Making a flow the root flow needs the flows repository (default-setup)');
-  flowsCommands.grantRootFlowRole(id);
-}
-
 /** Starts the named registered systems under the bus. The harness stops it after the test. */
 export async function startApp(options: StartAppOptions): Promise<TestApp> {
   const registered = getRegisteredSystems();
   // In registration order, as the app spawns them (a pack's settings system before the systems that use it)
   const named = options.systems === '*' ? undefined : new Set(options.systems.map((id) => resolveSystemId(id, registered)));
   const systems = named ? new Map([...registered].filter(([id]) => named.has(id))) : registered;
-  if (options.rootFlow !== undefined) grantRootFlow(flowId(options.rootFlow));
 
   const emitted: OutgoingSystemEvents[] = [];
   const taken = new Set<number>();
   const waiters = new Set<() => void>();
+  /** The brain's trace reports (TNODE_SPAWNED, TNODE_UPDATED), from its start: a client needn't be connected to run flows */
+  const reports: Array<TNodeSpawned | TNodeUpdated> = [];
   /** Trace node rows as they were when the brain last reported them */
   const tNodeRows = new Map<string, Record<string, unknown>>();
   /** The label of the flow each reported trace node ran in, kept after the brain clears its trace */
   const flowLabels = new Map<string, string>();
   const rootFlowLabel = () => (untypedQx().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
-  const stopRecording = testRootEvents.onOutgoing((event) => {
-    emitted.push(event);
+  const record = (event: OutgoingSystemEvents) => {
+    if (!isSpawn(event) && !isUpdate(event)) return;
+    reports.push(event);
     const tNodeId = isSpawn(event) ? event.tNode.id : isUpdate(event) ? event.data.tNodeId : undefined;
     if (isSpawn(event)) {
       const flowLabel = event.flowTNodeId === ROOT_FLOW_TNODE ? rootFlowLabel() : flowLabels.get(`flow:${event.flowTNodeId}`);
@@ -179,7 +158,26 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       tNodeRows.set(tNodeId, isUpdate(event) ? { ...row, status: event.data.status } : row);
     }
     for (const wake of waiters) wake();
+  };
+  const stopRecording = testRootEvents.onOutgoing((event) => {
+    emitted.push(event);
+    for (const wake of waiters) wake();
   });
+
+  const finished = (tNodeId: string) => reports.some((e) => isUpdate(e) && e.data.tNodeId === tNodeId && (e.data.status === 'completed' || e.data.status === 'failed'));
+  const brainRunning = () => {
+    const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
+    const brain = brainId === undefined ? undefined : bus.system.get(brainId);
+    return (brain?.getSnapshot() as { matches(state: string): boolean } | undefined)?.matches('running') === true;
+  };
+  /** The running flows' trace nodes and labels: the root flow's, and each subflow's not yet finished */
+  const runningFlows = (): Array<{ tNodeId: string; label: string }> => [
+    ...(brainRunning() && rootFlowLabel() !== undefined ? [{ tNodeId: ROOT_FLOW_TNODE, label: rootFlowLabel()! }] : []),
+    ...reports.filter(isSpawn).filter((e) => e.tNode.tNodeType === 'flow' && !finished(e.tNode.id))
+      .map((e) => ({ tNodeId: e.tNode.id, label: flowLabels.get(`flow:${e.tNode.id}`) ?? '' })),
+  ];
+  const runningFlowTNodes = (label: string) => runningFlows().filter((flow) => flow.label === label).map((flow) => flow.tNodeId);
+  const runningFlowLabels = () => runningFlows().map((flow) => flow.label);
 
   let activity = 0;
   let connected = false;
@@ -194,7 +192,16 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       ];
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     },
-  }), { systemId: 'bus', inspect: () => { activity++; } });
+  }), {
+    systemId: 'bus',
+    inspect: (inspection) => {
+      activity++;
+      // What systems send the bus for clients, connected or not
+      if (inspection.type === '@xstate.event' && inspection.event.type === 'OUTGOING' && inspection.actorRef === (inspection.actorRef as AnyActorRef).system.get('bus')) {
+        record((inspection.event as unknown as { event: OutgoingSystemEvents }).event);
+      }
+    },
+  });
 
   /** Resolves with what `check` finds once an event makes it find something */
   const waitForEmitted = <T>(check: () => T | undefined, timeoutMs: number, describe: () => string) => new Promise<T>((resolve, reject) => {
@@ -259,43 +266,43 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       });
     },
     settle: () => settle(),
-    async runFlow(label, { event = 'flow.entry', data, timeoutMs = 10_000 } = {}) {
+    async runFlow(label, { event, data, timeoutMs = 10_000 } = {}) {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
       const settingsId = hasDesignation('settings') ? getDesignated('settings') : undefined;
       if (!brainId || !settingsId || !systems.has(brainId) || !systems.has(settingsId)) {
         throw new Error("runFlow runs flows on the brain: start the app with the brain and settings systems, startApp({ systems: ['brain', 'settings', …] })");
       }
-      const id = flowId(label);
+      const flows = untypedQx('Flow' as never).pickAll() as Array<{ label?: string }>;
+      if (!flows.some((flow) => flow.label === label)) {
+        throw new Error(`No flow "${label}". Flows: ${flows.map((flow) => flow.label).join(', ') || 'none (seed them first)'}`);
+      }
+      const flowTNodeIds = runningFlowTNodes(label);
+      if (flowTNodeIds.length === 0) {
+        const runningLabels = [...new Set(runningFlowLabels())];
+        throw new Error(`Flow "${label}" isn't running. ${runningLabels.length > 0
+          ? `Running: ${runningLabels.join(', ')}`
+          : 'No flow is running: the brain runs the root flow (root: true) and the subflows it spawns'}`);
+      }
 
+      const eventType = event ?? 'flow.entry';
       const deadline = Date.now() + timeoutMs;
-      let cursor = emitted.length;
-      const since = () => emitted.slice(cursor);
-      const timedOut = () => `Flow "${label}" didn't finish "${event}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event').map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`;
-      /** Sends to the brain and settles, within the run's timeout */
-      const sendToBrain = async (brainEvent: { type: string; [key: string]: unknown }) => {
+      // An event's tracks are the ones it triggers from here; entry tracks ran when the flow started
+      const cursor = event === undefined ? 0 : reports.length;
+      const since = () => reports.slice(cursor);
+      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`;
+      if (event !== undefined) {
         if (!connected) {
           connected = true;
           testRootEvents.emitConnected();
         }
-        cursor = emitted.length;
-        testRootEvents.emitIncoming({ ...brainEvent, systemId: brainId });
+        testRootEvents.emitIncoming({ type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, systemId: brainId });
         await settle(deadline, timedOut);
-      };
-
-      // The brain stops when it has no flow to run
-      const brainRunning = (app.system(brainId).getSnapshot() as { matches(state: string): boolean }).matches('running');
-      if (!(brainRunning && rootFlowId() === id) || event === 'flow.entry') {
-        grantRootFlow(id);
-        await sendToBrain({ type: brainRunning ? 'RESTART_BRAIN' : 'START_BRAIN' });
-      }
-      if (event !== 'flow.entry') {
-        await sendToBrain({ type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, targetFlowId: ROOT_FLOW_TNODE });
       }
 
       const triggered = () => since().filter((e): e is TNodeSpawned =>
-        isSpawn(e) && e.flowTNodeId === ROOT_FLOW_TNODE && e.tNode.tNodeType === 'event' && e.tNode.eventType === event);
+        isSpawn(e) && flowTNodeIds.includes(e.flowTNodeId) && e.tNode.tNodeType === 'event' && e.tNode.eventType === eventType);
       if (triggered().length === 0) {
-        throw new Error(`Flow "${label}" has no track for "${event}"`);
+        throw new Error(`Flow "${label}" has no track for "${eventType}"`);
       }
       const done = (id: string) => since().some((e) => isUpdate(e) && e.data.tNodeId === id && (e.data.status === 'completed' || e.data.status === 'failed'));
       /** Finished, or waiting by design: a waiting step, or a subflow whose own steps are all done or waiting */
@@ -329,7 +336,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       };
     },
     flowTrace(label) {
-      return emitted.filter(isSpawn)
+      return reports.filter(isSpawn)
         .filter((e) => e.tNode.tNodeType !== 'event' && flowLabels.get(e.tNode.id) === label)
         .map((e) => stepTrace(e, tNodeRows));
     },
