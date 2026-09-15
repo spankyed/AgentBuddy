@@ -303,6 +303,7 @@ From `@abuddy/sdk/ears` (untyped):
 | `destroyEntity(id)` | Hard-deletes the entity: its attributes and every relation to or from it |
 | `exists(id)` | Whether any row has the id (soft-deleted rows included) |
 | `countEntities(entityType)` | Rows of the type, soft-deleted rows left out |
+| `isEntityType(name)` | Whether the running app has registered the entity type: the SDK's and every registered pack's |
 
 ### Blueprints
 

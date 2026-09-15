@@ -74,7 +74,7 @@ The pack harness (`@abuddy/testing/harness`, on `@abuddy/sdk/testing`) unit-test
   - Steps run through `stepRegistry` handlers with the `services` proxy (`extensions/steps/action/runtime.ts:20-92`).
   - The `llm` step calls `@abuddy/sdk/inference` `generateText` (`llm/runtime.ts:72-81`). The model client imports `ai` directly (`extensions/services/model-client/index.ts:16`).
   - Schedules start a real `croner` job (`services/scheduler.ts`).
-  - Steps without a runtime handler complete after a fixed `setTimeout(100)` (`node-handlers/index.ts:15-30`). query, transform, create and update have no runtime.
+  - Steps without a runtime handler complete on the next microtask (`completeLater` in `node-handlers/index.ts`). Every default-setup non-trigger step has a handler except `subflow`, which spawns its flow (`spawnsSubflow`).
 - **No test runs a system, the brain or a flow.** Tests fake services per file (`codex-handle-revert.spec.ts:3-66`, `handle-fork-stress.spec.ts:43-84`) and the switch step with a fake actor (`brain-switch-node.spec.ts:20-28`). There is no fake model, and no helper that captures emitted events.
 - **default-setup's 51 test files run on the API's host init.**
   - `tests/setup.ts` imports `@/setup/sdk-host-init`, which opens real LMDB stores and registers 14 host modules (`api/src/setup/sdk-host-init.ts:20-39`), then registers `pack-entry`'s registration.

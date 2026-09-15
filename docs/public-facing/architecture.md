@@ -67,7 +67,7 @@ Packs installed before the bundle layout (`abuddy.json` + `dist/`) still install
 8. Hydrates EARS from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
 10. Runs host migrations (the built-in packs', against the app version), then external pack migrations (each against its own pack version).
-11. Seeds: each registered pack's boot seed (a built-in pack's declarative `boot.seed`, or a `seed` hook), then external packs' compiled seeds, skipped when a pack's seed hash hasn't changed.
+11. Seeds: each built-in pack's declarative `boot.seed`, then external packs' compiled seeds, skipped when a pack's seed hash hasn't changed.
 12. Starts the bus actor, which spawns every registered system.
 
 ### Frontend boot
@@ -106,7 +106,7 @@ export const registration: PackRegistration = {
   systems: PackSystemDef[];        // { id, machine, events, designation? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds, partitionPolicy?
-  boot?: PackBootHooks;            // earlySystem (features[].earlySystem), onInit/onShutdown (boot.hooks), seed, seedManifest (boot.seed)
+  boot?: PackBootHooks;            // earlySystem (features[].earlySystem), onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
   migrations?: PackMigration[];    // { target, description, up }
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];
@@ -159,7 +159,7 @@ pack://<packId>/<filePath>
 
 - Resolves to `<userDataDir>/packs/<packId>/<filePath>`
 - Path traversal protection: the resolved path must be inside the pack's directory
-- When the pack directory has a `.dev` file (written by `abuddy dev`), requests are proxied to the Vite dev server on the port it names
+- While `abuddy dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed bundle still verifies and the marker survives reinstalls
 - Used by the renderer to load `runtime/fe.js`, `runtime/fe.css`, and other pack assets
 
 ## Host dependency sharing

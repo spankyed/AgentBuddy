@@ -85,7 +85,7 @@ In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 9. onInit hooks                    — all packs (built-in + external)
 10. runMigrations()                — built-in packs' migrations, against the app version
 11. runPackMigrations()            — external packs' migrations, each against its pack version
-12. runRegisteredBootSeeds()       — every pack's boot seed (orchestrateDeclarativeSeed for boot.seed)
+12. runRegisteredBootSeeds()       — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
 13. seedPackData()                 — external pack compiled seeds (hash-checked); setLoadedPacks()
 14. start the bus actor            — backendSystem with systemId `bus`
 ```
@@ -102,7 +102,7 @@ export const registration: PackRegistration = {
   systems: PackSystemDef[];  // { id, machine, events, designation? }
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds + partitionPolicy?
-  boot?: PackBootHooks;      // earlySystem (features[].earlySystem), onInit/onShutdown/seed (boot.hooks), seedManifest (boot.seed)
+  boot?: PackBootHooks;      // earlySystem (features[].earlySystem), onInit/onShutdown (boot.hooks), seedManifest (boot.seed)
   migrations?: PackMigration[];
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];

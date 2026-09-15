@@ -116,7 +116,7 @@ Step definitions in `src/extensions/steps/`. Each step directory contains:
 - `fe.ts` — frontend config (icon, colors, node config, lazy-loaded form component)
 - `types.ts` — step-specific types (the `DSL…Node` interface a flow helper is generated from)
 - `form.vue` — optional editor form component
-- `runtime.ts` — optional runtime handler (action, fire, llm, schedule, switch)
+- `runtime.ts` — optional runtime handler (action, create, fire, llm, query, schedule, switch, transform, update)
 
 A new step goes in both barrels: `src/extensions/steps/register.ts` (the full definition) and `src/extensions/steps/build.ts` (the build facet); `register-fe.ts` registers the FE configs. `abuddy.json` `steps.build` points at the latter; it's bundled to `dist/build/steps.build.mjs`, which packs depending on default-setup use to validate their flows. `tests/unit/step-build-barrel.spec.ts` fails when the barrels diverge.
 

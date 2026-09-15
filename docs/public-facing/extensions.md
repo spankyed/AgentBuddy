@@ -161,7 +161,7 @@ export const myStepStepFE: StepDefinition = {
 | `layout?` | ELK layout: `getHeight(node, { exitCount })`, `getPorts(node, { exitCount })`, `hasInput`, `usesExitCount`. Omitted → one input, one output |
 | `resourceKeys?` | Declared form resource keys (`['actions', 'prompts']`); the flows editor doesn't read it |
 
-The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares a `modelValue` prop instead; replace it.
+The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@abuddy/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
 
 #### Node config fields
 
@@ -249,7 +249,7 @@ export const steps: StepDefinition[] = [
 
 A `kind: 'trigger'` definition whose `build.ts` (or `index.ts`) contains `trackField: '<name>'` (other than `event`) gets `<name>(value, exits, label?)`, returning a track.
 
-The helper is named after `type` with `_x` turned into `X` (`keep_alive` → `keepAlive`). Hyphens aren't converted, so a hyphenated type (what `abuddy add step` accepts) produces an invalid helper name: give a step that needs a helper a type without hyphens. The scaffolded `types.ts` names its interface `MyStepDSLNode`, which `primaryField` doesn't match; rename it `DSLMyStepNode`.
+The helper is named after `type` in camelCase, with `-` and `_` separating words (`keep_alive` → `keepAlive`, `my-step` → `myStep`). The scaffolded `types.ts` names its DSL interface `DSL<Type>Node` (`DSLMyStepNode`), which `primaryField` reads.
 
 ---
 
@@ -270,7 +270,7 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 abuddy add artifact chart --icon BarChart3
 ```
 
-Creates `src/extensions/artifacts/viewers/chart-artifact.vue`. When the manifest has `artifacts`, it adds the definition to that array and `'chart': ChartArtifact` to a `componentMap` object in `register-fe.ts` (both files must exist; neither is created).
+Creates `src/extensions/artifacts/viewers/chart-artifact.vue`. When the manifest has `artifacts`, it adds `{ type: 'chart', fe: { icon: BarChart3 } }` to that array (importing the icon from `lucide-vue-next` unless the file already does) and `'chart': ChartArtifact` to a `componentMap` object in `register-fe.ts` (both files must exist; neither is created).
 
 ### Viewer component
 
@@ -291,7 +291,7 @@ defineProps<{ artifact: ArtifactItem<{ points: number[] }> }>();
 </template>
 ```
 
-`ArtifactItem<TContent>` is `{ id, type, title, content: TContent, color?, metadata?: { createdAt, updatedAt?, … } }`. The scaffolded viewer declares a `data` prop; replace it with `artifact`.
+`ArtifactItem<TContent>` is `{ id, type, title, content: TContent, color?, metadata?: { createdAt, updatedAt?, … } }`. The scaffolded viewer declares `artifact` and shows its title and content.
 
 ### Registration
 
@@ -368,7 +368,7 @@ abuddy add block rating                # display block
 abuddy add block color-picker --input  # input block
 ```
 
-Creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. When the manifest has `blocks`, it adds `{ type }` (with `kind: 'input'`) to that array and the component to the `componentMap` in `register-fe.ts` (both files must exist). The scaffolded components declare `data` / `modelValue` props; replace them with the props below.
+Creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. When the manifest has `blocks`, it adds `{ type }` (with `kind: 'input'`) to that array and the component to the `componentMap` in `register-fe.ts` (both files must exist). The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`.
 
 ### Block components
 

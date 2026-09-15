@@ -315,7 +315,7 @@ A step's options:
 
 | Option | Effect |
 |---|---|
-| `label` | The node's label. Defaults per step (the action or prompt name, the event, the flow name, `Create <entity>`, `Switch <index>`, …). Labels are unique within a flow, across its tracks, branches and track labels: a duplicate fails the build, so label repeated steps |
+| `label` | The node's label. Defaults per step (the action or prompt name, the event, the flow name, `Create <entity>`, `Switch <index>`, …). Labels are unique within a flow, across its tracks, branches and track labels: a duplicate fails the build (`Duplicate step label`), so label repeated steps, and give a step an explicit label when its default matches an `on()` track's (`fire('x')` beside `on('x', …)`) |
 | `description` | Stored on the node, shown in the editor |
 | `final` | When this step completes, the flow completes with the step's result (a subflow's result becomes its step's result in the parent) |
 | `next` | Continues at the node with this label in the same flow instead of the next step in the chain; an unknown label fails validation |
@@ -335,17 +335,17 @@ default-setup's helpers:
 | `schedule(cron, exits, label?)` | `schedule` track | — | Runs `exits` on a cron schedule (5 or 6 fields, checked at build) while the flow runs. `label` defaults to `Schedule (<cron>)`. The flow doesn't complete when its tracks drain |
 | `action(action, opts?)` | `action` | `map?: Record<string, string>`, `params?: Record<string, any>` | Runs the action with this label; the result is its return value. The label must be an action this pack's `actions` seed compiles |
 | `llm(prompt, opts?)` | `llm` | `map?`, `model?: ModelId` (`provider:model`, default `anthropic:claude-opus-5`), `temperature?`, `maxTokens?`, `systemPrompt?` | Renders the prompt with this label with the mapped params and calls `services.inference.generateText`. Result `{ text, usage, finishReason, warnings? }`. The label must be a prompt this pack's `prompts` seed compiles |
-| `fire(event, opts?)` | `fire` | `scope?: 'local' \| 'global'` (default `local`), `payload?: unknown` | Sends `event` with `payload` (a literal; mappings aren't resolved): `local` to the flow running the step, `global` to every running flow; `services.brain` listeners get it in either scope. Result `{ eventFired, eventScope, targetFlowId, payload }` |
-| `subflow(flow, opts?)` | `subflow` | `inherit?: boolean` (default `true`), `map?` | Starts the flow with this name and completes when it does. Its `flow.entry` event data holds the mapped fields (`$.event.data.<target>`). `inherit` is stored on the node (`propagateCtx`); the runtime doesn't read it |
+| `fire(event, opts?)` | `fire` | `scope?: 'local' \| 'global'` (default `local`), `payload?: unknown` | Sends `event` with `payload`: its `$.` strings are resolved at any depth of objects and arrays (`'$.lastStep.result'` gives the value itself), other values are literal. `local` sends to the flow running the step, `global` to every running flow; `services.brain` listeners get it in either scope, with `targetFlowId` set for `local`. Result `{ eventFired, eventScope, targetFlowId, payload }` |
+| `subflow(flow, opts?)` | `subflow` | `inherit?: boolean` (default `true`), `map?` | Starts the flow with this name and completes when it does. Its `flow.entry` event data holds the mapped fields (`$.event.data.<target>`). With `inherit` it also holds the parent track's event data (a mapped field wins), and the entry track starts with the parent track's steps, so `$.lastStep` and `$.steps[label=…]` read the parent's until the subflow runs its own |
 | `branch(conditions, else?, label?)` | `switch` | — | `conditions: { if: string; steps: DSLStepNode[] }[]`, `else?: DSLStepNode[]`. Runs the steps of the first condition that matches (see [Switch conditions](#switch-conditions)), else `else`; with no match and no `else` the chain ends. After a branch's steps, the chain continues with the step after the switch |
 | `keepAlive(label?)` | `keep_alive` | — | Never completes: keeps its track, and the flow, running |
 | `kill(label = 'Kill Flow')` | `kill` | — | Stops the flow running the step |
-| `query(prompt, opts?)` | `query` | `as?: string` (stored as `resultKey`) | Compiles, but has no runtime handler: it completes with `{ executed: true }` and does nothing |
-| `create(entity, opts?)` | `create` | — | No runtime handler (as `query`) |
-| `update(target, opts?)` | `update` | `onMissing?: 'fail' \| 'ignore' \| 'create'` | `target` must be the label of a node in the flow. No runtime handler (as `query`) |
-| `transform(script, opts?)` | `transform` | `outputType?: 'json' \| 'text' \| 'custom'` (default `json`) | No runtime handler (as `query`) |
+| `query(prompt, opts?)` | `query` | `as?: string` (default `rows`, not `query`), `model?: ModelId` (default `anthropic:claude-opus-5`) | The model turns `prompt` into a read-only EARS query, instructed by the `DB Query System` prompt with `services.database.buildQueryContext()`, and the step runs it with the database console's read-only executor. Result `{ query, [as]: value }`. Fails when the model can't be called, returns no query, or the query fails or writes |
+| `create(entity, opts?)` | `create` | `map?`, `params?: Record<string, unknown>` (literal fields; mapped fields win), `inferLabel?: boolean` (default `true`) | Creates an entity of type `entity`, which must be registered in the running app (`isEntityType`: the SDK's or any registered pack's). Without a `label` field, the label comes from `title`, `name` or `topic`, else `New <Entity> <n>`. Result the created row |
+| `update(target, opts?)` | `update` | `map?`, `params?`, `onMissing?: 'fail' \| 'ignore' \| 'create'` (default `fail`), `entity?: string` | Writes the fields to the entity with id `target`: a `$.` path resolved when the step runs (`$.lastStep.result.id` after a `create`; `$.lastStep.id` is the trace node's id) or a literal id. A `null` field drops it. Result the row with `updated: true`. With no such entity, `fail` errors naming the id, `ignore` results `{ updated: false }`, and `create` creates an `entity` (required at build) with the fields, result the row with `updated: false, created: true` |
+| `transform(script, opts?)` | `transform` | `outputType?: 'json' \| 'text' \| 'custom'` (default `json`), `map?` | `script` is an async function body run as an action runs (`services.action.executeAction`), with `services` and `params`: `params.input` is the previous step's result, then the mapped fields (a mapped `input` replaces it). Result: `json` the returned value round-tripped through JSON (fails if it isn't serializable), `text` `String(value)`, `custom` the value as returned. A script error fails the step with `Transform step "<label>" script failed: <message>` |
 
-`action`, `llm`, `fire` and `subflow` option names come from their `DSL…Node` interfaces in `packages/default-setup/src/extensions/steps/<step>/types.ts`.
+`action`, `llm`, `fire`, `subflow`, `create` and `update` option names come from their `DSL…Node` interfaces in `packages/default-setup/src/extensions/steps/<step>/types.ts`.
 
 ### Mappings
 
@@ -355,18 +355,18 @@ A step's `map` is `{ target: source }`. Each source is resolved when the step ru
 - Any other string is parsed as JSON when it parses (`'3'` → `3`, `'true'` → `true`), otherwise used as a literal string.
 - A value that resolves to `undefined` is passed as `undefined`.
 
-An `action` step's `params` is the step's `params` with the mapped values over it; `llm` renders its prompt with the mapped values.
+An `action` step's `params`, and a `create` or `update` step's fields, are the step's `params` with the mapped values over them; `llm` renders its prompt with the mapped values.
 
 | Path | Value |
 |---|---|
 | `$.event.type` | The event that started the track (`flow.entry`, `user.command`, `schedule.<node id>`) |
 | `$.event.data` | The event's data |
 | `$.event.data.payload` | A sent event's payload: what `fire`'s `payload` holds, or what a client or `runFlow` sent (`$.event.data.payload.text`) |
-| `$.event.data.<target>` | In a subflow's `flow.entry` track, the subflow step's mapped field |
+| `$.event.data.<target>` | In a subflow's `flow.entry` track, the subflow step's mapped field, or, when it inherits, the parent event's field |
 | `$.lastStep.result` | The result of the step that ran before this one in the track (`$.lastStep.label` its label) |
 | `$.steps[label=<label>].result` | The result of an earlier step in this track, by label (`$.steps[id=<trace node id>]` by trace node) |
 
-`$.steps` holds only the track's own steps, in the order they completed.
+`$.steps` holds only the track's own steps, in the order they completed (a subflow that inherits starts its entry track with the parent track's).
 
 ### Switch conditions
 

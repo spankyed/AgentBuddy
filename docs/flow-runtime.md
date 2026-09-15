@@ -18,13 +18,13 @@ This document describes how AgentBuddy executes flows at runtime. It covers the 
 
 | File | Responsibility |
 | --- | --- |
-| `packages/api/src/systems/brain/system.ts` | Owns the brain system, starts/stops the root flow actor, routes incoming events, forwards trace updates to the frontend. |
-| `packages/api/src/systems/brain/flow-system.ts` | Builds one flow actor for a root flow or spawned subflow, registers listeners/schedules, spawns step and child-flow actors, handles completion. |
-| `packages/api/src/systems/brain/step-system.ts` | Builds one step actor, creates the step TNode, calls the node handler, reports completion/failure to the parent flow actor. |
-| `packages/api/src/systems/brain/node-handlers/*` | Implements executable node behavior such as action, switch, fire, kill, LLM, and keep-alive. |
-| `packages/api/src/systems/brain/flow-completion.ts` | Centralizes flow completion rules. |
-| `packages/api/src/services/scheduler.ts` | Owns active Croner jobs for schedule nodes. |
-| `packages/api/src/services/event-emitter.ts` | Sends internal `TRIGGER_BRAIN_EVENT` events to the brain system. |
+| `packages/default-setup/src/features/brain/be/system.ts` | Owns the brain system, starts/stops the root flow actor, routes incoming events, forwards trace updates to the frontend. |
+| `packages/default-setup/src/features/brain/be/flow-system.ts` | Builds one flow actor for a root flow or spawned subflow, registers listeners/schedules, spawns step and child-flow actors, handles completion. |
+| `packages/default-setup/src/features/brain/be/step-system.ts` | Builds one step actor, creates the step TNode, calls the node handler, reports completion/failure to the parent flow actor. |
+| `packages/default-setup/src/features/brain/be/node-handlers/index.ts` | `executeNode`: runs the step type's registered runtime handler (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
+| `packages/default-setup/src/features/brain/be/flow-completion.ts` | Centralizes flow completion rules. |
+| `packages/default-setup/src/features/brain/be/services/scheduler.ts` | Owns active Croner jobs for schedule nodes. |
+| `packages/abuddy-sdk/src/services/index.ts` (`sendToBrainSystem`) | Sends internal `TRIGGER_BRAIN_EVENT` events to the brain system (`services.emitter.sendToBrainSystem`). |
 
 ## Brain Lifecycle
 

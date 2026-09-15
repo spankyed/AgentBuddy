@@ -40,8 +40,8 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Entity | Command | What it creates |
 |---|---|---|
 | Feature | `abuddy add feature <name> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
-| Step | `abuddy add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,index.ts,fe.ts,types.ts,form.vue}`; adds the step to the `steps.register` barrel (and `<register>-fe.ts` if it exists), its build facet to the `steps.build` barrel, and a `steps.definitions` entry |
-| Artifact | `abuddy add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; updates the `artifacts` register file and its `-fe.ts` when the manifest declares `artifacts` |
+| Step | `abuddy add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,index.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); adds the step to the `steps.register` barrel (and `<register>-fe.ts` if it exists), its build facet to the `steps.build` barrel, and a `steps.definitions` entry |
+| Artifact | `abuddy add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
 | Block | `abuddy add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
 | Action | `abuddy add action <name> [--category <cat>]` | `src/seeds/actions/<category>/<name>.ts` (category defaults to the pack id) |
 | Prompt | `abuddy add prompt <name>` | `src/seeds/prompts/<name>.ts` |
@@ -124,7 +124,7 @@ Stage the built `dist/` into a verified bundle (`bundle.json` lists a sha256 per
 
 A dev server for the dev app (`npm start` in an AgentBuddy checkout). It builds, installs the pack into the development data dir, then:
 
-- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, writing a `.dev` file in the installed pack so the app's `pack://` requests go to it
+- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the development data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified bundle, and is removed when `abuddy dev` exits
 - on `abuddy.json` changes, regenerates `src/__generated__/`
 - on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running dev app to reload the pack's backend
 

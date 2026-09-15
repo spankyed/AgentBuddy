@@ -172,7 +172,6 @@ export const onShutdown = () => stopProcesses(); // when the pack's backend stop
 |---|---|
 | `onInit` | Once per boot, after EARS hydration and before migrations and seeds. Create rows the pack's systems expect to exist here |
 | `onShutdown` | When the pack's backend stops. Release what outlives its actors: processes, timers, listeners |
-| `seed` | External packs: once per boot, in the seed step, before the pack's `boot.seed` entries are seeded. Built-in packs' is not called |
 
 A system that must start before hydration is a feature with `earlySystem: true`, not a boot hook.
 
