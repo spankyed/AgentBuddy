@@ -280,12 +280,19 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         const ids = triggered().map((e) => e.tNode.id);
         return ids.every(trackFinished) ? ids : undefined;
       };
-      const eventTNodeIds = await waitForEmitted(
-        finishedTracks,
-        timeoutMs,
-        () => `Flow "${label}" didn't finish "${event}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event').map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`,
-      );
-      await settle();
+      const deadline = Date.now() + timeoutMs;
+      let eventTNodeIds: string[] | undefined;
+      // A step reports completion before its flow starts the next step, so every started step can look settled
+      // in between: check again once the systems have settled
+      while (!eventTNodeIds) {
+        await waitForEmitted(
+          finishedTracks,
+          Math.max(deadline - Date.now(), 0),
+          () => `Flow "${label}" didn't finish "${event}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event').map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`,
+        );
+        await settle();
+        eventTNodeIds = finishedTracks();
+      }
       const tracks = new Set(eventTNodeIds);
       return {
         eventTNodeIds,

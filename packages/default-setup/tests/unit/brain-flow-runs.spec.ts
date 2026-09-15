@@ -2,7 +2,7 @@
 // scheduler service, the trace of a flow's steps, and what runFlow needs
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockService, startApp, type TestApp } from '@abuddy/testing/harness'
-import { entry, on, keepAlive, schedule, transform } from '@/__generated__/flow-helpers'
+import { action, entry, on, keepAlive, schedule, transform } from '@/__generated__/flow-helpers'
 import { EARS, findWhere } from '@/__generated__/ears'
 import { repository } from '@/__generated__/repository'
 import type { Services } from '@/__generated__/services'
@@ -29,6 +29,26 @@ describe('runFlow', () => {
 
     expect(run.steps.map((s) => [s.label, s.status])).toEqual([['first', 'completed'], ['second', 'completed'], ['third', 'completed']])
     expect(app.flowTrace('Chain').map((s) => s.label)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('waits for steps an action step starts after it completes, however long they take', async () => {
+    // A step with a runtime handler reports completion before its flow starts the next step
+    repository.actionCommands.create({ label: 'Fast', actionFn: 'return { fast: true }' })
+    repository.actionCommands.create({ label: 'Slow', actionFn: 'await new Promise((resolve) => setTimeout(resolve, 30)); return { slow: true }' })
+    importFlows({ Chain: [on('go', [[action('Fast', { label: 'fast' }), action('Slow', { label: 'slow' }), step('last')]])] })
+
+    const run = await app.runFlow('Chain', { event: 'go' })
+
+    expect(run.steps.map((s) => [s.label, s.status])).toEqual([['fast', 'completed'], ['slow', 'completed'], ['last', 'completed']])
+  })
+
+  it('waits for slow steps beside a step that waits by design', async () => {
+    repository.actionCommands.create({ label: 'Slow', actionFn: 'await new Promise((resolve) => setTimeout(resolve, 30)); return { slow: true }' })
+    importFlows({ 'Long Running': [entry([keepAlive('stay')], [action('Slow', { label: 'first' }), action('Slow', { label: 'second' })])] })
+
+    const run = await app.runFlow('Long Running')
+
+    expect(run.steps.map((s) => [s.label, s.status]).sort()).toEqual([['first', 'completed'], ['second', 'completed'], ['stay', 'active']])
   })
 
   it('fails naming what it needs: the flow, a track for the event, the brain', async () => {
