@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { mockService } from '@abuddy/testing/harness';
 import { fakeInference } from '@abuddy/sdk/testing';
 import type { Services } from '@/__generated__/services';
+import { repository } from '@/__generated__/repository';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { handler } from '../../src/extensions/steps/llm/runtime';
 
@@ -39,5 +40,20 @@ describe('llm step', () => {
 
     expect(sent).toEqual([expect.objectContaining({ type: 'ERROR', error: expect.objectContaining({ message: 'LLM node "Summarize" names model "gpt-4-turbo": expected provider:model, e.g. anthropic:claude-3-haiku-20240307' }) })]);
     expect(inference.calls).toEqual([]);
+  });
+});
+
+describe('llm step models from the editor', () => {
+  it('runs each model the flows editor offers with the id the form stores', async () => {
+    const { models } = repository.flowsQueries.connectedData();
+    expect(models.length).toBeGreaterThan(0);
+    for (const entry of models) {
+      const inference = fakeInference('ok');
+      mockService<Services, 'inference'>('inference', inference);
+      // The llm form stores the chosen catalog entry's id as the node's model
+      const sent = await run({ model: entry.id, prompt: 'Summarize the memo' });
+      expect(sent, entry.id).toEqual([expect.objectContaining({ type: 'COMPLETE' })]);
+      expect(inference.calls.map((call) => call.model)).toEqual([entry.id]);
+    }
   });
 });

@@ -11,32 +11,26 @@ export const availableModels: ModelCatalogEntry[];
 export function getModelById(modelId: string): ModelCatalogEntry | undefined;
 
 // @public (undocumented)
-export function getModelsByProvider(provider: string): ModelCatalogEntry[];
+export function getModelsByProvider(provider: ProviderName): ModelCatalogEntry[];
 
 // @public (undocumented)
-export interface ModelCatalogEntry {
-    // (undocumented)
-    capabilities?: string[];
-    // (undocumented)
-    contextWindow: number;
-    // (undocumented)
-    costPer1kInput?: number;
-    // (undocumented)
-    costPer1kOutput?: number;
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    maxOutput?: number;
-    // (undocumented)
+export type ModelCatalogEntry = {
+    [P in ProviderName]: ModelOf<P>;
+}[ProviderName] & {
     name: string;
-    // (undocumented)
-    provider: string;
-}
+    description?: string;
+    contextWindow: number;
+    maxOutput?: number;
+    costPer1kInput?: number;
+    costPer1kOutput?: number;
+    capabilities?: string[];
+};
 
 // @public
 export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export const providerLabels: Record<ProviderName, string>;
 
 // @public
 export type ProviderName = Exclude<SecretProvider, 'custom'>;

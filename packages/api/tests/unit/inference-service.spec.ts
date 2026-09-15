@@ -3,6 +3,7 @@
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { availableModels } from '@abuddy/sdk/models';
 
 const secrets = new Map<string, string>();
 vi.mock('@/core/settings-repository', () => ({
@@ -55,6 +56,15 @@ describe("the app's inference service", () => {
     const model = languageModel(id) as { provider: string; modelId: string };
     expect(model.provider).toBe(providerId);
     expect(model.modelId).toBe(id.slice(id.indexOf(':') + 1));
+  });
+
+  it("resolves every catalog model to its provider's model", () => {
+    for (const provider of PROVIDERS) secrets.set(provider, 'stored-key');
+    for (const entry of availableModels) {
+      const model = languageModel(entry.id) as { provider: string; modelId: string };
+      expect(model.provider.split('.')[0], entry.id).toBe(entry.provider);
+      expect(`${entry.provider}:${model.modelId}`).toBe(entry.id);
+    }
   });
 
   it('rejects an id whose provider it has no model for', () => {

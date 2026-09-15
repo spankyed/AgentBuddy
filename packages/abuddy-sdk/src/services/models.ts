@@ -11,24 +11,39 @@ export type ModelId = `${ProviderName}:${string}`;
  * Model Catalog
  *─────────────────────────────────────────────────────────────────*/
 
-export interface ModelCatalogEntry {
-  id: string;
+/** Display names for the providers */
+export const providerLabels: Record<ProviderName, string> = {
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  google: 'Google',
+  groq: 'Groq',
+  mistral: 'Mistral',
+  cohere: 'Cohere',
+};
+
+/** A catalog entry's id and provider, which its id names */
+type ModelOf<P extends ProviderName> = {
+  /** The id `services.inference` runs, and what an `llm` node stores */
+  id: `${P}:${string}`;
+  provider: P;
+};
+
+export type ModelCatalogEntry = { [P in ProviderName]: ModelOf<P> }[ProviderName] & {
   name: string;
-  provider: string;
   description?: string;
   contextWindow: number;
   maxOutput?: number;
   costPer1kInput?: number;
   costPer1kOutput?: number;
   capabilities?: string[];
-}
+};
 
 export const availableModels: ModelCatalogEntry[] = [
   // OpenAI Models
   {
-    id: 'gpt-4-turbo',
+    id: 'openai:gpt-4-turbo',
     name: 'GPT-4 Turbo',
-    provider: 'OpenAI',
+    provider: 'openai',
     description: 'Most capable GPT-4 model with vision capabilities',
     contextWindow: 128000,
     maxOutput: 4096,
@@ -37,9 +52,9 @@ export const availableModels: ModelCatalogEntry[] = [
     capabilities: ['text', 'vision', 'function-calling'],
   },
   {
-    id: 'gpt-4',
+    id: 'openai:gpt-4',
     name: 'GPT-4',
-    provider: 'OpenAI',
+    provider: 'openai',
     description: 'Advanced reasoning and complex task handling',
     contextWindow: 8192,
     maxOutput: 4096,
@@ -48,9 +63,9 @@ export const availableModels: ModelCatalogEntry[] = [
     capabilities: ['text', 'function-calling'],
   },
   {
-    id: 'gpt-3.5-turbo',
+    id: 'openai:gpt-3.5-turbo',
     name: 'GPT-3.5 Turbo',
-    provider: 'OpenAI',
+    provider: 'openai',
     description: 'Fast and cost-effective for most tasks',
     contextWindow: 16384,
     maxOutput: 4096,
@@ -60,9 +75,9 @@ export const availableModels: ModelCatalogEntry[] = [
   },
   // Anthropic Models
   {
-    id: 'claude-3-opus',
+    id: 'anthropic:claude-3-opus-20240229',
     name: 'Claude 3 Opus',
-    provider: 'Anthropic',
+    provider: 'anthropic',
     description: 'Most capable Claude model for complex tasks',
     contextWindow: 200000,
     maxOutput: 4096,
@@ -71,9 +86,9 @@ export const availableModels: ModelCatalogEntry[] = [
     capabilities: ['text', 'vision'],
   },
   {
-    id: 'claude-3-sonnet',
+    id: 'anthropic:claude-3-sonnet-20240229',
     name: 'Claude 3 Sonnet',
-    provider: 'Anthropic',
+    provider: 'anthropic',
     description: 'Balanced performance and cost',
     contextWindow: 200000,
     maxOutput: 4096,
@@ -82,9 +97,9 @@ export const availableModels: ModelCatalogEntry[] = [
     capabilities: ['text', 'vision'],
   },
   {
-    id: 'claude-3-haiku',
+    id: 'anthropic:claude-3-haiku-20240307',
     name: 'Claude 3 Haiku',
-    provider: 'Anthropic',
+    provider: 'anthropic',
     description: 'Fast and efficient for simple tasks',
     contextWindow: 200000,
     maxOutput: 4096,
@@ -94,9 +109,9 @@ export const availableModels: ModelCatalogEntry[] = [
   },
   // Google Models
   {
-    id: 'gemini-pro',
+    id: 'google:gemini-pro',
     name: 'Gemini Pro',
-    provider: 'Google',
+    provider: 'google',
     description: "Google's advanced multimodal model",
     contextWindow: 32768,
     maxOutput: 8192,
@@ -104,21 +119,12 @@ export const availableModels: ModelCatalogEntry[] = [
     costPer1kOutput: 0.0005,
     capabilities: ['text', 'vision'],
   },
-  // Local/Open Models
+  // Mistral Models
   {
-    id: 'llama-2-70b',
-    name: 'Llama 2 70B',
-    provider: 'Meta',
-    description: 'Open-source model for local deployment',
-    contextWindow: 4096,
-    maxOutput: 2048,
-    capabilities: ['text'],
-  },
-  {
-    id: 'mistral-7b',
+    id: 'mistral:open-mistral-7b',
     name: 'Mistral 7B',
-    provider: 'Mistral AI',
-    description: 'Efficient open-source model',
+    provider: 'mistral',
+    description: 'Efficient open-weight model',
     contextWindow: 8192,
     maxOutput: 4096,
     capabilities: ['text'],
@@ -129,6 +135,6 @@ export function getModelById(modelId: string): ModelCatalogEntry | undefined {
   return availableModels.find(model => model.id === modelId);
 }
 
-export function getModelsByProvider(provider: string): ModelCatalogEntry[] {
+export function getModelsByProvider(provider: ProviderName): ModelCatalogEntry[] {
   return availableModels.filter(model => model.provider === provider);
 }
