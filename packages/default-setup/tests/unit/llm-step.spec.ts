@@ -6,6 +6,7 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { handler } from '../../src/extensions/steps/llm/runtime';
 import { DEFAULT_MODEL } from '../../src/extensions/steps/llm/model';
 import { llmStepFE } from '../../src/extensions/steps/llm/fe';
+import { validate } from '../../src/extensions/steps/llm/build';
 import { availableModels } from '@abuddy/sdk/models';
 
 function run(nodeAttributes: Record<string, unknown>) {
@@ -60,5 +61,19 @@ describe('llm default model', () => {
     const catalogIds = availableModels.map((entry) => entry.id);
     expect(catalogIds).toContain(DEFAULT_MODEL);
     expect(catalogIds).toContain((llmStepFE.fe?.defaults as { model?: string } | undefined)?.model);
+  });
+});
+
+describe('llm step validation', () => {
+  const errors = (step: Record<string, unknown>) => validate({ prompt: 'Summary', ...step }, 'flows.Memo[0]', { prompts: new Set(['Summary']) } as never);
+
+  it("rejects a model that isn't provider:model when the flow builds, instead of when it runs", () => {
+    expect(errors({ model: 'gpt-4' })).toEqual([{ path: 'flows.Memo[0].model', message: '"model" must be a provider:model id (e.g. "anthropic:claude-opus-5"), got "gpt-4"' }]);
+    expect(errors({ model: 42 })).toHaveLength(1);
+  });
+
+  it('accepts a provider:model id, in the catalog or not, and no model', () => {
+    expect(errors({ model: 'openai:gpt-4o-mini' })).toEqual([]);
+    expect(errors({})).toEqual([]);
   });
 });

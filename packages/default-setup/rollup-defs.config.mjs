@@ -18,8 +18,14 @@ const paths = Object.fromEntries(
   ])
 );
 
+/** Packages whose declarations the Monaco defs inline (Monaco loads no node_modules): the AI SDK's, for services.inference */
+const INLINED_PACKAGES = ['ai', '@ai-sdk/provider', '@ai-sdk/provider-utils', '@ai-sdk/gateway', '@standard-schema/spec'];
+const inlined = (id) => INLINED_PACKAGES.some((name) => id === name || id.startsWith(`${name}/`));
+const isBare = (id) => !id.startsWith('.') && !id.startsWith('/') && !id.startsWith('\0');
+const aliased = (id) => Object.keys(paths).some((key) => key.endsWith('/*') ? id.startsWith(key.slice(0, -1)) : id === key);
+
 const dtsPlugin = () => dts({
-  respectExternal: false,
+  respectExternal: true,
   compilerOptions: {
     paths,
     baseUrl: __dirname,
@@ -35,7 +41,11 @@ const cleanupPlugin = () => ({
   },
 });
 
-const shared = { plugins: [dtsPlugin(), cleanupPlugin()], external: builtinModules };
+const shared = {
+  plugins: [dtsPlugin(), cleanupPlugin()],
+  // Other packages stay imports: workspace sources (tsconfig paths) and the inlined packages are bundled
+  external: (id) => builtinModules.includes(id) || id.startsWith('node:') || (isBare(id) && !aliased(id) && !inlined(id)),
+};
 
 function monacoOutput(name) {
   return {

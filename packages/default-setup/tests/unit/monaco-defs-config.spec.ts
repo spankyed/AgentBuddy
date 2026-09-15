@@ -21,3 +21,13 @@ describe('Monaco defs config', () => {
     expect(mapped).toBe(true);
   });
 });
+
+// Monaco loads no node_modules: the AI SDK's declarations (services.inference) are inlined, as rollup-defs.config.mjs lists them
+const actionDefs = path.join(root, 'dist', 'defs', 'monaco', 'action-defs.d.ts');
+describe.skipIf(!fs.existsSync(actionDefs))('built Monaco action defs', () => {
+  it("import no AI SDK package: services.inference's types are in the file", () => {
+    const defs = fs.readFileSync(actionDefs, 'utf-8');
+    expect([...defs.matchAll(/^import .* from '((?:ai|@ai-sdk\/[^']+|@standard-schema\/spec)(?:\/[^']*)?)';$/gm)].map((m) => m[1])).toEqual([]);
+    expect(defs).toMatch(/interface InferenceService \{/);
+  });
+});

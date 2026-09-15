@@ -223,7 +223,7 @@ import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
-import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
+import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@abuddy/sdk/models'
 import type { PromptEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
@@ -249,9 +249,12 @@ const isModelDropdownOpen = ref(false)
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
 // Get selected model and prompt
-const selectedModel = computed(() => {
-  if (!nodeData.value.model || !props.resources?.models) return null
-  return props.resources.models.find((m: ModelCatalogEntry) => m.id === nodeData.value.model) || null
+const selectedModel = computed((): ModelCatalogEntry | null => {
+  const id = nodeData.value.model
+  if (!id) return null
+  const parts = parseModelId(id)
+  // A valid id the catalog doesn't list (set in a flow's source) still shows, by its model name
+  return props.resources?.models?.find((m: ModelCatalogEntry) => m.id === id) ?? (parts ? { id: id as ModelId, name: `${parts.model} (${providerLabels[parts.provider]})` } : null)
 })
 
 const selectedPrompt = computed(() => {
