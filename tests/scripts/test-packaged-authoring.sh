@@ -4,9 +4,9 @@
 #   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format
 #      with a .ts compiler module, and default-setup's notes format → an llm flow and a service
-#      using default-setup's llm service
+#      calling services.inference
 #   3. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
-#      with default-setup's llm service mocked, the llm flow on default-setup's brain with a fake model
+#      and the llm flow on default-setup's brain, with inference mocked by fakeInference
 #   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
 #   4. install that bundle into an isolated test data dir
 #   5. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
@@ -131,7 +131,7 @@ node -e '
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 
-step "2. An llm flow on default-setup's brain, and a service using default-setup's llm service"
+step "2. An llm flow on default-setup's brain, and a service calling services.inference"
 "$ABUDDY" add prompt summarize-note >/dev/null
 cat > src/seeds/prompts/summarize-note.ts <<'TS'
 import type { PromptMeta } from '@abuddy/sdk/build';

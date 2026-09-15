@@ -80,9 +80,9 @@ it('stores a memo a client adds and sends it back', async () => {
 import { mockService } from '@abuddy/testing/harness';
 import { services, type Services } from '#generated/services';
 
-it("uses default-setup's llm service, mocked here", async () => {
-  mockService<Services, 'llm'>('llm', { generateText: async () => ({ text: 'buy milk' }) } as never);
-  expect(await services.digest.digest('Remember to buy milk')).toBe('BUY MILK');
+it('digests a note, with only the inference call it makes mocked', async () => {
+  mockService<Services, 'inference'>('inference', { generateText: async () => ({ output: { summary: 'Buy milk' } }) } as never);
+  expect(await services.digest.digest('Remember to buy milk')).toEqual({ summary: 'Buy milk' });
 });
 ```
 
