@@ -319,6 +319,33 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(pack.ears?.partitionPolicy).toBeUndefined();
   });
 
+  it("never calls a seed function an external pack's boot hooks export; seedPackData seeds it once", async () => {
+    const { registerExternalPacks } = await import('@/packs/pack-loader');
+    const { runRegisteredBootSeeds, unregisterPack } = await import('@abuddy/host/packs');
+    const dir = makeBundledPack('smuggle-pack', registration('smuggle-pack').replace(
+      'onInit() {},',
+      'onInit() {}, seed() { module.exports.bootSeedCalls = (module.exports.bootSeedCalls ?? 0) + 1; },',
+    ));
+    fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'actions.seed.json'), '[]');
+
+    const packs = loadExternalPacks();
+    expect(registerExternalPacks(packs)).toEqual(packs);
+    try {
+      const orchestrate = vi.fn();
+      runRegisteredBootSeeds(orchestrate);
+      const mod = require(path.join(dir, 'runtime', 'index.cjs'));
+      expect(mod.bootSeedCalls).toBeUndefined();
+      expect(orchestrate).not.toHaveBeenCalled();
+
+      const seedFn = vi.fn(() => ({}));
+      seedPackData(packs, seedFn, () => ({}), () => {});
+      expect(seedFn).toHaveBeenCalledTimes(1);
+      expect(seedFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
+    } finally {
+      unregisterPack('smuggle-pack');
+    }
+  });
+
   it('refuses a runtime whose registration id does not match the manifest', () => {
     makeBundledPack('real-id', registration('other-id'));
     expect(loadExternalPacks()).toEqual([]);

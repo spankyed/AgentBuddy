@@ -30,7 +30,6 @@ export interface PackBootHooks {
   earlySystem?: AnyStateMachine;
   onInit?: () => void;
   onShutdown?: () => void;
-  seed?: () => void;
   seedManifest?: PackSeedManifest;
 }
 

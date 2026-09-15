@@ -39,8 +39,6 @@ export interface PackBootHooks {
     // (undocumented)
     onShutdown?: () => void;
     // (undocumented)
-    seed?: () => void;
-    // (undocumented)
     seedManifest?: PackSeedManifest;
 }
 

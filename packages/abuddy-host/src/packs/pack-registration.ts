@@ -262,15 +262,13 @@ export function getPackBootHooks(packId: string): PackBootHooks | null {
   return registrations.get(packId)?.boot ?? null;
 }
 
-export function runRegisteredBootSeeds(
-  orchestrateSeed?: (manifest: PackSeedManifest) => void,
-): void {
+/**
+ * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
+ * loader strips it from external packs, which seed through `seedPackData`)
+ */
+export function runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest) => void): void {
   for (const reg of registrations.values()) {
-    if (reg.boot?.seedManifest && orchestrateSeed) {
-      orchestrateSeed(reg.boot.seedManifest);
-    } else {
-      reg.boot?.seed?.();
-    }
+    if (reg.boot?.seedManifest) orchestrateSeed(reg.boot.seedManifest);
   }
 }
 
@@ -346,7 +344,6 @@ export function getPackContributions(packId: string): PackContributions | null {
   if (reg.boot?.earlySystem) bootHooks.push('earlySystem');
   if (reg.boot?.onInit) bootHooks.push('onInit');
   if (reg.boot?.seedManifest) bootHooks.push('seedManifest');
-  else if (reg.boot?.seed) bootHooks.push('seed');
   if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
 
   return {

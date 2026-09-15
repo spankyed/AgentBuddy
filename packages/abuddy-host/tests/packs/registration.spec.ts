@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPackSettingsDefaults, type PackRegistration } from '@abuddy/sdk/framework';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
-import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, runRegisteredBootSeeds, unregisterPack } from '../../src/packs/pack-registration.ts';
 
 const registered: string[] = [];
 afterEach(() => {
@@ -83,5 +83,24 @@ describe('registerPack feature settings', () => {
     expect(getPackContributions('bad-pack')).toBeNull();
     expect(seedHookRegistry.get('Memo')).toBeUndefined();
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+  });
+});
+
+describe('runRegisteredBootSeeds', () => {
+  it("seeds a pack's declarative seedManifest and ignores any other boot key", () => {
+    const seedManifest = { artifacts: ['actions'], compiledDir: '/compiled' };
+    const smuggled = vi.fn();
+    registerPack({ id: 'built-in-pack', systems: [], boot: { seedManifest } } as unknown as PackRegistration);
+    registerPack({ id: 'hooks-pack', systems: [], boot: { onInit() {}, seed: smuggled } } as unknown as PackRegistration);
+    registered.push('built-in-pack', 'hooks-pack');
+
+    const orchestrate = vi.fn();
+    runRegisteredBootSeeds(orchestrate);
+
+    expect(orchestrate).toHaveBeenCalledTimes(1);
+    expect(orchestrate).toHaveBeenCalledWith(seedManifest);
+    expect(smuggled).not.toHaveBeenCalled();
+    expect(getPackContributions('built-in-pack')?.bootHooks).toEqual(['seedManifest']);
+    expect(getPackContributions('hooks-pack')?.bootHooks).toEqual(['onInit']);
   });
 });
