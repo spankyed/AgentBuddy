@@ -73,8 +73,9 @@ describe("the app's inference service", () => {
     for (const provider of PROVIDERS) secrets.set(provider, 'stored-key');
     for (const entry of availableModels) {
       const model = await languageModel(entry.id) as { provider: string; modelId: string };
-      expect(model.provider.split('.')[0], entry.id).toBe(entry.provider);
-      expect(`${entry.provider}:${model.modelId}`).toBe(entry.id);
+      const parts = parseModelId(entry.id)!;
+      expect(model.provider.split('.')[0], entry.id).toBe(parts.provider);
+      expect(model.modelId).toBe(parts.model);
     }
   });
 

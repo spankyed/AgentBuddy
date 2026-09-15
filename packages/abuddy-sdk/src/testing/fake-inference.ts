@@ -59,7 +59,7 @@ function toCall(model: ModelId, options: CallOptions, stream: boolean): FakeInfe
 
 /**
  * A `services.inference` whose model answers every call with `reply`, or what `reply` returns for
- * the call. Mock the service with it: `mockService('inference', fakeInference('Buy milk'))`.
+ * the call. Tests mock `services.inference` with it through `mockInference` (@abuddy/testing/harness).
  */
 export function fakeInference(reply: FakeInferenceReply | ((call: FakeInferenceCall) => FakeInferenceReply)): FakeInference {
   const calls: FakeInferenceCall[] = [];

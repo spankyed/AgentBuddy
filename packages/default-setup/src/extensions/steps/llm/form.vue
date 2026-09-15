@@ -223,7 +223,7 @@ import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
-import { providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
+import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
 import type { PromptEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
@@ -282,7 +282,7 @@ const filteredModels = computed(() => {
   if (modelQuery.value === '') return props.resources.models
   return props.resources.models.filter((model: ModelCatalogEntry) =>
     startsWith(model.name, modelQuery.value) ||
-    startsWith(providerLabels[model.provider], modelQuery.value)
+    startsWith(providerLabels[parseModelId(model.id)!.provider], modelQuery.value)
   )
 })
 
@@ -290,7 +290,7 @@ const filteredModels = computed(() => {
 const groupedModels = computed(() => {
   const groups: Partial<Record<ProviderName, ModelCatalogEntry[]>> = {}
   filteredModels.value.forEach((model: ModelCatalogEntry) => {
-    (groups[model.provider] ??= []).push(model)
+    (groups[parseModelId(model.id)!.provider] ??= []).push(model)
   })
   return groups
 })

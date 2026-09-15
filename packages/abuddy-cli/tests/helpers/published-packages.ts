@@ -1,7 +1,10 @@
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+
+const execFileAsync = promisify(execFile);
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const PACKAGE_DIRS: Record<string, string> = {
@@ -67,13 +70,14 @@ export function installPublishedPackages(): string {
  * Compiles `files` (name → lines) as a consumer package in `dir`, with the chosen compiler and module
  * resolution: tsc's exit code and output.
  */
-export function compileConsumer(
+export async function compileConsumer(
   dir: string,
   tsc: TscVersion,
   moduleResolution: 'node16' | 'bundler',
   files: Record<string, string[]>,
   { skipLibCheck = true, types = [] as string[] } = {},
-): { code: number; output: string } {
+): Promise<{ code: number; output: string }> {
+  fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({
     compilerOptions: {
@@ -84,8 +88,9 @@ export function compileConsumer(
   }));
   for (const [name, lines] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), lines.join('\n'));
   try {
-    return { code: 0, output: execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', dir], { stdio: 'pipe' }).toString() };
+    const { stdout } = await execFileAsync(process.execPath, [TSC_VERSIONS[tsc], '-p', dir]);
+    return { code: 0, output: stdout };
   } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
+    return { code: err.code ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
   }
 }

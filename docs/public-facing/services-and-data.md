@@ -145,7 +145,7 @@ for await (const part of stream.textStream) process.stdout.write(part);
 - **The rest of a call's pieces are `ai`'s:** `tool`, `isStepCount` and types like `ModelMessage`. `ai` 7 is a peer dependency of `@abuddy/sdk`, installed with it (add it to your pack's own dependencies if your package manager doesn't install peers); your pack never builds a model or holds a key.
 - **TypeScript 5.7 or later**, which `ai` 7's types need.
 - **Actions** can't import `ai`, and don't need to: `output` as data, tools as plain `{ description, inputSchema, execute }` objects (`tool()` only returns its argument), and `stopWhen` as a function (`({ steps }) => steps.length >= 5`).
-- **Unit tests** mock the service with `fakeInference` (see [Testing](testing.md#models)).
+- **Unit tests** mock the service with `mockInference` (see [Testing](testing.md#models)).
 
 Pack code never imports `@abuddy/host`, the app's private package: `abuddy build` fails a bundle that does.
 

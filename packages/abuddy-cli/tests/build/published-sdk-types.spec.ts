@@ -13,7 +13,7 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
+function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
   // Barrels that re-export from relative modules, as consumers use them
   return compileConsumer(consumer!, tsc, moduleResolution, { 'index.ts': [
     "import { compareVersions } from '@abuddy/sdk/utils/pure';",
@@ -55,8 +55,8 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { c
  * library checks, since `skipLibCheck` would hide an `ai` release that needs a newer TypeScript
  * than the packages' floor (ai 7 needs 5.7: `Uint8Array<ArrayBuffer>`).
  */
-function typecheckInference(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
-  return compileConsumer(consumer!, tsc, moduleResolution, { 'index.ts': [
+function typecheckInference(moduleResolution: 'node16' | 'bundler') {
+  return compileConsumer(path.join(consumer!, `inference-${moduleResolution}`), '5.7', moduleResolution, { 'index.ts': [
     "import { isStepCount, Output, tool } from 'ai';",
     "import { z } from 'zod';",
     "import type { HostServices, InferenceService } from '@abuddy/sdk/services';",
@@ -89,14 +89,16 @@ function typecheckInference(tsc: TscVersion, moduleResolution: 'node16' | 'bundl
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
-  it.each(CONSUMER_MATRIX)('typecheck for consumers using TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
-    const result = typecheck(tsc, moduleResolution);
+  it.each(CONSUMER_MATRIX)('typecheck for consumers using TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
+    const result = await typecheck(tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);
   }, 120_000);
 
-  it.each(['node16', 'bundler'] as const)("types inference with the AI SDK's own types at the TypeScript floor (%s), with library checks", (moduleResolution) => {
-    const result = typecheckInference('5.7', moduleResolution);
-    expect(result.code, result.output).toBe(0);
+  it("types inference with the AI SDK's own types at the TypeScript floor, with library checks, under node16 and bundler", async () => {
+    // Each compile checks ai's full declarations: run both at once
+    for (const result of await Promise.all([typecheckInference('node16'), typecheckInference('bundler')])) {
+      expect(result.code, result.output).toBe(0);
+    }
   }, 120_000);
 
   it('ships no host-only module', () => {

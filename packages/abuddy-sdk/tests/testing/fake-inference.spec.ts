@@ -96,7 +96,7 @@ describe('fakeInference', () => {
 
   it("is what unmocked tests don't have: the test host's inference fails naming the fix", async () => {
     startTestRuntime();
-    await expect(hostInference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow("mockService('inference', fakeInference(");
+    await expect(hostInference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('mock inference with mockInference(reply)');
     await expect(hostInference.streamText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('No models in unit tests');
   });
 });

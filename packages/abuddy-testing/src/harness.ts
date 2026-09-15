@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach } from 'vitest';
-import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime } from '@abuddy/sdk/testing';
+import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
@@ -44,6 +44,16 @@ const packRegistryWithMocks = {
  */
 export function mockService<S extends object = Record<string, object>, K extends keyof S & string = keyof S & string>(name: K, implementation: Partial<S[K]>): void {
   serviceMocks.set(name, implementation);
+}
+
+/**
+ * Mocks `services.inference` for the current test with a `fakeInference` answering `reply`; returns it, so
+ * the test can assert its `calls`.
+ */
+export function mockInference(reply: Parameters<typeof fakeInference>[0]): FakeInference {
+  const inference = fakeInference(reply);
+  mockService('inference', inference);
+  return inference;
 }
 
 /** Where `abuddy build` caches a dependency's snapshot and build/ in a pack */

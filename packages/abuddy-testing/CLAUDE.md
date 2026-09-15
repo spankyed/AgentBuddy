@@ -53,7 +53,7 @@ The per-worker split matters when spec files run in parallel: without it, a spec
 A pack's unit tests run its code without the app: seeds, repositories and seed hooks against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. `abuddy init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir` and `sourceConditions`, `tests/setup.ts` passing `seedRuntime` and `registration`, an example seed test); `abuddy add feature` scaffolds a system test. Pack-facing guide: `docs/public-facing/testing.md`.
 
 - **`setupPackTests({ seedRuntime, registration?, packDir? })`** — from a vitest setup file.
-  - Starts `@abuddy/sdk/testing`'s runtime: the SDK's, pack's and dependencies' entity types, plus in-memory host modules (`testRootEvents` as `rootEvents`/`sendToPlugin`, recorded system errors, `appData`, a trace store, and an `inference` that fails until a test mocks it with `fakeInference`).
+  - Starts `@abuddy/sdk/testing`'s runtime: the SDK's, pack's and dependencies' entity types, plus in-memory host modules (`testRootEvents` as `rootEvents`/`sendToPlugin`, recorded system errors, `appData`, a trace store, and an `inference` that fails until a test mocks it with `mockInference`).
   - Registers `pack-registry`: host `@abuddy/host/packs` with the current test's `mockService` mocks over the registered services.
   - Data tier (no `registration`): registers each dependency's `build/seed-runtime.mjs`, then the pack's own seed runtime.
   - Runtime tier (`registration`): loads each dependency's `.abuddy/deps/<id>/runtime/index.cjs` with `src/dependency-runtime.ts`, points it at `runtime/seeds`, and registers it and the pack's registration with host `registerPack`.
@@ -65,12 +65,13 @@ A pack's unit tests run its code without the app: seeds, repositories and seed h
   - `settle` waits zero-delay timer turns until xstate's inspection reports no activity.
   - `runFlow` and `flowTrace` drive default-setup's brain (designated `brain` and `settings`). `runFlow` grants the root flow role and sends `START_BRAIN`/`RESTART_BRAIN` and `TRIGGER_BRAIN_EVENT`, then waits on the brain's `TNODE_SPAWNED`/`TNODE_UPDATED` events. Steps whose runtime sets `waits` (keep-alive) count as finished-waiting. Trace node rows are captured as reported, since the brain clears them when it stops.
 - **`mockService(name, impl)`** — overlays a service in `services` for the current test.
+- **`mockInference(reply)`** — mocks `services.inference` for the current test with `fakeInference(reply)` (`@abuddy/sdk/testing`) and returns the fake, whose `calls` a test asserts.
 - **One SDK instance.** The harness imports `@abuddy/sdk` externally (the published bundle keeps it external for this entry; `scripts/bundle-package.ts` `sdkExternalEntries`) and inlines `@abuddy/host`, so its registrations are the ones the pack's code and dependency runtimes see. In a checkout without the `@abuddy/source` condition the entry resolves to `src/harness-requires-source.ts`, which fails naming the fix. It lists every harness export (`testing-source-entry.spec.ts`).
 - **The seed runtime facet** (`src/__generated__/seed-runtime.ts`, bundled by `abuddy build` into `dist/build/seed-runtime.mjs` with only `@abuddy/sdk` external) holds the pack's entity types, relation kinds, repositories and seed hooks. Everything it imports must load in a plain Node process: no `@abuddy/host` (rejected at build), no native modules, no optional SDK peers. `abuddy build` checks this for every pack (`abuddy-cli/src/build/seed-runtime-check.ts`).
 - **Proofs:**
   - `tests/fixtures/external-pack` unit-tests its memo seeds, its memos system and a memo flow on default-setup's brain, run by `test:external-pack`.
   - `abuddy-cli/tests/harness/dependency-runtime.spec.ts` runs default-setup's settings system from a dependent pack.
-  - `test:packaged-authoring` runs a system test, a service test with structured output and an `llm` flow, with `inference` mocked by `fakeInference`, all from the packed tarballs.
+  - `test:packaged-authoring` runs a system test, a service test with structured output and an `llm` flow, with `inference` mocked by `mockInference`, all from the packed tarballs.
   - default-setup's own unit suite runs on the harness.
 
 ## Setup for external packs

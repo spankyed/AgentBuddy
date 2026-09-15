@@ -1,10 +1,9 @@
 // Actions run sandboxed and can't import `ai`, yet reach all of services.inference: output as data, tools as
 // plain objects (ai's tool() returns its argument) and stopWhen as a function
 import { describe, expect, it } from 'vitest';
-import { mockService } from '@abuddy/testing/harness';
-import { fakeInference } from '@abuddy/sdk/testing';
+import { mockInference } from '@abuddy/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { services, type Services } from '@/__generated__/services';
+import { services } from '@/__generated__/services';
 import { handler } from '../../src/extensions/steps/action/runtime';
 
 /** Runs inline action code on the action step, as a flow node in code mode does */
@@ -18,8 +17,7 @@ async function runAction(actionFn: string) {
 
 describe('actions calling services.inference', () => {
   it('get structured output from an output spec built with the injected zod', async () => {
-    const inference = fakeInference(JSON.stringify({ label: 'bug', confidence: 0.9 }));
-    mockService<Services, 'inference'>('inference', inference);
+    const inference = mockInference(JSON.stringify({ label: 'bug', confidence: 0.9 }));
 
     const sent = await runAction(`
       const { output } = await services.inference.generateText({
@@ -34,7 +32,7 @@ describe('actions calling services.inference', () => {
   });
 
   it('pick one of several options with a choice spec', async () => {
-    mockService<Services, 'inference'>('inference', fakeInference(JSON.stringify({ result: 'feature' })));
+    mockInference(JSON.stringify({ result: 'feature' }));
     const sent = await runAction(`
       const { output } = await services.inference.generateText({ model: 'openai:gpt-5-mini', prompt: 'Label: add dark mode', output: { type: 'choice', options: ['bug', 'feature'] } });
       return output;
@@ -43,10 +41,9 @@ describe('actions calling services.inference', () => {
   });
 
   it('run tools given as plain objects, stopping with a stopWhen function', async () => {
-    const inference = fakeInference((call) => call.messages.some((m) => m.role === 'tool')
+    const inference = mockInference((call) => call.messages.some((m) => m.role === 'tool')
       ? 'It is a bug'
       : { toolCalls: [{ toolName: 'searchIssues', input: { query: 'crash' } }] });
-    mockService<Services, 'inference'>('inference', inference);
 
     const sent = await runAction(`
       const searched = [];

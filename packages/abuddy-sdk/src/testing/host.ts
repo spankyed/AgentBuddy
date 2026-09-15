@@ -61,7 +61,7 @@ function consoleLogger(source?: string): Logger {
 }
 
 const unmockedInference = () => Promise.reject(new Error(
-  "No models in unit tests: mock inference with mockService('inference', fakeInference(…)) (fakeInference from @abuddy/sdk/testing)",
+  "No models in unit tests: mock inference with mockInference(reply) from @abuddy/testing/harness",
 ));
 
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));

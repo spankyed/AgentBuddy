@@ -4,24 +4,30 @@
 
 ```ts
 
-// @public (undocumented)
+// @public
 export const availableModels: ModelCatalogEntry[];
 
 // @public (undocumented)
 export const isModelId: (id: string) => id is ModelId;
 
 // @public (undocumented)
-export type ModelCatalogEntry = {
-    [P in ProviderName]: ModelOf<P>;
-}[ProviderName] & {
-    name: string;
-    description?: string;
-    contextWindow?: number;
-    maxOutput?: number;
-    costPer1kInput?: number;
-    costPer1kOutput?: number;
+export interface ModelCatalogEntry {
+    // (undocumented)
     capabilities?: string[];
-};
+    // (undocumented)
+    contextWindow?: number;
+    // (undocumented)
+    costPer1kInput?: number;
+    // (undocumented)
+    costPer1kOutput?: number;
+    // (undocumented)
+    description?: string;
+    id: ModelId;
+    // (undocumented)
+    maxOutput?: number;
+    // (undocumented)
+    name: string;
+}
 
 // @public
 export type ModelId = `${ProviderName}:${string}`;

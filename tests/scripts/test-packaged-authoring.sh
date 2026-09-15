@@ -6,7 +6,7 @@
 #      with a .ts compiler module, and default-setup's notes format → an llm flow and a service
 #      calling services.inference
 #   3. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
-#      and the llm flow on default-setup's brain, with inference mocked by fakeInference
+#      and the llm flow on default-setup's brain, with inference mocked by mockInference
 #   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
 #   4. install that bundle into an isolated test data dir
 #   5. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
@@ -185,7 +185,7 @@ node -e '
   m.boot.seed = { prompts: "src/seeds/prompts", ...m.boot.seed };
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
-# The digest service imports the AI SDK's pure pieces (Output); fakeInference runs the AI SDK in tests
+# The digest service imports the AI SDK's pure pieces (Output); mockInference runs the AI SDK in tests
 npm install --silent --save ai@^7.0.100
 
 step "3. abuddy build"
@@ -216,14 +216,12 @@ describe('demo notes', () => {
 TS
 cat > tests/unit/digest-service.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { fakeInference } from '@abuddy/sdk/testing';
-import { mockService } from '@abuddy/testing/harness';
-import { services, type Services } from '#generated/services';
+import { mockInference } from '@abuddy/testing/harness';
+import { services } from '#generated/services';
 
 describe('digest service', () => {
   it('digests a note from the structured output inference returns', async () => {
-    const inference = fakeInference(JSON.stringify({ summary: 'Buy milk', tags: ['errand'] }));
-    mockService<Services, 'inference'>('inference', inference);
+    const inference = mockInference(JSON.stringify({ summary: 'Buy milk', tags: ['errand'] }));
     expect(await services.digest.digest('Remember to buy milk')).toEqual({ summary: 'Buy milk', tags: ['errand'] });
     expect(inference.calls).toEqual([expect.objectContaining({ model: 'openai:gpt-5-mini', messages: [{ role: 'user', text: 'Digest: Remember to buy milk' }] })]);
   });
@@ -231,15 +229,12 @@ describe('digest service', () => {
 TS
 cat > tests/unit/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { fakeInference } from '@abuddy/sdk/testing';
-import { mockService, seedPack, startApp } from '@abuddy/testing/harness';
-import type { Services } from '#generated/services';
+import { mockInference, seedPack, startApp } from '@abuddy/testing/harness';
 
 describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {
     await seedPack({ keys: ['prompts', 'flows'] });
-    const inference = fakeInference('Buy milk');
-    mockService<Services, 'inference'>('inference', inference);
+    const inference = mockInference('Buy milk');
     const app = await startApp({ systems: ['brain', 'settings'] });
 
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });

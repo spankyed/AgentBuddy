@@ -1,6 +1,7 @@
 // services.inference: AI SDK 7 calls on the provider a `provider:model` id names, with the user's key
 // for that provider. A provider's package loads on its first call.
 import type { LanguageModel } from 'ai';
+import type { EARS } from '@abuddy/sdk';
 import { createInferenceService, type ModelId, type ProviderName } from '@abuddy/sdk/services';
 import { parseModelId } from '@abuddy/sdk/models';
 import { settingsRepository } from '../settings/index.ts';
@@ -19,7 +20,7 @@ const PROVIDERS: Record<ProviderName, () => Promise<ProviderFactory>> = {
 /** The user's key for a provider: Settings → Secrets, else `<PROVIDER>_API_KEY` */
 function apiKey(provider: ProviderName): string {
   const secretId = settingsRepository.settingsQueries.getGeneralSettings().secrets?.[provider];
-  const stored = secretId ? settingsRepository.secretsQueries.getSecret(secretId)?.encryptedValue : undefined;
+  const stored = typeof secretId === 'string' ? settingsRepository.secretsQueries.getSecret(secretId as EARS.EntityId)?.encryptedValue : undefined;
   const key = stored || process.env[`${provider.toUpperCase()}_API_KEY`];
   if (!key) throw new Error(`No API key for ${provider}: add one in Settings → Secrets, or set ${provider.toUpperCase()}_API_KEY`);
   return key;

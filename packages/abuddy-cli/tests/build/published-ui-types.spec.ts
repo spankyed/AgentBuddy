@@ -11,7 +11,7 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-function typecheck(dir: string, tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
+function typecheck(dir: string, tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
   return compileConsumer(dir, tsc, moduleResolution, {
     // The scaffold's shim for the pack's own SFCs must not shadow the published component types
     'env.d.ts': [
@@ -41,8 +41,8 @@ function typecheck(dir: string, tsc: TscVersion, moduleResolution: 'node16' | 'b
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published @abuddy/ui declarations', () => {
-  it.each(CONSUMER_MATRIX)('types component props and composables for TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
-    const result = typecheck(consumer!, tsc, moduleResolution);
+  it.each(CONSUMER_MATRIX)('types component props and composables for TypeScript $tsc, moduleResolution $moduleResolution', async ({ tsc, moduleResolution }) => {
+    const result = await typecheck(consumer!, tsc, moduleResolution);
     expect(result.code, result.output).toBe(0);
   }, 120_000);
 });

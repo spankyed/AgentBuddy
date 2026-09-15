@@ -90,15 +90,12 @@ Give only the members the code under test uses. Code that imports a service modu
 
 ## Models
 
-Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. Mock it with `fakeInference` from `@abuddy/sdk/testing`, which runs the AI SDK's real calls on a scripted model (`ai` comes with `@abuddy/sdk` as a peer dependency):
+Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. `mockInference` does that for one test with a fake that runs the AI SDK's real calls on a scripted model (`fakeInference` from `@abuddy/sdk/testing`; `ai` comes with `@abuddy/sdk` as a peer dependency):
 
 ```typescript
-import { fakeInference } from '@abuddy/sdk/testing';
-import { mockService } from '@abuddy/testing/harness';
-import type { Services } from '#generated/services';
+import { mockInference } from '@abuddy/testing/harness';
 
-const inference = fakeInference('A short summary');          // or (call) => reply, per model call
-mockService<Services, 'inference'>('inference', inference);
+const inference = mockInference('A short summary');          // or (call) => reply, per model call
 // … run code that calls services.inference …
 expect(inference.calls[0]).toMatchObject({ model: 'anthropic:claude-sonnet-4-5', messages: [{ role: 'user', text: 'Summarize this note: …' }] });
 ```
@@ -112,13 +109,11 @@ expect(inference.calls[0]).toMatchObject({ model: 'anthropic:claude-sonnet-4-5',
 `runFlow` runs a flow on the brain. Your pack or a dependency (default-setup) must provide the brain and settings systems:
 
 ```typescript
-import { fakeInference } from '@abuddy/sdk/testing';
-import { mockService, seedPack, startApp } from '@abuddy/testing/harness';
-import type { Services } from '#generated/services';
+import { mockInference, seedPack, startApp } from '@abuddy/testing/harness';
 
 it('summarizes a note', async () => {
   await seedPack({ keys: ['prompts', 'flows'] });
-  mockService<Services, 'inference'>('inference', fakeInference('Buy milk'));
+  mockInference('Buy milk');
   const app = await startApp({ systems: ['brain', 'settings'] });
 
   const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
