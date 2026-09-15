@@ -57,30 +57,26 @@ export async function action(
     maxSentences: 2,
   });
 
-  // Generate text with an LLM
-  const result = await services.llm.generateText({
-    model: { provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
+  // Generate text with a model (provider:model id)
+  const result = await services.inference.generateText({
+    model: 'anthropic:claude-sonnet-4-5',
+    instructions: 'Answer in two sentences.',
     prompt: summaryPrompt || text,
   });
 
-  // Generate structured output with a zod schema
-  const Classification = z.object({
-    intent: z.string(),
-    confidence: z.number(),
-  });
-
-  const classified = await services.llm.generateObject({
-    model: { provider: 'openai', model: 'gpt-4o' },
-    schema: Classification,
-    prompt: text,
-  });
+  // Validate a JSON reply with the injected zod
+  const Classification = z.object({ intent: z.string(), confidence: z.number() });
+  const classified = Classification.parse(JSON.parse((await services.inference.generateText({
+    model: 'openai:gpt-5-mini',
+    prompt: `Classify the intent of this text as JSON {"intent", "confidence"}: ${text}`,
+  })).text));
 
   // Log results
   services.logger.info('Analysis complete', { summary: result.text });
 
   return {
     summary: result.text,
-    intent: classified.object.intent,
+    intent: classified.intent,
   };
 }
 ```
@@ -91,7 +87,7 @@ Actions receive a `services` object with access to:
 
 | Service | Description |
 |---|---|
-| `services.llm` | LLM calls (`generateText`, `generateObject`) |
+| `services.inference` | Model calls (`generateText`, `streamText`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.prompt` | Prompt template resolution (`usePrompt`) |
 | `services.threads` | Thread and message operations |
 | `services.chat` | Chat interactions |
@@ -107,6 +103,7 @@ Actions receive a `services` object with access to:
 
 - **No bare Node.js imports** — actions run in a sandboxed scope. The compiler enforces this.
 - **Import types only** — use `import type` for `ActionMeta`, `Services`, `Z`. Runtime values come from function parameters.
+- **Structured output and tools need `ai`** (`Output`, `tool`), which actions can't import: put that model call in a service and call the service from the action.
 - **Files without `export const meta` are treated as inlined helpers** — they won't be compiled as standalone actions.
 - **Files prefixed with `_` are skipped** by the compiler.
 

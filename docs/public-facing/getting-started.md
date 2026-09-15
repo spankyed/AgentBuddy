@@ -17,7 +17,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 
 | Package | What it is |
 |---|---|
-| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) are peer dependencies, and so is TypeScript (5.7 or later). |
+| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) are peer dependencies, and so is TypeScript (5.7 or later). Packs that call models through `services.inference` with tools or structured output also add `ai` (7.x) for `tool` and `Output`. |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
 | `@abuddy/testing` | The Playwright fixture for pack E2E tests (`@playwright/test` is a peer). |
@@ -116,7 +116,7 @@ To release a version, run `abuddy release [patch|minor|major] [--beta]`: it chec
 npm test
 ```
 
-Unit tests run your pack without the app, through `@abuddy/testing/harness`: seeds and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with a scripted model, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `abuddy build` once first, so dependencies are fetched. See [Testing](testing.md).
+Unit tests run your pack without the app, through `@abuddy/testing/harness`: seeds and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `abuddy build` once first, so dependencies are fetched. See [Testing](testing.md).
 
 ## Verify it works
 

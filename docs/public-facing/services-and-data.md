@@ -61,14 +61,14 @@ There is no fixed interface — the shape is pack-specific. Services are typical
 
 1. Imports all feature and pack-level services
 2. Exports a `featureServices` object aggregating them
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, and `repository` typed with your repositories)
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
 import { services } from '#generated/services';
 
 services.cache.get('key');              // this pack's service
-services.llm.streamText(/* … */);       // a dependency's service
+services.brain.listen(/* … */);         // a dependency's service
 services.repository.bookmarkQueries;    // repositories (see below)
 ```
 
@@ -82,6 +82,54 @@ The host implements operations on the app's stored data as a whole; packs call t
 |---|---|
 | `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
+
+### Inference
+
+`services.inference` calls models with the keys the user stored in Settings → Secrets (or `<PROVIDER>_API_KEY` in the app's environment). Its two calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
+
+| Call | Returns |
+|---|---|
+| `generateText(options)` | the AI SDK's `generateText` result: `text`, `output`, `toolCalls`, `steps`, `usage`, … |
+| `streamText(options)` | a promise of the AI SDK's `streamText` result: `stream` (parts), `textStream`, `text`, … |
+
+Providers: `anthropic`, `openai`, `google`, `groq`, `mistral`, `cohere`. `ModelId` and the model catalog come from `@abuddy/sdk/models`.
+
+```typescript
+import { isStepCount, Output, tool } from 'ai';
+import { z } from 'zod';
+import { services } from '#generated/services';
+
+// Text
+const { text } = await services.inference.generateText({
+  model: 'anthropic:claude-sonnet-4-5',
+  instructions: 'Be brief.',
+  prompt: 'Summarize this note: …',
+});
+
+// Structured output
+const { output } = await services.inference.generateText({
+  model: 'openai:gpt-5-mini',
+  prompt: 'Tag this note: …',
+  output: Output.object({ schema: z.object({ tags: z.array(z.string()) }) }),
+});
+
+// Tools, looping until the model answers (at most 5 steps)
+const lookup = tool({
+  description: 'Look up a note by title',
+  inputSchema: z.object({ title: z.string() }),
+  execute: async ({ title }) => services.repository.noteQueries.all().find((note) => note.title === title)?.content,
+});
+const answer = await services.inference.generateText({ model: 'openai:gpt-5', prompt: 'What does my shopping note say?', tools: { lookup }, stopWhen: isStepCount(5) });
+
+// Streaming
+const stream = await services.inference.streamText({ model: 'google:gemini-2.5-pro', prompt: 'Draft a reply' });
+for await (const part of stream.textStream) process.stdout.write(part);
+```
+
+- **Everything but the call comes from `ai`:** `tool`, `Output`, `isStepCount` and types like `ModelMessage`. Add `ai` (7.x) to your pack's dependencies; your pack never builds a model or holds a key.
+- **TypeScript 5.7 or later**, which `ai` 7's types need.
+- **Actions** can't import `ai`: they call `services.inference.generateText` for text and leave structured output and tools to a service.
+- **Unit tests** mock the service with `fakeInference` (see [Testing](testing.md#models)).
 
 Pack code never imports `@abuddy/host`, the app's private package: `abuddy build` fails a bundle that does.
 

@@ -31,7 +31,7 @@ src/
   extensions/              # Cross-cutting concerns
     artifacts/             # Artifact viewer definitions + Vue components
     blocks/                # Message block definitions (display + input)
-    services/              # Pack-level services (text-stream, filesystem, model-client, openai-auth)
+    services/              # Pack-level services (text-stream, filesystem)
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
     Welcome.vue            # Welcome screen app extension
@@ -68,9 +68,9 @@ System IDs re-exported from `__generated__/system-ids.ts`. System specs (identit
 
 Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/extensions/services/` (pack-level services). These are stateless modules that systems and actions can call:
 
-`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `llm`, `brain`, `database`, `settings`, `textStream`, `filesystem`, `modelClient`, `openaiAuth`
+`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `textStream`, `filesystem`
 
-The model client (`extensions/services/model-client/`) handles LLM streaming, tool calling, conversation management, and context compaction.
+Model calls go through the host's `services.inference` (AI SDK 7, `provider:model` ids): the `llm` step calls it with the node's `model`, and the pack has no model code or `ai` dependency of its own.
 
 ## EARS (Entity types + Relations)
 
@@ -157,6 +157,6 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `rollup-defs.config.mjs` — Rollup config for DSL definition compilation
 - `npm run compile` from repo root compiles all DSLs
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
-- Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `runFlow` (`tests/unit/helpers/flows.ts` seeds default-setup's flows or imports DSL), and services the code under test reaches outside the process (CLIs, Codex, the model) are mocked with `mockService`/`fakeModel`
+- Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `runFlow` (`tests/unit/helpers/flows.ts` seeds default-setup's flows or imports DSL), and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `fakeInference` from `@abuddy/sdk/testing`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`
 - `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

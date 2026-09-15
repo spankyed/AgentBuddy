@@ -53,11 +53,11 @@ The per-worker split matters when spec files run in parallel: without it, a spec
 A pack's unit tests run its code without the app: seeds, repositories and seed hooks against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. `abuddy init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir` and `sourceConditions`, `tests/setup.ts` passing `seedRuntime` and `registration`, an example seed test); `abuddy add feature` scaffolds a system test. Pack-facing guide: `docs/public-facing/testing.md`.
 
 - **`setupPackTests({ seedRuntime, registration?, packDir? })`** — from a vitest setup file.
-  - Starts `@abuddy/sdk/testing`'s runtime: the SDK's, pack's and dependencies' entity types, plus in-memory host modules (`testRootEvents` as `rootEvents`/`sendToPlugin`, recorded system errors, `appData`, a trace store, and no model until `fakeModel`).
+  - Starts `@abuddy/sdk/testing`'s runtime: the SDK's, pack's and dependencies' entity types, plus in-memory host modules (`testRootEvents` as `rootEvents`/`sendToPlugin`, recorded system errors, `appData`, a trace store, and an `inference` that fails until a test mocks it with `fakeInference`).
   - Registers `pack-registry`: host `@abuddy/host/packs` with the current test's `mockService` mocks over the registered services.
   - Data tier (no `registration`): registers each dependency's `build/seed-runtime.mjs`, then the pack's own seed runtime.
   - Runtime tier (`registration`): loads each dependency's `.abuddy/deps/<id>/runtime/index.cjs` with `src/dependency-runtime.ts`, points it at `runtime/seeds`, and registers it and the pack's registration with host `registerPack`.
-  - Before each test it empties the database and media store. After each test it stops apps, clears mocks, restores the model provider, and fails the test on system errors the test didn't take.
+  - Before each test it empties the database and media store. After each test it stops apps, clears mocks, and fails the test on system errors the test didn't take.
 - **Dependency runtimes load on the pack's SDK.** `withModuleBridge` (`@abuddy/host/packs`, shared with the API's pack loader) maps every `@abuddy/sdk` subpath, `xstate` and `zod` to the namespaces the test process imported. A subpath whose optional peer isn't installed maps to a module that throws on use. npm packages the runtime keeps external that the pack doesn't install (default-setup's `node-pty`, `playwright`, …) load as modules that throw on use.
 - **`seedPack({ keys?, mode? })`** — compiles the chosen seed entries (every entry naming a format by default) with `compilePack`, registering tsx's loader while the SDK's compilers import pack TypeScript (`#generated/*`), and seeds them with `seedData`. Returns the counts of the compiled keys.
 - **`startApp({ systems })`** (`src/app.ts`) — the named registered systems under `@abuddy/host/bus`'s `createBusMachine` (the API's bus core), on `testRootEvents`.
@@ -70,7 +70,7 @@ A pack's unit tests run its code without the app: seeds, repositories and seed h
 - **Proofs:**
   - `tests/fixtures/external-pack` unit-tests its memo seeds, its memos system and a memo flow on default-setup's brain, run by `test:external-pack`.
   - `abuddy-cli/tests/harness/dependency-runtime.spec.ts` runs default-setup's settings system from a dependent pack.
-  - `test:packaged-authoring` runs a system test, a service test with default-setup's `llm` mocked and an `llm` flow with `fakeModel`, all from the packed tarballs.
+  - `test:packaged-authoring` runs a system test, a service test with structured output and an `llm` flow, with `inference` mocked by `fakeInference`, all from the packed tarballs.
   - default-setup's own unit suite runs on the harness.
 
 ## Setup for external packs
