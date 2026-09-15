@@ -8,6 +8,7 @@ import type { DeepPartial } from 'ai';
 import type { FlexibleSchema } from 'ai';
 import type { generateText } from 'ai';
 import type { InferSchema } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { streamText } from 'ai';
@@ -37,8 +38,14 @@ export interface BackupInfo {
     timestamp: number;
 }
 
+// @internal
+export function createInferenceService(resolveModel: (id: ModelId) => LanguageModel | Promise<LanguageModel>): InferenceService;
+
 // @public
 export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
+
+// @internal
+export type HostImplementedServices = Pick<HostServices, 'appData' | 'traceStore' | 'inference'>;
 
 // @public
 export type HostPluginEvents = {
@@ -95,20 +102,6 @@ export function onOutgoing(callback: (event: {
 }) => void): () => void;
 
 // @public
-export type OutputOf<O> = O extends OutputInterface ? O : O extends {
-    type: 'object';
-    schema: infer S;
-} ? OutputInterface<InferSchema<S>, DeepPartial<InferSchema<S>>, never> : O extends {
-    type: 'array';
-    element: infer S;
-} ? OutputInterface<InferSchema<S>[], InferSchema<S>[], InferSchema<S>> : O extends {
-    type: 'choice';
-    options: readonly (infer C extends string)[];
-} ? OutputInterface<C, C, never> : O extends {
-    type: 'json';
-} ? ReturnType<typeof Output.json> : ReturnType<typeof Output.text>;
-
-// @public
 export type OutputSpec = {
     type: 'text';
 } | ({
@@ -156,9 +149,6 @@ export function sendToSystem(systemId: string, event: {
 
 // @public
 export const services: HostServices & Record<string, unknown>;
-
-// @internal
-export function toAiOutput(output: OutputInterface | OutputSpec | undefined): Promise<OutputInterface | undefined>;
 
 // @public
 export interface TraceEntityMeta {

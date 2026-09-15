@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, TSC_VERSIONS, installPublishedPackages, type TscVersion } from '../helpers/published-packages';
+import { CONSUMER_MATRIX, PACKAGES_BUILT, REPO_ROOT, compileConsumer, installPublishedPackages, type TscVersion } from '../helpers/published-packages';
 
 let consumer: string | undefined;
 beforeAll(() => {
@@ -13,28 +13,9 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-/** Compiles `source` in the consumer with the chosen compiler and settings */
-function compile(tsc: TscVersion, moduleResolution: 'node16' | 'bundler', source: string[], options: { skipLibCheck: boolean; types: string[] }): { code: number; output: string } {
-  const tmp = consumer!;
-  fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
-  fs.writeFileSync(path.join(tmp, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: {
-      target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
-      strict: true, skipLibCheck: options.skipLibCheck, noEmit: true, types: options.types, lib: ['ES2022', 'DOM'],
-    },
-    include: ['index.ts'],
-  }));
-  fs.writeFileSync(path.join(tmp, 'index.ts'), source.join('\n'));
-  try {
-    return { code: 0, output: execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', tmp], { stdio: 'pipe' }).toString() };
-  } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
-}
-
 function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
   // Barrels that re-export from relative modules, as consumers use them
-  return compile(tsc, moduleResolution, [
+  return compileConsumer(consumer!, tsc, moduleResolution, { 'index.ts': [
     "import { compareVersions } from '@abuddy/sdk/utils/pure';",
     "import type { StepDefinition } from '@abuddy/sdk/steps';",
     "import type { ActionMeta } from '@abuddy/sdk/build';",
@@ -66,7 +47,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { c
     "export * as internals from '@abuddy/sdk/ears/internals';",
     "// @ts-expect-error not published",
     "export * as packs from '@abuddy/sdk/packs';",
-  ], { skipLibCheck: true, types: [] });
+  ] });
 }
 
 /**
@@ -75,7 +56,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { c
  * than the packages' floor (ai 7 needs 5.7: `Uint8Array<ArrayBuffer>`).
  */
 function typecheckInference(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
-  return compile(tsc, moduleResolution, [
+  return compileConsumer(consumer!, tsc, moduleResolution, { 'index.ts': [
     "import { isStepCount, Output, tool } from 'ai';",
     "import { z } from 'zod';",
     "import type { HostServices, InferenceService } from '@abuddy/sdk/services';",
@@ -104,7 +85,7 @@ function typecheckInference(tsc: TscVersion, moduleResolution: 'node16' | 'bundl
     "void inference.generateText({ model: 'nope:x', prompt: 'hi' });",
     "// @ts-expect-error a model id without its provider",
     "void inference.generateText({ model: 'gpt-5', prompt: 'hi' });",
-  ], { skipLibCheck: false, types: ['node'] });
+  ] }, { skipLibCheck: false, types: ['node'] });
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {

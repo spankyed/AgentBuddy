@@ -1,23 +1,20 @@
 // services.inference: AI SDK 7 calls on the provider a `provider:model` id names, with the user's key
-// for that provider.
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createCohere } from '@ai-sdk/cohere';
-import { createGoogle } from '@ai-sdk/google';
-import { createGroq } from '@ai-sdk/groq';
-import { createMistral } from '@ai-sdk/mistral';
-import { createOpenAI } from '@ai-sdk/openai';
-import { generateText, streamText, type LanguageModel } from 'ai';
-import { toAiOutput, type InferenceService, type ModelId, type ProviderName } from '@abuddy/sdk/services';
+// for that provider. A provider's package loads on its first call.
+import type { LanguageModel } from 'ai';
+import { createInferenceService, type ModelId, type ProviderName } from '@abuddy/sdk/services';
+import { parseModelId } from '@abuddy/sdk/models';
 import { settingsRepository } from '../settings/index.ts';
 
-const PROVIDERS = {
-  anthropic: createAnthropic,
-  openai: createOpenAI,
-  google: createGoogle,
-  groq: createGroq,
-  mistral: createMistral,
-  cohere: createCohere,
-} satisfies Record<ProviderName, (options: { apiKey: string }) => { languageModel(modelId: string): LanguageModel }>;
+type ProviderFactory = (options: { apiKey: string }) => { languageModel(modelId: string): LanguageModel };
+
+const PROVIDERS: Record<ProviderName, () => Promise<ProviderFactory>> = {
+  anthropic: async () => (await import('@ai-sdk/anthropic')).createAnthropic,
+  openai: async () => (await import('@ai-sdk/openai')).createOpenAI,
+  google: async () => (await import('@ai-sdk/google')).createGoogle,
+  groq: async () => (await import('@ai-sdk/groq')).createGroq,
+  mistral: async () => (await import('@ai-sdk/mistral')).createMistral,
+  cohere: async () => (await import('@ai-sdk/cohere')).createCohere,
+};
 
 /** The user's key for a provider: Settings → Secrets, else `<PROVIDER>_API_KEY` */
 function apiKey(provider: ProviderName): string {
@@ -29,19 +26,11 @@ function apiKey(provider: ProviderName): string {
 }
 
 /** The AI SDK model an id names, built with the provider's current key */
-export function languageModel(id: ModelId): LanguageModel {
-  const separator = id.indexOf(':');
-  const provider = id.slice(0, separator);
-  if (separator < 1 || !Object.hasOwn(PROVIDERS, provider)) {
-    throw new Error(`Unknown model provider in "${id}": expected one of ${Object.keys(PROVIDERS).join(', ')}, as provider:model`);
-  }
-  const name = provider as ProviderName;
-  return PROVIDERS[name]({ apiKey: apiKey(name) }).languageModel(id.slice(separator + 1));
+export async function languageModel(id: ModelId): Promise<LanguageModel> {
+  const parts = parseModelId(id);
+  if (!parts) throw new Error(`Unknown model provider in "${id}": expected one of ${Object.keys(PROVIDERS).join(', ')}, as provider:model`);
+  const create = await PROVIDERS[parts.provider]();
+  return create({ apiKey: apiKey(parts.provider) }).languageModel(parts.model);
 }
 
-export const inference: InferenceService = {
-  generateText: async ({ model, output, ...options }) =>
-    generateText({ ...options, output: await toAiOutput(output), model: languageModel(model) } as Parameters<typeof generateText>[0]) as never,
-  streamText: async ({ model, output, ...options }) =>
-    streamText({ ...options, output: await toAiOutput(output), model: languageModel(model) } as Parameters<typeof streamText>[0]) as never,
-};
+export const inference = createInferenceService(languageModel);

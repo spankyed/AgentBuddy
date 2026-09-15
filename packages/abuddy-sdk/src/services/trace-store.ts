@@ -1,4 +1,4 @@
-import { getHostModule } from '../runtime/host.ts';
+import { hostService } from './host-services.ts';
 import type { EARS } from '../types/entities.ts';
 
 /** An entity row's bookkeeping in the trace store */
@@ -27,10 +27,10 @@ export interface TraceStore {
   relations(filter?: { kind?: string; src?: EARS.EntityId; tgt?: EARS.EntityId; skipDeleted?: boolean; limit?: number }): Array<{ id: string; rel: TraceRelation }>;
 }
 
-/** The host's implementation, registered as host module "trace-store" */
+/** The host's implementation, registered under `traceStore` */
 export const traceStore: TraceStore = {
-  entities: () => getHostModule<TraceStore>('trace-store').entities(),
-  getEntityMeta: (id) => getHostModule<TraceStore>('trace-store').getEntityMeta(id),
-  getAttr: (kind, id) => getHostModule<TraceStore>('trace-store').getAttr(kind, id),
-  relations: (filter) => getHostModule<TraceStore>('trace-store').relations(filter),
+  entities: () => hostService('traceStore').entities(),
+  getEntityMeta: (id) => hostService('traceStore').getEntityMeta(id),
+  getAttr: (kind, id) => hostService('traceStore').getAttr(kind, id),
+  relations: (filter) => hostService('traceStore').relations(filter),
 };

@@ -115,15 +115,15 @@ export function registerTestHostModules(resetData: () => void): void {
     'system-errors': { reportSystemError: (input: ReportSystemErrorInput) => { systemErrors.push(input); } },
     'version': { APP_VERSION: '0.0.0-test' },
     'migrations': { runMigrations: () => {} },
-    'app-data': {
+    appData: {
       reset: async () => { resetData(); },
       exportBackup: unsupported('exportBackup'),
       importBackup: unsupported('importBackup'),
       backupInfo: async () => null,
     } satisfies AppDataService,
-    'trace-store': traceStore,
+    traceStore,
     // No test reaches a provider: code calling a model fails until the test mocks inference
-    'inference': { generateText: unmockedInference, streamText: unmockedInference },
+    inference: { generateText: unmockedInference, streamText: unmockedInference },
   };
   for (const [key, mod] of Object.entries(modules)) {
     if (!registered(key)) registerHostModule(key, mod);

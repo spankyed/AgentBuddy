@@ -8,10 +8,7 @@
 export const availableModels: ModelCatalogEntry[];
 
 // @public (undocumented)
-export function getModelById(modelId: string): ModelCatalogEntry | undefined;
-
-// @public (undocumented)
-export function getModelsByProvider(provider: ProviderName): ModelCatalogEntry[];
+export const isModelId: (id: string) => id is ModelId;
 
 // @public (undocumented)
 export type ModelCatalogEntry = {
@@ -28,6 +25,12 @@ export type ModelCatalogEntry = {
 
 // @public
 export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export function parseModelId(id: string): {
+    provider: ProviderName;
+    model: string;
+} | undefined;
 
 // @public
 export const providerLabels: Record<ProviderName, string>;

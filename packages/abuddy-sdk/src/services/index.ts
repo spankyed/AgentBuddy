@@ -10,7 +10,8 @@ import { inference, type InferenceService } from './inference.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
-export { toAiOutput, type InferenceService, type OutputOf, type OutputSpec } from './inference.ts';
+export { createInferenceService, type InferenceService, type OutputSpec } from './inference.ts';
+export type { HostImplementedServices } from './host-services.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
 function lazyHost(name: string) {

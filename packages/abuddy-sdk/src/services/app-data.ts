@@ -1,4 +1,4 @@
-import { getHostModule } from '../runtime/host.ts';
+import { hostService } from './host-services.ts';
 
 /** A store a backup can hold: the primary database, the volatile trace store, or secrets */
 export type BackupDatabase = 'lmdb' | 'volatileLmdb' | 'secretsLmdb';
@@ -26,10 +26,10 @@ export interface AppDataService {
   backupInfo(backupPath: string): Promise<BackupInfo | null>;
 }
 
-/** The host's implementation, registered as host module "app-data" */
+/** The host's implementation, registered under `appData` */
 export const appData: AppDataService = {
-  reset: () => getHostModule<AppDataService>('app-data').reset(),
-  exportBackup: (targetPath, name, databases) => getHostModule<AppDataService>('app-data').exportBackup(targetPath, name, databases),
-  importBackup: (backupPath) => getHostModule<AppDataService>('app-data').importBackup(backupPath),
-  backupInfo: (backupPath) => getHostModule<AppDataService>('app-data').backupInfo(backupPath),
+  reset: () => hostService('appData').reset(),
+  exportBackup: (targetPath, name, databases) => hostService('appData').exportBackup(targetPath, name, databases),
+  importBackup: (backupPath) => hostService('appData').importBackup(backupPath),
+  backupInfo: (backupPath) => hostService('appData').backupInfo(backupPath),
 };

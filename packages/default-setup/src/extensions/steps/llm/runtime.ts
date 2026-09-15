@@ -5,7 +5,7 @@ import { repository } from '@/__generated__/repository';
 import { createInspectLogger } from '@abuddy/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
 import { services } from '@abuddy/sdk/services';
-import type { ModelId } from '@abuddy/sdk/models';
+import { isModelId } from '@abuddy/sdk/models';
 import { DEFAULT_MODEL } from './model';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
@@ -69,12 +69,12 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     brainInspect(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
 
     const model = (nodeData.model as string | undefined) || DEFAULT_MODEL;
-    if (!/^[a-z]+:.+/.test(model)) {
+    if (!isModelId(model)) {
       throw new Error(`LLM node "${n.label}" names model "${model}": expected provider:model, e.g. ${DEFAULT_MODEL}`);
     }
 
     const response = await services.inference.generateText({
-      model: model as ModelId,
+      model,
       prompt,
       instructions: nodeData.systemPrompt as string | undefined,
       temperature: nodeData.temperature as number | undefined,

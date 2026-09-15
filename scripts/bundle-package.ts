@@ -8,6 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { packageName } from './lib/published-imports.ts';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 
 interface BundleConfig {
@@ -57,8 +58,6 @@ const hostPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'packages', 'abud
 const INLINED = new Set(['@abuddy/sdk', '@abuddy/host']);
 
 const builtins = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
-const packageName = (specifier: string) =>
-  specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
 
 const externalizeAllButInlined: Plugin = {
   name: 'externalize-all-but-inlined',

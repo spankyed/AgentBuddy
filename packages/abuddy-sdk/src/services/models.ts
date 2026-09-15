@@ -89,10 +89,12 @@ export const availableModels: ModelCatalogEntry[] = [
   { id: 'cohere:command-a-03-2025', name: 'Command A', provider: 'cohere', description: "Cohere's flagship model", capabilities: ['text', 'function-calling'] },
 ];
 
-export function getModelById(modelId: string): ModelCatalogEntry | undefined {
-  return availableModels.find(model => model.id === modelId);
+/** A `provider:model` id's parts, or undefined when it doesn't name a provider and a model */
+export function parseModelId(id: string): { provider: ProviderName; model: string } | undefined {
+  const separator = id.indexOf(':');
+  const provider = id.slice(0, separator) as ProviderName;
+  const model = id.slice(separator + 1);
+  return separator > 0 && model && Object.keys(providerLabels).includes(provider) ? { provider, model } : undefined;
 }
 
-export function getModelsByProvider(provider: ProviderName): ModelCatalogEntry[] {
-  return availableModels.filter(model => model.provider === provider);
-}
+export const isModelId = (id: string): id is ModelId => parseModelId(id) !== undefined;

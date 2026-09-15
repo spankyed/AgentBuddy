@@ -1,5 +1,5 @@
-import type { DeepPartial, generateText, InferSchema, FlexibleSchema, Output, OutputInterface, streamText, ToolSet } from 'ai';
-import { getHostModule } from '../runtime/host.ts';
+import type { DeepPartial, generateText, InferSchema, FlexibleSchema, LanguageModel, Output, OutputInterface, streamText, ToolSet } from 'ai';
+import { hostService } from './host-services.ts';
 import type { ModelId } from './models.ts';
 
 /** The runtime context type `ai` calls take (`runtimeContext`) */
@@ -51,28 +51,39 @@ export interface InferenceService {
   ): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
 }
 
-/**
- * @internal The `Output` an `output` option stands for: an `Output` passes through, a spec builds its
- * `Output.*`. Implementations of {@link InferenceService} call it before the AI SDK; `ai` loads only for a spec.
- */
-export async function toAiOutput(output: OutputInterface | OutputSpec | undefined): Promise<OutputInterface | undefined> {
+/** The `Output` an `output` option stands for: an `Output` passes through, a spec builds its `Output.*` */
+async function toAiOutput(output: OutputInterface | OutputSpec | undefined): Promise<OutputInterface | undefined> {
   // Every Output implements parseCompleteOutput; a spec is plain data
   if (output === undefined || 'parseCompleteOutput' in output) return output;
   const { Output } = await import('ai');
-  const naming = { name: 'name' in output ? output.name : undefined, description: 'description' in output ? output.description : undefined };
   switch (output.type) {
     case 'text': return Output.text();
-    case 'json': return Output.json(naming);
-    case 'object': return Output.object({ schema: output.schema, ...naming });
-    case 'array': return Output.array({ element: output.element, minItems: output.minItems, maxItems: output.maxItems, ...naming });
-    case 'choice': return Output.choice({ options: [...output.options], ...naming });
+    case 'json': return Output.json(output);
+    case 'object': return Output.object(output);
+    case 'array': return Output.array(output);
+    case 'choice': return Output.choice({ ...output, options: [...output.options] });
   }
 }
 
-const host = () => getHostModule<InferenceService>('inference');
+/**
+ * @internal An {@link InferenceService} that runs the AI SDK on the model `resolveModel` gives for an id:
+ * the host's implementation and `fakeInference`. `ai` loads on the first call.
+ */
+export function createInferenceService(resolveModel: (id: ModelId) => LanguageModel | Promise<LanguageModel>): InferenceService {
+  return {
+    async generateText({ model, output, ...options }) {
+      const { generateText } = await import('ai');
+      return generateText({ ...options, output: await toAiOutput(output), model: await resolveModel(model) } as Parameters<typeof generateText>[0]) as never;
+    },
+    async streamText({ model, output, ...options }) {
+      const { streamText } = await import('ai');
+      return streamText({ ...options, output: await toAiOutput(output), model: await resolveModel(model) } as Parameters<typeof streamText>[0]) as never;
+    },
+  };
+}
 
-/** The host's implementation, registered as host module "inference" */
+/** The host's implementation, registered under `inference` */
 export const inference: InferenceService = {
-  generateText: (options) => host().generateText(options),
-  streamText: (options) => host().streamText(options),
+  generateText: (options) => hostService('inference').generateText(options),
+  streamText: (options) => hostService('inference').streamText(options),
 };

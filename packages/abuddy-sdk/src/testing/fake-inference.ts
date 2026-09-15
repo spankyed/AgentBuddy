@@ -1,8 +1,8 @@
 // A scripted `services.inference` for unit tests: the AI SDK's real generateText/streamText on its test
 // model, so results, steps, `output` parsing, tool execution and stream parts behave as in the app.
 // `ai` loads on the first call, so @abuddy/sdk/testing loads in packs that don't install it.
-import { toAiOutput, type InferenceService } from '../services/inference.ts';
-import type { ModelId } from '../services/models.ts';
+import { createInferenceService, type InferenceService } from '../services/inference.ts';
+import { parseModelId, type ModelId } from '../services/models.ts';
 
 /** A model call the code under test made */
 export interface FakeInferenceCall {
@@ -79,9 +79,10 @@ export function fakeInference(reply: FakeInferenceReply | ((call: FakeInferenceC
 
   const modelFor = async (model: ModelId) => {
     const { MockLanguageModelV4, simulateReadableStream } = await import('ai/test');
+    const parts = parseModelId(model);
     return new MockLanguageModelV4({
-      provider: model.slice(0, model.indexOf(':')),
-      modelId: model.slice(model.indexOf(':') + 1),
+      provider: parts?.provider,
+      modelId: parts?.model ?? model,
       doGenerate: async (options) => {
         const { text, toolCalls, finishReason } = answer(model, options, false);
         return { content: [...(text ? [{ type: 'text' as const, text }] : []), ...toolCalls], finishReason, usage: USAGE, warnings: [] };
@@ -104,16 +105,5 @@ export function fakeInference(reply: FakeInferenceReply | ((call: FakeInferenceC
     });
   };
 
-  const service = {
-    calls,
-    async generateText({ model, output, ...options }: Parameters<InferenceService['generateText']>[0]) {
-      const { generateText } = await import('ai');
-      return generateText({ ...options, output: await toAiOutput(output), model: await modelFor(model) } as Parameters<typeof generateText>[0]);
-    },
-    async streamText({ model, output, ...options }: Parameters<InferenceService['streamText']>[0]) {
-      const { streamText } = await import('ai');
-      return streamText({ ...options, output: await toAiOutput(output), model: await modelFor(model) } as Parameters<typeof streamText>[0]);
-    },
-  };
-  return service as unknown as FakeInference;
+  return { calls, ...createInferenceService(modelFor) };
 }

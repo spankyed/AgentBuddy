@@ -62,3 +62,30 @@ export function installPublishedPackages(): string {
   }
   return root;
 }
+
+/**
+ * Compiles `files` (name → lines) as a consumer package in `dir`, with the chosen compiler and module
+ * resolution: tsc's exit code and output.
+ */
+export function compileConsumer(
+  dir: string,
+  tsc: TscVersion,
+  moduleResolution: 'node16' | 'bundler',
+  files: Record<string, string[]>,
+  { skipLibCheck = true, types = [] as string[] } = {},
+): { code: number; output: string } {
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
+  fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
+      strict: true, skipLibCheck, noEmit: true, types, lib: ['ES2022', 'DOM'],
+    },
+    include: Object.keys(files),
+  }));
+  for (const [name, lines] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), lines.join('\n'));
+  try {
+    return { code: 0, output: execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', dir], { stdio: 'pipe' }).toString() };
+  } catch (err: any) {
+    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
+  }
+}
