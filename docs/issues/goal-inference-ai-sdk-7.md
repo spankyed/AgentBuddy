@@ -121,6 +121,7 @@ Final.
    - `@abuddy/sdk` keeps `ai` as an optional peer (`^7`) for the contract's types and `fakeInference`.
    - default-setup depends on neither `ai` nor any `@ai-sdk/*` package.
    - Nothing sets `globalThis.AI_SDK_DEFAULT_PROVIDER` or uses the AI Gateway.
+   - *Amended after implementation:* the provider packages are `@abuddy/host` dependencies (Decision 6), and `ai` is a required peer of `@abuddy/sdk`: an optional peer a pack hasn't installed turns the contract's types into `any` (`published-sdk-peers.spec.ts`).
 4. **One service: `services.inference`.** In `HostServices`, next to `appData` and `traceStore`, delegating to host module `inference`.
    ```ts
    import type { generateText, streamText, ToolSet, OutputInterface } from 'ai';
@@ -136,11 +137,13 @@ Final.
    }
    ```
    - **Two calls.** Structured output is `output: Output.object(...)`. There is no `languageModel`, `generateObject`, `streamObject`, web search or agent API.
+   - *Amended after implementation:* the service also has `createAgent` (an async `ToolLoopAgent` whose model and key resolve on each call), `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe` and `rerank`. Each takes ids from providers that give its kind (`providerCapabilities`, `ModelIdOf<K>`), and the model `prepareStep` or `prepareCall` picks is an id too, so no call reaches `ai`'s global provider.
    - **No overrides.** Options take no `apiKey`, `baseURL` or `headers`: keys belong to the app.
    - **The host service names include `inference`** (`abuddy-host/src/packs/pack-registration.ts:21`), so no pack can register a service with that name.
 5. **Model ids.**
    - `@abuddy/sdk/models` exports `ProviderName` (`'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'cohere'`, the SDK's `SecretProvider` without `custom`) and `ModelId = \`${ProviderName}:${string}\``.
    - Catalog entries carry `id: ModelId` and `provider: ProviderName`, so the `llm` form stores ids the runtime resolves.
+   - *Amended after implementation:* entries carry only `id`; the provider comes from `parseModelId(id)`.
    - `@abuddy/sdk/services` imports the types from there.
 6. **The app's implementation** (`api/src/core/inference/inference.ts`, registered as host module `inference`):
    - *Amended after implementation:* it moved to `@abuddy/host/services/inference.ts`, next to `appData` and `traceStore`, with the settings view in `@abuddy/host/settings` and the provider packages as `@abuddy/host` dependencies. The API registers all three with `registerHostServices()`.
@@ -148,7 +151,7 @@ Final.
    const PROVIDERS = { anthropic: createAnthropic, openai: createOpenAI, google: createGoogle,
                        groq: createGroq, mistral: createMistral, cohere: createCohere } satisfies Record<ProviderName, …>;
    ```
-   - It splits the id at the first `:` and builds the provider with the key found at call time: `general.secrets`, then `<PROVIDER>_API_KEY`. It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
+   - It splits the id at the first `:` and builds the provider with the key found at call time: `general.secrets`, then the variable the provider package reads (`GOOGLE_GENERATIVE_AI_API_KEY` for Google, `<PROVIDER>_API_KEY` for the rest). It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
    - An unknown provider or a missing key throws, naming the provider (and, for a key, where to set it).
    - `openai.responses` and `model-provider.ts` are removed.
 7. **Pure pieces come from `ai` directly.** Packs import `tool`, `Output`, `isStepCount`, `ModelMessage` and result types from `ai`. The SDK re-exports none of them, and `@abuddy/sdk/inference` is removed.
@@ -159,8 +162,10 @@ Final.
      - It runs `ai`'s real `generateText`/`streamText` on `MockLanguageModelV4`, so steps, `output` parsing, tool execution and stream parts behave as in the app.
      - `reply` is a string, `{ text?, toolCalls?: [{ toolName, input }] }`, or a function of the call returning either. A function sees every step, so a tool loop can reply with tool calls and then text.
      - Each call records `{ model: ModelId, prompt, tools: string[], stream: boolean }`, where `prompt` is the messages the model received.
+     - *Amended after implementation:* calls record `{ kind: 'text', model, instructions, messages, tools, stream }`, and the fake answers every kind (`kind: 'embedding' | 'image' | 'speech' | 'transcription' | 'reranking'`) from per-kind replies with defaults.
      - It loads `ai` and `ai/test` lazily, so `@abuddy/sdk/testing` still loads in a pack without `ai`.
    - **The harness** (`@abuddy/testing/harness`) has no inference code. Tests call `mockService<Services, 'inference'>('inference', fakeInference(…))`, or mock a single function.
+     - *Amended after implementation:* the harness has `mockInference(reply, replies?)`, that call in one line.
 9. **Deleted.**
    - `@abuddy/sdk/inference` (`services/inference.ts`, the export, `etc/inference.api.md`, the API's `SDK_BRIDGE` entry).
    - `testing/fake-model.ts` and its spec, and `noModel`/`restoreModelProvider`.
@@ -169,8 +174,8 @@ Final.
 10. **Scope.**
     - In: text generation, streaming, structured output and tool loops through `services.inference`; the `llm` step and form; the catalog's id format.
     - Out:
-      - agents (`ToolLoopAgent`)
-      - embeddings and images
+      - agents (`ToolLoopAgent`) — *done since*
+      - embeddings and images — *done since*
       - who owns secret selection (the app keeps reading default-setup's `general.secrets`)
       - refreshing the catalog's models and the `llm` step's default model content
 
@@ -253,7 +258,8 @@ The contract, the app implementation and the callers depend on each other. They 
 
 - Who owns secret selection. Today the app reads default-setup's `general.secrets` through the SDK's `BuiltinRepositories` contract; the SDK owns the `Secret` entity.
 - Video generation (`generateVideo`): few of the providers give it.
-- *Done since:* the model catalog and the `llm` step's default model were refreshed (`fb06e736a`); agents, embeddings, images, speech and transcription run through `services.inference` (`createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`).
+- The library's search index (`library/be/search-index`, behind `SEARCH_INDEX_FF`) embeds through `services.inference` but stays dormant: its `fastembed` and `usearch` dependencies aren't installed.
+- *Done since:* the model catalog and the `llm` step's default model were refreshed (`fb06e736a`); agents, embeddings, images, speech, transcription and reranking run through `services.inference` (`createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`).
 
 ## Constraints
 

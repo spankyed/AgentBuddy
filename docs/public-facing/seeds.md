@@ -87,7 +87,7 @@ Actions receive a `services` object with access to:
 
 | Service | Description |
 |---|---|
-| `services.inference` | Model calls (`generateText`, `streamText`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
+| `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.prompt` | Prompt template resolution (`usePrompt`) |
 | `services.threads` | Thread and message operations |
 | `services.chat` | Chat interactions |

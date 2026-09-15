@@ -86,7 +86,7 @@ it('digests a note, with only the inference call it makes mocked', async () => {
 });
 ```
 
-Give only the members the code under test uses. Code that imports a service module directly, instead of using `services`, isn't affected. Mock services that reach outside the process (CLIs, the network) in any test that runs code using them.
+Give only the members the code under test uses. A mock lasts for the test it's made in: make it in the test or a `beforeEach` (`mockService` fails in `beforeAll` or at the top of a file). Code that imports a service module directly, instead of using `services`, isn't affected. Mock services that reach outside the process (CLIs, the network) in any test that runs code using them.
 
 ## Models
 
@@ -100,16 +100,18 @@ const inference = mockInference('A short summary');          // or (call) => rep
 expect(inference.calls[0]).toMatchObject({ kind: 'text', model: 'anthropic:claude-sonnet-4-5', messages: [{ role: 'user', text: 'Summarize this note: …' }] });
 
 // Other kinds of model answer from the second argument; each has a default
-mockInference('unused', { embedding: (value) => [value.length, 0], image: pngBytes, speech: mp3Bytes, transcript: 'Buy milk' });
+mockInference('unused', { embedding: (value) => [value.length, 0], image: pngBytes, speech: mp3Bytes, transcript: 'Buy milk', relevance: (query, document) => String(document).includes(query) ? 1 : 0 });
 ```
 
 - **A reply** is text, or `{ text?, toolCalls?: [{ toolName, input }] }`. Tool calls run your tools' `execute`, and the AI SDK calls the model again while `stopWhen` allows, so a function reply can answer tool results with text.
 - **Structured output:** reply with JSON; `output` (a spec like `{ type: 'object', schema }` or an `Output`) parses it as it would a real model's reply, and rejects what the schema rejects.
 - **Agents** (`createAgent`) run on the same language model: each step is a call, answered by `reply`.
-- **Other kinds:** `embedding` (each value's vector, default `[value.length, 1, 0]`), `image` (default a 1×1 PNG), `speech` (default an empty MP3 tag) and `transcript` (default `'Fake transcript'`).
-- **`calls`** records each model call in order, with its `kind`:
-  - `text` (one per step): `model`, `instructions`, `messages` (each message's text; tool calls and results as JSON), `tools` and `stream`;
-  - `embedding`: `model`, `values`; `image`: `model`, `prompt`, `n`; `speech`: `model`, `text`, `voice`; `transcription`: `model`, `mediaType`.
+- **Other kinds:** `embedding` (each value's vector, default `[value.length, 1, 0]`), `image` (default a 1×1 PNG), `speech` (default a silent MP3 frame), `transcript` (default `'Fake transcript'`) and `relevance` (each document's score for a `rerank` query, from 0 to 1; by default earlier documents rank higher).
+- **`calls`** records each model call in order, with its `kind`. Like a real provider's, a call can take several model calls: one per step for text, chunks of 2048 values for `embedMany`, batches of up to 10 images for `generateImage`.
+  - `text`: `model`, `instructions`, `messages` (each message's text; tool calls and results as JSON), `tools` and `stream`;
+  - `embedding`: `model`, `values`; `image`: `model`, `prompt`, `n` (this batch's), `size`, `aspectRatio`;
+  - `speech`: `model`, `text`, `voice`, `instructions`, `speed`; `transcription`: `model`, `mediaType`;
+  - `reranking`: `model`, `query`, `documents`, `topN`.
 
 ## Flows
 
@@ -133,5 +135,6 @@ it('summarizes a note', async () => {
 - **`runFlow(label, { event?, data?, timeoutMs? })`** makes the flow the root flow and starts the brain if it isn't running it. It triggers `event` (by default `flow.entry`, which starts the flow again) with `data` as its payload.
   - It resolves once every track the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
   - It returns the steps those tracks ran: `label`, `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event).
-- **`flowTrace(label)`** returns the steps a flow (root or subflow) has run so far in the app.
+- **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it).
+- **A brain with no flow to run** stops; `runFlow` starts it.
 - **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track.

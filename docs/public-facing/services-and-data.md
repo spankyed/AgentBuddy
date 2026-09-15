@@ -85,28 +85,29 @@ The host implements operations on the app's stored data as a whole; packs call t
 
 ### Inference
 
-`services.inference` calls models with the keys the user stored in Settings → Secrets (or `<PROVIDER>_API_KEY` in the app's environment). Its calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
+`services.inference` calls models with the keys the user stored in Settings → Secrets (or, in the app's environment, the variable each provider's AI SDK package reads: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`; those packages also read base URL variables like `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL`, which redirect their calls). Its calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
 
 | Call | Returns |
 |---|---|
 | `generateText(options)` | the AI SDK's `generateText` result: `text`, `output`, `toolCalls`, `steps`, `usage`, … |
 | `streamText(options)` | a promise of the AI SDK's `streamText` result: `stream` (parts), `textStream`, `text`, … |
-| `createAgent(settings)` | a promise of the AI SDK's `ToolLoopAgent`: `generate({ prompt })` and `stream({ prompt })` loop over `instructions`, `tools` and `output` until `stopWhen` (20 steps by default) |
+| `createAgent(settings)` | a promise of the AI SDK's `ToolLoopAgent`: `generate({ prompt })` and `stream({ prompt })` loop over `instructions`, `tools` and `output` until `stopWhen` (20 steps by default); its model and key resolve on each call |
 | `embed(options)` / `embedMany(options)` | the AI SDK's `embed` / `embedMany` results: `embedding` / `embeddings` |
 | `generateImage(options)` | the AI SDK's `generateImage` result: `image` (`uint8Array`, `base64`, `mediaType`) and `images` |
 | `generateSpeech(options)` | the AI SDK's `generateSpeech` result: `audio` |
 | `transcribe(options)` | the AI SDK's `transcribe` result: `text`, `segments`, `language` |
+| `rerank(options)` | the AI SDK's `rerank` result: `ranking` and `rerankedDocuments` |
 
-Each call takes models from the providers that give that kind (`providerCapabilities` in `@abuddy/sdk/models`); a model id from another provider doesn't compile (`EmbeddingModelId`, `ImageModelId`, `SpeechModelId`, `TranscriptionModelId`) and fails naming the provider at runtime:
+Each call takes models from the providers that give that kind (`providerCapabilities` in `@abuddy/sdk/models`); a model id from another provider doesn't compile (`EmbeddingModelId`, `ImageModelId`, `SpeechModelId`, `TranscriptionModelId`, `RerankingModelId`) and fails naming the provider at runtime:
 
-| Provider | Language | Embedding | Image | Speech | Transcription |
-|---|---|---|---|---|---|
-| `anthropic` | ✓ | | | | |
-| `openai` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `google` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `groq` | ✓ | | | | ✓ |
-| `mistral` | ✓ | ✓ | | ✓ | ✓ |
-| `cohere` | ✓ | ✓ | | | |
+| Provider | Language | Embedding | Image | Speech | Transcription | Reranking |
+|---|---|---|---|---|---|---|
+| `anthropic` | ✓ | | | | | |
+| `openai` | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `google` | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `groq` | ✓ | | | | ✓ | |
+| `mistral` | ✓ | ✓ | | ✓ | ✓ | |
+| `cohere` | ✓ | ✓ | | | | ✓ |
 
 `ModelId` and the language model catalog come from `@abuddy/sdk/models`.
 
@@ -160,6 +161,7 @@ const { embeddings } = await services.inference.embedMany({ model: 'openai:text-
 const { image } = await services.inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk' });
 const { audio } = await services.inference.generateSpeech({ model: 'openai:gpt-4o-mini-tts', text: 'Buy milk' });
 const { text: heard } = await services.inference.transcribe({ model: 'groq:whisper-large-v3', audio: audio.uint8Array });
+const { rerankedDocuments } = await services.inference.rerank({ model: 'cohere:rerank-v3.5', query: 'groceries', documents: ['Buy milk', 'Call Sam'] });
 ```
 
 - **`output` takes data or an `Output`.** The data forms mirror `ai`'s `Output` helpers, and `output` in the result is typed from them:
@@ -173,6 +175,7 @@ const { text: heard } = await services.inference.transcribe({ model: 'groq:whisp
   | `{ type: 'choice', options, name?, description? }` | `Output.choice({ options })` | one of the options |
 
   An `Output` (including one you implement) passes through as is. The data form can be stored, and code that can't import `ai` can write it.
+- **Every model is named by id,** including the one `prepareStep` (or an agent's `prepareCall`) picks for a step or call: `prepareStep: ({ stepNumber }) => stepNumber > 0 ? { model: 'openai:gpt-5-mini' } : undefined`.
 - **The rest of a call's pieces are `ai`'s:** `tool`, `isStepCount` and types like `ModelMessage`. `ai` 7 is a peer dependency of `@abuddy/sdk`, installed with it (add it to your pack's own dependencies if your package manager doesn't install peers); your pack never builds a model or holds a key.
 - **TypeScript 5.7 or later**, which `ai` 7's types need.
 - **Actions** can't import `ai`, and don't need to: `output` as data, tools as plain `{ description, inputSchema, execute }` objects (`tool()` only returns its argument), and `stopWhen` as a function (`({ steps }) => steps.length >= 5`).
