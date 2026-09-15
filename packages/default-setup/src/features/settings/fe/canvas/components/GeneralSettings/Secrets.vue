@@ -55,9 +55,9 @@
           :key="secret.id"
           :secret="secret"
           :selectable="true"
+          :rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
+          :replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
           @select="run(() => trpc.secrets.select.mutate({ id: secret.id }))"
-          @rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
-          @replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
           @delete="confirmDelete(secret)"
         />
 
@@ -72,7 +72,7 @@
           :value-placeholder="`Enter ${provider.label} API key`"
           :collapsed="keysFor(provider.key).length > 0"
           add-text="Add another key"
-          @save="(label, value) => add(provider.key, label, value)"
+          :save="(label, value) => add(provider.key, label, value)"
         />
       </div>
     </div>
@@ -88,8 +88,8 @@
         :key="secret.id"
         :secret="secret"
         :selectable="false"
-        @rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
-        @replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
+        :rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
+        :replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
         @delete="confirmDelete(secret)"
       />
       <NewSecretRow
@@ -97,7 +97,7 @@
         value-placeholder="Enter key"
         :collapsed="true"
         add-text="Add custom key"
-        @save="(label, value) => add('custom', label, value)"
+        :save="(label, value) => add('custom', label, value)"
       />
     </div>
   </div>
@@ -144,7 +144,7 @@ const protectionClass = computed(() => status.value?.protection === 'os-keystore
   ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300/90'
   : 'border-amber-500/30 bg-amber-500/10 text-amber-200')
 
-/** Runs a secrets procedure; the settings system sends the updated list, so only errors are kept here */
+/** Runs a secrets procedure, resolving whether it succeeded; the settings system sends the updated list, so only errors are kept here */
 async function run(call: () => Promise<unknown>): Promise<boolean> {
   error.value = null
   try {

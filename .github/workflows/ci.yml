@@ -39,14 +39,14 @@ jobs:
       - name: Schema drift check
         run: npm run schema:check --workspace @abuddy/sdk
 
-      - name: Build default-setup runtime (for the SDK bridge drift check)
-        run: node packages/default-setup/dev-build.mjs
-
       # Compiled seeds, snapshot and build/ (seed compilers, seed runtime): read by the seed parity,
-      # dependent-pack and seed runtime tests
+      # dependent-pack and seed runtime tests. abuddy build clears the runtime, so it runs first
       - name: Build default-setup pack artifacts
         working-directory: packages/default-setup
         run: npx abuddy build
+
+      - name: Build default-setup runtime (for the SDK bridge drift check and dependent-pack tests)
+        run: node packages/default-setup/dev-build.mjs
 
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose

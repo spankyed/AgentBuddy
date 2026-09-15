@@ -11,7 +11,7 @@ import { isFlowConfig } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
-import { childSeedKey, SEED_KEY } from './seeder.ts';
+import { childSeedKey, SEED_KEY, seedingPackId, seedKeyPrefix } from './seeder.ts';
 
 /** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
 interface SeededGraph {
@@ -22,7 +22,8 @@ interface SeededGraph {
 }
 
 const SEEDED_GRAPH = 'seededGraph' as EARS.AttrKind;
-const ROW_KEYS = new Set(['id', 'sourceHash']);
+// createdAt is when the rows were written, not what was written
+const ROW_KEYS = new Set(['id', 'sourceHash', 'createdAt']);
 
 /** The flow's rows as stored now, for the fields and relation kinds the seeder wrote; independent of relation order */
 function hashGraph(flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): string {
@@ -51,13 +52,13 @@ function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): void {
   updateAttr(flowId, SEEDED_GRAPH, { ...seeded, hash: hashGraph(flowId, seeded) } satisfies SeededGraph);
 }
 
-/** The flow's nodes, fields and relations still hold what the seeder wrote; false for flows seeded before this was recorded */
-function holdsSeededGraph(flowId: EARS.EntityId): boolean {
-  const seeded = getAttr(flowId, SEEDED_GRAPH) as SeededGraph | null;
-  return seeded !== null && hashGraph(flowId, seeded) === seeded.hash;
+/** The flow's nodes, fields and relations still hold what the seeder wrote */
+function holdsSeededGraph(flowId: EARS.EntityId, seeded: SeededGraph): boolean {
+  return hashGraph(flowId, seeded) === seeded.hash;
 }
 
-const flowSeedKey = (name: string) => childSeedKey('flows', { entity: EARS.Entity.Flow, label: name }, ['label']);
+/** A DSL entry's seed key: the seeding pack, then the entry key and the flow's name in the source */
+const flowSeedKey = (packId: string, name: string) => `${seedKeyPrefix(packId)}${childSeedKey('flows', { entity: EARS.Entity.Flow, label: name }, ['label'])}`;
 
 function buildLabelMap(entities: Array<{ label: string; id: EARS.EntityId }>): Map<string, string> {
   return new Map(entities.map((e) => [e.label, e.id]));
@@ -74,6 +75,8 @@ export function createFlowSeeder(): Seeder {
         return counts;
       }
 
+      const packId = seedingPackId(ctx.compiledDir);
+
       if (ctx.mode === 'wipe-and-replace') {
         for (const flow of findAll<FlowEntity>(EARS.Entity.Flow)) {
           try { builtinRepository.flowsCommands.deleteFlow(flow.id); } catch {}
@@ -81,16 +84,16 @@ export function createFlowSeeder(): Seeder {
         ctx.log('  flows wiped');
       }
 
-      const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
-      /** The flow seeded from this DSL entry, however it's been renamed; flows seeded before seed keys match by label */
-      const findSeeded = (name: string): FlowEntity | undefined => {
-        const seedKey = flowSeedKey(name);
-        const keyed = existingFlows.find((flow) => getAttr(flow.id, SEED_KEY) === seedKey);
-        if (keyed) return keyed;
-        const byLabel = existingFlows.find((flow) => flow.label === name && getAttr(flow.id, SEED_KEY) === null);
-        if (byLabel?.sourceHash) updateAttr(byLabel.id, SEED_KEY, seedKey);
-        return byLabel;
+      /**
+       * The flow seeded from this DSL entry, however it's been renamed; otherwise a flow without a seed key
+       * that has its label (a user's flow), so a seed never adds a copy beside it.
+       */
+      const lookupSeeded = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
+        const seedKey = flowSeedKey(packId, name);
+        return flows.find((flow) => getAttr(flow.id, SEED_KEY) === seedKey)
+          ?? flows.find((flow) => flow.label === name && getAttr(flow.id, SEED_KEY) === null);
       };
+      const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
       const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
       const promptMap = buildLabelMap(builtinRepository.promptQueries.all());
 
@@ -114,7 +117,7 @@ export function createFlowSeeder(): Seeder {
           continue;
         }
 
-        const existing = findSeeded(key);
+        const existing = lookupSeeded(existingFlows, key);
         const compiledHash = isFlowConfig(entry) ? (entry as any).sourceHash : undefined;
 
         if (existing) {
@@ -136,7 +139,9 @@ export function createFlowSeeder(): Seeder {
             continue;
           }
 
-          if (!holdsSeededGraph(existing.id)) {
+          // A flow whose seeded graph wasn't recorded can't be checked for edits, so it's left alone too
+          const seeded = getAttr(existing.id, SEEDED_GRAPH) as SeededGraph | null;
+          if (!seeded || !holdsSeededGraph(existing.id, seeded)) {
             ctx.log(`  flow skipped (edited): ${key}`);
             counts.skipped++;
             continue;
@@ -156,21 +161,41 @@ export function createFlowSeeder(): Seeder {
         validFlowDSL[key] = entry;
       }
 
+      /**
+       * The flows a subflow step can name that this seed doesn't (re)import, such as an unchanged flow
+       * or a dependency's. A flow this pack's seed defines is its seeded flow, found by seed key however
+       * it's been renamed, never another flow with its label; other names resolve by label.
+       */
+      const subflowTargets = (): Map<string, string> => {
+        const flows = findAll<FlowEntity>(EARS.Entity.Flow);
+        const defined = new Set(Object.keys(flowsDSL));
+        const seededIds = new Set<string>();
+        const targets = new Map<string, string>();
+        for (const name of defined) {
+          const seeded = lookupSeeded(flows, name);
+          if (!seeded?.sourceHash) continue;
+          targets.set(name, seeded.id);
+          seededIds.add(seeded.id);
+        }
+        for (const flow of flows) {
+          if (!seededIds.has(flow.id) && !defined.has(flow.label) && !targets.has(flow.label)) targets.set(flow.label, flow.id);
+        }
+        return targets;
+      };
+
       const flowNames = Object.keys(validFlowDSL);
       if (flowNames.length === 0) {
         ctx.log('  no flows to import');
         return counts;
       }
 
-      // A flow can run one this seed doesn't (re)import, such as an unchanged flow or a dependency's
-      const flowMap = buildLabelMap(findAll<FlowEntity>(EARS.Entity.Flow) as Array<{ label: string; id: EARS.EntityId }>);
-      const compiled = compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap, flows: flowMap });
+      const compiled = compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap, flows: subflowTargets() });
       builtinRepository.flowsCommands.importFromDSL(compiled);
       for (const name of flowNames) {
         const row = (compiled.entity as Array<{ id: string; entityType?: string; label?: string }>)
           .find((entity) => entity.entityType === EARS.Entity.Flow && entity.label === name);
         if (row) {
-          updateAttr(row.id as EARS.EntityId, SEED_KEY, flowSeedKey(name));
+          updateAttr(row.id as EARS.EntityId, SEED_KEY, flowSeedKey(packId, name));
           stampSeededGraph(row.id as EARS.EntityId, compiled);
         }
         if (replacedLabels.has(name)) {

@@ -20,7 +20,8 @@ export interface SecretInfo {
  * How stored keys are protected on this system:
  * - `os-keystore`: encrypted, with the data key in the OS credential store (`backend` names it)
  * - `unprotected`: encrypted with a data key kept in a file next to them, after the user chose to
- * - `unavailable`: there's no OS credential store; keys can't be added until the user allows unprotected storage
+ * - `unavailable`: the OS credential store failed its last use (none on this system, or locked); adding a key
+ *   tries it again, and the user can allow unprotected storage instead
  */
 export type SecretsProtection = 'os-keystore' | 'unprotected' | 'unavailable';
 

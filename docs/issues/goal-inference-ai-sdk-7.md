@@ -48,7 +48,7 @@ Pack code gets models from an `@abuddy/sdk/inference` module on AI SDK 4, throug
 
 - **The current seam** (from `7e240b02c`):
   - `@abuddy/sdk/inference` (`abuddy-sdk/src/services/inference.ts`) wraps `ai` 4's `generateText`/`streamText`/`generateObject`/`streamObject`. It resolves `{ provider, model }` through `getHostModule('model-provider')` and re-exports `tool`, `webSearchTool` and `CoreMessage`.
-  - The app registers `api/src/core/inference/model-provider.ts` (`api/src/setup/sdk-host-init.ts:41`). It holds the provider table and the key lookup: `general.secrets` read through `settingsRepository`'s cast view (`api/src/core/settings-repository.ts:19-21`), then `*_API_KEY` environment variables. Cohere throws "not implemented".
+  - The app registers `api/src/core/inference/model-provider.ts` (`api/src/setup/sdk-host-init.ts:41`). It holds the provider table and the key lookup (since replaced: keys now come only from the host's encrypted store, entered in Settings → Secrets; see step 6). Cohere throws "not implemented".
   - Unit tests swap that host module globally. `fakeModel` (`abuddy-sdk/src/testing/fake-model.ts`) hand-implements the model spec, the test host re-registers a throwing `noModel` (`testing/host.ts:126`), and the harness restores it after each test.
 - **The callers are prototype code.**
   - The only in-repo model call that runs is the `llm` step (`default-setup/src/extensions/steps/llm/runtime.ts:69-81`).
@@ -151,9 +151,8 @@ Final.
    const PROVIDERS = { anthropic: createAnthropic, openai: createOpenAI, google: createGoogle,
                        groq: createGroq, mistral: createMistral, cohere: createCohere } satisfies Record<ProviderName, …>;
    ```
-   - It splits the id at the first `:` and builds the provider with the key found at call time: `general.secrets`, then the variable the provider package reads (`GOOGLE_GENERATIVE_AI_API_KEY` for Google, `<PROVIDER>_API_KEY` for the rest). It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
+   - It splits the id at the first `:` and builds the provider with the key selected for it at call time: keys come only from Settings → Secrets, where each provider holds several labelled keys with one selected, in the host's encrypted store (`@abuddy/host/secrets`, read with `secretsStore.keyFor(provider)`), never from environment variables. It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
    - An unknown provider or a missing key throws, naming the provider (and, for a key, where to set it).
-   - *Amended after implementation:* keys come only from Settings → Secrets, where each provider holds several labelled keys with one selected, in the host's encrypted store (`@abuddy/host/secrets`, read with `secretsStore.keyFor(provider)`). The environment-variable fallback is removed.
    - `openai.responses` and `model-provider.ts` are removed.
 7. **Pure pieces come from `ai` directly.** Packs import `tool`, `Output`, `isStepCount`, `ModelMessage` and result types from `ai`. The SDK re-exports none of them, and `@abuddy/sdk/inference` is removed.
    - *Amended after implementation:* `output` also takes plain data (`OutputSpec`: `{ type: 'text' | 'json' | 'object' | 'array' | 'choice', … }`), translated to the matching `Output.*` by the SDK's `createInferenceService`, which the host's implementation and `fakeInference` share. Sandboxed actions can't import `ai`, and a data form can be stored. An `Output` instance still passes through unchanged, so nothing from `ai` is lost.

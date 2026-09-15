@@ -1,9 +1,9 @@
 // API keys in default-setup: the settings system refreshes its plugin when the host's stored keys change
-// (never with values), CLI paths live in the code plugin, and 0.3.15 moves old settings.
-import { describe, expect, it } from 'vitest';
+// (never with values) and starts the assistant's birth flow once a required provider has a key, CLI paths live in
+// the code plugin.
+import { describe, expect, it, vi } from 'vitest';
 import { addTestSecret, startApp } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
-import { migration } from '../../src/migrations/0.3.15';
 
 describe('settings and stored API keys', () => {
   it('sends its plugin the keys without values when the stored keys change', async () => {
@@ -19,34 +19,30 @@ describe('settings and stored API keys', () => {
     expect(JSON.stringify(updated)).not.toContain('value');
   });
 
+  it("starts the birth flow once a required provider has a selected key, and not after the assistant's birth", async () => {
+    const app = await startApp({ systems: ['settings', 'threads'] });
+    // Only the events reaching threads matter here: what threads does with them (the birth flow) runs on the brain
+    const threads = vi.spyOn(app.system('threads'), 'send').mockImplementation(() => {});
+    await app.connect();
+    const births = () => threads.mock.calls.filter(([event]) => (event as { type: string }).type === 'BIRTH_FLOW_START').length;
+
+    addTestSecret('google', 'Work');
+    await app.send('settings', { type: 'SECRETS_CHANGED' });
+    expect(births()).toBe(0);
+
+    addTestSecret('anthropic', 'Work');
+    await app.send('settings', { type: 'SECRETS_CHANGED' });
+    expect(births()).toBe(1);
+
+    repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], new Date().toISOString());
+    await app.send('settings', { type: 'SECRETS_CHANGED' });
+    expect(births()).toBe(1);
+  });
+
   it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
     await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
     expect(repository.settingsQueries.getPluginSettings('code')).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
-  });
-});
-
-describe('migration 0.3.15', () => {
-  const store = (general: Record<string, unknown>) => repository.settingsCommands.replaceSettings({ general } as never);
-
-  it('moves CLI paths to the code plugin and drops the general.secrets key map; a second run changes nothing', () => {
-    store({ secrets: { openai: 'Secret-1', custom: { GitHub: 'Secret-2' }, required: ['openai'], cliPaths: { gh: '/usr/local/bin/gh', codex: '' } } });
-
-    migration.up();
-    const once = repository.settingsQueries.getSettings();
-    migration.up();
-
-    expect((once.general as unknown as Record<string, unknown>).secrets).toBeUndefined();
-    expect(repository.settingsQueries.getPluginSettings('code')).toMatchObject({ cliPaths: { gh: '/usr/local/bin/gh' } });
-    expect((repository.settingsQueries.getPluginSettings('code') as { cliPaths: Record<string, string> }).cliPaths).not.toHaveProperty('codex');
-    expect(repository.settingsQueries.getSettings()).toEqual(once);
-  });
-
-  it("keeps CLI paths the code plugin already has", () => {
-    store({ secrets: { cliPaths: { gh: '/old/gh' } } });
-    repository.settingsCommands.updateSettings('plugin', 'code', ['cliPaths'], { gh: '/new/gh' });
-    migration.up();
-    expect(repository.settingsQueries.getPluginSettings('code')).toMatchObject({ cliPaths: { gh: '/new/gh' } });
   });
 });

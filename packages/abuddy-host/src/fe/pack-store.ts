@@ -7,7 +7,8 @@ import { stepRegistry } from '@abuddy/sdk/steps';
 import { registerAppExtension, unregisterAppExtension } from './app-extensions.ts';
 
 interface PackFEContributions {
-  pluginIds: string[];
+  /** The plugins this pack added: not those skipped because another pack or the host has the id */
+  plugins: Plugin[];
   stepTypes: string[];
   tiptapPluginCount: number;
   appExtensionSlots: string[];
@@ -21,7 +22,16 @@ let defaultPlugin: Plugin | undefined;
 const packContributions = new Map<string, PackFEContributions>();
 
 export function registerPackFE(registration: PackFERegistration, packId?: string): void {
-  const plugins = registration.plugins ?? [];
+  const registeredIds = new Set(allPlugins.map(p => p.id));
+  const plugins: Plugin[] = [];
+  for (const plugin of registration.plugins ?? []) {
+    if (registeredIds.has(plugin.id)) {
+      console.warn(`[pack-store] Plugin "${plugin.id}"${packId ? ` from pack ${packId}` : ''} ignored — a plugin with that id is already registered`);
+      continue;
+    }
+    registeredIds.add(plugin.id);
+    plugins.push(plugin);
+  }
   allPlugins.push(...plugins);
 
   if (registration.defaultPlugin && !defaultPlugin) {
@@ -70,7 +80,7 @@ export function registerPackFE(registration: PackFERegistration, packId?: string
 
   if (packId) {
     packContributions.set(packId, {
-      pluginIds: plugins.map(p => p.id),
+      plugins,
       stepTypes: (registration.steps ?? []).map(s => s.type),
       tiptapPluginCount: registration.tiptapPlugins?.length ?? 0,
       appExtensionSlots,
@@ -86,10 +96,10 @@ export function unregisterPackFE(packId: string): Plugin[] {
   if (!contrib) return [];
 
   const removedPlugins: Plugin[] = [];
-  for (const pluginId of contrib.pluginIds) {
-    const idx = allPlugins.findIndex(p => p.id === pluginId);
+  for (const plugin of contrib.plugins) {
+    const idx = allPlugins.indexOf(plugin);
     if (idx >= 0) {
-      removedPlugins.push(allPlugins[idx]);
+      removedPlugins.push(plugin);
       allPlugins.splice(idx, 1);
     }
   }

@@ -38,4 +38,5 @@ export const secretsStore: SecretsStore = {
   keyFor: (provider) => appStore().keyFor(provider),
   allowUnprotected: () => appStore().allowUnprotected(),
   clearAll: () => appStore().clearAll(),
+  onChange: (listener) => appStore().onChange(listener),
 };

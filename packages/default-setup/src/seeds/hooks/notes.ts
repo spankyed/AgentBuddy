@@ -1,7 +1,7 @@
 // How notes are seeded, for any pack that seeds Note rows: through noteCommands, so seeded notes get
 // shortCodes, display order and REFERENCES links like notes created in the app.
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
-import { EARS, findWhere, qx } from '@/__generated__/ears';
+import { EARS, findWhere, qx, updateEntity } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 
 export interface NoteSeedRecord extends SeedRecord {
@@ -16,13 +16,12 @@ export interface NoteSeedRecord extends SeedRecord {
   savedDisplayOrder?: number;
 }
 
-/** Flags and saved order noteCommands.create doesn't take */
-function applyExtras(id: EARS.EntityId, record: NoteSeedRecord): void {
-  const flags: { favorite?: boolean; hideCompletedChildren?: boolean } = {};
-  if (record.favorite) flags.favorite = true;
-  if (record.hideCompletedChildren) flags.hideCompletedChildren = true;
-  if (Object.keys(flags).length > 0) repository.noteCommands.update(id, flags);
-  if (record.savedDisplayOrder != null) repository.noteCommands.update(id, { savedDisplayOrder: record.savedDisplayOrder });
+type NoteUpdates = Parameters<typeof repository.noteCommands.update>[1];
+const UPDATE_FIELDS = ['title', 'content', 'icon', 'completed', 'favorite', 'hideCompletedChildren', 'savedDisplayOrder'] as const;
+
+/** The fields noteCommands.update takes, as the record sets them (fields it doesn't set are left out) */
+function recordUpdates(record: NoteSeedRecord, fields: readonly (typeof UPDATE_FIELDS)[number][] = UPDATE_FIELDS): NoteUpdates {
+  return Object.fromEntries(fields.filter((field) => record[field] !== undefined).map((field) => [field, record[field]])) as NoteUpdates;
 }
 
 export const noteSeedHooks: SeedHooks<NoteSeedRecord> = {
@@ -36,27 +35,27 @@ export const noteSeedHooks: SeedHooks<NoteSeedRecord> = {
   },
 
   create(record, { parentId, index }) {
+    // noteCommands.create gives the fields a record doesn't set their defaults
     const note = repository.noteCommands.create({
       title: record.title,
-      content: record.content || '',
+      content: record.content,
       icon: record.icon,
       parentId,
       noteType: record.noteType,
-      completed: record.completed ?? false,
+      completed: record.completed,
       displayOrder: record.displayOrder ?? index,
     });
-    applyExtras(note.id, record);
+    // Fields noteCommands.create doesn't take
+    const extras = recordUpdates(record, ['favorite', 'hideCompletedChildren', 'savedDisplayOrder']);
+    if (Object.keys(extras).length > 0) repository.noteCommands.update(note.id, extras);
     return note.id;
   },
 
+  /** Writes every field the record sets, so the row holds the values the seeder records for it */
   update(id, record, { index }) {
-    repository.noteCommands.update(id, {
-      content: record.content || '',
-      icon: record.icon,
-      completed: record.completed ?? false,
-      displayOrder: record.displayOrder ?? index,
-    });
-    applyExtras(id, record);
+    repository.noteCommands.update(id, { ...recordUpdates(record), displayOrder: record.displayOrder ?? index });
+    // noteCommands.update doesn't change a note's type
+    if (record.noteType !== undefined) updateEntity(id, { noteType: record.noteType });
   },
 
   remove(id) {

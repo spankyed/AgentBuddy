@@ -14,6 +14,7 @@ import type { generateSpeech } from 'ai';
 import type { generateText } from 'ai';
 import type { ImageModel } from 'ai';
 import type { InferSchema } from 'ai';
+import type { JSONSchema7 } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
@@ -145,10 +146,10 @@ export type OutputSpec = {
     type: 'json';
 } & OutputNaming) | ({
     type: 'object';
-    schema: FlexibleSchema<unknown>;
+    schema: OutputSchema;
 } & OutputNaming) | ({
     type: 'array';
-    element: FlexibleSchema<unknown>;
+    element: OutputSchema;
     minItems?: number;
     maxItems?: number;
 } & OutputNaming) | ({

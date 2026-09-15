@@ -15,10 +15,14 @@ const value = z.string().min(1).max(10_000);
 
 const snapshot = (): SecretsSnapshot => ({ secrets: secretsStore.list(), status: secretsStore.status() });
 
-/** Tells the settings system the stored keys changed (no values), so it refreshes its plugin and key checks */
-function changed(): SecretsSnapshot {
-  if (hasDesignation('settings')) rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId: getDesignated('settings') });
-  return snapshot();
+/**
+ * Tells the settings system (no values) whenever the stored keys or their protection change, through these procedures,
+ * `services.secrets` or a failing credential store, so it refreshes its plugin and key checks. Registered once at boot.
+ */
+export function forwardSecretsChanges(): () => void {
+  return secretsStore.onChange(() => {
+    if (hasDesignation('settings')) rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId: getDesignated('settings') });
+  });
 }
 
 export const secretsRouter = router({
@@ -27,28 +31,28 @@ export const secretsRouter = router({
     .input(z.object({ provider, label, value }))
     .mutation(({ input }) => {
       secretsStore.add(input.provider, input.label, input.value);
-      return changed();
+      return snapshot();
     }),
   replaceValue: procedure
     .input(z.object({ id, value }))
     .mutation(({ input }) => {
       secretsStore.replaceValue(input.id, input.value);
-      return changed();
+      return snapshot();
     }),
   select: procedure.input(z.object({ id })).mutation(({ input }) => {
     secretsStore.select(input.id);
-    return changed();
+    return snapshot();
   }),
   rename: procedure.input(z.object({ id, label })).mutation(({ input }) => {
     secretsStore.rename(input.id, input.label);
-    return changed();
+    return snapshot();
   }),
   delete: procedure.input(z.object({ id })).mutation(({ input }) => {
     secretsStore.delete(input.id);
-    return changed();
+    return snapshot();
   }),
   allowUnprotected: procedure.mutation(() => {
     secretsStore.allowUnprotected();
-    return changed();
+    return snapshot();
   }),
 });

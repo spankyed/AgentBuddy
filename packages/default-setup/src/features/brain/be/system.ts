@@ -57,6 +57,8 @@ export type OutgoingBrainEvents =
 export interface BrainContext {
   brainActor?: any;
   eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
+  /** Why the brain last failed to start, while it stays stopped for that reason: reported again to clients that connect */
+  startError?: Error;
 }
 
 export const brainSpec = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
@@ -67,31 +69,59 @@ const logger = createLogger('brain');
 
 /**
  * The flow the brain runs: the flow with the root role, keeping the flows plugin's `rootFlowId` setting in step.
- * Undefined when there's nothing to run, and the brain stops: no flows yet, or flows without a root flow (an
- * error the user sees; the brain never picks one).
+ * Undefined when there's nothing to run, and the brain stops: no flows yet, or flows without a root flow
+ * (`noRootFlowError`; the brain never picks one).
  */
 function rootFlowToRun(): EARS.EntityId | undefined {
   const rootFlowId = repository.flowsQueries.rootFlow();
-  if (!rootFlowId) {
-    const flowCount = repository.flowsQueries.connectedData().flows.length;
-    if (flowCount === 0) {
-      logger.warn('No flow to run; start the brain once a flow exists');
-    } else {
-      reportSystemError({
-        error: new Error(`No flow has the root role (${flowCount} flows exist): mark one \`root: true\` in its flow source, or make one the root flow in Flows`),
-        title: 'Could not start the brain',
-        source: 'brain',
-        operation: 'start',
-      });
-    }
-    return undefined;
-  }
+  if (!rootFlowId) return undefined;
   const flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
   if (flowsSettings.rootFlowId !== rootFlowId) {
     repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], rootFlowId);
     logger.info('Updated settings to reflect actual root flow', { flowId: rootFlowId });
   }
   return rootFlowId;
+}
+
+/** The error the brain can't start with: flows exist but none has the root role. Undefined with a root flow or no flows */
+function noRootFlowError(): Error | undefined {
+  if (repository.flowsQueries.rootFlow()) return undefined;
+  const flowCount = repository.flowsQueries.connectedData().flows.length;
+  if (flowCount === 0) return undefined;
+  return new Error(`No flow has the root role (${flowCount} flows exist): mark one \`root: true\` in its flow source, or make one the root flow in Flows`);
+}
+
+function reportStartError(error: Error) {
+  reportSystemError({ error, title: 'Could not start the brain', source: 'brain', operation: 'start' });
+}
+
+type BrainActorSystem = Parameters<typeof getActor>[0];
+
+/** Clear the runningRootFlowId setting via settings system */
+function clearRunningRootFlow(system: BrainActorSystem) {
+  getActor(system, 'settings').send({
+    type: 'UPDATE_SETTINGS',
+    entityType: 'plugin',
+    label: 'brain',
+    path: ['runningRootFlowId'],
+    value: undefined
+  });
+}
+
+/**
+ * A start found no flow to run: reports why when flows exist but none is the root, clears the running root flow
+ * and tells clients the brain is stopped. Returns the error the brain stays stopped with, if any.
+ */
+function stopWithoutRootFlow(system: BrainActorSystem): Error | undefined {
+  const startError = noRootFlowError();
+  if (startError) {
+    reportStartError(startError);
+  } else {
+    logger.warn('No flow to run; start the brain once a flow exists');
+  }
+  clearRunningRootFlow(system);
+  getActor(system, bus).send(emit(brain, { type: 'BRAIN_KILLED' }));
+  return startError;
 }
 
 export const brainSystem = setup({
@@ -117,8 +147,7 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign({ brainActor: undefined });
-        enqueue(({ system }) => system.get(bus).send(emit(brain, { type: 'BRAIN_KILLED' })));
+        enqueue.assign({ brainActor: undefined, startError: stopWithoutRootFlow(system) });
         return;
       }
 
@@ -143,7 +172,8 @@ export const brainSystem = setup({
         
         // Return the updated context with the actor reference
         return {
-          brainActor: actor
+          brainActor: actor,
+          startError: undefined,
         };
       });
       
@@ -165,6 +195,14 @@ export const brainSystem = setup({
       });
     }),
     
+    /** Report why the brain couldn't start to a client that connects while it's stopped, unless a root flow exists by now */
+    reportStartError: enqueueActions(({ context, enqueue }) => {
+      if (!context.startError) return;
+      const startError = noRootFlowError();
+      if (startError) reportStartError(startError);
+      enqueue.assign({ startError });
+    }),
+
     killBrain: enqueueActions(({ context, enqueue, system }) => {
       if (context.brainActor) {
         setBrainPausedState(false);
@@ -185,14 +223,7 @@ export const brainSystem = setup({
         // async work interrupted that path, stale entries would leak here.
         clearFlowActorRegistry();
 
-        // Clear the runningRootFlowId setting via settings system
-        getActor(system, 'settings').send({
-          type: 'UPDATE_SETTINGS',
-          entityType: 'plugin',
-          label: 'brain',
-          path: ['runningRootFlowId'],
-          value: undefined
-        });
+        clearRunningRootFlow(system);
 
         // Send BRAIN_KILLED event
         system.get(bus).send(emit(brain, {
@@ -244,8 +275,7 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign({ brainActor: undefined });
-        enqueue(({ system }) => system.get(bus).send(emit(brain, { type: 'BRAIN_KILLED' })));
+        enqueue.assign({ brainActor: undefined, startError: stopWithoutRootFlow(system) });
         return;
       }
 
@@ -281,7 +311,8 @@ export const brainSystem = setup({
         logger.info('Restarted brain with root flow', { flowId: currentRootFlowId });
         
         return {
-          brainActor: actor
+          brainActor: actor,
+          startError: undefined,
         };
       });
     }),
@@ -486,6 +517,9 @@ export const brainSystem = setup({
     states: {
       stopped: {
         on: {
+          CLIENT_CONNECTED: {
+            actions: ['sendPluginData', 'reportStartError'],
+          },
           START_BRAIN: {
             target: 'running',
           },

@@ -47,12 +47,14 @@ export const systemBusRouter = router({
       rootEvents.emitIncoming(input);
     }),
   /**
-   * The client finished loading a pack's frontend, after the connection's CLIENT_CONNECTED broadcast:
-   * the pack's systems get CLIENT_CONNECTED again, so their startup data reaches its plugin actors.
+   * The client has a pack's plugin actors (at boot, on activation, or on reconnecting): the pack's systems
+   * get CLIENT_CONNECTED, which the connection's broadcast skips for external packs with plugins. Their
+   * replies reach every client, not only this one: outgoing events carry no client address.
    */
   packClientReady: procedure
     .input(z.object({ packId: z.string().min(1) }))
     .mutation(({ input }) => {
+      logger.info(`→ Pack client ready: "${input.packId}"`, { packId: input.packId });
       rootEvents.emitPackClientConnected(input.packId);
     }),
   sub: procedure

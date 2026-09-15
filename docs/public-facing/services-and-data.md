@@ -84,14 +84,14 @@ The host implements operations on the app's stored data as a whole; packs call t
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
 | `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. |
 
-Backups never include API keys; `exportBackup` copies the primary database (`lmdb`, with media) and the trace store (`volatileLmdb`).
+Backups never include API keys; `exportBackup` copies the primary database (`lmdb`, with media) and the trace store (`volatileLmdb`). `importBackup` restores only the databases the app has, and leaves out any other a backup lists.
 
 ### API keys
 
 The user adds keys in Settings → Secrets: several per provider (one per account, each with a label), with one selected per provider. `services.inference` uses the selected key.
 
-- **Where they're kept:** the host stores each key's metadata in plain text and its value encrypted (AES-256-GCM) in one file in the app's data directory. The data key that encrypts values is held by the OS credential store (macOS Keychain, Windows Credential Manager, or Secret Service on Linux) and is read the first time a value is used. Where the OS has none, keys are stored only after the user chooses to keep the data key in a file next to them, and Settings says they're unprotected.
-- **What never sees a value:** packs, the frontend, events, logs (the host redacts key-shaped strings and credential fields), error reports, backups and the database. `services.secrets` has no value-reading method.
+- **Where they're kept:** the host stores each key's metadata in plain text and its value encrypted (AES-256-GCM) in one file in the app's data directory, readable only by the user (mode `0600`; on Windows the mode has no effect, and the file relies on the user profile's access control). The data key that encrypts values is held by the OS credential store (macOS Keychain, Windows Credential Manager, or Secret Service on Linux) and is read the first time a value is used. Where the OS has none, or it refuses (a locked keyring, a denied prompt), adding a key fails and Settings offers to keep the data key in a file next to the keys instead, after which it says they're unprotected. Reset deletes the keys and their data key.
+- **What never sees a value:** packs, the frontend, events, error reports, backups and the database. `services.secrets` has no value-reading method. Logs, including what's written with `console`, pass through redaction that replaces the values of credential fields (`apiKey`, `token`, `authorization`, …) and strings shaped like OpenAI, Anthropic, Groq and Google keys. Mistral and Cohere keys have no recognizable shape, so a Mistral or Cohere key written into log text rather than a credential field isn't redacted.
 - **What this doesn't protect against:** code running inside the app. Packs run in the app's process with full Node.js access, so a pack could read the credential store or the file itself: installing a pack means trusting it with your keys. Other programs running as you can reach the OS credential store too, except where the OS ties an item to the app (macOS Keychain).
 
 ### Inference
@@ -185,7 +185,7 @@ const { rerankedDocuments } = await services.inference.rerank({ model: 'cohere:r
   | `{ type: 'array', element, minItems?, maxItems?, name?, description? }` | `Output.array({ element })` | an array of the element's type |
   | `{ type: 'choice', options, name?, description? }` | `Output.choice({ options })` | one of the options |
 
-  An `Output` (including one you implement) passes through as is. The data form can be stored, and code that can't import `ai` can write it.
+  An `Output` (including one you implement) passes through as is. The data form can be stored, and code that can't import `ai` can write it. `schema` and `element` take what `Output.object` does (a zod or other standard schema, or `jsonSchema()` from `ai`) or a plain JSON Schema object, as stored settings hold one: the provider gets that schema, and the result is typed `unknown` and isn't validated against it.
 - **Every model is named by id,** including the one `prepareStep` (or an agent's `prepareCall`) picks for a step or call: `prepareStep: ({ stepNumber }) => stepNumber > 0 ? { model: 'openai:gpt-5-mini' } : undefined`.
 - **The rest of a call's pieces are `ai`'s:** `tool`, `isStepCount` and types like `ModelMessage`. `ai` 7 is a peer dependency of `@abuddy/sdk`, installed with it (add it to your pack's own dependencies if your package manager doesn't install peers); your pack never builds a model or holds a key.
 - **TypeScript 5.7 or later**, which `ai` 7's types need.

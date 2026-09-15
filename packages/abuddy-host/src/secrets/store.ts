@@ -3,11 +3,12 @@
 // value is encrypted or decrypted, and the data key is kept in memory after that. Values are decrypted on each use.
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { secretRules, secretProviderLabel, toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
+import { writePrivateFile } from './private-file.ts';
 import { KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 const FORMAT = 1;
+const AUTH_TAG_BYTES = 16;
 
 interface EncryptedValue { keyId: string; iv: string; tag: string; data: string }
 interface StoredSecret extends SecretInfo { value: EncryptedValue }
@@ -35,8 +36,13 @@ export interface SecretsStore {
   keyFor(provider: ProviderName): string;
   /** Keeps data keys in a file from now on, where the OS has no credential store */
   allowUnprotected(): void;
-  /** Deletes every stored key (the vault's data keys stay, for reuse) */
+  /** Deletes every stored key, and the data keys they were encrypted with (the next key added gets a new one) */
   clearAll(): void;
+  /**
+   * Calls `listener` after every change to what `list` or `status` return: each change to the stored keys, and the OS
+   * credential store failing (status `unavailable`) or working again. Returns a function that stops the calls.
+   */
+  onChange(listener: () => void): () => void;
 }
 
 const newKeyId = () => `k_${crypto.randomBytes(12).toString('base64url')}`;
@@ -46,8 +52,22 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   const now = options.now ?? Date.now;
   /** Data keys read or created this process, by key id */
   const dataKeys = new Map<string, Buffer>();
-  /** The OS vault failed this process: adding keys waits for the user to allow unprotected storage */
+  /** The OS vault failed its last use: status is `unavailable` until a vault call succeeds or the user allows unprotected storage */
   let osVaultUnavailable = false;
+  /** Data keys set in a vault for a file not written yet: removed again when that write fails */
+  const pendingKeys: Array<{ vault: KeyVault; keyId: string }> = [];
+  const listeners = new Set<() => void>();
+
+  const notify = () => {
+    for (const listener of listeners) {
+      try {
+        listener();
+      } catch (error) {
+        // The change is already stored: a listener's failure doesn't undo or fail it
+        console.error('[secrets] A change listener failed:', error);
+      }
+    }
+  };
 
   const read = (): SecretsFile => {
     if (!fs.existsSync(options.filePath)) return { format: FORMAT, protection: 'os-keystore', keyId: newKeyId(), secrets: [] };
@@ -57,28 +77,43 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   };
 
   const write = (file: SecretsFile) => {
-    fs.mkdirSync(path.dirname(options.filePath), { recursive: true });
-    const temporary = `${options.filePath}.tmp`;
-    const fd = fs.openSync(temporary, 'w', 0o600);
+    const created = pendingKeys.splice(0);
     try {
-      fs.writeSync(fd, JSON.stringify(file, null, 2));
-      fs.fsyncSync(fd);
-    } finally {
-      fs.closeSync(fd);
+      writePrivateFile(options.filePath, JSON.stringify(file, null, 2));
+    } catch (error) {
+      // No written file names these data keys: don't leave them in the vault
+      for (const { vault, keyId } of created) {
+        dataKeys.delete(keyId);
+        try {
+          vault.delete(account(keyId));
+        } catch {
+          // The vault is unavailable too; nothing more to do
+        }
+      }
+      throw error;
     }
-    fs.renameSync(temporary, options.filePath);
+    notify();
   };
 
   const vaultFor = (file: SecretsFile): KeyVault =>
     options.useFileVault || file.protection === 'unprotected' ? options.fileVault() : options.osVault();
 
-  /** Runs a vault call, remembering when the OS vault can't be used */
+  const setOsVaultUnavailable = (unavailable: boolean) => {
+    if (osVaultUnavailable === unavailable) return;
+    osVaultUnavailable = unavailable;
+    notify();
+  };
+
+  /** Runs a vault call, remembering whether the OS vault could be used */
   const withVault = <T>(file: SecretsFile, run: (vault: KeyVault) => T): T => {
     const vault = vaultFor(file);
+    if (vault.protection !== 'os-keystore') return run(vault);
     try {
-      return run(vault);
+      const result = run(vault);
+      setOsVaultUnavailable(false);
+      return result;
     } catch (error) {
-      if (error instanceof KeyVaultUnavailableError && vault.protection === 'os-keystore') osVaultUnavailable = true;
+      if (error instanceof KeyVaultUnavailableError) setOsVaultUnavailable(true);
       throw error;
     }
   };
@@ -99,8 +134,12 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     if (existing) return existing;
     if (file.secrets.some((secret) => secret.value.keyId === file.keyId)) file.keyId = newKeyId();
     const key = crypto.randomBytes(32);
-    withVault(file, (vault) => vault.set(account(file.keyId), key.toString('base64')));
-    dataKeys.set(file.keyId, key);
+    const keyId = file.keyId;
+    withVault(file, (vault) => {
+      vault.set(account(keyId), key.toString('base64'));
+      pendingKeys.push({ vault, keyId });
+    });
+    dataKeys.set(keyId, key);
     return key;
   };
 
@@ -120,18 +159,14 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     const key = loadKey(file, secret.value.keyId);
     if (!key) throw unreadable;
     try {
-      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(secret.value.iv, 'base64'));
+      const tag = Buffer.from(secret.value.tag, 'base64');
+      if (tag.length !== AUTH_TAG_BYTES) throw unreadable;
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(secret.value.iv, 'base64'), { authTagLength: AUTH_TAG_BYTES });
       decipher.setAAD(aad(secret.id, secret.provider));
-      decipher.setAuthTag(Buffer.from(secret.value.tag, 'base64'));
+      decipher.setAuthTag(tag);
       return Buffer.concat([decipher.update(Buffer.from(secret.value.data, 'base64')), decipher.final()]).toString('utf8');
     } catch {
       throw unreadable;
-    }
-  };
-
-  const assertCanStore = (file: SecretsFile) => {
-    if (osVaultUnavailable && vaultFor(file).protection === 'os-keystore') {
-      throw new KeyVaultUnavailableError(options.osVault().backend, 'allow storing keys unprotected in Settings → Secrets');
     }
   };
 
@@ -154,7 +189,6 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
 
     add(provider, label, value) {
       const file = read();
-      assertCanStore(file);
       const id = `Secret-${crypto.randomUUID()}`;
       const withMeta = secretRules.add(file.secrets, { id, provider, label, createdAt: now(), value: undefined as never });
       const encrypted = encrypt(file, id, provider, value);
@@ -165,7 +199,6 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
 
     replaceValue(id, value) {
       const file = read();
-      assertCanStore(file);
       const secret = file.secrets.find((candidate) => candidate.id === id);
       if (!secret) throw new Error(`No stored key "${id}"`);
       const encrypted = encrypt(file, id, secret.provider, value);
@@ -207,7 +240,26 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     },
 
     clearAll() {
+      if (!fs.existsSync(options.filePath)) return;
+      const file = read();
+      const keyIds = new Set(file.secrets.map((secret) => secret.value.keyId).concat(file.keyId));
       fs.rmSync(options.filePath, { force: true });
+      notify();
+      // The next file gets a new key id, so nothing would use these data keys again
+      const vault = vaultFor(file);
+      for (const keyId of keyIds) {
+        dataKeys.delete(keyId);
+        try {
+          vault.delete(account(keyId));
+        } catch {
+          // Never set, or the OS vault is unavailable: nothing to delete
+        }
+      }
+    },
+
+    onChange(listener) {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
     },
   };
 }

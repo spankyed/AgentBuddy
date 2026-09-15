@@ -1,5 +1,15 @@
 import type { LogLevel } from './logger';
 import { rootEvents } from '../../router/bus-emitter';
+import { redactSecrets, redactSecretText } from '@abuddy/sdk/utils/pure';
+
+/** An argument with API keys redacted; errors stay errors, so the console still prints them as such */
+function redactArg(arg: unknown): unknown {
+  if (!(arg instanceof Error)) return redactSecrets(arg);
+  const error = new Error(redactSecretText(arg.message));
+  error.name = arg.name;
+  error.stack = arg.stack && redactSecretText(arg.stack);
+  return error;
+}
 
 // Store original console methods
 export const originalConsole = {
@@ -13,8 +23,9 @@ export const originalConsole = {
 // Override console methods to capture logs
 export function initializeLogCapture() {
   const captureLog = (level: LogLevel, originalMethod: Function) => {
-    return function (...args: any[]) {
-      // Call original console method
+    return function (...rawArgs: any[]) {
+      // Every sink below (the console, log events, app-events.log) gets the redacted copy, as Logger.log's do
+      const args = rawArgs.map(redactArg);
       originalMethod.apply(console, args);
 
       // If no arguments, use empty message

@@ -1,0 +1,108 @@
+// Where the harness finds the pack, and which tests it runs: a pack's unit tests run from anywhere with --root,
+// concurrent tests fail naming why, and a pack scaffolded before the harness gets its setup from `abuddy add feature`.
+import { spawnSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
+const VITEST = path.join(REPO_ROOT, 'node_modules', 'vitest', 'vitest.mjs');
+
+const dirs: string[] = [];
+afterAll(() => {
+  for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+function tempDir(prefix: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  dirs.push(dir);
+  return dir;
+}
+
+function write(root: string, file: string, content: string): void {
+  fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  fs.writeFileSync(path.join(root, file), content);
+}
+
+function run(command: string, args: string[], cwd: string) {
+  const result = spawnSync(command, args, {
+    cwd, encoding: 'utf-8', env: { ...process.env, CI: '', NO_COLOR: '1', FORCE_COLOR: '0' }, timeout: 180_000,
+  });
+  return { code: result.status, output: `${result.stdout}${result.stderr}` };
+}
+
+/** A pack with no dependencies whose unit tests run its data code on the harness */
+function dataPack(spec: string): string {
+  const root = tempDir('abuddy-harness-setup-');
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
+  write(root, 'package.json', JSON.stringify({ name: 'data-pack', type: 'module' }));
+  write(root, 'abuddy.json', JSON.stringify({ id: 'data-pack', name: 'Data', version: '1.0.0' }));
+  // As `abuddy init` scaffolds it
+  write(root, 'vitest.config.ts', `
+import { defineConfig } from 'vitest/config';
+import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
+const conditions = sourceConditions(import.meta.dirname);
+const dataDir = isolatedDataDir('harness-setup-');
+export default defineConfig({
+  resolve: { conditions }, ssr: { resolve: { conditions } },
+  test: { include: ['tests/*.spec.ts'], env: dataDir.env, globalSetup: dataDir.globalSetup, setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] },
+});`);
+  write(root, 'tests/setup.ts', `
+import { setupPackTests } from '@abuddy/testing/harness';
+await setupPackTests({ seedRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, seedHooks: {} } });`);
+  write(root, 'tests/pack.spec.ts', spec);
+  return root;
+}
+
+describe("a pack's unit tests on the harness", () => {
+  it('find the pack from the vitest project root when run from another directory (--root)', () => {
+    const root = dataPack(`
+import { expect, it } from 'vitest';
+import { seedPack } from '@abuddy/testing/harness';
+it('seeds nothing', async () => {
+  expect(await seedPack()).toEqual({});
+});`);
+    const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
+    expect(result.output).toMatch(/Tests\s+1 passed/);
+  }, 180_000);
+
+  it('fail concurrent tests, naming why', () => {
+    const root = dataPack(`
+import { it } from 'vitest';
+it.concurrent('one', async () => {});
+it.concurrent('two', async () => {});`);
+    const result = run(process.execPath, [VITEST, 'run'], root);
+    expect(result.output).toMatch(/Tests\s+2 failed/);
+    expect(result.output).toContain('"one" runs concurrently: harness tests share one database, service mocks and apps per file');
+  }, 180_000);
+});
+
+describe('abuddy add feature in a pack without the unit test setup', () => {
+  it('adds the harness setup its system test runs on, and the test passes', () => {
+    const tmp = tempDir('abuddy-pre-harness-');
+    expect(run(process.execPath, [CLI, 'init', 'old-pack'], tmp).code).toBe(0);
+    const pack = path.join(tmp, 'old-pack');
+    fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
+    // As a pack scaffolded before the harness: no tests/setup.ts, a vitest config of its own, no harness dependency
+    fs.rmSync(path.join(pack, 'tests'), { recursive: true });
+    const pkgPath = path.join(pack, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    delete pkg.devDependencies['@abuddy/testing'];
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+
+    const added = run(process.execPath, [CLI, 'add', 'feature', 'notes'], pack);
+
+    expect(added.code, added.output).toBe(0);
+    expect(added.output).toContain('+ tests/setup.ts');
+    expect(added.output).toContain('+ tests/unit/notes-system.spec.ts');
+    expect(added.output).toContain('vitest.config.ts already exists');
+    expect(added.output).toContain('Added @abuddy/testing to devDependencies. Run: npm install');
+    expect(JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).devDependencies['@abuddy/testing']).toMatch(/^\^/);
+    // The kept config is the scaffold's, which loads tests/setup.ts
+    const unit = run(process.execPath, [VITEST, 'run'], pack);
+    expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
+    expect(unit.output).toMatch(/Tests\s+1 passed/);
+  }, 240_000);
+});

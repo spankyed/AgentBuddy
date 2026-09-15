@@ -1,7 +1,7 @@
 // Where the data key that encrypts stored API keys lives: the OS credential store, or a file the user chose.
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { createRequire } from 'node:module';
+import { writePrivateFile } from './private-file.ts';
 
 /** Holds data keys by account name */
 export interface KeyVault {
@@ -57,10 +57,7 @@ export function osKeyVault(service: string): KeyVault {
 /** Data keys in a file only the user can read, next to the stored keys: no protection beyond file permissions */
 export function fileKeyVault(file: string): KeyVault {
   const read = (): Record<string, string> => fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) : {};
-  const write = (keys: Record<string, string>) => {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(keys), { mode: 0o600 });
-  };
+  const write = (keys: Record<string, string>) => writePrivateFile(file, JSON.stringify(keys));
   return {
     backend: 'a file on this system',
     protection: 'unprotected',

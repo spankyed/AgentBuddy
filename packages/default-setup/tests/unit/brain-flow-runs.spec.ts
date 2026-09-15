@@ -158,6 +158,36 @@ describe('brain start', () => {
     expect(brainState(app)).toEqual({ running: false, hasActor: false })
   })
 
+  it('reports why it could not start again to a client that connects while it stays stopped, until a root flow exists', async () => {
+    const couldNotStart = [expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role') }) })]
+    importFlows({ 'Root Flow': { tracks: staysRunning } })
+    const app = await startBrain()
+    expect(takeSystemErrors()).toEqual(couldNotStart)
+
+    await app.connect()
+    expect(takeSystemErrors()).toEqual(couldNotStart)
+
+    const [flow] = repository.flowsQueries.connectedData().flows
+    repository.flowsCommands.grantRootFlowRole(flow.id!)
+    await app.connect()
+    expect(takeSystemErrors()).toEqual([])
+  })
+
+  it('stops, clearing the running root flow, when restarted after the root role is revoked', async () => {
+    importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
+    const app = await startBrain()
+    const rootFlowId = repository.flowsQueries.rootFlow()!
+    expect(repository.settingsQueries.getPluginSettings('brain')?.runningRootFlowId).toBe(rootFlowId)
+
+    await app.connect()
+    repository.flowsCommands.revokeRootFlowRole(rootFlowId)
+    await app.send('brain', { type: 'RESTART_BRAIN' })
+
+    expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain' })])
+    expect(brainState(app)).toEqual({ running: false, hasActor: false })
+    expect(repository.settingsQueries.getPluginSettings('brain')?.runningRootFlowId).toBeUndefined()
+  })
+
   it("doesn't carry a pause into a later start", async () => {
     importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
     const paused = await startBrain()

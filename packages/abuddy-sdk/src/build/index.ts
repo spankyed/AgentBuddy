@@ -2,7 +2,7 @@
 export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
-export { compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
+export { clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
   compileBuiltinFormat, checkRecordEntities, recordLabel, formatEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,

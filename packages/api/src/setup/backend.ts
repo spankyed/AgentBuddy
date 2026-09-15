@@ -22,6 +22,7 @@ import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { setLoadedPacks, setBuiltInPacksForRegistry } from '@/packs/pack-api';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
+import { forwardSecretsChanges } from '@/core/router/secrets-router';
 import { createRequire } from 'module';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -44,6 +45,9 @@ export async function setupBackend(): Promise<void> {
   // and abuddy install learns which AgentBuddy uses this data dir
   const appContext = resolveAppContext();
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDirs: [appContext.packsDir, appContext.hostPacksDir], version: APP_VERSION });
+
+  // API keys: the settings system hears of every change to them
+  forwardSecretsChanges();
 
   // ── Load packs (built-in async + external sync overlap) ────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;

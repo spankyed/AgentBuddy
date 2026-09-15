@@ -41,7 +41,7 @@
 
     <div class="flex justify-end gap-1">
       <template v-if="renaming || replacing">
-        <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="renaming ? !label.trim() : !value.trim()" @click="renaming ? saveLabel() : saveValue()">
+        <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="saving || (renaming ? !label.trim() : !value.trim())" @click="renaming ? saveLabel() : saveValue()">
           <Check class="w-3.5 h-3.5 text-green-400" />
         </button>
         <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Cancel" @click="renaming = false; cancelReplace()">
@@ -65,12 +65,19 @@ import { ref } from 'vue'
 import { Check, Edit2, Eye, EyeOff, Trash2, X } from 'lucide-vue-next'
 import type { SecretInfo } from '@abuddy/sdk/services'
 
-const props = defineProps<{ secret: SecretInfo; selectable: boolean }>()
-const emit = defineEmits<{ select: []; rename: [label: string]; replace: [value: string]; delete: [] }>()
+// `rename` and `replace` resolve whether the change was stored: the row stays open with what was typed until it was
+const props = defineProps<{
+  secret: SecretInfo
+  selectable: boolean
+  rename: (label: string) => Promise<boolean>
+  replace: (value: string) => Promise<boolean>
+}>()
+const emit = defineEmits<{ select: []; delete: [] }>()
 
 const renaming = ref(false)
 const replacing = ref(false)
 const visible = ref(false)
+const saving = ref(false)
 const label = ref('')
 const value = ref('')
 
@@ -79,16 +86,24 @@ function startRename() {
   renaming.value = true
 }
 
-function saveLabel() {
-  if (!label.value.trim()) return
-  emit('rename', label.value.trim())
-  renaming.value = false
+async function saveLabel() {
+  if (saving.value || !label.value.trim()) return
+  saving.value = true
+  try {
+    if (await props.rename(label.value.trim())) renaming.value = false
+  } finally {
+    saving.value = false
+  }
 }
 
-function saveValue() {
-  if (!value.value.trim()) return
-  emit('replace', value.value.trim())
-  cancelReplace()
+async function saveValue() {
+  if (saving.value || !value.value.trim()) return
+  saving.value = true
+  try {
+    if (await props.replace(value.value.trim())) cancelReplace()
+  } finally {
+    saving.value = false
+  }
 }
 
 function cancelReplace() {

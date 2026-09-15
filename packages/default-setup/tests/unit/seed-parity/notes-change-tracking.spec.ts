@@ -31,6 +31,7 @@ function compile(sources: 'v1' | 'v2' | 'default-setup') {
     const records = compileBuiltinFormat('notes', NOTES_FORMAT, source);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-seed-'));
     dirs.push(dir);
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
     fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records }));
     compiled.set(sources, { dir, records });
   }
@@ -70,8 +71,9 @@ function flatten(records: SeedRecord[], parent = ''): Array<{ alias: string; rec
   });
 }
 
-/** A row holds the record's seeded values */
+/** A row holds the record's seeded values, and noteCommands' defaults for the fields the record doesn't set */
 function expectSeededValues(row: Record<string, unknown>, record: SeedRecord) {
+  const defaults = { noteType: 'document', icon: null, completed: false, favorite: false, hideCompletedChildren: false };
   expect({
     title: row.title,
     content: row.content,
@@ -82,13 +84,10 @@ function expectSeededValues(row: Record<string, unknown>, record: SeedRecord) {
     hideCompletedChildren: row.hideCompletedChildren ?? false,
     sourceHash: row.sourceHash,
   }).toEqual({
+    ...defaults,
+    ...Object.fromEntries(Object.keys(defaults).filter((field) => record[field] !== undefined).map((field) => [field, record[field]])),
     title: record.title,
     content: record.content,
-    noteType: record.noteType,
-    icon: record.icon,
-    completed: record.completed,
-    favorite: record.favorite,
-    hideCompletedChildren: record.hideCompletedChildren,
     sourceHash: record.sourceHash,
   });
 }

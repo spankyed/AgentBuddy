@@ -86,7 +86,7 @@ export const settingsCommands = {
   updateSettings(type: string, label: string | null, path: string[], value: any): void {
     const stored = getStoredSettings();
 
-    // General & plugin settings are grouped by label (e.g., general.secrets, plugin.flows)
+    // General & plugin settings are grouped by label (e.g., general.application, plugin.flows)
     // Internal & assistant settings don't use labels
     const needsLabel = type === 'general' || type === 'plugin';
     if (needsLabel && !label) {

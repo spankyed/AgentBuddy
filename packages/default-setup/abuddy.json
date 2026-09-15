@@ -376,25 +376,20 @@
           "type": "string"
         },
         "noteType": {
-          "from": "frontmatter.type",
-          "default": "document"
+          "from": "frontmatter.type"
         },
         "icon": {
           "from": "frontmatter.icon",
-          "default": null,
           "type": "string"
         },
         "favorite": {
-          "from": "frontmatter.favorite",
-          "default": false
+          "from": "frontmatter.favorite"
         },
         "hideCompletedChildren": {
-          "from": "frontmatter.hideCompletedChildren",
-          "default": false
+          "from": "frontmatter.hideCompletedChildren"
         },
         "completed": {
-          "from": "frontmatter.completed",
-          "default": false
+          "from": "frontmatter.completed"
         },
         "content": {
           "from": "body"

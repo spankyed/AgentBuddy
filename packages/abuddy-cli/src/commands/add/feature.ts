@@ -1,6 +1,8 @@
 import { FEATURE_ID_PATTERN } from '@abuddy/sdk/build';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { generateEntries } from '../generate-entries';
+import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
@@ -184,6 +186,8 @@ export async function addFeature(args: string[], root: string) {
   const featureDir = path.join(root, 'src', 'features', name);
 
   const created: string[] = [];
+  // The system test runs on the harness: a pack scaffolded before it has no tests/setup.ts
+  const unitTestSetup = fs.existsSync(path.join(root, 'tests', 'setup.ts')) ? undefined : scaffoldUnitTestSetup(root);
   const files: [string, string][] = [
     [path.join(featureDir, 'feature.config.ts'), FEATURE_CONFIG(name, designation)],
     [path.join(featureDir, 'settings.ts'), SETTINGS(name)],
@@ -218,6 +222,17 @@ export async function addFeature(args: string[], root: string) {
   await generateEntries([], root);
 
   console.log(`\nCreated feature "${name}":`);
-  logCreated(root, created);
+  logCreated(root, [...(unitTestSetup?.created ?? []), ...created]);
   console.log(`\n  manifest updated + __generated__/ regenerated`);
+  if (unitTestSetup) logUnitTestSetup(unitTestSetup);
+}
+
+function logUnitTestSetup({ keptConfig, addedDependencies }: UnitTestSetup): void {
+  console.log(`\nThe pack had no unit test setup, which the feature's system test runs on: added tests/setup.ts (@abuddy/testing/harness).`);
+  if (keptConfig) {
+    console.log(`  vitest.config.ts already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@abuddy/testing/vitest)`);
+  }
+  if (addedDependencies.length > 0) {
+    console.log(`  Added ${addedDependencies.join(', ')} to devDependencies. Run: npm install`);
+  }
 }

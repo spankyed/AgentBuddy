@@ -21,6 +21,7 @@ export const llmStepFE: StepDefinition = {
       isImplemented: true,
       isDisabled: true,
     },
-    defaults: { model: DEFAULT_MODEL, temperature: 0.7, maxTokens: 1000 },
+    // No temperature: the model's own applies, and reasoning models (the default among them) don't take one
+    defaults: { model: DEFAULT_MODEL, maxTokens: 1000 },
   },
 };

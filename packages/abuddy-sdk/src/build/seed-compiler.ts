@@ -56,6 +56,8 @@ export interface SpecialtyCompiler<T = unknown> {
 /** `seeds.json` in the compiled directory: what each seed key holds */
 export interface SeedIndex {
   version: 1;
+  /** The pack that compiled the seeds: seeded rows' seed keys name it, so two packs' records never share a row */
+  packId: string;
   seeds: SeedIndexEntry[];
 }
 
@@ -95,8 +97,8 @@ async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig
   };
 }
 
-/** Removes what compilePack writes, so a key or media dropped from the sources doesn't linger */
-function clearCompiledSeeds(outputDir: string): void {
+/** @internal Removes what compilePack writes, so a key or media dropped from the sources doesn't linger (abuddy build clears it up front) */
+export function clearCompiledSeeds(outputDir: string): void {
   if (!fs.existsSync(outputDir)) return;
   for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
     if (entry.isFile() && (entry.name.endsWith(seedFile('')) || entry.name === SEED_INDEX_FILE)) {
@@ -207,7 +209,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
     log(`  ${key}: ${index.count}`);
   }
-  const seedIndex: SeedIndex = { version: 1, seeds: compiled.map(({ index }) => index) };
+  const seedIndex: SeedIndex = { version: 1, packId: packConfig.name, seeds: compiled.map(({ index }) => index) };
   fs.writeFileSync(path.join(outputDir, SEED_INDEX_FILE), `${JSON.stringify(seedIndex, null, 2)}\n`);
 
   return { seeds: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };

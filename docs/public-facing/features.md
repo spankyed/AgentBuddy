@@ -94,7 +94,7 @@ export default bookmarksEntry;
 ### Key rules
 
 - **Default-export the `SystemEntry`** — every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`, `feature.config.ts`) default-exports its single contribution. Named exports alongside it are fine; the default is what gets loaded.
-- **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects, and again for your pack's systems once its frontend has loaded (which can be after the connection) and whenever the pack is activated or reloaded. Send the full initial state back to the plugin via the bus each time; the plugin doesn't need to ask for it.
+- **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects. An installed pack that declares plugins gets it instead once the frontend has loaded its plugins, at startup, on activation and on reconnecting; if its frontend fails to load, its systems don't get it, as nothing would receive the data. A reloaded pack's systems get it too. Every open window receives the data sent in reply, not only the one that asked. Send the full initial state back to the plugin via the bus each time; the plugin doesn't need to ask for it.
 - **Use `emit()` to send to the frontend** — `system.get(bus).send(emit(systemId, event))` routes the event to the matching frontend plugin. `emit` from `#generated/events` accepts only the events that plugin receives. To send to another plugin (another feature's, a dependency's, or the app's `application`), list it in the system's `sendsTo` in `abuddy.json`; its type then accepts this system's events.
 - **Never use `pluginId` as a field name in outgoing events** — the transport layer overwrites it. Use `targetId` or similar instead.
 

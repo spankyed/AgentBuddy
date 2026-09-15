@@ -1,6 +1,6 @@
 // fakeInference runs the AI SDK's real calls on a scripted model and records what the model received
 import { describe, expect, it } from 'vitest';
-import { isStepCount, Output, tool } from 'ai';
+import { isStepCount, jsonSchema, Output, tool, type JSONSchema7 } from 'ai';
 import { z } from 'zod';
 import { fakeInference, startTestRuntime } from '../../src/testing/index.ts';
 import { inference as hostInference } from '../../src/services/inference.ts';
@@ -36,6 +36,24 @@ describe('fakeInference', () => {
       const inference = fakeInference(JSON.stringify(reply));
       const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'x', output });
       expect(result.output).toEqual(expected);
+    });
+
+    it('takes a plain JSON Schema, as stored settings hold one, for an object or array spec', async () => {
+      const weather: JSONSchema7 = { type: 'object', properties: { city: { type: 'string' }, temperature: { type: 'number' } }, required: ['city', 'temperature'] };
+      const object = await fakeInference(JSON.stringify({ city: 'Paris', temperature: 21 }))
+        .generateText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'object', schema: weather } });
+      const array = await fakeInference(JSON.stringify({ elements: [{ city: 'Paris', temperature: 21 }] }))
+        .generateText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'array', element: weather } });
+      expect(object.output).toEqual({ city: 'Paris', temperature: 21 });
+      expect(array.output).toEqual([{ city: 'Paris', temperature: 21 }]);
+    });
+
+    it('takes a schema jsonSchema() from ai built, as ai does', async () => {
+      const validated: unknown[] = [];
+      const schema = jsonSchema<{ city: string }>({ type: 'object', properties: { city: { type: 'string' } } }, { validate: (value) => { validated.push(value); return { success: true, value: value as { city: string } }; } });
+      const result = await fakeInference(JSON.stringify({ city: 'Paris' })).generateText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'object', schema } });
+      expect(result.output).toEqual({ city: 'Paris' });
+      expect(validated).toEqual([{ city: 'Paris' }]);
     });
 
     it('treats a text spec as text', async () => {

@@ -100,6 +100,19 @@ describe('services.appData', () => {
     expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false });
   });
 
+  it("restores only the databases the app has, leaving out any other a backup lists", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-unknown-db-backup-'));
+    dirs.push(dir);
+    const backup = await services.appData.exportBackup(dir, 'unknown', ['volatileLmdb']);
+    const metadataPath = path.join(backup, 'metadata.json');
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+    fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['volatileLmdb', 'unknownLmdb'] }));
+    fs.mkdirSync(path.join(backup, 'unknownLmdb'));
+
+    expect(await services.appData.backupInfo(backup)).toMatchObject({ databases: ['volatileLmdb'] });
+    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['volatileLmdb'] });
+  });
+
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);

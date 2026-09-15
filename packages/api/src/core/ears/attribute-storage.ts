@@ -81,8 +81,6 @@ export function reinitializeLmdb() {
 
 export async function resetLmdbFiles() {
   clearMemory();
-  // Stored API keys go too (the vault's data key stays, for reuse)
-  secretsStore.clearAll();
   const currentEnvs = envs;
   envs = null as any;
 
@@ -101,4 +99,6 @@ export async function resetLmdbFiles() {
     });
 
   reinitializeLmdb();
+  // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
+  secretsStore.clearAll();
 }

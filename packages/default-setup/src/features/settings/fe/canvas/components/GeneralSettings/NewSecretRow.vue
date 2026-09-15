@@ -29,7 +29,7 @@
       </button>
     </div>
     <div class="flex justify-end gap-1">
-      <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="!name.trim() || !value.trim()" @click="save">
+      <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="saving || !name.trim() || !value.trim()" @click="save">
         <Check class="w-3.5 h-3.5 text-green-400" />
       </button>
       <button v-if="collapsed" class="p-1.5 hover:bg-neutral-800 rounded-md" title="Cancel" @click="cancel">
@@ -43,21 +43,33 @@
 import { ref, watch } from 'vue'
 import { Check, Eye, EyeOff, Plus, X } from 'lucide-vue-next'
 
-// Saves only on Enter or the Save button: a half-typed key is never sent
-const props = defineProps<{ namePlaceholder: string; valuePlaceholder: string; defaultName?: string; collapsed: boolean; addText: string }>()
-const emit = defineEmits<{ save: [label: string, value: string] }>()
+// Saves only on Enter or the Save button: a half-typed key is never sent. `save` resolves whether the key was stored;
+// the row keeps what was typed until it was, so a failed save needs no re-entry.
+const props = defineProps<{
+  namePlaceholder: string
+  valuePlaceholder: string
+  defaultName?: string
+  collapsed: boolean
+  addText: string
+  save: (label: string, value: string) => Promise<boolean>
+}>()
 
 const open = ref(false)
 const visible = ref(false)
+const saving = ref(false)
 const name = ref(props.defaultName ?? '')
 const value = ref('')
 
 watch(() => props.defaultName, (next) => { if (!value.value) name.value = next ?? '' })
 
-function save() {
-  if (!name.value.trim() || !value.value.trim()) return
-  emit('save', name.value.trim(), value.value.trim())
-  cancel()
+async function save() {
+  if (saving.value || !name.value.trim() || !value.value.trim()) return
+  saving.value = true
+  try {
+    if (await props.save(name.value.trim(), value.value.trim())) cancel()
+  } finally {
+    saving.value = false
+  }
 }
 
 function cancel() {

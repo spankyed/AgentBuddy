@@ -37,9 +37,8 @@ function dependentPack(spec: string): string {
   }
   write(root, 'vitest.config.ts', `
 import { defineConfig } from 'vitest/config';
-import { defaultServerConditions } from 'vite';
 import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
-const conditions = [...sourceConditions(), ...defaultServerConditions.filter((c) => c !== 'module')];
+const conditions = sourceConditions(import.meta.dirname);
 const dataDir = isolatedDataDir('dependent-runtime-');
 export default defineConfig({
   resolve: { conditions }, ssr: { resolve: { conditions } },

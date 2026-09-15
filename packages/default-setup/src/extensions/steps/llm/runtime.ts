@@ -86,12 +86,19 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       finishReason: response.finishReason,
     });
 
+    // The provider ignored part of the call, e.g. `temperature` on a reasoning model: kept on the step's result
+    const warnings = response.warnings ?? [];
+    if (warnings.length > 0) {
+      brainLogger.warn(`LLM node "${n.label}" ran with provider warnings`, { model, warnings });
+    }
+
     a.send({
       type: 'COMPLETE',
       result: {
         text: response.text,
         usage: response.usage,
         finishReason: response.finishReason,
+        ...(warnings.length > 0 && { warnings }),
       }
     });
   } catch (error) {

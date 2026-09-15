@@ -108,7 +108,7 @@ Five packages share responsibilities that should each have one home, and the cod
     - `packSeedHashes` (`setup/backend.ts`, `packs/pack-lifecycle.ts`, `packs/pack-reload.ts`)
     - `seedHash` and `seedStatFingerprint` (`packs/pack-seed.ts`, `sdk/src/seed/boot-seed.ts`)
   - **Consequence:** the app's own state lives inside default-setup's Settings row, and `settingsCommands.resetSettings()` (`settings/be/repository/index.ts:116-119`) writes `data: {}`. Resetting settings therefore also erases the onboarding flag, app version, pack versions and seed hashes.
-  - *Done since:* API keys left EARS for the host's encrypted store (`@abuddy/host/secrets`, several labelled keys per provider with one selected, `services.secrets` for metadata), and CLI path overrides moved to the code plugin's settings (`plugins.code.cliPaths`, migration 0.3.15).
+  - *Done since:* API keys left EARS for the host's encrypted store (`@abuddy/host/secrets`, several labelled keys per provider with one selected, `services.secrets` for metadata), and CLI path overrides moved to the code plugin's settings (`plugins.code.cliPaths`).
 - **One shared instance, listed in eight places.** Packs, dependency runtimes, the app and tests must share one SDK instance. Each of these knows separately which packages must not be duplicated:
   - `abuddy-cli/src/build/be-bundler.ts:35, 99, 146` (backend bundles) and `:193` (the seed runtime bundle);
   - `fe-bundler.ts` (SDK detection);
@@ -253,7 +253,7 @@ Final.
    - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. *Done:* the override already lives in that feature's plugin settings (`plugins.code.cliPaths`).
    - **Migrations:** an app migration targeting the next release moves stored data, following `migrations/CLAUDE.md`:
      - `settings.internal` → `AppState`
-     - (*done in 0.3.15:* `general.secrets.cliPaths` → the code plugin's settings; `general.secrets` dropped)
+     - (*done:* `general.secrets.cliPaths` → the code plugin's settings; `general.secrets` dropped)
 
      It's idempotent and has a spec on a copy of old-shaped data.
 8. **Renames and naming.**

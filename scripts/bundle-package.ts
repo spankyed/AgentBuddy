@@ -16,7 +16,8 @@ interface BundleConfig {
   entries: Record<string, string>;
   /**
    * Entries bundled with @abuddy/sdk external instead of inlined: they run inside a pack's process
-   * and must share the pack's installed SDK instance (its registries), not carry their own copy.
+   * and must share the pack's installed SDK instance (its registries), not carry their own copy: the published
+   * package declares @abuddy/sdk as a peer dependency.
    */
   sdkExternalEntries?: Record<string, string>;
   /** Extra files copied verbatim into the published package */
@@ -138,8 +139,15 @@ const dependencies: Record<string, string> = { ...pkg.dependencies };
 for (const name of imported) {
   if (!peers.has(name)) dependencies[name] ??= versionOf(name);
 }
-// Packs build against the SDK version released with this package
-if (dependencies['@abuddy/sdk']) dependencies['@abuddy/sdk'] = sdkPkg.version;
+const peerDependencies: Record<string, string> = { ...pkg.peerDependencies };
+if (config.sdkExternalEntries) {
+  // Those entries run on the pack's installed SDK (its registries): a peer, so the package never brings its own copy
+  delete dependencies['@abuddy/sdk'];
+  peerDependencies['@abuddy/sdk'] = `^${sdkPkg.version}`;
+} else if (dependencies['@abuddy/sdk']) {
+  // Packs build against the SDK version released with this package
+  dependencies['@abuddy/sdk'] = sdkPkg.version;
+}
 // The private host package is inlined, never installed
 delete dependencies['@abuddy/host'];
 
@@ -169,7 +177,8 @@ const manifest = {
   engines: pkg.engines,
   ...config.manifest,
   dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
-  peerDependencies: pkg.peerDependencies,
+  peerDependencies: Object.keys(peerDependencies).length > 0 ? peerDependencies : undefined,
+  peerDependenciesMeta: pkg.peerDependenciesMeta,
   publishConfig: { access: 'public', provenance: true },
 };
 fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');

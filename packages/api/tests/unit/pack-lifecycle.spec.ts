@@ -284,6 +284,25 @@ describe('FE pack deregistration', () => {
     expect(removedAgain).toHaveLength(0);
   });
 
+  it("unregisterPackFE leaves a plugin another registration owns when the pack declared the same id", async () => {
+    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = await import('../../../abuddy-host/src/fe/pack-store');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const builtIn = { id: 'shared-id', label: 'Built-in', icon: 'Zap', state: {} as any, canvas: {} as any };
+    const packCopy = { id: 'shared-id', label: 'Pack', icon: 'Zap', state: {} as any, canvas: {} as any };
+    const packOwn = { id: 'pack-own', label: 'Own', icon: 'Zap', state: {} as any, canvas: {} as any };
+    registerPackFE({ plugins: [builtIn] });
+    registerPackFE({ plugins: [packCopy, packOwn] }, 'duplicate-pack');
+
+    expect(getRegisteredPlugins().filter(p => p.id === 'shared-id')).toEqual([builtIn]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"shared-id" from pack duplicate-pack ignored'));
+    warn.mockRestore();
+
+    expect(unregisterPackFE('duplicate-pack')).toEqual([packOwn]);
+    expect(getRegisteredPlugins()).toContain(builtIn);
+    expect(getRegisteredPlugins()).not.toContain(packOwn);
+  });
+
   it('unregisterPackFE handles pack with no contributions gracefully', async () => {
     const { unregisterPackFE } = await import('../../../abuddy-host/src/fe/pack-store');
 

@@ -9,6 +9,13 @@ import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
 import { stepRegistry } from '@abuddy/sdk/steps';
 
+declare global {
+  interface Window {
+    /** Shows the error page index.html defines */
+    __showErrorPage?: (title: string, detail: string) => void;
+  }
+}
+
 interface BreadcrumbItem {
   label: string;
   target: string;
@@ -45,6 +52,8 @@ export interface ApplicationContext {
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
   restoreLastActivePlugin: boolean;
+  /** The plugins each pack added, by pack id: not those skipped because a plugin had the id already */
+  packPluginIds: Record<string, string[]>;
 }
 
 export const application = 'application' as const;
@@ -83,10 +92,21 @@ export type ApplicationEvent =
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
   | { type: 'PACK_PLUGINS_LOADED'; packId: string; plugins: Plugin[] }
-  | { type: 'PACK_PLUGINS_UNLOADED'; pluginIds: string[] }
+  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
+
+/**
+ * Asks a pack's systems for their startup data. The connection's CLIENT_CONNECTED skips the systems of
+ * external packs with plugins, whose frontends load after it; a pack whose frontend fails to load is
+ * never asked for, as nothing here would receive its data.
+ */
+function announcePackClientReady(packId: string) {
+  trpc.bus.packClientReady.mutate({ packId }).catch((err: unknown) => {
+    console.warn(`[pack-loader] Couldn't request startup data for pack ${packId}:`, err);
+  });
+}
 
 export const createApplicationState = () => setup({
   types: {
@@ -313,7 +333,7 @@ export const createApplicationState = () => setup({
     }),
 
     mergePackPlugins: enqueueActions(({ event, context, enqueue }) => {
-      const { plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
+      const { packId, plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
       const existingIds = new Set(context.plugins.map(p => p.id));
       const skipped = packPlugins.filter(p => existingIds.has(p.id));
       if (skipped.length > 0) {
@@ -330,23 +350,29 @@ export const createApplicationState = () => setup({
       enqueue.assign({
         plugins: allPlugins,
         visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
+        packPluginIds: {
+          ...context.packPluginIds,
+          [packId]: [...(context.packPluginIds[packId] ?? []), ...newPlugins.map(p => p.id)],
+        },
       });
       for (const plugin of newPlugins) {
         enqueue.spawnChild(plugin.state, { systemId: plugin.id });
       }
+      // The pack's plugin actors now exist: its systems send their startup data. Before the connection,
+      // announceLoadedPacks asks for it when the connection comes.
+      enqueue(({ self }) => {
+        if (!self.getSnapshot().hasTag('connecting')) announcePackClientReady(packId);
+      });
     }),
 
-    // The pack's plugin actors now exist; its systems resend their startup data, which the connection's
-    // CLIENT_CONNECTED broadcast sent before this pack's frontend had loaded
-    announcePackClientReady: ({ event }) => {
-      const { packId } = typeOf('PACK_PLUGINS_LOADED', event);
-      trpc.bus.packClientReady.mutate({ packId }).catch((err: unknown) => {
-        console.warn(`[pack-loader] Couldn't request startup data for pack ${packId}:`, err);
-      });
+    // A connection (or reconnection) reached every system but those of packs whose frontends load after it
+    announceLoadedPacks: ({ context }) => {
+      for (const packId of Object.keys(context.packPluginIds)) announcePackClientReady(packId);
     },
 
     removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
-      const { pluginIds } = typeOf('PACK_PLUGINS_UNLOADED', event);
+      const { packId } = typeOf('PACK_PLUGINS_UNLOADED', event);
+      const pluginIds = context.packPluginIds[packId] ?? [];
       const removeSet = new Set(pluginIds);
       if (removeSet.size === 0) return;
 
@@ -363,11 +389,14 @@ export const createApplicationState = () => setup({
         if (plugin) enqueue.stopChild(plugin);
       }
 
+      const packPluginIds = { ...context.packPluginIds };
+      delete packPluginIds[packId];
       enqueue.assign({
         plugins: remaining,
         visiblePlugins: remaining.filter(p => pluginVisibility[p.id] !== false),
         pluginVisibility,
         activePlugin,
+        packPluginIds,
       });
 
       if (needsNavigate) {
@@ -724,6 +753,7 @@ export const createApplicationState = () => setup({
       hotkeysDisabled: false,
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
       restoreLastActivePlugin: input.restoreLastActivePlugin ?? true,
+      packPluginIds: {},
     };
   },
   initial: 'running',
@@ -809,8 +839,9 @@ export const createApplicationState = () => setup({
               {
                 target: '#application.onboarding.letter',
                 guard: ({ event }) => (event as any).hasOnboarded === false,
+                actions: 'announceLoadedPacks',
               },
-              { target: 'connected' },
+              { target: 'connected', actions: 'announceLoadedPacks' },
             ],
           },
         },
@@ -820,6 +851,7 @@ export const createApplicationState = () => setup({
             CLIENT_CONNECTED: {
               target: 'connected',
               reenter: true,
+              actions: 'announceLoadedPacks',
             },
           },
         },
@@ -833,7 +865,7 @@ export const createApplicationState = () => setup({
       actions: 'updateHotkeys'
     },
     PACK_PLUGINS_LOADED: {
-      actions: ['mergePackPlugins', 'announcePackClientReady']
+      actions: 'mergePackPlugins'
     },
     PACK_PLUGINS_UNLOADED: {
       actions: 'removePackPlugins'

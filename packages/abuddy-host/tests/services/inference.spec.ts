@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { JSONSchema7 } from 'ai';
 import { availableModels, parseModelId, providerCapabilities, providerLabels, type ModelKind, type ProviderName } from '@abuddy/sdk/models';
 
 // The app's store, on a temporary file with keys in memory
@@ -251,5 +252,17 @@ describe("the app's inference service", () => {
 
     expect(result.output).toBe('bug');
     expect(bodies[0].text).toMatchObject({ format: { type: 'json_schema', name: 'label', schema: { properties: { result: { enum: ['bug', 'feature'] } } } } });
+  });
+
+  it('asks the provider for the plain JSON Schema a stored object spec holds', async () => {
+    const { baseURL, bodies } = await provider(openaiReply('{"city":"Paris"}'));
+    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    secrets.set('openai', 'stored-key');
+    const schema: JSONSchema7 = { type: 'object', properties: { city: { type: 'string' } }, required: ['city'], additionalProperties: false };
+
+    const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'Where?', output: { type: 'object', schema, name: 'place' } });
+
+    expect(result.output).toEqual({ city: 'Paris' });
+    expect(bodies[0].text).toMatchObject({ format: { type: 'json_schema', name: 'place', schema } });
   });
 });

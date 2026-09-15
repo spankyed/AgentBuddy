@@ -1,7 +1,8 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { createBusMachine, type OutgoingSystemEvents } from '@abuddy/host/bus';
-import { getRegisteredSystems } from '@abuddy/host/packs';
+import { createBusMachine } from '@abuddy/host/bus';
+import { getBootHooks, getRegisteredSystems } from '@abuddy/host/packs';
+import type { OutgoingSystemEvents } from '@abuddy/sdk/rpc';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { untypedQx } from '@abuddy/sdk/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
@@ -63,12 +64,22 @@ export interface TestApp {
    * reaches every running flow. Resolves once every track of the flow labelled `label` that the event triggered
    * has finished: its steps completed or failed, apart from steps that wait by design (keep-alive) and subflows
    * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
+   *
+   * It returns the tracks the event itself triggered. Tracks started by events those tracks send (a `fire` step,
+   * `sendToBrainSystem`) aren't in the result: `settle()` after it, then read them with `flowTrace`. Sending `event`
+   * connects the app first if needed; the app's bus drops events systems and steps send before a client connects,
+   * as the app does at a cold boot, so call `connect()` right after `startApp` when entry tracks send events.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
   /** The steps a flow (the root flow or a subflow, by label) has run so far in this app */
   flowTrace(label: string): FlowStepTrace[];
   /** A running system's actor */
   system(systemId: string): AnyActorRef;
+  /**
+   * Stops the systems and ends pending `nextEmit`/`runFlow` waits with an "app stopped" error. Once no app runs, it
+   * runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack, so state its modules keep
+   * outside the stopped actors (schedules, listeners) doesn't reach the next test. The harness stops apps after each test.
+   */
   stop(): void;
 }
 
@@ -80,9 +91,30 @@ export function setAppPackId(id: string): void {
   packId = id;
 }
 
-/** @internal The harness stops apps a test left running */
+/** @internal The harness stops apps a test left running; throws once all stopped if a pack's shutdown failed */
 export function stopRunningApps(): void {
-  for (const app of running) app.stop();
+  const failures: unknown[] = [];
+  for (const app of running) {
+    try {
+      app.stop();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Stopping the test apps failed');
+}
+
+/** Runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack's systems */
+function shutDownPacks(): void {
+  const failures: string[] = [];
+  for (const boot of getBootHooks()) {
+    try {
+      boot.onShutdown?.();
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (failures.length > 0) throw new Error(`A pack's boot.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
 }
 
 function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
@@ -129,8 +161,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
 
   const emitted: OutgoingSystemEvents[] = [];
   const taken = new Set<number>();
-  const waiters = new Set<() => void>();
-  /** The brain's trace reports (TNODE_SPAWNED, TNODE_UPDATED), from its start: a client needn't be connected to run flows */
+  /** Pending waits for emitted events or trace reports: each checks again on every event, and ends when the app stops */
+  const waits = new Set<{ attempt(): boolean; end(error: Error): void }>();
+  const wakeWaits = () => { for (const wait of waits) wait.attempt(); };
+  /** The brain's trace reports (TNODE_SPAWNED, TNODE_UPDATED), from its start: recorded before a client connects too */
   const reports: Array<TNodeSpawned | TNodeUpdated> = [];
   /** Trace node rows as they were when the brain last reported them */
   const tNodeRows = new Map<string, Record<string, unknown>>();
@@ -157,12 +191,22 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const row = readTNode(tNodeId) ?? tNodeRows.get(tNodeId) ?? {};
       tNodeRows.set(tNodeId, isUpdate(event) ? { ...row, status: event.data.status } : row);
     }
-    for (const wake of waiters) wake();
+    wakeWaits();
   };
-  const stopRecording = testRootEvents.onOutgoing((event) => {
-    emitted.push(event);
-    for (const wake of waiters) wake();
-  });
+  let connected = false;
+  /** Events for systems sent before a client connected, which the bus dropped (as the app's does at a cold boot) */
+  const dropped: string[] = [];
+  const stopRecording = [
+    testRootEvents.onOutgoing((event) => {
+      emitted.push(event);
+      wakeWaits();
+    }),
+    testRootEvents.onIncoming((event) => {
+      if (!connected) dropped.push(`${event.type}${typeof event.eventType === 'string' ? ` "${event.eventType}"` : ''} to ${event.systemId}`);
+    }),
+  ];
+  const droppedNote = () => dropped.length === 0 ? '' :
+    ` The bus dropped ${dropped.length} event(s) sent before the app connected: ${dropped.join(', ')}. Call app.connect() after startApp when entry tracks or schedules send events.`;
 
   const finished = (tNodeId: string) => reports.some((e) => isUpdate(e) && e.data.tNodeId === tNodeId && (e.data.status === 'completed' || e.data.status === 'failed'));
   const brainRunning = () => {
@@ -180,7 +224,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   const runningFlowLabels = () => runningFlows().map((flow) => flow.label);
 
   let activity = 0;
-  let connected = false;
+  let stopped = false;
   const bus: Actor<ReturnType<typeof createBusMachine>> = createActor(createBusMachine({
     systems: () => systems,
     onOutgoing: (event) => testRootEvents.emitOutgoing(event),
@@ -203,22 +247,38 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     },
   });
 
-  /** Resolves with what `check` finds once an event makes it find something */
+  const stoppedError = () => new Error('The test app stopped (its test ended, or app.stop() ran) before this finished');
+  const assertRunning = () => {
+    if (stopped) throw stoppedError();
+  };
+  /** Resolves with what `check` finds once an event makes it find something; rejects when the app stops first */
   const waitForEmitted = <T>(check: () => T | undefined, timeoutMs: number, describe: () => string) => new Promise<T>((resolve, reject) => {
-    const attempt = () => {
-      const found = check();
-      if (found === undefined) return false;
-      waiters.delete(attempt);
+    if (stopped) return reject(stoppedError());
+    const end = (settleWait: () => void) => {
       clearTimeout(timer);
-      resolve(found);
-      return true;
+      waits.delete(wait);
+      settleWait();
     };
-    const timer = setTimeout(() => {
-      waiters.delete(attempt);
-      reject(new Error(describe()));
-    }, timeoutMs);
-    if (!attempt()) waiters.add(attempt);
+    const wait = {
+      attempt: () => {
+        const found = check();
+        if (found === undefined) return false;
+        end(() => resolve(found));
+        return true;
+      },
+      end: (error: Error) => end(() => reject(error)),
+    };
+    const timer = setTimeout(() => wait.end(new Error(describe())), timeoutMs);
+    if (!wait.attempt()) waits.add(wait);
   });
+
+  /** The app's calls still running: a stop ends them, and nobody need await one after that */
+  const calls = new Set<Promise<unknown>>();
+  const call = <T>(run: () => Promise<T>): Promise<T> => {
+    const promise = run().finally(() => calls.delete(promise));
+    calls.add(promise);
+    return promise;
+  };
 
   /** Settles, or throws `timedOut()` once `deadline` passes first */
   const settle = async (deadline = Infinity, timedOut?: () => string) => {
@@ -232,41 +292,30 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   };
 
   const app: TestApp = {
-    async connect() {
+    connect: () => call(async () => {
+      assertRunning();
       connected = true;
       testRootEvents.emitConnected();
       await settle();
-    },
-    async send(systemId, event) {
+    }),
+    send: (systemId, event) => call(async () => {
+      assertRunning();
       if (!connected) throw new Error('The bus routes client events only once connected: call app.connect() first');
       testRootEvents.emitIncoming({ ...event, systemId: resolveSystemId(systemId, systems) });
       await settle();
-    },
+    }),
     emitted(pluginId) {
       return pluginId === undefined ? [...emitted] : emitted.filter((event) => event.pluginId === pluginId);
     },
-    nextEmit(pluginId, type, { timeoutMs = 5000 } = {}) {
-      const find = () => emitted.findIndex((event, index) => !taken.has(index) && event.pluginId === pluginId && event.type === type);
-      return new Promise((resolve, reject) => {
-        const check = () => {
-          const index = find();
-          if (index === -1) return false;
-          taken.add(index);
-          waiters.delete(wake);
-          clearTimeout(timer);
-          resolve(emitted[index]);
-          return true;
-        };
-        const wake = () => { check(); };
-        const timer = setTimeout(() => {
-          waiters.delete(wake);
-          reject(new Error(`No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}`));
-        }, timeoutMs);
-        if (!check()) waiters.add(wake);
-      });
-    },
-    settle: () => settle(),
-    async runFlow(label, { event, data, timeoutMs = 10_000 } = {}) {
+    nextEmit: (pluginId, type, { timeoutMs = 5000 } = {}) => call(() => waitForEmitted(() => {
+      const index = emitted.findIndex((event, i) => !taken.has(i) && event.pluginId === pluginId && event.type === type);
+      if (index === -1) return undefined;
+      taken.add(index);
+      return emitted[index];
+    }, timeoutMs, () => `No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.${droppedNote()}`)),
+    settle: () => call(() => settle()),
+    runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
+      assertRunning();
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
       const settingsId = hasDesignation('settings') ? getDesignated('settings') : undefined;
       if (!brainId || !settingsId || !systems.has(brainId) || !systems.has(settingsId)) {
@@ -283,7 +332,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         const why = ranAndFinished
           ? 'it ran and finished'
           : 'the brain runs the root flow (root: true) and the subflows running flows spawn: make it one of those, and import flows before startApp';
-        throw new Error(`Flow "${label}" isn't running: ${why}. ${runningLabels.length > 0 ? `Running: ${runningLabels.join(', ')}` : 'No flow is running'}`);
+        throw new Error(`Flow "${label}" isn't running: ${why}. ${runningLabels.length > 0 ? `Running: ${runningLabels.join(', ')}` : 'No flow is running'}.${droppedNote()}`);
       }
 
       const eventType = event ?? 'flow.entry';
@@ -291,7 +340,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       // An event's tracks are the ones it triggers from here; entry tracks ran when the flow started
       const cursor = event === undefined ? 0 : reports.length;
       const since = () => reports.slice(cursor);
-      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`;
+      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}.${droppedNote()}`;
       if (event !== undefined) {
         if (!connected) {
           connected = true;
@@ -304,7 +353,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const triggered = () => since().filter((e): e is TNodeSpawned =>
         isSpawn(e) && flowTNodeIds.includes(e.flowTNodeId) && e.tNode.tNodeType === 'event' && e.tNode.eventType === eventType);
       if (triggered().length === 0) {
-        throw new Error(`Flow "${label}" has no track for "${eventType}"`);
+        throw new Error(`Flow "${label}" has no track for "${eventType}".${droppedNote()}`);
       }
       const done = (id: string) => since().some((e) => isUpdate(e) && e.data.tNodeId === id && (e.data.status === 'completed' || e.data.status === 'failed'));
       /** Finished, or waiting by design: a waiting step, or a subflow whose own steps are all done or waiting */
@@ -336,7 +385,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         eventTNodeIds,
         steps: since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && e.eventTNodeId !== undefined && tracks.has(e.eventTNodeId)).map((e) => stepTrace(e, tNodeRows)),
       };
-    },
+    }),
     flowTrace(label) {
       return reports.filter(isSpawn)
         .filter((e) => e.tNode.tNodeType !== 'event' && flowLabels.get(e.tNode.id) === label)
@@ -349,8 +398,14 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     },
     stop() {
       if (!running.delete(app)) return;
-      stopRecording();
+      stopped = true;
+      stopRecording.forEach((unsubscribe) => unsubscribe());
       bus.stop();
+      // A call the stop ends rejects for whoever awaits it, and isn't an unhandled rejection when nobody does
+      for (const pending of calls) pending.catch(() => {});
+      for (const wait of waits) wait.end(stoppedError());
+      // Pack modules keep state outside the stopped actors (schedules, listeners): process-wide, so once no app runs
+      if (running.size === 0) shutDownPacks();
     },
   };
 

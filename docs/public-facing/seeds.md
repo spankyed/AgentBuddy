@@ -298,7 +298,7 @@ Seed rows of an entity type from markdown or JSON in two parts of `abuddy.json`:
       "tree": { "branch": "index.md", "relKind": "contains" },
       "fields": {
         "title": { "from": "frontmatter.title", "default": "filename", "type": "string" },
-        "pinned": { "from": "frontmatter.pinned", "default": false },
+        "pinned": { "from": "frontmatter.pinned" },
         "text": { "from": "body" }
       },
       "media": "media"
@@ -317,7 +317,7 @@ An entry can't set or change any format settings; a pack that needs different se
 ### Markdown
 
 - Each `.md` file is a record. Frontmatter is YAML 1.2, so `title: 2024` reads as a number; `"type": "string"` coerces it back.
-- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to the entry's `path`) or `frontmatter.<name>`. `default` applies when the source is absent; `"filename"` as a default means the display name.
+- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to the entry's `path`) or `frontmatter.<name>`. `default` applies when the source is absent; `"filename"` as a default means the display name. A field with no value and no `default` is left out of the record. Seeds track the fields a record sets (see [Change tracking](#change-tracking)), so leave defaults a user may change, like flags, to the entity's defaults or a `create` hook.
 - With `tree`, each subdirectory is a parent record (its `branch` file gives its frontmatter and body, `branchEntity` its type) and its files are children, linked with `relKind`. Without `tree`, only the top-level files are read.
 - `media` is a directory under the entry's `path`, copied with the seeds; `![alt](media/pic.png)` links are rewritten to the row's `media://<id>/pic.png`.
 
@@ -404,15 +404,15 @@ export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string
 };
 ```
 
-Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so rows seeded with its formats get the same shortCodes, display order and links as default-setup's own.
+`create` and `update` store the record's fields under their names, as the record gives them, and `update` writes every field the record sets: change tracking records those fields' stored values. Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so rows seeded with its formats get the same shortCodes, display order and links as default-setup's own.
 
 ### Change tracking
 
 Seeded rows store their record's `sourceHash`, and `seededFields`: the names of the record's fields and a hash of the values the seeder wrote to them. A row is edited when those fields no longer hold what the seeder wrote, whatever changed them (the app's editors, the database console, a flow). Fields a record doesn't set aren't tracked: a user can favorite a seeded note and it still takes seed updates.
 
-Seeded rows also store a `seedKey`: the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `seedKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not seeded again as a copy. Rows seeded before `seedKey` was stored are matched by identity and given one then.
+Seeded rows also store a `seedKey`: the seeding pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `seedKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not seeded again as a copy. Two packs' records never share a row, even with the same entry key and identity. A row without a `seedKey` that matches a record's identity (a user's row with the same name) isn't seeded again beside it. The pack id comes from `seeds.json`, which `abuddy build` writes; seeding compiled seeds without it fails until the pack is rebuilt.
 
-Flows follow the same rules. A seeded flow stores `seededGraph`, a hash of what the seeder wrote for it: its row's fields, its nodes' fields, and the relations between them (independent of their order). Editing, adding or removing a node or transition, or renaming the flow, makes it edited. Moving nodes in the editor doesn't.
+Flows follow the same rules. A seeded flow stores `seededGraph`, a hash of what the seeder wrote for it: its row's fields, its nodes' fields, and the relations between them (independent of their order). Editing, adding or removing a node or transition, or renaming the flow, makes it edited. Moving nodes in the editor doesn't. A subflow step naming a flow the same pack seeds runs that seeded flow, however the user renamed it, and never another flow with its name; other names run the flow with that label.
 
 Re-seeding follows the same rules for every entry:
 
@@ -422,7 +422,7 @@ Re-seeding follows the same rules for every entry:
 | `keep-existing` | Left alone, with its children. |
 | `wipe-and-replace` | Every row of the entry's entity types is removed first, then all records are created. |
 
-Upgrading: rows seeded before `seededFields` (flows: `seededGraph`) was stored can't be checked for edits, so later seeds leave them alone, as they do rows without a `sourceHash` (notes seeded before notes stored one). To take a pack's current version of those rows, import its seeds with `wipe-and-replace`.
+Rows without a stored `sourceHash` (rows users created) stay user-owned. A seeded row without `seededFields` (flows: `seededGraph`) can't be checked for edits, so it's left alone like an edited one.
 
 ## Commands as actions
 

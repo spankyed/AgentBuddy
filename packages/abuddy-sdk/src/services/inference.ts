@@ -1,6 +1,6 @@
 import type {
   DeepPartial, embed, embedMany, EmbeddingModel, FlexibleSchema, generateImage, generateSpeech, generateText, ImageModel, InferSchema,
-  LanguageModel, Output, OutputInterface, rerank, RerankingModel, SpeechModel, streamText, ToolLoopAgent, ToolLoopAgentSettings, ToolSet,
+  JSONSchema7, LanguageModel, Output, OutputInterface, rerank, RerankingModel, SpeechModel, streamText, ToolLoopAgent, ToolLoopAgentSettings, ToolSet,
   transcribe, TranscriptionModel,
 } from 'ai';
 import { hostService } from './host-services.ts';
@@ -16,6 +16,15 @@ interface OutputNaming {
 }
 
 /**
+ * A spec's schema: one `ai` takes (a zod or other standard schema, or `jsonSchema()`), or a plain JSON Schema,
+ * which stored settings can hold. The reply to a plain JSON Schema is `unknown`: it isn't validated.
+ */
+export type OutputSchema = FlexibleSchema<unknown> | JSONSchema7;
+
+/** The value a spec's schema describes */
+type OutputSchemaValue<S> = S extends FlexibleSchema<unknown> ? InferSchema<S> : unknown;
+
+/**
  * Structured output as data: what `Output.text`, `.json`, `.object`, `.array` and `.choice` from `ai`
  * take, with the kind named by `type`. Code that can't import `ai` (actions) and stored settings use it;
  * an `Output` from `ai` works in its place.
@@ -23,15 +32,15 @@ interface OutputNaming {
 export type OutputSpec =
   | { type: 'text' }
   | ({ type: 'json' } & OutputNaming)
-  | ({ type: 'object'; schema: FlexibleSchema<unknown> } & OutputNaming)
-  | ({ type: 'array'; element: FlexibleSchema<unknown>; minItems?: number; maxItems?: number } & OutputNaming)
+  | ({ type: 'object'; schema: OutputSchema } & OutputNaming)
+  | ({ type: 'array'; element: OutputSchema; minItems?: number; maxItems?: number } & OutputNaming)
   | ({ type: 'choice'; options: readonly string[] } & OutputNaming);
 
 /** The AI SDK `Output` an `output` option stands for: itself, or the one its spec builds */
 export type OutputOf<O> =
   O extends OutputInterface ? O :
-  O extends { type: 'object'; schema: infer S } ? OutputInterface<InferSchema<S>, DeepPartial<InferSchema<S>>, never> :
-  O extends { type: 'array'; element: infer S } ? OutputInterface<InferSchema<S>[], InferSchema<S>[], InferSchema<S>> :
+  O extends { type: 'object'; schema: infer S } ? OutputInterface<OutputSchemaValue<S>, DeepPartial<OutputSchemaValue<S>>, never> :
+  O extends { type: 'array'; element: infer S } ? OutputInterface<OutputSchemaValue<S>[], OutputSchemaValue<S>[], OutputSchemaValue<S>> :
   O extends { type: 'choice'; options: readonly (infer C extends string)[] } ? OutputInterface<C, C, never> :
   O extends { type: 'json' } ? ReturnType<typeof Output.json> :
   ReturnType<typeof Output.text>;
@@ -109,12 +118,18 @@ export interface InferenceService {
 async function toAiOutput(output: OutputInterface | OutputSpec | undefined): Promise<OutputInterface | undefined> {
   // Every Output implements parseCompleteOutput; a spec is plain data
   if (output === undefined || 'parseCompleteOutput' in output) return output;
-  const { Output } = await import('ai');
+  const { Output, jsonSchema } = await import('ai');
+  // What `ai` takes as a schema (its `asSchema`): a `jsonSchema()` Schema (marked with its symbol), a lazy schema
+  // (a function) or a standard schema. Anything else is a plain JSON Schema.
+  const toSchema = (schema: OutputSchema): FlexibleSchema<unknown> =>
+    typeof schema === 'function' || Symbol.for('vercel.ai.schema') in schema || '~standard' in schema
+      ? schema as FlexibleSchema<unknown>
+      : jsonSchema(schema as JSONSchema7);
   switch (output.type) {
     case 'text': return Output.text();
     case 'json': return Output.json(output);
-    case 'object': return Output.object(output);
-    case 'array': return Output.array(output);
+    case 'object': return Output.object({ ...output, schema: toSchema(output.schema) });
+    case 'array': return Output.array({ ...output, element: toSchema(output.element) });
     case 'choice': return Output.choice({ ...output, options: [...output.options] });
   }
 }

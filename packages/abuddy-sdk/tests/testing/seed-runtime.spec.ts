@@ -40,6 +40,7 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     fs.writeFileSync(path.join(source, 'plan', 'first.md'), '---\ntype: task\n---\nDo it.\n');
     const compiled = path.join(dir, 'compiled');
     fs.mkdirSync(compiled);
+    fs.writeFileSync(path.join(compiled, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
     fs.writeFileSync(path.join(compiled, 'notes.seed.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.seedFormats!.notes, source) }));
 
     const format = manifest.seedFormats!.notes;

@@ -20,7 +20,6 @@ declare const __APP_VERSION__: string;
 declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createApplicationState>>;
-    __showErrorPage?: (title: string, detail: string) => void;
     __disableOnboardingUI?: () => void;
     appVersion: string;
   }

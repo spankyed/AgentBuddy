@@ -5,9 +5,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { seedFile } from '@abuddy/sdk/build';
+import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { seedData } from '@abuddy/sdk/utils';
-import { findWhere, getAttr } from '@/__generated__/ears';
+import { findWhere } from '@/__generated__/ears';
 import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, tx } from '@abuddy/sdk/ears';
 import { repository } from '@/__generated__/repository';
@@ -26,6 +26,7 @@ afterAll(() => {
 function compiled(changed: string[] = [], version = 'changed'): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seed-'));
   dirs.push(dir);
+  fs.writeFileSync(path.join(dir, SEED_INDEX_FILE), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
   for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(PACK_DIR, 'dist', seedFile(key)), path.join(dir, seedFile(key)));
   const flows = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist', seedFile('flows')), 'utf-8')) as Record<string, { sourceHash?: string }>;
   for (const name of changed) flows[name] = { ...flows[name], sourceHash: `${version}-${flows[name].sourceHash}` };
@@ -88,17 +89,27 @@ describe('re-seeding edited flows', () => {
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 
-  it("leaves flows alone whose seeded graph wasn't recorded (seeded before edits were detected)", () => {
+  it("leaves a changed flow alone when its seeded graph wasn't recorded: it can't be checked for edits", () => {
     dropAttribute(flow('Codex')[0].id, 'seededGraph');
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 0 });
-    expect(getAttr(flow('Codex')[0].id, 'seedKey' as never)).not.toBeNull();
+    expect(flow('Codex')[0].sourceHash).not.toMatch(/^changed-/);
   });
 
-  it('gives flows seeded before seed keys theirs, so a later rename is found', () => {
-    dropAttribute(flow('Codex')[0].id, 'seedKey');
-    seedFlows(compiled());
-    repository.flowsCommands.updateFlowLabel(flow('Codex')[0].id, 'My Codex');
-    seedFlows(compiled(['Codex']));
-    expect(flow('Codex')).toEqual([]);
+  it("points a replaced flow's subflow steps at a seeded flow the user renamed", () => {
+    const codex = flow('Codex')[0].id;
+    repository.flowsCommands.updateFlowLabel(codex, 'My Codex');
+    expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1, created: 0 });
+    const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
+    expect(refs).toContain(codex);
+    expect(refs).not.toContain('Codex');
+  });
+
+  it("points a replaced flow's subflow steps at the seeded flow, not a user's flow with its label", () => {
+    const codex = flow('Codex')[0].id;
+    const mine = repository.flowsCommands.createFlow({ label: 'Codex' } as never).id;
+    expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 });
+    const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
+    expect(refs).toContain(codex);
+    expect(refs).not.toContain(mine);
   });
 });

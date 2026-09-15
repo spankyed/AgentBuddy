@@ -86,17 +86,12 @@ const packsState = setup({
 
     onPackDeactivated: ({ system, event }) => {
       const ev = typeOf('PACK_DEACTIVATED', event);
-      const removedPlugins = unregisterPackFE(ev.packId);
+      unregisterPackFE(ev.packId);
 
       // Remove pack stylesheets
       document.querySelectorAll(`link[data-pack-id="${ev.packId}"]`).forEach(el => el.remove());
 
-      if (removedPlugins.length > 0) {
-        system.get(application).send({
-          type: 'PACK_PLUGINS_UNLOADED',
-          pluginIds: removedPlugins.map(p => p.id),
-        });
-      }
+      system.get(application).send({ type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
     },
 
     onPackActivated: ({ system, event }) => {

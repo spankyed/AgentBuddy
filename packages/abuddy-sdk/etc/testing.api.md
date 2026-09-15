@@ -12,6 +12,7 @@ import type { generateImage } from 'ai';
 import type { generateSpeech } from 'ai';
 import type { generateText } from 'ai';
 import type { InferSchema } from 'ai';
+import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { rerank } from 'ai';

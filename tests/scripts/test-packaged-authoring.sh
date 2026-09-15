@@ -198,7 +198,8 @@ node -e '
   const [term] = read("glossary");
   if (term?.entity !== "DemoPack" || term.term !== "Pack" || term.definition !== "A bundle of features.") throw new Error("glossary: " + JSON.stringify(term));
   const [note] = read("demo-notes");
-  if (note?.entity !== "Note" || note.title !== "Demo notes" || note.noteType !== "document" || note.icon !== null || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
+  // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as seeded
+  if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
 ' || fail "the compiler module and markdown seeds were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
@@ -260,6 +261,23 @@ node -e '
   if (!flow || !JSON.stringify(flow).includes("keep_alive")) throw new Error("the keepAlive flow was not compiled: " + JSON.stringify(flows));
 ' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
+
+step "4. @abuddy/testing's published types stand alone"
+# Its declarations may import only what a pack installs: an unpublished import (@abuddy/host) fails with lib checking
+# on, and is silently `any` under the scaffold's skipLibCheck. Errors in other packages' declarations aren't this check's.
+cat > tests/types-probe.ts <<'TS'
+import type { OutgoingSystemEvents, TestApp, FlowRun } from '@abuddy/testing/harness';
+import type { IsolatedDataDir } from '@abuddy/testing/vitest';
+import type { AppHelper } from '@abuddy/testing';
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+export const typed: [IsAny<OutgoingSystemEvents>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
+TS
+node_modules/.bin/tsc --noEmit --skipLibCheck false -p . > "$WORK/types-probe.log" 2>&1 || true
+rm tests/types-probe.ts
+if grep -E "node_modules/@abuddy/testing/|tests/types-probe\.ts" "$WORK/types-probe.log"; then
+  fail "@abuddy/testing's published declarations don't type-check on their own"
+fi
 
 step "5. abuddy release --local --dry-run"
 git init --quiet -b main

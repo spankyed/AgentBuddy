@@ -26,6 +26,7 @@ describe('flow seeder', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seeder-'));
     const file = seedPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
     fs.writeFileSync(file, JSON.stringify({
       'Broken Flow': { tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
     }));

@@ -1,6 +1,6 @@
 // The llm step asks services.inference for the node's model, prompt and settings, and completes with the text
 import { describe, expect, it } from 'vitest';
-import { mockInference } from '@abuddy/testing/harness';
+import { mockInference, mockService } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { handler } from '../../src/extensions/steps/llm/runtime';
@@ -30,6 +30,42 @@ describe('llm step', () => {
     const inference = mockInference('ok');
     await run({ prompt: 'Summarize the memo' });
     expect(inference.calls[0].model).toBe(DEFAULT_MODEL);
+  });
+
+  it("keeps the provider's warnings on its result, as when the model ignores the node's temperature", async () => {
+    const inference = mockInference('ok');
+    const warnings = [{ type: 'unsupported', feature: 'temperature', details: 'temperature is not supported for reasoning models' }];
+    const options: Array<Record<string, unknown>> = [];
+    // The fake model reports no warnings; a provider's arrive on the result
+    mockService('inference', {
+      generateText: async (call: Parameters<typeof inference.generateText>[0]) => {
+        options.push(call);
+        const { text, usage, finishReason } = await inference.generateText(call);
+        return { text, usage, finishReason, warnings };
+      },
+    } as never);
+
+    const sent = await run({ model: 'anthropic:claude-opus-5', prompt: 'Summarize the memo', temperature: 0.7 });
+
+    expect(options[0].temperature).toBe(0.7);
+    expect(sent).toEqual([expect.objectContaining({ type: 'COMPLETE', result: expect.objectContaining({ text: 'ok', warnings }) })]);
+  });
+
+  it("sends no temperature for a node that sets none, and a new node sets none", async () => {
+    const inference = mockInference('ok');
+    const options: Array<Record<string, unknown>> = [];
+    mockService('inference', {
+      generateText: async (call: Parameters<typeof inference.generateText>[0]) => {
+        options.push(call);
+        return inference.generateText(call);
+      },
+    } as never);
+
+    const sent = await run({ prompt: 'Summarize the memo' });
+
+    expect(options[0].temperature).toBeUndefined();
+    expect(sent).toEqual([expect.objectContaining({ type: 'COMPLETE', result: expect.not.objectContaining({ warnings: expect.anything() }) })]);
+    expect(llmStepFE.fe?.defaults).not.toHaveProperty('temperature');
   });
 
   it("fails the step, naming the node, when its model isn't provider:model", async () => {

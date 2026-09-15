@@ -5,6 +5,7 @@ import type { SystemEvents } from '@abuddy/sdk/framework';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { settingsRepository } from '@abuddy/host/settings';
 import { getDesignated, hasDesignation } from '@abuddy/sdk';
+import { getPacksWithClientLoadedPlugins } from '@/packs/pack-api';
 
 export type {
   BackendEvents,
@@ -46,6 +47,8 @@ export const backendSystem = createBusMachine({
     ];
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   },
+  // Each client asks for these packs' startup data once it has loaded their frontends (bus.packClientReady)
+  clientLoadedPacks: getPacksWithClientLoadedPlugins,
   connectedEvents: () => [{
     type: 'CLIENT_CONNECTED',
     hasOnboarded: settingsRepository.settingsQueries.getInternalSettings().hasOnboarded,

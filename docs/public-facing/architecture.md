@@ -40,7 +40,7 @@ This chapter covers how packs work under the hood: loading, dependency sharing, 
    - Loads styles via `<link href="pack://<id>/fe.css">`
    - Loads the FE bundle via `import("pack://<id>/fe.js")`
    - The default export is a `PackFERegistration` — the host calls `registerPackFE()` to merge plugins, steps, artifacts, and blocks into the application
-3. Sends `PACK_PLUGINS_LOADED` to the application actor
+3. Sends `PACK_PLUGINS_LOADED` to the application actor, which spawns the plugins whose ids aren't taken and, once connected, asks the pack's systems for their startup data (`CLIENT_CONNECTED`, which the connection itself doesn't send them)
 
 ## Entry contracts
 

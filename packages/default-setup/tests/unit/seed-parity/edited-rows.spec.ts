@@ -2,9 +2,10 @@
 // seeded fields; a re-seed with a changed sourceHash updates only rows whose fields still hold it.
 // Between the v1 and v2 fixtures, the Welcome note and the Getting Started document change.
 import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findWhere } from '@/__generated__/ears';
-import { dropAttribute } from '@abuddy/sdk/testing';
 import { repository } from '@/__generated__/repository';
 import { compileSeeds, resetDatabase, seed, snapshot } from './harness';
 
@@ -62,10 +63,21 @@ describe('re-seeding edited rows', () => {
   it("keeps a field the record doesn't set and still updates the row", () => {
     resetDatabase();
     seed(v1);
-    // The Welcome record has no favorite, so the seed doesn't own it
-    repository.noteCommands.update(note('Welcome').id, { favorite: true });
+    // The Welcome record sets favorite, not hideCompletedChildren or completed, so the seed doesn't own those
+    repository.noteCommands.update(note('Welcome').id, { hideCompletedChildren: true, completed: true });
     seed(v2, { mode: 'replace-on-collision' });
-    expect(snapshot().rows['Note:Welcome']).toMatchObject({ favorite: true, content: expect.stringContaining('Revised content.') });
+    expect(snapshot().rows['Note:Welcome']).toMatchObject({ hideCompletedChildren: true, completed: true, content: expect.stringContaining('Revised content.') });
+  });
+
+  it('applies every field a changed record sets, including false flags and the type', () => {
+    resetDatabase();
+    seed(v1);
+    const v3 = withNote(v2, 'Welcome', { noteType: 'tasklist', favorite: false, hideCompletedChildren: false });
+    expect(seed(v3, { mode: 'replace-on-collision' }).notes.errors).toBeUndefined();
+    expect(snapshot().rows['Note:Welcome']).toMatchObject({ noteType: 'tasklist', favorite: false, hideCompletedChildren: false });
+    // Recorded as the seeder wrote it: the next change updates it again
+    seed(withNote(v3, 'Welcome', { content: 'Third' }), { mode: 'replace-on-collision' });
+    expect(snapshot().rows['Note:Welcome']).toMatchObject({ noteType: 'tasklist', content: 'Third' });
   });
 
   it('keeps updating a row a seed already updated', () => {
@@ -118,27 +130,16 @@ describe('re-seeding edited rows', () => {
     // The deleted document is seeded again, beside the renamed one
     expect(findWhere('Document' as never, 'name', '2024')).toHaveLength(2);
   });
-
-  it('gives rows seeded before seed keys theirs on the next seed, so a later rename is found', () => {
-    resetDatabase();
-    seed(v1);
-    dropAttribute(note('Welcome').id, 'seedKey');
-    seed(v1, { mode: 'replace-on-collision' });
-    repository.noteCommands.update(note('Welcome').id, { title: 'My welcome' });
-    seed(v2, { mode: 'replace-on-collision' });
-    expect(snapshot().rows['Note:Welcome']).toBeUndefined();
-  });
-
-  it("leaves rows alone whose seeded values weren't recorded (seeded before edits were detected)", () => {
-    resetDatabase();
-    seed(v1);
-    dropAttribute(note('Welcome').id, 'seededFields');
-    dropAttribute(document('Getting Started').id, 'seededFields');
-    const before = snapshot();
-    const counts = seed(v2, { mode: 'replace-on-collision' });
-    const after = snapshot();
-    expect(after.rows['Note:Welcome']).toEqual(before.rows['Note:Welcome']);
-    expect(after.rows['Document:Getting Started']).toEqual(before.rows['Document:Getting Started']);
-    expect([counts.notes.errors, counts.library.errors]).toEqual([undefined, undefined]);
-  });
 });
+
+/** A copy of a compiled directory with one root note record's fields changed (and a new sourceHash) */
+function withNote(dir: string, title: string, fields: Record<string, unknown>): string {
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'edited-rows-'));
+  dirs.push(copy);
+  fs.cpSync(dir, copy, { recursive: true });
+  const file = path.join(copy, 'notes.seed.json');
+  const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: Array<Record<string, unknown>> };
+  data.records = data.records.map((record) => record.title === title ? { ...record, ...fields, sourceHash: `${record.sourceHash}+${JSON.stringify(fields)}` } : record);
+  fs.writeFileSync(file, JSON.stringify(data));
+  return copy;
+}

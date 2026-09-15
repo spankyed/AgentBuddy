@@ -41,7 +41,7 @@ type IncomingSettingsEvents =
 
 type SettingsInternalEvents =
   | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
-  | { type: 'SECRETS_CHANGED' } // The host's secrets procedures changed the stored keys (no values)
+  | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
@@ -217,7 +217,7 @@ export const settingsSystem = setup({
       const threadsActor = system.get(threads);
       if (!threadsActor) return;
       const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
-      if (!settingsQueries.getAssistantSettings().birthdate && hasRequiredKey) {
+      if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
         threadsActor.send({ type: 'BIRTH_FLOW_START' });
       }
     },

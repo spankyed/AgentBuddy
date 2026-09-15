@@ -57,18 +57,26 @@ function missingSdkPeers(packDir: string): string[] {
  */
 export async function checkSeedRuntimeLoads(packDir: string, bundleFile: string): Promise<{ success: boolean; error?: string }> {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-seed-runtime-check-'));
-  const fromSource = sourceConditions(packDir).length > 0;
-  const args = [
-    // A pack linked to a checkout loads the SDK from TypeScript source, like its unit tests
-    ...(fromSource ? ['--conditions=@abuddy/source', '--import', pathToFileURL(createRequire(import.meta.url).resolve('tsx/esm')).href] : []),
-    '--input-type=module',
-    '--eval',
-    LOAD_SCRIPT,
-  ];
-  const blocked = missingSdkPeers(packDir);
-  const check = JSON.stringify([`data:text/javascript,${encodeURIComponent(BLOCK_OPTIONAL_PEERS_HOOK)}`, pathToFileURL(bundleFile).href, blocked]);
-
   try {
+    const fromSource = sourceConditions(packDir).length > 0;
+    const args = [
+      // A pack linked to a checkout loads the SDK from TypeScript source, like its unit tests
+      ...(fromSource ? ['--conditions=@abuddy/source', '--import', pathToFileURL(createRequire(import.meta.url).resolve('tsx/esm')).href] : []),
+      '--input-type=module',
+      '--eval',
+      LOAD_SCRIPT,
+    ];
+    let blocked: string[];
+    try {
+      blocked = missingSdkPeers(packDir);
+    } catch (err) {
+      return {
+        success: false,
+        error: `${path.relative(packDir, bundleFile)} can't be checked: @abuddy/sdk doesn't resolve from ${packDir} (install the pack's dependencies).\n${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+    const check = JSON.stringify([`data:text/javascript,${encodeURIComponent(BLOCK_OPTIONAL_PEERS_HOOK)}`, pathToFileURL(bundleFile).href, blocked]);
+
     const { code, output } = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, args, {
         cwd: packDir,

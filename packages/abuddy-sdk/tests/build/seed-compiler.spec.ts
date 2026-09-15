@@ -60,7 +60,7 @@ describe('compilePack', () => {
     expect(records[0]).toMatchObject({ entity: 'Memo', title: '2024', pinned: true, body: 'Hello ![pic](media/pic.png)\n', sourceHash: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(records[1].children).toEqual([expect.objectContaining({ entity: 'Memo', title: 'child memo', pinned: false })]);
     expect(fs.readFileSync(path.join(out, 'media/memos/pic.png'), 'utf-8')).toBe('PNG');
-    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
+    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, packId: 'demo', seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
     expect(result.seeds).toEqual({ memos: 3 });
   });
 

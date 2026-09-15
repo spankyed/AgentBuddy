@@ -1,7 +1,11 @@
 // Keeps API keys out of logs and error reports: a backstop for anything that writes text or data it didn't build
 
-/** Strings shaped like provider API keys (OpenAI, Anthropic, Groq, Google), masked or not */
-const KEY_SHAPED = /\b(?:sk-(?:ant-|proj-)?|gsk_|AIza)[A-Za-z0-9_\-*.…]{16,}/g;
+/**
+ * Strings shaped like provider API keys (OpenAI, Anthropic, Groq, Google), masked or not, wherever they start after a
+ * character that isn't a letter or digit (`foo_sk-…` too). Mistral and Cohere keys have no prefix: text can't tell them
+ * from other long tokens, so they're redacted only as the values of credential fields below.
+ */
+const KEY_SHAPED = /(?<![A-Za-z0-9])(?:sk-(?:ant-|proj-)?|gsk_|AIza)[A-Za-z0-9_\-*.…]{16,}/g;
 
 /** Fields whose values are credentials, whatever they hold */
 const SECRET_FIELDS = /^(?:api[-_]?key|apikey|secret|client[-_]?secret|token|access[-_]?token|refresh[-_]?token|password|authorization|x-api-key)$/i;

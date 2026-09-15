@@ -13,5 +13,5 @@ export const importFlows: never = undefined as never;
 
 throw new Error(
   "@abuddy/testing/harness resolves to an AgentBuddy checkout's source, which needs the @abuddy/source condition. " +
-  "Add it to the pack's vitest.config.ts: resolve: { conditions: ['@abuddy/source', ...defaultServerConditions] } (and ssr.resolve).",
+  "Add it to the pack's vitest.config.ts: resolve: { conditions: ['@abuddy/source'] } and ssr: { resolve: { conditions: ['@abuddy/source'] } } (vitest adds its defaults).",
 );

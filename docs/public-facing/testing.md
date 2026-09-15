@@ -24,8 +24,11 @@ await setupPackTests({ seedRuntime, registration });
 - **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
 - **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). These tests start faster and never load a dependency's runtime.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
+- **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database.** Apps a test starts stop after it; service mocks last one test.
+- **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a concurrent test (`it.concurrent`, `describe.concurrent`, `sequence.concurrent`) fails. Spec files still run in parallel, each in its own worker.
 - **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()`.
+- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds.
 
 ## Seeds
 
@@ -63,12 +66,13 @@ it('stores a memo a client adds and sends it back', async () => {
 | Member | What it does |
 |---|---|
 | `startApp({ systems })` | Starts the named systems (your feature ids, or a dependency's, e.g. `settings`), in registration order; `'*'` starts all |
-| `connect()` | Sends `CLIENT_CONNECTED`; the bus routes client events only once connected |
+| `connect()` | Sends `CLIENT_CONNECTED`. Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
 | `send(systemId, event)` | Sends a system an event |
 | `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`) |
 | `nextEmit(pluginId, type)` | The next such event no earlier call returned, waiting for it |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
+| `stop()` | Stops the systems; pending `nextEmit` and `runFlow` calls fail with "The test app stopped". Once no app runs, each registered pack's `boot.onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
 
 `abuddy add feature` scaffolds a system test like this for each feature.
 
@@ -143,6 +147,8 @@ it('summarizes a note', async () => {
   - Without `event`, it resolves with the entry tracks the flow ran when it started.
   - It returns the steps those tracks ran: `label`, `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event).
   - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
+  - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, `sendToBrainSystem`) aren't in it: `await app.settle()`, then read them with `flowTrace`.
+  - Sending `event` connects the app if it isn't. Events sent before that (a `fire` step in an entry track, a schedule tick) were dropped by the bus: call `app.connect()` right after `startApp` when those must reach the brain. When `runFlow` or `nextEmit` fails on an app that dropped events, the error names them.
 - **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it).
 - **Without a root flow** the brain doesn't start: it reports that no flow has the root role when flows exist, and stays stopped with no flows at all.
-- **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track.
+- **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track. Unmocked, real cron jobs run while the app runs (connect it, or their ticks are dropped) and stop when it stops.

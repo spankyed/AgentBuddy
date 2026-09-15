@@ -30,6 +30,21 @@ const unavailableVault = (): KeyVault => {
   return { backend: 'Secret Service', protection: 'os-keystore', get: fail, set: fail, delete: fail };
 };
 
+/** An OS vault that fails while `down` is true (a locked keyring, a denied prompt) */
+const flakyVault = () => {
+  const vault = memoryKeyVault();
+  const state = { down: true };
+  const guard = <T>(run: () => T) => {
+    if (state.down) throw new KeyVaultUnavailableError('Secret Service', new Error('locked'));
+    return run();
+  };
+  return Object.assign(vault, {
+    state,
+    get: (account: string) => guard(() => vault.keys.get(account)),
+    set: (account: string, value: string) => guard(() => { vault.keys.set(account, value); }),
+  });
+};
+
 describe('secrets store', () => {
   it("stores a value encrypted, and gives the selected key's value back", () => {
     const { store, filePath, osVault } = setup();
@@ -140,20 +155,68 @@ describe('secrets store', () => {
     expect(store.list().map((secret) => secret.label)).toEqual(['Work', 'Personal']);
   });
 
-  it('refuses to store keys where the OS has no credential store, until the user allows unprotected storage', () => {
+  it('tells listeners the OS has no credential store when adding a key fails, and stores keys once the user allows unprotected storage', () => {
     const { store, dir, filePath } = setup({ osVault: unavailableVault() });
     expect(store.status()).toEqual({ protection: 'os-keystore', backend: 'Secret Service' });
+    const heard: string[] = [];
+    store.onChange(() => heard.push(store.status().protection));
 
     expect(() => store.add('openai', 'Work', 'sk-work-1234567890')).toThrow("Secret Service isn't available on this system");
-    expect(store.status()).toEqual({ protection: 'unavailable', backend: 'Secret Service' });
-    expect(() => store.add('openai', 'Work', 'sk-work-1234567890')).toThrow('allow storing keys unprotected in Settings → Secrets');
+    expect(heard).toEqual(['unavailable']);
+    expect(store.list()).toEqual([]);
 
     store.allowUnprotected();
     store.add('openai', 'Work', 'sk-work-1234567890');
+    expect(heard).toEqual(['unavailable', 'unprotected', 'unprotected']);
     expect(store.status()).toEqual({ protection: 'unprotected', backend: 'a file on this system' });
     expect(store.keyFor('openai')).toBe('sk-work-1234567890');
     expect(fs.readFileSync(filePath, 'utf-8')).not.toContain('sk-work');
     expect(fs.statSync(path.join(dir, 'secrets.key')).mode & 0o777).toBe(0o600);
+  });
+
+  it('uses the OS credential store again once it works after a failure', () => {
+    const vault = flakyVault();
+    const { store } = setup({ osVault: vault });
+    const heard: string[] = [];
+    store.onChange(() => heard.push(store.status().protection));
+
+    expect(() => store.add('openai', 'Work', 'sk-work-1234567890')).toThrow('locked');
+    expect(store.status().protection).toBe('unavailable');
+
+    vault.state.down = false;
+    store.add('openai', 'Work', 'sk-work-1234567890');
+    expect(store.status()).toEqual({ protection: 'os-keystore', backend: 'memory' });
+    expect(heard).toEqual(['unavailable', 'os-keystore', 'os-keystore']);
+    expect(store.keyFor('openai')).toBe('sk-work-1234567890');
+  });
+
+  it('tells listeners of every change to the stored keys, until they stop listening', () => {
+    const { store } = setup();
+    let calls = 0;
+    const stop = store.onChange(() => { calls += 1; });
+    const work = store.add('openai', 'Work', 'sk-work-1234567890');
+    store.rename(work.id, 'Old work');
+    store.replaceValue(work.id, 'sk-work-again-1234567890');
+    store.select(work.id);
+    store.delete(work.id);
+    expect(calls).toBe(5);
+    stop();
+    store.add('openai', 'Work', 'sk-work-1234567890');
+    expect(calls).toBe(5);
+  });
+
+  it("removes a data key it just created from the vault when the file can't be written", () => {
+    const vault = memoryKeyVault();
+    const { store, filePath } = setup({ osVault: vault });
+    // A directory where the file's temporary copy goes makes the write fail
+    fs.mkdirSync(`${filePath}.tmp`);
+    expect(() => store.add('openai', 'Work', 'sk-work-1234567890')).toThrow();
+    expect(vault.keys.size).toBe(0);
+
+    fs.rmdirSync(`${filePath}.tmp`);
+    store.add('openai', 'Work', 'sk-work-1234567890');
+    expect(vault.keys.size).toBe(1);
+    expect(store.keyFor('openai')).toBe('sk-work-1234567890');
   });
 
   it('moves readable keys to a file key when the user allows unprotected storage', () => {
@@ -175,12 +238,37 @@ describe('secrets store', () => {
     expect(store.status().protection).toBe('unprotected');
   });
 
-  it('deletes every key on clear', () => {
-    const { store, filePath } = setup();
+  it('deletes every key on clear, with the data key in the vault', () => {
+    const vault = memoryKeyVault();
+    const { store, filePath } = setup({ osVault: vault });
     store.add('openai', 'Work', 'sk-work-1234567890');
+    let calls = 0;
+    store.onChange(() => { calls += 1; });
     store.clearAll();
     expect(fs.existsSync(filePath)).toBe(false);
     expect(store.list()).toEqual([]);
+    expect(vault.keys.size).toBe(0);
+    expect(calls).toBe(1);
+
+    store.add('openai', 'Work', 'sk-work-1234567890');
+    expect(vault.keys.size).toBe(1);
+    expect(store.keyFor('openai')).toBe('sk-work-1234567890');
+  });
+
+  it('deletes the file vault data key on clear, where keys are unprotected', () => {
+    const { store, dir } = setup({ useFileVault: true });
+    store.add('openai', 'Work', 'sk-work-1234567890');
+    store.clearAll();
+    expect(JSON.parse(fs.readFileSync(path.join(dir, 'secrets.key'), 'utf-8'))).toEqual({});
+  });
+
+  it('rejects a value whose authentication tag has another length', () => {
+    const { store, filePath } = setup();
+    store.add('openai', 'Work', 'sk-work-1234567890');
+    const file = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    file.secrets[0].value.tag = Buffer.from(file.secrets[0].value.tag, 'base64').subarray(0, 12).toString('base64');
+    fs.writeFileSync(filePath, JSON.stringify(file));
+    expect(() => store.keyFor('openai')).toThrow("can't be read on this machine");
   });
 
   it('rejects a file in a format it does not know', () => {

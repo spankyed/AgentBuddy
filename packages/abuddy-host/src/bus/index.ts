@@ -14,12 +14,13 @@ export type BusEvent =
   | { type: 'INCOMING'; event: IncomingSystemEvents }
   | { type: 'OUTGOING'; event: OutgoingSystemEvents };
 
+/** Restarts a pack's systems: stops each running one, then starts those still registered */
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
 export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[] };
 export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; systemIds: string[] };
-/** A client loaded a pack's frontend: its systems resend their startup data */
+/** A client loaded a pack's frontend after connecting: its systems send their startup data */
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
-/** Raised after spawning systems, once they're in the actor system and can receive events */
+/** Raised after restarting a pack's systems, once they're in the actor system and can receive events */
 export type SystemsSpawnedEvent = { type: 'SYSTEMS_SPAWNED'; systemIds: string[] };
 
 export type BackendEvents =
@@ -41,6 +42,13 @@ export interface BusOptions {
   onOutgoing(event: OutgoingSystemEvents): void;
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED); returns the unsubscribe */
   listen?(send: (event: BusSourceEvent) => void): () => void;
+  /**
+   * Packs whose frontend a client loads after connecting. A connection's CLIENT_CONNECTED skips their
+   * systems: the client sends PACK_CLIENT_CONNECTED for each once its plugin actors exist (and again on
+   * reconnecting), so they get it once. A pack whose frontend fails to load never does: nothing on that
+   * client would receive its data.
+   */
+  clientLoadedPacks?(): Iterable<string>;
   /** Events the bus sends to clients after each client connection's CLIENT_CONNECTED reached the systems */
   connectedEvents?(): OutgoingSystemEvents[];
 }
@@ -54,6 +62,17 @@ function sendClientConnected(system: ActorSystemLike, systemIds: Iterable<string
     if (actor) actor.send({ type: 'CLIENT_CONNECTED' });
     else console.warn(`[bus] CLIENT_CONNECTED: system "${id}" isn't running`);
   }
+}
+
+/** Spawns each of `systemIds` the bus runs; returns those it spawned */
+function spawnSystems(
+  enqueue: { spawnChild(machine: AnyStateMachine, options: { systemId: string }): void },
+  machines: ReadonlyMap<string, AnyStateMachine>,
+  systemIds: readonly string[],
+): string[] {
+  const spawned = systemIds.filter((id) => machines.has(id));
+  for (const id of spawned) enqueue.spawnChild(machines.get(id)!, { systemId: id });
+  return spawned;
 }
 
 /** Systems are spawned by system id only, so they're stopped by reference */
@@ -70,6 +89,7 @@ function stopSystems(
 
 /** A bus machine; start it with systemId `bus` so systems reach it with `system.get(bus)` */
 export function createBusMachine(options: BusOptions) {
+  // Every lookup of what the bus runs goes through this, so a bus given a subset never reaches past it
   const systems = options.systems ?? getRegisteredSystems;
   return setup({
     types: {
@@ -91,11 +111,17 @@ export function createBusMachine(options: BusOptions) {
         else console.warn(`[bus] routeIncoming: system "${systemId}" not found (may be reloading), dropping event "${incoming.type}"`);
       },
       sendConnected: ({ system }) => {
-        sendClientConnected(system, systems().keys());
+        const clientLoaded = new Set<string>();
+        for (const packId of options.clientLoadedPacks?.() ?? []) {
+          for (const id of getRegisteredPackSystemIds(packId)) clientLoaded.add(id);
+        }
+        sendClientConnected(system, [...systems().keys()].filter((id) => !clientLoaded.has(id)));
         for (const outgoing of options.connectedEvents?.() ?? []) system.get(bus).send({ type: 'OUTGOING', event: outgoing });
       },
       sendPackConnected: ({ event, system }) => {
-        if (event.type === 'PACK_CLIENT_CONNECTED') sendClientConnected(system, getRegisteredPackSystemIds(event.packId));
+        if (event.type !== 'PACK_CLIENT_CONNECTED') return;
+        const running = systems();
+        sendClientConnected(system, getRegisteredPackSystemIds(event.packId).filter((id) => running.has(id)));
       },
       sendSpawnedConnected: ({ event, system }) => {
         if (event.type === 'SYSTEMS_SPAWNED') sendClientConnected(system, event.systemIds);
@@ -106,13 +132,10 @@ export function createBusMachine(options: BusOptions) {
       reloadPack: enqueueActions(({ enqueue, event, system }) => {
         if (event.type !== 'RELOAD_PACK') return;
         stopSystems(enqueue, system, event.systemIds);
-        const machines = getRegisteredSystems();
-        for (const id of event.systemIds) {
-          const machine = machines.get(id);
-          if (machine) enqueue.spawnChild(machine, { systemId: id });
-        }
-        // Spawned children join the actor system only after this action runs
-        enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: event.systemIds });
+        // A client already has the pack's frontend, so the restarted systems send their startup data.
+        // Spawned children join the actor system only after this action runs.
+        const spawned = spawnSystems(enqueue, systems(), event.systemIds);
+        if (spawned.length > 0) enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: spawned });
       }),
       teardownPack: enqueueActions(({ enqueue, event, system }) => {
         if (event.type !== 'TEARDOWN_PACK') return;
@@ -120,12 +143,9 @@ export function createBusMachine(options: BusOptions) {
       }),
       activatePack: enqueueActions(({ enqueue, event }) => {
         if (event.type !== 'ACTIVATE_PACK') return;
-        const machines = getRegisteredSystems();
-        for (const id of event.systemIds) {
-          const machine = machines.get(id);
-          if (machine) enqueue.spawnChild(machine, { systemId: id });
-        }
-        enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: event.systemIds });
+        // No CLIENT_CONNECTED: a client loads the activated pack's frontend next and asks for the startup
+        // data then (PACK_CLIENT_CONNECTED), once its plugin actors can receive it
+        spawnSystems(enqueue, systems(), event.systemIds);
       }),
     },
   }).createMachine({

@@ -97,6 +97,9 @@ export function bundleFile(filePath: string): Promise<BundleResult>;
 // @public
 export function checkRecordEntities(key: string, format: SeedFormatConfig, records: SeedRecord[]): string[];
 
+// @internal
+export function clearCompiledSeeds(outputDir: string): void;
+
 // @public (undocumented)
 export interface CompilationContext {
     getCompiled<T = unknown>(key: string): T | undefined;
@@ -1634,6 +1637,7 @@ export const SeedFormatSchema: z.ZodEffects<z.ZodObject<{
 
 // @public
 export interface SeedIndex {
+    packId: string;
     // (undocumented)
     seeds: SeedIndexEntry[];
     // (undocumented)

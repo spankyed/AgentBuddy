@@ -67,6 +67,7 @@ async function reloadPack(
   result.onInit?.();
   result.afterRegister?.();
 
+  // The bus stops each of these and starts those still registered: a feature the pack dropped only stops
   const systemIds = [...new Set([...oldSystemIds, ...result.newSystemIds])];
 
   backendActor.send({ type: 'RELOAD_PACK', packId, systemIds });

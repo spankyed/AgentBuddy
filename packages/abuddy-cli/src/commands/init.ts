@@ -106,20 +106,19 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     // Pinned per project: a global, Homebrew or app-bundled `abuddy` hands off to this one
     '@abuddy/cli': `^${cliVersion()}`,
     // Unit tests run the pack's seeds and repositories in memory (@abuddy/testing/harness)
-    '@abuddy/testing': `^${cliVersion()}`,
+    ...UNIT_TEST_DEV_DEPENDENCIES(),
     // The scaffold's tsconfig uses Node types
     '@types/node': '^22.15.17',
     typescript: '^5.8.3',
-    vitest: '^3.2.1',
   },
 }, null, 2);
 
 const VITEST_CONFIG_TEMPLATE = `import { defineConfig } from 'vitest/config';
-import { defaultServerConditions } from 'vite';
 import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
 
-// A pack linked to an AgentBuddy checkout resolves its @abuddy/* packages to source; installed packages don't
-const conditions = [...sourceConditions(), ...defaultServerConditions.filter((c) => c !== 'module')];
+// A pack linked to an AgentBuddy checkout resolves its @abuddy/* packages to source; installed packages don't.
+// Vitest adds its default conditions to these.
+const conditions = sourceConditions(import.meta.dirname);
 // A throwaway data dir per run (media, stores), one subdir per worker
 const dataDir = isolatedDataDir();
 
@@ -146,6 +145,50 @@ import { setupPackTests } from '@abuddy/testing/harness';
 
 await setupPackTests({ seedRuntime, registration });
 `;
+
+/** What the unit test setup needs installed, as the scaffold's package.json declares it */
+const UNIT_TEST_DEV_DEPENDENCIES = () => ({ '@abuddy/testing': `^${cliVersion()}`, vitest: '^3.2.1' });
+
+export interface UnitTestSetup {
+  /** Files written */
+  created: string[];
+  /** Whether vitest.config.ts already existed (and so may not load tests/setup.ts) */
+  keptConfig: boolean;
+  /** devDependencies added to package.json */
+  addedDependencies: string[];
+}
+
+/**
+ * Writes the unit test setup a pack lacks: vitest.config.ts, tests/setup.ts (the harness) and their devDependencies.
+ * Keeps files that exist.
+ */
+export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
+  const created: string[] = [];
+  const configPath = path.join(root, 'vitest.config.ts');
+  const keptConfig = fs.existsSync(configPath);
+  if (!keptConfig) {
+    fs.writeFileSync(configPath, VITEST_CONFIG_TEMPLATE);
+    created.push(configPath);
+  }
+  const setupPath = path.join(root, 'tests', 'setup.ts');
+  if (!fs.existsSync(setupPath)) {
+    fs.mkdirSync(path.dirname(setupPath), { recursive: true });
+    fs.writeFileSync(setupPath, TEST_SETUP_TEMPLATE);
+    created.push(setupPath);
+  }
+  const addedDependencies: string[] = [];
+  const pkgPath = path.join(root, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    for (const [name, range] of Object.entries(UNIT_TEST_DEV_DEPENDENCIES())) {
+      if (pkg.dependencies?.[name] || pkg.devDependencies?.[name]) continue;
+      pkg.devDependencies = { ...pkg.devDependencies, [name]: range };
+      addedDependencies.push(name);
+    }
+    if (addedDependencies.length > 0) fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  }
+  return { created, keptConfig, addedDependencies };
+}
 
 // Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs
 // that depend on this one validate their flows with this pack's step code
@@ -271,15 +314,11 @@ export async function init(args: string[]) {
   fs.writeFileSync(path.join(dir, '.github', 'workflows', 'release.yml'), RELEASE_WORKFLOW_TEMPLATE);
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
   fs.writeFileSync(
-    path.join(dir, 'vitest.config.ts'),
-    VITEST_CONFIG_TEMPLATE,
-  );
-  fs.writeFileSync(
     path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
     STEPS_REGISTER_TEMPLATE,
   );
   fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), STEPS_BUILD_TEMPLATE);
-  fs.writeFileSync(path.join(dir, 'tests', 'setup.ts'), TEST_SETUP_TEMPLATE);
+  scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
     path.join(dir, 'tests', 'unit', `${name}.spec.ts`),
     EXAMPLE_TEST_TEMPLATE(name),

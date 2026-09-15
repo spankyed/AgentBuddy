@@ -15,13 +15,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, beforeEach } from 'vitest';
+import { afterEach, beforeEach, inject } from 'vitest';
 import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { setAppPackId, stopRunningApps } from './app.ts';
+import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
 import { repository, untypedQx } from '@abuddy/sdk/ears';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abuddy/sdk/utils';
@@ -30,7 +31,10 @@ export { resetTestData, takeSystemErrors, addTestSecret, type SeedRuntime };
 export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
-/** Whether a test (with its beforeEach and afterEach hooks) is running, so mocks have a test to last for */
+/**
+ * Whether a test (with its beforeEach and afterEach hooks) is running, so mocks have a test to last for. Mocks,
+ * the database and running apps are per file, not per test: the harness rejects concurrent tests.
+ */
 let inTest = false;
 
 /** The pack registry `services` reads, with the current test's mocked services over the registered ones */
@@ -75,7 +79,10 @@ export interface PackTestOptions {
    * of its seed runtime, for `startApp`.
    */
   registration?: PackRegistration;
-  /** The pack root (with abuddy.json); defaults to the nearest one above the working directory */
+  /**
+   * The pack root (with abuddy.json); defaults to the nearest one at or above the vitest project's root (`--root`,
+   * `test.root`, a workspace project's dir), given by isolatedDataDir's globalSetup, else the working directory
+   */
   packDir?: string;
 }
 
@@ -86,6 +93,12 @@ interface PackContext {
 }
 
 let context: PackContext | undefined;
+
+/** The vitest project's root, when isolatedDataDir's globalSetup provided it */
+function projectRoot(): string | undefined {
+  const root = (inject as (key: string) => unknown)(PROJECT_ROOT_KEY);
+  return typeof root === 'string' ? root : undefined;
+}
 
 function findPackDir(from: string): string {
   for (let dir = path.resolve(from); ; dir = path.dirname(dir)) {
@@ -120,7 +133,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   if (!process.env.ABUDDY_USER_DATA_DIR) {
     throw new Error('ABUDDY_USER_DATA_DIR is unset: use isolatedDataDir() from @abuddy/testing/vitest in vitest.config.ts');
   }
-  const packDir = options.packDir ?? findPackDir(process.cwd());
+  const packDir = options.packDir ?? findPackDir(projectRoot() ?? process.cwd());
   const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8')) as PackManifest;
   const dependencies = readDependencies(packDir, manifest);
 
@@ -145,20 +158,30 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   registerSeedRuntime(options.seedRuntime);
 
   context = { packDir, manifest, dependencies };
-  beforeEach(() => {
+  beforeEach(({ task }) => {
+    if (task.concurrent) {
+      throw new Error(`"${task.name}" runs concurrently: harness tests share one database, service mocks and apps per file, so run them sequentially (no .concurrent or sequence.concurrent)`);
+    }
     inTest = true;
     resetTestData();
     fs.rmSync(getMediaPath(), { recursive: true, force: true });
   });
   afterEach(() => {
     inTest = false;
-    stopRunningApps();
+    // Every cleanup runs, whichever fails
+    const failures: unknown[] = [];
+    try {
+      stopRunningApps();
+    } catch (error) {
+      failures.push(error);
+    }
     serviceMocks.clear();
     const errors = takeSystemErrors();
     if (errors.length > 0) {
       const described = errors.map((e) => `${e.source ?? 'unknown'}: ${e.error instanceof Error ? e.error.message : String(e.error)}`);
-      throw new Error(`Systems reported errors the test didn't take (takeSystemErrors()):\n  ${described.join('\n  ')}`);
+      failures.push(new Error(`Systems reported errors the test didn't take (takeSystemErrors()):\n  ${described.join('\n  ')}`));
     }
+    if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Cleaning up after the test failed');
   });
 }
 

@@ -50,7 +50,7 @@ export async function loadDependencyRuntime(packDir: string, depId: string, runt
   shared ??= sharedModules(packDir);
   const modules = await shared;
   const require = createRequire(runtimeEntry);
-  const mod = withModuleBridge({ modules, stubMissing: true }, () => require(runtimeEntry)) as {
+  const mod = withModuleBridge({ modules, stubMissing: true, resolveFrom: runtimeEntry },() => require(runtimeEntry)) as {
     registration?: PackRegistration;
     setCompiledDir?(dir: string): void;
   };
