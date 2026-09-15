@@ -8,7 +8,7 @@ export type ProviderName = Exclude<SecretProvider, 'custom'>;
 export type ModelId = `${ProviderName}:${string}`;
 
 /** The kinds of model `services.inference` runs */
-export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription';
+export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription' | 'reranking';
 
 /** The kinds of model each provider gives through `services.inference` */
 export const providerCapabilities = {
@@ -17,7 +17,7 @@ export const providerCapabilities = {
   google: ['language', 'embedding', 'image', 'speech', 'transcription'],
   groq: ['language', 'transcription'],
   mistral: ['language', 'embedding', 'speech', 'transcription'],
-  cohere: ['language', 'embedding'],
+  cohere: ['language', 'embedding', 'reranking'],
 } as const satisfies Record<ProviderName, readonly ModelKind[]>;
 
 type ProvidersOf<K extends ModelKind> = { [P in ProviderName]: K extends (typeof providerCapabilities)[P][number] ? P : never }[ProviderName];
@@ -28,6 +28,7 @@ export type EmbeddingModelId = ModelIdOf<'embedding'>;
 export type ImageModelId = ModelIdOf<'image'>;
 export type SpeechModelId = ModelIdOf<'speech'>;
 export type TranscriptionModelId = ModelIdOf<'transcription'>;
+export type RerankingModelId = ModelIdOf<'reranking'>;
 
 /*─────────────────────────────────────────────────────────────────
  * Model Catalog

@@ -2,7 +2,7 @@
 // `output` parsing, tool execution, agents and stream parts behave as in the app. `ai` loads on the first call, so
 // @abuddy/sdk/testing loads in packs that don't install it.
 import { createInferenceService, type InferenceService, type ResolveModel } from '../services/inference.ts';
-import { parseModelId, type EmbeddingModelId, type ImageModelId, type ModelId, type SpeechModelId, type TranscriptionModelId } from '../services/models.ts';
+import { parseModelId, type EmbeddingModelId, type ImageModelId, type ModelId, type ModelKind, type RerankingModelId, type SpeechModelId, type TranscriptionModelId } from '../services/models.ts';
 
 /** A language model call the code under test made (`generateText`, `streamText`, an agent's step) */
 export interface FakeTextCall {
@@ -18,13 +18,17 @@ export interface FakeTextCall {
   stream: boolean;
 }
 
-/** A model call the code under test made */
+/**
+ * A model call the code under test made. The AI SDK splits some calls into several model calls, as it does for a
+ * real provider: `embedMany` into chunks of 2048 values, `generateImage` into batches of up to 10 images.
+ */
 export type FakeInferenceCall =
   | FakeTextCall
   | { kind: 'embedding'; model: EmbeddingModelId; values: string[] }
-  | { kind: 'image'; model: ImageModelId; prompt?: string; n: number }
-  | { kind: 'speech'; model: SpeechModelId; text: string; voice?: string }
-  | { kind: 'transcription'; model: TranscriptionModelId; mediaType: string };
+  | { kind: 'image'; model: ImageModelId; prompt?: string; n: number; size?: string; aspectRatio?: string }
+  | { kind: 'speech'; model: SpeechModelId; text: string; voice?: string; instructions?: string; speed?: number }
+  | { kind: 'transcription'; model: TranscriptionModelId; mediaType: string }
+  | { kind: 'reranking'; model: RerankingModelId; query: string; documents: unknown[]; topN?: number };
 
 /** What the language model answers a call with: text, or tool calls (the AI SDK runs them and calls again while `stopWhen` allows) */
 export type FakeInferenceReply = string | { text?: string; toolCalls?: Array<{ toolName: string; input: unknown }> };
@@ -35,10 +39,12 @@ export interface FakeInferenceReplies {
   embedding?: (value: string) => number[];
   /** Each generated image's bytes (default a 1×1 PNG) */
   image?: Uint8Array;
-  /** The generated audio's bytes (default an empty MP3 tag) */
+  /** The generated audio's bytes (default a silent MP3 frame) */
   speech?: Uint8Array;
   /** The transcript (default `'Fake transcript'`) */
   transcript?: string;
+  /** Each document's relevance to the query, from 0 to 1 (default: earlier documents rank higher) */
+  relevance?: (query: string, document: unknown, index: number) => number;
 }
 
 export interface FakeInference extends InferenceService {
@@ -56,7 +62,8 @@ const USAGE = {
 };
 const bytes = (base64: string) => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 const PNG = bytes('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
-const MP3 = bytes('SUQzBAAAAAAAAA==');
+/** One silent MPEG-1 Layer III frame (128 kbps, 44.1 kHz): what providers return as `audio/mpeg` */
+const MP3 = Uint8Array.from({ length: 417 }, (_, index) => [0xff, 0xfb, 0x90, 0x64][index] ?? 0);
 
 function partText(part: PromptPart): string {
   if (part.type === 'text' || part.type === 'reasoning') return part.text ?? '';
@@ -89,7 +96,10 @@ function toCall(model: ModelId, options: CallOptions, stream: boolean): FakeText
  */
 export function fakeInference(
   reply: FakeInferenceReply | ((call: FakeTextCall) => FakeInferenceReply),
-  { embedding = (value) => [value.length, 1, 0], image = PNG, speech = MP3, transcript = 'Fake transcript' }: FakeInferenceReplies = {},
+  {
+    embedding = (value) => [value.length, 1, 0], image = PNG, speech = MP3, transcript = 'Fake transcript',
+    relevance = (_query, _document, index) => 1 / (index + 1),
+  }: FakeInferenceReplies = {},
 ): FakeInference {
   const calls: FakeInferenceCall[] = [];
   let toolCallCount = 0;
@@ -106,31 +116,37 @@ export function fakeInference(
     };
   };
 
-  const modelFor: ResolveModel = async (kind, id) => {
+  const modelFor = (async (kind: ModelKind, id: string): Promise<unknown> => {
     const mocks = await import('ai/test');
     const parts = parseModelId(id);
     const names = { provider: parts?.provider, modelId: parts?.model ?? id };
     const response = { timestamp: new Date(0), modelId: names.modelId, headers: undefined };
     switch (kind) {
       case 'language': return languageModel(mocks, id as ModelId, names) as never;
-      case 'embedding': return new mocks.MockEmbeddingModelV4({ ...names, maxEmbeddingsPerCall: null, doEmbed: async ({ values }) => {
+      case 'embedding': return new mocks.MockEmbeddingModelV4({ ...names, maxEmbeddingsPerCall: 2048, doEmbed: async ({ values }) => {
         calls.push({ kind: 'embedding', model: id as EmbeddingModelId, values });
         return { embeddings: values.map(embedding), warnings: [] };
       } }) as never;
-      case 'image': return new mocks.MockImageModelV4({ ...names, maxImagesPerCall: 10, doGenerate: async ({ prompt, n }) => {
-        calls.push({ kind: 'image', model: id as ImageModelId, ...(prompt !== undefined && { prompt }), n });
+      case 'image': return new mocks.MockImageModelV4({ ...names, maxImagesPerCall: 10, doGenerate: async ({ prompt, n, size, aspectRatio }) => {
+        calls.push({ kind: 'image', model: id as ImageModelId, ...(prompt !== undefined && { prompt }), n, ...(size && { size }), ...(aspectRatio && { aspectRatio }) });
         return { images: Array.from({ length: n }, () => image), warnings: [], response };
       } }) as never;
-      case 'speech': return new mocks.MockSpeechModelV4({ ...names, doGenerate: async ({ text, voice }) => {
-        calls.push({ kind: 'speech', model: id as SpeechModelId, text, ...(voice !== undefined && { voice }) });
+      case 'speech': return new mocks.MockSpeechModelV4({ ...names, doGenerate: async ({ text, voice, instructions, speed }) => {
+        calls.push({ kind: 'speech', model: id as SpeechModelId, text, ...(voice !== undefined && { voice }), ...(instructions !== undefined && { instructions }), ...(speed !== undefined && { speed }) });
         return { audio: speech, warnings: [], response };
+      } }) as never;
+      case 'reranking': return new mocks.MockRerankingModelV4({ ...names, doRerank: async ({ query, documents, topN }) => {
+        calls.push({ kind: 'reranking', model: id as RerankingModelId, query, documents: documents.values, ...(topN !== undefined && { topN }) });
+        const ranking = documents.values.map((document, index) => ({ index, relevanceScore: relevance(query, document, index) }))
+          .sort((a, b) => b.relevanceScore - a.relevanceScore);
+        return { ranking: topN === undefined ? ranking : ranking.slice(0, topN), response };
       } }) as never;
       default: return new mocks.MockTranscriptionModelV4({ ...names, doGenerate: async ({ mediaType }) => {
         calls.push({ kind: 'transcription', model: id as TranscriptionModelId, mediaType });
         return { text: transcript, segments: [], language: undefined, durationInSeconds: undefined, warnings: [], response };
       } }) as never;
     }
-  };
+  }) as ResolveModel;
 
   const languageModel = (mocks: typeof import('ai/test'), model: ModelId, names: { provider?: string; modelId: string }) => {
     const { MockLanguageModelV4, simulateReadableStream } = mocks;

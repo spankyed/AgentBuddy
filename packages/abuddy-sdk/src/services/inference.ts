@@ -1,9 +1,10 @@
 import type {
   DeepPartial, embed, embedMany, EmbeddingModel, FlexibleSchema, generateImage, generateSpeech, generateText, ImageModel, InferSchema,
-  LanguageModel, Output, OutputInterface, SpeechModel, streamText, ToolLoopAgent, ToolLoopAgentSettings, ToolSet, transcribe, TranscriptionModel,
+  LanguageModel, Output, OutputInterface, rerank, RerankingModel, SpeechModel, streamText, ToolLoopAgent, ToolLoopAgentSettings, ToolSet,
+  transcribe, TranscriptionModel,
 } from 'ai';
 import { hostService } from './host-services.ts';
-import type { EmbeddingModelId, ImageModelId, ModelId, ModelIdOf, ModelKind, SpeechModelId, TranscriptionModelId } from './models.ts';
+import type { EmbeddingModelId, ImageModelId, ModelId, ModelIdOf, ModelKind, RerankingModelId, SpeechModelId, TranscriptionModelId } from './models.ts';
 
 /** The runtime context type `ai` calls take (`runtimeContext`) */
 type RuntimeContext = Parameters<typeof generateText>[0] extends { runtimeContext?: infer C } ? C : never;
@@ -35,11 +36,27 @@ export type OutputOf<O> =
   O extends { type: 'json' } ? ReturnType<typeof Output.json> :
   ReturnType<typeof Output.text>;
 
-/** An AI SDK call's options, with `model` named by id */
-type WithModelId<Options, Id> = Omit<Options, 'model'> & { model: Id };
+/** An AI SDK call's options, with `model` named by id (and without the AI SDK's `_internal` test hooks) */
+type WithModelId<Options, Id> = Omit<Options, 'model' | '_internal'> & { model: Id };
 
-/** An AI SDK call's options, with `model` named by id and `output` as an `Output` or its spec */
-type InferenceOptions<Options, O> = Omit<Options, 'model' | 'output'> & { model: ModelId; output?: O };
+/** A value with its `model` named by id */
+type ModelNamedById<T> = { [K in keyof T]: K extends 'model' ? ModelId : T[K] };
+
+/** A callback (`prepareStep`, `prepareCall`) returning its model by id; `prepareCall` gets the call's model by id too */
+type CallbackById<F, NamedInput extends boolean> = F extends (options: infer A) => infer R
+  ? (options: NamedInput extends true ? ModelNamedById<A> : A) => ModelNamedById<Awaited<R>> | PromiseLike<ModelNamedById<Awaited<R>>> | Extract<Awaited<R>, undefined>
+  : never;
+
+/**
+ * An AI SDK call's options, with models named by id (`model`, and the model `prepareStep` or `prepareCall` picks)
+ * and `output` as an `Output` or its spec
+ */
+type InferenceOptions<Options, O> = {
+  [K in keyof Options as K extends 'model' | 'output' | '_internal' ? never : K]:
+    K extends 'prepareStep' ? CallbackById<NonNullable<Options[K]>, false> :
+    K extends 'prepareCall' ? CallbackById<NonNullable<Options[K]>, true> :
+    Options[K];
+} & { model: ModelId; output?: O };
 
 /** @internal The AI SDK model of each kind */
 export interface InferenceModels {
@@ -48,6 +65,7 @@ export interface InferenceModels {
   image: ImageModel;
   speech: SpeechModel;
   transcription: TranscriptionModel;
+  reranking: RerankingModel;
 }
 
 /**
@@ -64,20 +82,27 @@ export interface InferenceService {
   streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string, never>>(
     options: InferenceOptions<Parameters<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>,
   ): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
-  /** The AI SDK's `ToolLoopAgent`: `generate` and `stream` run `instructions`, `tools` and `output` in a loop until `stopWhen` (20 steps by default) */
+  /**
+   * The AI SDK's `ToolLoopAgent`: `generate` and `stream` run `instructions`, `tools` and `output` in a loop until `stopWhen`
+   * (20 steps by default). The model, and the user's key for it, resolve on each call.
+   */
   createAgent<CALL_OPTIONS = never, TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = never>(
     settings: InferenceOptions<ToolLoopAgentSettings<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>, O>,
   ): Promise<ToolLoopAgent<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>>;
   /** The AI SDK's `embed`: one value's `embedding` */
-  embed(options: WithModelId<Parameters<typeof embed>[0], EmbeddingModelId>): ReturnType<typeof embed>;
+  embed<CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof embed<CONTEXT>>[0], EmbeddingModelId>): ReturnType<typeof embed<CONTEXT>>;
   /** The AI SDK's `embedMany`: `embeddings` for `values`, in order */
-  embedMany(options: WithModelId<Parameters<typeof embedMany>[0], EmbeddingModelId>): ReturnType<typeof embedMany>;
+  embedMany<CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof embedMany<CONTEXT>>[0], EmbeddingModelId>): ReturnType<typeof embedMany<CONTEXT>>;
   /** The AI SDK's `generateImage`: `image` (and `images`) for a `prompt` */
   generateImage(options: WithModelId<Parameters<typeof generateImage>[0], ImageModelId>): ReturnType<typeof generateImage>;
   /** The AI SDK's `generateSpeech`: `audio` for `text` */
   generateSpeech(options: WithModelId<Parameters<typeof generateSpeech>[0], SpeechModelId>): ReturnType<typeof generateSpeech>;
   /** The AI SDK's `transcribe`: `text` and `segments` for `audio` */
   transcribe(options: WithModelId<Parameters<typeof transcribe>[0], TranscriptionModelId>): ReturnType<typeof transcribe>;
+  /** The AI SDK's `rerank`: `documents` ordered by relevance to `query` */
+  rerank<VALUE extends Parameters<typeof rerank>[0]['documents'][number], CONTEXT extends RuntimeContext = RuntimeContext>(
+    options: WithModelId<Parameters<typeof rerank<VALUE, CONTEXT>>[0], RerankingModelId>,
+  ): ReturnType<typeof rerank<VALUE, CONTEXT>>;
 }
 
 /** The `Output` an `output` option stands for: an `Output` passes through, a spec builds its `Output.*` */
@@ -102,18 +127,39 @@ export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => I
  * the host's implementation and `fakeInference`. `ai` loads on the first call.
  */
 export function createInferenceService(resolveModel: ResolveModel): InferenceService {
+  /** A language model named by id; one the AI SDK already resolved passes through */
+  const languageModel = async (model: unknown) => typeof model === 'string' ? resolveModel('language', model as ModelId) : model;
+  type PrepareStep = ((options: never) => unknown) | undefined;
+  /** `prepareStep` with the model it picks by id resolved */
+  const resolvingStepModel = (prepareStep: PrepareStep) => prepareStep && (async (options: never) => {
+    const result = await prepareStep(options) as { model?: unknown } | undefined;
+    return result?.model === undefined ? result : { ...result, model: await languageModel(result.model) };
+  });
+
   return {
-    async generateText({ model, output, ...options }) {
+    async generateText({ model, output, prepareStep, ...options }) {
       const { generateText } = await import('ai');
-      return generateText({ ...options, output: await toAiOutput(output), model: await resolveModel('language', model) } as Parameters<typeof generateText>[0]) as never;
+      return generateText({
+        ...options, output: await toAiOutput(output), model: await resolveModel('language', model), prepareStep: resolvingStepModel(prepareStep),
+      } as Parameters<typeof generateText>[0]) as never;
     },
-    async streamText({ model, output, ...options }) {
+    async streamText({ model, output, prepareStep, ...options }) {
       const { streamText } = await import('ai');
-      return streamText({ ...options, output: await toAiOutput(output), model: await resolveModel('language', model) } as Parameters<typeof streamText>[0]) as never;
+      return streamText({
+        ...options, output: await toAiOutput(output), model: await resolveModel('language', model), prepareStep: resolvingStepModel(prepareStep),
+      } as Parameters<typeof streamText>[0]) as never;
     },
-    async createAgent({ model, output, ...settings }) {
+    async createAgent({ output, prepareCall, ...settings }) {
       const { ToolLoopAgent } = await import('ai');
-      return new ToolLoopAgent({ ...settings, output: await toAiOutput(output), model: await resolveModel('language', model) } as ConstructorParameters<typeof ToolLoopAgent>[0]) as never;
+      return new ToolLoopAgent({
+        // `model` stays an id until a call: each generate or stream resolves it, reading the user's current key
+        ...settings,
+        output: await toAiOutput(output),
+        prepareCall: async (options: { model: unknown; prepareStep?: PrepareStep }) => {
+          const prepared = (prepareCall ? await prepareCall(options as never) : options) as typeof options;
+          return { ...prepared, model: await languageModel(prepared.model), prepareStep: resolvingStepModel(prepared.prepareStep) };
+        },
+      } as unknown as ConstructorParameters<typeof ToolLoopAgent>[0]) as never;
     },
     async embed({ model, ...options }) {
       const { embed } = await import('ai');
@@ -135,6 +181,10 @@ export function createInferenceService(resolveModel: ResolveModel): InferenceSer
       const { transcribe } = await import('ai');
       return transcribe({ ...options, model: await resolveModel('transcription', model) });
     },
+    async rerank({ model, ...options }) {
+      const { rerank } = await import('ai');
+      return rerank({ ...options, model: await resolveModel('reranking', model) }) as never;
+    },
   };
 }
 
@@ -150,4 +200,5 @@ export const inference: InferenceService = {
   generateImage: (options) => host().generateImage(options),
   generateSpeech: (options) => host().generateSpeech(options),
   transcribe: (options) => host().transcribe(options),
+  rerank: (options) => host().rerank(options),
 };

@@ -14,6 +14,7 @@ import type { generateText } from 'ai';
 import type { InferSchema } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { rerank } from 'ai';
 import type { streamText } from 'ai';
 import type { ToolLoopAgent } from 'ai';
 import type { ToolLoopAgentSettings } from 'ai';
@@ -44,21 +45,32 @@ export type FakeInferenceCall = FakeTextCall | {
     model: ImageModelId;
     prompt?: string;
     n: number;
+    size?: string;
+    aspectRatio?: string;
 } | {
     kind: 'speech';
     model: SpeechModelId;
     text: string;
     voice?: string;
+    instructions?: string;
+    speed?: number;
 } | {
     kind: 'transcription';
     model: TranscriptionModelId;
     mediaType: string;
+} | {
+    kind: 'reranking';
+    model: RerankingModelId;
+    query: string;
+    documents: unknown[];
+    topN?: number;
 };
 
 // @public
 export interface FakeInferenceReplies {
     embedding?: (value: string) => number[];
     image?: Uint8Array;
+    relevance?: (query: string, document: unknown, index: number) => number;
     speech?: Uint8Array;
     transcript?: string;
 }

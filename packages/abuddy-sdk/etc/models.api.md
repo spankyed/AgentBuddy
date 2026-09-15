@@ -42,7 +42,7 @@ export type ModelId = `${ProviderName}:${string}`;
 export type ModelIdOf<K extends ModelKind> = `${ProvidersOf<K>}:${string}`;
 
 // @public
-export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription';
+export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription' | 'reranking';
 
 // @public
 export function parseModelId(id: string): {
@@ -57,7 +57,7 @@ export const providerCapabilities: {
     readonly google: readonly ["language", "embedding", "image", "speech", "transcription"];
     readonly groq: readonly ["language", "transcription"];
     readonly mistral: readonly ["language", "embedding", "speech", "transcription"];
-    readonly cohere: readonly ["language", "embedding"];
+    readonly cohere: readonly ["language", "embedding", "reranking"];
 };
 
 // @public
@@ -65,6 +65,9 @@ export const providerLabels: Record<ProviderName, string>;
 
 // @public
 export type ProviderName = Exclude<SecretProvider, 'custom'>;
+
+// @public (undocumented)
+export type RerankingModelId = ModelIdOf<'reranking'>;
 
 // @public (undocumented)
 export type SpeechModelId = ModelIdOf<'speech'>;

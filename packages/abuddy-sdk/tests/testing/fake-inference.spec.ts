@@ -117,6 +117,27 @@ describe('fakeInference', () => {
     ]);
   });
 
+  it('streams an agent', async () => {
+    const inference = fakeInference('Streamed by the agent');
+    const agent = await inference.createAgent({ model: 'openai:gpt-5', instructions: 'Be brief' });
+    const result = await agent.stream({ prompt: 'hi' });
+    const deltas: string[] = [];
+    for await (const delta of result.textStream) deltas.push(delta);
+    expect(deltas.join('')).toBe('Streamed by the agent');
+    expect(inference.calls).toEqual([expect.objectContaining({ kind: 'text', instructions: 'Be brief', stream: true })]);
+  });
+
+  it("runs an agent step on the model its prepareCall or prepareStep names by id", async () => {
+    const inference = fakeInference('ok');
+    const agent = await inference.createAgent({
+      model: 'openai:gpt-5',
+      prepareCall: (options) => ({ ...options, model: 'anthropic:claude-haiku-4-5' }),
+    });
+    await agent.generate({ prompt: 'hi' });
+    await inference.generateText({ model: 'openai:gpt-5', prompt: 'hi', prepareStep: () => ({ model: 'google:gemini-flash-latest' }) });
+    expect(inference.calls.map((call) => call.model)).toEqual(['anthropic:claude-haiku-4-5', 'google:gemini-flash-latest']);
+  });
+
   it('embeds values with the scripted vectors', async () => {
     const inference = fakeInference('unused', { embedding: (value) => [value.length, 0] });
     expect((await inference.embed({ model: 'openai:text-embedding-3-small', value: 'milk' })).embedding).toEqual([4, 0]);
@@ -130,17 +151,31 @@ describe('fakeInference', () => {
   it('generates images, speech and transcripts from the scripted replies, with defaults', async () => {
     const inference = fakeInference('unused', { transcript: 'Buy milk' });
 
-    const { images } = await inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk', n: 2 });
+    const { images } = await inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk', n: 2, size: '1024x1024' });
     expect(images.map((image) => image.mediaType)).toEqual(['image/png', 'image/png']);
-    const { audio } = await inference.generateSpeech({ model: 'mistral:voxtral-mini-tts-latest', text: 'Buy milk', voice: 'alloy' });
-    expect(audio.uint8Array.length).toBeGreaterThan(0);
+    const { audio } = await inference.generateSpeech({ model: 'mistral:voxtral-mini-tts-latest', text: 'Buy milk', voice: 'alloy', speed: 1.5 });
+    expect(audio.mediaType).toBe('audio/mpeg');
     expect((await inference.transcribe({ model: 'groq:whisper-large-v3', audio: audio.uint8Array })).text).toBe('Buy milk');
 
     expect(inference.calls).toEqual([
-      { kind: 'image', model: 'openai:gpt-image-1', prompt: 'A carton of milk', n: 2 },
-      { kind: 'speech', model: 'mistral:voxtral-mini-tts-latest', text: 'Buy milk', voice: 'alloy' },
-      expect.objectContaining({ kind: 'transcription', model: 'groq:whisper-large-v3' }),
+      { kind: 'image', model: 'openai:gpt-image-1', prompt: 'A carton of milk', n: 2, size: '1024x1024' },
+      { kind: 'speech', model: 'mistral:voxtral-mini-tts-latest', text: 'Buy milk', voice: 'alloy', speed: 1.5 },
+      { kind: 'transcription', model: 'groq:whisper-large-v3', mediaType: 'audio/mpeg' },
     ]);
+  });
+
+  it('records a model call per batch the AI SDK splits a call into', async () => {
+    const inference = fakeInference('unused');
+    await inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'Milk', n: 12 });
+    await inference.embedMany({ model: 'openai:text-embedding-3-small', values: Array.from({ length: 2050 }, (_, i) => `value ${i}`) });
+    expect(inference.calls.map((call) => call.kind === 'image' ? call.n : call.kind === 'embedding' ? call.values.length : undefined)).toEqual([10, 2, 2048, 2]);
+  });
+
+  it('reranks documents by the scripted relevance', async () => {
+    const inference = fakeInference('unused', { relevance: (query, document) => String(document).includes(query) ? 1 : 0 });
+    const { rerankedDocuments } = await inference.rerank({ model: 'cohere:rerank-v3.5', query: 'milk', documents: ['bread', 'milk', 'eggs'], topN: 2 });
+    expect(rerankedDocuments[0]).toBe('milk');
+    expect(inference.calls).toEqual([{ kind: 'reranking', model: 'cohere:rerank-v3.5', query: 'milk', documents: ['bread', 'milk', 'eggs'], topN: 2 }]);
   });
 
   it("is what unmocked tests don't have: the test host's inference fails naming the fix", async () => {
@@ -149,5 +184,6 @@ describe('fakeInference', () => {
     await expect(hostInference.streamText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('No models in unit tests');
     await expect(hostInference.createAgent({ model: 'openai:gpt-5' })).rejects.toThrow('No models in unit tests');
     await expect(hostInference.embed({ model: 'openai:text-embedding-3-small', value: 'hi' })).rejects.toThrow('No models in unit tests');
+    await expect(hostInference.rerank({ model: 'cohere:rerank-v3.5', query: 'hi', documents: ['a'] })).rejects.toThrow('No models in unit tests');
   });
 });

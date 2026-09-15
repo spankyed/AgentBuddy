@@ -100,7 +100,7 @@ export interface HostServices {
   appData: AppDataService;
   /** Read the volatile trace store (flow execution records) */
   traceStore: TraceStore;
-  /** Model calls (`generateText`, `streamText`) with the user's provider keys */
+  /** Model calls (text, agents, embeddings, images, speech, transcription, reranking) with the user's provider keys */
   inference: InferenceService;
 }
 

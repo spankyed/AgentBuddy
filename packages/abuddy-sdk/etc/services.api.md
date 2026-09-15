@@ -17,6 +17,8 @@ import type { InferSchema } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { rerank } from 'ai';
+import type { RerankingModel } from 'ai';
 import type { SpeechModel } from 'ai';
 import type { streamText } from 'ai';
 import type { ToolLoopAgent } from 'ai';
@@ -100,6 +102,8 @@ export interface InferenceModels {
     // (undocumented)
     language: LanguageModel;
     // (undocumented)
+    reranking: RerankingModel;
+    // (undocumented)
     speech: SpeechModel;
     // (undocumented)
     transcription: TranscriptionModel;
@@ -108,11 +112,12 @@ export interface InferenceModels {
 // @public
 export interface InferenceService {
     createAgent<CALL_OPTIONS = never, TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = never>(settings: InferenceOptions<ToolLoopAgentSettings<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>, O>): Promise<ToolLoopAgent<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>>;
-    embed(options: WithModelId<Parameters<typeof embed>[0], EmbeddingModelId>): ReturnType<typeof embed>;
-    embedMany(options: WithModelId<Parameters<typeof embedMany>[0], EmbeddingModelId>): ReturnType<typeof embedMany>;
+    embed<CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof embed<CONTEXT>>[0], EmbeddingModelId>): ReturnType<typeof embed<CONTEXT>>;
+    embedMany<CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof embedMany<CONTEXT>>[0], EmbeddingModelId>): ReturnType<typeof embedMany<CONTEXT>>;
     generateImage(options: WithModelId<Parameters<typeof generateImage>[0], ImageModelId>): ReturnType<typeof generateImage>;
     generateSpeech(options: WithModelId<Parameters<typeof generateSpeech>[0], SpeechModelId>): ReturnType<typeof generateSpeech>;
     generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string>>(options: InferenceOptions<Parameters<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): ReturnType<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>;
+    rerank<VALUE extends Parameters<typeof rerank>[0]['documents'][number], CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof rerank<VALUE, CONTEXT>>[0], RerankingModelId>): ReturnType<typeof rerank<VALUE, CONTEXT>>;
     streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string, never>>(options: InferenceOptions<Parameters<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
     transcribe(options: WithModelId<Parameters<typeof transcribe>[0], TranscriptionModelId>): ReturnType<typeof transcribe>;
 }

@@ -127,7 +127,7 @@ export function registerTestHostModules(resetData: () => void): void {
     inference: {
       generateText: unmockedInference, streamText: unmockedInference, createAgent: unmockedInference,
       embed: unmockedInference, embedMany: unmockedInference, generateImage: unmockedInference,
-      generateSpeech: unmockedInference, transcribe: unmockedInference,
+      generateSpeech: unmockedInference, transcribe: unmockedInference, rerank: unmockedInference,
     } satisfies Record<keyof InferenceService, unknown>,
   };
   for (const [key, mod] of Object.entries(modules)) {

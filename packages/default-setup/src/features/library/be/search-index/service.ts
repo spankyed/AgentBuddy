@@ -15,22 +15,14 @@ import {
   getIndexMappingsPath,
   getSearchIndicesPath
 } from '@abuddy/sdk/utils'
+import { services } from '@/__generated__/services'
+import type { EmbeddingModelId as ApiEmbeddingModelId } from '@abuddy/sdk/models'
 
 // Lazy-loaded embedding models cache
 const embeddingModels = new Map<string, FlagEmbedding | null>()
 
-// OpenAI client singleton
-let openaiClient: any = null
-
-async function getOpenAIClient() {
-  if (!openaiClient) {
-    const openai = await import('openai')
-    openaiClient = new openai.OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    })
-  }
-  return openaiClient
-}
+/** An API embedding model's id for services.inference (the user's key for its provider) */
+const inferenceModelId = (config: { provider: string; apiModelName?: string }) => `${config.provider}:${config.apiModelName}` as ApiEmbeddingModelId
 
 async function getOrInitEmbeddingModel(modelId: string): Promise<FlagEmbedding | null> {
   if (embeddingModels.has(modelId)) {
@@ -81,16 +73,11 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
     }
   }
   
-  // OpenAI
-  const client = await getOpenAIClient()
-  const response = await client.embeddings.create({
-    model: config.apiModelName!,
-    input: text,
-  })
-  
+  const { embedding } = await services.inference.embed({ model: inferenceModelId(config), value: text })
+
   return {
     text,
-    embedding: new Float32Array(response.data[0].embedding),
+    embedding: new Float32Array(embedding),
     model: modelId as EmbeddingModel,
   }
 }
@@ -131,27 +118,13 @@ export async function embedTextsBatch(
     return results
   }
   
-  // OpenAI batch processing
-  const client = await getOpenAIClient()
-  const OPENAI_BATCH_SIZE = 100
-  
-  for (let i = 0; i < texts.length; i += OPENAI_BATCH_SIZE) {
-    const batch = texts.slice(i, i + OPENAI_BATCH_SIZE)
-    const response = await client.embeddings.create({
-      model: config.apiModelName!,
-      input: batch,
-    })
-    
-    response.data.forEach((data: any, j: number) => {
-      results.push({
-        text: batch[j],
-        embedding: new Float32Array(data.embedding),
-        model: modelId as EmbeddingModel,
-      })
-    })
-  }
-  
-  return results
+  // The AI SDK splits the values into the provider's batch size
+  const { embeddings } = await services.inference.embedMany({ model: inferenceModelId(config), values: texts })
+  return embeddings.map((embedding, index) => ({
+    text: texts[index],
+    embedding: new Float32Array(embedding),
+    model: modelId as EmbeddingModel,
+  }))
 }
 
 /**
