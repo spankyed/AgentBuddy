@@ -19,7 +19,7 @@ export { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationI
 export { filterSystemFields } from './helpers.ts';
 export { _flushEarlyRegistrations } from './repository.ts';
 // The repositories SDK services and seeders call, which the built-in pack implements
-export type { BuiltinRepositories } from './builtin-repositories.ts';
+export { builtinRepository, type BuiltinRepositories } from './builtin-repositories.ts';
 // Untyped query helpers for host code; packs get them typed from defineEars (see ./typed)
 export { qx } from './query.ts';
 export { createEntity } from './attribute-storage.ts';

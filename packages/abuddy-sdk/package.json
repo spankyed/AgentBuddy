@@ -9,6 +9,9 @@
     "directory": "packages/abuddy-sdk"
   },
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "files": [
     "dist",
     "abuddy.schema.json"
@@ -137,11 +140,6 @@
       "types": "./dist/services/index.d.ts",
       "default": "./dist/services/index.js"
     },
-    "./inference": {
-      "@abuddy/source": "./src/services/inference.ts",
-      "types": "./dist/services/inference.d.ts",
-      "default": "./dist/services/inference.js"
-    },
     "./models": {
       "@abuddy/source": "./src/services/models.ts",
       "types": "./dist/services/models.d.ts",
@@ -168,35 +166,20 @@
     }
   },
   "peerDependencies": {
-    "@ai-sdk/anthropic": "^1.0.0",
-    "@ai-sdk/google": "^2.0.0",
-    "@ai-sdk/openai": "^1.0.0",
     "@tiptap/pm": "^3.22.3",
     "@tiptap/vue-3": "^3.22.2",
-    "ai": "^4.0.0",
+    "ai": "^7.0.0",
     "esbuild": "^0.25.0",
-    "typescript": ">=5.3",
+    "typescript": ">=5.7",
     "vue": "^3.5.18",
     "xstate": "^5.19.2",
-    "zod": "^3.24.0"
+    "zod": "^3.25.76"
   },
   "peerDependenciesMeta": {
-    "@ai-sdk/anthropic": {
-      "optional": true
-    },
-    "@ai-sdk/google": {
-      "optional": true
-    },
-    "@ai-sdk/openai": {
-      "optional": true
-    },
     "@tiptap/pm": {
       "optional": true
     },
     "@tiptap/vue-3": {
-      "optional": true
-    },
-    "ai": {
       "optional": true
     },
     "esbuild": {
@@ -209,6 +192,7 @@
   "devDependencies": {
     "@microsoft/api-extractor": "^7.59.1",
     "@vitejs/plugin-vue": "^6.0.1",
+    "ai": "^7.0.100",
     "esbuild": "^0.25.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.0",

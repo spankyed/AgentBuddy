@@ -137,13 +137,14 @@ export default defineConfig({
 });
 `;
 
-// Unit tests run against an in-memory EARS with the pack's repositories, seed hooks and seeders,
-// and its dependencies' (their build/seed-runtime.mjs)
+// Unit tests run against an in-memory EARS with the pack's repositories, seed hooks, seeders, systems,
+// services and steps, and its dependencies' runtimes (cached by abuddy build)
 const TEST_SETUP_TEMPLATE = `import '#generated/seeders';
 import { seedRuntime } from '#generated/seed-runtime';
+import { registration } from '#generated/pack-entry';
 import { setupPackTests } from '@abuddy/testing/harness';
 
-await setupPackTests({ seedRuntime });
+await setupPackTests({ seedRuntime, registration });
 `;
 
 // Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs

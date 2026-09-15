@@ -61,14 +61,14 @@ There is no fixed interface — the shape is pack-specific. Services are typical
 
 1. Imports all feature and pack-level services
 2. Exports a `featureServices` object aggregating them
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, and `repository` typed with your repositories)
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
 import { services } from '#generated/services';
 
 services.cache.get('key');              // this pack's service
-services.llm.streamText(/* … */);       // a dependency's service
+services.brain.listen(/* … */);         // a dependency's service
 services.repository.bookmarkQueries;    // repositories (see below)
 ```
 
@@ -82,6 +82,104 @@ The host implements operations on the app's stored data as a whole; packs call t
 |---|---|
 | `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
+
+### Inference
+
+`services.inference` calls models with the keys the user stored in Settings → Secrets (or, in the app's environment, the variable each provider's AI SDK package reads: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`; those packages also read base URL variables like `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL`, which redirect their calls). Its calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
+
+| Call | Returns |
+|---|---|
+| `generateText(options)` | the AI SDK's `generateText` result: `text`, `output`, `toolCalls`, `steps`, `usage`, … |
+| `streamText(options)` | a promise of the AI SDK's `streamText` result: `stream` (parts), `textStream`, `text`, … |
+| `createAgent(settings)` | a promise of the AI SDK's `ToolLoopAgent`: `generate({ prompt })` and `stream({ prompt })` loop over `instructions`, `tools` and `output` until `stopWhen` (20 steps by default); its model and key resolve on each call |
+| `embed(options)` / `embedMany(options)` | the AI SDK's `embed` / `embedMany` results: `embedding` / `embeddings` |
+| `generateImage(options)` | the AI SDK's `generateImage` result: `image` (`uint8Array`, `base64`, `mediaType`) and `images` |
+| `generateSpeech(options)` | the AI SDK's `generateSpeech` result: `audio` |
+| `transcribe(options)` | the AI SDK's `transcribe` result: `text`, `segments`, `language` |
+| `rerank(options)` | the AI SDK's `rerank` result: `ranking` and `rerankedDocuments` |
+
+Each call takes models from the providers that give that kind (`providerCapabilities` in `@abuddy/sdk/models`); a model id from another provider doesn't compile (`EmbeddingModelId`, `ImageModelId`, `SpeechModelId`, `TranscriptionModelId`, `RerankingModelId`) and fails naming the provider at runtime:
+
+| Provider | Language | Embedding | Image | Speech | Transcription | Reranking |
+|---|---|---|---|---|---|---|
+| `anthropic` | ✓ | | | | | |
+| `openai` | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `google` | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `groq` | ✓ | | | | ✓ | |
+| `mistral` | ✓ | ✓ | | ✓ | ✓ | |
+| `cohere` | ✓ | ✓ | | | | ✓ |
+
+`ModelId` and the language model catalog come from `@abuddy/sdk/models`.
+
+```typescript
+import { isStepCount, tool } from 'ai';
+import { z } from 'zod';
+import { services } from '#generated/services';
+
+// Text
+const { text } = await services.inference.generateText({
+  model: 'anthropic:claude-sonnet-4-5',
+  instructions: 'Be brief.',
+  prompt: 'Summarize this note: …',
+});
+
+// Structured output, as data or as an Output from ai
+const { output } = await services.inference.generateText({
+  model: 'openai:gpt-5-mini',
+  prompt: 'Tag this note: …',
+  output: { type: 'object', schema: z.object({ tags: z.array(z.string()) }) },  // or Output.object({ schema })
+});
+const { output: label } = await services.inference.generateText({
+  model: 'openai:gpt-5-mini',
+  prompt: 'Is this note a task or a reference?',
+  output: { type: 'choice', options: ['task', 'reference'] },   // label: 'task' | 'reference'
+});
+
+// Tools, looping until the model answers (at most 5 steps)
+const lookup = tool({
+  description: 'Look up a note by title',
+  inputSchema: z.object({ title: z.string() }),
+  execute: async ({ title }) => services.repository.noteQueries.all().find((note) => note.title === title)?.content,
+});
+const answer = await services.inference.generateText({ model: 'openai:gpt-5', prompt: 'What does my shopping note say?', tools: { lookup }, stopWhen: isStepCount(5) });
+
+// Streaming
+const stream = await services.inference.streamText({ model: 'google:gemini-2.5-pro', prompt: 'Draft a reply' });
+for await (const part of stream.textStream) process.stdout.write(part);
+
+// An agent: instructions, tools and output, reused across calls
+const planner = await services.inference.createAgent({
+  model: 'anthropic:claude-opus-5',
+  instructions: 'Turn notes into tasks.',
+  tools: { lookup },
+  output: { type: 'array', element: z.object({ task: z.string(), due: z.string().optional() }) },
+});
+const { output: tasks } = await planner.generate({ prompt: 'What do I need to do this week?' });
+
+// Embeddings, images, speech and transcription
+const { embeddings } = await services.inference.embedMany({ model: 'openai:text-embedding-3-small', values: ['Buy milk', 'Call Sam'] });
+const { image } = await services.inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk' });
+const { audio } = await services.inference.generateSpeech({ model: 'openai:gpt-4o-mini-tts', text: 'Buy milk' });
+const { text: heard } = await services.inference.transcribe({ model: 'groq:whisper-large-v3', audio: audio.uint8Array });
+const { rerankedDocuments } = await services.inference.rerank({ model: 'cohere:rerank-v3.5', query: 'groceries', documents: ['Buy milk', 'Call Sam'] });
+```
+
+- **`output` takes data or an `Output`.** The data forms mirror `ai`'s `Output` helpers, and `output` in the result is typed from them:
+
+  | `output` | Same as | Result |
+  |---|---|---|
+  | `{ type: 'text' }` | `Output.text()` | `string` |
+  | `{ type: 'json', name?, description? }` | `Output.json()` | any JSON value |
+  | `{ type: 'object', schema, name?, description? }` | `Output.object({ schema })` | the schema's type |
+  | `{ type: 'array', element, minItems?, maxItems?, name?, description? }` | `Output.array({ element })` | an array of the element's type |
+  | `{ type: 'choice', options, name?, description? }` | `Output.choice({ options })` | one of the options |
+
+  An `Output` (including one you implement) passes through as is. The data form can be stored, and code that can't import `ai` can write it.
+- **Every model is named by id,** including the one `prepareStep` (or an agent's `prepareCall`) picks for a step or call: `prepareStep: ({ stepNumber }) => stepNumber > 0 ? { model: 'openai:gpt-5-mini' } : undefined`.
+- **The rest of a call's pieces are `ai`'s:** `tool`, `isStepCount` and types like `ModelMessage`. `ai` 7 is a peer dependency of `@abuddy/sdk`, installed with it (add it to your pack's own dependencies if your package manager doesn't install peers); your pack never builds a model or holds a key.
+- **TypeScript 5.7 or later**, which `ai` 7's types need.
+- **Actions** can't import `ai`, and don't need to: `output` as data, tools as plain `{ description, inputSchema, execute }` objects (`tool()` only returns its argument), and `stopWhen` as a function (`({ steps }) => steps.length >= 5`).
+- **Unit tests** mock the service with `mockInference` (see [Testing](testing.md#models)).
 
 Pack code never imports `@abuddy/host`, the app's private package: `abuddy build` fails a bundle that does.
 

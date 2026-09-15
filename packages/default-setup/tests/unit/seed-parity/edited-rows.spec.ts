@@ -3,7 +3,8 @@
 // Between the v1 and v2 fixtures, the Welcome note and the Getting Started document change.
 import * as fs from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { dropAttr, findWhere } from '@abuddy/host/ears';
+import { findWhere } from '@/__generated__/ears';
+import { dropAttribute } from '@abuddy/sdk/testing';
 import { repository } from '@/__generated__/repository';
 import { compileSeeds, resetDatabase, seed, snapshot } from './harness';
 
@@ -121,7 +122,7 @@ describe('re-seeding edited rows', () => {
   it('gives rows seeded before seed keys theirs on the next seed, so a later rename is found', () => {
     resetDatabase();
     seed(v1);
-    dropAttr(note('Welcome').id, 'seedKey' as never);
+    dropAttribute(note('Welcome').id, 'seedKey');
     seed(v1, { mode: 'replace-on-collision' });
     repository.noteCommands.update(note('Welcome').id, { title: 'My welcome' });
     seed(v2, { mode: 'replace-on-collision' });
@@ -131,8 +132,8 @@ describe('re-seeding edited rows', () => {
   it("leaves rows alone whose seeded values weren't recorded (seeded before edits were detected)", () => {
     resetDatabase();
     seed(v1);
-    dropAttr(note('Welcome').id, 'seededFields' as never);
-    dropAttr(document('Getting Started').id, 'seededFields' as never);
+    dropAttribute(note('Welcome').id, 'seededFields');
+    dropAttribute(document('Getting Started').id, 'seededFields');
     const before = snapshot();
     const counts = seed(v2, { mode: 'replace-on-collision' });
     const after = snapshot();

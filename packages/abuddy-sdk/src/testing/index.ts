@@ -10,6 +10,7 @@ import type { EARS } from '../types/entities.ts';
 import { registerTestHostModules } from './host.ts';
 
 export { testRootEvents, takeSystemErrors, type TestRootEvents } from './host.ts';
+export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories
@@ -32,8 +33,8 @@ let started = false;
  * Starts the in-memory runtime: EARS with the SDK's entity types plus `entityTypes`, writes not
  * persisted, and in-memory host modules for what systems, services and steps reach (a console logger,
  * `rootEvents` and `sendToPlugin`/`sendToSystem` on `testRootEvents`, recorded system errors, a test
- * version, no-op migrations, `appData` that resets the database, and a trace store over it), each
- * unless the host registered its own. Safe to call again; entity types accumulate.
+ * version, no-op migrations, `appData` that resets the database, a trace store over it, and an
+ * `inference` that fails until a test mocks it), each unless the host registered its own. Safe to call again; entity types accumulate.
  */
 export function startTestRuntime(options: { entityTypes?: readonly string[] } = {}): void {
   for (const type of options.entityTypes ?? []) entityTypes.add(type);

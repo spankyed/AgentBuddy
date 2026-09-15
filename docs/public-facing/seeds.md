@@ -57,22 +57,18 @@ export async function action(
     maxSentences: 2,
   });
 
-  // Generate text with an LLM
-  const result = await services.llm.generateText({
-    model: { provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
+  // Generate text with a model (provider:model id)
+  const result = await services.inference.generateText({
+    model: 'anthropic:claude-sonnet-4-5',
+    instructions: 'Answer in two sentences.',
     prompt: summaryPrompt || text,
   });
 
-  // Generate structured output with a zod schema
-  const Classification = z.object({
-    intent: z.string(),
-    confidence: z.number(),
-  });
-
-  const classified = await services.llm.generateObject({
-    model: { provider: 'openai', model: 'gpt-4o' },
-    schema: Classification,
-    prompt: text,
+  // Generate structured output with the injected zod
+  const { output: classified } = await services.inference.generateText({
+    model: 'openai:gpt-5-mini',
+    prompt: `Classify the intent of this text: ${text}`,
+    output: { type: 'object', schema: z.object({ intent: z.string(), confidence: z.number() }) },
   });
 
   // Log results
@@ -80,7 +76,7 @@ export async function action(
 
   return {
     summary: result.text,
-    intent: classified.object.intent,
+    intent: classified.intent,
   };
 }
 ```
@@ -91,7 +87,7 @@ Actions receive a `services` object with access to:
 
 | Service | Description |
 |---|---|
-| `services.llm` | LLM calls (`generateText`, `generateObject`) |
+| `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.prompt` | Prompt template resolution (`usePrompt`) |
 | `services.threads` | Thread and message operations |
 | `services.chat` | Chat interactions |
@@ -107,6 +103,7 @@ Actions receive a `services` object with access to:
 
 - **No bare Node.js imports** — actions run in a sandboxed scope. The compiler enforces this.
 - **Import types only** — use `import type` for `ActionMeta`, `Services`, `Z`. Runtime values come from function parameters.
+- **Model calls need no imports**: `output` is data (`{ type: 'object', schema }`, `{ type: 'choice', options }`, …), tools are plain `{ description, inputSchema, execute }` objects, and `stopWhen` is a function. Agents, embeddings, images and speech work the same way (`services.inference.createAgent`, `embed`, `generateImage`, …). See [Inference](services-and-data.md#inference).
 - **Files without `export const meta` are treated as inlined helpers** — they won't be compiled as standalone actions.
 - **Files prefixed with `_` are skipped** by the compiler.
 

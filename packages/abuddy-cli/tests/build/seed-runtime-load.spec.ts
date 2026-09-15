@@ -38,14 +38,6 @@ describe('abuddy build loads the seed runtime it bundles', () => {
     expect(await bundlePackSeedRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   }, 60_000);
 
-  it("fails one importing an optional @abuddy/sdk peer a dependent's tests may not have", async () => {
-    const dir = pack("import { generateText } from '@abuddy/sdk/inference';\nexport const memoQueries = { summarize: generateText };\n");
-    const result = await bundlePackSeedRuntime(dir, path.join(dir, 'dist'));
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("dist/build/seed-runtime.mjs doesn't load outside the app");
-    expect(result.error).toMatch(/src\/services\/inference\.ts imports "ai", an optional peer of @abuddy\/sdk/);
-  }, 60_000);
-
   it('fails one bundling a native addon', async () => {
     // The shape of node-gyp-build and bindings: the addon path is computed, so esbuild leaves the require
     const dir = pack([

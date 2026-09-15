@@ -250,6 +250,7 @@ import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { API_KEY_URLS } from '../../../../constants'
 import CliProviders from './CliProviders.vue'
 import { openInAppBrowser } from '@abuddy/sdk/fe'
+import { providerLabels } from '@abuddy/sdk/models'
 
 interface Props {
   settings?: {
@@ -284,13 +285,16 @@ const emit = defineEmits<{
 }>()
 
 const standardProviders = [
-  { key: 'anthropic', label: 'Anthropic', description: 'Claude 3, Claude 2', url: API_KEY_URLS.anthropic, priority: 'required', placeholder: 'Enter Anthropic API key' },
-  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E', url: API_KEY_URLS.openai, priority: 'required', placeholder: 'Enter OpenAI API key' },
-  { key: 'google', label: 'Google AI', description: 'Gemini, PaLM', url: API_KEY_URLS.google, priority: 'recommended', placeholder: 'Enter Google AI API key' },
-  { key: 'groq', label: 'Groq', description: 'Fast inference API', url: API_KEY_URLS.groq, placeholder: 'Enter Groq API key' },
-  { key: 'mistral', label: 'Mistral AI', description: 'Mistral models', url: API_KEY_URLS.mistral, placeholder: 'Enter Mistral AI API key' },
-  { key: 'cohere', label: 'Cohere', description: 'Command, Embed, Rerank', url: API_KEY_URLS.cohere, placeholder: 'Enter Cohere API key' },
-]
+  { key: 'anthropic', description: 'Claude', priority: 'required' },
+  { key: 'openai', description: 'GPT', priority: 'required' },
+  { key: 'google', description: 'Gemini', priority: 'recommended' },
+  { key: 'groq', description: 'Fast inference API' },
+  { key: 'mistral', description: 'Mistral models' },
+  { key: 'cohere', description: 'Command, Embed, Rerank' },
+].map((provider) => {
+  const label = providerLabels[provider.key as keyof typeof providerLabels]
+  return { ...provider, label, url: API_KEY_URLS[provider.key as keyof typeof API_KEY_URLS], placeholder: `Enter ${label} API key` }
+})
 
 // State for inline editing
 const editingProviders = ref<Set<string>>(new Set())

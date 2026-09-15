@@ -9,11 +9,12 @@ import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
+import { reportSystemError } from '@abuddy/sdk/utils';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
-import { clearAllSchedules } from './services/scheduler';
+import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
 
 type IncomingBrainEvents =
@@ -63,45 +64,39 @@ export const brain = brainSpec.id;
 export const brainRuntime = 'brain-runtime' as const;
 
 const logger = createLogger('brain');
+
+/**
+ * The flow the brain runs: the flow with the root role, keeping the flows plugin's `rootFlowId` setting in step.
+ * Undefined when there's nothing to run, and the brain stops: no flows yet, or flows without a root flow (an
+ * error the user sees; the brain never picks one).
+ */
+function rootFlowToRun(): EARS.EntityId | undefined {
+  const rootFlowId = repository.flowsQueries.rootFlow();
+  if (!rootFlowId) {
+    const flowCount = repository.flowsQueries.connectedData().flows.length;
+    if (flowCount === 0) {
+      logger.warn('No flow to run; start the brain once a flow exists');
+    } else {
+      reportSystemError({
+        error: new Error(`No flow has the root role (${flowCount} flows exist): mark one \`root: true\` in its flow source, or make one the root flow in Flows`),
+        title: 'Could not start the brain',
+        source: 'brain',
+        operation: 'start',
+      });
+    }
+    return undefined;
+  }
+  const flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
+  if (flowsSettings.rootFlowId !== rootFlowId) {
+    repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], rootFlowId);
+    logger.info('Updated settings to reflect actual root flow', { flowId: rootFlowId });
+  }
+  return rootFlowId;
+}
+
 export const brainSystem = setup({
   types: brainSpec.types,
   actions: {
-    handleAppStartup: ({ system, self }) => {
-      // Get initial data to check available flows
-      const flowsData = repository.flowsQueries.connectedData();
-      const allFlows = flowsData.flows;
-      
-      // Check if any flow has the root_flow role
-      const currentRootFlowId = repository.flowsQueries.rootFlow();
-      let flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
-      
-      // Initialize root flow if none exists
-      if (!currentRootFlowId && allFlows.length > 0) {
-        // No root flow exists, set the first available flow as root
-        const firstFlow = allFlows[0];
-        if (firstFlow.id) {
-          repository.flowsCommands.grantRootFlowRole(firstFlow.id as EARS.EntityId);
-          
-          // Update flows settings to reflect this
-          repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], firstFlow.id);
-          flowsSettings = { ...flowsSettings, rootFlowId: firstFlow.id };
-          
-          logger.info('Initialized first flow as root flow', { flowId: firstFlow.id });
-        }
-      } else if (currentRootFlowId && flowsSettings.rootFlowId !== currentRootFlowId) {
-        // Root flow exists but settings don't match, update settings
-        repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], currentRootFlowId);
-        flowsSettings = { ...flowsSettings, rootFlowId: currentRootFlowId };
-        
-        logger.info('Updated settings to reflect actual root flow', { flowId: currentRootFlowId });
-      }
-      
-      logger.info('Brain system starting', { 
-        rootFlow: flowsSettings.rootFlowId,
-        totalFlows: allFlows.length
-      });
-    },
-    
     logError: ({ event }) => {
       console.error('Brain system error:', (event as any).error);
     },
@@ -116,20 +111,26 @@ export const brainSystem = setup({
         enqueue.stopChild(context.brainActor);
       }
       
-      // Get the current root flow ID
-      const currentRootFlowId = repository.flowsQueries.rootFlow();
-      
-      // Update brain settings to track which flow is running via settings system
-      if (currentRootFlowId) {
-        getActor(system, 'settings').send({
-          type: 'UPDATE_SETTINGS',
-          entityType: 'plugin',
-          label: 'brain',
-          path: ['runningRootFlowId'],
-          value: currentRootFlowId
-        });
+      // Starts unpaused (a pause from an earlier run doesn't carry over)
+      setBrainPausedState(false);
+
+      const currentRootFlowId = rootFlowToRun();
+      // Nothing to run: `running` leaves for `stopped` without a brain actor
+      if (!currentRootFlowId) {
+        enqueue.assign({ brainActor: undefined });
+        enqueue(({ system }) => system.get(bus).send(emit(brain, { type: 'BRAIN_KILLED' })));
+        return;
       }
-      
+
+      // Update brain settings to track which flow is running via settings system
+      getActor(system, 'settings').send({
+        type: 'UPDATE_SETTINGS',
+        entityType: 'plugin',
+        label: 'brain',
+        path: ['runningRootFlowId'],
+        value: currentRootFlowId
+      });
+
       // Start new brain and assign to context
       enqueue.assign(({ spawn, system }) => {
         const { machine, tNodeId } = createFlowNodeSystem()
@@ -177,7 +178,7 @@ export const brainSystem = setup({
         removeAllAdHocListeners();
 
         // Clear all cron schedules
-        clearAllSchedules();
+        services.scheduler.clearAllSchedules();
 
         // Defensive: drop any lingering flow actor references. Exit actions
         // on the stopped actor should unregister themselves, but if pending
@@ -222,7 +223,7 @@ export const brainSystem = setup({
       removeAllAdHocListeners();
 
       // Clear all cron schedules
-      clearAllSchedules();
+      services.scheduler.clearAllSchedules();
 
       // Defensive: drop any lingering flow actor references. Exit actions
       // on the stopped actor should unregister themselves, but if pending
@@ -240,19 +241,22 @@ export const brainSystem = setup({
         }
       }));
       
-      // Get the current root flow ID
-      const currentRootFlowId = repository.flowsQueries.rootFlow();
-      
-      // Update brain settings to track which flow is running via settings system
-      if (currentRootFlowId) {
-        getActor(system, 'settings').send({
-          type: 'UPDATE_SETTINGS',
-          entityType: 'plugin',
-          label: 'brain',
-          path: ['runningRootFlowId'],
-          value: currentRootFlowId
-        });
+      const currentRootFlowId = rootFlowToRun();
+      // Nothing to run: `running` leaves for `stopped` without a brain actor
+      if (!currentRootFlowId) {
+        enqueue.assign({ brainActor: undefined });
+        enqueue(({ system }) => system.get(bus).send(emit(brain, { type: 'BRAIN_KILLED' })));
+        return;
       }
+
+      // Update brain settings to track which flow is running via settings system
+      getActor(system, 'settings').send({
+        type: 'UPDATE_SETTINGS',
+        entityType: 'plugin',
+        label: 'brain',
+        path: ['runningRootFlowId'],
+        value: currentRootFlowId
+      });
       
       // Start new brain and assign to context
       enqueue.assign(({ spawn, system }) => {
@@ -468,7 +472,6 @@ export const brainSystem = setup({
       brainActor: undefined,
       eventQueue: [],
     }),
-    entry: ['handleAppStartup'],
     on: {
       CLIENT_CONNECTED: {
         actions: 'sendPluginData',
@@ -493,6 +496,8 @@ export const brainSystem = setup({
       },
       running: {
         entry: ['startBrain'],
+        // Started (or restarted) with no flow to run
+        always: { guard: ({ context }) => context.brainActor === undefined, target: 'stopped' },
         initial: 'active',
         on: {
           OPEN_TNODE: {

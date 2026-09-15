@@ -37,7 +37,9 @@
       }
     }
   ],
-  "dependencies": {},
+  "dependencies": {
+    "default-setup": "*"
+  },
   "permissions": [],
   "seedFormats": {
     "memos": {
@@ -67,6 +69,8 @@
   },
   "boot": {
     "seed": {
+      "actions": "src/seeds/actions",
+      "flows": "src/seeds/flows",
       "memos": {
         "path": "src/seeds/memos",
         "format": "memos"

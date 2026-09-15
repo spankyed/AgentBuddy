@@ -5,7 +5,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
-import { clearMemory, getAllEntities, qx } from '@abuddy/host/ears';
+import { untypedQx as qx } from '@abuddy/sdk/ears';
+import { entityIds, resetTestData } from '@abuddy/sdk/testing';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
 export const FIXTURES = path.join(PACK_DIR, 'tests/fixtures/seed-parity');
@@ -45,7 +46,7 @@ export async function compileSeeds(sources: SourceSet): Promise<string> {
 
 /** Empties the in-memory database and the media store */
 export function resetDatabase(): void {
-  clearMemory();
+  resetTestData();
   fs.rmSync(getMediaPath(), { recursive: true, force: true });
 }
 
@@ -66,7 +67,7 @@ const typeOf = (id: string) => id.slice(0, id.indexOf('-'));
 const DROPPED_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'seededFields', 'seedKey']);
 
 export function snapshot(): Snapshot {
-  const ids = getAllEntities() as string[];
+  const ids = entityIds() as string[];
   const rows = new Map<string, Record<string, unknown>>();
   const relations: Array<{ source: string; kind: string; target: string }> = [];
   for (const id of ids) {

@@ -1,127 +1,89 @@
-// The model catalog: plain data, loadable without the AI SDK (the optional `ai` peer inference.ts loads)
+// Model ids and the model catalog: plain data, loadable without the AI SDK
+import type { SecretProvider } from '../types/sdk-entities.ts';
+
+/** The providers `services.inference` runs: those the user can store a key for */
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
+
+/** A model to run, as `provider:model` (e.g. `anthropic:claude-sonnet-4-5`) */
+export type ModelId = `${ProviderName}:${string}`;
+
+/** The kinds of model `services.inference` runs */
+export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription' | 'reranking';
+
+/** The kinds of model each provider gives through `services.inference` */
+export const providerCapabilities = {
+  anthropic: ['language'],
+  openai: ['language', 'embedding', 'image', 'speech', 'transcription'],
+  google: ['language', 'embedding', 'image', 'speech', 'transcription'],
+  groq: ['language', 'transcription'],
+  mistral: ['language', 'embedding', 'speech', 'transcription'],
+  cohere: ['language', 'embedding', 'reranking'],
+} as const satisfies Record<ProviderName, readonly ModelKind[]>;
+
+type ProvidersOf<K extends ModelKind> = { [P in ProviderName]: K extends (typeof providerCapabilities)[P][number] ? P : never }[ProviderName];
+
+/** A model of a kind, as `provider:model`, from a provider that gives that kind */
+export type ModelIdOf<K extends ModelKind> = `${ProvidersOf<K>}:${string}`;
+export type EmbeddingModelId = ModelIdOf<'embedding'>;
+export type ImageModelId = ModelIdOf<'image'>;
+export type SpeechModelId = ModelIdOf<'speech'>;
+export type TranscriptionModelId = ModelIdOf<'transcription'>;
+export type RerankingModelId = ModelIdOf<'reranking'>;
 
 /*─────────────────────────────────────────────────────────────────
  * Model Catalog
  *─────────────────────────────────────────────────────────────────*/
 
+/** Display names for the providers */
+export const providerLabels: Record<ProviderName, string> = {
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  google: 'Google',
+  groq: 'Groq',
+  mistral: 'Mistral',
+  cohere: 'Cohere',
+};
+
 export interface ModelCatalogEntry {
-  id: string;
+  /** The id `services.inference` runs, and what an `llm` node stores; its provider is `parseModelId(id).provider` */
+  id: ModelId;
   name: string;
-  provider: string;
   description?: string;
-  contextWindow: number;
+  contextWindow?: number;
   maxOutput?: number;
   costPer1kInput?: number;
   costPer1kOutput?: number;
   capabilities?: string[];
 }
 
+const TEXT_VISION_TOOLS = ['text', 'vision', 'function-calling'];
+const TEXT_TOOLS = ['text', 'function-calling'];
+
+/**
+ * Ids that track each provider's current model where one exists (undated, `-latest`), so entries age slowly.
+ * Context windows and prices appear only where verified.
+ */
 export const availableModels: ModelCatalogEntry[] = [
-  // OpenAI Models
-  {
-    id: 'gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    provider: 'OpenAI',
-    description: 'Most capable GPT-4 model with vision capabilities',
-    contextWindow: 128000,
-    maxOutput: 4096,
-    costPer1kInput: 0.01,
-    costPer1kOutput: 0.03,
-    capabilities: ['text', 'vision', 'function-calling'],
-  },
-  {
-    id: 'gpt-4',
-    name: 'GPT-4',
-    provider: 'OpenAI',
-    description: 'Advanced reasoning and complex task handling',
-    contextWindow: 8192,
-    maxOutput: 4096,
-    costPer1kInput: 0.03,
-    costPer1kOutput: 0.06,
-    capabilities: ['text', 'function-calling'],
-  },
-  {
-    id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
-    provider: 'OpenAI',
-    description: 'Fast and cost-effective for most tasks',
-    contextWindow: 16384,
-    maxOutput: 4096,
-    costPer1kInput: 0.0005,
-    costPer1kOutput: 0.0015,
-    capabilities: ['text', 'function-calling'],
-  },
-  // Anthropic Models
-  {
-    id: 'claude-3-opus',
-    name: 'Claude 3 Opus',
-    provider: 'Anthropic',
-    description: 'Most capable Claude model for complex tasks',
-    contextWindow: 200000,
-    maxOutput: 4096,
-    costPer1kInput: 0.015,
-    costPer1kOutput: 0.075,
-    capabilities: ['text', 'vision'],
-  },
-  {
-    id: 'claude-3-sonnet',
-    name: 'Claude 3 Sonnet',
-    provider: 'Anthropic',
-    description: 'Balanced performance and cost',
-    contextWindow: 200000,
-    maxOutput: 4096,
-    costPer1kInput: 0.003,
-    costPer1kOutput: 0.015,
-    capabilities: ['text', 'vision'],
-  },
-  {
-    id: 'claude-3-haiku',
-    name: 'Claude 3 Haiku',
-    provider: 'Anthropic',
-    description: 'Fast and efficient for simple tasks',
-    contextWindow: 200000,
-    maxOutput: 4096,
-    costPer1kInput: 0.00025,
-    costPer1kOutput: 0.00125,
-    capabilities: ['text', 'vision'],
-  },
-  // Google Models
-  {
-    id: 'gemini-pro',
-    name: 'Gemini Pro',
-    provider: 'Google',
-    description: "Google's advanced multimodal model",
-    contextWindow: 32768,
-    maxOutput: 8192,
-    costPer1kInput: 0.00025,
-    costPer1kOutput: 0.0005,
-    capabilities: ['text', 'vision'],
-  },
-  // Local/Open Models
-  {
-    id: 'llama-2-70b',
-    name: 'Llama 2 70B',
-    provider: 'Meta',
-    description: 'Open-source model for local deployment',
-    contextWindow: 4096,
-    maxOutput: 2048,
-    capabilities: ['text'],
-  },
-  {
-    id: 'mistral-7b',
-    name: 'Mistral 7B',
-    provider: 'Mistral AI',
-    description: 'Efficient open-source model',
-    contextWindow: 8192,
-    maxOutput: 4096,
-    capabilities: ['text'],
-  },
+  { id: 'anthropic:claude-opus-5', name: 'Claude Opus 5', description: 'Most capable Claude for complex reasoning and agentic work', contextWindow: 1_000_000, maxOutput: 128_000, costPer1kInput: 0.005, costPer1kOutput: 0.025, capabilities: TEXT_VISION_TOOLS },
+  { id: 'anthropic:claude-sonnet-5', name: 'Claude Sonnet 5', description: 'Fast, capable Claude at a lower cost', contextWindow: 1_000_000, maxOutput: 128_000, costPer1kInput: 0.002, costPer1kOutput: 0.01, capabilities: TEXT_VISION_TOOLS },
+  { id: 'anthropic:claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest, lowest-cost Claude', contextWindow: 200_000, costPer1kInput: 0.001, costPer1kOutput: 0.005, capabilities: TEXT_VISION_TOOLS },
+  { id: 'openai:gpt-5.5', name: 'GPT-5.5', description: "OpenAI's flagship model", capabilities: TEXT_VISION_TOOLS },
+  { id: 'openai:gpt-5.4-mini', name: 'GPT-5.4 mini', description: 'Smaller, faster GPT-5.4', capabilities: TEXT_VISION_TOOLS },
+  { id: 'google:gemini-pro-latest', name: 'Gemini Pro (latest)', description: "Google's current Gemini Pro", capabilities: TEXT_VISION_TOOLS },
+  { id: 'google:gemini-flash-latest', name: 'Gemini Flash (latest)', description: "Google's current Gemini Flash", capabilities: TEXT_VISION_TOOLS },
+  { id: 'groq:llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Open-weight Llama on Groq', capabilities: TEXT_TOOLS },
+  { id: 'groq:openai/gpt-oss-120b', name: 'GPT-OSS 120B', description: "OpenAI's open-weight model on Groq", capabilities: TEXT_TOOLS },
+  { id: 'mistral:mistral-large-latest', name: 'Mistral Large (latest)', description: "Mistral's current large model", capabilities: TEXT_TOOLS },
+  { id: 'mistral:mistral-small-latest', name: 'Mistral Small (latest)', description: "Mistral's current small model", capabilities: TEXT_TOOLS },
+  { id: 'cohere:command-a-03-2025', name: 'Command A', description: "Cohere's flagship model", capabilities: TEXT_TOOLS },
 ];
 
-export function getModelById(modelId: string): ModelCatalogEntry | undefined {
-  return availableModels.find(model => model.id === modelId);
+/** A `provider:model` id's parts, or undefined when it doesn't name a provider and a model */
+export function parseModelId(id: string): { provider: ProviderName; model: string } | undefined {
+  const separator = id.indexOf(':');
+  const provider = id.slice(0, separator) as ProviderName;
+  const model = id.slice(separator + 1);
+  return separator > 0 && model && Object.keys(providerLabels).includes(provider) ? { provider, model } : undefined;
 }
 
-export function getModelsByProvider(provider: string): ModelCatalogEntry[] {
-  return availableModels.filter(model => model.provider === provider);
-}
+export const isModelId = (id: string): id is ModelId => parseModelId(id) !== undefined;

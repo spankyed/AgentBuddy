@@ -5,8 +5,8 @@ import { defaultServerConditions } from 'vite';
 // Vitest's own defaults: Vite's server conditions without 'module'
 const conditions = ['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')];
 
-// Test imports open LMDB via @abuddy/sdk/env, which requires an explicit environment. Each run
-// gets a throwaway data dir, split per worker and removed when the run ends.
+// The harness requires an explicit environment and data dir (the media store). Each run gets a
+// throwaway data dir, split per worker and removed when the run ends.
 const dataDir = isolatedDataDir('default-setup-tests-');
 
 export default defineConfig(async () => {
@@ -16,7 +16,7 @@ export default defineConfig(async () => {
     resolve: { conditions },
     ssr: { resolve: { conditions } },
     plugins: [
-      tsconfigPaths({ projects: ['./tsconfig.test.json', '../api/tsconfig.test.json'] }),
+      tsconfigPaths({ projects: ['./tsconfig.test.json'] }),
     ],
 
     test: {

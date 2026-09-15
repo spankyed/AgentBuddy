@@ -1,5 +1,7 @@
 # Goal: a pack-facing unit test harness, with dependencies' seeding behaviour
 
+> **Superseded in part.** The SDK's TypeScript floor is now 5.7 (`goal-inference-ai-sdk-7.md`, Decision 1), not the 5.3 below.
+
 Pack authors unit-test their seeds, repositories and seed hooks against a real in-memory EARS, without the app, and including the behaviour their dependencies own: a pack depending on default-setup seeds Notes in a unit test and gets default-setup's rows (NOTE shortCodes, display order, REFERENCES), the same rows the app would write.
 
 ## Background (2026-09-14, at `114d18e1b`)
@@ -42,5 +44,4 @@ Pack authors unit-test their seeds, repositories and seed hooks against a real i
 
 ## Deferred
 
-- Unit-testing systems, services and flows with the harness.
-- Moving default-setup's tests onto the harness.
+- Unit-testing systems, services and flows with the harness, and moving default-setup's tests onto it: done in `goal-harness-systems-flows.md`.

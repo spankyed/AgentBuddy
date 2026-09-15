@@ -1,5 +1,5 @@
 import type { ActionEntity, FlowEntity, PromptEntity } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference'
+import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 
 export interface FormResources {
   actions?: ActionEntity[]

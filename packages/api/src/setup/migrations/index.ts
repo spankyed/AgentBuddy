@@ -1,4 +1,4 @@
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 import { APP_VERSION } from '@/version';
 import { compareVersions } from '@abuddy/sdk/utils';
 import { getRegisteredMigrations } from '@abuddy/host/packs';

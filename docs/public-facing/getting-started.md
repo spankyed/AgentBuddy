@@ -4,7 +4,7 @@ A **pack** is a self-contained extension for AgentBuddy. It can contribute backe
 
 ## Prerequisites
 
-- Node.js >= 20.6
+- Node.js >= 22
 - AgentBuddy installed
 - The `abuddy` CLI, from any of:
   - the app: **AgentBuddy → Install 'abuddy' command in PATH** (macOS; AgentBuddy Beta installs `abuddy-beta`)
@@ -17,7 +17,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 
 | Package | What it is |
 |---|---|
-| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) are peer dependencies, and so is TypeScript (5.3 or later). |
+| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
 | `@abuddy/testing` | The Playwright fixture for pack E2E tests (`@playwright/test` is a peer). |
@@ -79,7 +79,7 @@ The build pipeline:
 
 1. `abuddy generate` — resolves dependencies and generates EARS type definitions
 2. `abuddy generate-entries` — reads `abuddy.json` and generates all files in `src/__generated__/`
-3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and seed hooks can't use native modules or optional `@abuddy/sdk` peers such as `ai`
+3. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot, migrations), and for packs that depend on yours `dist/build/steps.build.mjs` (step build code), `dist/build/seed-compilers.mjs` (your seed formats' compiler modules) and `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and seed hooks can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
 4. Seed compilation — compiles actions, prompts, and flows from `src/seeds/` to `dist/runtime/seeds/`
 5. Snapshot — writes `dist/types/snapshot.json` (types, defs, manifest) for downstream packs
 6. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
@@ -116,32 +116,7 @@ To release a version, run `abuddy release [patch|minor|major] [--beta]`: it chec
 npm test
 ```
 
-Unit tests run your pack's data code without the app: seeds, repositories and seed hooks against an in-memory database, through `@abuddy/testing/harness`. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`:
-
-```typescript
-// tests/setup.ts
-import '#generated/seeders';
-import { seedRuntime } from '#generated/seed-runtime';
-import { setupPackTests } from '@abuddy/testing/harness';
-
-await setupPackTests({ seedRuntime });
-```
-
-```typescript
-// tests/unit/notes.spec.ts
-import { seedPack } from '@abuddy/testing/harness';
-import { findAll } from '#generated/ears';
-
-it('seeds notes', async () => {
-  expect(await seedPack({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
-  expect(findAll('Note')[0].shortCode).toMatch(/^NOTE-/);
-});
-```
-
-- **What's registered:** your repositories, seed hooks and seeders, and each dependency's seed runtime, so seeding a dependency's entity types (default-setup's `Note`) goes through its real hooks.
-- **`seedPack({ keys?, mode? })`** compiles your seed entries, with your formats and your dependencies', and seeds them. Without `keys` it seeds every entry naming a format; actions, flows and settings need the app.
-- **Each test starts from an empty database.** Run `abuddy build` once first, so dependencies are fetched into `.abuddy/deps/`.
-- Systems, services and the UI are tested in the app with `abuddy test`.
+Unit tests run your pack without the app, through `@abuddy/testing/harness`: seeds and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `abuddy build` once first, so dependencies are fetched. See [Testing](testing.md).
 
 ## Verify it works
 

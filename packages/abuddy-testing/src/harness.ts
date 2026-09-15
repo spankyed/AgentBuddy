@@ -16,17 +16,51 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach } from 'vitest';
-import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime } from '@abuddy/sdk/testing';
+import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { setAppPackId, stopRunningApps } from './app.ts';
-import { compilePack, resolveSeeds, SEED_INDEX_FILE, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { repository, untypedQx } from '@abuddy/sdk/ears';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abuddy/sdk/utils';
 
 export { resetTestData, takeSystemErrors, type SeedRuntime };
-export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents } from './app.ts';
+export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
+
+const serviceMocks = new Map<string, unknown>();
+/** Whether a test (with its beforeEach and afterEach hooks) is running, so mocks have a test to last for */
+let inTest = false;
+
+/** The pack registry `services` reads, with the current test's mocked services over the registered ones */
+const packRegistryWithMocks = {
+  ...hostPacks,
+  getRegisteredServices: () => ({ ...hostPacks.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
+};
+
+/**
+ * Replaces a service in `services` for the current test, restored after it: call it in the test or a
+ * `beforeEach`, not `beforeAll`. Type it with the pack's services (`mockService<Services>('scheduler',
+ * { registerSchedule: … })`); give only the members the code under test uses. Code that imports a
+ * service module directly instead of using `services` isn't affected.
+ */
+export function mockService<S extends object = Record<string, object>, K extends keyof S & string = keyof S & string>(name: K, implementation: Partial<S[K]>): void {
+  if (!inTest) {
+    throw new Error(`mockService('${name}') ran outside a test: a mock lasts for the test it's made in, so make it in the test or a beforeEach`);
+  }
+  serviceMocks.set(name, implementation);
+}
+
+/**
+ * Mocks `services.inference` for the current test with a `fakeInference` whose language model answers `reply` and
+ * whose other models answer `replies`; returns it, so the test can assert its `calls`.
+ */
+export function mockInference(...args: Parameters<typeof fakeInference>): FakeInference {
+  const inference = fakeInference(...args);
+  mockService('inference', inference);
+  return inference;
+}
 
 /** Where `abuddy build` caches a dependency's snapshot and build/ in a pack */
 const DEPS_DIR = path.join('.abuddy', 'deps');
@@ -91,6 +125,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   const dependencies = readDependencies(packDir, manifest);
 
   startTestRuntime({ entityTypes: [...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities)) });
+  try {
+    getHostModule('pack-registry');
+  } catch {
+    registerHostModule('pack-registry', packRegistryWithMocks);
+  }
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);
   } else {
@@ -107,11 +146,14 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
 
   context = { packDir, manifest, dependencies };
   beforeEach(() => {
+    inTest = true;
     resetTestData();
     fs.rmSync(getMediaPath(), { recursive: true, force: true });
   });
   afterEach(() => {
+    inTest = false;
     stopRunningApps();
+    serviceMocks.clear();
     const errors = takeSystemErrors();
     if (errors.length > 0) {
       const described = errors.map((e) => `${e.source ?? 'unknown'}: ${e.error instanceof Error ? e.error.message : String(e.error)}`);
@@ -122,11 +164,6 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */
 async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>, registration: PackRegistration): Promise<void> {
-  try {
-    getHostModule('pack-registry');
-  } catch {
-    registerHostModule('pack-registry', hostPacks);
-  }
   for (const [depId, dependency] of dependencies) {
     const runtimeEntry = path.join(dependency.dir, 'runtime', 'index.cjs');
     if (!fs.existsSync(runtimeEntry)) {
@@ -161,8 +198,10 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
   if (unknown.length > 0) throw new Error(`No seed entries ${unknown.join(', ')} in abuddy.json`);
 
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-seeds-'));
+  const { register, tsImport } = await import('tsx/esm/api');
+  // The SDK's own compilers import TypeScript sources (flows, actions) that use the pack's #generated imports
+  const unregister = register();
   try {
-    const { tsImport } = await import('tsx/esm/api');
     await compilePack({
       packDir,
       outputDir,
@@ -176,6 +215,28 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
     const result = seedData({ compiledDir: outputDir, mode: options.mode });
     return Object.fromEntries(Object.entries(result).filter(([key]) => seeded.has(key)));
   } finally {
+    await unregister();
     fs.rmSync(outputDir, { recursive: true, force: true });
   }
+}
+
+interface FlowRepositories {
+  flowsCommands?: { importFromDSL(compiled: ReturnType<typeof compileFlowDSL>): void };
+  actionQueries?: { all(): Array<{ id: string; label: string }> };
+  promptQueries?: { all(): Array<{ id: string; label: string }> };
+}
+
+/**
+ * Compiles flow DSL and imports it as the flow seeder does (default-setup's flows repository): steps name actions and
+ * prompts and flows already in the database, and a flow marked `root: true` is the root flow the brain runs when the app starts.
+ * Import before `startApp`. In the app, other flows run as subflows the root flow spawns:
+ *
+ *   importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Memo Flow')], [keepAlive()])] } });
+ */
+export function importFlows(dsl: FlowDSL): void {
+  const { flowsCommands, actionQueries, promptQueries } = repository as unknown as FlowRepositories;
+  if (!flowsCommands) throw new Error('importFlows needs the flows repository: run the tests with default-setup (a dependency, or the pack)');
+  const byLabel = (rows: Array<{ id: string; label?: string }> = []) => new Map(rows.map((row) => [String(row.label), row.id]));
+  const flows = byLabel(untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>);
+  flowsCommands.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionQueries?.all()), prompts: byLabel(promptQueries?.all()), flows }));
 }

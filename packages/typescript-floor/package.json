@@ -4,6 +4,6 @@
   "private": true,
   "description": "The oldest TypeScript @abuddy/sdk and @abuddy/ui support (their typescript peer), for the published-types specs",
   "dependencies": {
-    "typescript": "5.3.3"
+    "typescript": "5.7.3"
   }
 }

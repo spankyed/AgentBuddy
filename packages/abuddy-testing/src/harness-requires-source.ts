@@ -6,6 +6,9 @@ export const seedPack: never = undefined as never;
 export const resetTestData: never = undefined as never;
 export const takeSystemErrors: never = undefined as never;
 export const startApp: never = undefined as never;
+export const mockService: never = undefined as never;
+export const mockInference: never = undefined as never;
+export const importFlows: never = undefined as never;
 
 throw new Error(
   "@abuddy/testing/harness resolves to an AgentBuddy checkout's source, which needs the @abuddy/source condition. " +

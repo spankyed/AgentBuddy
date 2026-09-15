@@ -10,7 +10,9 @@ import type { EARS } from '../types/entities.ts';
 import type { Logger } from '../ears/runtime.ts';
 import type { LogEvent } from '../logger/index.ts';
 import type { ReportSystemErrorInput } from '../utils/index.ts';
-import type { AppDataService, TraceStore } from '../services/data.ts';
+import type { AppDataService } from '../services/app-data.ts';
+import type { TraceStore } from '../services/trace-store.ts';
+import type { InferenceService } from '../services/inference.ts';
 
 /** The test app's root event bus: what clients (and the test) send the backend, and what it sends them */
 export interface TestRootEvents extends RootEvents {
@@ -58,6 +60,10 @@ function consoleLogger(source?: string): Logger {
     error: (...args: unknown[]) => console.error(prefix, ...args),
   };
 }
+
+const unmockedInference = () => Promise.reject(new Error(
+  "No models in unit tests: mock inference with mockInference(reply) from @abuddy/testing/harness",
+));
 
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
 
@@ -110,13 +116,19 @@ export function registerTestHostModules(resetData: () => void): void {
     'system-errors': { reportSystemError: (input: ReportSystemErrorInput) => { systemErrors.push(input); } },
     'version': { APP_VERSION: '0.0.0-test' },
     'migrations': { runMigrations: () => {} },
-    'app-data': {
+    appData: {
       reset: async () => { resetData(); },
       exportBackup: unsupported('exportBackup'),
       importBackup: unsupported('importBackup'),
       backupInfo: async () => null,
     } satisfies AppDataService,
-    'trace-store': traceStore,
+    traceStore,
+    // No test reaches a provider: code calling a model fails until the test mocks inference
+    inference: {
+      generateText: unmockedInference, streamText: unmockedInference, createAgent: unmockedInference,
+      embed: unmockedInference, embedMany: unmockedInference, generateImage: unmockedInference,
+      generateSpeech: unmockedInference, transcribe: unmockedInference, rerank: unmockedInference,
+    } satisfies Record<keyof InferenceService, unknown>,
   };
   for (const [key, mod] of Object.entries(modules)) {
     if (!registered(key)) registerHostModule(key, mod);

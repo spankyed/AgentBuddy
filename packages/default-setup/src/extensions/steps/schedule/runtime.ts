@@ -1,8 +1,9 @@
 import type { TriggerRuntimeNode, TriggerRuntimeContext } from '@abuddy/sdk/steps';
-import { registerSchedule } from '@/features/brain/be/services/scheduler';
+import { services } from '@/__generated__/services';
 
 export function register(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void {
-  registerSchedule(
+  // Through the scheduler service, so unit tests can drive ticks (mockService('scheduler', …))
+  services.scheduler.registerSchedule(
     `${ctx.flowTNodeId}:${node.id}`,
     node.cronExpression as string,
     () => {

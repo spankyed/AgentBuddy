@@ -10,7 +10,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
-import { dropAttr, getAllEntities, qx } from '@abuddy/host/ears';
+import { untypedQx as qx } from '@abuddy/sdk/ears';
+import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
@@ -179,9 +180,9 @@ describe('notes seeding (generic pipeline)', () => {
   it('leaves a note without a stored sourceHash alone (user-owned)', () => {
     resetDatabase();
     seedNotes('v1');
-    const welcome = (getAllEntities() as string[]).find((id) =>
+    const welcome = (entityIds() as string[]).find((id) =>
       id.startsWith('Note-') && (qx(id as never).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
-    dropAttr(welcome as never, 'sourceHash' as never);
+    dropAttribute(welcome as never, 'sourceHash');
     const before = snapshot();
     seedNotes('v2', { mode: 'replace-on-collision' });
     const after = snapshot();

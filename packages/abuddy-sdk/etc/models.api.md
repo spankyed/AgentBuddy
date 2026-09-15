@@ -4,36 +4,76 @@
 
 ```ts
 
-// @public (undocumented)
+// @public
 export const availableModels: ModelCatalogEntry[];
 
 // @public (undocumented)
-export function getModelById(modelId: string): ModelCatalogEntry | undefined;
+export type EmbeddingModelId = ModelIdOf<'embedding'>;
 
 // @public (undocumented)
-export function getModelsByProvider(provider: string): ModelCatalogEntry[];
+export type ImageModelId = ModelIdOf<'image'>;
+
+// @public (undocumented)
+export const isModelId: (id: string) => id is ModelId;
 
 // @public (undocumented)
 export interface ModelCatalogEntry {
     // (undocumented)
     capabilities?: string[];
     // (undocumented)
-    contextWindow: number;
+    contextWindow?: number;
     // (undocumented)
     costPer1kInput?: number;
     // (undocumented)
     costPer1kOutput?: number;
     // (undocumented)
     description?: string;
-    // (undocumented)
-    id: string;
+    id: ModelId;
     // (undocumented)
     maxOutput?: number;
     // (undocumented)
     name: string;
-    // (undocumented)
-    provider: string;
 }
+
+// @public
+export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export type ModelIdOf<K extends ModelKind> = `${ProvidersOf<K>}:${string}`;
+
+// @public
+export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription' | 'reranking';
+
+// @public
+export function parseModelId(id: string): {
+    provider: ProviderName;
+    model: string;
+} | undefined;
+
+// @public
+export const providerCapabilities: {
+    readonly anthropic: readonly ["language"];
+    readonly openai: readonly ["language", "embedding", "image", "speech", "transcription"];
+    readonly google: readonly ["language", "embedding", "image", "speech", "transcription"];
+    readonly groq: readonly ["language", "transcription"];
+    readonly mistral: readonly ["language", "embedding", "speech", "transcription"];
+    readonly cohere: readonly ["language", "embedding", "reranking"];
+};
+
+// @public
+export const providerLabels: Record<ProviderName, string>;
+
+// @public
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
+
+// @public (undocumented)
+export type RerankingModelId = ModelIdOf<'reranking'>;
+
+// @public (undocumented)
+export type SpeechModelId = ModelIdOf<'speech'>;
+
+// @public (undocumented)
+export type TranscriptionModelId = ModelIdOf<'transcription'>;
 
 // (No @packageDocumentation comment for this package)
 

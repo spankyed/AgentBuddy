@@ -1,6 +1,6 @@
 import { type NodeEntity } from '@/__generated__/types';
 import { EARS } from '@/__generated__/ears';
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
+import type { ModelCatalogEntry } from '@abuddy/sdk/models';
 
 /*─────────────────────────────────────────────────────────────────
  * Flow & Edge entities

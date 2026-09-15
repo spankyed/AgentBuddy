@@ -13,7 +13,6 @@ import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { unregisterByPrefix } from './services/scheduler';
 import { sendToBrainSystem } from '@abuddy/sdk/services';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
@@ -257,7 +256,7 @@ export function createFlowNodeSystem(
           // Clean up this flow actor from the registry
           flowActorRegistry.delete(flowTNodeId);
           // Clean up all cron jobs for this flow actor
-          unregisterByPrefix(flowTNodeId);
+          appServices.scheduler.unregisterByPrefix(flowTNodeId);
           brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {

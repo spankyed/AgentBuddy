@@ -11,7 +11,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
-import { dropAttr } from '@abuddy/host/ears';
+import { untypedQx } from '@abuddy/sdk/ears';
+import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './harness';
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
@@ -121,7 +122,7 @@ function untrack(aliasPrefix: string) {
     const alias = Object.keys(current.rows).find((a) => a.startsWith(aliasPrefix));
     if (!alias) throw new Error(`no ${aliasPrefix} row to untrack`);
     const id = resolveId(alias);
-    dropAttr(id as never, 'sourceHash' as never);
+    dropAttribute(id as never, 'sourceHash');
   };
 }
 
@@ -129,16 +130,14 @@ function resolveId(alias: string): string {
   const { rows } = snapshot();
   const [type] = alias.split(':');
   const target = rows[alias];
-  const { getAllEntities, qx } = hostEars;
-  for (const id of getAllEntities() as string[]) {
+  for (const id of entityIds() as string[]) {
     if (!id.startsWith(`${type}-`)) continue;
-    const row = (qx(id as never).pickAll() as Array<Record<string, unknown>>)[0];
+    const row = (untypedQx(id as never).pickAll() as Array<Record<string, unknown>>)[0];
     const label = row?.name ?? row?.title ?? row?.label;
     if (label === (target.name ?? target.title ?? target.label)) return id;
   }
   throw new Error(`no row for ${alias}`);
 }
-const hostEars = await import('@abuddy/host/ears');
 
 const MODES: Array<ImportMode | undefined> = [undefined, 'replace-on-collision', 'keep-existing', 'wipe-and-replace'];
 

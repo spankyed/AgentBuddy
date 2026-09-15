@@ -2,8 +2,8 @@ import { describe, it, expectTypeOf } from 'vitest';
 import type { Services } from '@/__generated__/services';
 
 describe('Services — augmented types', () => {
-  it('registry has llm service', () => {
-    expectTypeOf<Services>().toHaveProperty('llm');
+  it('registry has the host inference service', () => {
+    expectTypeOf<Services>().toHaveProperty('inference');
   });
 
   it('registry has prompt service', () => {
@@ -30,13 +30,16 @@ describe('Services — augmented types', () => {
     expectTypeOf<Services>().toHaveProperty('cli');
   });
 
-  it('registry has modelClient service', () => {
-    expectTypeOf<Services>().toHaveProperty('modelClient');
+
+  it('drops the services the inference service replaces', () => {
+    expectTypeOf<Services>().not.toHaveProperty('llm');
+    expectTypeOf<Services>().not.toHaveProperty('modelClient');
+    expectTypeOf<Services>().not.toHaveProperty('openaiAuth');
   });
 
   it('keyof includes all registered service names', () => {
     type Keys = keyof Services;
-    expectTypeOf<'llm'>().toMatchTypeOf<Keys>();
+    expectTypeOf<'inference'>().toMatchTypeOf<Keys>();
     expectTypeOf<'database'>().toMatchTypeOf<Keys>();
     expectTypeOf<'prompt'>().toMatchTypeOf<Keys>();
     expectTypeOf<'action'>().toMatchTypeOf<Keys>();
@@ -50,8 +53,6 @@ describe('Services — augmented types', () => {
     expectTypeOf<'filesystem'>().toMatchTypeOf<Keys>();
     expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
     expectTypeOf<'codex'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'modelClient'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'openaiAuth'>().toMatchTypeOf<Keys>();
     expectTypeOf<'textStream'>().toMatchTypeOf<Keys>();
   });
 });

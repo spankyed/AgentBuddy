@@ -221,8 +221,8 @@
         "isPinned": true
       },
       "services": {
-        "llm": "src/features/brain/be/services/llm",
-        "brain": "src/features/brain/be/services/brain"
+        "brain": "src/features/brain/be/services/brain",
+        "scheduler": "src/features/brain/be/services/scheduler"
       },
       "repositories": {
         "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",
@@ -289,9 +289,7 @@
   ],
   "packServices": {
     "textStream": "src/extensions/services/text-stream",
-    "filesystem": "src/extensions/services/filesystem",
-    "modelClient": "src/extensions/services/model-client",
-    "openaiAuth": "src/extensions/services/openai-auth"
+    "filesystem": "src/extensions/services/filesystem"
   },
   "defaultPlugin": "threads",
   "boot": {

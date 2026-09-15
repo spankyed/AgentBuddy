@@ -3,10 +3,14 @@
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
 #   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format
-#      with a .ts compiler module, and default-setup's notes format
-#   3. abuddy build → abuddy release --local --dry-run produces a verified bundle
-#   4. install that bundle into an isolated test data dir
-#   5. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
+#      with a .ts compiler module, and default-setup's notes format → an llm flow and a service
+#      calling services.inference
+#   3. abuddy build
+#   4. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
+#      and the llm flow on default-setup's brain, with inference mocked by mockInference
+#   5. abuddy release --local --dry-run produces a verified bundle
+#   6. install that bundle into an isolated test data dir
+#   7. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
 # KEEP_WORK=1 keeps the temp dir.
 set -euo pipefail
@@ -128,6 +132,64 @@ node -e '
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 
+step "2. An llm flow on default-setup's brain, and a service calling services.inference"
+"$ABUDDY" add prompt summarize-note >/dev/null
+cat > src/seeds/prompts/summarize-note.ts <<'TS'
+import type { PromptMeta } from '@abuddy/sdk/build';
+
+export const meta: PromptMeta = {
+  label: 'Summarize Note',
+  description: 'Summarizes a note in one line.',
+  category: 'notes',
+  inputs: { text: { name: 'text', type: 'string', description: 'The note', required: true } },
+};
+
+export function template(params: Record<string, any>) {
+  return `Summarize this note: ${params.text}`;
+}
+TS
+cat > src/seeds/flows/notes-summary.ts <<'TS'
+import { entry, keepAlive, on, llm } from '#generated/flow-helpers';
+
+export default {
+  "Notes Summary": [
+    entry([keepAlive()]),
+    on('notes.summarize', [[
+      llm('Summarize Note', { label: 'summarize', model: 'openai:gpt-4o-mini', map: { text: '$.event.data.payload.text' } }),
+    ]]),
+  ],
+};
+TS
+"$ABUDDY" add service digest --feature notes >/dev/null
+cat > src/features/notes/be/services/digest.ts <<'TS'
+import { Output } from 'ai';
+import { z } from 'zod';
+import { services } from '#generated/services';
+
+const Digest = z.object({ summary: z.string(), tags: z.array(z.string()) });
+
+export function createDigestService() {
+  return {
+    async digest(text: string): Promise<z.infer<typeof Digest>> {
+      const { output } = await services.inference.generateText({
+        model: 'openai:gpt-5-mini',
+        prompt: `Digest: ${text}`,
+        output: Output.object({ schema: Digest }),
+      });
+      return output;
+    },
+  };
+}
+TS
+node -e '
+  const fs = require("fs");
+  const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
+  m.boot.seed = { prompts: "src/seeds/prompts", ...m.boot.seed };
+  fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
+'
+# The digest service imports the AI SDK's pure pieces (Output); mockInference runs the AI SDK in tests
+npm install --silent --save ai@^7.0.100
+
 step "3. abuddy build"
 "$ABUDDY" build | tee "$WORK/build.log"
 node -e '
@@ -139,7 +201,7 @@ node -e '
   if (note?.entity !== "Note" || note.title !== "Demo notes" || note.noteType !== "document" || note.icon !== null || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
 ' || fail "the compiler module and markdown seeds were not compiled"
 
-step "3. Unit tests through the harness, with default-setup's seed runtime"
+step "4. Unit tests through the harness, with default-setup's runtime"
 cat > tests/unit/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { seedPack } from '@abuddy/testing/harness';
@@ -154,8 +216,43 @@ describe('demo notes', () => {
   });
 });
 TS
+cat > tests/unit/digest-service.spec.ts <<'TS'
+import { describe, expect, it } from 'vitest';
+import { mockInference } from '@abuddy/testing/harness';
+import { services } from '#generated/services';
+
+describe('digest service', () => {
+  it('digests a note from the structured output inference returns', async () => {
+    const inference = mockInference(JSON.stringify({ summary: 'Buy milk', tags: ['errand'] }));
+    expect(await services.digest.digest('Remember to buy milk')).toEqual({ summary: 'Buy milk', tags: ['errand'] });
+    expect(inference.calls).toEqual([expect.objectContaining({ model: 'openai:gpt-5-mini', messages: [{ role: 'user', text: 'Digest: Remember to buy milk' }] })]);
+  });
+});
+TS
+cat > tests/unit/notes-summary.spec.ts <<'TS'
+import { describe, expect, it } from 'vitest';
+import { importFlows, mockInference, seedPack, startApp } from '@abuddy/testing/harness';
+import { entry, keepAlive, subflow } from '#generated/flow-helpers';
+
+describe('notes summary flow', () => {
+  it("runs on default-setup's brain and llm step with inference mocked", async () => {
+    await seedPack({ keys: ['prompts', 'flows'] });
+    const inference = mockInference('Buy milk');
+    // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
+    importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
+    const app = await startApp({ systems: ['brain', 'settings'] });
+
+    const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
+
+    expect(run.steps).toEqual([expect.objectContaining({ label: 'summarize', status: 'completed' })]);
+    expect(run.steps[0].nodeAttributes.result).toMatchObject({ text: 'Buy milk' });
+    expect(inference.calls).toEqual([expect.objectContaining({ model: 'openai:gpt-4o-mini', messages: [{ role: 'user', text: 'Summarize this note: Remember to buy milk' }] })]);
+  });
+});
+TS
 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
-grep -qE "Tests +3 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
+# The scaffold's seed test (2), the feature's system test, default-setup notes, the service and the flow
+grep -qE "Tests +6 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints a seed-file count even with no flows; check the compiled flow itself
 node -e '
   const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));
@@ -164,7 +261,7 @@ node -e '
 ' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
 
-step "3. abuddy release --local --dry-run"
+step "5. abuddy release --local --dry-run"
 git init --quiet -b main
 git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
@@ -175,7 +272,7 @@ BUNDLE="$(sed -n 's/^Bundle: //p' "$WORK/release.log")"
 (cd "$(dirname "$BUNDLE")" && shasum -a 256 -c "$(basename "$BUNDLE").sha256")
 [ -z "$(git status --porcelain)" ] || fail "a dry run changed the pack's files"
 
-step "4. Install the bundle into an isolated test data dir"
+step "6. Install the bundle into an isolated test data dir"
 DATA="$WORK/test-data"
 ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$BUNDLE"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/bundle.json' | head -n 1)"
@@ -186,7 +283,7 @@ node -e '
 ' "$INSTALLED"
 [ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed bundle has no runtime"
 
-step "5. abuddy test (the saved app)"
+step "7. abuddy test (the saved app)"
 "$ABUDDY" test
 
 step "No symlinks into the monorepo"

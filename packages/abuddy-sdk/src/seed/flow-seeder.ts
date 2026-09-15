@@ -162,7 +162,9 @@ export function createFlowSeeder(): Seeder {
         return counts;
       }
 
-      const compiled = compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap });
+      // A flow can run one this seed doesn't (re)import, such as an unchanged flow or a dependency's
+      const flowMap = buildLabelMap(findAll<FlowEntity>(EARS.Entity.Flow) as Array<{ label: string; id: EARS.EntityId }>);
+      const compiled = compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap, flows: flowMap });
       builtinRepository.flowsCommands.importFromDSL(compiled);
       for (const name of flowNames) {
         const row = (compiled.entity as Array<{ id: string; entityType?: string; label?: string }>)

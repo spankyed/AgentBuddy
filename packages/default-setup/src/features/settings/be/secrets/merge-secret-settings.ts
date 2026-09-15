@@ -1,6 +1,7 @@
+import { providerLabels } from '@abuddy/sdk/models';
 import type { SecretData } from './types';
 
-const STANDARD_PROVIDERS = ['google', 'anthropic', 'openai', 'groq', 'mistral', 'cohere'] as const;
+const STANDARD_PROVIDERS: readonly string[] = Object.keys(providerLabels);
 
 type SecretsSettings = Record<string, any> & {
   custom?: Record<string, string>;
@@ -22,7 +23,7 @@ export function mergeSecretReferences(
   for (const secret of secretsData) {
     if (secret.provider === 'custom' && secret.customName) {
       nextSecrets.custom![secret.customName] = secret.id;
-    } else if (STANDARD_PROVIDERS.includes(secret.provider as any)) {
+    } else if (STANDARD_PROVIDERS.includes(secret.provider)) {
       nextSecrets[secret.provider] = secret.id;
     }
   }

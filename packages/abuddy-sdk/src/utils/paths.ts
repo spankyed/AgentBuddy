@@ -3,8 +3,6 @@ import * as fs from 'fs'
 import { resolveAppContext } from '../env/index.ts'
 
 const DATA_DIRS = {
-  modelsCache:  'models-cache',
-  searchIndices: 'search-indices',
   lmdb:         'ears-db',
   volatileLmdb: 'ears-trace',
   secretsLmdb:  'ears-secrets',
@@ -14,8 +12,6 @@ const DATA_DIRS = {
 // === Public API ===
 
 export const getUserDataPath = (): string => resolveAppContext().userDataDir
-export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
-export const getModelsCachePath = (): string => resolvePath('modelsCache')
 /** @internal Host-only: the app's database location. */
 export const getLmdbPath = (): string => resolvePath('lmdb')
 /** @internal Host-only: the app's database location. */
@@ -31,20 +27,12 @@ export const ensureDirectoryExists = (dirPath: string): void => {
   }
 }
 
-export const getIndexPath = (indexId: string): string =>
-  path.join(getSearchIndicesPath(), indexId)
-
-export const getIndexFilePath = (indexId: string): string =>
-  path.join(getIndexPath(indexId), 'index.usearch')
-
-export const getIndexMetadataPath = (indexId: string): string =>
-  path.join(getIndexPath(indexId), 'metadata.json')
-
-export const getIndexMappingsPath = (indexId: string): string =>
-  path.join(getIndexPath(indexId), 'mappings.json')
-
 export function resolvePath(key: keyof typeof DATA_DIRS): string {
-  const name = DATA_DIRS[key]
+  return getDataDirPath(DATA_DIRS[key])
+}
+
+/** A directory the app or a pack keeps data in, under the app's data directory (`name` is its folder) */
+export function getDataDirPath(name: string): string {
   // Existing on-disk layout: packaged builds store data at the root of the data dir,
   // source runs (NODE_ENV=development) under .data/
   const userDataDir = getUserDataPath()
