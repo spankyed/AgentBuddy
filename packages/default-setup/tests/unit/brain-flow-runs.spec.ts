@@ -64,7 +64,7 @@ describe('runFlow', () => {
 
     expect(app.flowTrace('Inner').map((s) => s.label)).toEqual(['i1', 'i2'])
     expect(app.flowTrace('run inner')).toEqual([])
-    await expect(app.runFlow('Inner', { event: 'go' })).rejects.toThrow('Flow "Inner" isn\'t running: it ran and finished. Running: Outer')
+    await expect(app.runFlow('Inner', { event: 'go' })).rejects.toThrow('Flow "Inner" isn\'t running: it ran and finished. No flow is running')
   })
 
   it('waits for steps an action step starts after it completes, however long they take', async () => {
