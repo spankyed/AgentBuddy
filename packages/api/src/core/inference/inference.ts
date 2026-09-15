@@ -7,7 +7,7 @@ import { createGroq } from '@ai-sdk/groq';
 import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText, type LanguageModel } from 'ai';
-import type { InferenceService, ModelId, ProviderName } from '@abuddy/sdk/services';
+import { toAiOutput, type InferenceService, type ModelId, type ProviderName } from '@abuddy/sdk/services';
 import { settingsRepository } from '@/core/settings-repository';
 
 const PROVIDERS = {
@@ -40,6 +40,8 @@ export function languageModel(id: ModelId): LanguageModel {
 }
 
 export const inference: InferenceService = {
-  generateText: ({ model, ...options }) => generateText({ ...options, model: languageModel(model) } as Parameters<typeof generateText>[0]) as never,
-  streamText: async ({ model, ...options }) => streamText({ ...options, model: languageModel(model) } as Parameters<typeof streamText>[0]) as never,
+  generateText: async ({ model, output, ...options }) =>
+    generateText({ ...options, output: await toAiOutput(output), model: languageModel(model) } as Parameters<typeof generateText>[0]) as never,
+  streamText: async ({ model, output, ...options }) =>
+    streamText({ ...options, output: await toAiOutput(output), model: languageModel(model) } as Parameters<typeof streamText>[0]) as never,
 };

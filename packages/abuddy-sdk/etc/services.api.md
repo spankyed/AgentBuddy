@@ -4,7 +4,11 @@
 
 ```ts
 
+import type { DeepPartial } from 'ai';
+import type { FlexibleSchema } from 'ai';
 import type { generateText } from 'ai';
+import type { InferSchema } from 'ai';
+import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { streamText } from 'ai';
 import type { ToolSet } from 'ai';
@@ -71,8 +75,8 @@ export interface HostServices {
 
 // @public
 export interface InferenceService {
-    generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, OUTPUT extends OutputInterface = OutputInterface<string, string>>(options: WithModelId<Parameters<typeof generateText<TOOLS, CONTEXT, OUTPUT>>[0]>): ReturnType<typeof generateText<TOOLS, CONTEXT, OUTPUT>>;
-    streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, OUTPUT extends OutputInterface = OutputInterface<string, string, never>>(options: WithModelId<Parameters<typeof streamText<TOOLS, CONTEXT, OUTPUT>>[0]>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OUTPUT>>>;
+    generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string>>(options: InferenceOptions<Parameters<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): ReturnType<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>;
+    streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string, never>>(options: InferenceOptions<Parameters<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
 }
 
 // @public
@@ -89,6 +93,38 @@ export function onOutgoing(callback: (event: {
     type: string;
     [key: string]: unknown;
 }) => void): () => void;
+
+// @public
+export type OutputOf<O> = O extends OutputInterface ? O : O extends {
+    type: 'object';
+    schema: infer S;
+} ? OutputInterface<InferSchema<S>, DeepPartial<InferSchema<S>>, never> : O extends {
+    type: 'array';
+    element: infer S;
+} ? OutputInterface<InferSchema<S>[], InferSchema<S>[], InferSchema<S>> : O extends {
+    type: 'choice';
+    options: readonly (infer C extends string)[];
+} ? OutputInterface<C, C, never> : O extends {
+    type: 'json';
+} ? ReturnType<typeof Output.json> : ReturnType<typeof Output.text>;
+
+// @public
+export type OutputSpec = {
+    type: 'text';
+} | ({
+    type: 'json';
+} & OutputNaming) | ({
+    type: 'object';
+    schema: FlexibleSchema<unknown>;
+} & OutputNaming) | ({
+    type: 'array';
+    element: FlexibleSchema<unknown>;
+    minItems?: number;
+    maxItems?: number;
+} & OutputNaming) | ({
+    type: 'choice';
+    options: readonly string[];
+} & OutputNaming);
 
 // @public
 export type ProviderName = Exclude<SecretProvider, 'custom'>;
@@ -120,6 +156,9 @@ export function sendToSystem(systemId: string, event: {
 
 // @public
 export const services: HostServices & Record<string, unknown>;
+
+// @internal
+export function toAiOutput(output: OutputInterface | OutputSpec | undefined): Promise<OutputInterface | undefined>;
 
 // @public
 export interface TraceEntityMeta {

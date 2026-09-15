@@ -95,7 +95,7 @@ The host implements operations on the app's stored data as a whole; packs call t
 Providers: `anthropic`, `openai`, `google`, `groq`, `mistral`, `cohere`. `ModelId` and the model catalog come from `@abuddy/sdk/models`.
 
 ```typescript
-import { isStepCount, Output, tool } from 'ai';
+import { isStepCount, tool } from 'ai';
 import { z } from 'zod';
 import { services } from '#generated/services';
 
@@ -106,11 +106,16 @@ const { text } = await services.inference.generateText({
   prompt: 'Summarize this note: …',
 });
 
-// Structured output
+// Structured output, as data or as an Output from ai
 const { output } = await services.inference.generateText({
   model: 'openai:gpt-5-mini',
   prompt: 'Tag this note: …',
-  output: Output.object({ schema: z.object({ tags: z.array(z.string()) }) }),
+  output: { type: 'object', schema: z.object({ tags: z.array(z.string()) }) },  // or Output.object({ schema })
+});
+const { output: label } = await services.inference.generateText({
+  model: 'openai:gpt-5-mini',
+  prompt: 'Is this note a task or a reference?',
+  output: { type: 'choice', options: ['task', 'reference'] },   // label: 'task' | 'reference'
 });
 
 // Tools, looping until the model answers (at most 5 steps)
@@ -126,9 +131,20 @@ const stream = await services.inference.streamText({ model: 'google:gemini-2.5-p
 for await (const part of stream.textStream) process.stdout.write(part);
 ```
 
-- **Everything but the call comes from `ai`:** `tool`, `Output`, `isStepCount` and types like `ModelMessage`. Add `ai` (7.x) to your pack's dependencies; your pack never builds a model or holds a key.
+- **`output` takes data or an `Output`.** The data forms mirror `ai`'s `Output` helpers, and `output` in the result is typed from them:
+
+  | `output` | Same as | Result |
+  |---|---|---|
+  | `{ type: 'text' }` | `Output.text()` | `string` |
+  | `{ type: 'json', name?, description? }` | `Output.json()` | any JSON value |
+  | `{ type: 'object', schema, name?, description? }` | `Output.object({ schema })` | the schema's type |
+  | `{ type: 'array', element, minItems?, maxItems?, name?, description? }` | `Output.array({ element })` | an array of the element's type |
+  | `{ type: 'choice', options, name?, description? }` | `Output.choice({ options })` | one of the options |
+
+  An `Output` (including one you implement) passes through as is. The data form can be stored, and code that can't import `ai` can write it.
+- **The rest of a call's pieces are `ai`'s:** `tool`, `isStepCount` and types like `ModelMessage`. Add `ai` (7.x) to your pack's dependencies when you import them; your pack never builds a model or holds a key.
 - **TypeScript 5.7 or later**, which `ai` 7's types need.
-- **Actions** can't import `ai`: they call `services.inference.generateText` for text and leave structured output and tools to a service.
+- **Actions** can't import `ai`, and don't need to: `output` as data, tools as plain `{ description, inputSchema, execute }` objects (`tool()` only returns its argument), and `stopWhen` as a function (`({ steps }) => steps.length >= 5`).
 - **Unit tests** mock the service with `fakeInference` (see [Testing](testing.md#models)).
 
 Pack code never imports `@abuddy/host`, the app's private package: `abuddy build` fails a bundle that does.

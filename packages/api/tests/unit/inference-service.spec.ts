@@ -28,19 +28,22 @@ afterEach(() => {
   server?.close();
 });
 
-/** A local server answering every request with `body`, recording each request's headers */
-async function provider(body: object): Promise<{ baseURL: string; requests: http.IncomingHttpHeaders[] }> {
+/** A local server answering every request with `body`, recording each request's headers and JSON body */
+async function provider(body: object): Promise<{ baseURL: string; requests: http.IncomingHttpHeaders[]; bodies: Array<Record<string, unknown>> }> {
   const requests: http.IncomingHttpHeaders[] = [];
+  const bodies: Array<Record<string, unknown>> = [];
   server = http.createServer((req, res) => {
-    req.resume();
+    let received = '';
+    req.on('data', (chunk) => { received += chunk; });
     req.on('end', () => {
       requests.push(req.headers);
+      bodies.push(JSON.parse(received));
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify(body));
     });
   });
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
-  return { baseURL: `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`, requests };
+  return { baseURL: `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`, requests, bodies };
 }
 
 describe("the app's inference service", () => {
@@ -104,5 +107,20 @@ describe("the app's inference service", () => {
 
     expect(result.text).toBe('Hello from OpenAI');
     expect(requests.map((headers) => headers.authorization)).toEqual(['Bearer env-openai-key']);
+  });
+
+  it('asks the provider for the structured output a spec describes, and parses the reply', async () => {
+    const { baseURL, bodies } = await provider({
+      id: 'resp_1', object: 'response', created_at: 0, status: 'completed', model: 'gpt-5',
+      output: [{ type: 'message', id: 'msg_1', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: '{"result":"bug"}', annotations: [] }] }],
+      usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2, input_tokens_details: { cached_tokens: 0 }, output_tokens_details: { reasoning_tokens: 0 } },
+    });
+    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    secrets.set('openai', 'stored-key');
+
+    const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'Label this issue', output: { type: 'choice', options: ['bug', 'feature'], name: 'label' } });
+
+    expect(result.output).toBe('bug');
+    expect(bodies[0].text).toMatchObject({ format: { type: 'json_schema', name: 'label', schema: { properties: { result: { enum: ['bug', 'feature'] } } } } });
   });
 });

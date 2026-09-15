@@ -1,7 +1,7 @@
 // A scripted `services.inference` for unit tests: the AI SDK's real generateText/streamText on its test
 // model, so results, steps, `output` parsing, tool execution and stream parts behave as in the app.
 // `ai` loads on the first call, so @abuddy/sdk/testing loads in packs that don't install it.
-import type { InferenceService } from '../services/inference-service.ts';
+import { toAiOutput, type InferenceService } from '../services/inference-service.ts';
 import type { ModelId } from '../services/models.ts';
 
 /** A model call the code under test made */
@@ -106,13 +106,13 @@ export function fakeInference(reply: FakeInferenceReply | ((call: FakeInferenceC
 
   const service = {
     calls,
-    async generateText({ model, ...options }: Parameters<InferenceService['generateText']>[0]) {
+    async generateText({ model, output, ...options }: Parameters<InferenceService['generateText']>[0]) {
       const { generateText } = await import('ai');
-      return generateText({ ...options, model: await modelFor(model) } as Parameters<typeof generateText>[0]);
+      return generateText({ ...options, output: await toAiOutput(output), model: await modelFor(model) } as Parameters<typeof generateText>[0]);
     },
-    async streamText({ model, ...options }: Parameters<InferenceService['streamText']>[0]) {
+    async streamText({ model, output, ...options }: Parameters<InferenceService['streamText']>[0]) {
       const { streamText } = await import('ai');
-      return streamText({ ...options, model: await modelFor(model) } as Parameters<typeof streamText>[0]);
+      return streamText({ ...options, output: await toAiOutput(output), model: await modelFor(model) } as Parameters<typeof streamText>[0]);
     },
   };
   return service as unknown as FakeInference;

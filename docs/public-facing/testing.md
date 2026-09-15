@@ -104,7 +104,7 @@ expect(inference.calls[0]).toMatchObject({ model: 'anthropic:claude-sonnet-4-5',
 ```
 
 - **A reply** is text, or `{ text?, toolCalls?: [{ toolName, input }] }`. Tool calls run your tools' `execute`, and the AI SDK calls the model again while `stopWhen` allows, so a function reply can answer tool results with text.
-- **Structured output:** reply with JSON; `output: Output.object(…)` parses it as it would a real model's.
+- **Structured output:** reply with JSON; `output` (a spec like `{ type: 'object', schema }` or an `Output`) parses it as it would a real model's reply, and rejects what the schema rejects.
 - **`calls`** records each model call (one per step): `model`, `instructions`, `messages` (each message's text; tool calls and results as JSON), `tools` and `stream`.
 
 ## Flows

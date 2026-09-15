@@ -4,7 +4,11 @@
 
 ```ts
 
+import type { DeepPartial } from 'ai';
+import type { FlexibleSchema } from 'ai';
 import type { generateText } from 'ai';
+import type { InferSchema } from 'ai';
+import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { streamText } from 'ai';
 import type { ToolSet } from 'ai';

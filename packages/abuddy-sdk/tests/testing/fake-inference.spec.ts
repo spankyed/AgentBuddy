@@ -24,6 +24,46 @@ describe('fakeInference', () => {
     expect(output).toEqual({ intent: 'buy', confidence: 0.9 });
   });
 
+  describe('output given as data', () => {
+    const Weather = z.object({ city: z.string(), temperature: z.number() });
+
+    it.each([
+      ['object', { type: 'object', schema: Weather }, { city: 'Paris', temperature: 21 }, { city: 'Paris', temperature: 21 }],
+      ['array', { type: 'array', element: Weather, minItems: 1 }, { elements: [{ city: 'Paris', temperature: 21 }] }, [{ city: 'Paris', temperature: 21 }]],
+      ['choice', { type: 'choice', options: ['bug', 'feature'] }, { result: 'bug' }, 'bug'],
+      ['json', { type: 'json' }, { any: ['shape'] }, { any: ['shape'] }],
+    ] as const)('parses a %s spec as its Output would', async (_kind, output, reply, expected) => {
+      const inference = fakeInference(JSON.stringify(reply));
+      const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'x', output });
+      expect(result.output).toEqual(expected);
+    });
+
+    it('treats a text spec as text', async () => {
+      const inference = fakeInference('plain words');
+      expect((await inference.generateText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'text' } })).output).toBe('plain words');
+    });
+
+    it('rejects a reply its spec rejects', async () => {
+      const inference = fakeInference(JSON.stringify({ result: 'question' }));
+      await expect(inference.generateText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'choice', options: ['bug', 'feature'] } })).rejects.toThrow();
+    });
+
+    it('streams partial output for a spec', async () => {
+      const inference = fakeInference(JSON.stringify({ city: 'Paris', temperature: 21 }));
+      const result = await inference.streamText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'object', schema: Weather } });
+      const partials: unknown[] = [];
+      for await (const partial of result.partialOutputStream) partials.push(partial);
+      expect(partials.at(-1)).toEqual({ city: 'Paris', temperature: 21 });
+      expect(await result.output).toEqual({ city: 'Paris', temperature: 21 });
+    });
+
+    it('passes an Output from ai through unchanged', async () => {
+      const inference = fakeInference(JSON.stringify({ result: 'feature' }));
+      const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'x', output: Output.choice({ options: ['bug', 'feature'] }) });
+      expect(result.output).toBe('feature');
+    });
+  });
+
   it('runs the tools a reply calls, then answers the next step', async () => {
     const executed: string[] = [];
     const lookup = tool({ description: 'Look up a word', inputSchema: z.object({ word: z.string() }), execute: async ({ word }) => { executed.push(word); return `${word} means dairy`; } });

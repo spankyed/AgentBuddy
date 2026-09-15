@@ -88,6 +88,18 @@ function typecheckInference(tsc: TscVersion, moduleResolution: 'node16' | 'bundl
     "const lookup = tool({ description: 'look up', inputSchema: z.object({ q: z.string() }), execute: async ({ q }) => q.length });",
     "export const looked = inference.generateText({ model, prompt: 'x', tools: { lookup }, stopWhen: isStepCount(2) });",
     "export const streamed = inference.streamText({ model: 'openai:gpt-5', prompt: 'hi' }).then((r) => r.text);",
+    // output as data, typed as the Output it stands for
+    "const Weather = z.object({ city: z.string(), temperature: z.number() });",
+    "export const city: Promise<string> = inference.generateText({ model, prompt: 'x', output: { type: 'object', schema: Weather } }).then((r) => r.output.city);",
+    "export const temps: Promise<number[]> = inference.generateText({ model, prompt: 'x', output: { type: 'array', element: Weather } }).then((r) => r.output.map((w) => w.temperature));",
+    "export const label: Promise<'bug' | 'feature'> = inference.generateText({ model, prompt: 'x', output: { type: 'choice', options: ['bug', 'feature'] } }).then((r) => r.output);",
+    "export const partial = inference.streamText({ model, prompt: 'x', output: { type: 'object', schema: Weather } }).then(async (r) => { for await (const p of r.partialOutputStream) { const c: string | undefined = p.city; void c; } });",
+    // an Output from ai types as it does in ai's own generateText
+    "export const viaOutput: Promise<number> = inference.generateText({ model, prompt: 'x', output: Output.object({ schema: Weather }) }).then((r) => r.output.temperature);",
+    "// @ts-expect-error a choice spec's output is one of its options",
+    "export const notLabel: Promise<'question'> = inference.generateText({ model, prompt: 'x', output: { type: 'choice', options: ['bug'] } }).then((r) => r.output);",
+    "// @ts-expect-error an object spec needs a schema",
+    "void inference.generateText({ model, prompt: 'x', output: { type: 'object' } });",
     "// @ts-expect-error a provider inference doesn't run",
     "void inference.generateText({ model: 'nope:x', prompt: 'hi' });",
     "// @ts-expect-error a model id without its provider",

@@ -64,12 +64,12 @@ export async function action(
     prompt: summaryPrompt || text,
   });
 
-  // Validate a JSON reply with the injected zod
-  const Classification = z.object({ intent: z.string(), confidence: z.number() });
-  const classified = Classification.parse(JSON.parse((await services.inference.generateText({
+  // Generate structured output with the injected zod
+  const { output: classified } = await services.inference.generateText({
     model: 'openai:gpt-5-mini',
-    prompt: `Classify the intent of this text as JSON {"intent", "confidence"}: ${text}`,
-  })).text));
+    prompt: `Classify the intent of this text: ${text}`,
+    output: { type: 'object', schema: z.object({ intent: z.string(), confidence: z.number() }) },
+  });
 
   // Log results
   services.logger.info('Analysis complete', { summary: result.text });
@@ -103,7 +103,7 @@ Actions receive a `services` object with access to:
 
 - **No bare Node.js imports** — actions run in a sandboxed scope. The compiler enforces this.
 - **Import types only** — use `import type` for `ActionMeta`, `Services`, `Z`. Runtime values come from function parameters.
-- **Structured output and tools need `ai`** (`Output`, `tool`), which actions can't import: put that model call in a service and call the service from the action.
+- **Model calls need no imports**: `output` is data (`{ type: 'object', schema }`, `{ type: 'choice', options }`, …), tools are plain `{ description, inputSchema, execute }` objects, and `stopWhen` is a function. See [Inference](services-and-data.md#inference).
 - **Files without `export const meta` are treated as inlined helpers** — they won't be compiled as standalone actions.
 - **Files prefixed with `_` are skipped** by the compiler.
 
