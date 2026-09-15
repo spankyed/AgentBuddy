@@ -5,24 +5,14 @@ import * as path from 'path'
 import type { SearchIndexConfig, EmbeddingResult, Occurrence, SearchIndex, EmbeddingModel } from './types/search-index'
 import type { ContentSection } from '../types'
 import type { EARS } from '@/__generated__/ears'
-import { getModelConfig, getModelDimensions } from './config/embedding-models'
+import { getModelConfig, getModelDimensions } from '../../embedding-models'
 import { getFastEmbedModel } from './config/fastembed-mapping'
-import { 
-  getModelsCachePath, 
-  ensureDirectoryExists,
-  getIndexFilePath,
-  getIndexMetadataPath,
-  getIndexMappingsPath,
-  getSearchIndicesPath
-} from '@abuddy/sdk/utils'
+import { ensureDirectoryExists } from '@abuddy/sdk/utils'
+import { getModelsCachePath, getIndexMetadataPath, getIndexMappingsPath, getIndexPath } from './paths'
 import { services } from '@/__generated__/services'
-import type { EmbeddingModelId as ApiEmbeddingModelId } from '@abuddy/sdk/models'
 
 // Lazy-loaded embedding models cache
 const embeddingModels = new Map<string, FlagEmbedding | null>()
-
-/** An API embedding model's id for services.inference (the user's key for its provider) */
-const inferenceModelId = (config: { provider: string; apiModelName?: string }) => `${config.provider}:${config.apiModelName}` as ApiEmbeddingModelId
 
 async function getOrInitEmbeddingModel(modelId: string): Promise<FlagEmbedding | null> {
   if (embeddingModels.has(modelId)) {
@@ -34,7 +24,7 @@ async function getOrInitEmbeddingModel(modelId: string): Promise<FlagEmbedding |
 
   let model: FlagEmbedding | null = null
   
-  if (config.provider === 'fastembed' && config.fastEmbedModel) {
+  if (config.kind === 'local') {
     const fastEmbedModel = getFastEmbedModel(config.fastEmbedModel)
     if (fastEmbedModel) {
       const cacheDir = getModelsCachePath()
@@ -59,7 +49,7 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
   const config = getModelConfig(modelId)
   if (!config) throw new Error(`Unknown embedding model: ${modelId}`)
   
-  if (config.provider === 'fastembed') {
+  if (config.kind === 'local') {
     const model = await getOrInitEmbeddingModel(modelId)
     if (!model) throw new Error(`Failed to initialize model: ${config.displayName}`)
     
@@ -73,7 +63,7 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
     }
   }
   
-  const { embedding } = await services.inference.embed({ model: inferenceModelId(config), value: text })
+  const { embedding } = await services.inference.embed({ model: config.id, value: text })
 
   return {
     text,
@@ -95,7 +85,7 @@ export async function embedTextsBatch(
   
   const results: EmbeddingResult[] = []
   
-  if (config.provider === 'fastembed') {
+  if (config.kind === 'local') {
     const model = await getOrInitEmbeddingModel(modelId)
     if (!model) throw new Error(`Failed to initialize model: ${config.displayName}`)
     
@@ -119,7 +109,7 @@ export async function embedTextsBatch(
   }
   
   // The AI SDK splits the values into the provider's batch size
-  const { embeddings } = await services.inference.embedMany({ model: inferenceModelId(config), values: texts })
+  const { embeddings } = await services.inference.embedMany({ model: config.id, values: texts })
   return embeddings.map((embedding, index) => ({
     text: texts[index],
     embedding: new Float32Array(embedding),
@@ -377,11 +367,11 @@ export function loadMappings(indexId: EARS.EntityId): Map<string, number> {
 }
 
 export function deleteIndexFiles(indexId: EARS.EntityId): void {
-  const indexDir = path.join(getSearchIndicesPath(), indexId)
+  const indexDir = getIndexPath(indexId)
   if (fs.existsSync(indexDir)) {
     fs.rmSync(indexDir, { recursive: true })
   }
 }
 
 // Export commonly used functions
-export { getModelDimensions as getVectorDimensions } from './config/embedding-models'
+export { getModelDimensions as getVectorDimensions } from '../../embedding-models'

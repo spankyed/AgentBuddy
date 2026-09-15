@@ -258,7 +258,7 @@ The contract, the app implementation and the callers depend on each other. They 
 
 - Who owns secret selection. Today the app reads default-setup's `general.secrets` through the SDK's `BuiltinRepositories` contract; the SDK owns the `Secret` entity.
 - Video generation (`generateVideo`): few of the providers give it.
-- The library's search index (`library/be/search-index`, behind `SEARCH_INDEX_FF`) embeds through `services.inference` but stays dormant: its `fastembed` and `usearch` dependencies aren't installed.
+- The library's search index (`library/be/search-index`, behind `SEARCH_INDEX_FF`) names its API embedding models by `provider:model` id and embeds through `services.inference`, but stays dormant: its `fastembed` and `usearch` dependencies aren't installed. Its `README.md` lists the call sites and the steps to turn it on.
 - *Done since:* the model catalog and the `llm` step's default model were refreshed (`fb06e736a`); agents, embeddings, images, speech, transcription and reranking run through `services.inference` (`createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`).
 
 ## Constraints

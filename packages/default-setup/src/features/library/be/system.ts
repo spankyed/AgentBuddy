@@ -1,4 +1,4 @@
-// TODO: [SEARCH_INDEX_FF] Reinstall deps: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
+// [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
@@ -12,7 +12,7 @@ import * as fs from 'fs/promises'
 import { libraryService } from './services/library'
 import './repository'
 import * as symlink from './repository/symlink'
-// [SEARCH_INDEX_FF] import { EMBEDDING_MODELS } from '@/features/library/be/search-index/config/embedding-models'
+// [SEARCH_INDEX_FF] import { DEFAULT_EMBEDDING_MODEL } from '@/features/library/embedding-models'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'

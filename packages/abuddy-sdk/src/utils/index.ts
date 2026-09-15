@@ -8,10 +8,9 @@ export * from './pure.ts';
 
 // --- Paths (direct) ---
 export {
-  getUserDataPath, getSearchIndicesPath, getModelsCachePath,
+  getUserDataPath, getDataDirPath,
   getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath,
   ensureDirectoryExists, createExportDir,
-  getIndexPath, getIndexFilePath, getIndexMetadataPath, getIndexMappingsPath,
   resolvePath,
 } from './paths.ts';
 

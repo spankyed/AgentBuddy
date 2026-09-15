@@ -99,29 +99,14 @@ export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc:
 // @public (undocumented)
 export function getAppVersion(): string;
 
-// @public (undocumented)
-export const getIndexFilePath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexMappingsPath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexMetadataPath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexPath: (indexId: string) => string;
+// @public
+export function getDataDirPath(name: string): string;
 
 // @internal
 export const getLmdbPath: () => string;
 
 // @internal
 export const getMediaPath: () => string;
-
-// @public (undocumented)
-export const getModelsCachePath: () => string;
-
-// @public (undocumented)
-export const getSearchIndicesPath: () => string;
 
 // @internal
 export const getSecretsLmdbPath: () => string;

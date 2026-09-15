@@ -147,7 +147,7 @@ export interface LibrarySystemContext {
 }
 
 // Library-internal re-exports from search-index subsystem
-export type { ModelProvider, EmbeddingModelId, EmbeddingModelConfig } from './search-index/types/embedding-models'
+export type { SearchEmbeddingModel, SearchEmbeddingModelId, LocalEmbeddingModel, InferenceEmbeddingModel } from '../embedding-models'
 export type {
   EmbeddingModel,
   IndexMetric,

@@ -28,12 +28,8 @@
     "src/**/*.ts", "src/**/*.vue", "tests/**/*.ts"
   ],
   "exclude": [
-    // Search-index implementation is dormant behind the SEARCH_INDEX_FF flag —
-    // every call site in library/be/system.ts is commented out. These three
-    // files import usearch / fastembed, which are not installed
-    // anywhere in the monorepo, so they cannot typecheck. Drop these entries
-    // when the flag is turned on and the deps are added. The sibling
-    // search-index/types/** is still live and stays included.
+    // [SEARCH_INDEX_FF] The dormant library search index: these import fastembed and usearch, which
+    // no workspace installs. src/features/library/be/search-index/README.md says how to turn it on.
     "src/features/library/be/search-index/repository.ts",
     "src/features/library/be/search-index/service.ts",
     "src/features/library/be/search-index/config/fastembed-mapping.ts"
