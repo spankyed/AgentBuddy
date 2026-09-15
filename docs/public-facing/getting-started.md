@@ -4,7 +4,7 @@ A **pack** is a self-contained extension for AgentBuddy. It can contribute backe
 
 ## Prerequisites
 
-- Node.js >= 20.6
+- Node.js >= 22
 - AgentBuddy installed
 - The `abuddy` CLI, from any of:
   - the app: **AgentBuddy → Install 'abuddy' command in PATH** (macOS; AgentBuddy Beta installs `abuddy-beta`)
@@ -17,7 +17,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 
 | Package | What it is |
 |---|---|
-| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) are peer dependencies, and so is TypeScript (5.3 or later). |
+| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) are peer dependencies, and so is TypeScript (5.7 or later). |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
 | `@abuddy/testing` | The Playwright fixture for pack E2E tests (`@playwright/test` is a peer). |

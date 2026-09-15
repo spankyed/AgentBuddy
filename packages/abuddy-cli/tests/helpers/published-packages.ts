@@ -12,7 +12,7 @@ const PACKAGE_DIRS: Record<string, string> = {
 /** Compilers consumers may use: the workspace TypeScript and the oldest the packages support (their typescript peer) */
 export const TSC_VERSIONS = {
   current: path.join(REPO_ROOT, 'node_modules', 'typescript', 'bin', 'tsc'),
-  '5.3': path.join(REPO_ROOT, 'packages', 'typescript-floor', 'node_modules', 'typescript', 'bin', 'tsc'),
+  '5.7': path.join(REPO_ROOT, 'packages', 'typescript-floor', 'node_modules', 'typescript', 'bin', 'tsc'),
 } as const;
 export type TscVersion = keyof typeof TSC_VERSIONS;
 /** Every TypeScript version × moduleResolution a consumer may use */

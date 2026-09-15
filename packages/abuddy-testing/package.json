@@ -21,7 +21,7 @@
     }
   },
   "engines": {
-    "node": ">=20.6.0"
+    "node": ">=22"
   },
   "scripts": {
     "build:package": "tsx ../../scripts/bundle-package.ts .",
