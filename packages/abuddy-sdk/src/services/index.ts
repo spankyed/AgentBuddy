@@ -10,7 +10,7 @@ import { inference, type InferenceService } from './inference.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
-export { createInferenceService, type InferenceService, type OutputSpec } from './inference.ts';
+export { createInferenceService, type InferenceModels, type InferenceService, type OutputSpec, type ResolveModel } from './inference.ts';
 export type { HostImplementedServices } from './host-services.ts';
 export type { ModelId, ProviderName } from './models.ts';
 

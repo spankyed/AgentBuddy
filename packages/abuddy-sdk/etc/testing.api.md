@@ -5,13 +5,20 @@
 ```ts
 
 import type { DeepPartial } from 'ai';
+import type { embed } from 'ai';
+import type { embedMany } from 'ai';
 import type { FlexibleSchema } from 'ai';
+import type { generateImage } from 'ai';
+import type { generateSpeech } from 'ai';
 import type { generateText } from 'ai';
 import type { InferSchema } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { streamText } from 'ai';
+import type { ToolLoopAgent } from 'ai';
+import type { ToolLoopAgentSettings } from 'ai';
 import type { ToolSet } from 'ai';
+import type { transcribe } from 'ai';
 
 // @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
@@ -25,19 +32,35 @@ export interface FakeInference extends InferenceService {
 }
 
 // @public
-export function fakeInference(reply: FakeInferenceReply | ((call: FakeInferenceCall) => FakeInferenceReply)): FakeInference;
+export function fakeInference(reply: FakeInferenceReply | ((call: FakeTextCall) => FakeInferenceReply), input?: FakeInferenceReplies): FakeInference;
 
 // @public
-export interface FakeInferenceCall {
-    instructions?: string;
-    messages: Array<{
-        role: 'user' | 'assistant' | 'tool';
-        text: string;
-    }>;
-    // (undocumented)
-    model: ModelId;
-    stream: boolean;
-    tools: string[];
+export type FakeInferenceCall = FakeTextCall | {
+    kind: 'embedding';
+    model: EmbeddingModelId;
+    values: string[];
+} | {
+    kind: 'image';
+    model: ImageModelId;
+    prompt?: string;
+    n: number;
+} | {
+    kind: 'speech';
+    model: SpeechModelId;
+    text: string;
+    voice?: string;
+} | {
+    kind: 'transcription';
+    model: TranscriptionModelId;
+    mediaType: string;
+};
+
+// @public
+export interface FakeInferenceReplies {
+    embedding?: (value: string) => number[];
+    image?: Uint8Array;
+    speech?: Uint8Array;
+    transcript?: string;
 }
 
 // @public
@@ -48,6 +71,21 @@ export type FakeInferenceReply = string | {
         input: unknown;
     }>;
 };
+
+// @public
+export interface FakeTextCall {
+    instructions?: string;
+    // (undocumented)
+    kind: 'text';
+    messages: Array<{
+        role: 'user' | 'assistant' | 'tool';
+        text: string;
+    }>;
+    // (undocumented)
+    model: ModelId;
+    stream: boolean;
+    tools: string[];
+}
 
 // @public
 export function registerSeedRuntime(runtime: SeedRuntime): void;

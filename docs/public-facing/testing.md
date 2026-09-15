@@ -95,14 +95,21 @@ Unit tests never reach a provider: `services.inference` (and so the `llm` step) 
 ```typescript
 import { mockInference } from '@abuddy/testing/harness';
 
-const inference = mockInference('A short summary');          // or (call) => reply, per model call
+const inference = mockInference('A short summary');          // or (call) => reply, per language model call
 // … run code that calls services.inference …
-expect(inference.calls[0]).toMatchObject({ model: 'anthropic:claude-sonnet-4-5', messages: [{ role: 'user', text: 'Summarize this note: …' }] });
+expect(inference.calls[0]).toMatchObject({ kind: 'text', model: 'anthropic:claude-sonnet-4-5', messages: [{ role: 'user', text: 'Summarize this note: …' }] });
+
+// Other kinds of model answer from the second argument; each has a default
+mockInference('unused', { embedding: (value) => [value.length, 0], image: pngBytes, speech: mp3Bytes, transcript: 'Buy milk' });
 ```
 
 - **A reply** is text, or `{ text?, toolCalls?: [{ toolName, input }] }`. Tool calls run your tools' `execute`, and the AI SDK calls the model again while `stopWhen` allows, so a function reply can answer tool results with text.
 - **Structured output:** reply with JSON; `output` (a spec like `{ type: 'object', schema }` or an `Output`) parses it as it would a real model's reply, and rejects what the schema rejects.
-- **`calls`** records each model call (one per step): `model`, `instructions`, `messages` (each message's text; tool calls and results as JSON), `tools` and `stream`.
+- **Agents** (`createAgent`) run on the same language model: each step is a call, answered by `reply`.
+- **Other kinds:** `embedding` (each value's vector, default `[value.length, 1, 0]`), `image` (default a 1×1 PNG), `speech` (default an empty MP3 tag) and `transcript` (default `'Fake transcript'`).
+- **`calls`** records each model call in order, with its `kind`:
+  - `text` (one per step): `model`, `instructions`, `messages` (each message's text; tool calls and results as JSON), `tools` and `stream`;
+  - `embedding`: `model`, `values`; `image`: `model`, `prompt`, `n`; `speech`: `model`, `text`, `voice`; `transcription`: `model`, `mediaType`.
 
 ## Flows
 

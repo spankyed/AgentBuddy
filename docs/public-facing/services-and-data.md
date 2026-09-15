@@ -85,14 +85,30 @@ The host implements operations on the app's stored data as a whole; packs call t
 
 ### Inference
 
-`services.inference` calls models with the keys the user stored in Settings → Secrets (or `<PROVIDER>_API_KEY` in the app's environment). Its two calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
+`services.inference` calls models with the keys the user stored in Settings → Secrets (or `<PROVIDER>_API_KEY` in the app's environment). Its calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
 
 | Call | Returns |
 |---|---|
 | `generateText(options)` | the AI SDK's `generateText` result: `text`, `output`, `toolCalls`, `steps`, `usage`, … |
 | `streamText(options)` | a promise of the AI SDK's `streamText` result: `stream` (parts), `textStream`, `text`, … |
+| `createAgent(settings)` | a promise of the AI SDK's `ToolLoopAgent`: `generate({ prompt })` and `stream({ prompt })` loop over `instructions`, `tools` and `output` until `stopWhen` (20 steps by default) |
+| `embed(options)` / `embedMany(options)` | the AI SDK's `embed` / `embedMany` results: `embedding` / `embeddings` |
+| `generateImage(options)` | the AI SDK's `generateImage` result: `image` (`uint8Array`, `base64`, `mediaType`) and `images` |
+| `generateSpeech(options)` | the AI SDK's `generateSpeech` result: `audio` |
+| `transcribe(options)` | the AI SDK's `transcribe` result: `text`, `segments`, `language` |
 
-Providers: `anthropic`, `openai`, `google`, `groq`, `mistral`, `cohere`. `ModelId` and the model catalog come from `@abuddy/sdk/models`.
+Each call takes models from the providers that give that kind (`providerCapabilities` in `@abuddy/sdk/models`); a model id from another provider doesn't compile (`EmbeddingModelId`, `ImageModelId`, `SpeechModelId`, `TranscriptionModelId`) and fails naming the provider at runtime:
+
+| Provider | Language | Embedding | Image | Speech | Transcription |
+|---|---|---|---|---|---|
+| `anthropic` | ✓ | | | | |
+| `openai` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `google` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `groq` | ✓ | | | | ✓ |
+| `mistral` | ✓ | ✓ | | ✓ | ✓ |
+| `cohere` | ✓ | ✓ | | | |
+
+`ModelId` and the language model catalog come from `@abuddy/sdk/models`.
 
 ```typescript
 import { isStepCount, tool } from 'ai';
@@ -129,6 +145,21 @@ const answer = await services.inference.generateText({ model: 'openai:gpt-5', pr
 // Streaming
 const stream = await services.inference.streamText({ model: 'google:gemini-2.5-pro', prompt: 'Draft a reply' });
 for await (const part of stream.textStream) process.stdout.write(part);
+
+// An agent: instructions, tools and output, reused across calls
+const planner = await services.inference.createAgent({
+  model: 'anthropic:claude-opus-5',
+  instructions: 'Turn notes into tasks.',
+  tools: { lookup },
+  output: { type: 'array', element: z.object({ task: z.string(), due: z.string().optional() }) },
+});
+const { output: tasks } = await planner.generate({ prompt: 'What do I need to do this week?' });
+
+// Embeddings, images, speech and transcription
+const { embeddings } = await services.inference.embedMany({ model: 'openai:text-embedding-3-small', values: ['Buy milk', 'Call Sam'] });
+const { image } = await services.inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk' });
+const { audio } = await services.inference.generateSpeech({ model: 'openai:gpt-4o-mini-tts', text: 'Buy milk' });
+const { text: heard } = await services.inference.transcribe({ model: 'groq:whisper-large-v3', audio: audio.uint8Array });
 ```
 
 - **`output` takes data or an `Output`.** The data forms mirror `ai`'s `Output` helpers, and `output` in the result is typed from them:

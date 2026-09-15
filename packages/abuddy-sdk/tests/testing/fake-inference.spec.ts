@@ -11,7 +11,7 @@ describe('fakeInference', () => {
     const result = await inference.generateText({ model: 'anthropic:claude-sonnet-4-5', instructions: 'Be brief', prompt: 'Say hello' });
     expect(result.text).toBe('Hello from the fake');
     expect(result.finishReason).toBe('stop');
-    expect(inference.calls).toEqual([{ model: 'anthropic:claude-sonnet-4-5', instructions: 'Be brief', messages: [{ role: 'user', text: 'Say hello' }], tools: [], stream: false }]);
+    expect(inference.calls).toEqual([{ kind: 'text', model: 'anthropic:claude-sonnet-4-5', instructions: 'Be brief', messages: [{ role: 'user', text: 'Say hello' }], tools: [], stream: false }]);
   });
 
   it('parses structured output from a JSON reply', async () => {
@@ -76,8 +76,8 @@ describe('fakeInference', () => {
     expect(executed).toEqual(['milk']);
     expect(result.text).toBe('Milk is dairy');
     expect(inference.calls).toHaveLength(2);
-    expect(inference.calls[0].tools).toEqual(['lookup']);
-    expect(inference.calls[1].messages).toEqual([
+    expect(inference.calls[0]).toMatchObject({ kind: 'text', tools: ['lookup'] });
+    expect(inference.calls[1]).toHaveProperty('messages', [
       { role: 'user', text: 'What is milk?' },
       { role: 'assistant', text: JSON.stringify({ toolName: 'lookup', input: { word: 'milk' } }) },
       { role: 'tool', text: JSON.stringify({ type: 'text', value: 'milk means dairy' }) },
@@ -94,9 +94,60 @@ describe('fakeInference', () => {
     expect(inference.calls).toEqual([expect.objectContaining({ model: 'google:gemini-2.5-pro', stream: true })]);
   });
 
+  it('runs an agent: its instructions, tools and structured output across steps', async () => {
+    const searched: string[] = [];
+    const search = tool({ description: 'Search notes', inputSchema: z.object({ query: z.string() }), execute: async ({ query }) => { searched.push(query); return ['Buy milk'] } });
+    const inference = fakeInference((call) => call.messages.some((m) => m.role === 'tool')
+      ? JSON.stringify({ tasks: ['Buy milk'] })
+      : { toolCalls: [{ toolName: 'search', input: { query: 'todo' } }] });
+
+    const agent = await inference.createAgent({
+      model: 'anthropic:claude-opus-5',
+      instructions: 'Find my tasks',
+      tools: { search },
+      output: { type: 'object', schema: z.object({ tasks: z.array(z.string()) }) },
+    });
+    const result = await agent.generate({ prompt: 'What do I need to do?' });
+
+    expect(searched).toEqual(['todo']);
+    expect(result.output).toEqual({ tasks: ['Buy milk'] });
+    expect(inference.calls).toEqual([
+      expect.objectContaining({ kind: 'text', model: 'anthropic:claude-opus-5', instructions: 'Find my tasks', tools: ['search'] }),
+      expect.objectContaining({ kind: 'text', model: 'anthropic:claude-opus-5' }),
+    ]);
+  });
+
+  it('embeds values with the scripted vectors', async () => {
+    const inference = fakeInference('unused', { embedding: (value) => [value.length, 0] });
+    expect((await inference.embed({ model: 'openai:text-embedding-3-small', value: 'milk' })).embedding).toEqual([4, 0]);
+    expect((await inference.embedMany({ model: 'cohere:embed-v4.0', values: ['a', 'bread'] })).embeddings).toEqual([[1, 0], [5, 0]]);
+    expect(inference.calls).toEqual([
+      { kind: 'embedding', model: 'openai:text-embedding-3-small', values: ['milk'] },
+      { kind: 'embedding', model: 'cohere:embed-v4.0', values: ['a', 'bread'] },
+    ]);
+  });
+
+  it('generates images, speech and transcripts from the scripted replies, with defaults', async () => {
+    const inference = fakeInference('unused', { transcript: 'Buy milk' });
+
+    const { images } = await inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk', n: 2 });
+    expect(images.map((image) => image.mediaType)).toEqual(['image/png', 'image/png']);
+    const { audio } = await inference.generateSpeech({ model: 'mistral:voxtral-mini-tts-latest', text: 'Buy milk', voice: 'alloy' });
+    expect(audio.uint8Array.length).toBeGreaterThan(0);
+    expect((await inference.transcribe({ model: 'groq:whisper-large-v3', audio: audio.uint8Array })).text).toBe('Buy milk');
+
+    expect(inference.calls).toEqual([
+      { kind: 'image', model: 'openai:gpt-image-1', prompt: 'A carton of milk', n: 2 },
+      { kind: 'speech', model: 'mistral:voxtral-mini-tts-latest', text: 'Buy milk', voice: 'alloy' },
+      expect.objectContaining({ kind: 'transcription', model: 'groq:whisper-large-v3' }),
+    ]);
+  });
+
   it("is what unmocked tests don't have: the test host's inference fails naming the fix", async () => {
     startTestRuntime();
     await expect(hostInference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('mock inference with mockInference(reply)');
     await expect(hostInference.streamText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('No models in unit tests');
+    await expect(hostInference.createAgent({ model: 'openai:gpt-5' })).rejects.toThrow('No models in unit tests');
+    await expect(hostInference.embed({ model: 'openai:text-embedding-3-small', value: 'hi' })).rejects.toThrow('No models in unit tests');
   });
 });

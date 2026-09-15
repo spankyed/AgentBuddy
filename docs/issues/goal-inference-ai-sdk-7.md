@@ -251,10 +251,9 @@ The contract, the app implementation and the callers depend on each other. They 
 
 ## Deferred
 
-- Agents (`ToolLoopAgent`) behind `services.inference`, when a feature needs one.
-- Who owns secret selection. Today the app reads default-setup's `general.secrets` through a cast view; the SDK owns the `Secret` entity.
-- Refreshing the model catalog and the `llm` step's default model.
-- Embeddings, images and speech through the same service.
+- Who owns secret selection. Today the app reads default-setup's `general.secrets` through the SDK's `BuiltinRepositories` contract; the SDK owns the `Secret` entity.
+- Video generation (`generateVideo`): few of the providers give it.
+- *Done since:* the model catalog and the `llm` step's default model were refreshed (`fb06e736a`); agents, embeddings, images, speech and transcription run through `services.inference` (`createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`).
 
 ## Constraints
 

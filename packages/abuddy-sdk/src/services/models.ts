@@ -7,6 +7,28 @@ export type ProviderName = Exclude<SecretProvider, 'custom'>;
 /** A model to run, as `provider:model` (e.g. `anthropic:claude-sonnet-4-5`) */
 export type ModelId = `${ProviderName}:${string}`;
 
+/** The kinds of model `services.inference` runs */
+export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription';
+
+/** The kinds of model each provider gives through `services.inference` */
+export const providerCapabilities = {
+  anthropic: ['language'],
+  openai: ['language', 'embedding', 'image', 'speech', 'transcription'],
+  google: ['language', 'embedding', 'image', 'speech', 'transcription'],
+  groq: ['language', 'transcription'],
+  mistral: ['language', 'embedding', 'speech', 'transcription'],
+  cohere: ['language', 'embedding'],
+} as const satisfies Record<ProviderName, readonly ModelKind[]>;
+
+type ProvidersOf<K extends ModelKind> = { [P in ProviderName]: K extends (typeof providerCapabilities)[P][number] ? P : never }[ProviderName];
+
+/** A model of a kind, as `provider:model`, from a provider that gives that kind */
+export type ModelIdOf<K extends ModelKind> = `${ProvidersOf<K>}:${string}`;
+export type EmbeddingModelId = ModelIdOf<'embedding'>;
+export type ImageModelId = ModelIdOf<'image'>;
+export type SpeechModelId = ModelIdOf<'speech'>;
+export type TranscriptionModelId = ModelIdOf<'transcription'>;
+
 /*─────────────────────────────────────────────────────────────────
  * Model Catalog
  *─────────────────────────────────────────────────────────────────*/

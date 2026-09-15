@@ -21,7 +21,7 @@ describe('llm step', () => {
 
     const sent = await run({ model: 'openai:gpt-4o-mini', prompt: 'Summarize the memo', systemPrompt: 'Be brief', temperature: 0.2 });
 
-    expect(inference.calls).toEqual([{ model: 'openai:gpt-4o-mini', instructions: 'Be brief', messages: [{ role: 'user', text: 'Summarize the memo' }], tools: [], stream: false }]);
+    expect(inference.calls).toEqual([{ kind: 'text', model: 'openai:gpt-4o-mini', instructions: 'Be brief', messages: [{ role: 'user', text: 'Summarize the memo' }], tools: [], stream: false }]);
     expect(sent).toEqual([expect.objectContaining({ type: 'COMPLETE', result: expect.objectContaining({ text: 'A short summary' }) })]);
   });
 

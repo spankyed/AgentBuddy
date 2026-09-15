@@ -103,7 +103,7 @@ Actions receive a `services` object with access to:
 
 - **No bare Node.js imports** — actions run in a sandboxed scope. The compiler enforces this.
 - **Import types only** — use `import type` for `ActionMeta`, `Services`, `Z`. Runtime values come from function parameters.
-- **Model calls need no imports**: `output` is data (`{ type: 'object', schema }`, `{ type: 'choice', options }`, …), tools are plain `{ description, inputSchema, execute }` objects, and `stopWhen` is a function. See [Inference](services-and-data.md#inference).
+- **Model calls need no imports**: `output` is data (`{ type: 'object', schema }`, `{ type: 'choice', options }`, …), tools are plain `{ description, inputSchema, execute }` objects, and `stopWhen` is a function. Agents, embeddings, images and speech work the same way (`services.inference.createAgent`, `embed`, `generateImage`, …). See [Inference](services-and-data.md#inference).
 - **Files without `export const meta` are treated as inlined helpers** — they won't be compiled as standalone actions.
 - **Files prefixed with `_` are skipped** by the compiler.
 

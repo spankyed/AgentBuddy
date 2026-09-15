@@ -12,6 +12,7 @@ import type { LogEvent } from '../logger/index.ts';
 import type { ReportSystemErrorInput } from '../utils/index.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { TraceStore } from '../services/trace-store.ts';
+import type { InferenceService } from '../services/inference.ts';
 
 /** The test app's root event bus: what clients (and the test) send the backend, and what it sends them */
 export interface TestRootEvents extends RootEvents {
@@ -123,7 +124,11 @@ export function registerTestHostModules(resetData: () => void): void {
     } satisfies AppDataService,
     traceStore,
     // No test reaches a provider: code calling a model fails until the test mocks inference
-    inference: { generateText: unmockedInference, streamText: unmockedInference },
+    inference: {
+      generateText: unmockedInference, streamText: unmockedInference, createAgent: unmockedInference,
+      embed: unmockedInference, embedMany: unmockedInference, generateImage: unmockedInference,
+      generateSpeech: unmockedInference, transcribe: unmockedInference,
+    } satisfies Record<keyof InferenceService, unknown>,
   };
   for (const [key, mod] of Object.entries(modules)) {
     if (!registered(key)) registerHostModule(key, mod);

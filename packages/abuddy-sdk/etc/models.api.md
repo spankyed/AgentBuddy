@@ -8,6 +8,12 @@
 export const availableModels: ModelCatalogEntry[];
 
 // @public (undocumented)
+export type EmbeddingModelId = ModelIdOf<'embedding'>;
+
+// @public (undocumented)
+export type ImageModelId = ModelIdOf<'image'>;
+
+// @public (undocumented)
 export const isModelId: (id: string) => id is ModelId;
 
 // @public (undocumented)
@@ -33,16 +39,38 @@ export interface ModelCatalogEntry {
 export type ModelId = `${ProviderName}:${string}`;
 
 // @public
+export type ModelIdOf<K extends ModelKind> = `${ProvidersOf<K>}:${string}`;
+
+// @public
+export type ModelKind = 'language' | 'embedding' | 'image' | 'speech' | 'transcription';
+
+// @public
 export function parseModelId(id: string): {
     provider: ProviderName;
     model: string;
 } | undefined;
 
 // @public
+export const providerCapabilities: {
+    readonly anthropic: readonly ["language"];
+    readonly openai: readonly ["language", "embedding", "image", "speech", "transcription"];
+    readonly google: readonly ["language", "embedding", "image", "speech", "transcription"];
+    readonly groq: readonly ["language", "transcription"];
+    readonly mistral: readonly ["language", "embedding", "speech", "transcription"];
+    readonly cohere: readonly ["language", "embedding"];
+};
+
+// @public
 export const providerLabels: Record<ProviderName, string>;
 
 // @public
 export type ProviderName = Exclude<SecretProvider, 'custom'>;
+
+// @public (undocumented)
+export type SpeechModelId = ModelIdOf<'speech'>;
+
+// @public (undocumented)
+export type TranscriptionModelId = ModelIdOf<'transcription'>;
 
 // (No @packageDocumentation comment for this package)
 

@@ -3,7 +3,7 @@
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { availableModels, parseModelId, providerLabels } from '@abuddy/sdk/models';
+import { availableModels, parseModelId, providerCapabilities, providerLabels, type ModelKind } from '@abuddy/sdk/models';
 
 const secrets = new Map<string, string>();
 vi.mock('../../src/settings/index.ts', () => ({
@@ -13,7 +13,8 @@ vi.mock('../../src/settings/index.ts', () => ({
   },
 }));
 
-const { inference, languageModel } = await import('../../src/services/inference.ts');
+const { inference, model: resolveModel } = await import('../../src/services/inference.ts');
+const languageModel = (id: string) => resolveModel('language', id as never);
 
 const PROVIDERS = Object.keys(providerLabels);
 
@@ -79,6 +80,23 @@ describe("the app's inference service", () => {
     }
   });
 
+  it('resolves every kind of model each provider gives, and rejects the kinds it does not', async () => {
+    const kinds: ModelKind[] = ['language', 'embedding', 'image', 'speech', 'transcription'];
+    for (const provider of PROVIDERS) secrets.set(provider, 'stored-key');
+    for (const [provider, gives] of Object.entries(providerCapabilities)) {
+      for (const kind of kinds) {
+        const id = `${provider}:some-model` as never;
+        if ((gives as readonly ModelKind[]).includes(kind)) {
+          const resolved = await resolveModel(kind, id) as { provider: string; modelId: string };
+          expect(resolved.provider.split('.')[0], `${provider} ${kind}`).toBe(provider);
+          expect(resolved.modelId).toBe('some-model');
+        } else {
+          await expect(resolveModel(kind, id), `${provider} ${kind}`).rejects.toThrow(`${providerLabels[provider as keyof typeof providerLabels]} doesn't provide ${kind} models`);
+        }
+      }
+    }
+  });
+
   it('rejects an id whose provider it has no model for', async () => {
     await expect(languageModel('nope:model' as never)).rejects.toThrow('Unknown model provider in "nope:model"');
     await expect(languageModel('gpt-5' as never)).rejects.toThrow('as provider:model');
@@ -112,6 +130,22 @@ describe("the app's inference service", () => {
 
     expect(result.text).toBe('Hello from OpenAI');
     expect(requests.map((headers) => headers.authorization)).toEqual(['Bearer env-openai-key']);
+  });
+
+  it('embeds through OpenAI with the key stored for it', async () => {
+    const { baseURL, requests, bodies } = await provider({
+      object: 'list', model: 'text-embedding-3-small',
+      data: [{ object: 'embedding', index: 0, embedding: [0.25, 0.5] }],
+      usage: { prompt_tokens: 1, total_tokens: 1 },
+    });
+    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    secrets.set('openai', 'stored-openai-key');
+
+    const { embedding } = await inference.embed({ model: 'openai:text-embedding-3-small', value: 'milk' });
+
+    expect(embedding).toEqual([0.25, 0.5]);
+    expect(requests.map((headers) => headers.authorization)).toEqual(['Bearer stored-openai-key']);
+    expect(bodies[0]).toMatchObject({ model: 'text-embedding-3-small', input: ['milk'] });
   });
 
   it('asks the provider for the structured output a spec describes, and parses the reply', async () => {

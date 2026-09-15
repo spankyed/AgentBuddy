@@ -10,7 +10,7 @@ import type { EARS } from '../types/entities.ts';
 import { registerTestHostModules } from './host.ts';
 
 export { testRootEvents, takeSystemErrors, type TestRootEvents } from './host.ts';
-export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReply } from './fake-inference.ts';
+export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories

@@ -5,14 +5,25 @@
 ```ts
 
 import type { DeepPartial } from 'ai';
+import type { embed } from 'ai';
+import type { EmbeddingModel } from 'ai';
+import type { embedMany } from 'ai';
 import type { FlexibleSchema } from 'ai';
+import type { generateImage } from 'ai';
+import type { generateSpeech } from 'ai';
 import type { generateText } from 'ai';
+import type { ImageModel } from 'ai';
 import type { InferSchema } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { SpeechModel } from 'ai';
 import type { streamText } from 'ai';
+import type { ToolLoopAgent } from 'ai';
+import type { ToolLoopAgentSettings } from 'ai';
 import type { ToolSet } from 'ai';
+import type { transcribe } from 'ai';
+import type { TranscriptionModel } from 'ai';
 
 // @public
 export interface AppDataService {
@@ -39,7 +50,7 @@ export interface BackupInfo {
 }
 
 // @internal
-export function createInferenceService(resolveModel: (id: ModelId) => LanguageModel | Promise<LanguageModel>): InferenceService;
+export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
 // @public
 export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
@@ -80,10 +91,30 @@ export interface HostServices {
     traceStore: TraceStore;
 }
 
+// @internal
+export interface InferenceModels {
+    // (undocumented)
+    embedding: EmbeddingModel;
+    // (undocumented)
+    image: ImageModel;
+    // (undocumented)
+    language: LanguageModel;
+    // (undocumented)
+    speech: SpeechModel;
+    // (undocumented)
+    transcription: TranscriptionModel;
+}
+
 // @public
 export interface InferenceService {
+    createAgent<CALL_OPTIONS = never, TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = never>(settings: InferenceOptions<ToolLoopAgentSettings<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>, O>): Promise<ToolLoopAgent<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>>;
+    embed(options: WithModelId<Parameters<typeof embed>[0], EmbeddingModelId>): ReturnType<typeof embed>;
+    embedMany(options: WithModelId<Parameters<typeof embedMany>[0], EmbeddingModelId>): ReturnType<typeof embedMany>;
+    generateImage(options: WithModelId<Parameters<typeof generateImage>[0], ImageModelId>): ReturnType<typeof generateImage>;
+    generateSpeech(options: WithModelId<Parameters<typeof generateSpeech>[0], SpeechModelId>): ReturnType<typeof generateSpeech>;
     generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string>>(options: InferenceOptions<Parameters<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): ReturnType<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>;
     streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string, never>>(options: InferenceOptions<Parameters<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
+    transcribe(options: WithModelId<Parameters<typeof transcribe>[0], TranscriptionModelId>): ReturnType<typeof transcribe>;
 }
 
 // @public
@@ -124,6 +155,9 @@ export type ProviderName = Exclude<SecretProvider, 'custom'>;
 
 // @public (undocumented)
 export function registerThreadTeardown(fn: (threadId: string) => void): void;
+
+// @internal
+export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => InferenceModels[K] | Promise<InferenceModels[K]>;
 
 // @public (undocumented)
 export function runThreadTeardown(threadId: string): void;

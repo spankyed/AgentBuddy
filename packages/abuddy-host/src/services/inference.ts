@@ -1,12 +1,20 @@
 // services.inference: AI SDK 7 calls on the provider a `provider:model` id names, with the user's key
 // for that provider. A provider's package loads on its first call.
-import type { LanguageModel } from 'ai';
 import type { EARS } from '@abuddy/sdk';
-import { createInferenceService, type ModelId, type ProviderName } from '@abuddy/sdk/services';
-import { parseModelId } from '@abuddy/sdk/models';
+import { createInferenceService, type ResolveModel, type ProviderName } from '@abuddy/sdk/services';
+import { parseModelId, providerCapabilities, providerLabels, type ModelKind } from '@abuddy/sdk/models';
 import { settingsRepository } from '../settings/index.ts';
 
-type ProviderFactory = (options: { apiKey: string }) => { languageModel(modelId: string): LanguageModel };
+/** A provider package's factory: the provider it builds has a method per kind of model it gives */
+type ProviderFactory = (options: { apiKey: string }) => object;
+
+const MODEL_METHODS = {
+  language: 'languageModel',
+  embedding: 'embeddingModel',
+  image: 'imageModel',
+  speech: 'speechModel',
+  transcription: 'transcriptionModel',
+} as const satisfies Record<ModelKind, string>;
 
 const PROVIDERS: Record<ProviderName, () => Promise<ProviderFactory>> = {
   anthropic: async () => (await import('@ai-sdk/anthropic')).createAnthropic,
@@ -26,12 +34,15 @@ function apiKey(provider: ProviderName): string {
   return key;
 }
 
-/** The AI SDK model an id names, built with the provider's current key */
-export async function languageModel(id: ModelId): Promise<LanguageModel> {
+/** The AI SDK model of `kind` an id names, built with its provider's current key */
+export const model: ResolveModel = async (kind, id) => {
   const parts = parseModelId(id);
   if (!parts) throw new Error(`Unknown model provider in "${id}": expected one of ${Object.keys(PROVIDERS).join(', ')}, as provider:model`);
-  const create = await PROVIDERS[parts.provider]();
-  return create({ apiKey: apiKey(parts.provider) }).languageModel(parts.model);
-}
+  if (!(providerCapabilities[parts.provider] as readonly ModelKind[]).includes(kind)) {
+    throw new Error(`${providerLabels[parts.provider]} doesn't provide ${kind} models ("${id}")`);
+  }
+  const provider = (await PROVIDERS[parts.provider]())({ apiKey: apiKey(parts.provider) }) as Record<string, (modelId: string) => never>;
+  return provider[MODEL_METHODS[kind]](parts.model);
+};
 
-export const inference = createInferenceService(languageModel);
+export const inference = createInferenceService(model);

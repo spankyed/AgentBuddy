@@ -47,11 +47,11 @@ export function mockService<S extends object = Record<string, object>, K extends
 }
 
 /**
- * Mocks `services.inference` for the current test with a `fakeInference` answering `reply`; returns it, so
- * the test can assert its `calls`.
+ * Mocks `services.inference` for the current test with a `fakeInference` whose language model answers `reply` and
+ * whose other models answer `replies`; returns it, so the test can assert its `calls`.
  */
-export function mockInference(reply: Parameters<typeof fakeInference>[0]): FakeInference {
-  const inference = fakeInference(reply);
+export function mockInference(...args: Parameters<typeof fakeInference>): FakeInference {
+  const inference = fakeInference(...args);
   mockService('inference', inference);
   return inference;
 }
