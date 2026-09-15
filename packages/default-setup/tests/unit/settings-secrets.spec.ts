@@ -1,5 +1,5 @@
 // API keys in default-setup: the settings system refreshes its plugin and threads when the host's stored keys change
-// (never with values), settings updates can't carry keys, CLI paths live in the code plugin, and 0.3.15 moves old settings.
+// (never with values), CLI paths live in the code plugin, and 0.3.15 moves old settings.
 import { describe, expect, it } from 'vitest';
 import { addTestSecret, startApp } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
@@ -29,14 +29,6 @@ describe('settings and stored API keys', () => {
     expect(repository.chatQueries.hasRequiredApiKeys()).toBe(false);
     services.secrets.select(services.secrets.list().find((secret) => secret.label === 'Personal')!.id);
     expect(repository.chatQueries.hasRequiredApiKeys()).toBe(true);
-  });
-
-  it('drops a settings update addressed to API keys instead of storing it', async () => {
-    const app = await startApp({ systems: ['settings'] });
-    await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'general', label: 'secrets', path: ['secrets_operation'], value: { type: 'CREATE_API_KEY', provider: 'openai', value: 'sk-should-not-be-stored-123456' } });
-    expect(JSON.stringify(repository.settingsQueries.getSettings())).not.toContain('sk-should-not-be-stored');
-    expect(app.emitted('settings').some((e) => e.type === 'SETTINGS_UPDATED')).toBe(false);
   });
 
   it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {

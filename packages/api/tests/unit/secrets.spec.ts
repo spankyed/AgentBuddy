@@ -1,5 +1,5 @@
-// API keys in the API: the secrets procedures (the only way a value reaches the backend), logs and error reports
-// that redact keys, and keys moved out of the old plain-text secrets directory.
+// API keys in the API: the secrets procedures (the only way a value reaches the backend), and logs and error reports
+// that redact keys.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -17,10 +17,7 @@ const { rootEvents } = await import('@/core/router/bus-emitter');
 const { createLogger } = await import('@/core/shared/debug/logger');
 const { originalConsole } = await import('@/core/shared/debug/log-capture');
 const { reportSystemError } = await import('@/core/shared/system-errors');
-const { migrateLegacySecrets, readLegacySecrets } = await import('@/core/persistence/legacy-secrets');
-const { openEnvAt } = await import('@/core/persistence/lmdb/envs');
-const { makeLmdbAdapter } = await import('@/core/persistence/lmdb/adapter');
-const { secretsStore, createSecretsStore, memoryKeyVault, KeyVaultUnavailableError } = await import('@abuddy/host/secrets');
+const { secretsStore } = await import('@abuddy/host/secrets');
 const { services } = await import('@abuddy/sdk/services');
 const { registerDesignations } = await import('@abuddy/sdk/designations');
 
@@ -104,67 +101,5 @@ describe('logs and error reports', () => {
     stop();
     expect(JSON.stringify(outgoing)).not.toContain('SPECKEY');
     expect(JSON.stringify(outgoing)).toContain('[redacted]');
-  });
-});
-
-describe('keys from the old plain-text secrets directory', () => {
-  /** An old secrets directory with Secret rows as the EARS LMDB adapter wrote them */
-  function legacyDir(rows: Array<{ id: string; attrs: Record<string, unknown> }>): string {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'legacy-secrets-'));
-    const dbs = openEnvAt(dir);
-    const adapter = makeLmdbAdapter(dbs);
-    for (const { id, attrs } of rows) {
-      adapter.onCreateEntity(id, 'Secret');
-      for (const [kind, value] of Object.entries(attrs)) adapter.onPutAttr(kind, id, 0, value, [value]);
-    }
-    adapter.close?.();
-    dbs.root.close();
-    return dir;
-  }
-
-  const rows = [
-    { id: 'Secret-old1', attrs: { provider: 'openai', encryptedValue: 'sk-old-openai-1234567890', createdAt: 10, updatedAt: 20 } },
-    { id: 'Secret-old2', attrs: { provider: 'anthropic', encryptedValue: 'sk-ant-old-1234567890', createdAt: 11 } },
-    { id: 'Secret-old3', attrs: { provider: 'custom', customName: 'GitHub', encryptedValue: 'ghp_old_1234567890', createdAt: 12 } },
-  ];
-
-  it('imports them with their ids, labels and selection, then deletes the directory; a second run changes nothing', () => {
-    const dir = legacyDir(rows);
-    expect(readLegacySecrets(dir).map((secret) => [secret.id, secret.label])).toEqual([['Secret-old1', 'OpenAI'], ['Secret-old2', 'Anthropic'], ['Secret-old3', 'GitHub']]);
-
-    expect(migrateLegacySecrets(dir)).toBe('imported');
-    expect(fs.existsSync(dir)).toBe(false);
-    expect(secretsStore.list()).toEqual([
-      { id: 'Secret-old1', provider: 'openai', label: 'OpenAI', selected: true, createdAt: 10, updatedAt: 20 },
-      { id: 'Secret-old2', provider: 'anthropic', label: 'Anthropic', selected: true, createdAt: 11 },
-      { id: 'Secret-old3', provider: 'custom', label: 'GitHub', selected: true, createdAt: 12 },
-    ]);
-    expect(secretsStore.keyFor('openai')).toBe('sk-old-openai-1234567890');
-    expect(migrateLegacySecrets(dir)).toBe('none');
-  });
-
-  it('keeps the directory while there is nowhere to store keys, and imports it later', () => {
-    const dir = legacyDir(rows.slice(0, 1));
-    const unavailable = { backend: 'Secret Service', protection: 'os-keystore' as const, get: () => { throw new KeyVaultUnavailableError('Secret Service', 'no dbus'); }, set: () => { throw new KeyVaultUnavailableError('Secret Service', 'no dbus'); }, delete: () => {} };
-    const store = createSecretsStore({ filePath: path.join(dir, '..', `${path.basename(dir)}.json`), osVault: () => unavailable, fileVault: () => memoryKeyVault('unprotected') });
-
-    expect(migrateLegacySecrets(dir, store)).toBe('deferred');
-    expect(fs.existsSync(dir)).toBe(true);
-    store.allowUnprotected();
-    expect(migrateLegacySecrets(dir, store)).toBe('imported');
-    expect(store.keyFor('openai')).toBe('sk-old-openai-1234567890');
-  });
-
-  it("keeps the directory when an imported key doesn't read back", () => {
-    const dir = legacyDir(rows.slice(0, 1));
-    const store = { ...secretsStore, canRead: () => false };
-    expect(() => migrateLegacySecrets(dir, store)).toThrow(`Imported API keys don't read back (Secret-old1); ${dir} was kept`);
-    expect(fs.existsSync(dir)).toBe(true);
-  });
-
-  it('deletes an old directory with no keys in it', () => {
-    const dir = legacyDir([]);
-    expect(migrateLegacySecrets(dir)).toBe('none');
-    expect(fs.existsSync(dir)).toBe(false);
   });
 });

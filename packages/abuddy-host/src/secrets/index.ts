@@ -6,7 +6,7 @@ import { getSecretsFilePath } from '@abuddy/sdk/utils';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { fileKeyVault, osKeyVault } from './vault.ts';
 
-export { createSecretsStore, type ImportedSecret, type SecretsStore, type SecretsStoreOptions } from './store.ts';
+export { createSecretsStore, type SecretsStore, type SecretsStoreOptions } from './store.ts';
 export { fileKeyVault, memoryKeyVault, osKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 let store: SecretsStore | undefined;
@@ -36,8 +36,6 @@ export const secretsStore: SecretsStore = {
   add: (provider, label, value) => appStore().add(provider, label, value),
   replaceValue: (id, value) => appStore().replaceValue(id, value),
   keyFor: (provider) => appStore().keyFor(provider),
-  canRead: (id) => appStore().canRead(id),
   allowUnprotected: () => appStore().allowUnprotected(),
-  importSecrets: (secrets) => appStore().importSecrets(secrets),
   clearAll: () => appStore().clearAll(),
 };

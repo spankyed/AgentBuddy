@@ -9,7 +9,7 @@ export * from './pure.ts';
 // --- Paths (direct) ---
 export {
   getUserDataPath, getDataDirPath,
-  getLmdbPath, getVolatileLmdbPath, getLegacySecretsLmdbPath, getSecretsFilePath, getMediaPath,
+  getLmdbPath, getVolatileLmdbPath, getSecretsFilePath, getMediaPath,
   ensureDirectoryExists, createExportDir,
   resolvePath,
 } from './paths.ts';

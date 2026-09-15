@@ -6,7 +6,6 @@ import { providerLabels } from '@abuddy/sdk/models';
 import type { SecretsSnapshot } from '@abuddy/sdk/rpc';
 import { secretsStore } from '@abuddy/host/secrets';
 import { rootEvents } from '@/core/router/bus-emitter';
-import { migrateLegacySecrets } from '@/core/persistence/legacy-secrets';
 import { procedure, router } from './trpc';
 
 const provider = z.enum([...(Object.keys(providerLabels) as [string, ...string[]]), 'custom']) as z.ZodType<SecretsSnapshot['secrets'][number]['provider']>;
@@ -50,8 +49,6 @@ export const secretsRouter = router({
   }),
   allowUnprotected: procedure.mutation(() => {
     secretsStore.allowUnprotected();
-    // Keys from the old store that waited for somewhere to put them
-    migrateLegacySecrets();
     return changed();
   }),
 });

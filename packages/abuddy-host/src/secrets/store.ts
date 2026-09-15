@@ -13,9 +13,6 @@ interface EncryptedValue { keyId: string; iv: string; tag: string; data: string 
 interface StoredSecret extends SecretInfo { value: EncryptedValue }
 interface SecretsFile { format: number; protection: 'os-keystore' | 'unprotected'; keyId: string; secrets: StoredSecret[] }
 
-/** A key from an earlier store, imported with its value */
-export interface ImportedSecret { id: string; provider: SecretProvider; label: string; value: string; createdAt: number; updatedAt?: number }
-
 export interface SecretsStoreOptions {
   /** The store's file; its directory also holds the file vault's data keys */
   filePath: string;
@@ -36,12 +33,8 @@ export interface SecretsStore {
   replaceValue(id: string, value: string): void;
   /** The selected key's value for a provider; throws naming the fix when there's none or it can't be read */
   keyFor(provider: ProviderName): string;
-  /** Whether a stored key's value decrypts here */
-  canRead(id: string): boolean;
   /** Keeps data keys in a file from now on, where the OS has no credential store */
   allowUnprotected(): void;
-  /** Adds keys from an earlier store, skipping ids already stored */
-  importSecrets(secrets: ImportedSecret[]): void;
   /** Deletes every stored key (the vault's data keys stay, for reuse) */
   clearAll(): void;
 }
@@ -185,18 +178,6 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       return decrypt(file, secretRules.selectedFor(file.secrets, provider));
     },
 
-    canRead(id) {
-      const file = read();
-      const secret = file.secrets.find((candidate) => candidate.id === id);
-      if (!secret) return false;
-      try {
-        decrypt(file, secret);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-
     allowUnprotected() {
       const file = read();
       if (options.useFileVault || file.protection === 'unprotected') return;
@@ -225,31 +206,9 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       }
     },
 
-    importSecrets(imported) {
-      const file = read();
-      const known = new Set(file.secrets.map((secret) => secret.id));
-      const incoming = imported.filter((secret) => !known.has(secret.id));
-      if (incoming.length === 0) return;
-      assertCanStore(file);
-      for (const { value, ...meta } of incoming) {
-        const labelled = { ...meta, label: uniqueLabel(file.secrets, meta.provider, meta.label) };
-        const added = secretRules.add(file.secrets, { ...labelled, value: undefined as never });
-        const encrypted = encrypt(file, meta.id, meta.provider, value);
-        file.secrets = added.map((secret) => secret.id === meta.id ? { ...secret, value: encrypted } : secret);
-      }
-      write(file);
-    },
-
     clearAll() {
       fs.rmSync(options.filePath, { force: true });
     },
   };
 }
 
-/** `label`, or `label 2`, `label 3`… when the provider already has a key labelled so */
-function uniqueLabel(secrets: readonly SecretInfo[], provider: SecretProvider, label: string): string {
-  const taken = new Set(secrets.filter((secret) => secret.provider === provider).map((secret) => secret.label.toLowerCase()));
-  let candidate = label;
-  for (let n = 2; taken.has(candidate.toLowerCase()); n++) candidate = `${label} ${n}`;
-  return candidate;
-}

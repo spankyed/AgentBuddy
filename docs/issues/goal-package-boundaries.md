@@ -253,7 +253,7 @@ Final.
    - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. *Done:* the override already lives in that feature's plugin settings (`plugins.code.cliPaths`).
    - **Migrations:** an app migration targeting the next release moves stored data, following `migrations/CLAUDE.md`:
      - `settings.internal` → `AppState`
-     - (*done in 0.3.15:* `general.secrets.cliPaths` → the code plugin's settings; `general.secrets` dropped, keys imported from the old secrets store at boot)
+     - (*done in 0.3.15:* `general.secrets.cliPaths` → the code plugin's settings; `general.secrets` dropped)
 
      It's idempotent and has a spec on a copy of old-shaped data.
 8. **Renames and naming.**

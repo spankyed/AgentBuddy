@@ -103,9 +103,6 @@ export function getAppVersion(): string;
 export function getDataDirPath(name: string): string;
 
 // @internal
-export const getLegacySecretsLmdbPath: () => string;
-
-// @internal
 export const getLmdbPath: () => string;
 
 // @internal

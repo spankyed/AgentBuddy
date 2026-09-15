@@ -100,18 +100,6 @@ describe('services.appData', () => {
     expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false });
   });
 
-  it("doesn't restore API keys from an older backup that holds the secrets database", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
-    dirs.push(dir);
-    fs.mkdirSync(path.join(dir, 'secretsLmdb'));
-    fs.writeFileSync(path.join(dir, 'secretsLmdb', 'data.mdb'), 'plain text keys');
-    fs.writeFileSync(path.join(dir, 'metadata.json'), JSON.stringify({ timestamp: 1, databases: ['secretsLmdb'], version: '1.0.0', includesMedia: false }));
-
-    await expect(services.appData.importBackup(dir)).resolves.toEqual({ databases: [] });
-    const { getLegacySecretsLmdbPath } = await import('@abuddy/sdk/utils');
-    expect(fs.existsSync(getLegacySecretsLmdbPath())).toBe(false);
-  });
-
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);

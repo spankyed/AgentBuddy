@@ -175,20 +175,9 @@ describe('secrets store', () => {
     expect(store.status().protection).toBe('unprotected');
   });
 
-  it('imports keys once, labelling them apart, and deletes every key on clear', () => {
+  it('deletes every key on clear', () => {
     const { store, filePath } = setup();
-    const imported = [
-      { id: 'Secret-1', provider: 'openai' as const, label: 'OpenAI', value: 'sk-old-openai-123456', createdAt: 1 },
-      { id: 'Secret-2', provider: 'custom' as const, label: 'GitHub', value: 'ghp_old_123456', createdAt: 2 },
-    ];
-    store.importSecrets(imported);
-    store.importSecrets(imported);
-    expect(store.list().map((secret) => [secret.id, secret.label, secret.selected])).toEqual([['Secret-1', 'OpenAI', true], ['Secret-2', 'GitHub', true]]);
-    expect(store.keyFor('openai')).toBe('sk-old-openai-123456');
-    store.add('anthropic', 'Anthropic', 'sk-ant-123456789');
-    store.importSecrets([{ id: 'Secret-3', provider: 'anthropic', label: 'Anthropic', value: 'sk-ant-old-12345', createdAt: 3 }]);
-    expect(store.list().find((secret) => secret.id === 'Secret-3')?.label).toBe('Anthropic 2');
-
+    store.add('openai', 'Work', 'sk-work-1234567890');
     store.clearAll();
     expect(fs.existsSync(filePath)).toBe(false);
     expect(store.list()).toEqual([]);

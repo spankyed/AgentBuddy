@@ -81,10 +81,6 @@ export const settingsSystem = setup({
       runMigrations();
     }),
   },
-  guards: {
-    // API keys never travel as settings (the host's secrets procedures take them): drop any update addressed to them
-    isSecretsUpdate: ({ event }) => (event as { label?: string }).label === 'secrets',
-  },
   actions: {
     sendSettingsStartupData: ({ system }) => {
       const data = settingsQueries.getSettings();
@@ -227,10 +223,6 @@ export const settingsSystem = setup({
       }
     },
 
-    ignoreSecretsUpdate: () => {
-      console.warn('[settings] Ignored a settings update addressed to API keys: they are stored through the secrets procedures');
-    },
-
     testCliProvider: ({ system, event }) => {
       const ev = settingsSpec.typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
@@ -322,15 +314,9 @@ export const settingsSystem = setup({
         GET_SETTINGS: {
           actions: 'getSettings',
         },
-        UPDATE_SETTINGS: [
-          {
-            guard: 'isSecretsUpdate',
-            actions: 'ignoreSecretsUpdate',
-          },
-          {
-            actions: 'updateSettings',
-          }
-        ],
+        UPDATE_SETTINGS: {
+          actions: 'updateSettings',
+        },
         REPLACE_SETTINGS: {
           actions: 'replaceSettings',
         },
