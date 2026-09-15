@@ -4,6 +4,15 @@
 
 ```ts
 
+import type { DeepPartial } from 'ai';
+import type { FlexibleSchema } from 'ai';
+import type { generateText } from 'ai';
+import type { InferSchema } from 'ai';
+import type { Output } from 'ai';
+import type { OutputInterface } from 'ai';
+import type { streamText } from 'ai';
+import type { ToolSet } from 'ai';
+
 // @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
 
@@ -11,49 +20,40 @@ export function dropAttribute(id: EARS.EntityId, kind: string): void;
 export function entityIds(): EARS.EntityId[];
 
 // @public (undocumented)
-export interface FakeModel {
-    readonly calls: readonly FakeModelCall[];
+export interface FakeInference extends InferenceService {
+    readonly calls: readonly FakeInferenceCall[];
 }
 
 // @public
-export function fakeModel(reply: FakeModelReply | ((call: FakeModelCall) => FakeModelReply | Promise<FakeModelReply>)): FakeModel;
+export function fakeInference(reply: FakeInferenceReply | ((call: FakeInferenceCall) => FakeInferenceReply)): FakeInference;
 
 // @public
-export interface FakeModelCall {
+export interface FakeInferenceCall {
+    instructions?: string;
     messages: Array<{
         role: 'user' | 'assistant' | 'tool';
         text: string;
     }>;
-    model: ModelConfig;
-    stream: boolean;
     // (undocumented)
-    system?: string;
+    model: ModelId;
+    stream: boolean;
     tools: string[];
 }
 
 // @public
-export type FakeModelReply = string | {
+export type FakeInferenceReply = string | {
     text?: string;
-    toolCalls?: FakeToolCall[];
-    finishReason?: 'stop' | 'length' | 'tool-calls';
+    toolCalls?: Array<{
+        toolName: string;
+        input: unknown;
+    }>;
 };
-
-// @public
-export interface FakeToolCall {
-    // (undocumented)
-    args: Record<string, unknown>;
-    // (undocumented)
-    toolName: string;
-}
 
 // @public
 export function registerSeedRuntime(runtime: SeedRuntime): void;
 
 // @public
 export function resetTestData(): void;
-
-// @internal
-export function restoreModelProvider(): void;
 
 // @public
 export interface SeedRuntime {

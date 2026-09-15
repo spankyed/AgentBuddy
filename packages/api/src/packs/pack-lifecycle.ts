@@ -10,7 +10,7 @@ import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './pack-loader';
 import { seedPackData } from './pack-seed';
 import { updateLoadedPack, removeLoadedPack } from './pack-api';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 
 const logger = createLogger('pack-lifecycle');
 

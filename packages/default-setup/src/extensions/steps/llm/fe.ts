@@ -1,6 +1,7 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Sparkle } from 'lucide-vue-next';
+import { DEFAULT_MODEL } from './model';
 
 export const llmStepFE: StepDefinition = {
   type: 'llm',
@@ -20,6 +21,6 @@ export const llmStepFE: StepDefinition = {
       isImplemented: true,
       isDisabled: true,
     },
-    defaults: { model: 'gpt-4', temperature: 0.7, maxTokens: 1000 },
+    defaults: { model: DEFAULT_MODEL, temperature: 0.7, maxTokens: 1000 },
   },
 };

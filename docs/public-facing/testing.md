@@ -24,7 +24,7 @@ await setupPackTests({ seedRuntime, registration });
 - **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
 - **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). These tests start faster and never load a dependency's runtime.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
-- **Each test starts from an empty database.** Apps a test starts stop after it; service mocks and a scripted model last one test.
+- **Each test starts from an empty database.** Apps a test starts stop after it; service mocks last one test.
 - **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()`.
 
 ## Seeds
@@ -80,9 +80,9 @@ it('stores a memo a client adds and sends it back', async () => {
 import { mockService } from '@abuddy/testing/harness';
 import { services, type Services } from '#generated/services';
 
-it("uses default-setup's llm service, mocked here", async () => {
-  mockService<Services, 'llm'>('llm', { generateText: async () => ({ text: 'buy milk' }) } as never);
-  expect(await services.digest.digest('Remember to buy milk')).toBe('BUY MILK');
+it('digests a note, with only the inference call it makes mocked', async () => {
+  mockService<Services, 'inference'>('inference', { generateText: async () => ({ output: { summary: 'Buy milk' } }) } as never);
+  expect(await services.digest.digest('Remember to buy milk')).toEqual({ summary: 'Buy milk' });
 });
 ```
 
@@ -90,29 +90,30 @@ Give only the members the code under test uses. Code that imports a service modu
 
 ## Models
 
-Unit tests have no model: inference (`@abuddy/sdk/inference`, the `llm` step) fails until the test scripts one with `fakeModel`. It runs the AI SDK, so install `ai` as a dev dependency.
+Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. `mockInference` does that for one test with a fake that runs the AI SDK's real calls on a scripted model (`fakeInference` from `@abuddy/sdk/testing`; `ai` comes with `@abuddy/sdk` as a peer dependency):
 
 ```typescript
-import { fakeModel } from '@abuddy/sdk/testing';
+import { mockInference } from '@abuddy/testing/harness';
 
-const model = fakeModel('A short summary');                  // or (call) => reply, per call
-// … run code that generates text …
-expect(model.calls[0].messages).toEqual([{ role: 'user', text: 'Summarize this note: …' }]);
+const inference = mockInference('A short summary');          // or (call) => reply, per model call
+// … run code that calls services.inference …
+expect(inference.calls[0]).toMatchObject({ model: 'anthropic:claude-sonnet-4-5', messages: [{ role: 'user', text: 'Summarize this note: …' }] });
 ```
 
-A reply is text, or `{ text?, toolCalls?: [{ toolName, args }] }`: tool calls run your tools as a real model's would. `calls` records each call's model, system prompt, messages, tools and whether it streamed.
+- **A reply** is text, or `{ text?, toolCalls?: [{ toolName, input }] }`. Tool calls run your tools' `execute`, and the AI SDK calls the model again while `stopWhen` allows, so a function reply can answer tool results with text.
+- **Structured output:** reply with JSON; `output` (a spec like `{ type: 'object', schema }` or an `Output`) parses it as it would a real model's reply, and rejects what the schema rejects.
+- **`calls`** records each model call (one per step): `model`, `instructions`, `messages` (each message's text; tool calls and results as JSON), `tools` and `stream`.
 
 ## Flows
 
 `runFlow` runs a flow on the brain. Your pack or a dependency (default-setup) must provide the brain and settings systems:
 
 ```typescript
-import { fakeModel } from '@abuddy/sdk/testing';
-import { seedPack, startApp } from '@abuddy/testing/harness';
+import { mockInference, seedPack, startApp } from '@abuddy/testing/harness';
 
 it('summarizes a note', async () => {
   await seedPack({ keys: ['prompts', 'flows'] });
-  fakeModel('Buy milk');
+  mockInference('Buy milk');
   const app = await startApp({ systems: ['brain', 'settings'] });
 
   const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });

@@ -1,22 +1,20 @@
-// Mocks and the scripted model last one test: the harness restores services and the model after each
+// Service mocks last one test: the harness restores services after each, and inference fails until a test mocks it
 import { describe, expect, it } from 'vitest';
-import { mockService } from '@abuddy/testing/harness';
-import { fakeModel } from '@abuddy/sdk/testing';
-import { generateText } from '@abuddy/sdk/inference';
+import { mockInference, mockService } from '@abuddy/testing/harness';
 import { services } from '#generated/services';
 
 const scripted = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 
 describe('harness isolation between tests', () => {
-  it('mocks a service and scripts the model for this test', async () => {
+  it('mocks a service and inference for this test', async () => {
     mockService('logger', scripted);
-    fakeModel('scripted');
+    mockInference('scripted');
     expect(services.logger).toBe(scripted);
-    expect((await generateText({ model: { provider: 'openai', model: 'gpt' }, prompt: 'hi' })).text).toBe('scripted');
+    expect((await services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).text).toBe('scripted');
   });
 
-  it('has the real service and no model in the next test', async () => {
+  it('has the real logger, and inference that fails naming the fix, in the next test', async () => {
     expect(services.logger).not.toBe(scripted);
-    await expect(generateText({ model: { provider: 'openai', model: 'gpt' }, prompt: 'hi' })).rejects.toThrow('call fakeModel()');
+    await expect(services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('mock inference with mockInference(reply)');
   });
 });

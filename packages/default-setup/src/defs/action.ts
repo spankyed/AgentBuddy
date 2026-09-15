@@ -3,20 +3,11 @@
  * Defines what's available as globals in the action code editor.
  */
 
-import { sendToPlugin } from '@/__generated__/events';
-import { featureServices } from '@/__generated__/services';
-import { createLogger } from '@abuddy/sdk/logger';
-import { sendToBrainSystem, sendToSystem, onOutgoing, onIncoming } from '@abuddy/sdk/services';
-import { repository } from '@/__generated__/repository';
+import type { Services } from '@/__generated__/services';
 
-export const services = {
-  logger: createLogger('action-dsl'),
-  emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
-  repository,
-  ...featureServices,
-};
-
-export type Services = typeof services;
+// What actions receive as `services`: the pack's generated type, host services included (as seed actions import it)
+export const services = undefined as unknown as Services;
+export type { Services };
 export type ActionParams = Record<string, any>;
 export const params = undefined as unknown as ActionParams;
 

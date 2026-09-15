@@ -48,8 +48,8 @@
                   No models found.
                 </div>
               <div v-for="(group, provider) in groupedModels" :key="provider">
-                <div v-if="group.length > 0" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
-                  {{ provider }}
+                <div v-if="group?.length" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
+                  {{ providerLabels[provider] }}
                 </div>
                 <ComboboxGroup>
                   <ComboboxItem
@@ -223,7 +223,7 @@ import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference'
+import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
 import type { PromptEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
@@ -282,18 +282,15 @@ const filteredModels = computed(() => {
   if (modelQuery.value === '') return props.resources.models
   return props.resources.models.filter((model: ModelCatalogEntry) =>
     startsWith(model.name, modelQuery.value) ||
-    startsWith(model.provider, modelQuery.value)
+    startsWith(providerLabels[parseModelId(model.id)!.provider], modelQuery.value)
   )
 })
 
 // Group models by provider
 const groupedModels = computed(() => {
-  const groups: Record<string, ModelCatalogEntry[]> = {}
+  const groups: Partial<Record<ProviderName, ModelCatalogEntry[]>> = {}
   filteredModels.value.forEach((model: ModelCatalogEntry) => {
-    if (!groups[model.provider]) {
-      groups[model.provider] = []
-    }
-    groups[model.provider].push(model)
+    (groups[parseModelId(model.id)!.provider] ??= []).push(model)
   })
   return groups
 })

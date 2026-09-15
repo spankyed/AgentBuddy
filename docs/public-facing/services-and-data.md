@@ -61,14 +61,14 @@ There is no fixed interface — the shape is pack-specific. Services are typical
 
 1. Imports all feature and pack-level services
 2. Exports a `featureServices` object aggregating them
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, and `repository` typed with your repositories)
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
 import { services } from '#generated/services';
 
 services.cache.get('key');              // this pack's service
-services.llm.streamText(/* … */);       // a dependency's service
+services.brain.listen(/* … */);         // a dependency's service
 services.repository.bookmarkQueries;    // repositories (see below)
 ```
 
@@ -82,6 +82,70 @@ The host implements operations on the app's stored data as a whole; packs call t
 |---|---|
 | `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
+
+### Inference
+
+`services.inference` calls models with the keys the user stored in Settings → Secrets (or `<PROVIDER>_API_KEY` in the app's environment). Its two calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
+
+| Call | Returns |
+|---|---|
+| `generateText(options)` | the AI SDK's `generateText` result: `text`, `output`, `toolCalls`, `steps`, `usage`, … |
+| `streamText(options)` | a promise of the AI SDK's `streamText` result: `stream` (parts), `textStream`, `text`, … |
+
+Providers: `anthropic`, `openai`, `google`, `groq`, `mistral`, `cohere`. `ModelId` and the model catalog come from `@abuddy/sdk/models`.
+
+```typescript
+import { isStepCount, tool } from 'ai';
+import { z } from 'zod';
+import { services } from '#generated/services';
+
+// Text
+const { text } = await services.inference.generateText({
+  model: 'anthropic:claude-sonnet-4-5',
+  instructions: 'Be brief.',
+  prompt: 'Summarize this note: …',
+});
+
+// Structured output, as data or as an Output from ai
+const { output } = await services.inference.generateText({
+  model: 'openai:gpt-5-mini',
+  prompt: 'Tag this note: …',
+  output: { type: 'object', schema: z.object({ tags: z.array(z.string()) }) },  // or Output.object({ schema })
+});
+const { output: label } = await services.inference.generateText({
+  model: 'openai:gpt-5-mini',
+  prompt: 'Is this note a task or a reference?',
+  output: { type: 'choice', options: ['task', 'reference'] },   // label: 'task' | 'reference'
+});
+
+// Tools, looping until the model answers (at most 5 steps)
+const lookup = tool({
+  description: 'Look up a note by title',
+  inputSchema: z.object({ title: z.string() }),
+  execute: async ({ title }) => services.repository.noteQueries.all().find((note) => note.title === title)?.content,
+});
+const answer = await services.inference.generateText({ model: 'openai:gpt-5', prompt: 'What does my shopping note say?', tools: { lookup }, stopWhen: isStepCount(5) });
+
+// Streaming
+const stream = await services.inference.streamText({ model: 'google:gemini-2.5-pro', prompt: 'Draft a reply' });
+for await (const part of stream.textStream) process.stdout.write(part);
+```
+
+- **`output` takes data or an `Output`.** The data forms mirror `ai`'s `Output` helpers, and `output` in the result is typed from them:
+
+  | `output` | Same as | Result |
+  |---|---|---|
+  | `{ type: 'text' }` | `Output.text()` | `string` |
+  | `{ type: 'json', name?, description? }` | `Output.json()` | any JSON value |
+  | `{ type: 'object', schema, name?, description? }` | `Output.object({ schema })` | the schema's type |
+  | `{ type: 'array', element, minItems?, maxItems?, name?, description? }` | `Output.array({ element })` | an array of the element's type |
+  | `{ type: 'choice', options, name?, description? }` | `Output.choice({ options })` | one of the options |
+
+  An `Output` (including one you implement) passes through as is. The data form can be stored, and code that can't import `ai` can write it.
+- **The rest of a call's pieces are `ai`'s:** `tool`, `isStepCount` and types like `ModelMessage`. `ai` 7 is a peer dependency of `@abuddy/sdk`, installed with it (add it to your pack's own dependencies if your package manager doesn't install peers); your pack never builds a model or holds a key.
+- **TypeScript 5.7 or later**, which `ai` 7's types need.
+- **Actions** can't import `ai`, and don't need to: `output` as data, tools as plain `{ description, inputSchema, execute }` objects (`tool()` only returns its argument), and `stopWhen` as a function (`({ steps }) => steps.length >= 5`).
+- **Unit tests** mock the service with `mockInference` (see [Testing](testing.md#models)).
 
 Pack code never imports `@abuddy/host`, the app's private package: `abuddy build` fails a bundle that does.
 

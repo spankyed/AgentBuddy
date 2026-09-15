@@ -50,7 +50,7 @@ The typed EARS helpers are the main way pack authors touch data, so their types 
 - `QueryBuilder<E = string, S = {}, N = string>` and `TransactionBuilder<E = string, S = {}>` keep the helpers from `@abuddy/sdk/ears` and `@abuddy/host/ears` unchecked.
 
 **Compatibility.**
-- `@abuddy/sdk` supports TypeScript 5.3 and later. No `NoInfer`, and no other feature newer than 5.3.
+- `@abuddy/sdk` supports TypeScript 5.7 and later. These types keep their `NoInferType` workaround from when the floor was 5.3.
 
 ## Before changing any of these types
 

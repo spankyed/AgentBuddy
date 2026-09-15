@@ -4,6 +4,16 @@
 
 ```ts
 
+import type { DeepPartial } from 'ai';
+import type { FlexibleSchema } from 'ai';
+import type { generateText } from 'ai';
+import type { InferSchema } from 'ai';
+import type { LanguageModel } from 'ai';
+import type { Output } from 'ai';
+import type { OutputInterface } from 'ai';
+import type { streamText } from 'ai';
+import type { ToolSet } from 'ai';
+
 // @public
 export interface AppDataService {
     backupInfo(backupPath: string): Promise<BackupInfo | null>;
@@ -28,8 +38,14 @@ export interface BackupInfo {
     timestamp: number;
 }
 
+// @internal
+export function createInferenceService(resolveModel: (id: ModelId) => LanguageModel | Promise<LanguageModel>): InferenceService;
+
 // @public
 export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
+
+// @internal
+export type HostImplementedServices = Pick<HostServices, 'appData' | 'traceStore' | 'inference'>;
 
 // @public
 export type HostPluginEvents = {
@@ -56,12 +72,22 @@ export interface HostServices {
         onOutgoing: typeof onOutgoing;
         onIncoming: typeof onIncoming;
     };
+    inference: InferenceService;
     // (undocumented)
     logger: Logger;
     // (undocumented)
     repository: typeof repository;
     traceStore: TraceStore;
 }
+
+// @public
+export interface InferenceService {
+    generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string>>(options: InferenceOptions<Parameters<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): ReturnType<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>;
+    streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string, never>>(options: InferenceOptions<Parameters<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
+}
+
+// @public
+export type ModelId = `${ProviderName}:${string}`;
 
 // @public (undocumented)
 export function onIncoming(callback: (event: {
@@ -74,6 +100,27 @@ export function onOutgoing(callback: (event: {
     type: string;
     [key: string]: unknown;
 }) => void): () => void;
+
+// @public
+export type OutputSpec = {
+    type: 'text';
+} | ({
+    type: 'json';
+} & OutputNaming) | ({
+    type: 'object';
+    schema: FlexibleSchema<unknown>;
+} & OutputNaming) | ({
+    type: 'array';
+    element: FlexibleSchema<unknown>;
+    minItems?: number;
+    maxItems?: number;
+} & OutputNaming) | ({
+    type: 'choice';
+    options: readonly string[];
+} & OutputNaming);
+
+// @public
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
 
 // @public (undocumented)
 export function registerThreadTeardown(fn: (threadId: string) => void): void;

@@ -52,8 +52,10 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
-  // Registered by the API as host modules; packs reach it through services.appData and services.traceStore
-  ['@abuddy/host/data', 'host implementation of SDK services, registered at API boot'],
+  // Registered by the API as host modules; packs reach them through services (appData, traceStore, inference)
+  ['@abuddy/host/services', 'host implementations of SDK services, registered at API boot'],
+  // The host's typed view of default-setup's settings: the API and host services read it, packs use their repository
+  ['@abuddy/host/settings', 'host view of settings, read by the API and host services'],
   // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
   ['@abuddy/host/bus', 'host bus core, composed by the API and the test harness'],
   // Metadata: tooling reads them, code never requires them.

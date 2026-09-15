@@ -14,7 +14,13 @@ export interface BuiltinRepositories {
   settingsQueries: {
     getGeneralSettings(): { secrets?: Record<string, unknown> };
     getSettings(): { general: { secrets: { cliPaths?: Record<string, string | undefined> } } };
-    getInternalSettings(): { seedHash?: string | null };
+    getInternalSettings(): {
+      hasOnboarded: boolean;
+      version: string;
+      seedHash?: string | null;
+      packSeedHashes?: Record<string, string>;
+      packVersions?: Record<string, string>;
+    };
   };
   settingsCommands: {
     updateSettings(type: string, label: string | null, path: string[], value: unknown): void;

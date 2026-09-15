@@ -4,36 +4,45 @@
 
 ```ts
 
-// @public (undocumented)
+// @public
 export const availableModels: ModelCatalogEntry[];
 
 // @public (undocumented)
-export function getModelById(modelId: string): ModelCatalogEntry | undefined;
-
-// @public (undocumented)
-export function getModelsByProvider(provider: string): ModelCatalogEntry[];
+export const isModelId: (id: string) => id is ModelId;
 
 // @public (undocumented)
 export interface ModelCatalogEntry {
     // (undocumented)
     capabilities?: string[];
     // (undocumented)
-    contextWindow: number;
+    contextWindow?: number;
     // (undocumented)
     costPer1kInput?: number;
     // (undocumented)
     costPer1kOutput?: number;
     // (undocumented)
     description?: string;
-    // (undocumented)
-    id: string;
+    id: ModelId;
     // (undocumented)
     maxOutput?: number;
     // (undocumented)
     name: string;
-    // (undocumented)
-    provider: string;
 }
+
+// @public
+export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export function parseModelId(id: string): {
+    provider: ProviderName;
+    model: string;
+} | undefined;
+
+// @public
+export const providerLabels: Record<ProviderName, string>;
+
+// @public
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
 
 // (No @packageDocumentation comment for this package)
 

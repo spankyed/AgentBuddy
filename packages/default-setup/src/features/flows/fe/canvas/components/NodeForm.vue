@@ -34,7 +34,7 @@ import { stepRegistry } from '@abuddy/sdk/steps'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import NodeTypeMenu from './NodeTypeMenu.vue'
 import type { ActionEntity, FlowEntity, PromptEntity } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference'
+import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 
 interface Props {
   selectedNode?: NodeEntity | null
