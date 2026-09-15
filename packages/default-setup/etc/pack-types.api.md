@@ -851,7 +851,12 @@ interface CreateArtifactOptions {
 interface CreateNode extends NodeBase {
     nodeType: 'create';
     entityTypeTarget: EARS$1.Entity;
-    entityId?: string;
+    params?: Record<string, unknown>;
+    fieldMappings?: Array<{
+        target: string;
+        source: string;
+        default?: unknown;
+    }>;
     inferLabel?: boolean;
 }
 
@@ -2868,6 +2873,7 @@ interface QueryNode extends NodeBase {
     nodeType: 'query';
     prompt: string;
     resultKey?: string;
+    model?: ModelId;
 }
 
 /**
@@ -3604,8 +3610,16 @@ declare const ToolUseSummaryLineSchema: z.ZodObject<{
 interface TransformNode extends NodeBase {
     nodeType: 'transform';
     script: string;
-    outputType?: 'custom' | 'json' | 'text';
+    outputType?: TransformOutputType;
+    fieldMappings?: Array<{
+        target: string;
+        source: string;
+        default?: unknown;
+    }>;
 }
+
+/** How a transform step's script return value becomes the step's result */
+type TransformOutputType = 'custom' | 'json' | 'text';
 
 interface TurnStartParams {
     threadId: string;
@@ -3645,9 +3659,18 @@ interface UpdateArtifactOptions {
 
 interface UpdateNode extends NodeBase {
     nodeType: 'update';
-    entityId: string;
-    onMissing?: 'create' | 'fail' | 'ignore';
+    target: string;
+    params?: Record<string, unknown>;
+    fieldMappings?: Array<{
+        target: string;
+        source: string;
+        default?: unknown;
+    }>;
+    onMissing?: UpdateOnMissing;
+    entityTypeTarget?: EARS$1.Entity;
 }
+
+type UpdateOnMissing = 'create' | 'fail' | 'ignore';
 
 /** User message written to stdin during a stream-json conversation. */
 interface UserInputMessage {

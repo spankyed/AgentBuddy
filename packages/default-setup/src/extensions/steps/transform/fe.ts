@@ -1,9 +1,11 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
+import { defineAsyncComponent } from 'vue';
 import { Shuffle } from 'lucide-vue-next';
 
 export const transformStepFE: StepDefinition = {
   type: 'transform',
   fe: {
+    loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
     colorKey: 'emerald',
     nodeConfig: {
       label: 'Transform',
@@ -15,7 +17,7 @@ export const transformStepFE: StepDefinition = {
       connectionRules: { inputs: 1, outputs: 1 },
       component: 'VariableNode',
       category: 'data',
-      isImplemented: false,
+      isImplemented: true,
     },
     defaults: { outputType: 'json' },
   },

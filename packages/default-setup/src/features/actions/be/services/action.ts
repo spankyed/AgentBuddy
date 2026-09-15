@@ -24,7 +24,7 @@ export class ActionService {
       const services = appServices;
       return await fn(params, services);
     } catch (error) {
-      throw new Error(`Failed to execute action: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to execute action: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
   }
 
