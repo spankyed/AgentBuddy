@@ -5,7 +5,7 @@ import { resolveAppContext } from '../env/index.ts'
 const DATA_DIRS = {
   lmdb:         'ears-db',
   volatileLmdb: 'ears-trace',
-  secretsLmdb:  'ears-secrets',
+  legacySecretsLmdb: 'ears-secrets',
   secretsFile:  'secrets.json',
   media:        'media',
 }
@@ -17,8 +17,8 @@ export const getUserDataPath = (): string => resolveAppContext().userDataDir
 export const getLmdbPath = (): string => resolvePath('lmdb')
 /** @internal Host-only: the app's database location. */
 export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
-/** @internal Host-only: the app's database location. */
-export const getSecretsLmdbPath = (): string => resolvePath('secretsLmdb')
+/** @internal Host-only: where API keys were stored in plain text before the encrypted store (imported once, then deleted). */
+export const getLegacySecretsLmdbPath = (): string => resolvePath('legacySecretsLmdb')
 /** @internal Host-only: the file holding the user's API keys (values encrypted). */
 export const getSecretsFilePath = (): string => resolvePath('secretsFile')
 /** @internal Host-only: the app's media location. */

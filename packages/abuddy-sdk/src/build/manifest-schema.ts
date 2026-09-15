@@ -146,7 +146,6 @@ export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'networ
 
 const PartitionPolicySchema = z.object({
   excludedEntityTypes: z.array(z.string()).describe('Entity types excluded from persistence (in-memory only).').optional(),
-  secretEntityTypes: z.array(z.string()).describe('Entity types routed to the secrets store.').optional(),
 }).strict().describe('Built-in packs only. Ignored for external packs.');
 
 const EntityShapeSchema = z.object({

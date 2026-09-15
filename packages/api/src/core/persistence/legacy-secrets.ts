@@ -1,7 +1,7 @@
 // API keys stored before the host's encrypted store: plain-text Secret rows in the `ears-secrets` LMDB directory.
 // They're imported into the store once, then the directory is deleted.
 import * as fs from 'node:fs';
-import { getSecretsLmdbPath } from '@abuddy/sdk/utils';
+import { getLegacySecretsLmdbPath } from '@abuddy/sdk/utils';
 import { secretProviderLabel, type SecretProvider } from '@abuddy/sdk/services';
 import { secretsStore, KeyVaultUnavailableError, type ImportedSecret, type SecretsStore } from '@abuddy/host/secrets';
 import { createLogger } from '@/core/shared/debug/logger';
@@ -41,7 +41,7 @@ export function readLegacySecrets(dir: string): ImportedSecret[] {
  * Moves keys from the old plain-text directory into the store, then deletes the directory once every key reads back.
  * Where the OS has no credential store (until the user allows unprotected storage) the directory stays, for a later run.
  */
-export function migrateLegacySecrets(dir = getSecretsLmdbPath(), store: SecretsStore = secretsStore): 'none' | 'imported' | 'deferred' {
+export function migrateLegacySecrets(dir = getLegacySecretsLmdbPath(), store: SecretsStore = secretsStore): 'none' | 'imported' | 'deferred' {
   if (!fs.existsSync(dir)) return 'none';
   const legacy = readLegacySecrets(dir);
   try {

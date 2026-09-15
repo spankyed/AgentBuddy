@@ -101,7 +101,7 @@ EARS and service collisions throw before anything is stored, so no cleanup is ne
 Two capabilities are stripped from external packs during loading:
 
 - **`earlySystem`** — Runs before EARS hydration (step 2 in boot). External packs register at step 3-4, after earlySystem hooks have already fired. Allowing it would either require reordering boot (risky) or silently not running the hook (confusing). Stripped with a warning log.
-- **`partitionPolicy`** (`excludedEntityTypes`, `secretEntityTypes`) — Controls which entities go to volatile/secrets stores vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped with a warning log; all external pack data routes to primary partition.
+- **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped with a warning log; all external pack data routes to primary partition.
 
 ## External pack FE entry convention
 

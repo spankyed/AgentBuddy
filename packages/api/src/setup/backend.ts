@@ -15,6 +15,7 @@ import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
+import { migrateLegacySecrets } from '@/core/persistence/legacy-secrets';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { seedData } from '@abuddy/sdk/utils';
 import { settingsRepository } from '@abuddy/host/settings';
@@ -98,6 +99,13 @@ export async function setupBackend(): Promise<void> {
 
   // ── Hydrate (policy now sees all entity types from all packs)
   await hydrateSharded({ envs, policy, shardedPersistence: persistence, skipTombstoneScan: true });
+
+  // ── API keys stored in plain text before the encrypted store: imported once, then the old directory is deleted
+  try {
+    migrateLegacySecrets();
+  } catch (error) {
+    console.error('[secrets] Moving stored API keys into the encrypted store failed; the old directory was kept', error);
+  }
 
   // ── Initialize ALL packs (built-in + external)
   for (const hooks of getBootHooks()) {

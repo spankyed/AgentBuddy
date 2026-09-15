@@ -62,7 +62,6 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
     Settings: SettingsEntity;
-    Secret: SecretEntity;
 };
 
 // @public (undocumented)

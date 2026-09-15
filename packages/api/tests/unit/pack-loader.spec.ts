@@ -263,7 +263,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
         ears: {
           entities: { Widget: 'Widget' },
           relKinds: {},
-          partitionPolicy: { excludedEntityTypes: [], secretEntityTypes: [] },
+          partitionPolicy: { excludedEntityTypes: [] },
         },
         boot: {
           onInit() {},

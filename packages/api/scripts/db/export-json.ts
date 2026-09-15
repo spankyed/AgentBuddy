@@ -24,7 +24,7 @@ import type { EARS } from '@abuddy/sdk';
 import { getEntitiesOfType, getAllEntityTypes } from '@abuddy/sdk/ears';
 import { qx, getAllEntities } from '@abuddy/host/ears';
 import { getBootHooks, getRegisteredEntityTypes } from '@abuddy/host/packs';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@abuddy/sdk/utils';
+import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import { openDatabase, closeDatabase } from './database';
 
 // Suppress all console output except our final JSON
@@ -100,8 +100,7 @@ async function exportJSON() {
         recordCount: Array.isArray(data) ? data.length : (data ? 1 : 0),
         database: {
           primaryPath: getLmdbPath(),
-          volatilePath: getVolatileLmdbPath(),
-          secretsPath: getSecretsLmdbPath()
+          volatilePath: getVolatileLmdbPath()
         },
         environment: {
           hostname: os.hostname(),

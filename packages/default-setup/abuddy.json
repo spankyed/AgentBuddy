@@ -35,8 +35,7 @@
     "EMITS": "emits"
   },
   "partitionPolicy": {
-    "excludedEntityTypes": [],
-    "secretEntityTypes": []
+    "excludedEntityTypes": []
   },
   "features": [
     {

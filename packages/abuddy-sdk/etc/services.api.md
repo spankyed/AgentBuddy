@@ -38,7 +38,7 @@ export interface AppDataService {
 }
 
 // @public
-export type BackupDatabase = 'lmdb' | 'volatileLmdb' | 'secretsLmdb';
+export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
 // @public (undocumented)
 export interface BackupInfo {
@@ -157,7 +157,7 @@ export type OutputSpec = {
 } & OutputNaming);
 
 // @public
-export type ProviderName = Exclude<SecretProvider_2, 'custom'>;
+export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
 // @public (undocumented)
 export function registerThreadTeardown(fn: (threadId: string) => void): void;

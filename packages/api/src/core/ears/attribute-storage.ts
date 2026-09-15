@@ -1,5 +1,5 @@
 import { setPersistence, clearMemory } from "@abuddy/host/ears";
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@abuddy/sdk/utils";
+import { getLmdbPath, getVolatileLmdbPath } from "@abuddy/sdk/utils";
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
 import { makePolicy, makeShardedPersistence, type PartitionPolicy } from "@abuddy/host/persistence";
@@ -11,13 +11,11 @@ const HARD_DELETE_MODE = true;
 let envs = openShardedEnvs({
   primary: getLmdbPath(),
   volatileBackup: getVolatileLmdbPath(),
-  secrets: getSecretsLmdbPath(),
 });
 
 let sinks = {
   primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
   volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
-  secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
 };
 
 let _resolvedPolicy: PartitionPolicy | null = null;
@@ -26,8 +24,7 @@ function resolvePolicy(): PartitionPolicy {
     const earsPolicy = getRegisteredEARSPolicy();
     _resolvedPolicy = makePolicy({
       excludedEntityTypes: new Set(earsPolicy.excludedEntityTypes),
-      secretEntityTypes: new Set(earsPolicy.secretEntityTypes),
-      hydratePartitions: new Set(['primary', 'secrets']),
+      hydratePartitions: new Set(['primary']),
     });
   }
   return _resolvedPolicy;
@@ -71,14 +68,12 @@ export function reinitializeLmdb() {
   envs = openShardedEnvs({
     primary: getLmdbPath(),
     volatileBackup: getVolatileLmdbPath(),
-    secrets: getSecretsLmdbPath(),
-  });
+    });
 
   sinks = {
     primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
     volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
-    secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
-  };
+    };
 
   persistence = makeShardedPersistence(policy, sinks);
   setPersistence(persistence);
@@ -103,8 +98,7 @@ export async function resetLmdbFiles() {
   deleteLmdbDirectories({
     primary: getLmdbPath(),
     volatileBackup: getVolatileLmdbPath(),
-    secrets: getSecretsLmdbPath(),
-  });
+    });
 
   reinitializeLmdb();
 }

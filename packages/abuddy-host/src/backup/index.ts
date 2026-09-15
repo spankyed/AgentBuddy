@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
+import { getLmdbPath, getVolatileLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
 import { closePersistence, reinitializeLmdb } from '../ears/index.ts';
 
 const logger = createLogger('database:backup');
@@ -10,7 +10,6 @@ const logger = createLogger('database:backup');
 const DATABASE_PATHS = {
   lmdb: getLmdbPath,
   volatileLmdb: getVolatileLmdbPath,
-  secretsLmdb: getSecretsLmdbPath,
 } as const;
 
 export async function exportDatabase(
@@ -61,6 +60,10 @@ export async function importDatabase(backupPath: string) {
   }
 
   const metadata = await fs.readJson(path.join(backupPath, 'metadata.json'));
+  // Older backups could hold the plain-text secrets database: API keys aren't restored from backups
+  const skipped = (metadata.databases as string[]).filter((dbName) => !(dbName in DATABASE_PATHS));
+  if (skipped.length > 0) logger.warn('Backup databases not restored (API keys are never restored from backups)', { skipped });
+  metadata.databases = (metadata.databases as string[]).filter((dbName) => dbName in DATABASE_PATHS);
   const tempBackupPath = path.join(path.dirname(getLmdbPath()), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);

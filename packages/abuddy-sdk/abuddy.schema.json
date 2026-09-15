@@ -67,7 +67,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt, Settings, Secret."
+      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt, Settings."
     },
     "relKinds": {
       "type": "object",
@@ -85,13 +85,6 @@
             "type": "string"
           },
           "description": "Entity types excluded from persistence (in-memory only)."
-        },
-        "secretEntityTypes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Entity types routed to the secrets store."
         }
       },
       "additionalProperties": false,

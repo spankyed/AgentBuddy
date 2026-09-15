@@ -85,7 +85,6 @@ export namespace EARS {
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Settings: "Settings";
-        readonly Secret: "Secret";
     };
     // (undocumented)
     export interface AttributePayloads {
@@ -272,26 +271,7 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
     Settings: SettingsEntity;
-    Secret: SecretEntity;
 };
-
-// @public (undocumented)
-export interface SecretEntity extends BaseEntity {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    customName?: string;
-    encryptedValue: string;
-    // (undocumented)
-    entityType: typeof SDK_ENTITIES.Secret;
-    // (undocumented)
-    provider: SecretProvider;
-    // (undocumented)
-    updatedAt?: number;
-}
-
-// @public (undocumented)
-export type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
 
 // @public (undocumented)
 export interface SettingsEntity extends BaseEntity {

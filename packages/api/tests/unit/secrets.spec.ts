@@ -162,20 +162,6 @@ describe('keys from the old plain-text secrets directory', () => {
     expect(fs.existsSync(dir)).toBe(true);
   });
 
-  it('reads Secret rows as the app stored them through EARS', async () => {
-    const { tx } = await import('@abuddy/sdk/ears');
-    const { closePersistence, reinitializeLmdb, clearMemory } = await import('@abuddy/host/ears');
-    const { getSecretsLmdbPath } = await import('@abuddy/sdk/utils');
-    const id = tx('Secret' as never).batchPut({ provider: 'mistral', encryptedValue: 'mistral-old-key-1234567890', customName: 'Team', createdAt: 5 } as never).id();
-    closePersistence();
-    try {
-      expect(readLegacySecrets(getSecretsLmdbPath())).toEqual([{ id, provider: 'mistral', label: 'Team', value: 'mistral-old-key-1234567890', createdAt: 5 }]);
-    } finally {
-      clearMemory();
-      reinitializeLmdb();
-    }
-  });
-
   it('deletes an old directory with no keys in it', () => {
     const dir = legacyDir([]);
     expect(migrateLegacySecrets(dir)).toBe('none');

@@ -64,7 +64,7 @@ export const providerCapabilities: {
 export const providerLabels: Record<ProviderName, string>;
 
 // @public
-export type ProviderName = Exclude<SecretProvider, 'custom'>;
+export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
 // @public (undocumented)
 export type RerankingModelId = ModelIdOf<'reranking'>;

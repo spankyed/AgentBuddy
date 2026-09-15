@@ -458,7 +458,6 @@ ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity]) => `${en
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
     partitionPolicy: {
       excludedEntityTypes: ${JSON.stringify(manifest.partitionPolicy?.excludedEntityTypes ?? [])},
-      secretEntityTypes: ${JSON.stringify(manifest.partitionPolicy?.secretEntityTypes ?? [])},
     },
   },
   boot: {
