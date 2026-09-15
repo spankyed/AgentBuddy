@@ -287,12 +287,17 @@ Final.
 - Add `SHARED_INSTANCE_PACKAGES` and derive every consumer listed in Background from it, with the guard test.
 - Build and publish configuration: `packages:build`, `packages:check`, API reports for `@abuddy/ears`, `published-*` specs cover `@abuddy/ears`, changesets fixed group, `typescript-floor`.
 - Follow the TYPED-EARS checklist (type tests, mutation checks, completions, report review).
+- **Dependency direction guard:** `check:specifiers` gains rules that fail on an upward import, and each package's `package.json` declares only the allowed `@abuddy` dependencies:
+  - `@abuddy/ears` imports no `@abuddy/*` package;
+  - `@abuddy/sdk` imports only `@abuddy/ears`;
+  - `@abuddy/host` imports only `@abuddy/sdk` and `@abuddy/ears`, never `packages/api`.
 
 **Done when:**
 - Default-setup's typed-EARS specs and `facade-typing.spec.ts` pass against workspace source and the published packages, with completions unchanged.
 - The SDK and `@abuddy/ears` API reports together cover the previous surface; review the diff.
 - A fixture-pack unit test and its E2E write through `@abuddy/ears` imported directly and read the row back through `@abuddy/sdk`, in the harness and in the app, proving one instance.
 - Mutation: removing `@abuddy/ears` from `SHARED_INSTANCE_PACKAGES` fails that test and the guard.
+- Mutations: an `@abuddy/host` import planted in `@abuddy/sdk`, an `@abuddy/sdk` import planted in `@abuddy/ears`, and an api import planted in `@abuddy/host` each fail `check:specifiers`.
 
 ### Phase 2 — `@abuddy/ears/lmdb`
 - Move LMDB and persistence into `@abuddy/ears/lmdb` (Decision 3), and replace `attribute-storage.ts`'s import side effect with `openLmdbStore`, called by the api's composition root.
