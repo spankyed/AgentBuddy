@@ -253,6 +253,11 @@ export function getBootHooks(): PackBootHooks[] {
   return hooks;
 }
 
+/** A registered pack's registration, as it was registered */
+export function getPackRegistration(packId: string): PackRegistration | null {
+  return registrations.get(packId) ?? null;
+}
+
 export function getPackBootHooks(packId: string): PackBootHooks | null {
   return registrations.get(packId)?.boot ?? null;
 }

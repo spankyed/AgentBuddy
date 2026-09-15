@@ -76,7 +76,7 @@ npm run generate:entries -w @app/default-setup
 # Step 3: Compile default-setup
 if [ -z "$SKIP_COMPILE" ]; then
   echo -e "${BLUE}[3/7]${NC} Compiling default-setup..."
-  npm run compile:prod
+  npm run compile
   echo -e "${GREEN}✓${NC} Default-setup compiled"
 else
   echo -e "${BLUE}[3/7]${NC} Skipping default-setup compilation (SKIP_COMPILE set)"

@@ -2,12 +2,12 @@ import * as crypto from 'node:crypto';
 import { builtinRepository } from '../ears/builtin-repositories.ts';
 import { getAttr, updateAttr } from '../ears/attribute-storage.ts';
 import { findRelations } from '../ears/relations.ts';
-import { findAll } from '../ears/query-helpers.ts';
+import { findAll, findByIdRaw } from '../ears/query-helpers.ts';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
-import { isFlowConfig } from '../build/compilers/flow-types.ts';
+import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
@@ -97,6 +97,23 @@ export function createFlowSeeder(): Seeder {
       const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
       const promptMap = buildLabelMap(builtinRepository.promptQueries.all());
 
+      /**
+       * Who owns the flow a DSL entry would overwrite: flow and node ids derive from the flow's name, so
+       * another pack's flow with that name, or a user's flow with those ids, would be written over. The
+       * flow this seed replaces isn't a collision.
+       */
+      const collidingOwner = (name: string, entry: FlowDSL[string], replacing: FlowEntity | undefined): string | undefined => {
+        const ownIds = new Set<string>(replacing
+          ? [replacing.id, ...findRelations({ sourceEntity: replacing.id, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity)]
+          : []);
+        const ids = (compileFlowDSL({ [name]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string }>).map((row) => row.id);
+        const taken = ids.find((id) => !ownIds.has(id) && findByIdRaw(id as EARS.EntityId));
+        if (!taken) return undefined;
+        const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
+        const seedKey = getAttr(flowId as EARS.EntityId, SEED_KEY) as string | null;
+        return seedKey ? `seeded by ${seedKey.slice(0, seedKey.indexOf(':'))}` : 'created by the user';
+      };
+
       const validFlowDSL: Record<string, any> = {};
       const replacedLabels = new Set<string>();
 
@@ -146,7 +163,17 @@ export function createFlowSeeder(): Seeder {
             counts.skipped++;
             continue;
           }
+        }
 
+        const owner = collidingOwner(key, entry, existing);
+        if (owner) {
+          const message = `Flow "${key}": a flow with this name already exists (${owner})`;
+          console.error(`[seed] ${message}`);
+          (counts.errors ??= []).push(message);
+          continue;
+        }
+
+        if (existing) {
           try {
             builtinRepository.flowsCommands.deleteFlow(existing.id, { allowRoot: true });
             replacedLabels.add(key);
@@ -164,21 +191,23 @@ export function createFlowSeeder(): Seeder {
       /**
        * The flows a subflow step can name that this seed doesn't (re)import, such as an unchanged flow
        * or a dependency's. A flow this pack's seed defines is its seeded flow, found by seed key however
-       * it's been renamed, never another flow with its label; other names resolve by label.
+       * it's been renamed, never another flow with its label. When it has no seeded flow (the seed left
+       * a user's or another pack's flow with that name alone), the name runs that flow; other names
+       * resolve by label.
        */
       const subflowTargets = (): Map<string, string> => {
         const flows = findAll<FlowEntity>(EARS.Entity.Flow);
-        const defined = new Set(Object.keys(flowsDSL));
         const seededIds = new Set<string>();
         const targets = new Map<string, string>();
-        for (const name of defined) {
-          const seeded = lookupSeeded(flows, name);
-          if (!seeded?.sourceHash) continue;
+        for (const name of Object.keys(flowsDSL)) {
+          const seedKey = flowSeedKey(packId, name);
+          const seeded = flows.find((flow) => getAttr(flow.id, SEED_KEY) === seedKey);
+          if (!seeded) continue;
           targets.set(name, seeded.id);
           seededIds.add(seeded.id);
         }
         for (const flow of flows) {
-          if (!seededIds.has(flow.id) && !defined.has(flow.label) && !targets.has(flow.label)) targets.set(flow.label, flow.id);
+          if (!seededIds.has(flow.id) && !targets.has(flow.label)) targets.set(flow.label, flow.id);
         }
         return targets;
       };

@@ -4,14 +4,26 @@
  * encrypted host store and tracks edits to seeded rows. Run it once, with the production app quit, then delete
  * this script.
  *
- * Needs packages/default-setup/dist built from this branch (npm run build). It prints what it would do and
- * writes nothing unless given --apply:
+ * It prints what it would do and writes nothing unless given --apply:
  *
  *   cd packages/api
  *   ABUDDY_ENV=production ABUDDY_USER_DATA_DIR=<the production app's data dir> \
  *     node ../../scripts/with-source.mjs tsx --tsconfig tsconfig.scripts.json scripts/db/fix-prod-upgrade.ts [--apply]
  *
  * The production app's data dir is its userData folder (the "abuddy" folder in the macOS app support folder).
+ *
+ * Before running:
+ * 1. Quit the production app (the script refuses while it runs on the data dir).
+ * 2. Back up the whole data dir while the app is closed: cp -Rp "<data dir>" "<data dir>.backup"
+ * 3. npm run build, so packages/default-setup/dist is built from this branch's sources (the script refuses an
+ *    older build).
+ * 4. Dry run first (no --apply) and read the output, including the summary's lists:
+ *    - "unchanged but edited" rows are recorded as edited: later seeds leave them alone;
+ *    - "record changed" rows and "flow changed" flows are replaced by the next launch, so edits made to them
+ *      are overwritten: export anything worth keeping first.
+ * 5. Check the output for failures ("Failed:", [LMDB] errors, a non-zero exit). A failed LMDB flush stops the
+ *    script before it deletes the old key database: restore the backup before trying again.
+ * 6. After --apply, launch the new build and enter the API keys again in Settings → Secrets.
  *
  * What it does:
  * 1. Deletes ears-secrets and ears-secrets-backup, the old API key database, which held keys unencrypted.
@@ -25,7 +37,14 @@
  *    - a row whose record has changed is recorded as it's stored, so the next launch updates it;
  *    - a flow is recorded as it's stored (its graph can't be compared with its DSL), so an edit made to a
  *      seeded flow is kept until that flow's seed next changes.
- *    Rows without a sourceHash (created by the user) are left alone.
+ *    Rows without a sourceHash (created by the user) are left alone, except notes: v0.3.14's notes import
+ *    never stored a sourceHash, so a note without a sourceHash or seed key that matches a current notes record
+ *    by identity (its title under the same parent chain, the notes seed hook's find) is taken for the note
+ *    v0.3.14 seeded. It gets the record's sourceHash, and its seeded values are recorded as the record's: one
+ *    that still holds them takes later seed changes, one that doesn't is recorded as edited and kept. A note
+ *    the user created with the same title in the same place (for v0.3.14's welcome note, a root note titled
+ *    exactly "welcome") can't be told apart from it and is treated the same; v0.3.14's own import overwrote
+ *    such a note's content with the welcome text, so it treated that note as seeded too.
  */
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
@@ -36,11 +55,12 @@ import { findAll, findWhere, getAttr, qx, updateAttr } from '@abuddy/host/ears';
 import { recordLabel, seedHookRegistry, type SeedHookContext, type SeedRecord } from '@abuddy/sdk/seed';
 import { compileFlowDSL, type CompiledRows } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
-import { closeDatabase, openDatabase, packagesDir } from './database';
+import { closeDatabase, flushDatabase, openDatabase, packagesDir, persistenceErrorCount } from './database';
 
 const apply = process.argv.includes('--apply');
 const PACK_ID = 'default-setup';
-const COMPILED_DIR = path.join(packagesDir, 'default-setup', 'dist');
+const PACK_DIR = path.join(packagesDir, 'default-setup');
+const COMPILED_DIR = path.join(PACK_DIR, 'dist');
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
 /** default-setup's generic seed entries, as its generated seeders.ts registers them */
@@ -52,12 +72,16 @@ const ENTRIES = [
 ] as const;
 
 const attr = (name: string) => name as EARS.AttrKind;
+const SEED_KEY = attr('seedKey');
 const hash = (values: unknown[]) => crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16);
 const readJSON = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf-8')) as T;
 const counts: Record<string, number> = {};
 const count = (what: string) => { counts[what] = (counts[what] ?? 0) + 1; };
+/** Rows the next launch replaces or updates (edits to them are overwritten), and rows recorded as edited */
+const replacedNextLaunch: string[] = [];
+const recordedAsEdited: string[] = [];
 
-/** A write, made only with --apply */
+/** A planned change: printed (labelled in a dry run), and made only with --apply */
 function write(description: string, change: () => void): void {
   console.log(`  ${apply ? '' : '(dry run) '}${description}`);
   if (apply) change();
@@ -73,12 +97,34 @@ function assertAppQuit(userDataDir: string): void {
     return;
   }
   const pid = Number(target.slice(target.lastIndexOf('-') + 1));
+  if (!Number.isInteger(pid) || pid <= 0) {
+    throw new Error(`Can't read the app's pid from ${lock} (${target}): quit the app, and if it isn't running, delete that file`);
+  }
   try {
     process.kill(pid, 0);
-  } catch {
-    return;
+  } catch (err) {
+    // ESRCH: no such process. EPERM means it exists but belongs to someone else, so it counts as running.
+    if ((err as NodeJS.ErrnoException).code === 'ESRCH') return;
   }
-  throw new Error(`The app is running on ${userDataDir} (pid ${pid}): quit it first`);
+  throw new Error(`The app is running on ${userDataDir} (pid ${pid}): quit it first (if it isn't the app, delete ${lock})`);
+}
+
+/** Refuses a default-setup build older than its seed sources or abuddy.json */
+function assertBuildCurrent(): void {
+  const indexFile = path.join(COMPILED_DIR, 'seeds.json');
+  if (!fs.existsSync(indexFile)) throw new Error(`${indexFile} is missing: run npm run build first`);
+  const index = readJSON<{ packId?: string }>(indexFile);
+  if (index.packId !== PACK_ID) throw new Error(`${indexFile} isn't this branch's build: run npm run build first`);
+  const builtAt = fs.statSync(indexFile).mtimeMs;
+  const seedsDir = path.join(PACK_DIR, 'src', 'seeds');
+  const sources = [
+    path.join(PACK_DIR, 'abuddy.json'),
+    ...fs.readdirSync(seedsDir, { recursive: true, encoding: 'utf-8' }).map((file) => path.join(seedsDir, file)),
+  ];
+  const newer = sources.filter((file) => fs.statSync(file).isFile() && fs.statSync(file).mtimeMs > builtAt);
+  if (newer.length > 0) {
+    throw new Error(`${indexFile} is older than ${newer.length} source file(s), e.g. ${path.relative(packagesDir, newer[0])}: run npm run build first`);
+  }
 }
 
 // ── 1. The old API key database ─────────────────────────────────────────────
@@ -107,14 +153,15 @@ function moveCliPaths(): void {
   }
   const cliPaths = Object.fromEntries(Object.entries(secrets.cliPaths ?? {}).filter(([, value]) => typeof value === 'string' && value.trim() !== ''));
   const current = stored.plugins?.code?.cliPaths as Record<string, string> | undefined;
+  let description = 'remove general.secrets';
   if (Object.keys(cliPaths).length > 0 && Object.keys(current ?? {}).length === 0) {
-    console.log(`  move CLI paths to plugins.code.cliPaths: ${JSON.stringify(cliPaths)}`);
     stored.plugins = { ...stored.plugins, code: { ...stored.plugins?.code, cliPaths } };
+    description = `move CLI paths to plugins.code.cliPaths (${JSON.stringify(cliPaths)}) and remove general.secrets`;
   } else if (Object.keys(cliPaths).length > 0) {
-    console.log(`  plugins.code.cliPaths already set (${JSON.stringify(current)}): not moving ${JSON.stringify(cliPaths)}`);
+    description = `remove general.secrets without moving its CLI paths ${JSON.stringify(cliPaths)}: plugins.code.cliPaths is already set (${JSON.stringify(current)})`;
   }
   delete stored.general.secrets;
-  write('remove general.secrets', () => tx(SETTINGS_ID).put('data', stored).put('updatedAt', Date.now()));
+  write(description, () => tx(SETTINGS_ID).put('data', stored).put('updatedAt', Date.now()));
 }
 
 // ── 3. Seeded rows ──────────────────────────────────────────────────────────
@@ -148,47 +195,74 @@ function stampGenericRows(): void {
     const mediaDir = path.join(COMPILED_DIR, 'media', entry.key);
     const relKind = 'relKind' in entry ? entry.relKind : 'contains';
 
-    const findRow = (record: SeedRecord, context: SeedHookContext): EARS.EntityId | undefined => {
+    /** The row the seeder finds for a record (seeder.ts find): by seed key, else by identity when it has no seed key */
+    const findRow = (record: SeedRecord, seedKey: string, context: SeedHookContext): EARS.EntityId | undefined => {
+      const keyed = record.entity ? findWhere<{ id: EARS.EntityId }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
+      if (keyed) return keyed.id;
       const hooks = record.entity ? seedHookRegistry.get(record.entity) : undefined;
-      if (hooks?.find) return hooks.find(record, context)?.id;
-      const fields = entry.identity.filter((name) => name !== 'parent');
-      const candidates = findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, fields[0], record[fields[0]])
-        .filter((row) => fields.slice(1).every((name) => row[name] === record[name]));
-      const match = (entry.identity as readonly string[]).includes('parent')
-        ? candidates.find((row) => qx(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
-        : candidates[0];
-      return match?.id;
+      let match: EARS.EntityId | undefined;
+      if (hooks?.find) {
+        match = hooks.find(record, context)?.id;
+      } else {
+        const fields = entry.identity.filter((name) => name !== 'parent');
+        const candidates = findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, fields[0], record[fields[0]])
+          .filter((row) => fields.slice(1).every((name) => row[name] === record[name]));
+        match = ((entry.identity as readonly string[]).includes('parent')
+          ? candidates.find((row) => qx(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
+          : candidates[0])?.id;
+      }
+      return match && getAttr(match, SEED_KEY) === null ? match : undefined;
     };
 
     const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined, parentKey: string) => {
       items.forEach((record, index) => {
         const label = recordLabel(record, [...entry.identity]);
-        const id = findRow(record, { parentId, index });
+        const named = `${entry.key}: ${label}`;
+        const seedKey = childSeedKey(parentKey, record, entry.identity);
+        const id = findRow(record, seedKey, { parentId, index, clearedFields: [] });
         if (!id) {
           console.log(`  ${label}: not in the database (the next launch seeds it)`);
           count('not in the database');
           return;
         }
-        const seedKey = childSeedKey(parentKey, record, entry.identity);
+        // The fields the seeder tracks (seeder.ts seededFieldNames): every field the record sets but its sourceHash
+        const fields = Object.keys(record).filter((key) => !['entity', 'children', 'sourceHash'].includes(key)).sort();
+        const storedValues = () => hash(fields.map((field) => getAttr(id, attr(field)) ?? null));
+        const recordValues = () => hash(fields.map((field) => (entry.key === 'library' ? withRowMedia(record[field], id, mediaDir) : record[field]) ?? null));
         const storedHash = getAttr(id, attr('sourceHash')) as string | null;
-        if (!storedHash) {
+
+        if (!storedHash && entry.key === 'notes' && getAttr(id, SEED_KEY) === null) {
+          const recorded = recordValues();
+          const edited = recorded !== storedValues();
+          const outcome = edited
+            ? 'v0.3.14 seeded note, edited: recorded as edited, later seeds leave it alone'
+            : 'v0.3.14 seeded note, unedited: recorded, it takes later seed changes';
+          count(outcome.split(':')[0]);
+          if (edited) recordedAsEdited.push(named);
+          write(`${label}: ${outcome} (no sourceHash; matched by title and parent, so a note of yours with this title in this place is taken for it)`, () => {
+            updateAttr(id, attr('sourceHash'), record.sourceHash);
+            updateAttr(id, SEED_KEY, seedKey);
+            updateAttr(id, attr('seededFields'), { fields, hash: recorded });
+          });
+        } else if (!storedHash) {
           console.log(`  ${label}: no sourceHash, user-owned: left alone`);
           count('user-owned');
         } else if (getAttr(id, attr('seededFields')) !== null) {
           console.log(`  ${label}: already recorded`);
           count('already recorded');
         } else {
-          const fields = Object.keys(record).filter((key) => !['entity', 'children', 'sourceHash'].includes(key)).sort();
-          const stored = hash(fields.map((field) => getAttr(id, attr(field)) ?? null));
+          const stored = storedValues();
           let recorded = stored;
           let outcome = 'record changed: recorded as stored, the next launch updates it';
           if (storedHash === record.sourceHash) {
-            recorded = hash(fields.map((field) => (entry.key === 'library' ? withRowMedia(record[field], id, mediaDir) : record[field]) ?? null));
+            recorded = recordValues();
             outcome = recorded === stored ? 'unchanged and unedited: recorded' : 'unchanged but edited: recorded as edited, later seeds leave it alone';
           }
           count(outcome.split(':')[0]);
+          if (storedHash !== record.sourceHash) replacedNextLaunch.push(named);
+          else if (recorded !== stored) recordedAsEdited.push(named);
           write(`${label}: ${outcome}`, () => {
-            if (getAttr(id, attr('seedKey')) === null) updateAttr(id, attr('seedKey'), seedKey);
+            if (getAttr(id, SEED_KEY) === null) updateAttr(id, SEED_KEY, seedKey);
             updateAttr(id, attr('seededFields'), { fields, hash: recorded });
           });
         }
@@ -215,11 +289,14 @@ function stampFlows(): void {
   console.log('\n3. Seeded flows');
   const flowsDSL = readJSON<Record<string, unknown>>(path.join(COMPILED_DIR, 'flows.seed.json'));
   const labelMap = (entity: string) => new Map<string, string>(findAll<{ id: string; label: string }>(entity as EARS.Entity).map((row) => [row.label, row.id]));
-  const maps = { actions: labelMap('Action'), prompts: labelMap('Prompt') };
+  const maps = { actions: labelMap('Action'), prompts: labelMap('Prompt'), flows: labelMap('Flow') };
   const ROW_KEYS = new Set(['id', 'sourceHash', 'createdAt']);
 
   for (const [name, entry] of Object.entries(flowsDSL)) {
-    const flow = findWhere<{ id: EARS.EntityId }>('Flow' as EARS.Entity, 'label', name).find((row) => getAttr(row.id, attr('sourceHash')));
+    // flow-seeder.ts flowSeedKey
+    const seedKey = `${PACK_ID}:flows/${encodeURIComponent(JSON.stringify(['Flow', name]))}`;
+    const flow = findWhere<{ id: EARS.EntityId }>('Flow' as EARS.Entity, SEED_KEY as string, seedKey)[0]
+      ?? findWhere<{ id: EARS.EntityId }>('Flow' as EARS.Entity, 'label', name).find((row) => getAttr(row.id, attr('sourceHash')) && getAttr(row.id, SEED_KEY) === null);
     if (!flow) {
       console.log(`  ${name}: no seeded flow with this label (the next launch seeds it)`);
       count('flow not in the database');
@@ -244,31 +321,49 @@ function stampFlows(): void {
     };
     const changed = getAttr(flow.id, attr('sourceHash')) !== (entry as { sourceHash?: string }).sourceHash;
     count(changed ? 'flow changed' : 'flow unchanged');
-    write(`${name}: ${changed ? 'DSL changed: recorded as stored, the next launch replaces it' : 'recorded as stored'}`, () => {
-      if (getAttr(flow.id, attr('seedKey')) === null) updateAttr(flow.id, attr('seedKey'), `${PACK_ID}:flows/${encodeURIComponent(JSON.stringify(['Flow', name]))}`);
+    if (changed) replacedNextLaunch.push(`flows: ${name}`);
+    write(`${name}: ${changed ? 'flow changed: recorded as stored, the next launch replaces it' : 'recorded as stored'}`, () => {
+      if (getAttr(flow.id, SEED_KEY) === null) updateAttr(flow.id, SEED_KEY, seedKey);
       updateAttr(flow.id, attr('seededGraph'), { ...seeded, hash: hashGraph(flow.id, seeded) });
     });
   }
+}
+
+function printSummary(): void {
+  console.log('\nSummary:', counts);
+  const list = (heading: string, names: string[]) => {
+    console.log(`\n${heading}: ${names.length === 0 ? 'none' : ''}`);
+    for (const name of names) console.log(`  - ${name}`);
+  };
+  list('Replaced or updated by the next launch (edits to these are overwritten: export them first)', replacedNextLaunch);
+  list('Recorded as edited (kept; later seed changes skip them)', recordedAsEdited);
 }
 
 async function run(): Promise<void> {
   const { env, userDataDir } = resolveAppContext();
   console.log(`${apply ? 'Applying to' : 'Dry run (pass --apply to write) on'} the ${env} data dir: ${userDataDir}`);
   assertAppQuit(userDataDir);
-  const index = readJSON<{ packId?: string }>(path.join(COMPILED_DIR, 'seeds.json'));
-  if (index.packId !== PACK_ID) throw new Error(`${COMPILED_DIR}/seeds.json isn't this branch's build: run npm run build first`);
+  assertBuildCurrent();
 
-  await openDatabase();
+  // Hydrated as the app boots it (setup/backend.ts), so stored rows hash as the seeders will see them
+  await openDatabase({ skipTombstoneScan: true });
+  const errorsBefore = persistenceErrorCount();
+  let flushFailed = false;
   try {
     moveCliPaths();
     stampGenericRows();
     stampFlows();
+    // The adapter logs a failed flush instead of throwing: flush now and check, so closing has nothing left to write
+    flushFailed = (await flushDatabase()) > errorsBefore;
   } finally {
     closeDatabase();
   }
+  if (flushFailed) {
+    throw new Error('Writing to LMDB failed (see the [LMDB] errors above): the changes may be partly written, and ears-secrets was not deleted. Restore the data dir backup before trying again.');
+  }
   removeOldKeyDatabase(userDataDir);
-  console.log('\nSummary:', counts);
-  if (!apply) console.log('\nNothing was written. Run again with --apply to make these changes.');
+  printSummary();
+  console.log(apply ? '\nDone. Launch the app and enter the API keys again in Settings → Secrets.' : '\nNothing was written. Run again with --apply to make these changes.');
 }
 
 run().catch((err) => {

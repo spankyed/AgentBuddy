@@ -1,5 +1,5 @@
 // Where the harness finds the pack, and which tests it runs: a pack's unit tests run from anywhere with --root,
-// concurrent tests fail naming why, and a pack scaffolded before the harness gets its setup from `abuddy add feature`.
+// tests that run concurrently fail naming why, and a pack scaffolded before the harness gets its setup from `abuddy add feature`.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -76,6 +76,19 @@ it.concurrent('two', async () => {});`);
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+2 failed/);
     expect(result.output).toContain('"one" runs concurrently: harness tests share one database, service mocks and apps per file');
+  }, 180_000);
+
+  it("run a concurrent test nothing runs alongside: alone in its group, or next to skipped ones", () => {
+    const root = dataPack(`
+import { describe, it } from 'vitest';
+it.concurrent('alone', async () => {});
+it('after it', async () => {});
+describe.concurrent('a concurrent suite', () => {
+  it('runs', async () => {});
+  it.skip('skipped', async () => {});
+});`);
+    const result = run(process.execPath, [VITEST, 'run'], root);
+    expect(result.output).toMatch(/Tests\s+3 passed \| 1 skipped/);
   }, 180_000);
 });
 

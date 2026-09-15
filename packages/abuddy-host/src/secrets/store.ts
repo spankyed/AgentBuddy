@@ -1,6 +1,7 @@
 // The user's API keys: metadata in plain text and each value encrypted (AES-256-GCM) in one file, with the data key in
-// a KeyVault. Listing, selecting, renaming and deleting never need the data key; the vault is reached the first time a
-// value is encrypted or decrypted, and the data key is kept in memory after that. Values are decrypted on each use.
+// a KeyVault. Listing, selecting, renaming and deleting never need the data key; the data key is read the first time a
+// value is encrypted or decrypted, and kept in memory after that. Values are decrypted on each use. The first status
+// checks the OS vault can be reached, reading an account that holds no item.
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import { secretRules, secretProviderLabel, toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
@@ -36,7 +37,10 @@ export interface SecretsStore {
   keyFor(provider: ProviderName): string;
   /** Keeps data keys in a file from now on, where the OS has no credential store */
   allowUnprotected(): void;
-  /** Deletes every stored key, and the data keys they were encrypted with (the next key added gets a new one) */
+  /**
+   * Deletes every stored key. The data key stays in its vault, where a copy of the data directory may share it, and
+   * encrypts the keys added next; a file that can't be read is deleted.
+   */
   clearAll(): void;
   /**
    * Calls `listener` after every change to what `list` or `status` return: each change to the stored keys, and the OS
@@ -47,6 +51,8 @@ export interface SecretsStore {
 
 const newKeyId = () => `k_${crypto.randomBytes(12).toString('base64url')}`;
 const account = (keyId: string) => `secrets:${keyId}`;
+/** An account no data key uses (key ids start with `k_`): reading it checks the OS vault without finding an item to prompt for */
+const PROBE_ACCOUNT = account('probe');
 
 export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   const now = options.now ?? Date.now;
@@ -54,6 +60,8 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   const dataKeys = new Map<string, Buffer>();
   /** The OS vault failed its last use: status is `unavailable` until a vault call succeeds or the user allows unprotected storage */
   let osVaultUnavailable = false;
+  /** Whether `status` has checked this process that the OS vault can be reached */
+  let osVaultProbed = false;
   /** Data keys set in a vault for a file not written yet: removed again when that write fails */
   const pendingKeys: Array<{ vault: KeyVault; keyId: string }> = [];
   const listeners = new Set<() => void>();
@@ -179,6 +187,15 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     status() {
       const file = read();
       const vault = vaultFor(file);
+      if (vault.protection === 'os-keystore' && !osVaultProbed) {
+        osVaultProbed = true;
+        try {
+          withVault(file, (probe) => probe.get(PROBE_ACCOUNT));
+        } catch (error) {
+          // A vault that can't be reached marks the status unavailable (and listeners hear of it); anything else is the next use's to report
+          if (!(error instanceof KeyVaultUnavailableError)) console.warn('[secrets] Checking the OS credential store failed:', error);
+        }
+      }
       if (osVaultUnavailable && vault.protection === 'os-keystore') return { protection: 'unavailable', backend: vault.backend };
       return { protection: vault.protection, backend: vault.backend };
     },
@@ -241,19 +258,24 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
 
     clearAll() {
       if (!fs.existsSync(options.filePath)) return;
-      const file = read();
-      const keyIds = new Set(file.secrets.map((secret) => secret.value.keyId).concat(file.keyId));
-      fs.rmSync(options.filePath, { force: true });
-      notify();
-      // The next file gets a new key id, so nothing would use these data keys again
-      const vault = vaultFor(file);
-      for (const keyId of keyIds) {
-        dataKeys.delete(keyId);
-        try {
-          vault.delete(account(keyId));
-        } catch {
-          // Never set, or the OS vault is unavailable: nothing to delete
-        }
+      const remove = (reason: string, error: unknown) => {
+        console.warn(`[secrets] Deleting ${options.filePath}, which ${reason}:`, error instanceof Error ? error.message : error);
+        fs.rmSync(options.filePath, { force: true });
+        notify();
+      };
+      let file: SecretsFile;
+      try {
+        file = read();
+      } catch (error) {
+        // Nothing in it can be kept
+        remove("can't be read", error);
+        return;
+      }
+      try {
+        // Keeps the key id and protection, so the next key added reuses the vault's data key
+        write({ format: FORMAT, protection: file.protection, keyId: file.keyId, secrets: [] });
+      } catch (error) {
+        remove("couldn't be emptied", error);
       }
     },
 

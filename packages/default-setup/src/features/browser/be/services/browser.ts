@@ -226,6 +226,5 @@ export function createBrowser(browserType?: BrowserType): BrowserService {
   return new BrowserService(browserType);
 }
 
-// Re-export browser types from playwright for convenience
+// Re-export the browser launchers from playwright for convenience
 export { chromium, firefox, webkit } from 'playwright';
-export type { Browser, BrowserContext, Page } from 'playwright';

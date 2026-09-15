@@ -8,9 +8,10 @@
 #   3. abuddy build
 #   4. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
 #      and the llm flow on default-setup's brain, with inference mocked by mockInference
-#   5. abuddy release --local --dry-run produces a verified bundle
-#   6. install that bundle into an isolated test data dir
-#   7. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
+#   5. @abuddy/testing's published declarations type-check on their own (skipLibCheck off)
+#   6. abuddy release --local --dry-run produces a verified bundle
+#   7. install that bundle into an isolated test data dir
+#   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
 # KEEP_WORK=1 keeps the temp dir.
 set -euo pipefail
@@ -262,7 +263,7 @@ node -e '
 ' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
 
-step "4. @abuddy/testing's published types stand alone"
+step "5. @abuddy/testing's published types stand alone"
 # Its declarations may import only what a pack installs: an unpublished import (@abuddy/host) fails with lib checking
 # on, and is silently `any` under the scaffold's skipLibCheck. Errors in other packages' declarations aren't this check's.
 cat > tests/types-probe.ts <<'TS'
@@ -273,13 +274,27 @@ import type { AppHelper } from '@abuddy/testing';
 type IsAny<T> = 0 extends 1 & T ? true : false;
 export const typed: [IsAny<OutgoingSystemEvents>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
 TS
-node_modules/.bin/tsc --noEmit --skipLibCheck false -p . > "$WORK/types-probe.log" 2>&1 || true
+TYPES_STATUS=0
+node_modules/.bin/tsc --noEmit --skipLibCheck false --listFiles --pretty false -p . > "$WORK/types-probe.log" 2>&1 || TYPES_STATUS=$?
 rm tests/types-probe.ts
-if grep -E "node_modules/@abuddy/testing/|tests/types-probe\.ts" "$WORK/types-probe.log"; then
+# The diagnostics, without the files tsc lists
+grep -v "^/" "$WORK/types-probe.log" || true
+# tsc checked the probe: a config error (no inputs, a bad option) or a crash lists no files. tsc lists real paths.
+grep -qxF "$(pwd -P)/tests/types-probe.ts" "$WORK/types-probe.log" || fail "tsc didn't type-check the types probe"
+# Every error is in other packages' declarations (installed, or dependencies' in .abuddy/deps); errors without a
+# file (config) or anywhere else fail
+if grep "error TS" "$WORK/types-probe.log" | grep -vE "^(node_modules|\.abuddy/deps)/" | grep .; then
+  fail "the types probe didn't type-check"
+fi
+if grep -E "^node_modules/@abuddy/testing/" "$WORK/types-probe.log"; then
   fail "@abuddy/testing's published declarations don't type-check on their own"
 fi
+# A non-zero exit with no error in other packages' declarations is tsc failing some other way
+if [ "$TYPES_STATUS" -ne 0 ] && ! grep -qE "^(node_modules|\.abuddy/deps)/[^(]+\([0-9]+,[0-9]+\): error TS" "$WORK/types-probe.log"; then
+  fail "tsc exited $TYPES_STATUS without type errors while checking the types probe"
+fi
 
-step "5. abuddy release --local --dry-run"
+step "6. abuddy release --local --dry-run"
 git init --quiet -b main
 git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
@@ -290,7 +305,7 @@ BUNDLE="$(sed -n 's/^Bundle: //p' "$WORK/release.log")"
 (cd "$(dirname "$BUNDLE")" && shasum -a 256 -c "$(basename "$BUNDLE").sha256")
 [ -z "$(git status --porcelain)" ] || fail "a dry run changed the pack's files"
 
-step "6. Install the bundle into an isolated test data dir"
+step "7. Install the bundle into an isolated test data dir"
 DATA="$WORK/test-data"
 ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$BUNDLE"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/bundle.json' | head -n 1)"
@@ -301,7 +316,7 @@ node -e '
 ' "$INSTALLED"
 [ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed bundle has no runtime"
 
-step "7. abuddy test (the saved app)"
+step "8. abuddy test (the saved app)"
 "$ABUDDY" test
 
 step "No symlinks into the monorepo"

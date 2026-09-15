@@ -227,12 +227,16 @@ export async function addFeature(args: string[], root: string) {
   if (unitTestSetup) logUnitTestSetup(unitTestSetup);
 }
 
-function logUnitTestSetup({ keptConfig, addedDependencies }: UnitTestSetup): void {
+function logUnitTestSetup({ keptConfig, addedDependencies, upgrades }: UnitTestSetup): void {
   console.log(`\nThe pack had no unit test setup, which the feature's system test runs on: added tests/setup.ts (@abuddy/testing/harness).`);
   if (keptConfig) {
-    console.log(`  vitest.config.ts already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@abuddy/testing/vitest)`);
+    console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@abuddy/testing/vitest)`);
   }
   if (addedDependencies.length > 0) {
     console.log(`  Added ${addedDependencies.join(', ')} to devDependencies. Run: npm install`);
+  }
+  if (upgrades.length > 0) {
+    console.log(`  The harness can't run on the pack's ${upgrades.map(({ name, reason }) => `${name} (${reason})`).join(', ')}.`);
+    console.log(`  Upgrade: npm install -D ${upgrades.map(({ name, range }) => `${name}@"${range}"`).join(' ')}`);
   }
 }

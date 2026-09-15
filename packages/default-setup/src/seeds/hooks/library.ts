@@ -47,8 +47,10 @@ export const collectionSeedHooks: SeedHooks<CollectionSeedRecord> = {
     return repository.libraryCommands.createCollection(record.name, record.description, parentId, undefined, record.sourceHash).id;
   },
 
-  update(id, record) {
-    repository.libraryCommands.updateCollection(id, record.name, record.description, record.sourceHash);
+  /** A description the record no longer sets is emptied */
+  update(id, record, { clearedFields }) {
+    const description = record.description ?? (clearedFields.includes('description') ? '' : undefined);
+    repository.libraryCommands.updateCollection(id, record.name, description, record.sourceHash);
   },
 
   remove(id) {

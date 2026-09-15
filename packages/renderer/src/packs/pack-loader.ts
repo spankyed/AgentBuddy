@@ -1,5 +1,5 @@
 import type { Plugin } from '@/core/types';
-import type { PackFERegistration } from '@abuddy/host/fe';
+import { registerPackFE, type PackFERegistration } from '@abuddy/host/fe';
 
 export interface PackPluginManifest {
   id: string;
@@ -107,4 +107,38 @@ export async function loadPackPlugins(
     .filter((r): r is PromiseFulfilledResult<Plugin | null> => r.status === 'fulfilled')
     .map(r => r.value)
     .filter((p): p is Plugin => p !== null);
+}
+
+/** An external pack's frontend, as the pack registry lists it */
+export interface PackFrontend {
+  id: string;
+  feEntry?: string;
+  feStyles?: string;
+  plugins: PackPluginManifest[];
+}
+
+/**
+ * Loads an external pack's frontend: its styles, then its FE entry or, without one, its plugin entries,
+ * registering what it contributes. Returns the plugins it exports (none when it failed to load), or null
+ * for a pack without frontend code: the bus sent its systems the connection's CLIENT_CONNECTED already.
+ */
+export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | null> {
+  const packBaseUrl = `pack://${pack.id}`;
+  if (pack.feStyles) await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
+  if (!pack.feEntry && pack.plugins.length === 0) return null;
+
+  try {
+    if (pack.feEntry) {
+      const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
+      if (!registration) return [];
+      registerPackFE(registration, pack.id);
+      return registration.plugins ?? [];
+    }
+    const plugins = await loadPackPlugins(pack.plugins, packBaseUrl);
+    if (plugins.length > 0) registerPackFE({ plugins }, pack.id);
+    return plugins;
+  } catch (err) {
+    console.error(`[pack-loader] Failed to load the frontend of pack ${pack.id}:`, err);
+    return [];
+  }
 }

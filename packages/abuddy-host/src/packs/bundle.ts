@@ -215,11 +215,18 @@ function builtInSeedFiles(distDir: string): string[] {
 }
 
 /**
+ * In a built-in pack's dist/, the sha256 of the compiled seeds index (seeds.json) its runtime was built
+ * beside. The pack's runtime build writes it with runtime/index.cjs; `abuddy build` writes the seeds.
+ */
+const BUILT_IN_RUNTIME_SEEDS_HASH = 'runtime/seeds-index.sha256';
+
+/**
  * Publish a built-in pack's artifacts in the bundle layout (dist/snapshot.json → types/snapshot.json,
  * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
  * pack authors resolve it as a dependency from the installed app: builds use its types and build
  * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
- * destination was already current.
+ * destination was already current. Throws, publishing nothing, when the runtime wasn't built beside
+ * the compiled seeds (seeds compiled again without rebuilding the runtime).
  */
 export function publishHostPackArtifacts(builtInPackDir: string, destDir: string): boolean {
   const distDir = path.join(builtInPackDir, 'dist');
@@ -227,6 +234,14 @@ export function publishHostPackArtifacts(builtInPackDir: string, destDir: string
   if (!fs.existsSync(snapshot)) return false;
   const buildDir = path.join(distDir, 'build');
   const runtimeEntry = path.join(distDir, BUNDLE_PATHS.runtimeEntry);
+  const seedsIndex = path.join(distDir, 'seeds.json');
+  if (fs.existsSync(runtimeEntry) && fs.existsSync(seedsIndex)) {
+    const hashFile = path.join(distDir, BUILT_IN_RUNTIME_SEEDS_HASH);
+    const builtBeside = fs.existsSync(hashFile) ? fs.readFileSync(hashFile, 'utf-8').trim() : undefined;
+    if (builtBeside !== sha256File(seedsIndex)) {
+      throw new Error(`${runtimeEntry} wasn't built beside the compiled seeds in ${distDir} (${BUILT_IN_RUNTIME_SEEDS_HASH} doesn't match seeds.json), so it isn't published with them: rebuild the pack's runtime (npm run build in the pack)`);
+    }
+  }
   const seedFiles = fs.existsSync(runtimeEntry) ? builtInSeedFiles(distDir) : [];
 
   const sources = [

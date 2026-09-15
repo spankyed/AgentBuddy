@@ -55,8 +55,13 @@ function missingSdkPeers(packDir: string): string[] {
  * (a native module, an optional peer, code that needs the app) fails the build instead of a
  * dependent's tests.
  */
-export async function checkSeedRuntimeLoads(packDir: string, bundleFile: string): Promise<{ success: boolean; error?: string }> {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-seed-runtime-check-'));
+export async function checkSeedRuntimeLoads(
+  packDir: string,
+  bundleFile: string,
+  { tmpDir = os.tmpdir() }: { tmpDir?: string } = {},
+): Promise<{ success: boolean; error?: string }> {
+  // The load's user data dir, removed after
+  const dataDir = fs.mkdtempSync(path.join(tmpDir, 'abuddy-seed-runtime-check-'));
   try {
     const fromSource = sourceConditions(packDir).length > 0;
     const args = [

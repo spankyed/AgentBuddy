@@ -56,7 +56,7 @@ function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
 
 /**
  * The pack that compiled a seeds directory, from its seeds.json. Seed keys start with it, so two
- * packs' records with the same entry key and identity never share a row.
+ * packs' records with the same entry key and identity seed a row each.
  */
 export function seedingPackId(compiledDir: string): string {
   const index = loadJSON<Partial<SeedIndex>>(path.join(compiledDir, SEED_INDEX_FILE));
@@ -76,9 +76,8 @@ export function childSeedKey(parentKey: string, record: SeedRecord, identity: re
 /** A seed key names the seeding pack before the entry key */
 export const seedKeyPrefix = (packId: string) => `${packId}:`;
 
-/** Records the row's seeded values, so a later seed can tell whether anything else changed them */
-function stampSeededFields(id: EARS.EntityId, record: SeedRecord): void {
-  const fields = seededFieldNames(record);
+/** Records the row's values for the seeded fields, so a later seed can tell whether anything else changed them */
+function stampSeededFields(id: EARS.EntityId, fields: string[]): void {
   updateAttr(id, SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
 }
 
@@ -156,37 +155,62 @@ export function createSeeder(options: SeederOptions): Seeder {
         return row.id;
       };
 
+      /** Without a hook, fields the record no longer sets are dropped */
       const update = (id: EARS.EntityId, record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks) => {
         if (hooks?.update) hooks.update(id, record, context);
-        else updateEntity(id, fieldsOf(record));
+        else updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
       };
 
       /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
       const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
         if (record.sourceHash && getAttr(id, SOURCE_HASH) !== record.sourceHash) updateAttr(id, SOURCE_HASH, record.sourceHash);
-        stampSeededFields(id, record);
+        stampSeededFields(id, seededFieldNames(record));
         updateAttr(id, SEED_KEY, seedKey);
       };
 
       /**
-       * Updates a row to the record. EARS writes can't be rolled back, so when the update throws part
-       * way, the row keeps its previous sourceHash and is stamped with what it holds now: it isn't
-       * taken for edited, and the next seed updates it again.
+       * Updates a row to the record, resetting the fields its previous seed set that the record no
+       * longer sets. EARS writes can't be rolled back, so when the update throws part way, the row keeps
+       * its previous sourceHash and seeded fields, stamped with what they hold now: it isn't taken for
+       * edited, the next seed updates it again, and a field the record newly sets isn't recorded as
+       * seeded while it holds a user's value.
        */
-      const updateTracked = (existing: SeedHookMatch, record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks) => {
+      const updateTracked = (existing: SeedHookMatch, seeded: SeededFields, record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks) => {
+        const recordFields = new Set(seededFieldNames(record));
+        const clearedFields = seeded.fields.filter((field) => !recordFields.has(field));
         try {
-          update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, context, hooks);
+          update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, { ...context, clearedFields }, hooks);
         } catch (err) {
           updateAttr(existing.id, SOURCE_HASH, existing.sourceHash);
-          stampSeededFields(existing.id, record);
+          stampSeededFields(existing.id, seeded.fields);
           throw err;
         }
         stamp(existing.id, record, seedKey);
       };
 
+      /**
+       * Creates a row for the record and stamps it. A row left unstamped would be taken for a user's
+       * (untracked) forever, so when copying its media or stamping it throws, the row is removed and the
+       * next seed creates it again.
+       */
+      const createTracked = (record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks): EARS.EntityId => {
+        const id = create(record, context, hooks);
+        try {
+          const restored = restoreMedia(record, id, mediaDir, ctx.log);
+          if (restored.count > 0) update(id, restored.record, context, hooks);
+          stamp(id, record, seedKey);
+        } catch (err) {
+          if (hooks?.remove) hooks.remove(id);
+          else destroyEntity(id);
+          if (mediaDir) fs.rmSync(path.join(getMediaPath(), id), { recursive: true, force: true });
+          throw err;
+        }
+        return id;
+      };
+
       const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined, parentKey: string) => {
         items.forEach((record, index) => {
-          const context: SeedHookContext = { parentId, index };
+          const context: SeedHookContext = { parentId, index, clearedFields: [] };
           const hooks = record.entity ? seedHookRegistry.get(record.entity) : undefined;
           const label = recordLabel(record, identity);
           const seedKey = childSeedKey(parentKey, record, identity);
@@ -209,17 +233,14 @@ export function createSeeder(options: SeederOptions): Seeder {
                 counts.skipped++;
                 ctx.log(`  ${key} skipped (edited): ${label}`);
               } else {
-                updateTracked(existing, record, context, seedKey, hooks);
+                updateTracked(existing, seeded, record, context, seedKey, hooks);
                 counts.updated++;
                 ctx.log(`  ${key} updated: ${label}`);
               }
               if (record.children) visit(record.children, existing.id, seedKey);
               return;
             }
-            const id = create(record, context, hooks);
-            const restored = restoreMedia(record, id, mediaDir, ctx.log);
-            if (restored.count > 0) update(id, restored.record, context, hooks);
-            stamp(id, record, seedKey);
+            const id = createTracked(record, context, seedKey, hooks);
             counts.created++;
             ctx.log(`  ${key} created: ${label}`);
             if (record.children) visit(record.children, id, seedKey);

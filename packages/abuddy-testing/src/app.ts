@@ -52,7 +52,7 @@ export interface TestApp {
   connect(): Promise<void>;
   /** Sends a system an event, as a client's `trpc.bus.send` does */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
-  /** Events sent to frontend plugins (by `emit` or `sendToPlugin`), in order; optionally one plugin's */
+  /** Events sent to frontend plugins (by `emit` or `sendToPlugin`), in order; optionally one plugin's. Readable after `stop` */
   emitted(pluginId?: string): OutgoingSystemEvents[];
   /** The next event of `type` sent to `pluginId` that no earlier `nextEmit` returned, waiting for it if needed */
   nextEmit(pluginId: string, type: string, options?: { timeoutMs?: number }): Promise<OutgoingSystemEvents>;
@@ -71,14 +71,15 @@ export interface TestApp {
    * as the app does at a cold boot, so call `connect()` right after `startApp` when entry tracks send events.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
-  /** The steps a flow (the root flow or a subflow, by label) has run so far in this app */
+  /** The steps a flow (the root flow or a subflow, by label) has run so far in this app. Readable after `stop` */
   flowTrace(label: string): FlowStepTrace[];
   /** A running system's actor */
   system(systemId: string): AnyActorRef;
   /**
-   * Stops the systems and ends pending `nextEmit`/`runFlow` waits with an "app stopped" error. Once no app runs, it
-   * runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack, so state its modules keep
-   * outside the stopped actors (schedules, listeners) doesn't reach the next test. The harness stops apps after each test.
+   * Stops the systems and ends pending `nextEmit`/`runFlow` waits with an "app stopped" error; later calls (`connect`,
+   * `send`, `nextEmit`, `settle`, `runFlow`, `system`) fail with it too. Once no app runs, it runs each registered
+   * pack's `boot.onShutdown`, as the app does when it stops a pack, so state its modules keep outside the stopped
+   * actors (schedules, listeners) doesn't reach the next test. The harness stops apps after each test.
    */
   stop(): void;
 }
@@ -104,6 +105,30 @@ export function stopRunningApps(): void {
   if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Stopping the test apps failed');
 }
 
+const describeError = (error: unknown) => error instanceof Error ? error.message : String(error);
+
+/**
+ * Runs each registered pack's `boot.onInit` in registration order (dependencies first), as the API does at boot
+ * before it starts the systems. The first app of a test starts the packs and the last one to stop shuts them down,
+ * so each test's apps run between one onInit and one onShutdown.
+ */
+function startPacks(): void {
+  for (const boot of getBootHooks()) {
+    try {
+      boot.onInit?.();
+    } catch (error) {
+      // As a failed boot: no app runs, so shut the packs down again for the next start
+      let shutdown = '';
+      try {
+        shutDownPacks();
+      } catch (shutdownError) {
+        shutdown = ` Shutting the packs down after it failed too: ${describeError(shutdownError)}`;
+      }
+      throw new Error(`A pack's boot.onInit failed when the test app started: ${describeError(error)}.${shutdown}`, { cause: error });
+    }
+  }
+}
+
 /** Runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack's systems */
 function shutDownPacks(): void {
   const failures: string[] = [];
@@ -111,7 +136,7 @@ function shutDownPacks(): void {
     try {
       boot.onShutdown?.();
     } catch (error) {
-      failures.push(error instanceof Error ? error.message : String(error));
+      failures.push(describeError(error));
     }
   }
   if (failures.length > 0) throw new Error(`A pack's boot.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
@@ -193,8 +218,9 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     }
     wakeWaits();
   };
-  let connected = false;
-  /** Events for systems sent before a client connected, which the bus dropped (as the app's does at a cold boot) */
+  /** Whether this app's bus routes events: a client connected since it started (CLIENT_CONNECTED reaches every running app) */
+  const connected = () => bus.getSnapshot().matches('connected');
+  /** Events for this app's systems sent before a client connected, which the bus dropped (as the app's does at a cold boot) */
   const dropped: string[] = [];
   const stopRecording = [
     testRootEvents.onOutgoing((event) => {
@@ -202,7 +228,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       wakeWaits();
     }),
     testRootEvents.onIncoming((event) => {
-      if (!connected) dropped.push(`${event.type}${typeof event.eventType === 'string' ? ` "${event.eventType}"` : ''} to ${event.systemId}`);
+      if (!connected() && systems.has(event.systemId)) dropped.push(`${event.type}${typeof event.eventType === 'string' ? ` "${event.eventType}"` : ''} to ${event.systemId}`);
     }),
   ];
   const droppedNote = () => dropped.length === 0 ? '' :
@@ -248,9 +274,6 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   });
 
   const stoppedError = () => new Error('The test app stopped (its test ended, or app.stop() ran) before this finished');
-  const assertRunning = () => {
-    if (stopped) throw stoppedError();
-  };
   /** Resolves with what `check` finds once an event makes it find something; rejects when the app stops first */
   const waitForEmitted = <T>(check: () => T | undefined, timeoutMs: number, describe: () => string) => new Promise<T>((resolve, reject) => {
     if (stopped) return reject(stoppedError());
@@ -272,9 +295,17 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     if (!wait.attempt()) waits.add(wait);
   });
 
-  /** The app's calls still running: a stop ends them, and nobody need await one after that */
+  /**
+   * The app's calls still running: a stop ends them, and nobody need await one after that. A call made after the stop
+   * rejects the same way, and is handled too, so `void app.nextEmit(…)` after it isn't an unhandled rejection.
+   */
   const calls = new Set<Promise<unknown>>();
   const call = <T>(run: () => Promise<T>): Promise<T> => {
+    if (stopped) {
+      const rejected = Promise.reject(stoppedError());
+      rejected.catch(() => {});
+      return rejected;
+    }
     const promise = run().finally(() => calls.delete(promise));
     calls.add(promise);
     return promise;
@@ -293,14 +324,11 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
 
   const app: TestApp = {
     connect: () => call(async () => {
-      assertRunning();
-      connected = true;
       testRootEvents.emitConnected();
       await settle();
     }),
     send: (systemId, event) => call(async () => {
-      assertRunning();
-      if (!connected) throw new Error('The bus routes client events only once connected: call app.connect() first');
+      if (!connected()) throw new Error('The bus routes client events only once connected: call app.connect() first');
       testRootEvents.emitIncoming({ ...event, systemId: resolveSystemId(systemId, systems) });
       await settle();
     }),
@@ -315,7 +343,6 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     }, timeoutMs, () => `No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.${droppedNote()}`)),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
-      assertRunning();
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
       const settingsId = hasDesignation('settings') ? getDesignated('settings') : undefined;
       if (!brainId || !settingsId || !systems.has(brainId) || !systems.has(settingsId)) {
@@ -342,10 +369,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const since = () => reports.slice(cursor);
       const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}.${droppedNote()}`;
       if (event !== undefined) {
-        if (!connected) {
-          connected = true;
-          testRootEvents.emitConnected();
-        }
+        if (!connected()) testRootEvents.emitConnected();
         testRootEvents.emitIncoming({ type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, systemId: brainId });
         await settle(deadline, timedOut);
       }
@@ -392,6 +416,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         .map((e) => stepTrace(e, tNodeRows));
     },
     system(systemId) {
+      if (stopped) throw stoppedError();
       const actor = bus.system.get(resolveSystemId(systemId, systems));
       if (!actor) throw new Error(`System "${systemId}" isn't running`);
       return actor;
@@ -409,6 +434,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     },
   };
 
+  if (running.size === 0) startPacks();
   running.add(app);
   bus.start();
   await settle();

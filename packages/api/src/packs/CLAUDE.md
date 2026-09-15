@@ -113,7 +113,7 @@ External packs declare a FE entry point in their manifest:
 }
 ```
 
-The renderer loads `pack://{packId}/{fe.entry}` via dynamic import. The module must export a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it. If plugins are present, they're also merged into the application actor via `PACK_PLUGINS_LOADED`.
+The renderer loads `pack://{packId}/{fe.entry}` via dynamic import. The module must export a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it and sends `PACK_FRONTEND_LOADED` to the application actor (with no plugins when the load failed), which merges the plugins and asks the pack's systems for their startup data (`bus.packClientReady`).
 
 Packs without `fe.entry` fall back to per-plugin loading from `plugins[].plugin.entry` in the manifest (the legacy path — plugins only).
 

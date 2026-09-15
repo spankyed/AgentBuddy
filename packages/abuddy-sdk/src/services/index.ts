@@ -11,7 +11,7 @@ import { secrets, type SecretsService } from './secrets.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
-export { createInferenceService, type InferenceModels, type InferenceService, type OutputSpec, type ResolveModel } from './inference.ts';
+export { createInferenceService, type InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type ResolveModel } from './inference.ts';
 export type { HostImplementedServices } from './host-services.ts';
 export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsStatus } from './secrets.ts';
 export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';

@@ -40,7 +40,7 @@ jobs:
         run: npm run schema:check --workspace @abuddy/sdk
 
       # Compiled seeds, snapshot and build/ (seed compilers, seed runtime): read by the seed parity,
-      # dependent-pack and seed runtime tests. abuddy build clears the runtime, so it runs first
+      # dependent-pack and seed runtime tests. The runtime records the seeds it's built beside, so it's built after
       - name: Build default-setup pack artifacts
         working-directory: packages/default-setup
         run: npx abuddy build

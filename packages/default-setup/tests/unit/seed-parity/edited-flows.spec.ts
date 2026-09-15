@@ -22,13 +22,17 @@ afterAll(() => {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** default-setup's compiled actions, prompts and flows; `changed` flows get a new sourceHash (per `version`), as a changed source would */
-function compiled(changed: string[] = [], version = 'changed'): string {
+/**
+ * default-setup's compiled actions, prompts and flows; `changed` flows get a new sourceHash (per `version`), as a changed source would.
+ * `only` keeps just those flows, and `packId` names another pack that compiled them.
+ */
+function compiled(changed: string[] = [], version = 'changed', { only, packId = 'default-setup' }: { only?: string[]; packId?: string } = {}): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seed-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, SEED_INDEX_FILE), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+  fs.writeFileSync(path.join(dir, SEED_INDEX_FILE), JSON.stringify({ version: 1, packId, seeds: [] }));
   for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(PACK_DIR, 'dist', seedFile(key)), path.join(dir, seedFile(key)));
-  const flows = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist', seedFile('flows')), 'utf-8')) as Record<string, { sourceHash?: string }>;
+  const all = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist', seedFile('flows')), 'utf-8')) as Record<string, { sourceHash?: string }>;
+  const flows = only ? Object.fromEntries(only.map((name) => [name, all[name]])) : all;
   for (const name of changed) flows[name] = { ...flows[name], sourceHash: `${version}-${flows[name].sourceHash}` };
   fs.writeFileSync(path.join(dir, seedFile('flows')), JSON.stringify(flows));
   return dir;
@@ -111,5 +115,57 @@ describe('re-seeding edited flows', () => {
     const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
     expect(refs).toContain(codex);
     expect(refs).not.toContain(mine);
+  });
+
+  it("runs a user's flow with a seeded flow's name when the seed left that flow alone for it", () => {
+    repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
+    const mine = repository.flowsCommands.createFlow({ label: 'Codex' } as never).id;
+    const counts = seedFlows(compiled(['Root Flow', 'Codex']));
+    expect(counts).toMatchObject({ updated: 1, created: 0 });
+    expect(counts.errors).toBeUndefined();
+    const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
+    expect(refs).toContain(mine);
+    expect(refs).not.toContain('Codex');
+  });
+});
+
+describe('a flow whose name another flow already has', () => {
+  const graph = (label: string) => ({ row: flow(label)[0], nodes: nodesOf(label) });
+
+  it("isn't seeded over another pack's flow: the other flow is left as it is, and the seed reports it", () => {
+    const before = graph('Codex');
+    const counts = seedFlows(compiled(['Codex'], 'other', { only: ['Codex'], packId: 'other-pack' }));
+    expect(counts).toMatchObject({ created: 0, updated: 0 });
+    expect(counts.errors).toEqual(['Flow "Codex": a flow with this name already exists (seeded by default-setup)']);
+    expect(graph('Codex')).toEqual(before);
+    // default-setup still owns and updates its flow
+    expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
+    expect(flow('Codex')[0].sourceHash).toMatch(/^changed-/);
+  });
+
+  it("isn't seeded over a user's flow with the ids the seed would write", () => {
+    // A user's flow that has the compiled flow's ids, under another name
+    const codex = flow('Codex')[0].id;
+    for (const attr of ['sourceHash', 'seedKey', 'seededGraph']) dropAttribute(codex, attr);
+    repository.flowsCommands.updateFlowLabel(codex, 'My Codex');
+    const before = graph('My Codex');
+    const counts = seedFlows(compiled(['Codex']));
+    expect(counts.created).toBe(0);
+    expect(counts.errors).toEqual(['Flow "Codex": a flow with this name already exists (created by the user)']);
+    expect(graph('My Codex')).toEqual(before);
+    expect(flow('Codex')).toEqual([]);
+  });
+
+  it("leaves a user's flow with the name alone", () => {
+    const pack = compiled(['Codex'], 'other', { only: ['Codex'], packId: 'other-pack' });
+    // No default-setup flows: only the actions and prompts flows use
+    resetDatabase();
+    seedFlows(compiled([], 'changed', { only: [] }));
+    const mine = repository.flowsCommands.createFlow({ label: 'Codex' } as never).id;
+    const before = graph('Codex');
+    expect(seedFlows(pack)).toMatchObject({ created: 0, skipped: 1 });
+    expect(flow('Codex')).toEqual([before.row]);
+    expect(before.row.id).toBe(mine);
+    expect(nodesOf('Codex')).toEqual(before.nodes);
   });
 });

@@ -1,5 +1,5 @@
 // Service mocks last one test: the harness restores services after each, and inference fails until a test mocks it.
-// A test app's waits end when it stops, and events the bus dropped before a client connected are named.
+// A test app's waits and calls end when it stops, and events the bus dropped for its systems before a client connected are named.
 import { describe, expect, it } from 'vitest';
 import { mockInference, mockService, startApp } from '@abuddy/testing/harness';
 import { services } from '#generated/services';
@@ -38,6 +38,18 @@ describe('a stopped test app', () => {
     // The run fails on an unhandled rejection: stopping after this test must not leave one
     void app.nextEmit('memos', 'NEVER_SENT', { timeoutMs: 60_000 });
   });
+
+  it('fails every call made after it stopped, without an unhandled rejection for one nobody awaits', async () => {
+    const app = await startApp({ systems: ['memos'] });
+    app.stop();
+
+    void app.nextEmit('memos', 'NEVER_SENT');
+    await expect(app.connect()).rejects.toThrow('The test app stopped');
+    await expect(app.send('memos', { type: 'ADD_MEMO', text: 'too late' })).rejects.toThrow('The test app stopped');
+    await expect(app.settle()).rejects.toThrow('The test app stopped');
+    await expect(app.runFlow('Memo Flow')).rejects.toThrow('The test app stopped');
+    expect(() => app.system('memos')).toThrow('The test app stopped');
+  });
 });
 
 describe('events sent before a client connects', () => {
@@ -46,5 +58,19 @@ describe('events sent before a client connects', () => {
     sendToSystem(memos, { type: 'ADD_MEMO', text: 'too early' });
 
     await expect(app.nextEmit('memos', 'MEMO_ADDED', { timeoutMs: 100 })).rejects.toThrow(`The bus dropped 1 event(s) sent before the app connected: ADD_MEMO to ${memos}`);
+  });
+
+  it("are an app's own: events a connected app's systems get aren't dropped by another app", async () => {
+    const memosApp = await startApp({ systems: ['memos'] });
+    await memosApp.connect();
+    const settingsApp = await startApp({ systems: ['settings'] });
+
+    sendToSystem(memos, { type: 'ADD_MEMO', text: 'for the connected app' });
+
+    expect(await memosApp.nextEmit('memos', 'MEMO_ADDED')).toMatchObject({ memo: { text: 'for the connected app' } });
+    const waited = await settingsApp.nextEmit('settings', 'NEVER_SENT', { timeoutMs: 100 }).catch((error: Error) => error);
+    expect(waited).toBeInstanceOf(Error);
+    expect((waited as Error).message).toContain('No NEVER_SENT sent to settings within 100ms');
+    expect((waited as Error).message).not.toContain('dropped');
   });
 });

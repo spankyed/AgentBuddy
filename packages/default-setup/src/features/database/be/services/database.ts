@@ -18,7 +18,6 @@ export {
 
 // Export EARS transaction builder
 export { tx } from '@abuddy/sdk/ears';
-export type { SafeLinkOptions } from '@abuddy/sdk/ears';
 
 // Export EARS query builder
 export { qx } from '@/__generated__/ears';

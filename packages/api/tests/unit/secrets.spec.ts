@@ -30,12 +30,17 @@ const { reportSystemError } = await import('@/core/shared/system-errors');
 const { secretsStore } = await import('@abuddy/host/secrets');
 const { services } = await import('@abuddy/sdk/services');
 const { registerDesignations } = await import('@abuddy/sdk/designations');
+const { registerHostSystem } = await import('@abuddy/host/packs');
+const { getSecretsFilePath } = await import('@abuddy/sdk/utils');
+const attributeStorage = await import('@/core/ears/attribute-storage');
+const { setup } = await import('xstate');
 
 const KEY = 'sk-proj-SPECKEY1234567890abcdefghij';
 const caller = secretsRouter.createCaller({});
-// What the API's boot registers
+// What the API's boot registers; the settings system is registered in the first test, once it checks changes made before
 forwardSecretsChanges();
 registerDesignations({ settings: 'test.settings' });
+const registerSettingsSystem = () => registerHostSystem('test.settings', setup({}).createMachine({}), new Set(['SECRETS_CHANGED']));
 
 /** The incoming events `run` sends */
 async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Array<Record<string, unknown>>> {
@@ -57,6 +62,17 @@ afterAll(() => {
 beforeEach(() => secretsStore.clearAll());
 
 describe('secrets procedures', () => {
+  it('tell no one of changes before the settings system is registered', async () => {
+    const warn = vi.spyOn(originalConsole, 'warn');
+    const incoming = await incomingDuring(() => caller.add({ provider: 'openai', label: 'Work', value: KEY }));
+    expect(incoming).toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+
+    registerSettingsSystem();
+    expect(await incomingDuring(() => caller.rename({ id: secretsStore.list()[0].id, label: 'Old work' }))).toEqual([CHANGED]);
+  });
+
   it('add, select, rename and delete keys, return no values, and tell the settings system without one', async () => {
     let added!: Awaited<ReturnType<typeof caller.add>>;
     let listed!: Awaited<ReturnType<typeof caller.list>>;
@@ -90,6 +106,8 @@ describe('secrets procedures', () => {
   });
 
   it("tell the settings system when adding a key fails for want of a credential store, so it can offer unprotected storage", async () => {
+    // The first key stored: its data key is made now (clearing keeps the one already in use)
+    fs.rmSync(getSecretsFilePath(), { force: true });
     vaultDown.value = true;
     try {
       const incoming = await incomingDuring(() => expect(caller.add({ provider: 'openai', label: 'Work', value: KEY })).rejects.toThrow("Secret Service isn't available"));
@@ -112,9 +130,31 @@ describe('secrets procedures', () => {
     expect('value' in services.secrets.list()[0]).toBe(false);
   });
 
-  it('services.appData.reset deletes stored keys', async () => {
+  it('services.appData.reset deletes stored keys once the database is open again', async () => {
     await caller.add({ provider: 'openai', label: 'Work', value: KEY });
-    await services.appData.reset();
+    const openAtChange: boolean[] = [];
+    const stop = secretsStore.onChange(() => openAtChange.push(attributeStorage.envs !== null));
+    try {
+      await services.appData.reset();
+    } finally {
+      stop();
+    }
+    expect(services.secrets.list()).toEqual([]);
+    expect(openAtChange).toEqual([true]);
+  });
+
+  it.each([
+    ['is not JSON', '{"format": 1, "secrets": [tru'],
+    ['is in a format the store does not know', JSON.stringify({ format: 99, secrets: [] })],
+  ])('services.appData.reset completes when the stored keys file %s, and deletes it', async (_name, contents) => {
+    fs.writeFileSync(getSecretsFilePath(), contents);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await expect(services.appData.reset()).resolves.toBeUndefined();
+    } finally {
+      warn.mockRestore();
+    }
+    expect(fs.existsSync(getSecretsFilePath())).toBe(false);
     expect(services.secrets.list()).toEqual([]);
   });
 });
@@ -141,28 +181,64 @@ describe('logs and error reports', () => {
     }
   });
 
-  it('redact what console calls print and capture', () => {
+  /** What `run`'s console calls print through the console method `method` replaces, and emit as log events */
+  function captureConsole(method: 'log' | 'error', run: () => void) {
     const logged: Array<Record<string, unknown>> = [];
     const stop = rootEvents.onLog((event) => { logged.push(event as never); });
     // The capture keeps the console method it replaces: spy on it first
-    const printedError = vi.spyOn(originalConsole, 'error').mockImplementation(() => {});
+    const printed = vi.spyOn(originalConsole, method).mockImplementation(() => {});
     initializeLogCapture();
     try {
-      console.error(new Error(`401 for ${KEY}`), { apiKey: 'plain-credential', body: `echo ${KEY}` });
+      run();
     } finally {
       restoreConsole();
       stop();
     }
-    const printed = printedError.mock.calls;
-    printedError.mockRestore();
+    const calls = printed.mock.calls;
+    printed.mockRestore();
+    return { printed: calls, logged };
+  }
 
-    expect(printed[0][0]).toBeInstanceOf(Error);
+  it('redact what console calls print and capture', () => {
+    const { printed, logged } = captureConsole('error', () => {
+      console.error(new Error(`401 for ${KEY}`), { apiKey: 'plain-credential', body: `echo ${KEY}` });
+    });
+
+    expect(printed).toEqual([[expect.stringContaining('Error: 401 for [redacted]')]]);
     const file = fs.readFileSync(path.join(logDir, 'app-events.log'), 'utf-8');
-    for (const sink of [JSON.stringify(logged), JSON.stringify(printed.map((args) => args.map((arg) => arg instanceof Error ? arg.stack : arg))), file]) {
+    for (const sink of [JSON.stringify(logged), JSON.stringify(printed), file]) {
       expect(sink).not.toContain('SPECKEY');
       expect(sink).not.toContain('plain-credential');
       expect(sink).toContain('[redacted]');
     }
+  });
+
+  it('print console arguments the way the console does, without changing them', () => {
+    const error = Object.assign(new Error('request failed', { cause: new Error('socket hang up') }), { code: 'ECONNRESET' });
+    const shared = { label: 'Work' };
+    const argument = { at: new Date('2026-01-02T03:04:05Z'), ids: new Map([['a', 1]]), tags: new Set(['x']), first: shared, second: shared, bytes: Buffer.from('hello') };
+    let deep: Record<string, unknown> = {};
+    const root = deep;
+    for (let depth = 0; depth < 20_000; depth++) deep = (deep.next = {}) as Record<string, unknown>;
+
+    const { printed, logged } = captureConsole('log', () => {
+      console.log('%s failed:', 'sync', error, argument);
+      console.log(root);
+    });
+
+    const [[text], [deepText]] = printed as string[][];
+    expect(text).toMatch(/^sync failed: Error: request failed/);
+    expect(text).toContain("code: 'ECONNRESET'");
+    expect(text).toContain('[cause]: Error: socket hang up');
+    expect(text).toContain('2026-01-02T03:04:05.000Z');
+    expect(text).toContain("Map(1) { 'a' => 1 }");
+    expect(text).toContain("Set(1) { 'x' }");
+    expect(text).toMatch(/first: \{ label: 'Work' \},\s+second: \{ label: 'Work' \}/);
+    expect(text).toContain('<Buffer 68 65 6c 6c 6f>');
+    expect(deepText).toContain('[Object]');
+    expect(logged.map((event) => event.message)).toEqual([text, deepText]);
+    expect(argument.bytes).toBeInstanceOf(Buffer);
+    expect(error.message).toBe('request failed');
   });
 
   it('redact keys from system error reports', () => {

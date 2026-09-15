@@ -4,7 +4,7 @@ import { createLogger } from '@/core/shared/debug/logger';
 import {
   registerPack,
   unregisterPack,
-  getPackContributions,
+  getPackRegistration,
 } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
@@ -30,49 +30,61 @@ const esmRequire = Module.createRequire(import.meta.url);
 
 const logger = createLogger('pack-reload');
 
-interface ReloadResult {
+/** A pack's freshly loaded runtime, not yet registered */
+interface FreshPack {
   newSystemIds: string[];
+  /** Registers the fresh runtime; throws when the registration is refused */
+  register(): void;
   onShutdown?: () => void;
   onInit?: () => void;
   afterRegister?: () => void;
 }
 
+/**
+ * Replaces a running pack with its rebuilt runtime. The fresh runtime is loaded and registered before the
+ * running one is shut down: if it fails to load, or its registration is refused, the running pack stays as
+ * it was and the error is thrown.
+ */
 async function reloadPack(
   packId: string,
   backendActor: import('xstate').AnyActorRef,
-  loadFresh: () => ReloadResult | null,
+  loadFresh: () => FreshPack,
   cacheDir: string,
 ): Promise<void> {
-  const contributions = getPackContributions(packId);
-  const oldSystemIds = contributions?.systems ?? [];
+  const previous = getPackRegistration(packId);
+  const oldSystemIds = previous?.systems.map(s => s.id) ?? [];
 
   logger.info(`Reloading pack: ${packId}`);
 
-  runShutdownHooksForKey(packId);
-
-  try { unregisterPack(packId); } catch {
-    logger.info(`Pack ${packId} was not previously registered`);
-  }
-
-  invalidateEventValidationMap();
-  invalidatePartitionPolicy();
+  // The running pack's modules stay live; only a fresh require loads the rebuilt ones
   clearPackRequireCache(cacheDir);
+  const fresh = loadFresh();
 
-  const result = loadFresh();
-  if (!result) return;
-
-  if (result.onShutdown) {
-    registerShutdownHook(result.onShutdown, packId);
+  if (previous) unregisterPack(packId);
+  else logger.info(`Pack ${packId} was not previously registered`);
+  try {
+    fresh.register();
+  } catch (err) {
+    if (previous) registerPack(previous);
+    throw err;
+  } finally {
+    invalidateEventValidationMap();
+    invalidatePartitionPolicy();
   }
-  result.onInit?.();
-  result.afterRegister?.();
+
+  runShutdownHooksForKey(packId);
+  if (fresh.onShutdown) {
+    registerShutdownHook(fresh.onShutdown, packId);
+  }
+  fresh.onInit?.();
+  fresh.afterRegister?.();
 
   // The bus stops each of these and starts those still registered: a feature the pack dropped only stops
-  const systemIds = [...new Set([...oldSystemIds, ...result.newSystemIds])];
+  const systemIds = [...new Set([...oldSystemIds, ...fresh.newSystemIds])];
 
   backendActor.send({ type: 'RELOAD_PACK', packId, systemIds });
 
-  logger.info(`Pack reloaded: ${packId} (${result.newSystemIds.length} systems)`);
+  logger.info(`Pack reloaded: ${packId} (${fresh.newSystemIds.length} systems)`);
 }
 
 export async function reloadExternalPack(
@@ -94,18 +106,13 @@ export async function reloadExternalPack(
   await reloadPack(packId, backendActor, () => {
     const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     const pack = loadSingleExternalPack(manifest, packDir);
-    if (!pack) {
-      logger.error(`Failed to load pack ${packId} after rebuild`);
-      return null;
-    }
-
-    const registered = registerExternalPacks([pack]);
-    if (registered.length === 0) {
-      logger.error(`Failed to register pack ${packId}`);
-      return null;
-    }
+    if (!pack) throw new Error(`Failed to load pack ${packId} after rebuild`);
 
     return {
+      register: () => {
+        // registerExternalPacks logs why a registration was refused
+        if (registerExternalPacks([pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
+      },
       newSystemIds: Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`),
       onShutdown: pack.boot?.onShutdown,
       onInit: pack.boot?.onInit,
@@ -136,14 +143,10 @@ export async function reloadBuiltInPack(
 
   await reloadPack(packId, backendActor, () => {
     const mod = withHostResolution(() => esmRequire(runtimeEntry));
-    if (!mod.registration) {
-      logger.error(`Built runtime for ${packId} has no registration export`);
-      return null;
-    }
-
-    registerPack(mod.registration);
+    if (!mod.registration) throw new Error(`Built runtime for ${packId} has no registration export`);
 
     return {
+      register: () => registerPack(mod.registration),
       newSystemIds: (mod.registration.systems as PackSystemDef[]).map(s => s.id),
       onShutdown: mod.registration.boot?.onShutdown,
       onInit: mod.registration.boot?.onInit,

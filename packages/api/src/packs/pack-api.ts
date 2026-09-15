@@ -22,9 +22,12 @@ export function removeLoadedPack(packId: string) {
   _loadedPacks = _loadedPacks.filter(p => p.manifest.id !== packId);
 }
 
-/** The loaded external packs that declare plugins: the renderer loads their frontends after connecting */
-export function getPacksWithClientLoadedPlugins(): string[] {
-  return _loadedPacks.filter(p => p.manifest.features?.some(f => f.plugin)).map(p => p.manifest.id);
+/**
+ * The loaded external packs with frontend code (an FE entry, or plugin entries): the renderer loads it
+ * after connecting, from the registry below (its `feEntry` and `plugins`), and then asks for their startup data
+ */
+export function getPacksWithClientLoadedFrontends(): string[] {
+  return _loadedPacks.filter(p => p.manifest.fe?.entry || p.manifest.features?.some(f => f.plugin)).map(p => p.manifest.id);
 }
 
 export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {

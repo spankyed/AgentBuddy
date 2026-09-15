@@ -152,25 +152,38 @@ describe('brain start', () => {
     importFlows({ 'Root Flow': { tracks: staysRunning } })
 
     const app = await startBrain()
+    // Nothing receives a report before a client connects
+    expect(takeSystemErrors()).toEqual([])
+    await app.connect()
 
     expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role (1 flows exist)') }) })])
     expect(repository.flowsQueries.rootFlow()).toBeUndefined()
     expect(brainState(app)).toEqual({ running: false, hasActor: false })
   })
 
-  it('reports why it could not start again to a client that connects while it stays stopped, until a root flow exists', async () => {
+  it("reports why it could not start once, and sends it in each client's startup data while it stays stopped, until a root flow exists", async () => {
     const couldNotStart = [expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role') }) })]
+    const startErrors = () => app.emitted('brain').flatMap((e) => (e.type === 'BRAIN_KILLED' ? [e.startError] : []))
     importFlows({ 'Root Flow': { tracks: staysRunning } })
     const app = await startBrain()
-    expect(takeSystemErrors()).toEqual(couldNotStart)
 
     await app.connect()
+    await app.connect()
+    await app.connect()
     expect(takeSystemErrors()).toEqual(couldNotStart)
+    expect(startErrors()).toEqual(Array(3).fill(expect.stringContaining('No flow has the root role')))
+
+    // A failed start while a client is connected is reported right away, once
+    await app.send('brain', { type: 'START_BRAIN' })
+    expect(takeSystemErrors()).toEqual(couldNotStart)
+    await app.connect()
+    expect(takeSystemErrors()).toEqual([])
 
     const [flow] = repository.flowsQueries.connectedData().flows
     repository.flowsCommands.grantRootFlowRole(flow.id!)
     await app.connect()
     expect(takeSystemErrors()).toEqual([])
+    expect(startErrors().at(-1)).toBeUndefined()
   })
 
   it('stops, clearing the running root flow, when restarted after the root role is revoked', async () => {

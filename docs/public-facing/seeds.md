@@ -396,23 +396,34 @@ Without hooks, the seeder writes rows directly: it matches existing rows on the 
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
 import { repository } from '#generated/repository';
 
-export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string }> = {
+export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string; pinned?: boolean }> = {
   find: (record) => repository.memoQueries.byTitle(record.title),       // { id, sourceHash } | undefined
-  create: (record, { parentId, index }) => repository.memoCommands.add(record.text, record.title).id,
-  update: (id, record) => repository.memoCommands.update(id, record.text),
+  create: (record, { parentId, index }) => repository.memoCommands.add({ title: record.title, text: record.text, pinned: record.pinned }).id,
+  // clearedFields: fields the previous seed set that the record no longer sets, reset to a new memo's
+  update: (id, record, { clearedFields }) => repository.memoCommands.update(id, {
+    title: record.title,
+    text: record.text,
+    pinned: record.pinned ?? (clearedFields.includes('pinned') ? false : undefined),
+  }),
   remove: (id) => repository.memoCommands.delete(id),
 };
 ```
 
-`create` and `update` store the record's fields under their names, as the record gives them, and `update` writes every field the record sets: change tracking records those fields' stored values. Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so rows seeded with its formats get the same shortCodes, display order and links as default-setup's own.
+`create` and `update` store the record's fields under their names, as the record gives them, and `update` writes every field the record sets: change tracking records those fields' stored values. `update` also resets the fields in `clearedFields` to what `create` gives a record that doesn't set them (see [Change tracking](#change-tracking)). Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so rows seeded with its formats get the same shortCodes, display order and links as default-setup's own.
 
 ### Change tracking
 
 Seeded rows store their record's `sourceHash`, and `seededFields`: the names of the record's fields and a hash of the values the seeder wrote to them. A row is edited when those fields no longer hold what the seeder wrote, whatever changed them (the app's editors, the database console, a flow). Fields a record doesn't set aren't tracked: a user can favorite a seeded note and it still takes seed updates.
 
-Seeded rows also store a `seedKey`: the seeding pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `seedKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not seeded again as a copy. Two packs' records never share a row, even with the same entry key and identity. A row without a `seedKey` that matches a record's identity (a user's row with the same name) isn't seeded again beside it. The pack id comes from `seeds.json`, which `abuddy build` writes; seeding compiled seeds without it fails until the pack is rebuilt.
+When a changed record no longer sets a field its previous seed set (the source dropped `completed: true`), updating the row resets that field: without hooks the seeder drops it from the row, and an `update` hook gets it in `clearedFields` to reset (default-setup's Note hooks reset it to a new note's value). A field no seed of the row ever set, like a user's favorite, isn't touched.
 
-Flows follow the same rules. A seeded flow stores `seededGraph`, a hash of what the seeder wrote for it: its row's fields, its nodes' fields, and the relations between them (independent of their order). Editing, adding or removing a node or transition, or renaming the flow, makes it edited. Moving nodes in the editor doesn't. A subflow step naming a flow the same pack seeds runs that seeded flow, however the user renamed it, and never another flow with its name; other names run the flow with that label.
+Seeded rows also store a `seedKey`: the seeding pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `seedKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not seeded again as a copy. Two packs' records with the same entry key and identity seed a row each. A row without a `seedKey` that matches a record's identity (a user's row with the same name) isn't seeded again beside it. The pack id comes from `seeds.json`, which `abuddy build` writes; seeding compiled seeds without it fails until the pack is rebuilt.
+
+Flows follow the same rules. A seeded flow stores `seededGraph`, a hash of what the seeder wrote for it: its row's fields, its nodes' fields, and the relations between them (independent of their order). Editing, adding or removing a node or transition, or renaming the flow, makes it edited. Moving nodes in the editor doesn't.
+
+Unlike other rows, a flow's id and its nodes' ids come from the flow's name, so flows can't share a name: a pack's flow isn't seeded when another pack already seeded a flow with its name, or a user's flow has the ids it would write. The existing flow is left as it is and the seed reports an error (`Flow "X": a flow with this name already exists (seeded by <pack>)`, or `(created by the user)`). A user's flow with the name (and its own ids) is left alone as user-owned, as for other rows.
+
+A subflow step naming a flow the same pack seeds runs that seeded flow, however the user renamed it, and never another flow with its name. When the pack's seed left a user's or another pack's flow with that name in place of its own, the step runs that flow. Other names run the flow with that label.
 
 Re-seeding follows the same rules for every entry:
 

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getDesignated, hasDesignation } from '@abuddy/sdk';
 import { providerLabels } from '@abuddy/sdk/models';
 import type { SecretsSnapshot } from '@abuddy/sdk/rpc';
+import { getRegisteredSystems } from '@abuddy/host/packs';
 import { secretsStore } from '@abuddy/host/secrets';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { procedure, router } from './trpc';
@@ -18,10 +19,14 @@ const snapshot = (): SecretsSnapshot => ({ secrets: secretsStore.list(), status:
 /**
  * Tells the settings system (no values) whenever the stored keys or their protection change, through these procedures,
  * `services.secrets` or a failing credential store, so it refreshes its plugin and key checks. Registered once at boot.
+ * Before a settings system is registered there's none to tell: once it runs, it sends the current keys on
+ * CLIENT_CONNECTED.
  */
 export function forwardSecretsChanges(): () => void {
   return secretsStore.onChange(() => {
-    if (hasDesignation('settings')) rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId: getDesignated('settings') });
+    if (!hasDesignation('settings')) return;
+    const systemId = getDesignated('settings');
+    if (getRegisteredSystems().has(systemId)) rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId });
   });
 }
 

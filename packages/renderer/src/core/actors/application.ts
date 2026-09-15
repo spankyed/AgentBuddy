@@ -52,8 +52,13 @@ export interface ApplicationContext {
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
   restoreLastActivePlugin: boolean;
-  /** The plugins each pack added, by pack id: not those skipped because a plugin had the id already */
+  /**
+   * Each external pack whose frontend load finished, by pack id, with the plugins it added: not those
+   * skipped because a plugin had the id already, and none when its frontend exported none or failed to load
+   */
   packPluginIds: Record<string, string[]>;
+  /** Whether this window's bus subscription is established; it reconnects after the connection drops */
+  busSubscribed: boolean;
 }
 
 export const application = 'application' as const;
@@ -91,16 +96,19 @@ export type ApplicationEvent =
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
-  | { type: 'PACK_PLUGINS_LOADED'; packId: string; plugins: Plugin[] }
+  | { type: 'BUS_SUBSCRIBED' }
+  | { type: 'BUS_CONNECTION_LOST' }
+  /** A pack's frontend load finished, with the plugins it exports: none when it failed to load */
+  | { type: 'PACK_FRONTEND_LOADED'; packId: string; plugins: Plugin[] }
   | { type: 'PACK_PLUGINS_UNLOADED'; packId: string }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
 /**
- * Asks a pack's systems for their startup data. The connection's CLIENT_CONNECTED skips the systems of
- * external packs with plugins, whose frontends load after it; a pack whose frontend fails to load is
- * never asked for, as nothing here would receive its data.
+ * Asks a pack's systems for their startup data. A connection's CLIENT_CONNECTED skips the systems of
+ * external packs with frontend code, which loads after it; each is asked for once its load finished,
+ * whether it added plugins or not, so its systems without plugins get it too.
  */
 function announcePackClientReady(packId: string) {
   trpc.bus.packClientReady.mutate({ packId }).catch((err: unknown) => {
@@ -279,6 +287,13 @@ export const createApplicationState = () => setup({
       const subscription = trpc.bus.sub.subscribe(
         undefined,
         {
+          // Each time this window's subscription is established: the server has sent this connection's
+          // CLIENT_CONNECTED. Another window connecting broadcasts CLIENT_CONNECTED too, but not this.
+          onStarted: () => sendBack({ type: 'BUS_SUBSCRIBED' }),
+          // The socket dropped: the subscription is established again when it reconnects
+          onConnectionStateChange: ({ state }) => {
+            if (state === 'connecting') sendBack({ type: 'BUS_CONNECTION_LOST' });
+          },
           onError: (error: any) => {
             console.error('Error in subscription:', error);
             sendBack({ type: 'BACKEND_ERROR', error: String(error) });
@@ -333,48 +348,50 @@ export const createApplicationState = () => setup({
     }),
 
     mergePackPlugins: enqueueActions(({ event, context, enqueue }) => {
-      const { packId, plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
+      const { packId, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
       const existingIds = new Set(context.plugins.map(p => p.id));
       const skipped = packPlugins.filter(p => existingIds.has(p.id));
       if (skipped.length > 0) {
         console.warn(`[pack-loader] Skipping plugins with duplicate IDs: ${skipped.map(p => p.id).join(', ')}`);
       }
       const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
-      if (newPlugins.length === 0) return;
-      stepRegistry.initComponents();
-      const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
-      const allPlugins = packsIdx >= 0
-        ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
-        : [...context.plugins, ...newPlugins];
-      // Visibility comes from settings (the user's choice, else the feature's default); unset shows the plugin
-      enqueue.assign({
-        plugins: allPlugins,
-        visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
-        packPluginIds: {
-          ...context.packPluginIds,
-          [packId]: [...(context.packPluginIds[packId] ?? []), ...newPlugins.map(p => p.id)],
-        },
-      });
-      for (const plugin of newPlugins) {
-        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+      const packPluginIds = {
+        ...context.packPluginIds,
+        [packId]: [...(context.packPluginIds[packId] ?? []), ...newPlugins.map(p => p.id)],
+      };
+      if (newPlugins.length === 0) {
+        enqueue.assign({ packPluginIds });
+      } else {
+        stepRegistry.initComponents();
+        const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
+        const allPlugins = packsIdx >= 0
+          ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
+          : [...context.plugins, ...newPlugins];
+        // Visibility comes from settings (the user's choice, else the feature's default); unset shows the plugin
+        enqueue.assign({
+          plugins: allPlugins,
+          visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
+          packPluginIds,
+        });
+        for (const plugin of newPlugins) {
+          enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+        }
       }
-      // The pack's plugin actors now exist: its systems send their startup data. Before the connection,
-      // announceLoadedPacks asks for it when the connection comes.
-      enqueue(({ self }) => {
-        if (!self.getSnapshot().hasTag('connecting')) announcePackClientReady(packId);
-      });
+      // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this
+      // window's subscription is established, announceLoadedPacks asks for it once it is.
+      if (context.busSubscribed) enqueue(() => announcePackClientReady(packId));
     }),
 
-    // A connection (or reconnection) reached every system but those of packs whose frontends load after it
+    // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after it
     announceLoadedPacks: ({ context }) => {
       for (const packId of Object.keys(context.packPluginIds)) announcePackClientReady(packId);
     },
 
     removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
       const { packId } = typeOf('PACK_PLUGINS_UNLOADED', event);
-      const pluginIds = context.packPluginIds[packId] ?? [];
+      const pluginIds = context.packPluginIds[packId];
+      if (!pluginIds) return;
       const removeSet = new Set(pluginIds);
-      if (removeSet.size === 0) return;
 
       const remaining = context.plugins.filter(p => !removeSet.has(p.id));
       const pluginVisibility = { ...context.pluginVisibility };
@@ -754,6 +771,7 @@ export const createApplicationState = () => setup({
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
       restoreLastActivePlugin: input.restoreLastActivePlugin ?? true,
       packPluginIds: {},
+      busSubscribed: false,
     };
   },
   initial: 'running',
@@ -839,9 +857,8 @@ export const createApplicationState = () => setup({
               {
                 target: '#application.onboarding.letter',
                 guard: ({ event }) => (event as any).hasOnboarded === false,
-                actions: 'announceLoadedPacks',
               },
-              { target: 'connected', actions: 'announceLoadedPacks' },
+              { target: 'connected' },
             ],
           },
         },
@@ -851,7 +868,6 @@ export const createApplicationState = () => setup({
             CLIENT_CONNECTED: {
               target: 'connected',
               reenter: true,
-              actions: 'announceLoadedPacks',
             },
           },
         },
@@ -864,7 +880,14 @@ export const createApplicationState = () => setup({
     APPLICATION_HOTKEYS: {
       actions: 'updateHotkeys'
     },
-    PACK_PLUGINS_LOADED: {
+    // In every state: onboarding and the error page keep pack systems' startup data flowing too
+    BUS_SUBSCRIBED: {
+      actions: [assign({ busSubscribed: true }), 'announceLoadedPacks'],
+    },
+    BUS_CONNECTION_LOST: {
+      actions: assign({ busSubscribed: false }),
+    },
+    PACK_FRONTEND_LOADED: {
       actions: 'mergePackPlugins'
     },
     PACK_PLUGINS_UNLOADED: {

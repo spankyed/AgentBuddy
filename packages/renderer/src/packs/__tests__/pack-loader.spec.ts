@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadPackFEEntry } from '../pack-loader';
+import { loadPackFEEntry, loadPackFrontend } from '../pack-loader';
 
 let dir: string;
 
@@ -45,5 +45,24 @@ describe('loadPackFEEntry', () => {
     const { registration, warnings } = await load('fe.mjs', 'export default { plugins: [{ id: "x" }] };');
     expect((registration as any).plugins).toHaveLength(1);
     expect(warnings).toEqual([]);
+  });
+});
+
+// A pack with frontend code is reported to the application actor once its load finished, whatever it added:
+// the bus holds back its systems' startup data until then
+describe('loadPackFrontend', () => {
+  it('returns no plugins when the FE entry fails to load', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js', plugins: [] })).resolves.toEqual([]);
+  });
+
+  it('returns no plugins when every plugin entry fails to load', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const plugins = [{ id: 'widget', entry: 'dist/widget.js', label: 'Widget', icon: 'Zap' }];
+    await expect(loadPackFrontend({ id: 'broken', plugins })).resolves.toEqual([]);
+  });
+
+  it('returns null for a pack without frontend code', async () => {
+    await expect(loadPackFrontend({ id: 'backend-only', plugins: [] })).resolves.toBeNull();
   });
 });

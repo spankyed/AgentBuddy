@@ -68,6 +68,7 @@
     }
   },
   "boot": {
+    "hooks": "src/features/hooks.ts",
     "seed": {
       "actions": "src/seeds/actions",
       "flows": "src/seeds/flows",

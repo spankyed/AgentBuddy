@@ -33,6 +33,8 @@ export interface BrainContext {
   inspectEnabled: boolean;
   animationsEnabled: boolean;
   brainIsDead: boolean;
+  /** Why the brain couldn't start, while it stays stopped for that reason */
+  startError?: string;
   brainIsPaused: boolean;
   latestRuntimeError?: StepRuntimeError;
   runtimeErrors: StepRuntimeError[];
@@ -44,7 +46,6 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
-  | { type: 'BRAIN_KILLED' }
   | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
@@ -300,6 +301,7 @@ const brainState = setup({
     }),
     setBrainKilled: assign({
       brainIsDead: true,
+      startError: ({ event }) => typeOf('BRAIN_KILLED', event).startError,
       brainIsPaused: false,
       possibleEvents: [],
       flowHierarchy: [],
@@ -307,6 +309,7 @@ const brainState = setup({
     }),
     setBrainStarted: assign({
       brainIsDead: false,
+      startError: undefined,
       brainIsPaused: false,
     }),
     setBrainPaused: assign({

@@ -49,7 +49,8 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
-  | { type: 'BRAIN_KILLED' }
+  /** The brain stopped; `startError` says why it couldn't start, while it stays stopped for that reason */
+  | { type: 'BRAIN_KILLED'; startError?: string }
   | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
@@ -57,8 +58,12 @@ export type OutgoingBrainEvents =
 export interface BrainContext {
   brainActor?: any;
   eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
-  /** Why the brain last failed to start, while it stays stopped for that reason: reported again to clients that connect */
+  /** Why the brain last failed to start, while it stays stopped for that reason: part of each client's startup data */
   startError?: Error;
+  /** Whether the start error was reported (a toast in every open window): once per failed start */
+  startErrorReported: boolean;
+  /** Whether a client has connected: before that, nothing receives what the brain sends */
+  clientConnected: boolean;
 }
 
 export const brainSpec = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
@@ -109,19 +114,17 @@ function clearRunningRootFlow(system: BrainActorSystem) {
 }
 
 /**
- * A start found no flow to run: reports why when flows exist but none is the root, clears the running root flow
- * and tells clients the brain is stopped. Returns the error the brain stays stopped with, if any.
+ * A start found no flow to run: clears the running root flow and tells clients the brain is stopped, and why when
+ * flows exist but none is the root. That error is reported now if a client is connected, else when one connects.
+ * Returns the context the brain stays stopped with.
  */
-function stopWithoutRootFlow(system: BrainActorSystem): Error | undefined {
+function stopWithoutRootFlow(system: BrainActorSystem, { clientConnected }: BrainContext): Partial<BrainContext> {
   const startError = noRootFlowError();
-  if (startError) {
-    reportStartError(startError);
-  } else {
-    logger.warn('No flow to run; start the brain once a flow exists');
-  }
+  if (!startError) logger.warn('No flow to run; start the brain once a flow exists');
+  else if (clientConnected) reportStartError(startError);
   clearRunningRootFlow(system);
-  getActor(system, bus).send(emit(brain, { type: 'BRAIN_KILLED' }));
-  return startError;
+  getActor(system, bus).send(emit(brain, { type: 'BRAIN_KILLED', startError: startError?.message }));
+  return { brainActor: undefined, startError, startErrorReported: clientConnected };
 }
 
 export const brainSystem = setup({
@@ -147,7 +150,7 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign({ brainActor: undefined, startError: stopWithoutRootFlow(system) });
+        enqueue.assign(stopWithoutRootFlow(system, context));
         return;
       }
 
@@ -195,12 +198,18 @@ export const brainSystem = setup({
       });
     }),
     
-    /** Report why the brain couldn't start to a client that connects while it's stopped, unless a root flow exists by now */
+    setClientConnected: assign({ clientConnected: true }),
+
+    /** A client connected while the brain is stopped: it stays stopped with its start error unless a root flow exists by now */
+    refreshStartError: assign({
+      startError: ({ context }) => context.startError && noRootFlowError(),
+    }),
+
+    /** Report why the brain couldn't start, if no client was told yet: a start before any client connected */
     reportStartError: enqueueActions(({ context, enqueue }) => {
-      if (!context.startError) return;
-      const startError = noRootFlowError();
-      if (startError) reportStartError(startError);
-      enqueue.assign({ startError });
+      if (!context.startError || context.startErrorReported) return;
+      reportStartError(context.startError);
+      enqueue.assign({ startErrorReported: true });
     }),
 
     killBrain: enqueueActions(({ context, enqueue, system }) => {
@@ -275,7 +284,7 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign({ brainActor: undefined, startError: stopWithoutRootFlow(system) });
+        enqueue.assign(stopWithoutRootFlow(system, context));
         return;
       }
 
@@ -344,7 +353,8 @@ export const brainSystem = setup({
         }));
       } else {
         system.get(bus).send(emit(brain, {
-          type: 'BRAIN_KILLED'
+          type: 'BRAIN_KILLED',
+          startError: context.startError?.message,
         }));
       }
 
@@ -502,10 +512,12 @@ export const brainSystem = setup({
     context: ({ input }) => ({
       brainActor: undefined,
       eventQueue: [],
+      startErrorReported: false,
+      clientConnected: false,
     }),
     on: {
       CLIENT_CONNECTED: {
-        actions: 'sendPluginData',
+        actions: ['setClientConnected', 'sendPluginData'],
       },
       REQUEST_PLUGIN_DATA: {
         actions: 'sendPluginData',
@@ -518,7 +530,7 @@ export const brainSystem = setup({
       stopped: {
         on: {
           CLIENT_CONNECTED: {
-            actions: ['sendPluginData', 'reportStartError'],
+            actions: ['setClientConnected', 'refreshStartError', 'sendPluginData', 'reportStartError'],
           },
           START_BRAIN: {
             target: 'running',

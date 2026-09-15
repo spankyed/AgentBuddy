@@ -80,6 +80,36 @@ describe('re-seeding edited rows', () => {
     expect(snapshot().rows['Note:Welcome']).toMatchObject({ noteType: 'tasklist', content: 'Third' });
   });
 
+  it("resets a field a changed record no longer sets to a new note's, and keeps fields its source never set", () => {
+    resetDatabase();
+    seed(v1);
+    // The Task Two record never sets favorite: the user's favorite isn't the seed's to reset
+    repository.noteCommands.update(note('Task Two').id, { favorite: true });
+    const v3 = withNote(withNote(withNote(v1, 'Welcome', { icon: undefined }), 'task one', { completed: undefined }), 'Task Two', { content: 'Still open.' });
+    expect(seed(v3, { mode: 'replace-on-collision' }).notes).toMatchObject({ updated: 3 });
+    const rows = snapshot().rows;
+    expect(rows['Note:Welcome'].icon ?? null).toBeNull();
+    expect(rows['Note:Projects/task one']).toMatchObject({ completed: false });
+    expect(rows['Note:Projects/Task Two']).toMatchObject({ favorite: true, content: 'Still open.' });
+    // The reset fields aren't seeded any more: the user's value for them survives the next change
+    repository.noteCommands.update(note('task one').id, { completed: true });
+    expect(seed(withNote(v3, 'task one', { content: 'Done, really.' }), { mode: 'replace-on-collision' }).notes).toMatchObject({ updated: 1 });
+    expect(snapshot().rows['Note:Projects/task one']).toMatchObject({ completed: true, content: 'Done, really.' });
+  });
+
+  it("changes a note's type through noteCommands: a task has no link in its parent's content", () => {
+    resetDatabase();
+    seed(v1);
+    const projects = () => String(note('Projects').content);
+    const taskTwo = note('Task Two').id;
+    const asDocument = withNote(v1, 'Task Two', { noteType: 'document' });
+    seed(asDocument, { mode: 'replace-on-collision' });
+    expect(projects()).toContain(`(document://${taskTwo})`);
+    expect(seed(withNote(asDocument, 'Task Two', { noteType: 'task' }), { mode: 'replace-on-collision' }).notes).toMatchObject({ updated: 1 });
+    expect(note('Task Two')).toMatchObject({ noteType: 'task' });
+    expect(projects()).not.toContain(`document://${taskTwo}`);
+  });
+
   it('keeps updating a row a seed already updated', () => {
     resetDatabase();
     seed(v1);
@@ -132,14 +162,19 @@ describe('re-seeding edited rows', () => {
   });
 });
 
-/** A copy of a compiled directory with one root note record's fields changed (and a new sourceHash) */
+type NoteRecord = Record<string, unknown> & { children?: NoteRecord[] };
+
+/** A copy of a compiled directory with one note record's fields changed (an undefined field removed) and a new sourceHash */
 function withNote(dir: string, title: string, fields: Record<string, unknown>): string {
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'edited-rows-'));
   dirs.push(copy);
   fs.cpSync(dir, copy, { recursive: true });
   const file = path.join(copy, 'notes.seed.json');
-  const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: Array<Record<string, unknown>> };
-  data.records = data.records.map((record) => record.title === title ? { ...record, ...fields, sourceHash: `${record.sourceHash}+${JSON.stringify(fields)}` } : record);
+  const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: NoteRecord[] };
+  const change = (records: NoteRecord[]): NoteRecord[] => records.map((record) => record.title === title
+    ? { ...record, ...fields, sourceHash: `${record.sourceHash}+${JSON.stringify(fields, (_key, value) => value === undefined ? null : value)}` }
+    : { ...record, ...(record.children && { children: change(record.children) }) });
+  data.records = change(data.records);
   fs.writeFileSync(file, JSON.stringify(data));
   return copy;
 }

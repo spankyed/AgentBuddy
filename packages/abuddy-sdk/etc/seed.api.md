@@ -61,6 +61,7 @@ export interface SeederOptions {
 
 // @public
 export interface SeedHookContext {
+    clearedFields: string[];
     // (undocumented)
     index: number;
     // (undocumented)

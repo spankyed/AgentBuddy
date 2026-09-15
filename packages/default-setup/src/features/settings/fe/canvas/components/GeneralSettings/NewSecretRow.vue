@@ -1,6 +1,6 @@
 <template>
   <div v-if="collapsed && !open">
-    <button class="px-2 py-1 text-xs text-neutral-400 hover:text-white rounded-md hover:bg-neutral-800/50 flex items-center gap-1" @click="open = true">
+    <button class="px-2 py-1 text-xs text-neutral-400 hover:text-white rounded-md hover:bg-neutral-800/50 flex items-center gap-1" @click="start">
       <Plus class="w-3 h-3" />
       {{ addText }}
     </button>
@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Check, Eye, EyeOff, Plus, X } from 'lucide-vue-next'
 
 // Saves only on Enter or the Save button: a half-typed key is never sent. `save` resolves whether the key was stored;
@@ -56,23 +56,34 @@ const props = defineProps<{
 
 const open = ref(false)
 const visible = ref(false)
-const saving = ref(false)
 const name = ref(props.defaultName ?? '')
 const value = ref('')
+// Each opened or cancelled entry gets a new token: a save that finishes after its entry was cancelled neither clears
+// nor blocks the entry typed since
+const entry = ref(0)
+const savingEntry = ref<number | null>(null)
+const saving = computed(() => savingEntry.value === entry.value)
 
 watch(() => props.defaultName, (next) => { if (!value.value) name.value = next ?? '' })
 
+function start() {
+  entry.value++
+  open.value = true
+}
+
 async function save() {
-  if (saving.value || !name.value.trim() || !value.value.trim()) return
-  saving.value = true
+  const current = entry.value
+  if (savingEntry.value === current || !name.value.trim() || !value.value.trim()) return
+  savingEntry.value = current
   try {
-    if (await props.save(name.value.trim(), value.value.trim())) cancel()
+    if (await props.save(name.value.trim(), value.value.trim()) && current === entry.value) cancel()
   } finally {
-    saving.value = false
+    if (savingEntry.value === current) savingEntry.value = null
   }
 }
 
 function cancel() {
+  entry.value++
   open.value = false
   visible.value = false
   name.value = props.defaultName ?? ''

@@ -1,7 +1,7 @@
-// Systems send their startup data on CLIENT_CONNECTED. The bus sends it on every client connection, except
-// to external packs with plugins: a client loads their frontends after connecting and asks for each once
-// its plugin actors exist (as it does for a pack being activated). A reloaded pack's restarted systems get
-// it too.
+// Systems send their startup data on CLIENT_CONNECTED. The bus sends it on every client connection, and to
+// an activated pack's systems, except to external packs with frontend code: a client loads it after
+// connecting (or after the activation) and asks for each pack once it tried, whatever that loaded. A
+// reloaded pack's restarted systems get it too.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 
@@ -28,6 +28,13 @@ function recorder(label: string) {
 function pack(id: string, label = id) {
   return { id, systems: [{ id: `${id}.feature`, machine: recorder(label), events: new Set(['CLIENT_CONNECTED']) }] };
 }
+
+/** Marks a pack loaded with `manifest`'s frontend: its plugins, or an FE entry */
+function loaded(id: string, manifest: { fe?: { entry: string }; features?: unknown[] }) {
+  updateLoadedPack({ manifest: { id, name: id, version: '1.0.0', ...manifest }, dir: `/packs/${id}`, systems: new Map() } as unknown as LoadedPack);
+}
+
+const withPlugin = { features: [{ id: 'feature', plugin: { entry: 'fe.js', label: 'Feature', icon: 'Zap' } }] };
 
 let bus: AnyActorRef;
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -56,11 +63,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it('reaches an external pack with plugins once, when a client has loaded its frontend after connecting', async () => {
     bus.stop();
     registerPack(pack('external-pack'));
-    updateLoadedPack({
-      manifest: { id: 'external-pack', name: 'External', version: '1.0.0', features: [{ id: 'feature', plugin: { entry: 'fe.js', label: 'Feature', icon: 'Zap' } }] },
-      dir: '/packs/external-pack',
-      systems: new Map(),
-    } as unknown as LoadedPack);
+    loaded('external-pack', withPlugin);
     bus = createActor(backendSystem, { systemId: 'bus' }).start();
 
     rootEvents.emitConnected();
@@ -75,7 +78,8 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it("reaches only a pack's systems when a client has loaded that pack's frontend", async () => {
     rootEvents.emitConnected();
     registerPack(pack('second-pack'));
-    bus.send({ type: 'ACTIVATE_PACK', systemIds: ['second-pack.feature'] });
+    loaded('second-pack', withPlugin);
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     received.length = 0;
 
@@ -93,13 +97,50 @@ describe('CLIENT_CONNECTED on the bus', () => {
     await flush();
     received.length = 0;
     registerPack(pack('second-pack'));
-    bus.send({ type: 'ACTIVATE_PACK', systemIds: ['second-pack.feature'] });
+    loaded('second-pack', withPlugin);
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     expect(received).toEqual([]);
 
     rootEvents.emitPackClientConnected('second-pack');
     await flush();
     expect(received).toEqual(['second-pack']);
+  });
+
+  it("reaches an activated pack without frontend code once, when it's activated", async () => {
+    rootEvents.emitConnected();
+    await flush();
+    received.length = 0;
+    registerPack(pack('second-pack'));
+    loaded('second-pack', { features: [{ id: 'feature', system: { entry: 'system.cjs' } }] });
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
+    await flush();
+    expect(received).toEqual(['second-pack']);
+  });
+
+  it('holds back every system of a pack with frontend code until a client tried loading it', async () => {
+    bus.stop();
+    registerPack({
+      id: 'external-pack',
+      systems: [
+        { id: 'external-pack.feature', machine: recorder('with plugin'), events: new Set(['CLIENT_CONNECTED']) },
+        { id: 'external-pack.background', machine: recorder('without plugin'), events: new Set(['CLIENT_CONNECTED']) },
+      ],
+    });
+    registerPack(pack('second-pack'));
+    loaded('external-pack', withPlugin);
+    loaded('second-pack', { fe: { entry: 'runtime/fe.js' } });
+    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+
+    rootEvents.emitConnected();
+    await flush();
+    expect(received).toEqual(['first-pack']);
+
+    // A client announces a pack whatever its frontend load added: plugins, none, or nothing as it failed
+    rootEvents.emitPackClientConnected('external-pack');
+    rootEvents.emitPackClientConnected('second-pack');
+    await flush();
+    expect(received).toEqual(['first-pack', 'with plugin', 'without plugin', 'second-pack']);
   });
 
   it('reaches the new actors of a reloaded pack, not the stopped ones', async () => {
@@ -187,7 +228,7 @@ describe('a bus given a subset of the registered systems', () => {
     expect(subsetBus.system.get('second-pack.outside')).toBeUndefined();
 
     subsetBus.send({ type: 'TEARDOWN_PACK', systemIds: ['second-pack.feature'] });
-    subsetBus.send({ type: 'ACTIVATE_PACK', systemIds: ['second-pack.feature', 'second-pack.outside'] });
+    subsetBus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature', 'second-pack.outside'] });
     await flush();
     expect(subsetBus.system.get('second-pack.feature')).toBeDefined();
     expect(subsetBus.system.get('second-pack.outside')).toBeUndefined();

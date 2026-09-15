@@ -5,14 +5,15 @@ import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JSONSchema7 } from 'ai';
 import { availableModels, parseModelId, providerCapabilities, providerLabels, type ModelKind, type ProviderName } from '@abuddy/sdk/models';
 
 // The app's store, on a temporary file with keys in memory
+const secretsDir = vi.hoisted(() => ({ path: '' }));
 vi.mock('../../src/secrets/index.ts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/secrets/index.ts')>();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'inference-secrets-'));
+  const dir = secretsDir.path = fs.mkdtempSync(path.join(os.tmpdir(), 'inference-secrets-'));
   const vault = actual.memoryKeyVault();
   const secretsStore = actual.createSecretsStore({ filePath: path.join(dir, 'secrets.json'), osVault: () => vault, fileVault: () => vault });
   return { ...actual, secretsStore };
@@ -34,6 +35,9 @@ const secrets = {
 };
 
 let server: http.Server | undefined;
+afterAll(() => {
+  fs.rmSync(secretsDir.path, { recursive: true, force: true });
+});
 beforeEach(() => {
   secretsStore.clearAll();
 });

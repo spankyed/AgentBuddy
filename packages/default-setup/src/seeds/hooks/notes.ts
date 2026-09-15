@@ -1,7 +1,7 @@
 // How notes are seeded, for any pack that seeds Note rows: through noteCommands, so seeded notes get
 // shortCodes, display order and REFERENCES links like notes created in the app.
 import type { SeedHooks, SeedRecord } from '@abuddy/sdk/seed';
-import { EARS, findWhere, qx, updateEntity } from '@/__generated__/ears';
+import { EARS, findWhere, qx } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 
 export interface NoteSeedRecord extends SeedRecord {
@@ -17,7 +17,9 @@ export interface NoteSeedRecord extends SeedRecord {
 }
 
 type NoteUpdates = Parameters<typeof repository.noteCommands.update>[1];
-const UPDATE_FIELDS = ['title', 'content', 'icon', 'completed', 'favorite', 'hideCompletedChildren', 'savedDisplayOrder'] as const;
+const UPDATE_FIELDS = ['title', 'content', 'icon', 'noteType', 'completed', 'favorite', 'hideCompletedChildren', 'savedDisplayOrder'] as const;
+/** What a note created without these fields holds (noteCommands.create's defaults, and unset flags) */
+const NOTE_DEFAULTS: NoteUpdates = { content: '', icon: null, noteType: 'document', completed: false, favorite: false, hideCompletedChildren: false };
 
 /** The fields noteCommands.update takes, as the record sets them (fields it doesn't set are left out) */
 function recordUpdates(record: NoteSeedRecord, fields: readonly (typeof UPDATE_FIELDS)[number][] = UPDATE_FIELDS): NoteUpdates {
@@ -51,11 +53,13 @@ export const noteSeedHooks: SeedHooks<NoteSeedRecord> = {
     return note.id;
   },
 
-  /** Writes every field the record sets, so the row holds the values the seeder records for it */
-  update(id, record, { index }) {
-    repository.noteCommands.update(id, { ...recordUpdates(record), displayOrder: record.displayOrder ?? index });
-    // noteCommands.update doesn't change a note's type
-    if (record.noteType !== undefined) updateEntity(id, { noteType: record.noteType });
+  /**
+   * Writes every field the record sets, so the row holds the values the seeder records for it, and
+   * resets the fields its previous seed set that the record no longer does to a new note's
+   */
+  update(id, record, { index, clearedFields }) {
+    const resets = Object.fromEntries(Object.entries(NOTE_DEFAULTS).filter(([field]) => clearedFields.includes(field))) as NoteUpdates;
+    repository.noteCommands.update(id, { ...resets, ...recordUpdates(record), displayOrder: record.displayOrder ?? index });
   },
 
   remove(id) {

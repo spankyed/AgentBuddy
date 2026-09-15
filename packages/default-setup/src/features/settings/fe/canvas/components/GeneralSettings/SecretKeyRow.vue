@@ -6,7 +6,7 @@
       :checked="secret.selected"
       :title="secret.selected ? 'Used for calls' : 'Use this key'"
       class="h-3.5 w-3.5 accent-blue-500"
-      @change="emit('select')"
+      @change="choose"
     />
     <span v-else></span>
 
@@ -15,7 +15,7 @@
       v-model="label"
       class="px-2 py-1 bg-neutral-800 border border-neutral-700/50 rounded-md text-white text-sm focus:outline-none focus:border-blue-500/50"
       @keyup.enter="saveLabel"
-      @keyup.escape="renaming = false"
+      @keyup.escape="cancelRename"
     />
     <button v-else class="text-left text-sm text-gray-200 hover:text-white" title="Rename" @click="startRename">
       {{ secret.label }}
@@ -44,12 +44,12 @@
         <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Save" :disabled="saving || (renaming ? !label.trim() : !value.trim())" @click="renaming ? saveLabel() : saveValue()">
           <Check class="w-3.5 h-3.5 text-green-400" />
         </button>
-        <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Cancel" @click="renaming = false; cancelReplace()">
+        <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Cancel" @click="cancelRename(); cancelReplace()">
           <X class="w-3.5 h-3.5 text-gray-400" />
         </button>
       </template>
       <template v-else>
-        <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Replace key" @click="replacing = true">
+        <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Replace key" @click="startReplace">
           <Edit2 class="w-3.5 h-3.5 text-gray-400" />
         </button>
         <button class="p-1.5 hover:bg-neutral-800 rounded-md" title="Delete key" @click="emit('delete')">
@@ -61,52 +61,81 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Check, Edit2, Eye, EyeOff, Trash2, X } from 'lucide-vue-next'
 import type { SecretInfo } from '@abuddy/sdk/services'
 
-// `rename` and `replace` resolve whether the change was stored: the row stays open with what was typed until it was
+// `select`, `rename` and `replace` resolve whether the change was stored: the row stays open with what was typed until
+// it was, and the radio goes back to the stored selection when selecting fails
 const props = defineProps<{
   secret: SecretInfo
   selectable: boolean
+  select?: () => Promise<boolean>
   rename: (label: string) => Promise<boolean>
   replace: (value: string) => Promise<boolean>
 }>()
-const emit = defineEmits<{ select: []; delete: [] }>()
+const emit = defineEmits<{ delete: [] }>()
 
 const renaming = ref(false)
 const replacing = ref(false)
 const visible = ref(false)
-const saving = ref(false)
 const label = ref('')
 const value = ref('')
 
+// Each opened or cancelled edit gets a new token: a save that finishes after its edit was cancelled neither closes nor
+// blocks the edit opened since
+const renameEdit = ref(0)
+const replaceEdit = ref(0)
+const savingRename = ref<number | null>(null)
+const savingReplace = ref<number | null>(null)
+const saving = computed(() => renaming.value ? savingRename.value === renameEdit.value : savingReplace.value === replaceEdit.value)
+
+async function choose(event: Event) {
+  const input = event.target as HTMLInputElement
+  // `:checked` only follows the prop when it changes: a failed select leaves it unchanged, so the input is reset here
+  if (!props.select || !(await props.select())) input.checked = props.secret.selected
+}
+
 function startRename() {
+  renameEdit.value++
   label.value = props.secret.label
   renaming.value = true
 }
 
+function cancelRename() {
+  renameEdit.value++
+  renaming.value = false
+}
+
+function startReplace() {
+  replaceEdit.value++
+  replacing.value = true
+}
+
 async function saveLabel() {
-  if (saving.value || !label.value.trim()) return
-  saving.value = true
+  const edit = renameEdit.value
+  if (savingRename.value === edit || !label.value.trim()) return
+  savingRename.value = edit
   try {
-    if (await props.rename(label.value.trim())) renaming.value = false
+    if (await props.rename(label.value.trim()) && edit === renameEdit.value) renaming.value = false
   } finally {
-    saving.value = false
+    if (savingRename.value === edit) savingRename.value = null
   }
 }
 
 async function saveValue() {
-  if (saving.value || !value.value.trim()) return
-  saving.value = true
+  const edit = replaceEdit.value
+  if (savingReplace.value === edit || !value.value.trim()) return
+  savingReplace.value = edit
   try {
-    if (await props.replace(value.value.trim())) cancelReplace()
+    if (await props.replace(value.value.trim()) && edit === replaceEdit.value) cancelReplace()
   } finally {
-    saving.value = false
+    if (savingReplace.value === edit) savingReplace.value = null
   }
 }
 
 function cancelReplace() {
+  replaceEdit.value++
   replacing.value = false
   visible.value = false
   value.value = ''

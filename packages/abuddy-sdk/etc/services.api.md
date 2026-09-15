@@ -140,6 +140,9 @@ export function onOutgoing(callback: (event: {
 }) => void): () => void;
 
 // @public
+export type OutputSchema = FlexibleSchema<unknown> | JSONSchema7;
+
+// @public
 export type OutputSpec = {
     type: 'text';
 } | ({

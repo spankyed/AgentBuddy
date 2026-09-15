@@ -26,9 +26,9 @@ await setupPackTests({ seedRuntime, registration });
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database.** Apps a test starts stop after it; service mocks last one test.
-- **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a concurrent test (`it.concurrent`, `describe.concurrent`, `sequence.concurrent`) fails. Spec files still run in parallel, each in its own worker.
+- **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a test that runs alongside another (`it.concurrent`, `describe.concurrent` or `sequence.concurrent` next to another concurrent test) fails. Spec files still run in parallel, each in its own worker.
 - **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()`.
-- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds.
+- **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@abuddy/testing` is added at your `@abuddy/sdk` range (they're released together); when your `@abuddy/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
 
 ## Seeds
 
@@ -66,13 +66,15 @@ it('stores a memo a client adds and sends it back', async () => {
 | Member | What it does |
 |---|---|
 | `startApp({ systems })` | Starts the named systems (your feature ids, or a dependency's, e.g. `settings`), in registration order; `'*'` starts all |
-| `connect()` | Sends `CLIENT_CONNECTED`. Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
+| `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
 | `send(systemId, event)` | Sends a system an event |
 | `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`) |
 | `nextEmit(pluginId, type)` | The next such event no earlier call returned, waiting for it |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
-| `stop()` | Stops the systems; pending `nextEmit` and `runFlow` calls fail with "The test app stopped". Once no app runs, each registered pack's `boot.onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
+| `stop()` | Stops the systems; pending and later `connect`, `send`, `nextEmit`, `settle` and `runFlow` calls fail with "The test app stopped", and so does `system`. `emitted` still reads what was sent. Once no app runs, each registered pack's `boot.onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
+
+**Boot hooks run around a test's apps.** The first app a test starts runs each registered pack's `boot.onInit` (your dependencies' first) before its systems start, as the app does at boot, and the last one to stop runs `boot.onShutdown`. A pack that opens something in `onInit` and closes it in `onShutdown` gets that pair for every test that starts an app.
 
 `abuddy add feature` scaffolds a system test like this for each feature.
 

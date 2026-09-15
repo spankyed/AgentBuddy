@@ -17,7 +17,7 @@ export type BusEvent =
 /** Restarts a pack's systems: stops each running one, then starts those still registered */
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
 export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[] };
-export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; systemIds: string[] };
+export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; packId: string; systemIds: string[] };
 /** A client loaded a pack's frontend after connecting: its systems send their startup data */
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
 /** Raised after restarting a pack's systems, once they're in the actor system and can receive events */
@@ -43,10 +43,10 @@ export interface BusOptions {
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED); returns the unsubscribe */
   listen?(send: (event: BusSourceEvent) => void): () => void;
   /**
-   * Packs whose frontend a client loads after connecting. A connection's CLIENT_CONNECTED skips their
-   * systems: the client sends PACK_CLIENT_CONNECTED for each once its plugin actors exist (and again on
-   * reconnecting), so they get it once. A pack whose frontend fails to load never does: nothing on that
-   * client would receive its data.
+   * Packs whose frontend code a client loads after connecting. A connection's CLIENT_CONNECTED, and a
+   * pack's activation, skip their systems: the client sends PACK_CLIENT_CONNECTED for each once it has
+   * tried to load the pack's frontend (whether or not that loaded any plugins), and again each time its
+   * subscription reconnects, so they get it once per client connection.
    */
   clientLoadedPacks?(): Iterable<string>;
   /** Events the bus sends to clients after each client connection's CLIENT_CONNECTED reached the systems */
@@ -91,6 +91,7 @@ function stopSystems(
 export function createBusMachine(options: BusOptions) {
   // Every lookup of what the bus runs goes through this, so a bus given a subset never reaches past it
   const systems = options.systems ?? getRegisteredSystems;
+  const clientLoadedPacks = () => new Set(options.clientLoadedPacks?.() ?? []);
   return setup({
     types: {
       events: {} as BackendEvents,
@@ -112,7 +113,7 @@ export function createBusMachine(options: BusOptions) {
       },
       sendConnected: ({ system }) => {
         const clientLoaded = new Set<string>();
-        for (const packId of options.clientLoadedPacks?.() ?? []) {
+        for (const packId of clientLoadedPacks()) {
           for (const id of getRegisteredPackSystemIds(packId)) clientLoaded.add(id);
         }
         sendClientConnected(system, [...systems().keys()].filter((id) => !clientLoaded.has(id)));
@@ -143,9 +144,12 @@ export function createBusMachine(options: BusOptions) {
       }),
       activatePack: enqueueActions(({ enqueue, event }) => {
         if (event.type !== 'ACTIVATE_PACK') return;
-        // No CLIENT_CONNECTED: a client loads the activated pack's frontend next and asks for the startup
-        // data then (PACK_CLIENT_CONNECTED), once its plugin actors can receive it
-        spawnSystems(enqueue, systems(), event.systemIds);
+        const spawned = spawnSystems(enqueue, systems(), event.systemIds);
+        // A pack whose frontend a client loads next gets CLIENT_CONNECTED when the client asks for it
+        // (PACK_CLIENT_CONNECTED), once its plugin actors can receive the data; any other sends it now
+        if (spawned.length > 0 && !clientLoadedPacks().has(event.packId)) {
+          enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: spawned });
+        }
       }),
     },
   }).createMachine({

@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, beforeEach, inject } from 'vitest';
+import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
 import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
@@ -94,6 +94,31 @@ interface PackContext {
 
 let context: PackContext | undefined;
 
+const runs = (task: RunnerTask): boolean => task.mode !== 'skip' && task.mode !== 'todo' && (task.type !== 'suite' || task.tasks.some(runs));
+const contains = (task: RunnerTask, test: Readonly<RunnerTestCase>): boolean => task === test || (task.type === 'suite' && task.tasks.some((child) => contains(child, test)));
+
+/**
+ * Whether another test in the file can run while `test` does: vitest runs a suite's consecutive concurrent children
+ * together, so `test`, or a suite holding it, is concurrent next to a sibling that runs tests too
+ */
+function runsAlongsideAnother(test: Readonly<RunnerTestCase>): boolean {
+  const search = (suite: RunnerTask): boolean => {
+    if (suite.type !== 'suite') return false;
+    const holder = suite.tasks.find((child) => contains(child, test));
+    if (!holder) return false;
+    if (holder.concurrent === true) {
+      const index = suite.tasks.indexOf(holder);
+      let start = index;
+      while (start > 0 && suite.tasks[start - 1].concurrent === true) start--;
+      let end = index;
+      while (end < suite.tasks.length - 1 && suite.tasks[end + 1].concurrent === true) end++;
+      if (suite.tasks.slice(start, end + 1).some((child) => child !== holder && runs(child))) return true;
+    }
+    return search(holder);
+  };
+  return search(test.file);
+}
+
 /** The vitest project's root, when isolatedDataDir's globalSetup provided it */
 function projectRoot(): string | undefined {
   const root = (inject as (key: string) => unknown)(PROJECT_ROOT_KEY);
@@ -159,7 +184,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
 
   context = { packDir, manifest, dependencies };
   beforeEach(({ task }) => {
-    if (task.concurrent) {
+    if (task.concurrent && runsAlongsideAnother(task)) {
       throw new Error(`"${task.name}" runs concurrently: harness tests share one database, service mocks and apps per file, so run them sequentially (no .concurrent or sequence.concurrent)`);
     }
     inTest = true;

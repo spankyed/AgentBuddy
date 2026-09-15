@@ -57,6 +57,7 @@ export function unregisterByPrefix(prefix: string): void {
  * Stop and remove all cron jobs. Called on brain kill/restart.
  */
 export function clearAllSchedules(): void {
+  if (activeJobs.size === 0) return;
   for (const job of activeJobs.values()) {
     job.stop();
   }

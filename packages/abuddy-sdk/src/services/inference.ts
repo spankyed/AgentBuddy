@@ -119,10 +119,11 @@ async function toAiOutput(output: OutputInterface | OutputSpec | undefined): Pro
   // Every Output implements parseCompleteOutput; a spec is plain data
   if (output === undefined || 'parseCompleteOutput' in output) return output;
   const { Output, jsonSchema } = await import('ai');
-  // What `ai` takes as a schema (its `asSchema`): a `jsonSchema()` Schema (marked with its symbol), a lazy schema
-  // (a function) or a standard schema. Anything else is a plain JSON Schema.
+  // What `ai` takes as a schema (its `asSchema`): none (null or undefined: an empty object schema), a `jsonSchema()`
+  // Schema (marked with its symbol), a lazy schema (a function) or a standard schema. Anything else is a plain JSON
+  // Schema, a boolean one included, which `ai` would take for a lazy schema.
   const toSchema = (schema: OutputSchema): FlexibleSchema<unknown> =>
-    typeof schema === 'function' || Symbol.for('vercel.ai.schema') in schema || '~standard' in schema
+    schema == null || typeof schema === 'function' || (typeof schema === 'object' && (Symbol.for('vercel.ai.schema') in schema || '~standard' in schema))
       ? schema as FlexibleSchema<unknown>
       : jsonSchema(schema as JSONSchema7);
   switch (output.type) {

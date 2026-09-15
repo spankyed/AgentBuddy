@@ -5,6 +5,11 @@ import type { SeedRecord } from '../build/seeds/records.ts';
 export interface SeedHookContext {
   parentId?: EARS.EntityId;
   index: number;
+  /**
+   * On update, the fields the row's previous seed set that the record no longer sets: `update` resets
+   * them (to what `create` gives a record that doesn't set them). Empty for `find` and `create`.
+   */
+  clearedFields: string[];
 }
 
 /** An existing row a record matches */

@@ -22,13 +22,13 @@ const list = (dir: string): string[] => fs.existsSync(dir)
   : [];
 
 describe('clearBuildOutput', () => {
-  it("clears a built-in pack's seeds, build/, types/, runtime and snapshot, and keeps what rollup writes", () => {
+  it("clears a built-in pack's seeds, build/, types/ and snapshot, and keeps what its other builds write (defs, runtime)", () => {
     previousBuild([
       'notes.seed.json', 'seeds.json', 'media/library/pic.png', 'build/seed-compilers.mjs', 'types/pack-types.d.ts',
-      'snapshot.json', 'runtime/index.cjs', 'runtime/index.cjs.map', 'defs/monaco/actions.d.ts',
+      'snapshot.json', 'runtime/index.cjs', 'runtime/index.cjs.map', 'runtime/seeds-index.sha256', 'defs/monaco/actions.d.ts',
     ]);
     clearBuildOutput(dist, { builtIn: true });
-    expect(list(dist)).toEqual(['defs/monaco/actions.d.ts']);
+    expect(list(dist)).toEqual(['defs/monaco/actions.d.ts', 'runtime/index.cjs', 'runtime/index.cjs.map', 'runtime/seeds-index.sha256']);
   });
 
   it("clears an external pack's whole dist/", () => {
@@ -39,7 +39,7 @@ describe('clearBuildOutput', () => {
 });
 
 describe('a built-in pack build that fails', () => {
-  it('leaves no seeds or runtime from the previous build, and keeps the defs', async () => {
+  it("leaves no seeds from the previous build, and keeps the defs and runtime it doesn't build", async () => {
     const dir = previousBuild(['flows.seed.json', 'seeds.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts']);
     const root = path.dirname(dir);
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'built-in-pack', type: 'module' }));
@@ -56,6 +56,6 @@ describe('a built-in pack build that fails', () => {
     } finally {
       process.chdir(cwd);
     }
-    expect(list(dir)).toEqual(['defs/monaco/actions.d.ts']);
+    expect(list(dir)).toEqual(['defs/monaco/actions.d.ts', 'runtime/index.cjs']);
   });
 });

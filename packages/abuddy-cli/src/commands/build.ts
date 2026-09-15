@@ -53,14 +53,13 @@ const BUILT_IN_SNAPSHOT = 'snapshot.json';
  * output never leaves an older file behind.
  * - External packs build into the bundle layout (runtime/, build/, types/); dist/ is pure output,
  *   cleared whole, so `abuddy pack` and the test fixture never ship an older build.
- * - Built-in packs keep their in-repo layout, where rollup writes dist/defs/ (generate:defs): the
- *   compiled seeds, build/, types/ and snapshot go, and runtime/, which dev-build.mjs writes after
- *   this build in the pack's `npm run build`. The app publishes the runtime with the seeds and build/
- *   to dependents, so a build that fails or doesn't reach dev-build.mjs leaves no older runtime to
- *   pair with them (in development the API loads the pack from source when it has no runtime).
+ * - Built-in packs keep their in-repo layout, where other builds write too: rollup writes dist/defs/
+ *   (generate:defs) and the pack's runtime build writes runtime/. Only this build's output goes: the
+ *   compiled seeds, build/, types/ and snapshot. The runtime records the compiled seeds it was built
+ *   beside, and the app doesn't publish it with seeds compiled after it.
  */
 export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
-  const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, BUNDLE_PATHS.runtimeDir, BUILT_IN_SNAPSHOT] : ['.'];
+  const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, BUILT_IN_SNAPSHOT] : ['.'];
   for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
   if (builtIn) clearCompiledSeeds(outputDir);
 }

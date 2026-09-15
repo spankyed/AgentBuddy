@@ -57,7 +57,7 @@
           :selectable="true"
           :rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
           :replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
-          @select="run(() => trpc.secrets.select.mutate({ id: secret.id }))"
+          :select="() => run(() => trpc.secrets.select.mutate({ id: secret.id }))"
           @delete="confirmDelete(secret)"
         />
 

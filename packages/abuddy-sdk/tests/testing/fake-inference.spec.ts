@@ -48,6 +48,13 @@ describe('fakeInference', () => {
       expect(array.output).toEqual([{ city: 'Paris', temperature: 21 }]);
     });
 
+    it('takes no schema as an empty object schema and a boolean JSON Schema as a JSON Schema, from stored settings', async () => {
+      const inference = fakeInference(JSON.stringify({ city: 'Paris' }));
+      const call = (schema: unknown) => inference.generateText({ model: 'openai:gpt-5', prompt: 'x', output: { type: 'object', schema: schema as JSONSchema7 } });
+      expect((await call(null)).output).toEqual({ city: 'Paris' });
+      expect((await call(true)).output).toEqual({ city: 'Paris' });
+    });
+
     it('takes a schema jsonSchema() from ai built, as ai does', async () => {
       const validated: unknown[] = [];
       const schema = jsonSchema<{ city: string }>({ type: 'object', properties: { city: { type: 'string' } } }, { validate: (value) => { validated.push(value); return { success: true, value: value as { city: string } }; } });

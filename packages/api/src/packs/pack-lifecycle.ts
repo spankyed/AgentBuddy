@@ -105,7 +105,7 @@ export function activatePack(
 
   const systemIds = Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`);
   if (systemIds.length > 0) {
-    busActor.send({ type: 'ACTIVATE_PACK', systemIds });
+    busActor.send({ type: 'ACTIVATE_PACK', packId, systemIds });
   }
 
   logger.info(`Pack activated: ${packId} (${systemIds.length} systems started)`);

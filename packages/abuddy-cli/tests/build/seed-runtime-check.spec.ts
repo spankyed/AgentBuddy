@@ -7,15 +7,15 @@ import { checkSeedRuntimeLoads } from '../../src/build/seed-runtime-check';
 let root: string;
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
-const checkDirs = () => fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('abuddy-seed-runtime-check-'));
-
 describe('checkSeedRuntimeLoads', () => {
   it("fails with a build error, and leaves no temp dir, when the pack's @abuddy/sdk doesn't resolve", async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-no-sdk-'));
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'no-sdk', type: 'module' }));
-    const before = checkDirs();
-    const result = await checkSeedRuntimeLoads(root, path.join(root, 'dist/build/seed-runtime.mjs'));
+    // The check's own temp dir, so concurrent checks elsewhere don't show up in it
+    const tmpDir = path.join(root, 'tmp');
+    fs.mkdirSync(tmpDir);
+    const result = await checkSeedRuntimeLoads(root, path.join(root, 'dist/build/seed-runtime.mjs'), { tmpDir });
     expect(result).toEqual({ success: false, error: expect.stringContaining(`dist/build/seed-runtime.mjs can't be checked: @abuddy/sdk doesn't resolve from ${root}`) });
-    expect(checkDirs()).toEqual(before);
+    expect(fs.readdirSync(tmpDir)).toEqual([]);
   });
 });

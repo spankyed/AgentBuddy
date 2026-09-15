@@ -8,11 +8,12 @@ import { dropAttribute, resetTestData, startTestRuntime } from '../../src/testin
 import { createSeeder } from '../../src/seed/seeder.ts';
 import { seedHookRegistry } from '../../src/seed/hooks.ts';
 import { findWhere } from '../../src/ears/query-helpers.ts';
+import { getMediaPath } from '../../src/utils/index.ts';
 import { createEntityWithDefaults, updateEntity } from '../../src/ears/transaction-helpers.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
-type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; sourceHash?: string };
+type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; sourceHash?: string; seededFields?: { fields: string[] } };
 const memos = (name: string) => findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
 const memo = (name: string) => memos(name)[0];
 const edit = (name: string, fields: Partial<Memo>) => updateEntity(memo(name).id, fields);
@@ -32,11 +33,11 @@ afterAll(() => {
 });
 
 /** A pack's compiled memos entry: each record's sourceHash is its version, as a changed source's would change */
-function compiled(packId: string, records: Array<{ name: string; body: string; version?: string }>): string {
+function compiled(packId: string, records: Array<{ name: string; body: string; version?: string; [field: string]: unknown }>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seeder-'));
   dirs.push(dir);
   fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
-  const seedRecords: SeedRecord[] = records.map(({ name, body, version = 'v1' }) => ({ entity: 'Memo', name, body, sourceHash: `${name}-${version}` }));
+  const seedRecords: SeedRecord[] = records.map(({ version = 'v1', ...fields }) => ({ entity: 'Memo', ...fields, sourceHash: `${fields.name}-${version}` }));
   fs.writeFileSync(path.join(dir, 'memos.seed.json'), JSON.stringify({ records: seedRecords }));
   return dir;
 }
@@ -99,5 +100,71 @@ describe('an update hook that fails part way', () => {
     failing = false;
     expect(seed(pinnedRecord('v2', true))).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro')).toMatchObject({ body: 'Hello v2', pinned: true, sourceHash: 'Intro-v2' });
+  });
+
+  it("keeps the row's previous seeded fields: a field the record newly sets isn't recorded as seeded", () => {
+    seedHookRegistry.register('Memo', {
+      update: (id, record) => {
+        updateEntity(id, { body: record.body });
+        throw new Error('disk full');
+      },
+    }, 'memo-hooks');
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello' }]));
+    // The user's mood, which the next version of the record sets too
+    edit('Intro', { mood: 'mine' });
+
+    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]))).toMatchObject({ errors: ['Memo "Intro": disk full'] });
+    expect(memo('Intro')).toMatchObject({ mood: 'mine', seededFields: { fields: ['body', 'name'] } });
+  });
+});
+
+describe('a field a changed record no longer sets', () => {
+  it("is dropped from the row, and a field the seed never set is kept", () => {
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]));
+    edit('Intro', { mood: 'mine' });
+    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]))).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(memo('Intro').pinned).toBeUndefined();
+    expect(memo('Intro')).toMatchObject({ mood: 'mine', seededFields: { fields: ['body', 'name'] } });
+  });
+
+  it('is passed to the update hook to reset', () => {
+    const cleared: string[][] = [];
+    seedHookRegistry.register('Memo', {
+      update: (id, record, { clearedFields }) => {
+        cleared.push(clearedFields);
+        updateEntity(id, { body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
+      },
+    }, 'memo-hooks');
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]));
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]));
+    expect(cleared).toEqual([['pinned']]);
+    expect(memo('Intro').pinned).toBe(false);
+  });
+});
+
+describe('a created row that fails before it is tracked', () => {
+  it('is removed and the error reported, so the next seed creates it again and tracks it', () => {
+    let failing = true;
+    seedHookRegistry.register('Memo', {
+      update: (id, record) => {
+        if (failing) throw new Error('disk full');
+        updateEntity(id, { body: record.body });
+      },
+    }, 'memo-hooks');
+    const mediaSeeder = createSeeder({ key: 'memos', identity: ['name'], media: true });
+    const dir = compiled('demo', [{ name: 'Intro', body: 'See ![pic](media/pic.png)' }]);
+    fs.mkdirSync(path.join(dir, 'media', 'memos'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'media', 'memos', 'pic.png'), 'PNG');
+    const seedMedia = () => mediaSeeder.seed({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
+
+    expect(seedMedia()).toMatchObject({ created: 0, errors: ['Memo "Intro": disk full'] });
+    expect(memos('Intro')).toEqual([]);
+
+    failing = false;
+    expect(seedMedia()).toEqual({ created: 1, updated: 0, skipped: 0 });
+    const { id, body } = memo('Intro');
+    expect(body).toBe(`See ![pic](media://${id}/pic.png)`);
+    expect(fs.readdirSync(getMediaPath())).toEqual([id]);
+    expect(seedMedia()).toEqual({ created: 0, updated: 0, skipped: 1 });
   });
 });
