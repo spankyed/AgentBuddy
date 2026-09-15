@@ -140,7 +140,13 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     if (isSpawn(event)) {
       const flowLabel = event.flowTNodeId === ROOT_FLOW_TNODE ? rootFlowLabel() : flowLabels.get(`flow:${event.flowTNodeId}`);
       if (flowLabel !== undefined) flowLabels.set(event.tNode.id, flowLabel);
-      if (event.tNode.tNodeType === 'flow' && event.tNode.label) flowLabels.set(`flow:${event.tNode.id}`, event.tNode.label);
+      if (event.tNode.tNodeType === 'flow') {
+        // A subflow's trace node carries its step's label: the flow is the one that step runs (flowRef)
+        const stepNodeId = (readTNode(event.tNode.id)?.blueprint as { nodeId?: string } | undefined)?.nodeId;
+        const flowRef = stepNodeId === undefined ? undefined : readTNode(stepNodeId)?.flowRef;
+        const subflowLabel = typeof flowRef === 'string' ? String(readTNode(flowRef)?.label ?? flowRef) : undefined;
+        if (subflowLabel !== undefined) flowLabels.set(`flow:${event.tNode.id}`, subflowLabel);
+      }
     }
     if (tNodeId) {
       // The update can arrive after the brain cleared the row: keep the reported status on the last row seen
@@ -182,8 +188,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     if (!attempt()) waiters.add(attempt);
   });
 
-  const settle = async () => {
+  /** Settles, or throws `timedOut()` once `deadline` passes first */
+  const settle = async (deadline = Infinity, timedOut?: () => string) => {
     for (let ticks = 0; ticks < SETTLE_LIMIT; ticks++) {
+      if (timedOut && Date.now() > deadline) throw new Error(timedOut());
       const before = activity;
       await macrotask();
       if (activity === before) return;
@@ -225,7 +233,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         if (!check()) waiters.add(wake);
       });
     },
-    settle,
+    settle: () => settle(),
     async runFlow(label, { event = 'flow.entry', data, timeoutMs = 10_000 } = {}) {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
       const settingsId = hasDesignation('settings') ? getDesignated('settings') : undefined;
@@ -235,29 +243,38 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const flows = (untypedQx('Flow' as never).pickAll() as Array<Record<string, unknown>>).map((row) => ({ id: String(row.id), label: String(row.label) }));
       const flow = flows.find((candidate) => candidate.label === label);
       if (!flow) throw new Error(`No flow "${label}". Flows: ${flows.map((f) => f.label).join(', ') || 'none (seed them first)'}`);
-      if (!connected) await app.connect();
+
+      const deadline = Date.now() + timeoutMs;
+      let cursor = emitted.length;
+      const since = () => emitted.slice(cursor);
+      const timedOut = () => `Flow "${label}" didn't finish "${event}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event').map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`;
+      /** Sends to the brain and settles, within the run's timeout */
+      const sendToBrain = async (brainEvent: { type: string; [key: string]: unknown }) => {
+        if (!connected) {
+          connected = true;
+          testRootEvents.emitConnected();
+        }
+        cursor = emitted.length;
+        testRootEvents.emitIncoming({ ...brainEvent, systemId: brainId });
+        await settle(deadline, timedOut);
+      };
 
       const rootFlowId = untypedQx().withRole(ROOT_FLOW_ROLE).first() as string | undefined;
-      const brainSnapshot = app.system(brainId).getSnapshot() as { matches(state: string): boolean; context?: { brainActor?: unknown } };
-      const brainRunning = brainSnapshot.matches('running');
-      // The brain runs its root flow in brainActor; without one (no root flow when it started) it waits for a restart
-      const runningThisFlow = brainRunning && brainSnapshot.context?.brainActor !== undefined && rootFlowId === flow.id;
-      let cursor = emitted.length;
+      // The brain stops when it has no flow to run
+      const brainRunning = (app.system(brainId).getSnapshot() as { matches(state: string): boolean }).matches('running');
+      const runningThisFlow = brainRunning && rootFlowId === flow.id;
       if (!runningThisFlow || event === 'flow.entry') {
         if (rootFlowId !== flow.id) {
           const flowsCommands = (repository as unknown as { flowsCommands?: { grantRootFlowRole(id: string): void } }).flowsCommands;
           if (!flowsCommands) throw new Error('runFlow needs the flows repository (default-setup) to make a flow the root flow');
           flowsCommands.grantRootFlowRole(flow.id);
         }
-        cursor = emitted.length;
-        await app.send(brainId, { type: brainRunning ? 'RESTART_BRAIN' : 'START_BRAIN' });
+        await sendToBrain({ type: brainRunning ? 'RESTART_BRAIN' : 'START_BRAIN' });
       }
       if (event !== 'flow.entry') {
-        cursor = emitted.length;
-        await app.send(brainId, { type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, targetFlowId: ROOT_FLOW_TNODE });
+        await sendToBrain({ type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, targetFlowId: ROOT_FLOW_TNODE });
       }
 
-      const since = () => emitted.slice(cursor);
       const triggered = () => since().filter((e): e is TNodeSpawned =>
         isSpawn(e) && e.flowTNodeId === ROOT_FLOW_TNODE && e.tNode.tNodeType === 'event' && e.tNode.eventType === event);
       if (triggered().length === 0) {
@@ -280,17 +297,12 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         const ids = triggered().map((e) => e.tNode.id);
         return ids.every(trackFinished) ? ids : undefined;
       };
-      const deadline = Date.now() + timeoutMs;
       let eventTNodeIds: string[] | undefined;
       // A step reports completion before its flow starts the next step, so every started step can look settled
       // in between: check again once the systems have settled
       while (!eventTNodeIds) {
-        await waitForEmitted(
-          finishedTracks,
-          Math.max(deadline - Date.now(), 0),
-          () => `Flow "${label}" didn't finish "${event}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event').map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}`,
-        );
-        await settle();
+        await waitForEmitted(finishedTracks, Math.max(deadline - Date.now(), 0), timedOut);
+        await settle(deadline, timedOut);
         eventTNodeIds = finishedTracks();
       }
       const tracks = new Set(eventTNodeIds);

@@ -29,6 +29,8 @@ export { resetTestData, takeSystemErrors, type SeedRuntime };
 export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
+/** Whether a test (with its beforeEach and afterEach hooks) is running, so mocks have a test to last for */
+let inTest = false;
 
 /** The pack registry `services` reads, with the current test's mocked services over the registered ones */
 const packRegistryWithMocks = {
@@ -37,12 +39,15 @@ const packRegistryWithMocks = {
 };
 
 /**
- * Replaces a service in `services` for the current test, restored after it. Type it with the pack's
- * services (`mockService<Services>('llm', { generateText: … })`); give only the members the code
- * under test uses. Code that imports a service module directly instead of using `services` isn't
- * affected.
+ * Replaces a service in `services` for the current test, restored after it: call it in the test or a
+ * `beforeEach`, not `beforeAll`. Type it with the pack's services (`mockService<Services>('scheduler',
+ * { registerSchedule: … })`); give only the members the code under test uses. Code that imports a
+ * service module directly instead of using `services` isn't affected.
  */
 export function mockService<S extends object = Record<string, object>, K extends keyof S & string = keyof S & string>(name: K, implementation: Partial<S[K]>): void {
+  if (!inTest) {
+    throw new Error(`mockService('${name}') ran outside a test: a mock lasts for the test it's made in, so make it in the test or a beforeEach`);
+  }
   serviceMocks.set(name, implementation);
 }
 
@@ -140,10 +145,12 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
 
   context = { packDir, manifest, dependencies };
   beforeEach(() => {
+    inTest = true;
     resetTestData();
     fs.rmSync(getMediaPath(), { recursive: true, force: true });
   });
   afterEach(() => {
+    inTest = false;
     stopRunningApps();
     serviceMocks.clear();
     const errors = takeSystemErrors();

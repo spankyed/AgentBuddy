@@ -8,7 +8,6 @@
  * - Correct sessionId + cliUuid persisted on the new thread
  * - The viewSession validation guard (post-compaction safety)
  * - Graceful degradation when viewSession throws
- * - openThreadChatAndRefreshRecent called AFTER state persistence (race fix)
  */
 
 import { vi, describe, expect, it } from 'vitest';
