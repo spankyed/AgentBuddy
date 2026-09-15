@@ -62,8 +62,8 @@ Seeded rows keep their record's `sourceHash` and `seededFields` (a hash of the v
 
 ## Commands
 
-Commands are actions with `category: 'commands'` triggered by `/name` in chat. To add one:
+Slash commands (`/name` in chat) are listed by the documents in `library/internal/commands/` (`general.md`, `claude-code.md`, `codex.md`: a `<!-- section:field -->` block of `**name**: placeholder` lines); the chat reads every document in that library folder (`services.library.commands()`). To add one:
 
-1. Create action in `actions/commands/`
-2. Add `on("user.command", ...)` branch in a flow (use `command-listener-flow.ts` for standalone)
-3. Register in `library/internal/commands.md`
+1. Create the action (its `category` only groups it in the Actions UI)
+2. Add an `on("user.command", ...)` branch in a flow (`command-listener-flow.ts` for standalone, the Claude Code and Codex flows for `cc-*`/`cdx-*`)
+3. List it in the matching document under `library/internal/commands/`

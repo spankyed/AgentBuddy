@@ -17,7 +17,7 @@ import { z } from 'zod';
 
 interface ActionNode extends NodeBase {
     nodeType: 'action';
-    mode?: 'template' | 'code';
+    mode?: 'code' | 'template';
     actionId?: string;
     actionFn?: string;
     params?: Record<string, any>;
@@ -120,7 +120,7 @@ interface AppSettings {
     openLinksInApp: boolean;
 }
 
-type ApprovalDecision = 'accept' | 'acceptForSession' | 'decline' | 'cancel';
+type ApprovalDecision = 'accept' | 'acceptForSession' | 'cancel' | 'decline';
 
 interface ArtifactEntity extends BaseEntity {
     /** Optional display colour, set when the artifact is created. */
@@ -234,7 +234,7 @@ interface AuthStatus {
     authenticated?: boolean;
     /** Claude Max / claude.ai subscriptions return `loggedIn` instead of `authenticated`. */
     loggedIn?: boolean;
-    source?: 'user' | 'project' | 'org' | 'temporary' | 'oauth';
+    source?: 'oauth' | 'org' | 'project' | 'temporary' | 'user';
     authMethod?: string;
     apiProvider?: string;
     account?: Record<string, unknown>;
@@ -392,7 +392,7 @@ interface BrowserSession {
     /** Resolves the raw playwright `ElementHandle`, or null */
     waitForSelector(selector: string, timeout?: number): Promise<unknown>;
     waitForTimeout(timeout: number): Promise<void>;
-    waitForLoadState(state?: 'load' | 'domcontentloaded' | 'networkidle'): Promise<void>;
+    waitForLoadState(state?: 'domcontentloaded' | 'load' | 'networkidle'): Promise<void>;
     screenshot(path?: string): Promise<Buffer>;
     title(): Promise<string>;
     url(): Promise<string>;
@@ -608,11 +608,11 @@ interface CodeSettings {
     showCommits?: boolean;
     showWorktrees?: boolean;
     /** Paths to the CLIs the app runs; blank or missing means auto-detect */
-    cliPaths?: Partial<Record<'copilot' | 'claude-code' | 'codex' | 'gh', string>>;
+    cliPaths?: Partial<Record<'claude-code' | 'codex' | 'copilot' | 'gh', string>>;
 }
 
 interface CodeSystemError {
-    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
+    code: 'FILE_TOO_LARGE' | 'INVALID_PATH' | 'IO_ERROR' | 'NOT_FOUND' | 'PERMISSION_DENIED' | 'SEARCH_ERROR';
     message: string;
     path?: string;
 }
@@ -700,7 +700,7 @@ interface CommitLogEntry {
 type Condition = {
     predicate?: Predicate;
     label?: string;
-    mode?: 'expression' | 'code';
+    mode?: 'code' | 'expression';
     code?: string;
 };
 
@@ -736,7 +736,7 @@ interface ContextReference {
     label: string;
 }
 
-type ContextReferenceType = 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder';
+type ContextReferenceType = 'document' | 'folder' | 'note' | 'task' | 'tasklist' | 'thread';
 
 type ControlCancelLine = z.infer<typeof ControlCancelLineSchema>;
 
@@ -1046,7 +1046,7 @@ interface EventListenerEntity {
     eventType: string;
     label: string;
     triggerType: string;
-    scope?: 'global' | 'local' | 'entry';
+    scope?: 'entry' | 'global' | 'local';
     cronExpression?: string;
 }
 
@@ -1133,7 +1133,7 @@ interface FileEntry {
 interface FileInfo {
     name: string;
     path: string;
-    type: 'file' | 'directory';
+    type: 'directory' | 'file';
     size?: number;
     modifiedAt?: Date;
     extension?: string;
@@ -1169,7 +1169,7 @@ interface FireNode extends NodeBase {
     nodeType: 'fire';
     eventType: string;
     payload?: unknown;
-    scope?: 'local' | 'global';
+    scope?: 'global' | 'local';
 }
 
 interface FlowExtendedData {
@@ -1262,7 +1262,7 @@ interface GhPullRequest {
     body: string;
     headRefName: string;
     baseRefName: string;
-    state: 'OPEN' | 'CLOSED' | 'MERGED';
+    state: 'CLOSED' | 'MERGED' | 'OPEN';
     url: string;
     isDraft: boolean;
     author: {
@@ -1275,7 +1275,7 @@ interface GhPullRequest {
         messageHeadline: string;
         committedDate: string;
     }[];
-    mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+    mergeable?: 'CONFLICTING' | 'MERGEABLE' | 'UNKNOWN';
     mergeStateStatus?: 'BEHIND' | 'BLOCKED' | 'CLEAN' | 'DIRTY' | 'DRAFT' | 'HAS_HOOKS' | 'UNKNOWN' | 'UNSTABLE';
     reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
     statusCheckRollup?: Array<{
@@ -1314,7 +1314,7 @@ interface GhReviewThread {
     originalStartLine?: number | null;
     diffSide?: 'LEFT' | 'RIGHT' | null;
     startDiffSide?: 'LEFT' | 'RIGHT' | null;
-    subjectType?: 'LINE' | 'FILE' | null;
+    subjectType?: 'FILE' | 'LINE' | null;
     diffHunk?: string | null;
     comments: GhReviewComment[];
 }
@@ -1330,7 +1330,7 @@ interface GitDiff {
 
 interface GitStatusFile {
     path: string;
-    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
+    status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
     staged: boolean;
     originalPath?: string;
     score?: number;
@@ -1393,6 +1393,11 @@ declare class LibraryService {
     getByCode(shortCode: string): Promise<DocumentDTO | undefined>;
     getByName(name: string): Promise<DocumentDTO | undefined>;
     getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
+    /**
+     * The chat's slash commands: the field sections of every document in the commands folder, in document order
+     * (then name). A command defined in two documents keeps the first.
+     */
+    commands(): CommandItem[];
     getText(id: EARS.EntityId): Promise<string | undefined>;
     list(folderId?: EARS.EntityId): Promise<LibraryItem[]>;
     create(params: {
@@ -1428,39 +1433,23 @@ interface ListenOptions {
 
 interface ListenerNode extends NodeBase {
     nodeType: 'listener';
-    scope: 'global' | 'local' | 'entry';
+    scope: 'entry' | 'global' | 'local';
     eventType: string;
     trackKey?: string;
     debounceMs?: number;
 }
 
-declare const LogEntry: z.ZodObject<{
-    id: z.ZodString;
-    timestamp: z.ZodNumber;
-    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
-    message: z.ZodString;
-    source: z.ZodOptional<z.ZodString>;
-    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-    stack: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
+interface LogEntry {
     id: string;
-    message: string;
     timestamp: number;
-    level: "error" | "debug" | "info" | "warn";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}, {
-    id: string;
+    level: LogLevel;
     message: string;
-    timestamp: number;
-    level: "error" | "debug" | "info" | "warn";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}>;
+    source?: string;
+    meta?: Record<string, any>;
+    stack?: string;
+}
 
-type LogEntry = z.infer<typeof LogEntry>;
+type LogLevel = 'debug' | 'error' | 'info' | 'warn';
 
 interface LogsSettings {
     maxLogs: number;
@@ -1476,7 +1465,7 @@ interface MarkdownContent {
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
-    sender: 'user' | 'assistant' | 'system' | 'marker';
+    sender: 'assistant' | 'marker' | 'system' | 'user';
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
@@ -1493,7 +1482,7 @@ interface MessageEntity extends BaseEntity {
     isCommand?: boolean;
     command?: string;
     /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
-    status?: 'queued' | 'cancelled' | null;
+    status?: 'cancelled' | 'queued' | null;
     /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
     context?: Record<string, unknown>;
     /** When true, collapse to a compact aside after the user responds. */
@@ -1531,7 +1520,7 @@ interface NoteDTO {
     title: string;
     content: string;
     icon: string | null;
-    noteType: 'document' | 'tasklist' | 'task';
+    noteType: 'document' | 'task' | 'tasklist';
     completed: boolean;
     hideCompletedChildren: boolean;
     parentId: string | null;
@@ -1550,7 +1539,7 @@ interface NoteEntity extends BaseEntity {
     title: string;
     content: string;
     icon: string | null;
-    noteType: 'document' | 'tasklist' | 'task';
+    noteType: 'document' | 'task' | 'tasklist';
     completed: boolean;
     hideCompletedChildren: boolean;
     displayOrder: number;
@@ -2511,7 +2500,7 @@ type OutgoingThreadsEvents = {
 } | {
     type: 'THREAD_UPDATED';
     threadId: string;
-    updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned' | 'topic' | 'instructions'>>;
+    updates: Partial<Pick<ThreadEntity, 'context' | 'instructions' | 'pinned' | 'status' | 'tags' | 'topic'>>;
 } | {
     type: 'THREAD_DELETED';
     threadId: string;
@@ -2567,7 +2556,7 @@ type OutgoingThreadsEvents = {
     responseTimestamp?: number;
     blockResponse?: BlockResponse;
     forkable?: boolean;
-    status?: 'queued' | 'cancelled' | null;
+    status?: 'cancelled' | 'queued' | null;
     context?: Record<string, unknown>;
     asideText?: string;
     asideContext?: string;
@@ -2718,13 +2707,13 @@ type PermissionDecision = {
     updatedInput: Record<string, unknown>;
     updatedPermissions?: Array<Record<string, unknown>>;
     toolUseID?: string;
-    decisionClassification?: 'user_temporary' | 'user_permanent' | 'user_reject';
+    decisionClassification?: 'user_permanent' | 'user_reject' | 'user_temporary';
 } | {
     behavior: 'deny';
     message: string;
     interrupt?: boolean;
     toolUseID?: string;
-    decisionClassification?: 'user_temporary' | 'user_permanent' | 'user_reject';
+    decisionClassification?: 'user_permanent' | 'user_reject' | 'user_temporary';
 };
 
 /** Caller hook: decide a tool permission request. */
@@ -2976,7 +2965,7 @@ interface QuickOpenResult {
     path: string;
     relativePath: string;
     name: string;
-    type: 'file' | 'directory';
+    type: 'directory' | 'file';
     extension?: string;
     score?: number;
 }
@@ -3126,7 +3115,7 @@ interface SearchResult {
  * 2. Server-initiated requests (id AND method) — approval requests
  * 3. Notifications (method, no id) — streaming events
  */
-type ServerStatus = 'stopped' | 'starting' | 'ready' | 'error';
+type ServerStatus = 'error' | 'ready' | 'starting' | 'stopped';
 
 /**
  * What an action actually receives: this pack's feature services, its dependencies' services
@@ -3439,7 +3428,7 @@ type ThreadCreateData = Simplify<ThreadEditFields & {
     pinned?: boolean;
 }>;
 
-type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'instructions'> & {
+type ThreadEditFields = Simplify<Pick<ThreadEntity, 'instructions' | 'topic'> & {
     status?: ThreadEntity['status'];
 } & {
     tags?: string[];
@@ -3523,8 +3512,8 @@ interface ThreadRollbackParams {
 interface ThreadStartParams {
     cwd?: string;
     model?: string;
-    sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
-    approvalsReviewer?: 'user' | 'auto_review';
+    sandbox?: 'danger-full-access' | 'read-only' | 'workspace-write';
+    approvalsReviewer?: 'auto_review' | 'user';
 }
 
 interface ThreadStatusOption {
@@ -3544,13 +3533,13 @@ interface ThreadsSettings {
     showOnlyRootThreads: boolean;
     clickToChat: boolean;
     recentThreadsLimit: number;
-    recentThreadsSortOrder: 'created' | 'visited' | 'message';
+    recentThreadsSortOrder: 'created' | 'message' | 'visited';
     recordingLimitMinutes: number;
     skipArchiveConfirm?: boolean;
     chat?: AgentSettings;
 }
 
-type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
+type TokenKind = 'classic-pat' | 'fine-grained-pat' | 'oauth' | 'unknown';
 
 type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
 
@@ -3615,7 +3604,7 @@ declare const ToolUseSummaryLineSchema: z.ZodObject<{
 interface TransformNode extends NodeBase {
     nodeType: 'transform';
     script: string;
-    outputType?: 'json' | 'text' | 'custom';
+    outputType?: 'custom' | 'json' | 'text';
 }
 
 interface TurnStartParams {
@@ -3626,13 +3615,13 @@ interface TurnStartParams {
     }>;
     cwd?: string;
     collaborationMode?: {
-        mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming';
+        mode: 'code' | 'custom' | 'default' | 'execute' | 'pair_programming' | 'plan';
         settings: {
             model?: string;
             developer_instructions?: string | null;
         };
     };
-    approvalsReviewer?: 'user' | 'auto_review';
+    approvalsReviewer?: 'auto_review' | 'user';
     model?: string;
 }
 
@@ -3657,7 +3646,7 @@ interface UpdateArtifactOptions {
 interface UpdateNode extends NodeBase {
     nodeType: 'update';
     entityId: string;
-    onMissing?: 'fail' | 'ignore' | 'create';
+    onMissing?: 'create' | 'fail' | 'ignore';
 }
 
 /** User message written to stdin during a stream-json conversation. */
@@ -3793,7 +3782,7 @@ declare function addMessagesToThread(params: {
     threadId: EARS.EntityId;
     messages: Array<{
         text: string;
-        sender: 'user' | 'assistant' | 'system' | 'marker';
+        sender: 'assistant' | 'marker' | 'system' | 'user';
         forkable?: boolean;
         context?: Record<string, unknown>;
     }>;
@@ -3816,7 +3805,7 @@ declare const brainCommands: {
         step: NodeEntity;
     };
     readonly createRootFlowTNode: () => {
-        rootFlow: Pick<FlowEntity, "id" | "label" | "flowType" | "createdAt">;
+        rootFlow: Pick<FlowEntity, "createdAt" | "flowType" | "id" | "label">;
         rootFlowTNode: TNodeEntity;
     };
     readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
@@ -3835,7 +3824,7 @@ declare const brainQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "TNode" | undefined;
         };
-    }, "id" | "status" | "label" | "eventType" | "entityType" | "createdAt" | "tNodeType" | "startedAt" | "completedAt" | "triggerType" | "cronExpression" | "stepNodeType" | "nodeAttributes" | "blueprint">) | null;
+    }, "blueprint" | "completedAt" | "createdAt" | "cronExpression" | "entityType" | "eventType" | "id" | "label" | "nodeAttributes" | "startedAt" | "status" | "stepNodeType" | "tNodeType" | "triggerType">) | null;
     readonly eventFirstStep: (eventNodeId: EARS.EntityId) => NodeEntity | undefined;
     readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
     readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
@@ -3886,7 +3875,7 @@ declare const chatCommands: {
     readonly addMessage: (params: {
         threadId: EARS.EntityId;
         text: string;
-        sender: "user" | "assistant" | "system" | "marker";
+        sender: "assistant" | "marker" | "system" | "user";
         blocks?: BlockConfig[];
         forkable?: boolean;
         references?: MessageReferences;
@@ -3923,7 +3912,7 @@ declare const chatCommands: {
     };
     readonly updateMessageState: (params: {
         messageId: EARS.EntityId;
-        updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context" | "compacted">>;
+        updates: Partial<Pick<MessageEntity, "blockResponse" | "blocks" | "compacted" | "context" | "forkable" | "responseTimestamp" | "status" | "text">>;
     }) => {
         messageId: EARS.EntityId;
         updatedAt: number;
@@ -4209,7 +4198,7 @@ declare const flowsCommands: {
     readonly deleteFlow: (flowId: EARS.EntityId, options?: {
         allowRoot?: boolean;
     }) => void;
-    readonly reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1) => void;
+    readonly reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: -1 | 1) => void;
     /**
      * Import flows from compiled DSL data
      */
@@ -4286,7 +4275,7 @@ declare const noteCommands: {
         icon?: string | null;
         parentId?: string;
         displayOrder?: number;
-        noteType?: "document" | "tasklist" | "task";
+        noteType?: "document" | "task" | "tasklist";
         completed?: boolean;
         id?: string;
     }) => NoteEntity;
@@ -4300,7 +4289,7 @@ declare const noteCommands: {
         completed?: boolean;
         hideCompletedChildren?: boolean;
         favorite?: boolean;
-        noteType?: "document" | "tasklist" | "task";
+        noteType?: "document" | "task" | "tasklist";
     }, skipTimestamp?: boolean) => void;
     readonly softDelete: (id: EARS.EntityId) => string[];
     readonly restore: (id: EARS.EntityId) => string[];
@@ -4571,17 +4560,17 @@ declare const threadQueries: {
         id: `${string}-${string}` & {
             readonly __entity?: "Message" | undefined;
         };
-    }, "text" | "compacted" | "timestamp" | "sender" | "isCommand">)[];
+    }, "compacted" | "isCommand" | "sender" | "text" | "timestamp">)[];
     readonly linkedThreads: (threadId: EARS.EntityId) => ({
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
-        relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+        relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
     } & Pick<ThreadEntity & _abuddy_sdk.BaseEntity & {
         id: `${string}-${string}` & {
             readonly __entity?: "Thread" | undefined;
         };
-    }, "status" | "topic" | "timestamp" | "shortCode">)[];
+    }, "shortCode" | "status" | "timestamp" | "topic">)[];
     readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
     readonly archivedThreads: () => Partial<ThreadEntity>[];
     readonly kanbanItems: () => {
@@ -4667,7 +4656,7 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
 
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {
