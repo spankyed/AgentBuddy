@@ -16,12 +16,13 @@ Semantic search over library documents: documents are split into chunks (whole d
 
 ## Why it's off
 
-`service.ts`, `repository.ts` and `config/fastembed-mapping.ts` import `fastembed` and `usearch`, which no workspace installs. default-setup's `tsconfig.json` excludes those three files, and every call site is commented out with a `[SEARCH_INDEX_FF]` tag:
+`service.ts`, `repository.ts` and `config/fastembed-mapping.ts` import `fastembed` and `usearch`, which no workspace installs. default-setup's `tsconfig.json` excludes those three files, and every place that uses it is commented out with a `[SEARCH_INDEX_FF]` tag:
 
 - `be/system.ts`: search index events and actions (list, create, update, delete, search)
 - `be/repository/commands.ts`: indexing a document when it's created or updated, and removing it from indices when it or its folder is deleted
 - `fe/canvas.vue`, `fe/panel.vue`, `fe/state.ts`, `fe/components/FileSystemBrowser.vue`: the index views, the panel's index list and the Create Index button
 - `features/database/fe/components/BackupRestore.vue`: backing up and restoring search indices
+- `electron-builder.mjs` (repo root): FastEmbed model weights shipped with the app, from the API's old `local_cache`
 
 `git grep SEARCH_INDEX_FF` lists them.
 
@@ -34,3 +35,8 @@ Semantic search over library documents: documents are split into chunks (whole d
    - register the index's queries and commands as repositories in `abuddy.json` (`searchIndexQueries`/`searchIndexCommands`), used through `repository`, instead of the module functions `be/repository/commands.ts` and `be/system.ts` import directly;
    - decide whether local FastEmbed models stay, or every embedding goes through `services.inference`;
    - unit-test indexing and search on the harness (`@abuddy/testing/harness`), with `mockInference` for the API models.
+5. Ship the native modules in the packaged app. `usearch` and FastEmbed's ONNX runtime load native binaries:
+   - default-setup's backend runtime bundle (`dev-build.mjs`) leaves every package external, so they load from `node_modules` at runtime, and the app ships `node_modules` unpacked (`asar: false` in `electron-builder.mjs`). Check that they're installed where the packaged runtime resolves them.
+   - Check that their binaries load under Electron's Node. `build/build.sh` rebuilds only `node-pty` against Electron (`electron-rebuild --only node-pty`); add them there if their prebuilds don't load.
+   - Trim their other platforms' prebuilds in `electron-builder.mjs` (`excludePrebuilds`, as for `node-pty`), and add their binaries to the macOS signing check in `build/prod/verify-signing.sh`.
+   - Decide how FastEmbed's weights arrive: downloaded to `models-cache/` on first use (`paths.ts`), or shipped with the app (the commented `extraResources` entry in `electron-builder.mjs` names the API's old `local_cache`, which no longer exists).
