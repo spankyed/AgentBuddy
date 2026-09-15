@@ -64,7 +64,7 @@ export interface Address {
 export interface PersonalInfo {
   name?: string;
   phoneNumber?: string;
-  address?: string | Address; // Support both legacy string and new structured format
+  address?: Address;
 }
 
 import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
