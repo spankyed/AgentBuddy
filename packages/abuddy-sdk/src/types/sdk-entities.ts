@@ -133,10 +133,6 @@ export interface SettingsEntity extends BaseEntity {
   name: string;
   /** The settings stored under this name; their structure belongs to the pack that owns them */
   data: unknown;
-  /** Optional for backward compatibility */
-  type?: SettingsScope;
-  /** Optional for backward compatibility */
-  label?: string;
 }
 
 /**

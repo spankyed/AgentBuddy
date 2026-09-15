@@ -434,6 +434,13 @@
               "type": "string"
             },
             "description": "Global type mappings injected into the DSL scope."
+          },
+          "inline": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Packages whose declarations are bundled into the editor definitions, besides @abuddy/* and the pack's own modules. The editor loads no node_modules, so a type it needs from another package belongs here."
           }
         },
         "required": [

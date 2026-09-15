@@ -35,7 +35,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 2. Reconciles with `pack-registry.json` (`reconcileExternalRegistry()`: adds new packs enabled, updates version/dir, removes missing, keeps `enabled`)
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), bundle format check, warning on an SDK major version mismatch
-   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. Packs without it use the legacy layout (`dist/systems/<featureId>.cjs` + optional `dist/index.js`), with a warning
+   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `bundle.json` and a `runtime/index.cjs` isn't an installed bundle: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
    - strips `boot.earlySystem`, `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
 
 `registerExternalPacks()` registers each pack with its systems as `<packId>.<featureId>` and returns the packs whose registration succeeded.
@@ -52,7 +52,7 @@ In this folder:
 | `packs-system.ts` | The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its registry entry) |
 | `pack-seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds; failures recorded as the registry entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`) |
-| `pack-api.ts` | The loaded external packs list, `getPacksWithClientLoadedFrontends()`, and the `packs.registry` tRPC query the renderer loads frontends from (built-in entries have `builtIn: true`) |
+| `pack-api.ts` | The loaded external packs list, `getPacksWithClientLoadedFrontends()`, and the `packs.registry` tRPC query the renderer loads frontends from: `{ id, name, version, builtIn?, feEntry?, feStyles? }` per pack (built-in entries have `builtIn: true`) |
 
 In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
@@ -108,7 +108,7 @@ export const registration: PackRegistration = {
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
   seedHooks?: Record<string, SeedHooks>;  // abuddy.json seedHooks
-  features?: PackFeatureDef[];            // id, designation, hasSystem, plugin, services, settings
+  features?: PackFeatureDef[];            // id, designation, hasSystem, hasPlugin, services, settings
 };
 ```
 
@@ -168,23 +168,15 @@ Migrations don't run on activation or reload.
 
 ## Client startup data for packs with frontends
 
-`getPacksWithClientLoadedFrontends()` (`pack-api.ts`) lists loaded external packs with an `fe.entry` or a `features[].plugin`. The bus (`createBusMachine` in `abuddy-host/src/bus`, wired in `api/src/systems.ts` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't send `CLIENT_CONNECTED` on their `ACTIVATE_PACK`.
+`getPacksWithClientLoadedFrontends()` (`pack-api.ts`) lists loaded external packs whose bundle has a `runtime/fe.js` (`packFrontendFiles()`). The bus (`createBusMachine` in `abuddy-host/src/bus`, wired in `api/src/systems.ts` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't send `CLIENT_CONNECTED` on their `ACTIVATE_PACK`.
 
 The renderer loads each such pack's frontend, then calls `trpc.bus.packClientReady({ packId })`, which sends the pack's running systems `CLIENT_CONNECTED` (`PACK_CLIENT_CONNECTED` on the bus). It calls it again for every loaded pack when its bus subscription reconnects.
 
 ## External pack FE entry convention
 
-`resolveBundleManifest()` sets an installed pack's manifest to point at the bundle's frontend files:
+A bundle's frontend files are found on disk, not declared in the manifest: `packFrontendFiles(bundleDir)` (`@abuddy/host/packs`) returns `{ entry?: 'runtime/fe.js', styles?: 'runtime/fe.css' }` for whichever of the two `abuddy build` emitted.
 
-```json
-{
-  "fe": { "entry": "runtime/fe.js", "styles": "runtime/fe.css" }
-}
-```
-
-The `packs.registry` query lists `feEntry`, `feStyles` and each `features[].plugin` entry. The renderer's `loadPackFrontend()` loads the styles, then imports `pack://{packId}/{fe.entry}`. The module's default export must be a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it and sends `PACK_FRONTEND_LOADED` to the application actor (with no plugins when the load failed), which merges the plugins and calls `bus.packClientReady`.
-
-Packs without `fe.entry` fall back to loading each `features[].plugin.entry` as a plugin module (the legacy path — plugins only).
+The `packs.registry` query reports them as `feEntry` and `feStyles`. The renderer's `loadPackFrontend({ id, feEntry, feStyles })` loads the styles, then imports `pack://{packId}/{feEntry}`. The module's default export must be a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions? }`. The renderer calls `registerPackFE()` with it and sends `PACK_FRONTEND_LOADED` to the application actor (with no plugins when the load failed), which merges the plugins and calls `bus.packClientReady`.
 
 External pack FE modules cannot call `registerPackFE()` themselves — they don't share the host's registry module instance. The host always mediates.
 

@@ -230,16 +230,19 @@ export const DslEntrySchema: z.ZodObject<{
     targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
     prefix: z.ZodOptional<z.ZodString>;
     globals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    inline: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, "strict", z.ZodTypeAny, {
     entry: string;
     targets: "monaco"[];
     prefix?: string | undefined;
     globals?: Record<string, string> | undefined;
+    inline?: string[] | undefined;
 }, {
     entry: string;
     targets: "monaco"[];
     prefix?: string | undefined;
     globals?: Record<string, string> | undefined;
+    inline?: string[] | undefined;
 }>;
 
 // @public (undocumented)
@@ -689,16 +692,19 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
         prefix: z.ZodOptional<z.ZodString>;
         globals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        inline: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
     }, {
         entry: string;
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
     }>>>;
     seedFormats: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
         format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
@@ -809,6 +815,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
     }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
@@ -911,6 +918,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
     }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
@@ -1013,6 +1021,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
     }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
@@ -1115,6 +1124,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         targets: "monaco"[];
         prefix?: string | undefined;
         globals?: Record<string, string> | undefined;
+        inline?: string[] | undefined;
     }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;

@@ -115,11 +115,6 @@ function getHostSdkVersion(): string | undefined {
   return _hostSdkVersion || undefined;
 }
 
-// Re-export discovery types and seed helpers for backward-compatible imports
-export type { BuiltInPackInfo, PackManifest } from '@abuddy/host/packs';
-export { discoverBuiltInPacks } from '@abuddy/host/packs';
-export { computePackSeedHash, seedPackData } from './pack-seed';
-
 // ── Built-in pack loading ────────────────────────────────────────────
 // The loader map is provided by a virtual module generated at build time
 // by the 'built-in-pack-loaders' esbuild plugin in tsup.config.ts. It

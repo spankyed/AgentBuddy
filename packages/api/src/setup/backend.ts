@@ -8,9 +8,9 @@ import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
   loadBuiltInPacks, getBuiltInPackInfos,
-  loadExternalPacks, registerExternalPacks, seedPackData,
+  loadExternalPacks, registerExternalPacks,
 } from '@/packs/pack-loader';
-import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
+import { orchestrateDeclarativeSeed, seedPackData } from '@/packs/pack-seed';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';

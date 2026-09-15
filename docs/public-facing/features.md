@@ -10,8 +10,8 @@ abuddy add feature bookmarks --label "Bookmarks" --icon "Bookmark"
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--label <Label>` | derived from the name | `plugin.label` and the plugin module's `label` |
-| `--icon <LucideIcon>` | `Box` | `plugin.icon` and the imported icon |
+| `--label <Label>` | derived from the name | The plugin module's `label` |
+| `--icon <LucideIcon>` | `Box` | The icon the plugin module imports and sets as its `icon` |
 | `--designation <role>` | none | Writes `"designation"`; must equal the feature name |
 
 The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code (system exports, `busId` keys, settings keys, emit targets).
@@ -251,9 +251,7 @@ export default {
     "entry": "src/features/bookmarks/be/system.ts"
   },
   "plugin": {
-    "entry": "src/features/bookmarks/fe/plugin.ts",
-    "label": "Bookmarks",
-    "icon": "Bookmark"
+    "entry": "src/features/bookmarks/fe/plugin.ts"
   },
   "services": {},
   "repositories": {
@@ -263,16 +261,13 @@ export default {
 }
 ```
 
-A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
+A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. The plugin's `label`, `icon` and `isPinned` live on the `Plugin` the entry module default-exports; the manifest names only the module. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
 
 Other feature fields:
 
 | Field | Effect |
 |---|---|
-| `plugin.label` / `plugin.icon` | Name and Lucide icon name the manifest records for the plugin (pack listings use the label) |
-| `plugin.isPinned` | Recorded in the pack's registration. The toolbar reads `isPinned` on the `Plugin` object, so set it there to pin the tab |
 | `system.events.incoming` | Event types `trpc.bus.send` accepts for the system besides those its machine's transitions name |
-| `system.events.outgoing` | Accepted by the schema; not read by codegen or the host |
 | `system.outgoingEventsType` | Name of the outgoing events type `system.entry` exports; default `Outgoing<FeatureId in PascalCase>Events`. Codegen types `emit` and `#generated/types` with it |
 | `system.sendsTo` | Plugins besides its own this system sends to (see [Key rules](#key-rules)) |
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |

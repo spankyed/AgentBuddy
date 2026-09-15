@@ -79,6 +79,19 @@ describe('generated frontend entry', () => {
   });
 });
 
+describe('generated backend entry', () => {
+  it('records which features have a plugin, and takes the plugin\'s name and icon from its module', () => {
+    const files = generate({ features: [
+      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+      system('brain'),
+    ] });
+    const entry = files['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("id: 'notes',\n    hasSystem: false,\n    hasPlugin: true,");
+    expect(entry).toContain("id: 'brain',\n    hasSystem: true,\n    hasPlugin: false,");
+    expect(entry).not.toMatch(/label|icon|isPinned/);
+  });
+});
+
 describe('dependency types in .abuddy/generated/types.ts', () => {
   it("re-exports a dependency's types by their exported names, not the facade names", async () => {
     const { emitDepTypes } = await import('../../src/build/generate-entries.ts');

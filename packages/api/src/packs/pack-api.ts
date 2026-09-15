@@ -1,7 +1,6 @@
-import { packFrontendFiles } from '@abuddy/host/packs';
+import { packFrontendFiles, type BuiltInPackInfo } from '@abuddy/host/packs';
 import { router, procedure } from '@/core/router/trpc';
 import type { LoadedPack } from './pack-loader';
-import type { BuiltInPackInfo } from './pack-loader';
 
 let _loadedPacks: LoadedPack[] = [];
 let _builtInPacks: BuiltInPackInfo[] = [];

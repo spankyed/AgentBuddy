@@ -16,8 +16,10 @@ function packCompilerOptions(packDir: string): Record<string, unknown> {
   const { config, error } = ts.readConfigFile(file, ts.sys.readFile);
   if (error) return {};
   const { options } = ts.parseJsonConfigFileContent(config, ts.sys, packDir, undefined, file);
-  const { paths, baseUrl } = options;
-  return { ...(paths ? { paths } : {}), ...(baseUrl ? { baseUrl } : {}) };
+  // Module resolution decides whether a package import resolves at all, and the path aliases whether the
+  // pack's own modules do; everything else is the compiler's business, not the bundle's.
+  const { paths, baseUrl, module, moduleResolution, target, jsx } = options;
+  return { paths, baseUrl, module, moduleResolution, target, jsx };
 }
 
 /** The build output holding the DSL editors' definitions, dist-relative */

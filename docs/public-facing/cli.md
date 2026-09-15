@@ -98,6 +98,7 @@ dist/
   build/seed-compilers.mjs   seed format compiler modules (with seedFormats[].compiler)
   types/pack-types.d.ts      facade types for dependents
   types/snapshot.json        types, facade types, flow helpers, manifest, SDK version
+  defs/monaco/<name>-defs.d.ts  editor definitions per dsl entry with a monaco target
 ```
 
 Steps:
@@ -112,7 +113,8 @@ Steps:
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
 9. Bundles `steps.build`, the seed runtime and any seed compilers into `build/`. The seed runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or seed hooks need native modules or `@abuddy/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
-11. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
+11. Bundles each `dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@abuddy/*` and the entry's `inline` packages
+12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
 
@@ -205,7 +207,7 @@ abuddy install ../my-pack
 abuddy install user/my-pack
 ```
 
-A GitHub release needs a `.tgz` asset; its `.sha256` asset is checked when the release has one. The bundle is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. Restart the app after installing.
+A GitHub release needs a `.tgz` asset; its `.sha256` asset is checked when the release has one. The bundle is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `abuddy build` first. Restart the app after installing.
 
 #### `abuddy uninstall <id> [-d|--dev] [-b|--beta]`
 

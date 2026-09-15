@@ -19,7 +19,7 @@ Generated `__generated__/` files are a disconnected node in the build graph. The
 | `npm install` | Yes (via `prepare` script) |
 | `abuddy generate-entries` (manual) | Yes |
 | `npm start` | Yes (via `prebuild:be`) |
-| `npm run start:gen` | Yes (via `prebuild:be` + explicit call) |
+| `npm run start:gen` | Yes (via `npm run compile` + `prebuild:be`) |
 | `npm run build:be` | Yes (via `prebuild:be`) |
 | `npm run build` | Yes (via `prebuild:be`) |
 | Branch switch (`git checkout`) | No (picked up on next `npm start`) |
@@ -74,7 +74,7 @@ Three changes, layered from immediate to structural.
 
 ### Phase 1: Wire generation into the dev loop — DONE
 
-`generate-entries` now runs as part of `prebuild:be` (before `compile`), so every `npm start`, `npm run build:be`, and `npm run build` regenerates pack barrels. `start:gen` also runs it explicitly after `generate:defs`.
+`generate-entries` now runs as part of `prebuild:be` (before `compile`), so every `npm start`, `npm run build:be`, and `npm run build` regenerates pack barrels. `start:gen` runs `npm run compile` first, which builds the built-in pack in full.
 
 **Cost**: ~0.8s added to every start. Negligible next to `build:be`.
 
@@ -117,8 +117,7 @@ These are pure barrels: scan `abuddy.json`, generate `export { x } from '../feat
 **Complex pack entries** (keep as generated files):
 - `pack-entry.ts` — aggregates 13 systems, services, EARS config, boot hooks, seed manifest, migrations, features list into a `PackRegistration` object
 - `pack-entry-fe.ts` — aggregates 13 plugins, step FE definitions, tiptap plugins, app extensions, artifacts, blocks into a `PackFERegistration` object
-- `dsl-register-fe.ts` — Monaco DSL type registration with rollup-plugin-dts output
-- `defs.config.mjs` — rollup config for DSL def generation
+- `dsl-register-fe.ts` — Monaco DSL type registration, importing the definitions `abuddy build` writes to `dist/defs/monaco/`
 - `flow-helpers.ts` — flow step helper generation
 
 The aggregation logic for pack entries (~200 lines in `generate-entries.ts`) is non-trivial. Moving it into build plugins means duplicating it for Vite and tsup (or abstracting into a shared function — which is the codegen called from a different place). Phases 1+2 keep these files fresh with minimal friction.

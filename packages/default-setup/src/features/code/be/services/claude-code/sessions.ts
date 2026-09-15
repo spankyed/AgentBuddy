@@ -391,17 +391,6 @@ export async function _experimental_fork(
   return { sessionId: newId, file: target }
 }
 
-// ─── Deprecated aliases ──────────────────────────────────────────────────────
-// Kept for source compatibility with the original Phase 1 API. Forward to
-// the _experimental_ versions — same runtime behaviour, same warning.
-
-/** @deprecated Use `_experimental_rename` to acknowledge the risk. */
-export const rename = _experimental_rename
-/** @deprecated Use `_experimental_tag` to acknowledge the risk. */
-export const tag = _experimental_tag
-/** @deprecated Use `_experimental_fork` to acknowledge the risk. */
-export const fork = _experimental_fork
-
 // ─── Internals ───────────────────────────────────────────────────────────────
 
 async function appendMetadata(

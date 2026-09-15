@@ -18,9 +18,12 @@ function writeManifest(dir: string, manifest: Record<string, unknown>) {
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
 }
 
-function writeDist(dir: string) {
-  fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', 'placeholder.json'), '{}');
+/** What `abuddy build` leaves in a pack's dist/: the runtime the host loads and the snapshot dependents read */
+function writeBuild(dir: string, id: string) {
+  fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)}, systems: [] } };`);
+  fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), '{}');
 }
 
 describe('pack CLI: init', () => {
@@ -112,23 +115,23 @@ describe('pack CLI: install', () => {
       name: 'Bad',
       version: '1.0.0',
     });
-    writeDist(badPack);
+    writeBuild(badPack, 'bad-id-pack');
 
     await expect(install([badPack])).rejects.toThrow(/lowercase alphanumeric/);
   });
 
-  it('rejects pack without dist directory', async () => {
+  it("rejects a pack that hasn't been built", async () => {
     const { install } = await import('../../src/commands/install');
 
-    const noDist = path.join(tmpDir, 'no-dist');
-    fs.mkdirSync(noDist, { recursive: true });
-    writeManifest(noDist, {
-      id: 'no-dist',
-      name: 'No Dist',
+    const unbuilt = path.join(tmpDir, 'unbuilt');
+    fs.mkdirSync(unbuilt, { recursive: true });
+    writeManifest(unbuilt, {
+      id: 'unbuilt',
+      name: 'Unbuilt',
       version: '1.0.0',
     });
 
-    await expect(install([noDist])).rejects.toThrow(/Pack is not built/);
+    await expect(install([unbuilt])).rejects.toThrow(/Pack unbuilt is not built:.*Run "abuddy build" first/s);
   });
 
   it('rejects pack without abuddy.json', async () => {
@@ -144,40 +147,39 @@ describe('pack CLI: install', () => {
     const { installPackFromLocal } = await import('@abuddy/host/packs');
 
     const sourceDir = path.join(tmpDir, 'symlink-pack');
-    fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
+    fs.mkdirSync(sourceDir, { recursive: true });
     writeManifest(sourceDir, {
       id: 'symlink-test',
       name: 'Symlink Test',
       version: '1.0.0',
     });
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'real.json'), '{}');
+    writeBuild(sourceDir, 'symlink-test');
 
     const outsideFile = path.join(tmpDir, 'secret.txt');
     fs.writeFileSync(outsideFile, 'secret data');
-    fs.symlinkSync(outsideFile, path.join(sourceDir, 'dist', 'link.txt'));
+    fs.symlinkSync(outsideFile, path.join(sourceDir, 'dist', 'runtime', 'link.txt'));
 
-    expect(fs.lstatSync(path.join(sourceDir, 'dist', 'link.txt')).isSymbolicLink()).toBe(true);
+    expect(fs.lstatSync(path.join(sourceDir, 'dist', 'runtime', 'link.txt')).isSymbolicLink()).toBe(true);
 
     const packsDir = path.join(tmpDir, 'packs');
     const result = await installPackFromLocal(sourceDir, packsDir);
 
     const installedDir = result.dir;
-    expect(fs.existsSync(installedDir)).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'real.json'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'link.txt'))).toBe(false);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'link.txt'))).toBe(false);
   });
 
   it('installs from a zip file', async () => {
     const { installPackFromLocal } = await import('@abuddy/host/packs');
 
     const sourceDir = path.join(tmpDir, 'zip-source');
-    fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
+    fs.mkdirSync(sourceDir, { recursive: true });
     writeManifest(sourceDir, {
       id: 'zip-pack',
       name: 'Zip Pack',
       version: '1.0.0',
     });
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'data.json'), '{"test": true}');
+    writeBuild(sourceDir, 'zip-pack');
 
     const zipPath = path.join(tmpDir, 'pack.zip');
     try {
@@ -193,7 +195,7 @@ describe('pack CLI: install', () => {
     const installedDir = result.dir;
     expect(fs.existsSync(installedDir)).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'data.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
   });
 });
 

@@ -286,9 +286,7 @@ export interface SettingsEntity extends BaseEntity {
     data: unknown;
     // (undocumented)
     entityType: typeof SDK_ENTITIES.Settings;
-    label?: string;
     name: string;
-    type?: SettingsScope;
 }
 
 // @public (undocumented)

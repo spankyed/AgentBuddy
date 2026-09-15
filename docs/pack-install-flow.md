@@ -11,7 +11,7 @@ Design plan for the in-app pack install pipeline and related infrastructure.
 | **Settings system** | `INSTALL_PACK` handler: stub (logs + emits `PACK_INSTALL_STARTED`). No success event. No `UNINSTALL_PACK`. |
 | **Boot loader** | Full pipeline: discover -> `reconcileExternalRegistry()` (syncs JSON, filters by `enabled`) -> load -> register. External packs run before hydration. |
 | **Pack registry** | External-only JSON file with `enabled` flag. Reconciled automatically at boot -- new packs added, missing packs pruned. |
-| **FE** | `pack-install.ts` sends event. `main.ts` loads pack FE entries from `trpc.packs.registry`. Supports both `fe.entry` (full registration) and legacy per-plugin path. |
+| **FE** | `pack-install.ts` sends event. `main.ts` loads pack FE entries from `trpc.packs.registry`: each pack's bundled `runtime/fe.js`, whose default export is the pack's FE registration. |
 
 ## Gap
 

@@ -56,7 +56,7 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
 /**
  * Find artifacts in a pack directory in any layout: an installed or extracted bundle
  * (types/, build/), an external pack source built in the bundle layout (dist/types,
- * dist/build), or a built-in / pre-bundle pack (dist/snapshot.json).
+ * dist/build), or a built-in pack's dist/ (dist/snapshot.json).
  */
 export function findDepArtifacts(dir: string): DepArtifacts | null {
   const candidates = [

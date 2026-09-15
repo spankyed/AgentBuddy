@@ -25,8 +25,7 @@ src/
     seed-runtime.ts        # seedRuntime: entity types, relation kinds, repositories, seed hooks (unit tests; bundled to dist/build/seed-runtime.mjs)
     step-types.ts          # Step type augmentation
     flow-helpers.ts        # Typed flow DSL helpers (entry, on, one per step with a dsl node)
-    dsl-register-fe.ts     # FE-side DSL registrations
-    defs.config.mjs        # The DSL defs to compile (abuddy.json dsl), read by rollup-defs.config.mjs
+    dsl-register-fe.ts     # FE-side DSL registrations, importing dist/defs/monaco/<name>-defs.d.ts
   defs/                    # DSL type definitions (action.ts, prompt.ts, database.ts)
   features/                # 12 features (each has be/ and fe/ dirs)
   extensions/              # Cross-cutting concerns
@@ -160,11 +159,11 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 
 ## Build
 
-- `rollup-defs.config.mjs` — Rollup config for DSL definition compilation (`npm run generate:defs`), over the defs listed in `__generated__/defs.config.mjs`, into `dist/defs/`
+- `abuddy build` writes the Monaco DSL definitions the renderer imports, one `dist/defs/monaco/<name>-defs.d.ts` per `abuddy.json` `dsl` entry with a `monaco` target
 - `npm run compile` from the repo root runs this package's `npm run build`
 - `npm run build:dev` runs `abuddy build --skip-fe`
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `importFlows` (a root flow, `root: true`, or default-setup's own through `tests/unit/helpers/flows.ts`) and `runFlow`, as the app runs them, and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `mockInference`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`
 - `abuddy build` gates the facade types it bundles into `dist/types/pack-types.d.ts` (`packages/abuddy-cli/src/build/facade-gate.ts`): the bundle must type-check on its own and import only `@abuddy/*` modules the published packages export, `@abuddy/sdk`'s peers and Node built-ins. `etc/pack-types.api.md` is the reviewed report of that bundle: after a build that changes it, run `npm run facade:update` and commit the report; CI runs `npm run facade:check` after `abuddy build`
-- `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup
+- `npm run build` runs `abuddy build` and then `node dev-build.mjs`, which rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

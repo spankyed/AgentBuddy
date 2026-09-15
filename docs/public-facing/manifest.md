@@ -49,9 +49,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
         "entry": "src/features/bookmarks/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/bookmarks/fe/plugin.ts",
-        "label": "Bookmarks",
-        "icon": "Bookmark"
+        "entry": "src/features/bookmarks/fe/plugin.ts"
       },
       "services": {
         "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
@@ -69,7 +67,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`abuddy validate` checks it) |
 | `settings` | `string` | no | Path to a module default-exporting the feature's default settings; see [Feature settings](#feature-settings) |
 | `system` | `{ entry, outgoingEventsType?, sendsTo?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`. `sendsTo` lists plugins it sends events to besides its own feature's (other features of the pack, dependency plugins, or `application`); each one's `emit` type then accepts this system's outgoing events. `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
-| `plugin` | `{ entry, label, icon, isPinned? }` | no | Frontend plugin definition |
+| `plugin` | `{ entry }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned` |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Registered by the generated pack entry and typed on `repository` from `#generated/repository` |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
@@ -216,11 +214,11 @@ A `seedFormats` value, keyed by the format name: a lowercase letter, then lowerc
 
 | Field | Type | Description |
 |---|---|---|
-| `entry` | `string` | Set by the installer, not by you: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, and the installed manifest's `entry` points at the bundle's `runtime/fe.js` |
 | `tiptapPlugins` | `string` | Tiptap plugin registration module |
 | `appExtensions` | `Record<string, string>` | Named app extensions: extension name → Vue component path |
-| `styles` | `string` | Set by the installer to `runtime/fe.css` when the frontend bundle emits CSS |
 | `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two. |
+
+The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the bundle's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed bundle has.
 
 ## Dependencies
 
@@ -273,6 +271,7 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, 
       "entry": "src/defs/action.ts",
       "targets": ["monaco"],
       "prefix": "action:",
+      "inline": ["ai"],
       "globals": { "services": "typeof _dsl.services" }
     }
   }
@@ -284,7 +283,10 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, 
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
 | `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`) |
-| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry registers the definitions from `dist/defs/monaco/<name>-defs.d.ts`, which `abuddy build` doesn't write (default-setup generates it with its `generate:defs` script) |
+| `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@abuddy/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
+| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry registers the definitions from `dist/defs/monaco/<name>-defs.d.ts` |
+
+For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
 
 ## Example manifest
 
@@ -312,9 +314,7 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, 
         "entry": "src/features/bookmarks/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/bookmarks/fe/plugin.ts",
-        "label": "Bookmarks",
-        "icon": "Bookmark"
+        "entry": "src/features/bookmarks/fe/plugin.ts"
       },
       "services": {}
     }

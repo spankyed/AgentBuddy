@@ -13,7 +13,6 @@ const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|Collec
 
 /** `file:line` substrings that name one of them for another reason */
 const ALLOWED: Record<string, string> = {
-  "build/manifest-schema.ts:Icon name from the icon library.": 'a UI icon library, not the library feature',
   'build/manifest-schema.ts:(e.g. "notes", "calendarEvents")': 'an example feature id',
 };
 

@@ -30,7 +30,7 @@ CLI commands pass `{ env }` explicitly: `abuddy install`/`uninstall`/`list` targ
 
 ```
 <id>/
-  abuddy.json          # Resolved manifest (fe paths point into runtime/)
+  abuddy.json          # The pack's manifest, as written
   bundle.json          # Format version, versions, source, sha256 of every file
   runtime/
     index.cjs          # Backend: exports `registration` and `setCompiledDir`
@@ -48,7 +48,7 @@ Installing is stage, verify, place:
 2. **Verify:** the bundle's format version must match the host's, and the files on disk must be exactly the ones `bundle.json` lists, with matching checksums.
 3. **Place:** the bundle is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames and removes stale staging dirs.
 
-Packs installed before the bundle layout (`abuddy.json` + `dist/`) still install and load, with a warning.
+The source directory must be built first: installing a directory with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `abuddy build`. A directory in `packs/` that isn't a bundle is skipped at boot with a warning.
 
 ### Backend boot
 
@@ -74,10 +74,10 @@ Packs installed before the bundle layout (`abuddy.json` + `dist/`) still install
 
 Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
 
-1. After the app mounts, the renderer queries the pack registry (`trpc.packs.registry`), which lists each loaded external pack's `feEntry`, `feStyles` and `features[].plugin` entries.
+1. After the app mounts, the renderer queries the pack registry (`trpc.packs.registry`), which lists each loaded external pack's `feEntry` and `feStyles` — the bundle's `runtime/fe.js` and `runtime/fe.css`, when it has them.
 2. For each external pack, `loadPackFrontend(pack)`:
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
-   - imports `pack://<id>/runtime/fe.js` and calls `registerPackFE()` with its default export, a `PackFERegistration`. A pack without an FE entry loads its `features[].plugin` entries one by one instead (the legacy path, plugins only);
+   - imports `pack://<id>/runtime/fe.js` and calls `registerPackFE()` with its default export, a `PackFERegistration`;
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
 3. When it returns plugins (even none), the renderer sends `PACK_FRONTEND_LOADED` to the application actor, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED`, so they send their startup data once the plugin actors exist.
@@ -112,7 +112,7 @@ export const registration: PackRegistration = {
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
   seedHooks?: Record<string, SeedHooks>;  // abuddy.json `seedHooks`, keyed by entity type
-  features?: PackFeatureDef[];     // { id, designation?, hasSystem, plugin?, services, settings? }
+  features?: PackFeatureDef[];     // { id, designation?, hasSystem, hasPlugin, services, settings? }
 };
 ```
 
@@ -256,7 +256,7 @@ The policy is the union of the SDK's excluded types and each registered pack's `
 
 ## Generated files
 
-`generate-entries` reads `abuddy.json` and produces up to 18 files in `src/__generated__/`, plus files per dependency. These are regenerated on every build — never edit them.
+`generate-entries` reads `abuddy.json` and produces up to 17 files in `src/__generated__/`, plus files per dependency. These are regenerated on every build — never edit them.
 
 | File | Contents |
 |---|---|
@@ -278,8 +278,7 @@ The policy is the union of the SDK's excluded types and each registered pack's `
 | `seed-runtime.ts` | The pack's seed runtime (entity types, relation kinds, repositories, seed hooks). The pack's tests import it; `abuddy build` bundles it into `dist/build/seed-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
-| `defs.config.mjs` | DSL definition config for build tooling |
-| `dsl-register-fe.ts` | DSL type registration for Monaco editor |
+| `dsl-register-fe.ts` | DSL type registration for Monaco editor, from the definitions `abuddy build` writes to `dist/defs/monaco/` |
 
 ## FE build pipeline
 

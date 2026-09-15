@@ -15,7 +15,8 @@ registerHostModule('logger', {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadExternalPacks, seedPackData, computePackSeedHash } from '@/packs/pack-loader';
+import { loadExternalPacks } from '@/packs/pack-loader';
+import { seedPackData, computePackSeedHash } from '@/packs/pack-seed';
 import { setLoadedPacks } from '@/packs/pack-api';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { seedFile } from '@abuddy/sdk/build';

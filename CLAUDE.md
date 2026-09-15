@@ -21,8 +21,8 @@ Do not edit release/version metadata unless the user explicitly asks for a relea
 ## Commands
 
 ```bash
-npm start                # Dev mode (skips DSL generation)
-npm run start:gen        # Dev mode with DSL generation
+npm start                # Dev mode (builds the built-in pack without its FE bundle)
+npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
 npm run build:be         # Build backend only
 npm run build            # Build all workspaces
 npm run build-prod       # Full production build (build/build.sh)
