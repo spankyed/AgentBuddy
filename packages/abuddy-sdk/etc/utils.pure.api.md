@@ -97,6 +97,15 @@ export interface RandomIdOptions {
 }
 
 // @public (undocumented)
+export const REDACTED = "[redacted]";
+
+// @public
+export function redactSecrets<T>(value: T): T;
+
+// @public
+export function redactSecretText(text: string): string;
+
+// @public (undocumented)
 export type Rename = {
     from: string;
     to: string;

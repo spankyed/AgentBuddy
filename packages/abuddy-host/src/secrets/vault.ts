@@ -16,7 +16,7 @@ export interface KeyVault {
 /** The OS credential store can't be used on this system (no Secret Service, a keyring that refuses) */
 export class KeyVaultUnavailableError extends Error {
   constructor(backend: string, cause: unknown) {
-    super(`${backend} isn't available on this system: ${cause instanceof Error ? cause.message : String(cause)}`);
+    super(`${backend} isn't available on this system: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
     this.name = 'KeyVaultUnavailableError';
   }
 }

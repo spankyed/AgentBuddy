@@ -36,6 +36,8 @@ export interface SecretsStore {
   replaceValue(id: string, value: string): void;
   /** The selected key's value for a provider; throws naming the fix when there's none or it can't be read */
   keyFor(provider: ProviderName): string;
+  /** Whether a stored key's value decrypts here */
+  canRead(id: string): boolean;
   /** Keeps data keys in a file from now on, where the OS has no credential store */
   allowUnprotected(): void;
   /** Adds keys from an earlier store, skipping ids already stored */
@@ -136,7 +138,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
 
   const assertCanStore = (file: SecretsFile) => {
     if (osVaultUnavailable && vaultFor(file).protection === 'os-keystore') {
-      throw new Error(`${options.osVault().backend} isn't available on this system: allow storing keys unprotected in Settings → Secrets`);
+      throw new KeyVaultUnavailableError(options.osVault().backend, 'allow storing keys unprotected in Settings → Secrets');
     }
   };
 
@@ -181,6 +183,18 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
     keyFor(provider) {
       const file = read();
       return decrypt(file, secretRules.selectedFor(file.secrets, provider));
+    },
+
+    canRead(id) {
+      const file = read();
+      const secret = file.secrets.find((candidate) => candidate.id === id);
+      if (!secret) return false;
+      try {
+        decrypt(file, secret);
+        return true;
+      } catch {
+        return false;
+      }
     },
 
     allowUnprotected() {

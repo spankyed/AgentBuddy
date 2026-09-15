@@ -4,6 +4,7 @@ import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
 import { makePolicy, makeShardedPersistence, type PartitionPolicy } from "@abuddy/host/persistence";
 import { getRegisteredEARSPolicy } from "@abuddy/host/packs";
+import { secretsStore } from "@abuddy/host/secrets";
 
 const HARD_DELETE_MODE = true;
 
@@ -85,6 +86,8 @@ export function reinitializeLmdb() {
 
 export async function resetLmdbFiles() {
   clearMemory();
+  // Stored API keys go too (the vault's data key stays, for reuse)
+  secretsStore.clearAll();
   const currentEnvs = envs;
   envs = null as any;
 

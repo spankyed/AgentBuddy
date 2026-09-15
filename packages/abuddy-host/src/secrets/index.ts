@@ -36,6 +36,7 @@ export const secretsStore: SecretsStore = {
   add: (provider, label, value) => appStore().add(provider, label, value),
   replaceValue: (id, value) => appStore().replaceValue(id, value),
   keyFor: (provider) => appStore().keyFor(provider),
+  canRead: (id) => appStore().canRead(id),
   allowUnprotected: () => appStore().allowUnprotected(),
   importSecrets: (secrets) => appStore().importSecrets(secrets),
   clearAll: () => appStore().clearAll(),

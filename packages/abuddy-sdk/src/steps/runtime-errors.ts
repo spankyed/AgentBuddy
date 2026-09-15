@@ -2,6 +2,7 @@ import { rootEvents } from '../rpc/index.ts';
 import { createLogger } from '../logger/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
+import { redactSecrets, redactSecretText } from '../utils/redact.ts';
 import { builtinRepository } from '../ears/builtin-repositories.ts';
 import type { EARS } from '../types/entities.ts';
 import type { StepRuntimeError } from './types.ts';
@@ -19,8 +20,9 @@ export function toStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError {
   return {
     ...context,
     errorId: randomId(),
-    message: err.message || String(input.error),
-    stack: err.stack,
+    // Provider errors can quote part of the key they were given
+    message: redactSecretText(err.message || String(input.error)),
+    stack: err.stack && redactSecretText(err.stack),
     timestamp: Date.now(),
   };
 }
@@ -35,9 +37,7 @@ export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeErr
     stack: runtimeError.stack,
     meta: {
       ...runtimeError,
-      error: input.error instanceof Error
-        ? { name: input.error.name, message: input.error.message, stack: input.error.stack }
-        : input.error,
+      error: redactSecrets(input.error),
     },
   });
 
