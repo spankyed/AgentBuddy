@@ -4,10 +4,14 @@ import { EARS } from '@abuddy/sdk';
 import { repository } from '@/__generated__/repository';
 import { createInspectLogger } from '@abuddy/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
-import { generateText } from '@abuddy/sdk/inference';
+import { services } from '@abuddy/sdk/services';
+import type { ModelId } from '@abuddy/sdk/models';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
 const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
+
+/** The model a node without one runs */
+const DEFAULT_MODEL: ModelId = 'anthropic:claude-3-haiku-20240307';
 
 interface LLMNodeConfig {
   model?: string;
@@ -66,18 +70,17 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
 
     brainInspect(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
 
-    const modelString = nodeData.model as string || 'anthropic:claude-3-haiku-20240307';
-    const [provider, model] = modelString.split(':');
+    const model = (nodeData.model as string | undefined) || DEFAULT_MODEL;
+    if (!/^[a-z]+:.+/.test(model)) {
+      throw new Error(`LLM node "${n.label}" names model "${model}": expected provider:model, e.g. ${DEFAULT_MODEL}`);
+    }
 
-    const response = await generateText({
-      model: {
-        provider: provider as any,
-        model: model,
-      },
+    const response = await services.inference.generateText({
+      model: model as ModelId,
       prompt,
-      system: nodeData.systemPrompt as string | undefined,
+      instructions: nodeData.systemPrompt as string | undefined,
       temperature: nodeData.temperature as number | undefined,
-      maxTokens: nodeData.maxTokens as number | undefined,
+      maxOutputTokens: nodeData.maxTokens as number | undefined,
     });
 
     brainInspect(`LLM response received for node: ${n.label}`, {

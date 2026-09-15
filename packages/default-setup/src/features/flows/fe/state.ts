@@ -20,7 +20,7 @@ import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
 import type { FlowEntity, PromptEntity, ActionEntity, EARS } from '@abuddy/sdk'
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference'
+import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
 
 const randId = () => Math.random().toString(36).slice(2, 8)

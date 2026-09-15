@@ -19,7 +19,7 @@
     "paths": {
       // rollup-defs.config.mjs inlines SDK types into the self-contained Monaco declarations
       "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/inference": ["../abuddy-sdk/src/services/inference.ts"],
+      "@abuddy/sdk/models": ["../abuddy-sdk/src/services/models.ts"],
       "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@abuddy/host/*": ["../abuddy-host/src/*/index.ts", "../abuddy-host/src/*"],
       "@/__generated__/*": ["./src/__generated__/*"],

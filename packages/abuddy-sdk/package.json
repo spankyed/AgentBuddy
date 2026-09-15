@@ -140,11 +140,6 @@
       "types": "./dist/services/index.d.ts",
       "default": "./dist/services/index.js"
     },
-    "./inference": {
-      "@abuddy/source": "./src/services/inference.ts",
-      "types": "./dist/services/inference.d.ts",
-      "default": "./dist/services/inference.js"
-    },
     "./models": {
       "@abuddy/source": "./src/services/models.ts",
       "types": "./dist/services/models.d.ts",
@@ -173,7 +168,7 @@
   "peerDependencies": {
     "@tiptap/pm": "^3.22.3",
     "@tiptap/vue-3": "^3.22.2",
-    "ai": "^4.0.0",
+    "ai": "^7.0.0",
     "esbuild": "^0.25.0",
     "typescript": ">=5.7",
     "vue": "^3.5.18",
@@ -200,6 +195,7 @@
   "devDependencies": {
     "@microsoft/api-extractor": "^7.59.1",
     "@vitejs/plugin-vue": "^6.0.1",
+    "ai": "^7.0.100",
     "esbuild": "^0.25.0",
     "typescript": "^5.8.3",
     "vite": "^7.0.0",

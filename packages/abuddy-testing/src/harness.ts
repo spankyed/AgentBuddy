@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach } from 'vitest';
-import { registerSeedRuntime, resetTestData, restoreModelProvider, startTestRuntime, takeSystemErrors, type SeedRuntime } from '@abuddy/sdk/testing';
+import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
@@ -136,7 +136,6 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   afterEach(() => {
     stopRunningApps();
     serviceMocks.clear();
-    restoreModelProvider();
     const errors = takeSystemErrors();
     if (errors.length > 0) {
       const described = errors.map((e) => `${e.source ?? 'unknown'}: ${e.error instanceof Error ? e.error.message : String(e.error)}`);

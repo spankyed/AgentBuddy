@@ -161,7 +161,7 @@ describe('Type inference — FE delegate generics', () => {
 describe('Generated services', () => {
   it('types feature, host and repository services, never any', () => {
     expectTypeOf(services).not.toBeAny();
-    expectTypeOf(services.llm.streamText).not.toBeAny();
+    expectTypeOf(services.inference.generateText).not.toBeAny();
     expectTypeOf(services.prompt.usePrompt).not.toBeAny();
     expectTypeOf(services.logger).toEqualTypeOf<Logger>();
     expectTypeOf(services.repository.settingsQueries.getInternalSettings).not.toBeAny();

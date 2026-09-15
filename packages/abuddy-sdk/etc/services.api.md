@@ -4,6 +4,11 @@
 
 ```ts
 
+import type { generateText } from 'ai';
+import type { OutputInterface } from 'ai';
+import type { streamText } from 'ai';
+import type { ToolSet } from 'ai';
+
 // @public
 export interface AppDataService {
     backupInfo(backupPath: string): Promise<BackupInfo | null>;
@@ -56,12 +61,22 @@ export interface HostServices {
         onOutgoing: typeof onOutgoing;
         onIncoming: typeof onIncoming;
     };
+    inference: InferenceService;
     // (undocumented)
     logger: Logger;
     // (undocumented)
     repository: typeof repository;
     traceStore: TraceStore;
 }
+
+// @public
+export interface InferenceService {
+    generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, OUTPUT extends OutputInterface = OutputInterface<string, string>>(options: WithModelId<Parameters<typeof generateText<TOOLS, CONTEXT, OUTPUT>>[0]>): ReturnType<typeof generateText<TOOLS, CONTEXT, OUTPUT>>;
+    streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, OUTPUT extends OutputInterface = OutputInterface<string, string, never>>(options: WithModelId<Parameters<typeof streamText<TOOLS, CONTEXT, OUTPUT>>[0]>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OUTPUT>>>;
+}
+
+// @public
+export type ModelId = `${ProviderName}:${string}`;
 
 // @public (undocumented)
 export function onIncoming(callback: (event: {
@@ -74,6 +89,9 @@ export function onOutgoing(callback: (event: {
     type: string;
     [key: string]: unknown;
 }) => void): () => void;
+
+// @public
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
 
 // @public (undocumented)
 export function registerThreadTeardown(fn: (threadId: string) => void): void;

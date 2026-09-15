@@ -13,18 +13,28 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
+/** Compiles `source` in the consumer with the chosen compiler and settings */
+function compile(tsc: TscVersion, moduleResolution: 'node16' | 'bundler', source: string[], options: { skipLibCheck: boolean; types: string[] }): { code: number; output: string } {
   const tmp = consumer!;
   fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
   fs.writeFileSync(path.join(tmp, 'tsconfig.json'), JSON.stringify({
     compilerOptions: {
       target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
-      strict: true, skipLibCheck: true, noEmit: true, types: [], lib: ['ES2022', 'DOM'],
+      strict: true, skipLibCheck: options.skipLibCheck, noEmit: true, types: options.types, lib: ['ES2022', 'DOM'],
     },
     include: ['index.ts'],
   }));
+  fs.writeFileSync(path.join(tmp, 'index.ts'), source.join('\n'));
+  try {
+    return { code: 0, output: execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', tmp], { stdio: 'pipe' }).toString() };
+  } catch (err: any) {
+    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
+  }
+}
+
+function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { code: number; output: string } {
   // Barrels that re-export from relative modules, as consumers use them
-  fs.writeFileSync(path.join(tmp, 'index.ts'), [
+  return compile(tsc, moduleResolution, [
     "import { compareVersions } from '@abuddy/sdk/utils/pure';",
     "import type { StepDefinition } from '@abuddy/sdk/steps';",
     "import type { ActionMeta } from '@abuddy/sdk/build';",
@@ -56,17 +66,43 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler'): { c
     "export * as internals from '@abuddy/sdk/ears/internals';",
     "// @ts-expect-error not published",
     "export * as packs from '@abuddy/sdk/packs';",
-  ].join('\n'));
-  try {
-    return { code: 0, output: execFileSync(process.execPath, [TSC_VERSIONS[tsc], '-p', tmp], { stdio: 'pipe' }).toString() };
-  } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
+  ], { skipLibCheck: true, types: [] });
+}
+
+/**
+ * A pack calling models: `services.inference` typed with the AI SDK's own types. Compiled with
+ * library checks, since `skipLibCheck` would hide an `ai` release that needs a newer TypeScript
+ * than the packages' floor (ai 7 needs 5.7: `Uint8Array<ArrayBuffer>`).
+ */
+function typecheckInference(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
+  return compile(tsc, moduleResolution, [
+    "import { isStepCount, Output, tool } from 'ai';",
+    "import { z } from 'zod';",
+    "import type { HostServices, InferenceService } from '@abuddy/sdk/services';",
+    "import type { ModelId } from '@abuddy/sdk/models';",
+    "declare const services: HostServices;",
+    "const inference: InferenceService = services.inference;",
+    "const model: ModelId = 'anthropic:claude-sonnet-4-5';",
+    "export const text: Promise<string> = inference.generateText({ model, instructions: 'Be brief', prompt: 'hi' }).then((r) => r.text);",
+    "export const count: Promise<number> = inference.generateText({ model, prompt: 'x', output: Output.object({ schema: z.object({ n: z.number() }) }) }).then((r) => r.output.n);",
+    "const lookup = tool({ description: 'look up', inputSchema: z.object({ q: z.string() }), execute: async ({ q }) => q.length });",
+    "export const looked = inference.generateText({ model, prompt: 'x', tools: { lookup }, stopWhen: isStepCount(2) });",
+    "export const streamed = inference.streamText({ model: 'openai:gpt-5', prompt: 'hi' }).then((r) => r.text);",
+    "// @ts-expect-error a provider inference doesn't run",
+    "void inference.generateText({ model: 'nope:x', prompt: 'hi' });",
+    "// @ts-expect-error a model id without its provider",
+    "void inference.generateText({ model: 'gpt-5', prompt: 'hi' });",
+  ], { skipLibCheck: false, types: ['node'] });
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
   it.each(CONSUMER_MATRIX)('typecheck for consumers using TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
     const result = typecheck(tsc, moduleResolution);
+    expect(result.code, result.output).toBe(0);
+  }, 120_000);
+
+  it.each(['node16', 'bundler'] as const)("types inference with the AI SDK's own types at the TypeScript floor (%s), with library checks", (moduleResolution) => {
+    const result = typecheckInference('5.7', moduleResolution);
     expect(result.code, result.output).toBe(0);
   }, 120_000);
 

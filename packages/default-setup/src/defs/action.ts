@@ -6,13 +6,15 @@
 import { sendToPlugin } from '@/__generated__/events';
 import { featureServices } from '@/__generated__/services';
 import { createLogger } from '@abuddy/sdk/logger';
-import { sendToBrainSystem, sendToSystem, onOutgoing, onIncoming } from '@abuddy/sdk/services';
+import { sendToBrainSystem, sendToSystem, onOutgoing, onIncoming, type InferenceService } from '@abuddy/sdk/services';
 import { repository } from '@/__generated__/repository';
 
 export const services = {
   logger: createLogger('action-dsl'),
   emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
   repository,
+  // Host-implemented: the type is what the editor needs
+  inference: undefined as unknown as InferenceService,
   ...featureServices,
 };
 

@@ -15,7 +15,7 @@ export interface HostInternalSettings {
 export interface HostSettingsRepositories {
   settingsQueries: {
     getInternalSettings(): HostInternalSettings;
-    /** The model provider reads API key secret ids from `secrets` */
+    /** The inference service reads API key secret ids from `secrets` */
     getGeneralSettings(): { secrets?: Record<string, string | undefined> };
   };
   secretsQueries: { getSecret(id: string): { encryptedValue?: string } | undefined };

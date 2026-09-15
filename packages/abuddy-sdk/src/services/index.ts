@@ -5,8 +5,11 @@ import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helper
 import type { Logger } from '../ears/runtime.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { appData, traceStore, type AppDataService, type TraceStore } from './data.ts';
+import { inference, type InferenceService } from './inference-service.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo, TraceStore, TraceEntityMeta, TraceRelation } from './data.ts';
+export type { InferenceService } from './inference-service.ts';
+export type { ModelId, ProviderName } from './models.ts';
 
 function lazyHost(name: string) {
   let m: any;
@@ -94,6 +97,8 @@ export interface HostServices {
   appData: AppDataService;
   /** Read the volatile trace store (flow execution records) */
   traceStore: TraceStore;
+  /** Model calls (`generateText`, `streamText`) with the user's provider keys */
+  inference: InferenceService;
 }
 
 function resolveServices(): HostServices & Record<string, unknown> {
@@ -103,6 +108,7 @@ function resolveServices(): HostServices & Record<string, unknown> {
     repository,
     appData,
     traceStore,
+    inference,
     ...packRegistry().getRegisteredServices(),
   };
 }

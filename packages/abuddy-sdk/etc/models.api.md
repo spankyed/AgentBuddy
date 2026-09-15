@@ -35,6 +35,12 @@ export interface ModelCatalogEntry {
     provider: string;
 }
 
+// @public
+export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
+
 // (No @packageDocumentation comment for this package)
 
 ```

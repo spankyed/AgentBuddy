@@ -1,4 +1,11 @@
-// The model catalog: plain data, loadable without the AI SDK (the optional `ai` peer inference.ts loads)
+// Model ids and the model catalog: plain data, loadable without the AI SDK
+import type { SecretProvider } from '../types/sdk-entities.ts';
+
+/** The providers `services.inference` runs: those the user can store a key for */
+export type ProviderName = Exclude<SecretProvider, 'custom'>;
+
+/** A model to run, as `provider:model` (e.g. `anthropic:claude-sonnet-4-5`) */
+export type ModelId = `${ProviderName}:${string}`;
 
 /*─────────────────────────────────────────────────────────────────
  * Model Catalog
