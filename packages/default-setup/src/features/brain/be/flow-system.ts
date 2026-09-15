@@ -8,7 +8,7 @@ import { repository } from '@/__generated__/repository';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createStepNodeSystem } from './step-system';
 import { EARS } from '@/__generated__/ears';
-import type { ExecutionContext } from '@abuddy/sdk/steps';
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
@@ -82,6 +82,8 @@ type TNodeFlowMachineContext = {
   finalResult?: any;
   // Entry data for nested flows (resolved from field mappings)
   entryData?: any;
+  // The steps a subflow's entry track starts with: its parent's, when the subflow inherits its context
+  entrySteps: Pick<ExecutionContext, 'steps' | 'lastStep'>;
   // Whether this flow node itself is marked as final
   isFinalStep?: boolean;
   // Whether this flow should wait for future schedule events after a track drains
@@ -151,6 +153,27 @@ function createChildNode(
 }
 
 /**
+ * What a subflow's `flow.entry` track starts with. Its event data holds the subflow step's mapped fields; when the
+ * step inherits (`inherit`, stored as `propagateCtx`, default true) they sit over the parent track's event data, and
+ * the track starts with the parent track's steps and last step.
+ */
+function subflowEntry(
+  flowTNode: TNodeEntity,
+  parent: ExecutionContext | undefined,
+): { data: Record<string, unknown>; steps: TNodeFlowMachineContext['entrySteps'] } {
+  const mapped = flowTNode.resolvedParams ?? {};
+  if (!parent || flowTNode.nodeAttributes?.propagateCtx === false) {
+    return { data: { ...mapped }, steps: { steps: [], lastStep: undefined } };
+  }
+  const parentData = parent.event?.data;
+  const inherited = parentData !== null && typeof parentData === 'object' && !Array.isArray(parentData) ? parentData : {};
+  return {
+    data: { ...inherited, ...mapped },
+    steps: { steps: parent.steps, lastStep: parent.lastStep },
+  };
+}
+
+/**
  * Create a dynamic state machine for a flow that listens to its events
  */
 export function createFlowNodeSystem(
@@ -186,6 +209,9 @@ export function createFlowNodeSystem(
     })();
 
   const { actualFlowId, flowTNodeId, flowTNode } = result;
+  const entry = isRootFlow
+    ? { data: flowTNode?.nodeAttributes, steps: { steps: [], lastStep: undefined } }
+    : subflowEntry(flowTNode, executionContext);
 
   // Query all registered trigger nodes (listeners, schedules, etc.)
   const rawTriggerNodes: FlowTriggerNode[] = [];
@@ -312,8 +338,7 @@ export function createFlowNodeSystem(
                 data: eventData,
                 timestamp: Date.now(),
               },
-              steps: [],
-              lastStep: undefined,
+              ...(eventType === 'flow.entry' ? context.entrySteps : { steps: [], lastStep: undefined }),
               runtime: {
                 getFlowActor,
                 getAppServices: () => appServices,
@@ -618,7 +643,8 @@ export function createFlowNodeSystem(
         eventTrackContexts: {},
         eventTrackChildCounts: {},
         finalResult: undefined,
-        entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
+        entryData: entry.data,
+        entrySteps: entry.steps,
         isFinalStep: flowTNode?.final || false,
         hasPersistentTriggers,
         hasParent: hasParent,
