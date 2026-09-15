@@ -26,8 +26,6 @@ export const actionsCompiler: SpecialtyCompiler<DslCompiled>;
 
 // @public (undocumented)
 export const BootConfigSchema: z.ZodObject<{
-    earlySystem: z.ZodOptional<z.ZodString>;
-    createDefaultSettings: z.ZodOptional<z.ZodString>;
     hooks: z.ZodOptional<z.ZodString>;
     seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
         path: z.ZodOptional<z.ZodString>;
@@ -61,8 +59,6 @@ export const BootConfigSchema: z.ZodObject<{
         skipAfterOnboarding?: string[] | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
-    earlySystem?: string | undefined;
-    createDefaultSettings?: string | undefined;
     hooks?: string | undefined;
     seed?: Record<string, string | {
         path?: string | undefined;
@@ -74,8 +70,6 @@ export const BootConfigSchema: z.ZodObject<{
         skipAfterOnboarding?: string[] | undefined;
     } | undefined;
 }, {
-    earlySystem?: string | undefined;
-    createDefaultSettings?: string | undefined;
     hooks?: string | undefined;
     seed?: Record<string, string | {
         path?: string | undefined;
@@ -302,16 +296,6 @@ export function exportFlowsToDSL(outputDir: string, options: ExportFlowsOptions,
 // @public
 export const FEATURE_ID_PATTERN: RegExp;
 
-// @public
-export interface FeatureConfig {
-    // (undocumented)
-    designation?: string;
-    // (undocumented)
-    name: string;
-    // (undocumented)
-    settings?: string;
-}
-
 // @public (undocumented)
 export const FeatureEntrySchema: z.ZodObject<{
     id: z.ZodString;
@@ -378,9 +362,9 @@ export const FeatureEntrySchema: z.ZodObject<{
         icon: string;
         isPinned?: boolean | undefined;
     } | undefined;
-    earlySystem?: boolean | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
+    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         outgoingEventsType?: string | undefined;
@@ -402,9 +386,9 @@ export const FeatureEntrySchema: z.ZodObject<{
         icon: string;
         isPinned?: boolean | undefined;
     } | undefined;
-    earlySystem?: boolean | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
+    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         outgoingEventsType?: string | undefined;
@@ -564,9 +548,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
@@ -588,9 +572,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
@@ -607,8 +591,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     defaultPlugin: z.ZodOptional<z.ZodString>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     boot: z.ZodOptional<z.ZodObject<{
-        earlySystem: z.ZodOptional<z.ZodString>;
-        createDefaultSettings: z.ZodOptional<z.ZodString>;
         hooks: z.ZodOptional<z.ZodString>;
         seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
             path: z.ZodOptional<z.ZodString>;
@@ -642,8 +624,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             skipAfterOnboarding?: string[] | undefined;
         }>>;
     }, "strict", z.ZodTypeAny, {
-        earlySystem?: string | undefined;
-        createDefaultSettings?: string | undefined;
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
@@ -655,8 +635,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             skipAfterOnboarding?: string[] | undefined;
         } | undefined;
     }, {
-        earlySystem?: string | undefined;
-        createDefaultSettings?: string | undefined;
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
@@ -906,9 +884,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
@@ -925,8 +903,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     boot?: {
-        earlySystem?: string | undefined;
-        createDefaultSettings?: string | undefined;
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
@@ -1016,9 +992,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
@@ -1035,8 +1011,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     boot?: {
-        earlySystem?: string | undefined;
-        createDefaultSettings?: string | undefined;
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
@@ -1126,9 +1100,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
@@ -1145,8 +1119,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     boot?: {
-        earlySystem?: string | undefined;
-        createDefaultSettings?: string | undefined;
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
@@ -1236,9 +1208,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             icon: string;
             isPinned?: boolean | undefined;
         } | undefined;
-        earlySystem?: boolean | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             outgoingEventsType?: string | undefined;
@@ -1255,8 +1227,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     boot?: {
-        earlySystem?: string | undefined;
-        createDefaultSettings?: string | undefined;
         hooks?: string | undefined;
         seed?: Record<string, string | {
             path?: string | undefined;
@@ -1369,6 +1339,13 @@ export interface PackConfig {
 // @public (undocumented)
 export type PackFeatureEntry = z.infer<typeof FeatureEntrySchema>;
 
+// @public
+export interface PackFlowHelpers {
+    exports: string[];
+    module: string;
+    types: string;
+}
+
 // @public (undocumented)
 export type PackManifest = z.infer<typeof ManifestSchema>;
 
@@ -1401,6 +1378,7 @@ export interface PackSeedsPreview {
 export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
+    flowHelpers?: PackFlowHelpers;
     // (undocumented)
     manifest: PackManifest;
     // (undocumented)
@@ -1789,8 +1767,8 @@ export interface Track {
     schedule?: string;
 }
 
-// @public (undocumented)
-export function validateFeatures(featuresDir: string): Promise<ManifestValidation>;
+// @public
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation;
 
 // @public (undocumented)
 export function validateFlowDSL(dsl: unknown, options?: ValidateOptions): ValidationResult;

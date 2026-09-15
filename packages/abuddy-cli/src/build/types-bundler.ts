@@ -13,12 +13,20 @@ function isPackageSpecifier(id: string): boolean {
  * modules and its dependencies' facade types are inlined; packages stay imports.
  */
 export async function bundlePackTypes(packDir: string, outFile: string): Promise<{ success: true; content: string } | { success: false; error: string }> {
+  return bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'pack-types.ts'), outFile);
+}
+
+/**
+ * Bundles the declarations of a pack module (`input`) into one declaration file: the pack's own
+ * modules are inlined, packages stay imports.
+ */
+export async function bundleDeclarations(packDir: string, input: string, outFile: string): Promise<{ success: true; content: string } | { success: false; error: string }> {
   const { rollup } = await import('rollup');
   const { dts } = await import('rollup-plugin-dts');
   const tsconfig = path.join(packDir, 'tsconfig.json');
   try {
     const bundle = await rollup({
-      input: path.join(packDir, 'src', '__generated__', 'pack-types.ts'),
+      input,
       external: isPackageSpecifier,
       plugins: [dts({
         respectExternal: true,

@@ -79,15 +79,17 @@ services.repository.bookmarkQueries;    // repositories (see below)
 
 Actions access services via the `services` parameter. Service names are global across installed packs: the host refuses to register a pack whose service name another pack or the host already uses.
 
-### Host data services
+### Host services
 
-The host implements operations on the app's stored data as a whole; packs call them through `services`:
+The host implements these services (operations on the app's stored data as a whole, logging and events); packs call them through `services`. `services.inference` and `services.repository` are covered below:
 
 | Service | Methods |
 |---|---|
 | `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
-| `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. |
+| `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. A key's `provider` (`SecretProvider`) is a model provider or `'custom'`, for keys the app's own integrations name. |
+| `services.logger` | `debug`, `info`, `warn`, `error` (any arguments), through the host logger and its redaction. `createLogger(source)` from `@abuddy/sdk/logger` gives a logger tagged with your own source. |
+| `services.emitter` | `sendToPlugin(pluginId, event)` (to the frontend), `sendToSystem(systemId, event)` (onto the bus, as `{ ...event, systemId }`), `sendToBrainSystem({ eventType, payload?, targetFlowId? })` (fires a flow event), `onOutgoing(cb)` / `onIncoming(cb)` (observe events going to the frontend / to systems; each returns an unsubscribe function). |
 
 Backups never include API keys; `exportBackup` copies the primary database (`lmdb`, with media) and the trace store (`volatileLmdb`). `importBackup` restores only the databases the app has, and leaves out any other a backup lists.
 
@@ -125,7 +127,16 @@ Each call takes models from the providers that give that kind (`providerCapabili
 | `mistral` | ✓ | ✓ | | ✓ | ✓ | |
 | `cohere` | ✓ | ✓ | | | | ✓ |
 
-`ModelId` and the language model catalog come from `@abuddy/sdk/models`.
+`@abuddy/sdk/models` exports:
+
+| Export | What it is |
+|---|---|
+| `ProviderName`, `ModelId`, `ModelKind`, `ModelIdOf<K>` (and the per-kind ids above) | `provider:model` id types |
+| `providerCapabilities` | The table above: provider → the model kinds it serves |
+| `providerLabels` | Display names (`openai` → `OpenAI`) |
+| `availableModels` | The language model catalog, `ModelCatalogEntry[]`: `id`, `name`, optional `description`, `contextWindow`, `maxOutput`, `costPer1kInput`, `costPer1kOutput`, `capabilities` |
+| `parseModelId(id)` | `{ provider, model }`, or `undefined` when the id doesn't name a known provider and a model |
+| `isModelId(id)` | Type guard for the same check |
 
 ```typescript
 import { isStepCount, tool } from 'ai';
@@ -267,6 +278,67 @@ getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTarg
 
 `untypedQx` from `@abuddy/sdk/ears` is the unchecked query, for fields only known at runtime.
 
+### Roles
+
+A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKind.Custom('pinned')` brands one). Roles are stored as attributes, so they persist with the entity.
+
+| Call | From | Does |
+|---|---|---|
+| `tx(id).grant(role)` / `.revoke(role)` | `#generated/ears` | Adds / removes the role; no-op when already there / absent |
+| `tx(id).ensure(role, scope?)` | `#generated/ears` | Makes `id` the only holder: revokes the role from every entity that has it (or from `scope`), then grants it |
+| `qx(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
+| `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, soft-deleted rows (`deleted: true`) left out |
+| `grantRole(id, role)` / `revokeRole(id, role)` | `@abuddy/sdk/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
+| `getRoles(id)` | `@abuddy/sdk/ears` | The entity's roles, `string[]` |
+
+### Relation and entity helpers
+
+From `@abuddy/sdk/ears` (untyped):
+
+| Call | Does |
+|---|---|
+| `createRelation(sourceId, kind, targetId)` | Same as `tx(sourceId).link(kind, targetId)` |
+| `removeRelation(sourceId, kind, targetId?)` | Removes that relation; without `targetId`, every `kind` relation from the source |
+| `removeRelationById(relationId)` | Removes one relation by id (from `findRelations`) |
+| `destroyEntity(id)` | Hard-deletes the entity: its attributes and every relation to or from it |
+| `exists(id)` | Whether any row has the id (soft-deleted rows included) |
+| `countEntities(entityType)` | Rows of the type, soft-deleted rows left out |
+
+### Blueprints
+
+`bp(entityType)` builds a description of an entity graph; `spawn(blueprint)` writes it and returns the root id:
+
+```typescript
+import { bp, spawn } from '@abuddy/sdk/ears';
+
+const tag = bp(EARS.Entity.Tag).attr('name', 'docs').build();
+const id = spawn(
+  bp(EARS.Entity.Bookmark)
+    .attr('url', url)
+    .grant('unread')                          // role
+    .ensure('latest')                         // role only this entity holds
+    .link(EARS.RelKind.TAGGED_WITH, tag)      // a nested blueprint, or an existing id
+    .build(),
+);
+```
+
+Nested blueprints are spawned and linked (replacing an identical existing relation). With the default `{ dedupe: true }`, a blueprint object reached twice creates one entity.
+
+### Graph helpers
+
+From `@abuddy/sdk/ears`; each walks relations of the given kind(s) and returns ids:
+
+| Call | Returns |
+|---|---|
+| `descendants(start, kind)` / `ancestors(start, kind)` | Every entity reachable by following `kind` out of / into `start`, `start` excluded |
+| `rootParent(start, kind)` | The last entity reached following `kind` backwards (`start` when it has no parent) |
+| `leaves(kind, entityType?)` | Entities with no outgoing `kind` relation |
+| `lowestCommonAncestor(a, b, kind)` | The nearest shared ancestor on a `kind` tree, or `null` |
+| `topoSort(roots, kind, entityType?)` | `roots` and everything below them in dependency order; throws on a cycle |
+| `shortestPath(src, tgt, kinds)` | The id path from `src` to `tgt`, or `null` |
+| `wouldCreateCycle(src, tgt, kinds)` | `true` when `tgt` already reaches `src`, so linking `src → tgt` would close a cycle |
+| `linkSymmetric(a, b, kind, info?)` | Links both directions; throws on `a === b` |
+
 ### Repository pattern
 
 Each feature can keep its reads and writes in repository objects:
@@ -317,11 +389,15 @@ To get typed attributes on entities, declare shapes in the manifest:
 ```
 
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
-`#generated/ears` exports: `qx`, `tx`, `findById`, `findAll`, `findWhere`, `findFirst`,
-`findWithFields`, `findWithRole`, `createEntity`, `createEntityWithDefaults`, `updateEntity`,
-`getAttr` and `getAttrs`. Of these, `@abuddy/sdk/ears` exports only `tx`, unchecked. A shape the
-build can't find (a wrong `source` or `type`) fails the build. Queries seeded with a declared
-entity type are checked against its shape:
+`#generated/ears` exports: `qx`, `tx`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`,
+`findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
+`createEntityWithDefaults`, `updateEntity`, `getAttr` and `getAttrs`. Of these, `@abuddy/sdk/ears`
+exports only `tx`, unchecked. The `find*` helpers leave out soft-deleted rows (`deleted: true`), except
+`findByIdRaw`. A shape the build can't find (a wrong `source` or `type`) fails the build. It also
+exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
+declared shapes), `PackShapes` (the SDK's, the dependencies' and this pack's), `EntityName`, and
+`AllEntities` (the `EARS.Entity` map). Queries seeded with a declared entity type are checked
+against its shape:
 
 ```ts
 import { EARS, qx } from '#generated/ears';
@@ -403,7 +479,7 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
   - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
   - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types, or as `NodeBase` when none define any.
   - The data the SDK's settings seeder and its services write and read: `Settings` (`SettingsEntity`). Library documents and notes belong to default-setup (`Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
-  - `TNode` rows are execution records and are never persisted.
+  - `TNode` rows are execution records. They and their relations are written to the volatile trace store instead of the primary database, and aren't loaded back into memory at startup; read past runs with `services.traceStore`.
 - External packs cannot use `partitionPolicy` (routing entity types to the volatile store is reserved for the built-in pack).
 
 ---

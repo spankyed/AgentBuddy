@@ -2,11 +2,16 @@ import { settingsRepository } from '@abuddy/host/settings';
 import { APP_VERSION } from '@/version';
 import { compareVersions } from '@abuddy/sdk/utils';
 import { getRegisteredMigrations } from '@abuddy/host/packs';
-import type { LoadedPack } from '@/packs/pack-loader';
+import { getBuiltInPackInfos, type LoadedPack } from '@/packs/pack-loader';
 
+/**
+ * Host migrations: the built-in packs' migrations, run when `stored app version < target <= APP_VERSION`.
+ * External packs' migrations never run here; `runPackMigrations` runs them against each pack's own version.
+ */
 export function runMigrations(): void {
   const current = settingsRepository.settingsQueries.getInternalSettings().version || '0.0.0';
-  const migrations = getRegisteredMigrations().sort((a, b) => compareVersions(a.target, b.target));
+  const builtInPackIds = getBuiltInPackInfos().map(pack => pack.id);
+  const migrations = getRegisteredMigrations(builtInPackIds).sort((a, b) => compareVersions(a.target, b.target));
 
   for (const m of migrations) {
     if (compareVersions(m.target, current) > 0 && compareVersions(m.target, APP_VERSION) <= 0) {
@@ -25,6 +30,10 @@ export function runMigrations(): void {
   }
 }
 
+/**
+ * External packs' migrations, run when `stored pack version < target <= manifest version`,
+ * recording each pack's version in internal settings `packVersions`.
+ */
 export function runPackMigrations(packs: LoadedPack[]): void {
   const stored = settingsRepository.settingsQueries.getInternalSettings().packVersions ?? {};
   const updated = { ...stored };

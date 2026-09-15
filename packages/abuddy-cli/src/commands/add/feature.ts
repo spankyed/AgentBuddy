@@ -6,17 +6,6 @@ import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
-const FEATURE_CONFIG = (name: string, designation?: string) => {
-  const desig = designation ? `\n  designation: '${designation}',` : '';
-  return `import type { FeatureConfig } from '@abuddy/sdk/build';
-
-export default {
-  name: '${name}',${desig}
-  settings: './settings.ts',
-} satisfies FeatureConfig;
-`;
-};
-
 const SETTINGS = (id: string) => `export default {
   plugins: {
     _meta: { visibility: { ${id}: true } },
@@ -160,7 +149,7 @@ Usage: abuddy add feature <name> [options]
 Options:
   --label <Label>          Display label (default: derived from name)
   --icon <LucideIcon>      Lucide icon name (default: Box)
-  --designation <role>     EARS designation
+  --designation <role>     EARS designation (must equal the feature name)
 
 Example:
   abuddy add feature bookmarks --label "Bookmarks" --icon Bookmark
@@ -181,6 +170,9 @@ export async function addFeature(args: string[], root: string) {
   const label = parseFlag(args, '--label') || toLabel(name);
   const icon = parseFlag(args, '--icon') || 'Box';
   const designation = parseFlag(args, '--designation');
+  if (designation !== undefined && designation !== name) {
+    throw new Error(`Designation "${designation}" must equal the feature name "${name}": a designation routes to the feature of the same id`);
+  }
   const camel = toCamelCase(name);
   const pascal = toPascalCase(name);
   const featureDir = path.join(root, 'src', 'features', name);
@@ -189,7 +181,6 @@ export async function addFeature(args: string[], root: string) {
   // The system test runs on the harness: a pack scaffolded before it has no tests/setup.ts
   const unitTestSetup = fs.existsSync(path.join(root, 'tests', 'setup.ts')) ? undefined : scaffoldUnitTestSetup(root);
   const files: [string, string][] = [
-    [path.join(featureDir, 'feature.config.ts'), FEATURE_CONFIG(name, designation)],
     [path.join(featureDir, 'settings.ts'), SETTINGS(name)],
     [path.join(featureDir, 'be', 'system.ts'), SYSTEM(name, camel, pascal)],
     [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal)],
@@ -208,6 +199,7 @@ export async function addFeature(args: string[], root: string) {
   const manifest = readManifest(root);
   addFeatureToManifest(manifest, {
     id: name,
+    ...(designation !== undefined && { designation }),
     settings: `src/features/${name}/settings.ts`,
     system: { entry: `src/features/${name}/be/system.ts` },
     plugin: { entry: `src/features/${name}/fe/plugin.ts`, label, icon },

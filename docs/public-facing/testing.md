@@ -12,6 +12,32 @@ This page covers unit tests.
 `abuddy init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
 
 ```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
+
+// A pack linked to an AgentBuddy checkout resolves its @abuddy/* packages to source; installed packages don't
+const conditions = sourceConditions(import.meta.dirname);
+// A throwaway data dir per run, one subdir per worker
+const dataDir = isolatedDataDir();
+
+export default defineConfig({
+  resolve: { conditions },
+  ssr: { resolve: { conditions } },
+  test: {
+    globals: true,
+    include: ['tests/unit/**/*.spec.ts'],
+    env: dataDir.env,                                          // ABUDDY_ENV=test, ABUDDY_USER_DATA_DIR=<run dir>
+    globalSetup: dataDir.globalSetup,                          // passes the project root to the harness; removes the run dir at the end
+    setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],   // the worker setup first: each worker uses <run dir>/worker-<n>
+  },
+});
+```
+
+- **`sourceConditions(packDir)`** returns `['@abuddy/source']` when the pack's `@abuddy/sdk` resolves outside `node_modules` (a pack linked to a checkout), else `[]`. Set it on both `resolve` and `ssr.resolve`; vitest adds its default conditions to them.
+- **`isolatedDataDir(prefix?)`** creates the run's data dir. `setupPackTests` fails when `ABUDDY_USER_DATA_DIR` is unset, so keep its `env`, `globalSetup` and `setupFiles`, with its setup files before yours.
+
+```typescript
 // tests/setup.ts
 import '#generated/seeders';
 import { seedRuntime } from '#generated/seed-runtime';
@@ -25,9 +51,9 @@ await setupPackTests({ seedRuntime, registration });
 - **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). These tests start faster and never load a dependency's runtime.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
-- **Each test starts from an empty database.** Apps a test starts stop after it; service mocks last one test.
+- **Each test starts from an empty database** (and no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` empties the database and secrets mid-test; registrations stay.
 - **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a test that runs alongside another (`it.concurrent`, `describe.concurrent` or `sequence.concurrent` next to another concurrent test) fails. Spec files still run in parallel, each in its own worker.
-- **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()`.
+- **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@abuddy/testing/harness`: it returns the errors systems and steps reported (`reportSystemError`) since the last call, and clears them.
 - **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@abuddy/testing` is added at your `@abuddy/sdk` range (they're released together); when your `@abuddy/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
 
 ## Seeds
@@ -65,11 +91,11 @@ it('stores a memo a client adds and sends it back', async () => {
 
 | Member | What it does |
 |---|---|
-| `startApp({ systems })` | Starts the named systems (your feature ids, or a dependency's, e.g. `settings`), in registration order; `'*'` starts all |
-| `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
-| `send(systemId, event)` | Sends a system an event |
-| `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`) |
-| `nextEmit(pluginId, type)` | The next such event no earlier call returned, waiting for it |
+| `startApp({ systems })` | Starts the named systems in registration order; `'*'` starts all. A bare id is tried as given, then as your pack's `<packId>.<featureId>`: use your feature ids, a built-in dependency's feature ids (default-setup's `settings`), or an external dependency's full bus id (`<depId>.<featureId>`) |
+| `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Every running system gets it (the harness has no client that loads pack frontends later). Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
+| `send(systemId, event)` | Sends a system an event. Throws before `connect()` |
+| `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`). An `emit` goes through the bus, so one sent before `connect()` is dropped and never appears here (the bus's `emit` is how systems send startup data, so `connect()` first); `sendToPlugin` bypasses the bus and appears either way |
+| `nextEmit(pluginId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
 | `stop()` | Stops the systems; pending and later `connect`, `send`, `nextEmit`, `settle` and `runFlow` calls fail with "The test app stopped", and so does `system`. `emitted` still reads what was sent. Once no app runs, each registered pack's `boot.onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
@@ -144,13 +170,23 @@ it('summarizes a note', async () => {
 ```
 
 - **`importFlows(dsl)`** compiles flow DSL and imports it as the flow seeder does. Import before `startApp`: the brain starts the root flow when the app starts.
-- **`runFlow(label, { event?, data?, timeoutMs? })`** sends `event` with `data` as its payload, as a client sends an event to the brain, and waits for the flow labelled `label`, which must be running (the root flow or a subflow).
+- **`runFlow(label, { event?, data?, timeoutMs? })`** (default timeout 10 000 ms, covering its sends and settling) sends `event` with `data` as its payload, as a client sends an event to the brain, and waits for the flow labelled `label`, which must be running (the root flow or a subflow).
   - It resolves once every track of that flow the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
   - Without `event`, it resolves with the entry tracks the flow ran when it started.
-  - It returns the steps those tracks ran: `label`, `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event).
+  - It returns a `FlowRun`: `eventTNodeIds`, the trace nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowStepTrace` (`tNodeId`, `label`, `tNodeType` (`step`, or `flow` for a subflow), `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event and earlier steps)).
   - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
   - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, `sendToBrainSystem`) aren't in it: `await app.settle()`, then read them with `flowTrace`.
   - Sending `event` connects the app if it isn't. Events sent before that (a `fire` step in an entry track, a schedule tick) were dropped by the bus: call `app.connect()` right after `startApp` when those must reach the brain. When `runFlow` or `nextEmit` fails on an app that dropped events, the error names them.
-- **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it).
+- **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it). It still reads after `stop()`: rows are kept as the brain last reported them.
 - **Without a root flow** the brain doesn't start: it reports that no flow has the root role when flows exist, and stays stopped with no flows at all.
 - **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track. Unmocked, real cron jobs run while the app runs (connect it, or their ticks are dropped) and stop when it stops.
+
+## Exports
+
+`@abuddy/testing/harness`:
+
+- **Setup and data:** `setupPackTests` (`PackTestOptions`), `seedPack` (`SeedPackOptions`), `importFlows`, `resetTestData`, `SeedRuntime`.
+- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `OutgoingSystemEvents` (what `emitted` and `nextEmit` return).
+- **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
+
+`@abuddy/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`) and `sourceConditions`.

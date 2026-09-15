@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadPackFEEntry, loadPackFrontend } from '../pack-loader';
+import { loadPackFEEntry, loadPackFrontend, loadPackPlugin } from '../pack-loader';
 
 let dir: string;
 
@@ -45,6 +45,24 @@ describe('loadPackFEEntry', () => {
     const { registration, warnings } = await load('fe.mjs', 'export default { plugins: [{ id: "x" }] };');
     expect((registration as any).plugins).toHaveLength(1);
     expect(warnings).toEqual([]);
+  });
+});
+
+// abuddy.json features[].designation is the only designation source
+describe('loadPackPlugin', () => {
+  const plugin = (fields: string) => `export default { id: "widget", state: {}, canvas: {}, icon: {}${fields} };`;
+  const manifest = { id: 'widget', entry: 'widget.mjs', label: 'Widget', icon: 'Zap' };
+
+  it("uses the manifest's designation over the plugin module's own", async () => {
+    fs.writeFileSync(path.join(dir, 'widget.mjs'), plugin(', designation: "other"'));
+    const loaded = await loadPackPlugin({ ...manifest, designation: 'widget' }, pathToFileURL(dir).href);
+    expect(loaded?.designation).toBe('widget');
+  });
+
+  it("drops a plugin module's own designation when the manifest declares none", async () => {
+    fs.writeFileSync(path.join(dir, 'widget.mjs'), plugin(', designation: "widget"'));
+    const loaded = await loadPackPlugin(manifest, pathToFileURL(dir).href);
+    expect(loaded?.designation).toBeUndefined();
   });
 });
 

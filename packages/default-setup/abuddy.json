@@ -290,7 +290,6 @@
   },
   "defaultPlugin": "threads",
   "boot": {
-    "earlySystem": "src/features/logs/be/system.ts",
     "hooks": "src/features/hooks.ts",
     "seed": {
       "actions": "src/seeds/actions",

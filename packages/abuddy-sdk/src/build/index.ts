@@ -1,5 +1,5 @@
 // Types
-export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+export type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
 export { clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
@@ -39,7 +39,7 @@ export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from 
 
 // Pack manifest types
 export type {
-  PackManifest, PackTypeManifest, PackSnapshot, PackPermission,
+  PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
   PackSystemEntry, PackPluginEntry,
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,

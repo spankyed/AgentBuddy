@@ -66,6 +66,18 @@ describe('generated events', () => {
   });
 });
 
+describe('generated frontend entry', () => {
+  it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
+    const files = generate({ features: [
+      { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin', label: 'Settings', icon: 'X' } },
+      { id: 'notes', plugin: { entry: 'src/notes/plugin', label: 'Notes', icon: 'X' } },
+    ] });
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("const Settings = { ..._Settings, designation: 'settings' }");
+    expect(fe).toContain('const Notes = { ..._Notes, designation: undefined }');
+  });
+});
+
 describe('dependency types in .abuddy/generated/types.ts', () => {
   it("re-exports a dependency's types by their exported names, not the facade names", async () => {
     const { emitDepTypes } = await import('../../src/build/generate-entries.ts');
@@ -354,5 +366,38 @@ describe('generated seeders', () => {
     expect(entry).toContain('seedHooks: { Memo: __seedHooks_Memo },');
     expect(() => generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#missing' } }))
       .toThrow(`Seed hooks for "Memo": src/memo-hooks.ts doesn't export "missing"`);
+  });
+});
+
+describe('generated flow helpers', () => {
+  const helpers = (exports: string[], name: string) => ({ exports, module: `// ${name} module`, types: `// ${name} types` });
+
+  it("types a step helper's options with the step's DSL node fields", () => {
+    write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string; size?: 'small' | 'large'; [key: string]: unknown }\n");
+    const files = generate({ steps: { register: 'src/steps/register.ts', definitions: [{ type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } }] } });
+
+    expect(files['src/__generated__/flow-helpers.ts']).toContain(
+      "export function pour(cup: string, opts?: { [K in keyof DSLPourNode as K extends 'type' | 'cup' ? never : K]: DSLPourNode[K] }): DSLStepNode {",
+    );
+  });
+
+  it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", () => {
+    write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string }\n");
+    const files = generate(
+      { steps: { register: 'src/steps/register.ts', definitions: [{ type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } }] } },
+      {
+        'base-pack': { ...dependency({}), flowHelpers: helpers(['branch', 'entry', 'on', 'pour', 'schedule'], 'base-pack') },
+        'other-pack': { ...dependency({ id: 'other-pack' }), flowHelpers: helpers(['branch', 'every'], 'other-pack') },
+        'untyped-pack': dependency({ id: 'untyped-pack' }),
+      },
+    );
+    const flowHelpers = files['src/__generated__/flow-helpers.ts'];
+
+    expect(flowHelpers).toContain("export { branch, schedule } from './deps/base-pack.flow-helpers.js';");
+    expect(flowHelpers).toContain("export { every } from './deps/other-pack.flow-helpers.js';");
+    expect(flowHelpers).not.toContain('untyped-pack');
+    expect(flowHelpers).not.toContain('Record<string, unknown>');
+    expect(files['src/__generated__/deps/base-pack.flow-helpers.js']).toContain('// base-pack module');
+    expect(files['src/__generated__/deps/base-pack.flow-helpers.d.ts']).toContain('// base-pack types');
   });
 });

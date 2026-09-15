@@ -280,6 +280,13 @@ export function depTypesFile(depId: string): string {
   return `src/__generated__/deps/${depId}.d.ts`;
 }
 
+const FLOW_HELPERS_SUFFIX = '.flow-helpers';
+
+/** A dependency's flow helpers module (`.js`) or its declarations (`.d.ts`) in a pack, relative to the pack root */
+function depFlowHelpersFile(depId: string, extension: '.js' | '.d.ts'): string {
+  return `src/__generated__/deps/${depId}${FLOW_HELPERS_SUFFIX}${extension}`;
+}
+
 /** The line naming the dependency version a facade types file was generated from */
 export function depTypesHeader(depId: string, version: string): string {
   return `// ${depId}@${version} facade types\n`;
@@ -550,10 +557,9 @@ ${manifest.migrations ? '  migrations,' : ''}
     const pluginImports = pluginFeatures
       .map(f => {
         const name = toPascalCase(f.id);
-        if (f.designation) {
-          return `import _${name} from '${toImportPath(root, f.plugin!.entry)}';\nconst ${name} = { ..._${name}, designation: '${f.designation}' } as typeof _${name};`;
-        }
-        return `import ${name} from '${toImportPath(root, f.plugin!.entry)}';`;
+        // The manifest is the only source of a designation: one the plugin module sets itself is replaced
+        const designation = f.designation ? `'${f.designation}'` : 'undefined';
+        return `import _${name} from '${toImportPath(root, f.plugin!.entry)}';\nconst ${name} = { ..._${name}, designation: ${designation} } as typeof _${name};`;
       })
       .join('\n');
 
@@ -1119,54 +1125,49 @@ export type { ImportMode } from '@abuddy/sdk/utils';
     return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
   }
 
-  function emitStepHelper(step: StepEntry, isLocal: boolean): { imports: string[]; helper?: string; reExport?: string } | null {
+  /** A step's helper: its name and code, or a re-export of its custom helpers module */
+  function emitStepHelper(step: StepEntry): { name?: string; imports: string[]; helper?: string; reExport?: string } | null {
     if (!step.dsl) return null;
     const dsl = step.dsl;
     const name = toCamelCase(step.type);
 
     if (dsl.custom) {
-      if (isLocal) {
-        return { imports: [], reExport: `export * from '${toImportPath(root, step.path + '/helpers')}';` };
-      }
-      return null;
+      return { imports: [], reExport: `export * from '${toImportPath(root, step.path + '/helpers')}';` };
     }
 
     if (dsl.primaryField) {
-      if (isLocal) {
-        const typesFile = join(root, step.path, 'types.ts');
-        const content = existsSync(typesFile) ? readFileSync(typesFile, 'utf-8') : '';
-        const dslMatch = content.match(/export\s+interface\s+(DSL\w+Node)\b/);
-        if (!dslMatch) {
-          throw new Error(`Step "${step.type}": no DSL*Node interface found in ${step.path}/types.ts`);
-        }
-        const dslTypeName = dslMatch[1];
-        return {
-          imports: [`import type { ${dslTypeName} } from '${toImportPath(root, step.path + '/types')}';`],
-          helper: `export function ${name}(${dsl.primaryField}: string, opts?: Omit<${dslTypeName}, 'type' | '${dsl.primaryField}'>): DSLStepNode {\n  return { type: '${step.type}', ${dsl.primaryField}, ...opts };\n}`,
-        };
+      const typesFile = join(root, step.path, 'types.ts');
+      const content = existsSync(typesFile) ? readFileSync(typesFile, 'utf-8') : '';
+      const dslMatch = content.match(/export\s+interface\s+(DSL\w+Node)\b/);
+      if (!dslMatch) {
+        throw new Error(`Step "${step.type}": no DSL*Node interface found in ${step.path}/types.ts`);
       }
+      const dslTypeName = dslMatch[1];
       return {
-        imports: [],
-        helper: `export function ${name}(${dsl.primaryField}: string, opts?: Record<string, unknown>): DSLStepNode {\n  return { type: '${step.type}', ${dsl.primaryField}, ...opts };\n}`,
+        name,
+        imports: [`import type { ${dslTypeName} } from '${toImportPath(root, step.path + '/types')}';`],
+        // Omit would drop the node's fields: DSLNodeBase's index signature makes keyof every string
+        helper: `export function ${name}(${dsl.primaryField}: string, opts?: { [K in keyof ${dslTypeName} as K extends 'type' | '${dsl.primaryField}' ? never : K]: ${dslTypeName}[K] }): DSLStepNode {\n  return { type: '${step.type}', ${dsl.primaryField}, ...opts };\n}`,
       };
     }
 
     if (dsl.defaultLabel) {
       return {
+        name,
         imports: [],
         helper: `export function ${name}(label: string = '${dsl.defaultLabel}'): DSLStepNode {\n  return { type: '${step.type}', label };\n}`,
       };
     }
 
     return {
+      name,
       imports: [],
       helper: `export function ${name}(label?: string): DSLStepNode {\n  return { type: '${step.type}', ...(label && { label }) };\n}`,
     };
   }
 
-  function emitTriggerTrackBuilder(step: StepEntry, isLocal: boolean): string | null {
+  function emitTriggerTrackBuilder(step: StepEntry): { name: string; helper: string } | null {
     if (step.kind !== 'trigger') return null;
-    if (!isLocal) return null;
     // trackField lives with the build facets (build.ts); older layouts define it in index.ts,
     // possibly next to a helper build.ts, so check each file until one defines it
     const match = ['build.ts', 'index.ts']
@@ -1177,50 +1178,62 @@ export type { ImportMode } from '@abuddy/sdk/utils';
     if (!match) return null;
     const trackField = match[1];
     if (trackField === 'event') return null;
-    return `export function ${toCamelCase(trackField)}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {\n  return { ${trackField}, label: label ?? \`${toPascalCase(trackField)} (\${${trackField}})\`, exits };\n}`;
+    const name = toCamelCase(trackField);
+    return {
+      name,
+      helper: `export function ${name}(${trackField}: string, exits: DSLStepNode[][], label?: string): Track {\n  return { ${trackField}, label: label ?? \`${toPascalCase(trackField)} (\${${trackField}})\`, exits };\n}`,
+    };
   }
 
+  /**
+   * This pack's flow helpers: one per step it defines (custom steps re-export their helpers module),
+   * its trigger track builders, and its dependencies' flow helpers, re-exported from the modules
+   * their snapshots carry (the helpers and option types each dependency generated for itself). A
+   * name this pack or an earlier dependency exports isn't re-exported again.
+   */
   function generateFlowHelpers(): string {
     const imports: string[] = [];
     const helpers: string[] = [];
     const customReExports: string[] = [];
+    const names = new Set(['entry', 'on']);
     const seenTypes = new Set<string>();
 
-    function processSteps(steps: StepEntry[], isLocal: boolean) {
-      for (const step of steps) {
-        if (seenTypes.has(step.type)) continue;
-        seenTypes.add(step.type);
+    for (const step of stepDefinitions) {
+      if (seenTypes.has(step.type)) continue;
+      seenTypes.add(step.type);
 
-        const result = emitStepHelper(step, isLocal);
-        if (result) {
-          imports.push(...result.imports);
-          if (result.helper) helpers.push(result.helper);
-          if (result.reExport) customReExports.push(result.reExport);
-        }
+      const result = emitStepHelper(step);
+      if (result) {
+        imports.push(...result.imports);
+        if (result.name) names.add(result.name);
+        if (result.helper) helpers.push(result.helper);
+        if (result.reExport) customReExports.push(result.reExport);
+      }
 
-        const track = emitTriggerTrackBuilder(step, isLocal);
-        if (track) helpers.push(track);
+      const track = emitTriggerTrackBuilder(step);
+      if (track) {
+        names.add(track.name);
+        helpers.push(track.helper);
       }
     }
 
-    processSteps(stepDefinitions, true);
-
-    for (const [, snap] of depSnapshots) {
-      const depManifest = snap.manifest;
-      const depSteps: StepEntry[] = (typeof depManifest.steps === 'object' && depManifest.steps !== null)
-        ? depManifest.steps.definitions ?? []
-        : [];
-      processSteps(depSteps, false);
+    const depReExports: string[] = [];
+    for (const [depId, snap] of depSnapshots) {
+      if (!snap.flowHelpers) continue;
+      const reExported = snap.flowHelpers.exports.filter(name => !names.has(name));
+      for (const name of reExported) names.add(name);
+      if (reExported.length > 0) {
+        depReExports.push(`// ${depId}\nexport { ${reExported.join(', ')} } from './deps/${depId}${FLOW_HELPERS_SUFFIX}.js';`);
+      }
     }
 
-    return `${HEADER}
-import type { DSLStepNode, Track } from '@abuddy/sdk/build';
-export { entry, on } from '@abuddy/sdk/build';
-${imports.join('\n')}
-
-${helpers.join('\n\n')}
-${customReExports.length ? '\n' + customReExports.join('\n') : ''}
-`;
+    const sections = [
+      ["import type { DSLStepNode, Track } from '@abuddy/sdk/build';", "export { entry, on } from '@abuddy/sdk/build';", ...imports].join('\n'),
+      ...helpers,
+      customReExports.join('\n'),
+      ...depReExports,
+    ].filter(Boolean);
+    return `${HEADER}\n${sections.join('\n\n')}\n`;
   }
 
   function generateStepTypes(): string {
@@ -1292,6 +1305,13 @@ ${registrations.join('\n\n')}
       const snap = depSnapshots.get(depId)!;
       return [depTypesFile(depId), `${HEADER}${depTypesHeader(depId, snap.manifest.version)}\n${snap.defs[PACK_TYPES_DEF]}`];
     }),
+    // Each dependency's flow helpers module and its declarations, from its snapshot
+    ...[...depSnapshots].flatMap(([depId, snap]) => snap.flowHelpers
+      ? [
+        [depFlowHelpersFile(depId, '.js'), `${HEADER}\n${snap.flowHelpers.module}`],
+        [depFlowHelpersFile(depId, '.d.ts'), `${HEADER}\n${snap.flowHelpers.types}`],
+      ]
+      : []),
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],

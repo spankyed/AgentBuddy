@@ -265,7 +265,6 @@ interface Plugin_2 {
     canvas?: Component | RouteComponents;
     // (undocumented)
     chat?: Component;
-    // (undocumented)
     designation?: string;
     // (undocumented)
     hotkeys?: PluginHotkeyDefinition[];

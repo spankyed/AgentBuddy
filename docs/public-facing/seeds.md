@@ -2,12 +2,13 @@
 
 Seeds are source files compiled to JSON at build time and written into the database when a pack is installed or updated. `abuddy.json` `boot.seed` names each one.
 
-The SDK compiles four keys itself:
+The SDK compiles three keys a pack seeds itself:
 
 - **Actions** — async functions that do work (call LLMs, query data, emit events)
 - **Prompts** — parameterized text templates for LLM calls
 - **Flows** — declarative event-driven workflows that orchestrate actions
-- **Settings** — the pack's default settings
+
+A fourth key, `settings`, holds the app's own default settings, so only built-in packs have it: the manifest rejects `boot.seed.settings` in any other pack. A feature's default settings go in `features[].settings` (see [Feature settings](manifest.md#feature-settings)).
 
 Any other entity type — yours, a dependency's, or the SDK's — is seeded from markdown or JSON with a format and a seed entry in `abuddy.json`, and no SDK code (see [Seeding entities](#seeding-entities)).
 
@@ -117,13 +118,43 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 
+### Metadata
+
+`ActionMeta` (`@abuddy/sdk/build`):
+
+| Field | Type | Description |
+|---|---|---|
+| `label` | `string` | The action's name: flow `action` steps and `services.action.getByLabel` find it by label. Two actions with one label fail the build |
+| `description` | `string?` | Shown in the Actions UI |
+| `category` | `string?` | Groups the action in the Actions UI (`abuddy add action --category`, default the pack id) |
+| `input` | `Record<string, ActionParameter>` | The parameters, by name |
+| `output` | `unknown?` | A description of the result, stored with the action |
+
+`ActionParameter`: `type` (`'string' \| 'number' \| 'boolean' \| 'object' \| 'array' \| 'any'`), `description?`, `required?`, `default?`, `placeholder?`. These describe the parameters; nothing validates `params` against them or fills in `default` when the action runs.
+
+### Parameters
+
+The build keeps only the function's body, and the runtime calls it with fixed parameter names, so keep them named `params`, `services`, `z` and `flowId`:
+
+| Parameter | From a flow `action` step | From `services.action.executeAction(actionFn, params)` / `getAndExecute(label, params)` |
+|---|---|---|
+| `params` | The step's `params`, overridden by its resolved `map` (see [Mappings](#mappings)) | `params` |
+| `services` | The app's `services` | The app's `services` |
+| `z` | zod | `undefined` |
+| `flowId` | The running flow's trace node id | `undefined` |
+
+The function's return value is the step's result (`$.lastStep.result`).
+
 ### Rules
 
-- **No bare Node.js imports** — actions run in a sandboxed scope. The compiler enforces this.
-- **Import types only** — use `import type` for `ActionMeta`, `Services`, `Z`. Runtime values come from function parameters.
+The build bundles each action file with esbuild and extracts its `meta` and the body of `action`:
+
+- **Imports**: a relative import is bundled into the action. The only package import allowed is `@abuddy/sdk/actions` (`formatProviderError(error, provider, alternatives?)`, `buildTranscript(messages, { maxMessages?, maxChars? })`); any other package, `node:` modules included, fails the build. Type-only imports (`ActionMeta`, `Services`, `Z`) are erased and always allowed.
+- **Node globals** (`require`, `process`, `__dirname`, `__filename`, `Buffer`, `global`) in the bundled code only produce a build warning, but the action runs in the app's backend without them.
+- **`meta` is evaluated on its own**: write it as an object literal that references no imports or other variables.
+- **Top-level helpers** (functions and constants next to `action`) are inlined into the action. A helper function whose only uses are direct calls can declare a `services` parameter: the build removes it and the helper uses the action's `services`.
 - **Model calls need no imports**: `output` is data (`{ type: 'object', schema }`, `{ type: 'choice', options }`, …), tools are plain `{ description, inputSchema, execute }` objects, and `stopWhen` is a function. Agents, embeddings, images and speech work the same way (`services.inference.createAgent`, `embed`, `generateImage`, …). See [Inference](services-and-data.md#inference).
-- **Files without `export const meta` are treated as inlined helpers** — they won't be compiled as standalone actions.
-- **Files prefixed with `_` are skipped** by the compiler.
+- **Scanning**: every `.ts` file under the directory, subdirectories included, is compiled when it has a line starting `export const meta`. Other files (shared helpers) and `*.example.ts` files are skipped. A `_` prefix doesn't skip an action file.
 
 ## Prompts
 
@@ -178,11 +209,18 @@ ${params.text}`;
 }
 ```
 
+### Metadata
+
+`PromptMeta` (`@abuddy/sdk/build`): `label` (unique; a duplicate fails the build), `description?`, `category?`, `inputs: Record<string, TemplateInput>`, `outputSchema?`.
+
+`TemplateInput`: `name`, `type` (`'string' \| 'number' \| 'boolean' \| 'object' \| 'array' \| 'any'`), `description?`, `required?`, `defaultValue?`, `commonSources?: string[]` (where a value usually comes from, such as `$.event.data.payload.text`), `example?`. Like an action's parameters, these describe the inputs; the template applies its own defaults.
+
 ### Rules
 
-- The `template` function must be **synchronous** and return a string.
-- No imports or side effects at runtime.
-- Prompts are resolved by label at runtime via `services.prompt.usePrompt('Summarize Text', params)`.
+- `template(params, usePrompt)` must be **synchronous** and return a string. Keep the parameters named `params` and `usePrompt`: the build keeps only the body.
+- `usePrompt(label, params)` renders another prompt by label (up to 10 levels deep), returning `undefined` when there's none.
+- Prompt files are scanned and bundled like actions: `export const meta`, relative imports, `@abuddy/sdk/actions` as the only package import, no `*.example.ts`.
+- Prompts are rendered by label with `services.prompt.usePrompt('Summarize Text', params)`, or by a flow's `llm` step.
 
 ## Flows
 
@@ -229,10 +267,11 @@ export default {
       action('Classify', { label: 'classify' }),
       branch(
         [
-          { if: "$.intent == 'question'", steps: [
-            action('Lookup', { label: 'lookup' }),
+          // A bare key reads the previous step's result: Classify returned { intent }
+          { if: "intent == 'question'", steps: [
+            action('Lookup', { label: 'lookup', map: { question: '$.event.data.payload.text' } }),
           ]},
-          { if: "$.intent == 'request'", steps: [
+          { if: "intent == 'request'", steps: [
             action('Process Request', { label: 'process' }),
           ]},
         ],
@@ -260,25 +299,98 @@ export default {
 } satisfies FlowDSL;
 ```
 
-### DSL helpers
+### Flow definitions
 
-| Helper | Description |
+A flow file's default export is a `FlowDSL` (`@abuddy/sdk/build`): flow name → a `Track[]`, or a `FlowConfig`.
+
+| Type | Fields |
 |---|---|
-| `entry(...branches)` | Flow entry point. Each argument is a step chain (array). Multiple arguments create parallel branches. |
-| `on(event, branches, label?)` | Event listener. Activates when the flow receives the named event. |
-| `keepAlive()` | Keeps the flow alive after its entry chain completes. Required for long-running flows with `on()` listeners. |
-| `action(label, opts?)` | Execute a named action. |
-| `fire(event, opts?)` | Emit an event. |
-| `branch(conditions, fallback?)` | Conditional branching based on expressions. |
-| `subflow(name, opts?)` | Delegate to another flow. |
+| `FlowConfig` | `tracks: Track[]`; `root?: boolean` marks the root flow, which the brain starts when the app starts (at most one; default-setup's `Root Flow` is the app's); `sourceHash?` is written by the build, a hash of `tracks` and `root` |
+| `Track` | One trigger field (`event` for a listener, `schedule` for a schedule), `label?`, `description?`, `exits: DSLStepNode[][]` (each exit a chain of steps, run in parallel) |
+| `DSLNodeBase` | Options every step helper takes: `label?`, `description?`, `final?`, `next?` |
 
-Step-specific helpers (like `action`, `fire`, `branch`) are auto-generated from your pack's step definitions in `#generated/flow-helpers`.
+Every other flow runs as a subflow that a running flow spawned: default-setup's `Root Flow` spawns its long-running work modes from its entry track. An event reaches every running flow (see `fire`'s `scope`).
+
+A step's options:
+
+| Option | Effect |
+|---|---|
+| `label` | The node's label. Defaults per step (the action or prompt name, the event, the flow name, `Create <entity>`, `Switch <index>`, …). Labels are unique within a flow, across its tracks, branches and track labels: a duplicate fails the build, so label repeated steps |
+| `description` | Stored on the node, shown in the editor |
+| `final` | When this step completes, the flow completes with the step's result (a subflow's result becomes its step's result in the parent) |
+| `next` | Continues at the node with this label in the same flow instead of the next step in the chain; an unknown label fails validation |
+
+A flow without a `final` step completes when all its tracks drain, unless it has a `schedule` track. `keepAlive()` never completes, so its track never drains.
+
+### Flow helpers
+
+`#generated/flow-helpers` exports `entry` and `on` from the SDK, a helper per step with a `dsl` entry in the manifest, and a track builder per trigger other than `event` (see [Flow helpers](extensions.md#flow-helpers)). A pack gets its dependencies' flow helpers re-exported too: `generate-entries` writes each dependency's as `src/__generated__/deps/<id>.flow-helpers.{js,d.ts}` from its snapshot. Each helper's `opts` is typed from its step's `DSL…Node` interface.
+
+default-setup's helpers:
+
+| Helper | Step type | Options (besides `label`, `description`, `final`, `next`) | Does |
+|---|---|---|---|
+| `entry(...exits)` | `listener` track | — | The `flow.entry` track, run when the flow starts. Each argument is a chain; several run in parallel. Needs at least one (`entry([keepAlive()])`) |
+| `on(event, exits, label?)` | `listener` track | — | Runs `exits` when the flow receives `event`. `label` defaults to the event |
+| `schedule(cron, exits, label?)` | `schedule` track | — | Runs `exits` on a cron schedule (5 or 6 fields, checked at build) while the flow runs. `label` defaults to `Schedule (<cron>)`. The flow doesn't complete when its tracks drain |
+| `action(action, opts?)` | `action` | `map?: Record<string, string>`, `params?: Record<string, any>` | Runs the action with this label; the result is its return value. The label must be an action this pack's `actions` seed compiles |
+| `llm(prompt, opts?)` | `llm` | `map?`, `model?: ModelId` (`provider:model`, default `anthropic:claude-opus-5`), `temperature?`, `maxTokens?`, `systemPrompt?` | Renders the prompt with this label with the mapped params and calls `services.inference.generateText`. Result `{ text, usage, finishReason, warnings? }`. The label must be a prompt this pack's `prompts` seed compiles |
+| `fire(event, opts?)` | `fire` | `scope?: 'local' \| 'global'` (default `local`), `payload?: unknown` | Sends `event` with `payload` (a literal; mappings aren't resolved): `local` to the flow running the step, `global` to every running flow; `services.brain` listeners get it in either scope. Result `{ eventFired, eventScope, targetFlowId, payload }` |
+| `subflow(flow, opts?)` | `subflow` | `inherit?: boolean` (default `true`), `map?` | Starts the flow with this name and completes when it does. Its `flow.entry` event data holds the mapped fields (`$.event.data.<target>`). `inherit` is stored on the node (`propagateCtx`); the runtime doesn't read it |
+| `branch(conditions, else?, label?)` | `switch` | — | `conditions: { if: string; steps: DSLStepNode[] }[]`, `else?: DSLStepNode[]`. Runs the steps of the first condition that matches (see [Switch conditions](#switch-conditions)), else `else`; with no match and no `else` the chain ends. After a branch's steps, the chain continues with the step after the switch |
+| `keepAlive(label?)` | `keep_alive` | — | Never completes: keeps its track, and the flow, running |
+| `kill(label = 'Kill Flow')` | `kill` | — | Stops the flow running the step |
+| `query(prompt, opts?)` | `query` | `as?: string` (stored as `resultKey`) | Compiles, but has no runtime handler: it completes with `{ executed: true }` and does nothing |
+| `create(entity, opts?)` | `create` | — | No runtime handler (as `query`) |
+| `update(target, opts?)` | `update` | `onMissing?: 'fail' \| 'ignore' \| 'create'` | `target` must be the label of a node in the flow. No runtime handler (as `query`) |
+| `transform(script, opts?)` | `transform` | `outputType?: 'json' \| 'text' \| 'custom'` (default `json`) | No runtime handler (as `query`) |
+
+`action`, `llm`, `fire` and `subflow` option names come from their `DSL…Node` interfaces in `packages/default-setup/src/extensions/steps/<step>/types.ts`.
+
+### Mappings
+
+A step's `map` is `{ target: source }`. Each source is resolved when the step runs:
+
+- A string starting `$.` is a path into the step's execution context. `[field=value]` picks an array item.
+- Any other string is parsed as JSON when it parses (`'3'` → `3`, `'true'` → `true`), otherwise used as a literal string.
+- A value that resolves to `undefined` is passed as `undefined`.
+
+An `action` step's `params` is the step's `params` with the mapped values over it; `llm` renders its prompt with the mapped values.
+
+| Path | Value |
+|---|---|
+| `$.event.type` | The event that started the track (`flow.entry`, `user.command`, `schedule.<node id>`) |
+| `$.event.data` | The event's data |
+| `$.event.data.payload` | A sent event's payload: what `fire`'s `payload` holds, or what a client or `runFlow` sent (`$.event.data.payload.text`) |
+| `$.event.data.<target>` | In a subflow's `flow.entry` track, the subflow step's mapped field |
+| `$.lastStep.result` | The result of the step that ran before this one in the track (`$.lastStep.label` its label) |
+| `$.steps[label=<label>].result` | The result of an earlier step in this track, by label (`$.steps[id=<trace node id>]` by trace node) |
+
+`$.steps` holds only the track's own steps, in the order they completed.
+
+### Switch conditions
+
+A condition's `if` is `<key> <operator> <value>`:
+
+- **Key**: a `$.` path into the execution context, or a bare key read from the previous step's result (`intent` is `$.lastStep.result.intent`). An `if` with no operator is `<key> == true`.
+- **Value**: a `$.` path, `true`/`false`, a number, a quoted string (`'question'`), or otherwise the rest of the text as a string.
+
+| Operator | Matches when |
+|---|---|
+| `==`, `===` | loosely equal (`==`) |
+| `!=`, `!==` | loosely not equal |
+| `>`, `<`, `>=`, `<=` | both sides compared as numbers |
+| `contains`, `starts_with`, `ends_with` | the key's value as a string contains, starts or ends with the value |
+| `matches` | the value, as a regular expression (up to 500 characters), matches the key's value |
+| `is_empty` | the key's value is `null`, `undefined`, `''`, `[]` or `{}` (takes no value) |
+| `is_null` | the key's value is `null` or `undefined` (takes no value) |
 
 ### Rules
 
-- Default export must be a `FlowDSL` object (`export default { ... } satisfies FlowDSL`).
-- Import helpers from `#generated/flow-helpers` (auto-generated, typed).
-- Files prefixed with `_` are treated as helpers and not compiled.
+- The default export is the `FlowDSL` object (`export default { ... } satisfies FlowDSL`). Flow files run at build time in Node, so they can import anything; import step helpers from `#generated/flow-helpers`.
+- Only the `.ts` files directly in the flows directory are read, not subdirectories. Files starting with `_` and `*.example.ts` files are skipped, so shared flow pieces can live in `_helpers.ts`.
+- A flow name defined twice, or more than one `root: true`, fails the build.
+- At build time, `action` and `llm` steps must name actions and prompts this pack's own `actions` and `prompts` seeds compile. At seed time a flow is checked again against every action and prompt in the database; a flow that fails is reported and not seeded.
 
 ## Manifest configuration
 
@@ -296,7 +408,26 @@ Point your manifest at the seed directories:
 }
 ```
 
-`abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, an index of the keys and their items that Settings → Import Pack Seeds previews. At boot, the app hashes the compiled output and skips re-seeding when nothing has changed.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. A seed that reports errors fails: an external pack's error is recorded on its registry entry, and the same output isn't retried until it changes.
+
+### Seed policy
+
+`boot.seedPolicy` skips seed keys during boot seeding. It applies to built-in packs only (the loader drops an external pack's boot seed manifest, and its seeds run through the per-pack seeding above).
+
+| Field | Effect |
+|---|---|
+| `skipAtBoot: string[]` | These keys are never seeded at boot (default-setup: `settings`) |
+| `skipAfterOnboarding: string[]` | These keys are seeded at boot only until the user has onboarded (default-setup: `notes`) |
+
+### Include sets
+
+Seeders take an include set per key (`SeedIncludeSet = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry seeds every item; a set seeds only the top-level items it names, and an empty set skips the key. Boot seeding builds them from `seedPolicy`; Import Pack Seeds from the items the user picks. Items are named as `seeds.json` lists them:
+
+| Key | Item name |
+|---|---|
+| `actions`, `prompts` | The label |
+| `flows` | The flow name |
+| A seed entry | The record's first `identity` field other than `parent`, else its `name`, `title` or `label` |
 
 ## Seeding entities
 
@@ -332,6 +463,17 @@ Seed rows of an entity type from markdown or JSON in two parts of `abuddy.json`:
 
 An entry can't set or change any format settings; a pack that needs different settings defines its own format. Format names are lowercase with hyphens.
 
+| Format field | Description |
+|---|---|
+| `format` / `compiler` | Exactly one: `markdown-tree`, `json`, or a compiler module path (see [Compiler modules](#compiler-modules)) |
+| `entity` | The entity type the records seed, or an array of types. Each record's `entity` must be one of them (and `tree.branchEntity`); a built-in format tags records with `entity` only when it's a single string. Omitted, the entry is compiled but not seeded. Each type must be declared by the pack, a dependency or the SDK |
+| `identity` | Fields matched to find an existing row. `"parent"` also requires the row to be linked from the record's tree parent by `tree.relKind`. Required unless the entity type has a `find` hook: seeding a record without either fails |
+| `tree.branch` | A directory's own file (`index.md`) giving the directory's frontmatter and body |
+| `tree.branchEntity` | The entity type directories seed; defaults to `entity` |
+| `tree.relKind` | The relation from a parent row to each child row; defaults to `contains` |
+| `fields` | `markdown-tree` only (the manifest rejects it elsewhere): record field → `{ from, default?, type? }` |
+| `media` | A directory under an entry's `path`, copied with the seeds |
+
 ### Markdown
 
 - Each `.md` file is a record. Frontmatter is YAML 1.2, so `title: 2024` reads as a number; `"type": "string"` coerces it back.
@@ -350,7 +492,7 @@ The file holds an array of records (or `{ "records": [...] }`); a record may car
 
 ### Compiler modules
 
-When a source needs parsing that field sources can't express, give the format a `compiler` module instead of a built-in `format`. Its default export gets `{ key, path, packDir, format }` and returns records, each tagged with its `entity`:
+When a source needs parsing that field sources can't express, give the format a `compiler` module instead of a built-in `format`. Its default export gets a `SeedCompileContext` (`key`, `path`: the entry's absolute path, `packDir`: the seeding pack's directory, `format`) and returns records, or a promise of them, each tagged with its `entity`:
 
 ```typescript
 // src/seeds/compilers/glossary.ts
@@ -370,7 +512,30 @@ export default function compileGlossary({ path }: SeedCompileContext): SeedRecor
 "boot": { "seed": { "glossary": { "path": "src/seeds/glossary", "format": "glossary" } } }
 ```
 
-The build loads TypeScript compiler modules itself, and bundles every compiler module your formats name into `dist/build/seed-compilers.mjs` so packs depending on yours can use those formats. A record's `sourceHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. A format without `entity` is compiled but not seeded: pack code reads `<key>.seed.json` (default-setup's FAQs work this way). An entry `{ "seeder": "src/seeds/custom.ts" }` replaces the format and generic seeder with a module exporting `seed(ctx)`.
+The build loads TypeScript compiler modules itself, and bundles every compiler module your formats name into `dist/build/seed-compilers.mjs` so packs depending on yours can use those formats. A record's `sourceHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. A format without `entity` is compiled but not seeded: pack code reads `<key>.seed.json` (default-setup's FAQs work this way).
+
+### Seeder modules
+
+An entry `{ "seeder": "src/seeds/custom.ts" }` (no `path` or `format`) replaces the format and generic seeder with the module's named export `seed`, registered under the entry key. The build compiles nothing for it, so the module brings its own data.
+
+```typescript
+// src/seeds/custom.ts
+import type { SeederContext, SeedCounts } from '@abuddy/sdk/utils';
+
+export function seed(ctx: SeederContext): SeedCounts {
+  ctx.log('  custom seed');
+  return { created: 0, updated: 0, skipped: 0 };
+}
+```
+
+| `SeederContext` | Description |
+|---|---|
+| `compiledDir` | The pack's compiled seeds directory |
+| `include?` | This key's include set (see [Include sets](#include-sets)) |
+| `mode?` | `'keep-existing' \| 'replace-on-collision' \| 'wipe-and-replace'` (see [Change tracking](#change-tracking)) |
+| `log(...args)` | Logs when seeding is verbose |
+
+`seed` is synchronous and returns `SeedCounts`: `created`, `updated`, `skipped`, and `errors?: string[]`, where a non-empty list fails the seed.
 
 ### A dependency's formats
 
@@ -426,6 +591,15 @@ export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string
   remove: (id) => repository.memoCommands.delete(id),
 };
 ```
+
+| `SeedHooks<R>` member | Called | Returns |
+|---|---|---|
+| `find?(record, context)` | To match a record that no row's `seedKey` matches; replaces `identity` | `{ id, sourceHash? }` or `undefined` |
+| `create?(record, context)` | For a record with no row | The new row's id |
+| `update?(id, record, context)` | For a changed record whose row isn't edited | — |
+| `remove?(id)` | By `wipe-and-replace`, and to undo a create whose media copy or stamping failed | — |
+
+`SeedHookContext`: `parentId?` (the tree parent's row), `index` (the record's position among its siblings), `clearedFields: string[]` (on `update`, the fields the previous seed set that the record no longer sets; empty for `find` and `create`). A missing hook falls back to the generic seeder's behavior. A hook that throws fails that record (reported in the seed's errors) and seeding moves on.
 
 `create` and `update` store the record's fields under their names, as the record gives them, and `update` writes every field the record sets: change tracking records those fields' stored values. `update` also resets the fields in `clearedFields` to what `create` gives a record that doesn't set them (see [Change tracking](#change-tracking)). Hooks are keyed by entity type, not by format, so every pack that seeds `Memo` — with your format, its own, or one depending on yours — goes through them. A `find` hook replaces the format's `identity`. default-setup registers hooks for `Note`, `Document` and `Collection`, so rows seeded with its formats get the same shortCodes, display order and links as default-setup's own.
 

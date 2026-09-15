@@ -136,7 +136,7 @@
           },
           "earlySystem": {
             "type": "boolean",
-            "description": "Built-in packs only. Ignored for external packs."
+            "description": "Start this feature's system before EARS hydration. Built-in packs only."
           },
           "system": {
             "type": "object",
@@ -264,17 +264,9 @@
     "boot": {
       "type": "object",
       "properties": {
-        "earlySystem": {
-          "type": "string",
-          "description": "Built-in packs only. Ignored for external packs."
-        },
-        "createDefaultSettings": {
-          "type": "string",
-          "description": "Module that ensures default settings exist."
-        },
         "hooks": {
           "type": "string",
-          "description": "Module providing lifecycle hooks (e.g. shutdown)."
+          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack's backend stops)."
         },
         "seed": {
           "type": "object",

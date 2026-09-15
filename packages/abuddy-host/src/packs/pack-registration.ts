@@ -282,10 +282,16 @@ export function getRegisteredEARSPolicy(): { excludedEntityTypes: string[] } {
   return { excludedEntityTypes: excluded };
 }
 
-export function getRegisteredMigrations(): PackMigration[] {
+/**
+ * The migrations of the named registered packs. The host runner asks for the built-in packs',
+ * checked against the app version; an external pack's migrations are checked against its own
+ * pack version by `runPackMigrations`, so asking for every registered pack would run them twice.
+ */
+export function getRegisteredMigrations(packIds: Iterable<string>): PackMigration[] {
   const migrations: PackMigration[] = [];
-  for (const reg of registrations.values()) {
-    if (reg.migrations) migrations.push(...reg.migrations);
+  for (const id of packIds) {
+    const reg = registrations.get(id);
+    if (reg?.migrations) migrations.push(...reg.migrations);
   }
   return migrations;
 }

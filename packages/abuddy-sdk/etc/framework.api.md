@@ -12,9 +12,7 @@ import { z } from 'zod';
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
-export function defineSystem<Id extends string>(id: Id, opts?: {
-    designation?: string;
-}): <TEvents extends {
+export function defineSystem<Id extends string>(id: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
@@ -168,7 +166,7 @@ export interface SystemEntry {
         type: string;
     }, {
         type: string;
-    }>, 'id' | 'designation'>;
+    }>, 'id'>;
 }
 
 // @public
@@ -182,8 +180,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    designation?: string;
     // (undocumented)
     id: Id;
     _incoming: WithSystemId<Id, TEvents>;

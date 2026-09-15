@@ -2,12 +2,12 @@
 
 ## How It Works
 
-Migrations run once during backend startup, after LMDB is hydrated and default settings are created, but before any systems spawn.
+Migrations run once during backend startup, after LMDB is hydrated and the packs' `onInit` hooks have run (default-setup's creates default settings), but before any systems spawn.
 
 ```
 Startup sequence:
   hydrateSharded()       ← LMDB loaded
-  createDefaultSettings() ← Settings entity ensured
+  onInit hooks           ← Settings entity ensured (default-setup)
   runMigrations()        ← Migrations run here
   seedData()             ← Compiled DSL loaded
   backendActor.start()   ← Systems spawn

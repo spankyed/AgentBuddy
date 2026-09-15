@@ -155,6 +155,50 @@ export async function bundlePackSeedCompilers(
   }
 }
 
+/**
+ * Bundle the pack's generated flow helpers (src/__generated__/flow-helpers.ts) into one ES module,
+ * returned with the names it exports rather than written: the pack's snapshot carries it, and
+ * dependents' generated flow helpers re-export it. @abuddy/sdk and host-shared packages stay external.
+ */
+export async function bundlePackFlowHelpersModule(
+  packDir: string,
+  options: BundleRuntimeOptions = {},
+): Promise<{ success: true; module: string; exports: string[] } | { success: false; error: string }> {
+  const entryPath = path.join(packDir, 'src', '__generated__', 'flow-helpers.ts');
+  if (!fs.existsSync(entryPath)) {
+    return { success: false, error: 'No src/__generated__/flow-helpers.ts. Run "abuddy generate-entries" first.' };
+  }
+  const esbuild = await import('esbuild');
+  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const aliases = readTsconfigAliases(packDir);
+  const subpathImports = readSubpathImports(packDir);
+  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
+  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
+  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
+
+  try {
+    const result = await esbuild.build({
+      entryPoints: [entryPath],
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      target: 'node20',
+      outfile: path.join(packDir, 'flow-helpers.mjs'),
+      write: false,
+      metafile: true,
+      external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
+      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+      plugins,
+      minify: options.release ?? false,
+      logLevel: 'silent',
+    });
+    const [output] = Object.values(result.metafile.outputs);
+    return { success: true, module: result.outputFiles[0].text, exports: [...output.exports].sort() };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /** The pack's seed runtime bundle in its build dir: what dependents' unit tests register */
 export const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
 

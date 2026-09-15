@@ -63,9 +63,7 @@ export const bus: "bus";
 export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N>;
 
 // @public
-export function defineSystem<Id extends string>(id: Id, opts?: {
-    designation?: string;
-}): <TEvents extends {
+export function defineSystem<Id extends string>(id: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
@@ -302,8 +300,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    designation?: string;
     // (undocumented)
     id: Id;
     _incoming: WithSystemId<Id, TEvents>;

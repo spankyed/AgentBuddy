@@ -92,9 +92,7 @@ const SeedSectionSchema = z.record(z.string(), z.union([z.string(), SeedEntryCon
 });
 
 export const BootConfigSchema = z.object({
-  earlySystem: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
-  createDefaultSettings: z.string().describe('Module that ensures default settings exist.').optional(),
-  hooks: z.string().describe('Module providing lifecycle hooks (e.g. shutdown).').optional(),
+  hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack\'s backend stops).').optional(),
   seed: SeedSectionSchema
     .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows, settings) take a path, other keys an entry object.').optional(),
   seedPolicy: z.object({
@@ -140,7 +138,7 @@ export const FeatureEntrySchema = z.object({
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
-  earlySystem: z.boolean().describe('Built-in packs only. Ignored for external packs.').optional(),
+  earlySystem: z.boolean().describe('Start this feature\'s system before EARS hydration. Built-in packs only.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: ServicesSchema
@@ -221,6 +219,11 @@ export const ManifestSchema = z.object({
 }).strict().superRefine((manifest, ctx) => {
   if (!manifest.builtIn && manifest.boot?.seed?.settings !== undefined) {
     ctx.addIssue({ code: 'custom', path: ['boot', 'seed', 'settings'], message: 'The "settings" seed holds the app\'s own defaults, so only built-in packs have one; declare a feature\'s default settings with features[].settings' });
+  }
+  if (!manifest.builtIn) {
+    manifest.features?.forEach((feature, index) => {
+      if (feature.earlySystem) ctx.addIssue({ code: 'custom', path: ['features', index, 'earlySystem'], message: 'An early system starts before EARS hydration, before external packs load, so only built-in packs allowed to have one' });
+    });
   }
   for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
     if (typeof entry !== 'object' || !entry.format) continue;

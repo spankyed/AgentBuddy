@@ -109,6 +109,17 @@ describe('seedFormats and boot.seed entries', () => {
     expect(parseManifest({ ...pack, builtIn: true, boot: { seed: { settings: 'src/seeds/default-settings.ts' } } }).errors).toEqual([]);
   });
 
+  it('rejects the removed boot.earlySystem and boot.createDefaultSettings', () => {
+    expect(parseManifest({ ...pack, builtIn: true, boot: { earlySystem: 'src/system.ts' } }).errors).toEqual([expect.stringMatching(/"boot".*Unrecognized key.*earlySystem/)]);
+    expect(parseManifest({ ...pack, builtIn: true, boot: { createDefaultSettings: 'src/settings.ts' } }).errors).toEqual([expect.stringMatching(/"boot".*Unrecognized key.*createDefaultSettings/)]);
+  });
+
+  it('accepts features[].earlySystem only in a built-in pack: early systems start before external packs load', () => {
+    const features = [{ id: 'logs', earlySystem: true, system: { entry: 'src/logs/system.ts' } }];
+    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/"features\.0\.earlySystem": An early system starts before EARS hydration/)]);
+    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([]);
+  });
+
   it('rejects anything but a path on a specialty key', () => {
     expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });

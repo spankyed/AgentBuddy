@@ -56,7 +56,7 @@ src/
   migrations/          # Pack-owned migrations
 ```
 
-Each feature has a `feature.config.ts` for build-time config consumed by codegen. The `abuddy.json` manifest declares all features, entities, services, steps, artifacts, blocks, tiptap plugins, boot hooks, and DSL definitions.
+The `abuddy.json` manifest is each feature's only configuration: it declares all features (with their settings, entries and designations), entities, services, steps, artifacts, blocks, tiptap plugins, boot hooks, and DSL definitions.
 
 ### 4. Pack Build & Loading System (~55 commits)
 

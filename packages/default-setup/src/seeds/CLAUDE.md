@@ -1,33 +1,30 @@
 # Seeds
 
-Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and `boot.seed` describe them. `_compilers/` holds the formats' compiler modules and `hooks/` the seed hooks for Note, Document and Collection. Actions, prompts and flows run in a sandboxed scope at runtime: no module system, function bodies are extracted.
+Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and `boot.seed` describe them. `_compilers/` holds the formats' compiler modules and `hooks/` the seed hooks for Note, Document and Collection. Actions and prompts run in a sandboxed scope at runtime: no module system, their function bodies are extracted (with inlined helpers). Flows compile to Flow/Node graphs.
 
 ## Actions
 
-- Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`
-- Import types: `import type { ActionMeta, Services, Z } from '../../types'` (adjust depth)
-- No bare package imports or Node.js globals — compiler-enforced. The one exception is
-  `@abuddy/sdk/actions`, an allowlisted sandbox-safe module whose source is inlined into the
-  compiled body (see `INLINABLE_PACKAGE_IMPORTS` in `abuddy-sdk/src/build/compile-utils.ts`).
-  Type-only imports (`import type`) are erased before bundling and are always fine.
-- Files without `export const meta` are auto-detected as inlined helpers
-- See `WRITING-ACTIONS.md` for full reference
+- Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`. The flow action step passes all four (`extensions/steps/action/runtime.ts`); `services.action` runs an action with only `params` and `services`
+- Import types: `import type { ActionMeta } from '@abuddy/sdk/build'` and `import type { Services, Z } from '@/__generated__/services'`
+- Bare package imports fail the build, except `@abuddy/sdk/actions`, an allowlisted sandbox-safe module whose source is inlined into the compiled body (`INLINABLE_PACKAGE_IMPORTS` in `abuddy-sdk/src/build/compile-utils.ts`). Type-only imports (`import type`) are erased before bundling and are always fine. References to Node-only globals in the bundle are reported as warnings, not errors
+- Relative imports (`./_helpers/...`) are bundled in. A `.ts` file without `export const meta` is a helper, not an action, whatever its name; `.example.ts` files are skipped
+- Reference: `docs/public-facing/seeds.md`
 
 ## Prompts
 
 - Export `meta: PromptMeta` and `function template(params, usePrompt)` (synchronous, returns string)
-- Import types: `import type { PromptMeta } from '../types'`
-- See `WRITING-PROMPTS.md` for full reference
+- Import types: `import type { PromptMeta } from '@abuddy/sdk/build'`
+- Helper detection is the same as for actions (no `export const meta`)
 
 ## Flows
 
-- Default export a `FlowDSL` object (`export default { ... } satisfies FlowDSL`)
-- Import helpers from `#generated/flow-helpers` (auto-generated from step definitions in `abuddy.json`)
-- Files prefixed with `_` are helpers, not compiled
+- Default export a `FlowDSL` object (`export default { ... } satisfies FlowDSL`), `import type { FlowDSL } from '@abuddy/sdk/build'`
+- Import helpers from `#generated/flow-helpers` (generated from the step definitions in `abuddy.json`)
+- Files prefixed with `_` (and `.example.ts` files) aren't compiled; the `_` rule applies only to flows
 
 ## Settings
 
-Each feature has a `settings.ts` (`src/features/<name>/settings.ts`) that declares its slice of the default settings. The compiler deep-merges the base settings (`src/seeds/default-settings.ts`) with all 13 per-feature files into a single compiled object. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@abuddy/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
+Each feature has a `settings.ts` (`src/features/<name>/settings.ts`) that declares its slice of the default settings. The compiler deep-merges the base settings (`src/seeds/default-settings.ts`) with all 12 per-feature files (`features[].settings` in `abuddy.json`) into a single compiled object (the `settings` seed entry; `boot.seedPolicy.skipAtBoot` keeps it out of boot seeding). Only built-in packs may seed `settings`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@abuddy/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
 
 Every feature settings file follows this shape:
 
@@ -46,7 +43,7 @@ export default {
 
 ## Notes
 
-Markdown under `notes/`, compiled with the `notes` format (`markdown-tree`, entity `Note`) and seeded through `hooks/notes.ts`. Frontmatter (YAML): `title` (default: the file name, dashes as spaces), `type` (`document` | `tasklist` | `task`), `icon`, `favorite`, `hideCompletedChildren`, `completed`. A directory is a parent note, its `index.md` giving the parent's frontmatter and content.
+Markdown under `notes/` (the welcome note), compiled with the `notes` format (`markdown-tree`, entity `Note`) and seeded through `hooks/notes.ts`. Frontmatter (YAML): `title` (default: the file name, dashes as spaces), `type` (`document` | `tasklist` | `task`), `icon`, `favorite`, `hideCompletedChildren`, `completed`. A directory is a parent note, its `index.md` giving the parent's frontmatter and content.
 
 ## Library
 
@@ -56,9 +53,20 @@ Markdown under `library/`, compiled with the `library` format (`_compilers/libra
 
 Markdown under `faqs/`, compiled with the `faqs` format (`_compilers/faqs.ts`) for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not seeded into the database.
 
+## Seed hooks
+
+`hooks/notes.ts` (`noteSeedHooks`) and `hooks/library.ts` (`documentSeedHooks`, `collectionSeedHooks`) are `SeedHooks` from `@abuddy/sdk/seed`, registered per entity through `abuddy.json` `seedHooks` (`"Note": "src/seeds/hooks/notes.ts#noteSeedHooks"`). An entity type's hooks can be registered by one pack only. Every member is optional; without one the generic seeder does it directly:
+
+- `find(record, ctx)` — the existing row for a record (`{ id, sourceHash }`), replacing the entry's `identity` match. The seeder first looks up the row by its seed key and only falls back to `find` for rows no seed has claimed
+- `create(record, ctx)` — creates the row, returns its id (call the feature's repository commands, so seeded rows match app-created ones)
+- `update(id, record, ctx)` — writes the record's fields, and resets `ctx.clearedFields` to what `create` gives a record that doesn't set them
+- `remove(id)` — deletes a row whose media copy or stamping failed after `create`
+
+`SeedHookContext` is `{ parentId?, index, clearedFields }`: the parent row for tree children, the record's position among its siblings, and on update the fields the row's previous seed set that the record no longer does (empty for `find` and `create`). The seeder stamps `sourceHash`, `seededFields` and `seedKey` itself after `create`/`update`, so hooks needn't store them.
+
 ## Re-seeding
 
-Seeded rows keep their record's `sourceHash` and `seededFields` (a hash of the values the seeder wrote). A re-seed updates a row only when the hash changed and the row's seeded fields still hold those values; it leaves edited rows, rows without recorded seeded values, and rows without a stored hash (user-created) alone. An update resets the fields the row's previous seed set that the record no longer sets (the Note hooks reset them to a new note's values); fields no seed set, like a user's favorite, stay. Rows are found by `seedKey` (the seeding pack, entry key and source identity), so a renamed row isn't seeded again. Flows store `seededGraph` (their row, nodes and relations) for the same edit check. Flow and node ids come from the flow's name, so a flow whose name another pack's flow has (or whose ids a user's flow has) isn't seeded and the seed reports it. `keep-existing` skips existing rows, `wipe-and-replace` removes the entry's rows first. See `docs/public-facing/seeds.md`.
+Seeded rows keep their record's `sourceHash` and `seededFields` (a hash of the values the seeder wrote). A re-seed updates a row only when the hash changed and the row's seeded fields still hold those values; it leaves edited rows, rows without recorded seeded values, and rows without a stored hash (user-created) alone. An update resets the fields the row's previous seed set that the record no longer sets (the Note hooks reset them to a new note's values); fields no seed set, like a user's favorite, stay. Rows are found by `seedKey`: `<packId>:<entry key>/<record identity>`, with each tree child's identity appended to its parent's key, so a renamed row isn't seeded again. Flows store `seededGraph` (their row, nodes and relations) for the same edit check. Flow and node ids come from the flow's name, so a flow whose name another pack's flow has (or whose ids a user's flow has) isn't seeded and the seed reports it. `keep-existing` skips existing rows, `wipe-and-replace` removes the entry's rows first. See `docs/public-facing/seeds.md`.
 
 ## Commands
 

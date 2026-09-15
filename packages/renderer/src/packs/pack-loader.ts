@@ -84,9 +84,8 @@ export async function loadPackPlugin(
       plugin.icon = await resolveLucideIcon(manifest.icon);
     }
 
-    if (manifest.designation && !plugin.designation) {
-      plugin.designation = manifest.designation;
-    }
+    // The manifest is the only designation source: a plugin module's own designation doesn't count
+    plugin.designation = manifest.designation;
 
     return plugin as Plugin;
   } catch (err) {

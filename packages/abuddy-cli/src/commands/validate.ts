@@ -36,7 +36,10 @@ export async function validate(_args: string[]) {
 
   const manifestPath = path.join(root, 'abuddy.json');
   const manifestResult = validateManifest(manifestPath);
-  const featureResult = await validateFeatures(path.join(root, 'src', 'features'));
+  // Checked against the pack only when the manifest parses: its features[] is what's on disk to check
+  const featureResult = manifestResult.errors.length === 0
+    ? validateFeatures(root, JSON.parse(fs.readFileSync(manifestPath, 'utf-8')))
+    : { errors: [], warnings: [] };
   const depResult = await validateDeps(root, manifestPath);
 
   const errors = [...manifestResult.errors, ...featureResult.errors, ...depResult.errors];

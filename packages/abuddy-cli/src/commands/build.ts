@@ -15,6 +15,7 @@ import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
+import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { BUNDLE_PATHS } from '@abuddy/host/packs';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { generate, resolveDeps } from './generate';
@@ -156,7 +157,16 @@ export async function build(args: string[]) {
     console.error(`\nPack types bundle failed: ${packTypes.error}`);
     process.exitCode = 1;
   }
-  const snapshot: PackSnapshot = { types, defs, manifest, sdkVersion: sdkVersion() };
+  // Flow helpers for dependents: their generated flow helpers re-export this pack's
+  const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, BUNDLE_PATHS.typesDir), { release });
+  if (!flowHelpers.success) {
+    console.error(`\nFlow helpers bundle failed: ${flowHelpers.error}`);
+    process.exitCode = 1;
+  }
+  const snapshot: PackSnapshot = {
+    types, defs, manifest, sdkVersion: sdkVersion(),
+    ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
+  };
   fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
   fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
 
