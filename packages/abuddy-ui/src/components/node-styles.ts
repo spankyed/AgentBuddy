@@ -13,7 +13,6 @@ export interface NodeConfig {
     inputs: number    // -1 means unlimited
     outputs: number   // -1 means unlimited
   }
-  component?: string
   isImplemented?: boolean
   isDisabled?: boolean
 }
@@ -150,7 +149,6 @@ function buildNodeConfigs(): Record<string, NodeConfig> {
       icon: step.fe.nodeConfig.icon as Component,
       ...(step.kind === 'trigger' && {
         connectionRules: { inputs: 0, outputs: -1 },
-        component: 'TriggerNode',
       }),
     }
   }

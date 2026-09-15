@@ -16,7 +16,6 @@ export const llmStepFE: StepDefinition = {
       bgColor: 'bg-indigo-500/10',
       hoverBgColor: 'group-hover:bg-indigo-500/15',
       connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
       category: 'ai',
       isImplemented: true,
       isDisabled: true,

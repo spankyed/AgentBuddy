@@ -45,7 +45,7 @@
     "test:all": "npm run test:unit && npm run test:e2e",
     "test:check": "npm run typecheck && npm run test:unit",
     "start": "node packages/dev-mode.js",
-    "start:gen": "npm run generate:defs -w @app/default-setup && node packages/dev-mode.js",
+    "start:gen": "npm run compile && node packages/dev-mode.js",
     "start:inspect": "ELECTRON_INSPECT=true node packages/dev-mode.js",
     "build:be": "npm run build --workspace @app/api",
     "prebuild:be": "npm run generate:entries -w @app/default-setup && npm run compile",

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadPackFEEntry, loadPackFrontend, loadPackPlugin } from '../pack-loader';
+import { loadPackFEEntry, loadPackFrontend } from '../pack-loader';
 
 let dir: string;
 
@@ -48,39 +48,15 @@ describe('loadPackFEEntry', () => {
   });
 });
 
-// abuddy.json features[].designation is the only designation source
-describe('loadPackPlugin', () => {
-  const plugin = (fields: string) => `export default { id: "widget", state: {}, canvas: {}, icon: {}${fields} };`;
-  const manifest = { id: 'widget', entry: 'widget.mjs', label: 'Widget', icon: 'Zap' };
-
-  it("uses the manifest's designation over the plugin module's own", async () => {
-    fs.writeFileSync(path.join(dir, 'widget.mjs'), plugin(', designation: "other"'));
-    const loaded = await loadPackPlugin({ ...manifest, designation: 'widget' }, pathToFileURL(dir).href);
-    expect(loaded?.designation).toBe('widget');
-  });
-
-  it("drops a plugin module's own designation when the manifest declares none", async () => {
-    fs.writeFileSync(path.join(dir, 'widget.mjs'), plugin(', designation: "widget"'));
-    const loaded = await loadPackPlugin(manifest, pathToFileURL(dir).href);
-    expect(loaded?.designation).toBeUndefined();
-  });
-});
-
 // A pack with frontend code is reported to the application actor once its load finished, whatever it added:
 // the bus holds back its systems' startup data until then
 describe('loadPackFrontend', () => {
   it('returns no plugins when the FE entry fails to load', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js', plugins: [] })).resolves.toEqual([]);
-  });
-
-  it('returns no plugins when every plugin entry fails to load', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const plugins = [{ id: 'widget', entry: 'dist/widget.js', label: 'Widget', icon: 'Zap' }];
-    await expect(loadPackFrontend({ id: 'broken', plugins })).resolves.toEqual([]);
+    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' })).resolves.toEqual([]);
   });
 
   it('returns null for a pack without frontend code', async () => {
-    await expect(loadPackFrontend({ id: 'backend-only', plugins: [] })).resolves.toBeNull();
+    await expect(loadPackFrontend({ id: 'backend-only' })).resolves.toBeNull();
   });
 });

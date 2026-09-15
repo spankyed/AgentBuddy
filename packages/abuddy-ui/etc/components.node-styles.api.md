@@ -88,8 +88,6 @@ export interface NodeConfig {
     // (undocumented)
     color: string;
     // (undocumented)
-    component?: string;
-    // (undocumented)
     connectionRules: {
         inputs: number;
         outputs: number;

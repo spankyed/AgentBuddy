@@ -35,7 +35,5 @@ const componentMap: Record<string, unknown> = {
 
 export const artifactsFE: ArtifactDefinition[] = artifacts.map(def => ({
   ...def,
-  fe: def.fe
-    ? { ...def.fe, component: componentMap[def.type], loadComponent: undefined }
-    : undefined,
+  fe: def.fe ? { ...def.fe, component: componentMap[def.type] } : undefined,
 }));

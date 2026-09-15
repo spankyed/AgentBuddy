@@ -46,9 +46,7 @@
         "entry": "src/features/threads/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/threads/fe/plugin.ts",
-        "label": "Threads",
-        "icon": "BotMessageSquare"
+        "entry": "src/features/threads/fe/plugin.ts"
       },
       "contributions": "src/features/threads/fe/contributions",
       "services": {
@@ -70,9 +68,7 @@
         "entry": "src/features/code/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/code/fe/plugin.ts",
-        "label": "Code",
-        "icon": "Code2"
+        "entry": "src/features/code/fe/plugin.ts"
       },
       "services": {
         "cli": "src/features/code/be/services/cli.ts#cliService",
@@ -90,9 +86,7 @@
         "entry": "src/features/notes/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts",
-        "label": "Notes",
-        "icon": "NotebookText"
+        "entry": "src/features/notes/fe/plugin.ts"
       },
       "contributions": "src/features/notes/fe/contributions",
       "services": {},
@@ -109,9 +103,7 @@
         "entry": "src/features/browser/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/browser/fe/plugin.ts",
-        "label": "Browser",
-        "icon": "Globe"
+        "entry": "src/features/browser/fe/plugin.ts"
       },
       "services": {
         "browser": "src/features/browser/be/services/browser.ts#browserService"
@@ -128,10 +120,7 @@
         "entry": "src/features/library/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/library/fe/plugin.ts",
-        "label": "Library",
-        "icon": "Library",
-        "isPinned": true
+        "entry": "src/features/library/fe/plugin.ts"
       },
       "contributions": "src/features/library/fe/contributions",
       "services": {
@@ -150,10 +139,7 @@
         "entry": "src/features/flows/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/flows/fe/plugin.ts",
-        "label": "Flows",
-        "icon": "Network",
-        "isPinned": true
+        "entry": "src/features/flows/fe/plugin.ts"
       },
       "services": {},
       "repositories": {
@@ -172,10 +158,7 @@
         ]
       },
       "plugin": {
-        "entry": "src/features/actions/fe/plugin.ts",
-        "label": "Actions",
-        "icon": "Play",
-        "isPinned": true
+        "entry": "src/features/actions/fe/plugin.ts"
       },
       "services": {
         "action": "src/features/actions/be/services/action.ts#actionService"
@@ -193,10 +176,7 @@
         "outgoingEventsType": "OutgoingPromptEvents"
       },
       "plugin": {
-        "entry": "src/features/prompts/fe/plugin.ts",
-        "label": "Prompts",
-        "icon": "Sparkle",
-        "isPinned": true
+        "entry": "src/features/prompts/fe/plugin.ts"
       },
       "services": {
         "prompt": "src/features/prompts/be/services/prompt.ts#promptService"
@@ -214,10 +194,7 @@
         "entry": "src/features/brain/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/brain/fe/plugin.ts",
-        "label": "Brain",
-        "icon": "Brain",
-        "isPinned": true
+        "entry": "src/features/brain/fe/plugin.ts"
       },
       "services": {
         "brain": "src/features/brain/be/services/brain.ts#brainService",
@@ -235,10 +212,7 @@
         "entry": "src/features/database/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/database/fe/plugin.ts",
-        "label": "Database",
-        "icon": "Database",
-        "isPinned": true
+        "entry": "src/features/database/fe/plugin.ts"
       },
       "services": {
         "database": "src/features/database/be/services/database.ts#databaseService"
@@ -252,10 +226,7 @@
         "entry": "src/features/logs/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/logs/fe/plugin.ts",
-        "label": "Logs",
-        "icon": "ScrollText",
-        "isPinned": true
+        "entry": "src/features/logs/fe/plugin.ts"
       },
       "services": {},
       "earlySystem": true
@@ -271,9 +242,7 @@
         ]
       },
       "plugin": {
-        "entry": "src/features/settings/fe/plugin.ts",
-        "label": "Settings",
-        "icon": "Settings"
+        "entry": "src/features/settings/fe/plugin.ts"
       },
       "services": {
         "settings": "src/features/settings/be/services/settings.ts#settingsService"
@@ -522,6 +491,13 @@
         "monaco"
       ],
       "prefix": "action:",
+      "inline": [
+        "ai",
+        "@ai-sdk/provider",
+        "@ai-sdk/provider-utils",
+        "@ai-sdk/gateway",
+        "@standard-schema/spec"
+      ],
       "globals": {
         "services": "typeof _dsl.services",
         "z": "typeof _dsl.z",

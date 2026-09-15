@@ -13,7 +13,6 @@ import {
   BUNDLE_FORMAT_VERSION,
   isBundleDir,
   readBundleInfo,
-  resolvePackSeedsDir,
   isHostCompatible,
   withModuleBridge,
 } from '@abuddy/host/packs';
@@ -235,53 +234,6 @@ export function withHostResolution<T>(fn: () => T): T {
   return withModuleBridge({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url }, fn);
 }
 
-function loadSystemFromCJS(
-  entry: string,
-  packDir: string,
-  featureId: string,
-): { machine: import('xstate').AnyStateMachine; events: Set<string> } | null {
-  const compiledPath = path.resolve(packDir, 'dist', 'systems', `${featureId}.cjs`);
-  const fullPath = fs.existsSync(compiledPath)
-    ? compiledPath
-    : path.resolve(packDir, entry);
-
-  if (!fullPath.startsWith(packDir + path.sep)) {
-    logger.warn(`System entry escapes pack directory: ${entry}`);
-    return null;
-  }
-  if (!fs.existsSync(fullPath)) {
-    logger.warn(`System entry not found: ${fullPath}`);
-    return null;
-  }
-
-  try {
-    return withHostResolution(() => {
-      const mod = esmRequire(fullPath);
-      const raw = mod.default || mod.system || mod.machine;
-      if (!raw) {
-        // Name the file actually loaded — that is the compiled
-        // dist/systems/<id>.cjs when present, NOT the `entry` .ts path — and
-        // list what it did export. A named-only export (`export const fooEntry`
-        // with no `export default`) is the usual cause, and reporting `entry`
-        // alone makes it look like a missing build artifact instead.
-        const found = Object.keys(mod).filter((k) => k !== '__esModule');
-        logger.warn(
-          `No machine export found in ${path.relative(packDir, fullPath)}: ` +
-          `expected a default export (or \`system\`/\`machine\`), found ` +
-          `${found.length ? found.join(', ') : 'no exports'}`,
-        );
-        return null;
-      }
-      // Unwrap SystemEntry pattern ({ spec, machine }) if present
-      const machine = raw.machine ?? raw;
-      return { machine, events: new Set<string>(machine.events || []) };
-    });
-  } catch (err) {
-    logger.error(`Failed to load system from ${entry}:`, err as Error);
-    return null;
-  }
-}
-
 export function loadSingleExternalPack(
   manifest: import('@abuddy/host/packs').PackManifest,
   dir: string,
@@ -292,21 +244,24 @@ export function loadSingleExternalPack(
     return null;
   }
 
-  if (isBundleDir(dir)) {
-    try {
-      const info = readBundleInfo(dir);
-      if (Math.floor(info.formatVersion) !== BUNDLE_FORMAT_VERSION) {
-        logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${BUNDLE_FORMAT_VERSION})`);
-        return null;
-      }
-    } catch (err) {
-      logger.warn(`Skipping ${manifest.id}: unreadable ${BUNDLE_PATHS.info}`, err as Error);
+  const runtimeEntry = path.join(dir, BUNDLE_PATHS.runtimeEntry);
+  if (!isBundleDir(dir) || !fs.existsSync(runtimeEntry)) {
+    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack bundle (no ${BUNDLE_PATHS.info} or ${BUNDLE_PATHS.runtimeEntry}). Install it with abuddy install or abuddy dev`);
+    return null;
+  }
+  try {
+    const info = readBundleInfo(dir);
+    if (Math.floor(info.formatVersion) !== BUNDLE_FORMAT_VERSION) {
+      logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${BUNDLE_FORMAT_VERSION})`);
       return null;
     }
+  } catch (err) {
+    logger.warn(`Skipping ${manifest.id}: unreadable ${BUNDLE_PATHS.info}`, err as Error);
+    return null;
   }
 
-  const snapshotPath = [path.join(dir, BUNDLE_PATHS.snapshot), path.join(dir, 'dist', 'snapshot.json')].find(p => fs.existsSync(p));
-  if (snapshotPath) {
+  const snapshotPath = path.join(dir, BUNDLE_PATHS.snapshot);
+  if (fs.existsSync(snapshotPath)) {
     try {
       const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
       const hostSdk = getHostSdkVersion();
@@ -322,10 +277,7 @@ export function loadSingleExternalPack(
     } catch {}
   }
 
-  const runtimeEntry = path.join(dir, BUNDLE_PATHS.runtimeEntry);
-  const pack = fs.existsSync(runtimeEntry)
-    ? loadBundledRuntime(manifest, dir, runtimeEntry)
-    : loadLegacyLayout(manifest, dir);
+  const pack = loadBundledRuntime(manifest, dir, runtimeEntry);
   if (!pack) return null;
 
   if (!pack.ears && (manifest.entities || manifest.relKinds)) {
@@ -359,7 +311,7 @@ function loadBundledRuntime(
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
-      mod.setCompiledDir?.(resolvePackSeedsDir(dir));
+      mod.setCompiledDir?.(path.join(dir, BUNDLE_PATHS.seedsDir));
       return mod.registration;
     });
   } catch (err) {
@@ -398,59 +350,6 @@ function loadBundledRuntime(
     seedHooks: registration.seedHooks,
     features: registration.features,
   };
-}
-
-/**
- * Packs built before the bundle layout (dist/systems/*.cjs + optional dist/index.js).
- * Kept so already-installed packs keep loading; rebuilding with a current abuddy CLI
- * switches them to runtime/index.cjs.
- */
-function loadLegacyLayout(
-  manifest: import('@abuddy/host/packs').PackManifest,
-  dir: string,
-): LoadedPack | null {
-  logger.warn(`Pack ${manifest.id} uses the pre-bundle layout (no ${BUNDLE_PATHS.runtimeEntry}); rebuild it with a current abuddy CLI`);
-  const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
-
-  const pluginEntries = manifest.features;
-  if (pluginEntries) {
-    for (const plugin of pluginEntries) {
-      if (!plugin.system?.entry) continue;
-
-      const system = loadSystemFromCJS(plugin.system.entry, dir, plugin.id);
-      if (system) {
-        if (plugin.system.events?.incoming) {
-          for (const evt of plugin.system.events.incoming) {
-            system.events.add(evt);
-          }
-        }
-        systems.set(plugin.id, system);
-        logger.info(`Loaded system: ${manifest.id}/${plugin.id}`);
-      }
-    }
-  }
-
-  const pack: LoadedPack = { manifest, dir, systems };
-
-  const mainEntry = path.join(dir, 'dist', 'index.js');
-  if (fs.existsSync(mainEntry)) {
-    try {
-      withHostResolution(() => {
-        const mod = esmRequire(mainEntry);
-        if (mod.services) pack.services = mod.services;
-        if (mod.steps) pack.steps = mod.steps;
-        if (mod.artifacts) pack.artifacts = mod.artifacts;
-        if (mod.blocks) pack.blocks = mod.blocks;
-        if (mod.ears) pack.ears = mod.ears;
-        if (mod.boot) pack.boot = mod.boot;
-        if (mod.migrations) pack.migrations = mod.migrations;
-      });
-    } catch (err) {
-      logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
-    }
-  }
-
-  return pack;
 }
 
 export function clearPackRequireCache(packDir: string): void {

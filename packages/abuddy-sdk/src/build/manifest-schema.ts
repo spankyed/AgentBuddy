@@ -30,6 +30,7 @@ export const DslEntrySchema = z.object({
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
   prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
   globals: z.record(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
+  inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @abuddy/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
 
 /** Seed keys compiled and seeded by the SDK's own compilers; they take a path, as a string or `{ path }` */
@@ -107,15 +108,11 @@ const SystemSchema = z.object({
   sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s: other features of this pack, plugins of its dependencies, or host plugins ("application"). Each receiving plugin\'s generated event type includes this system\'s outgoing events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
-    outgoing: z.array(z.string()).describe('Event types this system emits.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
 }).strict();
 
 const PluginSchema = z.object({
-  entry: z.string().describe('Path to the frontend plugin module.'),
-  label: z.string().describe('Display name shown in the sidebar.'),
-  icon: z.string().describe('Icon name from the icon library.'),
-  isPinned: z.boolean().describe('Whether this plugin is pinned in the sidebar by default.').optional(),
+  entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
 }).strict();
 
 /**
@@ -160,10 +157,8 @@ const EntityShapeSchema = z.object({
 }).strict();
 
 const FEConfigSchema = z.object({
-  entry: z.string().describe('Path to the frontend entry module.').optional(),
   tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
   appExtensions: z.record(z.string(), z.string()).describe('Named app extensions. Keys are extension names, values are paths to Vue components.').optional(),
-  styles: z.string().describe('Path to a CSS file to include in the frontend bundle.').optional(),
   bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Frontend-specific pack configuration.');
 

@@ -54,7 +54,7 @@ export async function addArtifact(args: string[], root: string) {
   const registerPath = manifest.artifacts;
 
   if (registerPath) {
-    // The host renders fe.component, which register-fe.ts sets from its componentMap; the registry never calls loadComponent
+    // The host renders fe.component, which register-fe.ts sets from its componentMap
     const registerFile = path.join(root, registerPath);
     const importsIcon = fs.existsSync(registerFile)
       && new RegExp(`import\\s*\\{[^}]*\\b${icon}\\b[^}]*\\}\\s*from\\s*['"]lucide-vue-next['"]`).test(fs.readFileSync(registerFile, 'utf-8'));

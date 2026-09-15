@@ -2,7 +2,7 @@
  * Pack bundle: the one layout an external pack has everywhere — build output
  * (dist/), the release archive, and the installed pack directory.
  *
- *   <id>/abuddy.json            resolved manifest (fe paths point into runtime/)
+ *   <id>/abuddy.json            the pack's manifest
  *   <id>/bundle.json            format version, versions, source, sha256 per file
  *   <id>/runtime/index.cjs      backend: exports `registration` + `setCompiledDir`
  *   <id>/runtime/fe.js, fe.css  frontend
@@ -11,7 +11,7 @@
  *   <id>/types/snapshot.json    types + manifest for dependents' codegen
  *
  * `abuddy build` writes runtime/, build/ and types/ into dist/. Staging adds the
- * resolved manifest and bundle.json. The installer copies a verified stage into
+ * manifest and bundle.json. The installer copies a verified stage into
  * the packs directory unchanged, and the host loader reads it as-is.
  */
 import * as crypto from 'node:crypto';
@@ -66,13 +66,6 @@ function listFiles(dir: string, base = dir): string[] {
   return out.sort();
 }
 
-/** Directory holding an installed pack's compiled seed data (legacy layout: dist/). */
-export function resolvePackSeedsDir(packDir: string): string {
-  return fs.existsSync(path.join(packDir, BUNDLE_PATHS.runtimeEntry))
-    ? path.join(packDir, BUNDLE_PATHS.seedsDir)
-    : path.join(packDir, 'dist');
-}
-
 export function isBundleDir(dir: string): boolean {
   return fs.existsSync(path.join(dir, BUNDLE_PATHS.info));
 }
@@ -83,19 +76,13 @@ export function hasBuiltBundleSections(packRoot: string): boolean {
   return fs.existsSync(path.join(dist, BUNDLE_PATHS.runtimeEntry)) && fs.existsSync(path.join(dist, BUNDLE_PATHS.snapshot));
 }
 
-/** The manifest as installed: frontend paths point at the bundle's runtime files. */
-export function resolveBundleManifest(source: PackManifest, bundleRoot: string): PackManifest {
-  const manifest: PackManifest = JSON.parse(JSON.stringify(source));
-  const hasFe = fs.existsSync(path.join(bundleRoot, BUNDLE_PATHS.feEntry));
-  const hasStyles = fs.existsSync(path.join(bundleRoot, BUNDLE_PATHS.feStyles));
-  if (hasFe) {
-    manifest.fe = { ...(manifest.fe ?? {}), entry: BUNDLE_PATHS.feEntry } as PackManifest['fe'];
-    if (hasStyles) (manifest.fe as { styles?: string }).styles = BUNDLE_PATHS.feStyles;
-    else delete (manifest.fe as { styles?: string }).styles;
-  } else {
-    delete manifest.fe;
-  }
-  return manifest;
+/** A bundle's frontend files, bundle-relative: its FE entry and stylesheet when `abuddy build` wrote them */
+export function packFrontendFiles(bundleDir: string): { entry?: string; styles?: string } {
+  const has = (file: string) => fs.existsSync(path.join(bundleDir, file));
+  return {
+    entry: has(BUNDLE_PATHS.feEntry) ? BUNDLE_PATHS.feEntry : undefined,
+    styles: has(BUNDLE_PATHS.feStyles) ? BUNDLE_PATHS.feStyles : undefined,
+  };
 }
 
 /**
@@ -124,7 +111,7 @@ export function stageBundle(
     });
   }
 
-  const manifest = resolveBundleManifest(options.version ? { ...source, version: options.version } : source, stageDir);
+  const manifest: PackManifest = options.version ? { ...source, version: options.version } : source;
   fs.writeFileSync(path.join(stageDir, BUNDLE_PATHS.manifest), JSON.stringify(manifest, null, 2) + '\n');
 
   const files: Record<string, string> = {};

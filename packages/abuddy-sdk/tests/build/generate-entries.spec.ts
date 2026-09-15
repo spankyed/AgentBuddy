@@ -44,14 +44,14 @@ describe('generated events', () => {
   });
 
   it('includes a plugin-only feature something sends to', () => {
-    const files = generate({ features: [system('notes', { sendsTo: ['sidebar'] }), { id: 'sidebar', plugin: { entry: 'x', label: 'S', icon: 'X' } }] });
+    const files = generate({ features: [system('notes', { sendsTo: ['sidebar'] }), { id: 'sidebar', plugin: { entry: 'x' } }] });
     expect(files['src/__generated__/events.ts']).toContain("'sidebar': __events_notes;");
   });
 
   it("intersects each dependency's plugin events and accepts its plugins as targets", () => {
     const files = generate(
       { features: [system('memos', { sendsTo: ['threads'] })] },
-      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x', label: 'T', icon: 'X' } }] }) },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }] }) },
     );
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import type { PackEvents as __dep_base_pack_PackEvents } from './deps/base-pack.js';");
@@ -70,8 +70,8 @@ describe('generated events', () => {
 describe('generated frontend entry', () => {
   it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
     const files = generate({ features: [
-      { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin', label: 'Settings', icon: 'X' } },
-      { id: 'notes', plugin: { entry: 'src/notes/plugin', label: 'Notes', icon: 'X' } },
+      { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin' } },
+      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
     expect(fe).toContain("const Settings = { ..._Settings, designation: 'settings' }");

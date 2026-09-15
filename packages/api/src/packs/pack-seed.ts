@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { LoadedPack } from './pack-loader';
-import { resolvePackSeedsDir, modifyRegistry } from '@abuddy/host/packs';
+import { BUNDLE_PATHS, modifyRegistry } from '@abuddy/host/packs';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
 import { repository } from '@abuddy/sdk/ears';
@@ -86,7 +86,7 @@ export function seedPackData(
   let anySeeded = false;
 
   for (const pack of packs) {
-    const distDir = resolvePackSeedsDir(pack.dir);
+    const distDir = path.join(pack.dir, BUNDLE_PATHS.seedsDir);
     const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
     if (!currentHash) {
       // Nothing to seed: an error from an earlier version's seed no longer applies

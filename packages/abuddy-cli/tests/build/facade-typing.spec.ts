@@ -42,7 +42,7 @@ const BASE_PACK = {
     features: [{
       id: 'threads',
       system: { entry: 'src/system.ts' },
-      plugin: { entry: 'src/plugin.ts', label: 'Threads', icon: 'Box' },
+      plugin: { entry: 'src/plugin.ts' },
       services: { search: 'src/search.ts#searchService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
     }],

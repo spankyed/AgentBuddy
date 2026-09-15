@@ -10,6 +10,7 @@ import {
   installPack as runInstall, uninstallPack as runUninstall,
   installPackFromGitHub,
   getPackContributions, type PackContributions,
+  packFrontendFiles,
   checkForUpdates,
 } from '@abuddy/host/packs';
 import { teardownPack, activatePack } from './pack-lifecycle';
@@ -59,16 +60,6 @@ function readManifest(dir: string): Record<string, any> | null {
   return null;
 }
 
-function extractPluginNames(manifest: Record<string, any> | null): string[] {
-  if (!manifest) return [];
-  if (manifest.features) {
-    return manifest.features
-      .filter((f: any) => f.plugin)
-      .map((f: any) => f.plugin.label ?? f.id);
-  }
-  return [];
-}
-
 function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contrib: PackContributions | null): PackInfo {
   return {
     ...base,
@@ -96,11 +87,10 @@ function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
       enabled: e.enabled,
       builtIn: false,
       entityCount: Object.keys(entities).length,
-      hasFeEntry: !!manifest?.fe?.entry || extractPluginNames(manifest).length > 0 || (contrib?.systems ?? []).length > 0,
+      hasFrontend: !!packFrontendFiles(e.dir).entry,
       hostVersion: manifest?.hostVersion,
       description: manifest?.description,
       entities,
-      plugins: extractPluginNames(manifest),
       permissions: manifest?.permissions ?? [],
       dir: e.dir,
       registeredAt: e.registeredAt,
@@ -123,10 +113,9 @@ function toBuiltInPackInfoList(): PackInfo[] {
       enabled: true,
       builtIn: true,
       entityCount: Object.keys(entities).length,
-      hasFeEntry: !!manifest?.fe?.entry || extractPluginNames(manifest).length > 0 || (contrib?.systems ?? []).length > 0,
+      hasFrontend: (contrib?.features ?? []).some(f => f.hasPlugin),
       description: manifest?.description,
       entities,
-      plugins: extractPluginNames(manifest),
       permissions: manifest?.permissions ?? [],
     }, contrib);
   });

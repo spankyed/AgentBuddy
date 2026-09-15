@@ -40,6 +40,22 @@ function restoreEnv(key: string, value: string | undefined) {
 
 const packsDir = () => path.join(tmpDir, 'packs');
 
+/** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `systemsSource`, and a snapshot */
+function writeBuild(packDir: string, id: string, systemsSource = '[]', extraFiles: Record<string, string> = {}) {
+  const write = (rel: string, content: string) => {
+    fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });
+    fs.writeFileSync(path.join(packDir, 'dist', rel), content);
+  };
+  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, systems: ${systemsSource} } };`);
+  write('types/snapshot.json', '{}');
+  for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
+}
+
+function writeManifest(dir: string, manifest: Record<string, unknown>) {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify(manifest));
+}
+
 describe('pack full lifecycle: init → install → discover', () => {
   it('scaffolded pack can be installed and discovered by pack-loader', async () => {
     const { init } = await import('../../../abuddy-cli/src/commands/init');
@@ -52,42 +68,24 @@ describe('pack full lifecycle: init → install → discover', () => {
     const packDir = path.join(tmpDir, 'my-test-pack');
     expect(fs.existsSync(path.join(packDir, 'abuddy.json'))).toBe(true);
 
-    // Step 2: Manually create a dist/ with a simple system (build requires esbuild + SDK deps)
-    fs.mkdirSync(path.join(packDir, 'dist'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'dist', 'system.cjs'), `
-      module.exports = {
-        default: {
-          id: 'my-test-pack-system',
-          initial: 'idle',
-          states: { idle: {} },
-        },
-      };
-    `);
-
-    // Update manifest to declare a feature with the system
+    // Step 2: A built runtime with a simple system, standing in for abuddy build (which needs esbuild + SDK deps)
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));
     delete manifest.hostVersion;
     manifest.features = [{
       id: 'main',
-      system: {
-        entry: 'dist/system.cjs',
-        events: { incoming: ['TEST_EVENT'] },
-      },
-      plugin: {
-        entry: 'dist/plugin.js',
-        label: 'My Test',
-        icon: 'Zap',
-      },
+      system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
+      plugin: { entry: 'src/features/main/fe/plugin.ts' },
     }];
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
+    writeBuild(packDir, manifest.id, "[{ id: 'main', machine: { id: 'my-test-pack-system' }, events: [] }]");
 
     // Step 3: Install to test packs dir
     await installPackFromLocal(packDir, packsDir());
 
     const installedDir = path.join(packsDir(), 'my-test-pack');
-    expect(fs.existsSync(installedDir)).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'system.cjs'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'bundle.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
 
     // Step 4: Discover via pack-loader (uses ABUDDY_USER_DATA_DIR → tmpDir)
     const { loadExternalPacks } = await import('@/packs/pack-loader');
@@ -104,35 +102,26 @@ describe('pack full lifecycle: init → install → discover', () => {
     const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'update-pack');
-    fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
 
     // v1
-    fs.writeFileSync(path.join(sourceDir, 'abuddy.json'), JSON.stringify({
-      id: 'update-pack',
-      name: 'Update Pack',
-      version: '1.0.0',
-    }));
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'v1.txt'), 'version 1');
+    writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '1.0.0' });
+    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v1.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
     const installedDir = path.join(packsDir(), 'update-pack');
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'v1.txt'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v1.seed.json'))).toBe(true);
 
-    // v2 — new file, remove old one
-    fs.writeFileSync(path.join(sourceDir, 'abuddy.json'), JSON.stringify({
-      id: 'update-pack',
-      name: 'Update Pack',
-      version: '2.0.0',
-    }));
-    fs.unlinkSync(path.join(sourceDir, 'dist', 'v1.txt'));
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'v2.txt'), 'version 2');
+    // v2: new file, old one removed
+    writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '2.0.0' });
+    fs.rmSync(path.join(sourceDir, 'dist'), { recursive: true });
+    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v2.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
-    // v1 file should be gone (rmSync + fresh copy)
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'v1.txt'))).toBe(false);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'v2.txt'))).toBe(true);
+    // v1 file should be gone (fresh copy)
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v1.seed.json'))).toBe(false);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v2.seed.json'))).toBe(true);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(installedDir, 'abuddy.json'), 'utf-8'));
     expect(manifest.version).toBe('2.0.0');
@@ -142,14 +131,8 @@ describe('pack full lifecycle: init → install → discover', () => {
     const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'future-pack');
-    fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
-    fs.writeFileSync(path.join(sourceDir, 'abuddy.json'), JSON.stringify({
-      id: 'future-pack',
-      name: 'Future Pack',
-      version: '1.0.0',
-      hostVersion: '>=99.0.0',
-    }));
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'placeholder'), '');
+    writeManifest(sourceDir, { id: 'future-pack', name: 'Future Pack', version: '1.0.0', hostVersion: '>=99.0.0' });
+    writeBuild(sourceDir, 'future-pack');
 
     await installPackFromLocal(sourceDir, packsDir());
 
@@ -165,13 +148,8 @@ describe('pack full lifecycle: init → install → discover', () => {
 
     for (const id of ['pack-alpha', 'pack-beta', 'pack-gamma']) {
       const dir = path.join(tmpDir, id);
-      fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({
-        id,
-        name: id.replace('-', ' '),
-        version: '1.0.0',
-      }));
-      fs.writeFileSync(path.join(dir, 'dist', 'placeholder'), '');
+      writeManifest(dir, { id, name: id.replace('-', ' '), version: '1.0.0' });
+      writeBuild(dir, id);
       await installPackFromLocal(dir, packsDir());
     }
 

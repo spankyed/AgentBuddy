@@ -202,7 +202,7 @@ export async function addFeature(args: string[], root: string) {
     ...(designation !== undefined && { designation }),
     settings: `src/features/${name}/settings.ts`,
     system: { entry: `src/features/${name}/be/system.ts` },
-    plugin: { entry: `src/features/${name}/fe/plugin.ts`, label, icon },
+    plugin: { entry: `src/features/${name}/fe/plugin.ts` },
     services: {},
     repositories: {
       [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,

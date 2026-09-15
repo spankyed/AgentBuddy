@@ -1,5 +1,4 @@
 export interface BlockFEFacet {
-  loadComponent?: () => unknown;
   component?: unknown;
 }
 

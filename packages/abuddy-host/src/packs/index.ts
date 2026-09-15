@@ -41,7 +41,7 @@ export { checkForUpdates, getAvailableUpdates } from './pack-updater.ts';
 export {
   BUNDLE_FORMAT_VERSION, BUNDLE_PATHS,
   stageBundle, verifyBundle, readBundleInfo, isBundleDir, hasBuiltBundleSections,
-  resolveBundleManifest, resolvePackSeedsDir,
+  packFrontendFiles,
   createBundleArchive, extractBundleArchive, bundleArchiveName, sha256File,
   publishHostPackArtifacts,
 } from './bundle.ts';

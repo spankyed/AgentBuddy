@@ -15,7 +15,6 @@ export const fireStepFE: StepDefinition = {
       bgColor: 'bg-amber-500/10',
       hoverBgColor: 'group-hover:bg-amber-500/15',
       connectionRules: { inputs: 1, outputs: 0 },
-      component: 'FireNode',
       category: 'action',
       isImplemented: true,
     },

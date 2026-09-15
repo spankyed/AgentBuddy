@@ -23,7 +23,7 @@
     }
   },
   // .vue files are checked by vue-tsc (npm run typecheck). src/defs/ (the Monaco DSL surfaces) is
-  // checked here too; rollup-defs.config.mjs builds it separately under tsconfig.defs.json.
+  // checked here too; abuddy build bundles their declarations for the Monaco editors.
   "include": [
     "src/**/*.ts", "src/**/*.vue", "tests/**/*.ts"
   ],

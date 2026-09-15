@@ -165,13 +165,6 @@
                       "type": "string"
                     },
                     "description": "Event types this system listens for."
-                  },
-                  "outgoing": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "Event types this system emits."
                   }
                 },
                 "additionalProperties": false,
@@ -189,25 +182,11 @@
             "properties": {
               "entry": {
                 "type": "string",
-                "description": "Path to the frontend plugin module."
-              },
-              "label": {
-                "type": "string",
-                "description": "Display name shown in the sidebar."
-              },
-              "icon": {
-                "type": "string",
-                "description": "Icon name from the icon library."
-              },
-              "isPinned": {
-                "type": "boolean",
-                "description": "Whether this plugin is pinned in the sidebar by default."
+                "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
               }
             },
             "required": [
-              "entry",
-              "label",
-              "icon"
+              "entry"
             ],
             "additionalProperties": false,
             "description": "Frontend plugin definition."
@@ -407,10 +386,6 @@
     "fe": {
       "type": "object",
       "properties": {
-        "entry": {
-          "type": "string",
-          "description": "Path to the frontend entry module."
-        },
         "tiptapPlugins": {
           "type": "string",
           "description": "Path to tiptap plugin registration module."
@@ -421,10 +396,6 @@
             "type": "string"
           },
           "description": "Named app extensions. Keys are extension names, values are paths to Vue components."
-        },
-        "styles": {
-          "type": "string",
-          "description": "Path to a CSS file to include in the frontend bundle."
         },
         "bundleUi": {
           "type": "boolean",

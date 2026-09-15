@@ -124,7 +124,7 @@ A new step goes in both barrels: `src/extensions/steps/register.ts` (the full de
 
 ## Artifacts
 
-Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, 14 with viewer components in `src/extensions/artifacts/viewers/` (graph and table are registered without a `loadComponent`):
+Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, 14 with viewer components in `src/extensions/artifacts/viewers/` (graph and table have no viewer and show in the text viewer):
 
 text, code, review, image, slack, todo, project, json, graph, table, markdown, claude-session, codex-session, diff, plan, note
 

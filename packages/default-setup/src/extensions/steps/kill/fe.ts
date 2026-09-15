@@ -13,7 +13,6 @@ export const killStepFE: StepDefinition = {
       bgColor: 'bg-red-500/10',
       hoverBgColor: 'group-hover:bg-red-500/15',
       connectionRules: { inputs: 1, outputs: 0 },
-      component: 'VariableNode',
       category: 'logic',
       isImplemented: true,
     },

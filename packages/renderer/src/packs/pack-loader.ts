@@ -1,23 +1,6 @@
 import type { Plugin } from '@/core/types';
 import { registerPackFE, type PackFERegistration } from '@abuddy/host/fe';
 
-export interface PackPluginManifest {
-  id: string;
-  entry: string;
-  label: string;
-  icon: string;
-  designation?: string;
-}
-
-async function resolveLucideIcon(iconName: string): Promise<any> {
-  try {
-    const lucide = await import('lucide-vue-next');
-    return (lucide as any)[iconName] || null;
-  } catch {
-    return null;
-  }
-}
-
 export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: string): Promise<void> {
   return new Promise((resolve) => {
     const link = document.createElement('link');
@@ -66,76 +49,28 @@ export async function loadPackFEEntry(
   }
 }
 
-export async function loadPackPlugin(
-  manifest: PackPluginManifest,
-  packBaseUrl: string,
-): Promise<Plugin | null> {
-  try {
-    const pluginUrl = `${packBaseUrl}/${manifest.entry}`;
-    const mod = await import(/* @vite-ignore */ pluginUrl);
-    const plugin = mod.default || mod;
-
-    if (!plugin.id || !plugin.state || !plugin.canvas) {
-      console.warn(`[pack-loader] Invalid plugin from ${manifest.id}: missing required fields`);
-      return null;
-    }
-
-    if (typeof manifest.icon === 'string' && !plugin.icon) {
-      plugin.icon = await resolveLucideIcon(manifest.icon);
-    }
-
-    // The manifest is the only designation source: a plugin module's own designation doesn't count
-    plugin.designation = manifest.designation;
-
-    return plugin as Plugin;
-  } catch (err) {
-    console.error(`[pack-loader] Failed to load plugin ${manifest.id}:`, err);
-    return null;
-  }
-}
-
-export async function loadPackPlugins(
-  manifests: PackPluginManifest[],
-  packBaseUrl: string,
-): Promise<Plugin[]> {
-  const results = await Promise.allSettled(
-    manifests.map(m => loadPackPlugin(m, packBaseUrl))
-  );
-
-  return results
-    .filter((r): r is PromiseFulfilledResult<Plugin | null> => r.status === 'fulfilled')
-    .map(r => r.value)
-    .filter((p): p is Plugin => p !== null);
-}
-
-/** An external pack's frontend, as the pack registry lists it */
+/** An external pack's frontend, as the pack registry lists it: the bundle's runtime/fe.js and runtime/fe.css when it has them */
 export interface PackFrontend {
   id: string;
   feEntry?: string;
   feStyles?: string;
-  plugins: PackPluginManifest[];
 }
 
 /**
- * Loads an external pack's frontend: its styles, then its FE entry or, without one, its plugin entries,
- * registering what it contributes. Returns the plugins it exports (none when it failed to load), or null
- * for a pack without frontend code: the bus sent its systems the connection's CLIENT_CONNECTED already.
+ * Loads an external pack's frontend: its styles, then its FE entry, registering what it contributes.
+ * Returns the plugins it exports (none when it failed to load), or null for a pack without frontend
+ * code: the bus sent its systems the connection's CLIENT_CONNECTED already.
  */
 export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | null> {
   const packBaseUrl = `pack://${pack.id}`;
   if (pack.feStyles) await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
-  if (!pack.feEntry && pack.plugins.length === 0) return null;
+  if (!pack.feEntry) return null;
 
   try {
-    if (pack.feEntry) {
-      const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
-      if (!registration) return [];
-      registerPackFE(registration, pack.id);
-      return registration.plugins ?? [];
-    }
-    const plugins = await loadPackPlugins(pack.plugins, packBaseUrl);
-    if (plugins.length > 0) registerPackFE({ plugins }, pack.id);
-    return plugins;
+    const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
+    if (!registration) return [];
+    registerPackFE(registration, pack.id);
+    return registration.plugins ?? [];
   } catch (err) {
     console.error(`[pack-loader] Failed to load the frontend of pack ${pack.id}:`, err);
     return [];

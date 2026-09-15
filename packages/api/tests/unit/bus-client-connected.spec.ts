@@ -2,6 +2,9 @@
 // an activated pack's systems, except to external packs with frontend code: a client loads it after
 // connecting (or after the activation) and asks for each pack once it tried, whatever that loaded. A
 // reloaded pack's restarted systems get it too.
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 
@@ -29,12 +32,20 @@ function pack(id: string, label = id) {
   return { id, systems: [{ id: `${id}.feature`, machine: recorder(label), events: new Set(['CLIENT_CONNECTED']) }] };
 }
 
-/** Marks a pack loaded with `manifest`'s frontend: its plugins, or an FE entry */
-function loaded(id: string, manifest: { fe?: { entry: string }; features?: unknown[] }) {
-  updateLoadedPack({ manifest: { id, name: id, version: '1.0.0', ...manifest }, dir: `/packs/${id}`, systems: new Map() } as unknown as LoadedPack);
+const packDirs: string[] = [];
+
+/** Marks a pack loaded, installed with the frontend files `files` names (runtime/fe.js, runtime/fe.css) */
+function loaded(id: string, files: string[]) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `bus-client-connected-${id}-`));
+  packDirs.push(dir);
+  for (const file of files) {
+    fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    fs.writeFileSync(path.join(dir, file), '');
+  }
+  updateLoadedPack({ manifest: { id, name: id, version: '1.0.0' }, dir, systems: new Map() } as unknown as LoadedPack);
 }
 
-const withPlugin = { features: [{ id: 'feature', plugin: { entry: 'fe.js', label: 'Feature', icon: 'Zap' } }] };
+const withFrontend = ['runtime/fe.js'];
 
 let bus: AnyActorRef;
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -51,6 +62,7 @@ afterEach(() => {
     try { unregisterPack(id); } catch { /* not registered */ }
     removeLoadedPack(id);
   }
+  for (const dir of packDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
 describe('CLIENT_CONNECTED on the bus', () => {
@@ -63,7 +75,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it('reaches an external pack with plugins once, when a client has loaded its frontend after connecting', async () => {
     bus.stop();
     registerPack(pack('external-pack'));
-    loaded('external-pack', withPlugin);
+    loaded('external-pack', withFrontend);
     bus = createActor(backendSystem, { systemId: 'bus' }).start();
 
     rootEvents.emitConnected();
@@ -78,7 +90,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it("reaches only a pack's systems when a client has loaded that pack's frontend", async () => {
     rootEvents.emitConnected();
     registerPack(pack('second-pack'));
-    loaded('second-pack', withPlugin);
+    loaded('second-pack', withFrontend);
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     received.length = 0;
@@ -97,7 +109,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     await flush();
     received.length = 0;
     registerPack(pack('second-pack'));
-    loaded('second-pack', withPlugin);
+    loaded('second-pack', withFrontend);
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     expect(received).toEqual([]);
@@ -112,7 +124,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     await flush();
     received.length = 0;
     registerPack(pack('second-pack'));
-    loaded('second-pack', { features: [{ id: 'feature', system: { entry: 'system.cjs' } }] });
+    loaded('second-pack', ['runtime/fe.css']);
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     expect(received).toEqual(['second-pack']);
@@ -128,8 +140,8 @@ describe('CLIENT_CONNECTED on the bus', () => {
       ],
     });
     registerPack(pack('second-pack'));
-    loaded('external-pack', withPlugin);
-    loaded('second-pack', { fe: { entry: 'runtime/fe.js' } });
+    loaded('external-pack', withFrontend);
+    loaded('second-pack', withFrontend);
     bus = createActor(backendSystem, { systemId: 'bus' }).start();
 
     rootEvents.emitConnected();

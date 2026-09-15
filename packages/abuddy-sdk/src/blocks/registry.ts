@@ -26,14 +26,6 @@ class BlockRegistry {
   all(): BlockDefinition[] {
     return [...this.blocks.values()];
   }
-
-  initComponents(): void {
-    for (const def of this.blocks.values()) {
-      if (def.fe?.loadComponent && !def.fe.component) {
-        def.fe.component = def.fe.loadComponent();
-      }
-    }
-  }
 }
 
 export const blockRegistry = new BlockRegistry();

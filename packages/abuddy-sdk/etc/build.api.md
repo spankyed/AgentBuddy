@@ -309,13 +309,10 @@ export const FeatureEntrySchema: z.ZodObject<{
         sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         events: z.ZodOptional<z.ZodObject<{
             incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-            outgoing: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strict", z.ZodTypeAny, {
             incoming?: string[] | undefined;
-            outgoing?: string[] | undefined;
         }, {
             incoming?: string[] | undefined;
-            outgoing?: string[] | undefined;
         }>>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
@@ -323,7 +320,6 @@ export const FeatureEntrySchema: z.ZodObject<{
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
-            outgoing?: string[] | undefined;
         } | undefined;
     }, {
         entry: string;
@@ -331,24 +327,14 @@ export const FeatureEntrySchema: z.ZodObject<{
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
-            outgoing?: string[] | undefined;
         } | undefined;
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
-        label: z.ZodString;
-        icon: z.ZodString;
-        isPinned: z.ZodOptional<z.ZodBoolean>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
-        label: string;
-        icon: string;
-        isPinned?: boolean | undefined;
     }, {
         entry: string;
-        label: string;
-        icon: string;
-        isPinned?: boolean | undefined;
     }>>;
     services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -358,9 +344,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     settings?: string | undefined;
     plugin?: {
         entry: string;
-        label: string;
-        icon: string;
-        isPinned?: boolean | undefined;
     } | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
@@ -371,7 +354,6 @@ export const FeatureEntrySchema: z.ZodObject<{
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
-            outgoing?: string[] | undefined;
         } | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
@@ -382,9 +364,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     settings?: string | undefined;
     plugin?: {
         entry: string;
-        label: string;
-        icon: string;
-        isPinned?: boolean | undefined;
     } | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
@@ -395,7 +374,6 @@ export const FeatureEntrySchema: z.ZodObject<{
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
-            outgoing?: string[] | undefined;
         } | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
@@ -495,13 +473,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             events: z.ZodOptional<z.ZodObject<{
                 incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-                outgoing: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             }, "strict", z.ZodTypeAny, {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             }, {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
@@ -509,7 +484,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         }, {
             entry: string;
@@ -517,24 +491,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
-            label: z.ZodString;
-            icon: z.ZodString;
-            isPinned: z.ZodOptional<z.ZodBoolean>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         }, {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         }>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -544,9 +508,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         settings?: string | undefined;
         plugin?: {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -557,7 +518,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -568,9 +528,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         settings?: string | undefined;
         plugin?: {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -581,7 +538,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -716,22 +672,16 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     blocks: z.ZodOptional<z.ZodString>;
     migrations: z.ZodOptional<z.ZodString>;
     fe: z.ZodOptional<z.ZodObject<{
-        entry: z.ZodOptional<z.ZodString>;
         tiptapPlugins: z.ZodOptional<z.ZodString>;
         appExtensions: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        styles: z.ZodOptional<z.ZodString>;
         bundleUi: z.ZodOptional<z.ZodBoolean>;
     }, "strict", z.ZodTypeAny, {
-        entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
-        styles?: string | undefined;
         bundleUi?: boolean | undefined;
     }, {
-        entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
-        styles?: string | undefined;
         bundleUi?: boolean | undefined;
     }>>;
     dsl: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
@@ -880,9 +830,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         settings?: string | undefined;
         plugin?: {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -893,7 +840,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -932,10 +878,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     blocks?: string | undefined;
     migrations?: string | undefined;
     fe?: {
-        entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
-        styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
@@ -988,9 +932,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         settings?: string | undefined;
         plugin?: {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1001,7 +942,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -1040,10 +980,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     blocks?: string | undefined;
     migrations?: string | undefined;
     fe?: {
-        entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
-        styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
@@ -1096,9 +1034,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         settings?: string | undefined;
         plugin?: {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1109,7 +1044,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -1148,10 +1082,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     blocks?: string | undefined;
     migrations?: string | undefined;
     fe?: {
-        entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
-        styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
@@ -1204,9 +1136,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         settings?: string | undefined;
         plugin?: {
             entry: string;
-            label: string;
-            icon: string;
-            isPinned?: boolean | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1217,7 +1146,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
-                outgoing?: string[] | undefined;
             } | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -1256,10 +1184,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     blocks?: string | undefined;
     migrations?: string | undefined;
     fe?: {
-        entry?: string | undefined;
         tiptapPlugins?: string | undefined;
         appExtensions?: Record<string, string> | undefined;
-        styles?: string | undefined;
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {

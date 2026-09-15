@@ -313,12 +313,12 @@ export interface PackInfo {
   enabled: boolean;
   builtIn: boolean;
   entityCount: number;
-  hasFeEntry: boolean;
+  /** Whether the pack has frontend code: an external pack's runtime/fe.js, a built-in pack's plugins */
+  hasFrontend: boolean;
   hostVersion?: string;
   description?: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
-  plugins: string[];
   permissions: string[];
   systems: string[];
   services: string[];

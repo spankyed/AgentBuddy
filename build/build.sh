@@ -83,12 +83,6 @@ else
 fi
 echo ""
 
-# Step 3.5: Generate DSL defs (needed by renderer before build)
-echo -e "${BLUE}[3.5/7]${NC} Generating DSL type definitions..."
-npm run generate:defs -w @app/default-setup
-echo -e "${GREEN}✓${NC} DSL defs generated"
-echo ""
-
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
 npm run build

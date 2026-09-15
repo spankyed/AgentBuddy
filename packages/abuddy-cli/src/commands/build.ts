@@ -13,6 +13,7 @@ import {
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
+import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
@@ -55,13 +56,12 @@ const BUILT_IN_SNAPSHOT = 'snapshot.json';
  * output never leaves an older file behind.
  * - External packs build into the bundle layout (runtime/, build/, types/); dist/ is pure output,
  *   cleared whole, so `abuddy pack` and the test fixture never ship an older build.
- * - Built-in packs keep their in-repo layout, where other builds write too: rollup writes dist/defs/
- *   (generate:defs) and the pack's runtime build writes runtime/. Only this build's output goes: the
- *   compiled seeds, build/, types/ and snapshot. The runtime records the compiled seeds it was built
- *   beside, and the app doesn't publish it with seeds compiled after it.
+ * - Built-in packs keep their in-repo layout, where the pack's runtime build writes runtime/ too. Only
+ *   this build's output goes: the compiled seeds, build/, types/, defs/ and snapshot. The runtime records
+ *   the compiled seeds it was built beside, and the app doesn't publish it with seeds compiled after it.
  */
 export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
-  const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, BUILT_IN_SNAPSHOT] : ['.'];
+  const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
   for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
   if (builtIn) clearCompiledSeeds(outputDir);
 }
@@ -208,6 +208,17 @@ export async function build(args: string[]) {
   } else {
     console.error(`\nSeed runtime bundle failed: ${seedRuntime.error}`);
     process.exitCode = 1;
+  }
+
+  // ── DSL editor definitions ───────────────────────────────────────────
+  if (manifest.dsl) {
+    const defs = await bundleDslDefs(root, manifest);
+    if (defs.success) {
+      for (const file of defs.files) console.log(`  dsl defs: ${file}`);
+    } else {
+      console.error(`\nDSL definitions bundle failed: ${defs.error}`);
+      process.exitCode = 1;
+    }
   }
 
   // ── Seed compiler modules (for dependents' entries naming this pack's formats) ──

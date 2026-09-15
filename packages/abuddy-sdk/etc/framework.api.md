@@ -59,15 +59,11 @@ export interface PackFeatureDef {
     // (undocumented)
     designation?: string;
     // (undocumented)
+    hasPlugin: boolean;
+    // (undocumented)
     hasSystem: boolean;
     // (undocumented)
     id: string;
-    // (undocumented)
-    plugin?: {
-        label: string;
-        icon: string;
-        isPinned?: boolean;
-    };
     // (undocumented)
     services: string[];
     settings?: FeatureSettings;

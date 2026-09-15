@@ -1,3 +1,4 @@
+import { packFrontendFiles } from '@abuddy/host/packs';
 import { router, procedure } from '@/core/router/trpc';
 import type { LoadedPack } from './pack-loader';
 import type { BuiltInPackInfo } from './pack-loader';
@@ -23,11 +24,11 @@ export function removeLoadedPack(packId: string) {
 }
 
 /**
- * The loaded external packs with frontend code (an FE entry, or plugin entries): the renderer loads it
- * after connecting, from the registry below (its `feEntry` and `plugins`), and then asks for their startup data
+ * The loaded external packs with frontend code (a runtime/fe.js): the renderer loads it after connecting,
+ * from the registry below, and then asks for their startup data
  */
 export function getPacksWithClientLoadedFrontends(): string[] {
-  return _loadedPacks.filter(p => p.manifest.fe?.entry || p.manifest.features?.some(f => f.plugin)).map(p => p.manifest.id);
+  return _loadedPacks.filter(p => packFrontendFiles(p.dir).entry).map(p => p.manifest.id);
 }
 
 export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {
@@ -39,52 +40,22 @@ export interface PackBundleEntry {
   name: string;
   version: string;
   builtIn?: boolean;
+  /** The bundle's runtime/fe.js, when it has one */
   feEntry?: string;
+  /** The bundle's runtime/fe.css, when it has one */
   feStyles?: string;
-  plugins: {
-    id: string;
-    entry: string;
-    label: string;
-    icon: string;
-    designation?: string;
-  }[];
 }
 
 function toRegistryEntries(packs: LoadedPack[]): PackBundleEntry[] {
-  return packs
-    .filter(p => {
-      const entries = p.manifest.features;
-      return p.manifest.fe?.entry || p.manifest.fe?.styles || entries?.some(d => d.plugin);
-    })
-    .map(p => {
-      const entries = p.manifest.features ?? [];
-      return {
-        id: p.manifest.id,
-        name: p.manifest.name,
-        version: p.manifest.version,
-        feEntry: p.manifest.fe?.entry,
-        feStyles: p.manifest.fe?.styles,
-        plugins: entries
-          .filter(d => d.plugin)
-          .map(d => ({
-            id: d.id,
-            entry: d.plugin!.entry,
-            label: d.plugin!.label,
-            icon: d.plugin!.icon,
-            designation: d.designation,
-          })),
-      };
-    });
+  return packs.flatMap(p => {
+    const { entry, styles } = packFrontendFiles(p.dir);
+    if (!entry && !styles) return [];
+    return [{ id: p.manifest.id, name: p.manifest.name, version: p.manifest.version, feEntry: entry, feStyles: styles }];
+  });
 }
 
 function toBuiltInRegistryEntries(packs: BuiltInPackInfo[]): PackBundleEntry[] {
-  return packs.map(p => ({
-    id: p.id,
-    name: p.name,
-    version: p.version,
-    builtIn: true,
-    plugins: [],
-  }));
+  return packs.map(p => ({ id: p.id, name: p.name, version: p.version, builtIn: true }));
 }
 
 export const packsRouter = router({

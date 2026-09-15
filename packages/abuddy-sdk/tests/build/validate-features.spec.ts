@@ -24,7 +24,7 @@ const notes = {
   id: 'notes',
   settings: 'src/features/notes/settings.ts',
   system: { entry: 'src/features/notes/be/system.ts' },
-  plugin: { entry: 'src/features/notes/fe/plugin.ts', label: 'Notes', icon: 'Box' },
+  plugin: { entry: 'src/features/notes/fe/plugin.ts' },
 };
 const notesFiles = [notes.settings, notes.system.entry, notes.plugin.entry];
 

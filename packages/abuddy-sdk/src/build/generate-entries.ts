@@ -471,11 +471,7 @@ export function generatePackFiles(
       const parts = [`    id: '${f.id}'`];
       parts.push(`    hasSystem: ${!!f.system}`);
       if (f.designation) parts.push(`    designation: '${f.designation}'`);
-      if (f.plugin) {
-        const pluginParts = [`label: '${f.plugin.label}'`, `icon: '${f.plugin.icon}'`];
-        if (f.plugin.isPinned) pluginParts.push(`isPinned: true`);
-        parts.push(`    plugin: { ${pluginParts.join(', ')} }`);
-      }
+      parts.push(`    hasPlugin: ${!!f.plugin}`);
       parts.push(`    services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       if (f.settings) parts.push(`    settings: ${settingsBinding(f.id)}`);
       return `  {\n${parts.join(',\n')},\n  }`;
@@ -1248,17 +1244,6 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 
   // ── DSL defs ───────────────────────────────────────────────────
 
-  function generateDefsConfig(): string {
-    const dsl = manifest.dsl;
-    if (!dsl || Object.keys(dsl).length === 0) return '';
-
-    const entries = Object.entries(dsl).map(([name, def]) => {
-      return `  { name: '${name}', entry: '${def.entry}', targets: ${JSON.stringify(def.targets)} },`;
-    });
-
-    return `// @generated from abuddy.json — do not edit by hand\nexport default [\n${entries.join('\n')}\n];\n`;
-  }
-
   function generateDslRegisterFe(): string {
     const dsl = manifest.dsl;
     if (!dsl) return '';
@@ -1318,7 +1303,6 @@ ${registrations.join('\n\n')}
     ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
-    ['src/__generated__/defs.config.mjs', generateDefsConfig()],
     ['src/__generated__/dsl-register-fe.ts', generateDslRegisterFe()],
   ] as [string, string][]).filter(([, content]) => content);
 

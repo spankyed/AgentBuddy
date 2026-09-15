@@ -159,7 +159,6 @@ export const myStepStepFE: StepDefinition = {
 | `colorKey?` | Node style color: `purple`, `blue`, `amber`, `cyan`, `orange`, `emerald`, `indigo`, `neutral`, `red` or `yellow` |
 | `handlePrefix?` | Multi-output steps: new outgoing handles are `<prefix>-0`, `<prefix>-1`, … (`'branch'` pairs with `sourceHandle: 'branch-N'`) |
 | `layout?` | ELK layout: `getHeight(node, { exitCount })`, `getPorts(node, { exitCount })`, `hasInput`, `usesExitCount`. Omitted → one input, one output |
-| `resourceKeys?` | Declared form resource keys (`['actions', 'prompts']`); the flows editor doesn't read it |
 
 The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@abuddy/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
 
@@ -175,7 +174,6 @@ The form component receives `node` and `resources` (`{ actions, flows, models, p
 | `hoverBgColor` | `string` | Tailwind hover background class |
 | `connectionRules` | `{ inputs, outputs }` | Max connections (-1 = unlimited) |
 | `category` | `'trigger' \| 'action' \| 'logic' \| 'data' \| 'ai'` | Palette category |
-| `component` | `string` | Node component name (informational; the canvas uses `components.node`) |
 | `isImplemented` | `boolean` | Palette items not implemented are disabled |
 | `isDisabled` | `boolean` | Disables the palette item |
 
@@ -260,9 +258,7 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 | `fe` field | Required | Description |
 |---|---|---|
 | `icon` | yes | Lucide component for the artifact list |
-| `component` | no | The viewer. The host renders `fe.component`; without one, the text viewer |
-| `loadComponent` | no | `() => component`. The artifact registry doesn't call it at load; resolve the component in `register-fe.ts` |
-| `color` | no | Declared; the threads UI reads the artifact item's `color`, not this |
+| `component` | no | The viewer, set in `register-fe.ts`. Without one, the host shows the text viewer |
 
 ### Scaffolding
 
@@ -319,7 +315,7 @@ const componentMap: Record<string, unknown> = {
 
 export const artifactsFE: ArtifactDefinition[] = artifacts.map(def => ({
   ...def,
-  fe: def.fe ? { ...def.fe, component: componentMap[def.type], loadComponent: undefined } : undefined,
+  fe: def.fe ? { ...def.fe, component: componentMap[def.type] } : undefined,
 }));
 ```
 
@@ -427,7 +423,7 @@ export const blocksFE: BlockDefinition[] = blocks.map(def => ({
 }));
 ```
 
-The host renders `fe.component`; like artifacts, `fe.loadComponent` isn't called at load.
+The host renders `fe.component`.
 
 ### Backend facet
 

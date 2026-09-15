@@ -111,7 +111,7 @@ describe('abuddy add artifact and block', () => {
       '',
       'export const artifactsFE: ArtifactDefinition[] = artifacts.map(def => ({',
       '  ...def,',
-      '  fe: def.fe ? { ...def.fe, component: componentMap[def.type], loadComponent: undefined } : undefined,',
+      '  fe: def.fe ? { ...def.fe, component: componentMap[def.type] } : undefined,',
       '}));',
       '',
     ].join('\n'));
@@ -138,7 +138,7 @@ describe('abuddy add artifact and block', () => {
     writeManifest({ ...readManifest(), artifacts: 'src/extensions/artifacts/register.ts', blocks: 'src/extensions/blocks/register.ts' });
   });
 
-  it('scaffolds an artifact viewer taking artifact, registered by component, not loadComponent', async () => {
+  it('scaffolds an artifact viewer taking artifact, registered by component', async () => {
     await addArtifact(['chart'], pack);
     await addArtifact(['table'], pack);
 
@@ -150,7 +150,6 @@ describe('abuddy add artifact and block', () => {
     const register = read('src/extensions/artifacts/register.ts');
     expect(register).toContain("  { type: 'chart', fe: { icon: FileText } },\n  { type: 'table', fe: { icon: FileText } },\n];");
     expect(register.match(/import \{ FileText \} from 'lucide-vue-next';/g)).toHaveLength(1);
-    expect(register).not.toContain('loadComponent');
     expect(read('src/extensions/artifacts/register-fe.ts')).toContain("  'chart': ChartArtifact,\n  'table': TableArtifact,\n};");
   });
 

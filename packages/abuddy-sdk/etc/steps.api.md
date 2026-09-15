@@ -156,7 +156,6 @@ export interface StepFEFacet {
     };
     // (undocumented)
     nodeConfig: StepNodeConfig;
-    resourceKeys?: string[];
 }
 
 // @public (undocumented)
@@ -186,8 +185,6 @@ export interface StepNodeConfig {
     category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
     // (undocumented)
     color: string;
-    // (undocumented)
-    component?: string;
     // (undocumented)
     connectionRules: {
         inputs: number;

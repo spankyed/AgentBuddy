@@ -15,7 +15,6 @@ export const queryStepFE: StepDefinition = {
       bgColor: 'bg-cyan-500/10',
       hoverBgColor: 'group-hover:bg-cyan-500/15',
       connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
       category: 'data',
       isImplemented: true,
     },

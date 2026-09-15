@@ -110,7 +110,7 @@
             class="px-3 py-2 bg-neutral-800/40 border border-neutral-700/30 rounded-lg"
           >
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm text-neutral-200 font-medium">{{ feature.plugin?.label ?? feature.id }}</span>
+              <span class="text-sm text-neutral-200 font-medium">{{ feature.id }}</span>
               <span
                 v-if="feature.designation"
                 class="px-1 py-0.5 text-[9px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded"
@@ -118,7 +118,7 @@
             </div>
             <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
               <span v-if="feature.hasSystem">system</span>
-              <span v-if="feature.plugin">plugin<template v-if="feature.plugin.isPinned"> (pinned)</template></span>
+              <span v-if="feature.hasPlugin">plugin</span>
               <span v-if="feature.services.length">services: {{ feature.services.join(', ') }}</span>
             </div>
           </div>
@@ -148,18 +148,6 @@
               :key="svc"
               class="chip"
             >{{ svc }}</span>
-          </div>
-        </section>
-
-        <!-- Plugins -->
-        <section v-if="pack.plugins.length > 0">
-          <SectionHeader label="Plugins" :count="pack.plugins.length" />
-          <div class="flex flex-wrap gap-1.5">
-            <span
-              v-for="pluginId in pack.plugins"
-              :key="pluginId"
-              class="chip"
-            >{{ pluginId }}</span>
           </div>
         </section>
       </template>
