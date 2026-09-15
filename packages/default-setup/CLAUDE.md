@@ -45,7 +45,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 
 - `be/system.ts` — XState backend system machine + event types
 - `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `abuddy.json` `features[].repositories` and registered by the generated pack entry; use them through `repository` from `@/__generated__/repository`
-- `be/services/` — Stateless service modules exposed to other systems and actions
+- `be/services/` — Service modules, each exporting the `<key>Service` object exposed to systems and actions (see Services)
 - `be/types.ts` — Shared types
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
 - `fe/state.ts` — XState frontend state machine
@@ -66,9 +66,15 @@ System IDs re-exported from `__generated__/system-ids.ts`. System specs (identit
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/extensions/services/` (pack-level services). These are stateless modules that systems and actions can call:
+Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/extensions/services/` (pack-level services), and systems and actions call them through `services.<key>`:
 
 `chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `textStream`, `filesystem`
+
+Each `abuddy.json` service entry names one value export, `"<key>": "<path>.ts#<key>Service"`, and the module exports it as `export const <key>Service = { ... }` (or a class instance). No factories and no whole-module services. `Services` is `typeof featureServices`, so that object is the contract dependent packs build against:
+
+- List only what callers use through `services.<key>` (actions, steps, systems, tests). Helpers used inside the pack stay plain exports and are imported directly (`hooks.ts` imports `clearAllSchedules`/`removeAllListeners`; the brain system imports `notify`)
+- Don't re-export `qx`/`tx`/`EARS` or other SDK modules: pack code imports those itself. Actions can import nothing but `@abuddy/sdk/actions`, so they read and write entities through `services.repository`
+- No third-party types in the contract: the published facade may import only `@abuddy/*` and the SDK's peers. Give the export an explicit type when inference would name one: `browserService` is typed `BrowserService` (`features/browser/be/types.ts`), so playwright stays inside `browser.ts` and raw handles are `unknown` or the opaque `BrowserPageHandle`
 
 Model calls go through the host's `services.inference` (AI SDK 7, `provider:model` ids): the `llm` step calls it with the node's `model`, and the pack has no model code or `ai` dependency of its own.
 
@@ -159,4 +165,5 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `importFlows` (a root flow, `root: true`, or default-setup's own through `tests/unit/helpers/flows.ts`) and `runFlow`, as the app runs them, and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `mockInference`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`
+- `abuddy build` gates the facade types it bundles into `dist/types/pack-types.d.ts` (`packages/abuddy-cli/src/build/facade-gate.ts`): the bundle must type-check on its own and import only `@abuddy/*` modules the published packages export, `@abuddy/sdk`'s peers and Node built-ins. `etc/pack-types.api.md` is the reviewed report of that bundle: after a build that changes it, run `npm run facade:update` and commit the report; CI runs `npm run facade:check` after `abuddy build`
 - `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

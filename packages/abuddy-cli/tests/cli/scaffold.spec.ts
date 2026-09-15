@@ -87,6 +87,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
     expect(run('node', [CLI, 'add', 'step', 'ping'], pack).code).toBe(0);
     expect(run('node', [CLI, 'add', 'service', 'cache'], pack).code).toBe(0);
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8')).packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toContain("import { cacheService as __service_cache } from '../extensions/services/cache.js';");
     const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
     expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping';[\s\S]*\[[\s\S]*pingStep,/);
     expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build';[\s\S]*\[[\s\S]*pingStepBuild,/);

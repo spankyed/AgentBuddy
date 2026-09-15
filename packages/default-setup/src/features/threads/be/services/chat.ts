@@ -833,3 +833,19 @@ function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen - 1) + '…';
 }
+
+/** `services.chat`: thread message and notification operations for actions and systems */
+export const chatService = {
+  sendBlockMessage,
+  sendSystemMessage,
+  sendChoiceBlock,
+  sendQuestionBlock,
+  updateMessageState,
+  createMarkerMessage,
+  addMessagesToThread,
+  createThreadAndNotify,
+  openThreadChatAndRefreshRecent,
+  openThreadTabAndRefresh,
+  sendRecentThreadsRefresh,
+  resolveReferences,
+};

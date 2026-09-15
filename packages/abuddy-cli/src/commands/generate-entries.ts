@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
-import { generatePackFiles } from '@abuddy/sdk/build';
+import { depTypesFile, depTypesVersion, generatePackFiles } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
 
@@ -48,6 +48,20 @@ function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>
     hash.update(JSON.stringify(depSnapshots.get(depId)));
   }
   return hash.digest('hex');
+}
+
+/**
+ * Warns about each dependency whose facade types (src/__generated__/deps/<id>.d.ts) were generated
+ * from a version other than the one the pack builds and runs with.
+ */
+export function warnStaleDepTypes(root: string, runtimeVersions: Map<string, string>): void {
+  for (const [depId, runtimeVersion] of runtimeVersions) {
+    const file = path.join(root, depTypesFile(depId));
+    if (!fs.existsSync(file)) continue;
+    const typesVersion = depTypesVersion(fs.readFileSync(file, 'utf-8'), depId);
+    if (typesVersion === runtimeVersion) continue;
+    console.warn(`\nWarning: ${depTypesFile(depId)} has the types of ${depId}@${typesVersion ?? 'an unknown version'}, but the pack builds with ${depId}@${runtimeVersion}. Code checked against these types may not match the dependency at runtime: run "abuddy generate-entries --force" (or build without --skip-generate).`);
+  }
 }
 
 export async function generateEntries(

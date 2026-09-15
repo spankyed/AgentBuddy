@@ -13,7 +13,9 @@
     "generate:entries": "abuddy generate-entries",
     "generate:defs": "npx rollup -c rollup-defs.config.mjs",
     "build": "abuddy build && npm run generate:defs && node dev-build.mjs",
-    "build:dev": "abuddy build --skip-fe"
+    "build:dev": "abuddy build --skip-fe",
+    "facade:check": "tsx ../../scripts/facade-report.ts .",
+    "facade:update": "tsx ../../scripts/facade-report.ts . --local"
   },
   "dependencies": {
     "@abuddy/host": "*",

@@ -147,3 +147,21 @@ describe('seedHooks', () => {
     expect(parseManifest({ ...pack, seedHooks: { Memo: 'src/memo-hooks.ts' } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 });
+
+describe('services', () => {
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+  const feature = (services: Record<string, string>) => ({ ...pack, features: [{ id: 'memos', services }] });
+
+  it('accepts feature and pack-level services naming their export', () => {
+    expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), packServices: { cache: 'src/cache#cacheService' } }).errors).toEqual([]);
+  });
+
+  it('rejects a service path without an export name', () => {
+    expect(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(parseManifest({ ...pack, packServices: { cache: 'src/cache' } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+  });
+
+  it('rejects a service name that is not an identifier', () => {
+    expect(parseManifest({ ...pack, packServices: { 'my-cache': 'src/cache.ts#cacheService' } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
+  });
+});

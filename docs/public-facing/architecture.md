@@ -152,11 +152,11 @@ To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abud
 | `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
 | `events.ts` | `PackEvents` (plugin ID -> the events it receives from this pack's systems, its dependencies' and the host's plugins) and the typed `emit`/`sendToPlugin` facade |
 | `types.ts` | Type barrel: outgoing events + per-feature types |
-| `services.ts` | Service aggregation: imports all services, exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services) |
+| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services) |
 | `repository.ts` | `repository`, typed with the repositories declared in `features[].repositories` and dependencies' |
 | `repositories.ts` | Registers this pack's repositories; `pack-entry.ts` imports it first |
 | `pack-types.ts` | The facade types `abuddy build` bundles into `dist/types/pack-types.d.ts` for dependents |
-| `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot |
+| `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `abuddy build` warns when the dependency it builds with is another version |
 | `contributions.ts` | Contribution type aggregation |
 | `seeders.ts` | Seeder registration with compiled data paths |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition |

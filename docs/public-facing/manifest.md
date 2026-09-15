@@ -20,7 +20,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `artifacts` | `string` | no | Path to artifact registration file |
 | `blocks` | `string` | no | Path to block registration file |
 | `migrations` | `string` | no | Path to migrations index file |
-| `packServices` | `Record<string, string>` | no | Pack-level service modules (`key` -> `path`) |
+| `packServices` | `Record<string, string>` | no | Pack-level services (`key` -> `"path#exportName"` of the service object) |
 | `defaultPlugin` | `string` | no | Feature ID of the default sidebar plugin |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations |
@@ -56,7 +56,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
         "icon": "Bookmark"
       },
       "services": {
-        "bookmarks": "src/features/bookmarks/be/services/bookmarks"
+        "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
       }
     }
   ]
@@ -72,7 +72,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `settings` | `string` | no | Path to default settings file |
 | `system` | `{ entry, outgoingEventsType?, sendsTo?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`. `sendsTo` lists plugins it sends events to besides its own feature's (other features of the pack, dependency plugins, or `application`); each one's `emit` type then accepts this system's outgoing events. `events` declares `incoming`/`outgoing` event arrays for runtime routing. |
 | `plugin` | `{ entry, label, icon, isPinned? }` | no | Frontend plugin definition |
-| `services` | `Record<string, string>` | no | Service modules (`key` -> `path`) |
+| `services` | `Record<string, string>` | no | Feature services (`key` -> `"path#exportName"` of the service object; see [Services](services-and-data.md#services)) |
 | `repositories` | `Record<string, string>` | no | Repository objects (`name` -> `path#exportName`), registered by the generated pack entry and typed on `repository` from `#generated/repository` |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
 | `earlySystem` | `boolean` | no | Run before EARS hydration (built-in only) |

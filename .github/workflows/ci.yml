@@ -45,6 +45,10 @@ jobs:
         working-directory: packages/default-setup
         run: npx abuddy build
 
+      # The facade types dependents compile against (dist/types/pack-types.d.ts) match the reviewed report
+      - name: Facade types report (default-setup)
+        run: npm run facade:check --workspace @app/default-setup
+
       - name: Build default-setup runtime (for the SDK bridge drift check and dependent-pack tests)
         run: node packages/default-setup/dev-build.mjs
 

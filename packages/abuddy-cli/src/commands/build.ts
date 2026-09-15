@@ -14,11 +14,12 @@ import {
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundlePackTypes } from '../build/types-bundler';
+import { facadeProblems } from '../build/facade-gate';
 import { BUNDLE_PATHS } from '@abuddy/host/packs';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { generate, resolveDeps } from './generate';
 import { resolveDepArtifacts } from './fetch-deps';
-import { generateEntries } from './generate-entries';
+import { generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readManifest, sdkVersion } from '../utils';
 
 /** Loads a pack's seed compiler module, which may be TypeScript */
@@ -105,6 +106,7 @@ export async function build(args: string[]) {
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
     dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
   }
+  warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
   const seeds = manifest.boot?.seed;
   if (seeds && Object.keys(seeds).length > 0) {
@@ -141,9 +143,15 @@ export async function build(args: string[]) {
 
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
-  const packTypes = await bundlePackTypes(root, path.join(outputDir, BUNDLE_PATHS.typesDir, `${PACK_TYPES_DEF}.d.ts`));
-  if (packTypes.success) {
+  const packTypesFile = path.join(outputDir, BUNDLE_PATHS.typesDir, `${PACK_TYPES_DEF}.d.ts`);
+  const packTypes = await bundlePackTypes(root, packTypesFile);
+  const packTypesProblems = packTypes.success ? facadeProblems(root, packTypesFile) : [];
+  if (packTypes.success && packTypesProblems.length === 0) {
     defs[PACK_TYPES_DEF] = packTypes.content;
+  } else if (packTypes.success) {
+    // Dependents would read these types as `any` or fail to compile against them
+    console.error(`\nPack types aren't usable by packs that depend on this one. The types of what abuddy.json exposes (entity shapes, events, services, repositories) must check on their own and import only packages dependents have:\n${packTypesProblems.map((p) => `  - ${p}`).join('\n')}`);
+    process.exitCode = 1;
   } else {
     console.error(`\nPack types bundle failed: ${packTypes.error}`);
     process.exitCode = 1;

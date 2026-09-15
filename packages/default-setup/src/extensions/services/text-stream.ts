@@ -44,4 +44,4 @@ export class TextStreamService {
   }
 }
 
-export const createTextStreamService = () => new TextStreamService();
+export const textStreamService = new TextStreamService();

@@ -400,8 +400,8 @@
       "Action:Init Onboarding": {
         "label": "Init Onboarding",
         "description": "Creates the birth thread and sends the welcome artifact for onboarding",
-        "sourceHash": "e1787325a6231b6a",
-        "rowSha256": "a75648f72ab250efb87c2550aab35261ef093cc3a15a265e3fb6ce003293f07d"
+        "sourceHash": "26ecca61db3b7823",
+        "rowSha256": "9a32630012350d42c66c25cf0b42a2f1c179023e9b79f105ad32a8743e5dee34"
       },
       "Action:PR to Markdown": {
         "label": "PR to Markdown",
@@ -1013,8 +1013,8 @@
       "Action:Init Onboarding": {
         "label": "Init Onboarding",
         "description": "Creates the birth thread and sends the welcome artifact for onboarding",
-        "sourceHash": "e1787325a6231b6a",
-        "rowSha256": "a75648f72ab250efb87c2550aab35261ef093cc3a15a265e3fb6ce003293f07d"
+        "sourceHash": "26ecca61db3b7823",
+        "rowSha256": "9a32630012350d42c66c25cf0b42a2f1c179023e9b79f105ad32a8743e5dee34"
       },
       "Action:PR to Markdown": {
         "label": "PR to Markdown",

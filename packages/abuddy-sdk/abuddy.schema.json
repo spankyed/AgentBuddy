@@ -215,9 +215,13 @@
           "services": {
             "type": "object",
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
             },
-            "description": "Service modules. Keys are service names, values are source file paths."
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Services. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
           },
           "repositories": {
             "type": "object",
@@ -249,9 +253,13 @@
     "packServices": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
       },
-      "description": "Pack-level services not tied to a specific feature. Keys are service names, values are source file paths."
+      "propertyNames": {
+        "pattern": "^[A-Za-z_$][\\w$]*$"
+      },
+      "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
     },
     "boot": {
       "type": "object",

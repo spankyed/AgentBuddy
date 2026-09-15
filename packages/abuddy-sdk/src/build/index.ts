@@ -53,7 +53,10 @@ export { entry, on } from './flow-helpers.ts';
 export type { ActionMeta, PromptMeta } from './seed-types.ts';
 
 // Entry codegen
-export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF } from './generate-entries.ts';
+export {
+  generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF,
+  depTypesFile, depTypesVersion,
+} from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';
 
 // Resolve conditions for building pack code against a linked checkout

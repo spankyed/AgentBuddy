@@ -241,4 +241,14 @@ The corresponding `abuddy.json` entry:
 }
 ```
 
-A feature can omit `system` (frontend-only) or `plugin` (backend-only). The `services` map is always required, even if empty.
+A feature can omit `system` (frontend-only) or `plugin` (backend-only). The `services` map is always required, even if empty. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)).
+
+## Types dependents see
+
+`abuddy build` bundles the types of what a pack exposes (entity shapes, events, services, repositories) into `dist/types/pack-types.d.ts`. Packs depending on it compile against that file, so the build fails when the bundle:
+
+- doesn't type-check on its own, or
+- imports a package other than `@abuddy/*`, `@abuddy/sdk`'s peer dependencies (`vue`, `xstate`, `zod`, `ai`, ...) or a Node built-in. For example, a service whose methods return a `Page` from `playwright`: a dependent doesn't have your pack's other dependencies installed, and would read those types as `any`, or
+- imports an `@abuddy/*` module the published package doesn't export (`@abuddy/sdk/ears/internals`, which resolves only in a linked AgentBuddy checkout).
+
+The error names the offending line of the bundle and the facade type that reaches it. Give the service or repository an explicit type written with your own types or allowed packages' types instead of one inferred from a library's.

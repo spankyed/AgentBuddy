@@ -52,9 +52,9 @@
       },
       "contributions": "src/features/threads/fe/contributions",
       "services": {
-        "chat": "src/features/threads/be/services/chat",
-        "artifact": "src/features/threads/be/services/artifact",
-        "threads": "src/features/threads/be/services/threads"
+        "chat": "src/features/threads/be/services/chat.ts#chatService",
+        "artifact": "src/features/threads/be/services/artifact.ts#artifactService",
+        "threads": "src/features/threads/be/services/threads.ts#threadsService"
       },
       "repositories": {
         "threadQueries": "src/features/threads/be/repository/index.ts#threadQueries",
@@ -75,8 +75,8 @@
         "icon": "Code2"
       },
       "services": {
-        "cli": "src/features/code/be/services/cli",
-        "codex": "src/features/code/be/services/codex"
+        "cli": "src/features/code/be/services/cli.ts#cliService",
+        "codex": "src/features/code/be/services/codex/index.ts#codexService"
       },
       "repositories": {
         "terminalQueries": "src/features/code/be/repository/index.ts#terminalQueries",
@@ -114,7 +114,7 @@
         "icon": "Globe"
       },
       "services": {
-        "browser": "src/features/browser/be/services/browser"
+        "browser": "src/features/browser/be/services/browser.ts#browserService"
       },
       "repositories": {
         "browserQueries": "src/features/browser/be/repository/index.ts#browserQueries",
@@ -135,7 +135,7 @@
       },
       "contributions": "src/features/library/fe/contributions",
       "services": {
-        "library": "src/features/library/be/services/library"
+        "library": "src/features/library/be/services/library.ts#libraryService"
       },
       "repositories": {
         "libraryQueries": "src/features/library/be/repository/index.ts#libraryQueries",
@@ -178,7 +178,7 @@
         "isPinned": true
       },
       "services": {
-        "action": "src/features/actions/be/services/action"
+        "action": "src/features/actions/be/services/action.ts#actionService"
       },
       "repositories": {
         "actionQueries": "src/features/actions/be/repository/index.ts#actionQueries",
@@ -199,7 +199,7 @@
         "isPinned": true
       },
       "services": {
-        "prompt": "src/features/prompts/be/services/prompt"
+        "prompt": "src/features/prompts/be/services/prompt.ts#promptService"
       },
       "repositories": {
         "promptQueries": "src/features/prompts/be/repository/index.ts#promptQueries",
@@ -220,8 +220,8 @@
         "isPinned": true
       },
       "services": {
-        "brain": "src/features/brain/be/services/brain",
-        "scheduler": "src/features/brain/be/services/scheduler"
+        "brain": "src/features/brain/be/services/brain.ts#brainService",
+        "scheduler": "src/features/brain/be/services/scheduler.ts#schedulerService"
       },
       "repositories": {
         "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",
@@ -241,7 +241,7 @@
         "isPinned": true
       },
       "services": {
-        "database": "src/features/database/be/services/database"
+        "database": "src/features/database/be/services/database.ts#databaseService"
       }
     },
     {
@@ -276,7 +276,7 @@
         "icon": "Settings"
       },
       "services": {
-        "settings": "src/features/settings/be/services/settings"
+        "settings": "src/features/settings/be/services/settings.ts#settingsService"
       },
       "repositories": {
         "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
@@ -285,8 +285,8 @@
     }
   ],
   "packServices": {
-    "textStream": "src/extensions/services/text-stream",
-    "filesystem": "src/extensions/services/filesystem"
+    "textStream": "src/extensions/services/text-stream.ts#textStreamService",
+    "filesystem": "src/extensions/services/filesystem.ts#filesystemService"
   },
   "defaultPlugin": "threads",
   "boot": {

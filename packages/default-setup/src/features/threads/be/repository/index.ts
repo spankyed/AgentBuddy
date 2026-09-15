@@ -48,6 +48,10 @@ export const threadQueries = {
   allUnfiltered: () =>
     findAll<ThreadEntity>(EARS.Entity.Thread),
 
+  /** The first thread holding the role, e.g. the onboarding birth thread */
+  idByRole: (role: EARS.RoleKind): EARS.EntityId | null =>
+    qx().withRole(role).first(),
+
   allByRecency: () => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     return threads.sort((a, b) => {
@@ -366,6 +370,11 @@ export const threadCommands = {
     }
 
     // 4. Finally, delete the thread entity itself
+    tx(id).destroy();
+  },
+
+  /** Destroy a thread record left without data (a stale role holder); `delete` cleans up a real thread's links */
+  destroyStale: (id: EARS.EntityId): void => {
     tx(id).destroy();
   },
 } as const;

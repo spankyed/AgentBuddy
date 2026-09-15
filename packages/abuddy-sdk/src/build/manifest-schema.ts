@@ -127,6 +127,13 @@ const PluginSchema = z.object({
  */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
+const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier');
+
+/** A named export of a pack source file */
+const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+
+const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
+
 export const FeatureEntrySchema = z.object({
   id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
     .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code.'),
@@ -136,8 +143,9 @@ export const FeatureEntrySchema = z.object({
   earlySystem: z.boolean().describe('Built-in packs only. Ignored for external packs.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
-  services: z.record(z.string(), z.string()).describe('Service modules. Keys are service names, values are source file paths.').optional(),
-  repositories: z.record(z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier'), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
+  services: ServicesSchema
+    .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  repositories: z.record(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
   contributions: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
 }).strict();
@@ -197,8 +205,8 @@ export const ManifestSchema = z.object({
   features: z.array(FeatureEntrySchema)
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
   defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
-  packServices: z.record(z.string(), z.string())
-    .describe('Pack-level services not tied to a specific feature. Keys are service names, values are source file paths.').optional(),
+  packServices: ServicesSchema
+    .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   boot: BootConfigSchema.optional(),
   steps: StepsSchema.describe('Flow step definitions.').optional(),
   artifacts: z.string().describe('Path to artifact type registration module.').optional(),
@@ -208,7 +216,7 @@ export const ManifestSchema = z.object({
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   seedFormats: z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be lowercase alphanumeric with hyphens'), SeedFormatSchema)
     .describe('Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as "<pack id>:<name>".').optional(),
-  seedHooks: z.record(z.string(), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
+  seedHooks: z.record(z.string(), ExportTargetSchema)
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
   if (!manifest.builtIn && manifest.boot?.seed?.settings !== undefined) {

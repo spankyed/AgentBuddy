@@ -169,18 +169,16 @@ import { services } from '#generated/services';
 
 const Digest = z.object({ summary: z.string(), tags: z.array(z.string()) });
 
-export function createDigestService() {
-  return {
-    async digest(text: string): Promise<z.infer<typeof Digest>> {
-      const { output } = await services.inference.generateText({
-        model: 'openai:gpt-5-mini',
-        prompt: `Digest: ${text}`,
-        output: Output.object({ schema: Digest }),
-      });
-      return output;
-    },
-  };
-}
+export const digestService = {
+  async digest(text: string): Promise<z.infer<typeof Digest>> {
+    const { output } = await services.inference.generateText({
+      model: 'openai:gpt-5-mini',
+      prompt: `Digest: ${text}`,
+      output: Output.object({ schema: Digest }),
+    });
+    return output;
+  },
+};
 TS
 node -e '
   const fs = require("fs");

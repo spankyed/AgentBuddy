@@ -224,6 +224,12 @@ export function deepMerge(target: Record<string, unknown>, source: Record<string
 // @public
 export function defaultSourceHash(record: SeedRecord): string;
 
+// @internal
+export function depTypesFile(depId: string): string;
+
+// @internal
+export function depTypesVersion(content: string, depId: string): string | undefined;
+
 // @public (undocumented)
 export const DslEntrySchema: z.ZodObject<{
     entry: z.ZodString;

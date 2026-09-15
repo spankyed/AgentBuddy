@@ -44,6 +44,10 @@ npm run db:reset         # Reset database
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components)
 
+# Built-in pack facade types (run from packages/default-setup, after `abuddy build`)
+npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
+npm run facade:update    # Dev: regenerate etc/pack-types.api.md
+
 npm run packages:build   # Build dist/ for @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
 npm run packages:check   # publint + arethetypeswrong on the packed packages (after packages:build)
 ```

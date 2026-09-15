@@ -64,3 +64,10 @@ export function clearAllSchedules(): void {
   activeJobs.clear();
   logger.info('Cleared all schedules');
 }
+
+/** `services.scheduler`: cron jobs for the schedule step and the brain systems */
+export const schedulerService = {
+  registerSchedule,
+  unregisterByPrefix,
+  clearAllSchedules,
+};

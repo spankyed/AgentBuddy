@@ -16,27 +16,30 @@ abuddy add service bookmarks --feature bookmarks # feature-level
 
 ### Writing a service
 
+A service is an object exported by name. `services.<key>` is that object, so its members are what systems, actions and dependent packs call:
+
 ```typescript
 // src/extensions/services/cache.ts
-export function createCacheService() {
-  const store = new Map<string, unknown>();
-  return {
-    get: (key: string) => store.get(key),
-    set: (key: string, value: unknown) => store.set(key, value),
-    clear: () => store.clear(),
-  };
-}
+const store = new Map<string, unknown>();
+
+export const cacheService = {
+  get: (key: string) => store.get(key),
+  set: (key: string, value: unknown) => store.set(key, value),
+  clear: () => store.clear(),
+};
 ```
 
-There is no fixed interface — the shape is pack-specific. Services are typically factory functions that return an object with methods.
+There is no fixed interface: the shape is pack-specific. The export is the service object itself (an object literal or a class instance, `export const cacheService = new Cache()`), never a factory function or a class: `generate-entries` fails on one. Other exports of the module stay out of the service, so helpers the pack uses internally are imported directly. The service's type is the type of the export, and dependent packs build against it: give the export an explicit type when its inferred type would name a third-party package.
 
 ### Manifest
+
+Each entry names the file and its export, as `"path#exportName"`. The export can come from the file itself or be re-exported (`export { cacheService } from './cache-impl'`, a barrel's `export *`); `generate-entries` resolves it with the TypeScript compiler and fails when the file or export doesn't exist, or the export is a type or function.
 
 **Pack-level:**
 ```json
 {
   "packServices": {
-    "cache": "src/extensions/services/cache.ts"
+    "cache": "src/extensions/services/cache.ts#cacheService"
   }
 }
 ```
@@ -48,19 +51,21 @@ There is no fixed interface — the shape is pack-specific. Services are typical
     {
       "id": "bookmarks",
       "services": {
-        "bookmarks": "src/features/bookmarks/be/services/bookmarks"
+        "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
       }
     }
   ]
 }
 ```
 
+Service names (the keys) are identifiers. `abuddy add service <name>` writes both: a module exporting `<name>Service` (camelCase) and its entry.
+
 ### Generated aggregation
 
 `generate-entries` creates `__generated__/services.ts` (import it as `#generated/services`), which:
 
-1. Imports all feature and pack-level services
-2. Exports a `featureServices` object aggregating them
+1. Imports each feature and pack-level service export
+2. Exports a `featureServices` object aggregating them (`Services` is typed from it)
 3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, `secrets`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 

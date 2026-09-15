@@ -1,9 +1,10 @@
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { extname, join } from 'path';
 import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { formatEntities } from './seeds/records.ts';
 import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
+import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -236,6 +237,9 @@ export function emitDepTypes(depSnapshots: Map<string, { types: PackTypeManifest
 /** Extensions a manifest path can name a module by; anything else (`memo.types`) is part of the name */
 const MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue', '.json', '.css']);
 
+/** Extensions of the TypeScript sources codegen reads exports from */
+const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
+
 /**
  * Specifier from src/__generated__ to a manifest path (relative to the pack root), with an
  * explicit .js extension so generated code resolves under node16/nodenext as well as bundlers.
@@ -267,17 +271,35 @@ export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 
 /** The type-bundle key in a pack's snapshot defs, written by `abuddy build` */
 export const PACK_TYPES_DEF = 'pack-types';
 
+/**
+ * A dependency's facade types in a pack, relative to the pack root.
+ *
+ * @internal Host-only: abuddy CLI build tooling.
+ */
+export function depTypesFile(depId: string): string {
+  return `src/__generated__/deps/${depId}.d.ts`;
+}
+
+/** The line naming the dependency version a facade types file was generated from */
+export function depTypesHeader(depId: string, version: string): string {
+  return `// ${depId}@${version} facade types\n`;
+}
+
+/**
+ * The dependency version a facade types file was generated from (its depTypesHeader line).
+ *
+ * @internal Host-only: abuddy CLI build tooling.
+ */
+export function depTypesVersion(content: string, depId: string): string | undefined {
+  const prefix = `// ${depId}@`;
+  const suffix = ' facade types';
+  const line = content.split('\n').find((l) => l.startsWith(prefix) && l.endsWith(suffix));
+  return line?.slice(prefix.length, -suffix.length);
+}
+
 /** A local name for a type imported from a dependency, unique per dependency */
 function depAlias(depId: string, name: string): string {
   return `__dep_${depId.replace(/[^A-Za-z0-9_$]/g, '_')}_${name}`;
-}
-
-/** Whether a source file exports a type (or value) with this name */
-function exportsName(content: string, name: string): boolean {
-  const declared = new RegExp(`export\\s+(?:declare\\s+)?(?:default\\s+)?(?:abstract\\s+)?(?:interface|type|class|enum|const|let|var|function)\\s+${name}\\b`);
-  const listed = [...content.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}/g)]
-    .some((m) => m[1].split(',').some((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim() === name));
-  return declared.test(content) || listed;
 }
 
 function toIdentifier(key: string): string {
@@ -324,29 +346,74 @@ export function generatePackFiles(
     };
   }
 
-  function resolveServiceImport(key: string, manifestPath: string) {
-    const base = join(root, manifestPath);
-    // abuddy add service writes the file path itself (src/extensions/services/<name>.ts)
-    const fullPath = base.endsWith('.ts') && existsSync(base) ? base
-      : existsSync(base + '.ts') ? base + '.ts'
-      : existsSync(join(base, 'index.ts')) ? join(base, 'index.ts')
-      : null;
-    if (!fullPath) {
-      throw new Error(`Service "${key}": no file found at ${manifestPath} (.ts or /index.ts)`);
-    }
-    const content = readFileSync(fullPath, 'utf-8');
-    const pascal = toPascalCase(key);
-    const factoryName = `create${pascal}Service`;
-    const namedName = `${key}Service`;
-    const exportPattern = (name: string) => new RegExp(`export\\s+(const|function)\\s+${name}\\b`);
+  // ── Manifest export targets ────────────────────────────────────
 
-    if (exportPattern(factoryName).test(content)) {
-      return { style: 'factory' as const, exportName: factoryName };
-    }
-    if (exportPattern(namedName).test(content)) {
-      return { style: 'named' as const, exportName: namedName };
-    }
-    return { style: 'namespace' as const, exportName: key };
+  /** The pack source file a manifest path names: the file itself, `<path>.ts` or `<path>/index.ts` */
+  function sourceFileOf(manifestPath: string): string | undefined {
+    const normalized = manifestPath.split('\\').join('/');
+    return [normalized, `${normalized}.ts`, `${normalized}/index.ts`]
+      .map((candidate) => join(root, candidate))
+      .find((file) => TS_SOURCE_EXTENSIONS.has(extname(file)) && existsSync(file) && statSync(file).isFile());
+  }
+
+  /** A `"path#exportName"` manifest value: the source path, the export and the file */
+  function exportTarget(label: string, target: string): { source: string; exportName: string; file: string } {
+    const hash = target.indexOf('#');
+    if (hash === -1) throw new Error(`${label}: "${target}" must name its export, as "path#exportName"`);
+    const source = target.slice(0, hash).split('\\').join('/');
+    const exportName = target.slice(hash + 1);
+    const file = sourceFileOf(source);
+    if (!file) throw new Error(`${label}: no file found at ${source} (.ts or /index.ts)`);
+    return { source, exportName, file };
+  }
+
+  /** Every file whose exports codegen reads, so one TypeScript program covers them all */
+  function exportedFromFiles(): string[] {
+    const features = manifest.features ?? [];
+    const targets = [
+      ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
+      ...Object.values(manifest.packServices ?? {}),
+      ...Object.values(manifest.seedHooks ?? {}),
+    ].map((target) => target.split('#')[0]);
+    const sources = [
+      ...targets,
+      ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
+      ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
+    ];
+    return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
+  }
+
+  let moduleExports: ModuleExports | undefined;
+  function exportOf(file: string, name: string): ExportInfo | undefined {
+    moduleExports ??= createModuleExports(root, exportedFromFiles());
+    return moduleExports.exportOf(file, name);
+  }
+
+  /** A `"path#exportName"` target that must export a runtime value */
+  function valueExport(label: string, target: string): { source: string; exportName: string; value: NonNullable<ExportInfo['value']> } {
+    const { source, exportName, file } = exportTarget(label, target);
+    const info = exportOf(file, exportName);
+    if (!info) throw new Error(`${label}: ${source} doesn't export "${exportName}"`);
+    if (!info.value) throw new Error(`${label}: ${source} exports "${exportName}" only as a type, not a value`);
+    return { source, exportName, value: info.value };
+  }
+
+  /** A service: `"path#exportName"` of the service object (an object literal or a class instance) */
+  function serviceExport(key: string, target: string): { source: string; exportName: string } {
+    const label = `Service "${key}"`;
+    const { source, exportName, value } = valueExport(label, target);
+    if (value === 'function') throw new Error(`${label}: "${exportName}" in ${source} is a function; export the service object itself (export const ${exportName} = { … })`);
+    if (value === 'class') throw new Error(`${label}: "${exportName}" in ${source} is a class; export an instance of it (export const <name> = new …)`);
+    return { source, exportName };
+  }
+
+  /** A feature's settings module, imported by its default export */
+  function settingsSource(feature: PackFeatureEntry): string {
+    const label = `Feature "${feature.id}"`;
+    const file = sourceFileOf(feature.settings!);
+    if (!file) throw new Error(`${label}: no settings file found at ${feature.settings} (.ts or /index.ts)`);
+    if (!exportOf(file, 'default')?.value) throw new Error(`${label}: settings ${feature.settings} has no default export of the settings object`);
+    return feature.settings!;
   }
 
   function outgoingEventsType(feature: PackFeatureEntry): string {
@@ -413,7 +480,7 @@ export function generatePackFiles(
 
     const settingsImports = features
       .filter(f => f.settings)
-      .map(f => `import ${settingsBinding(f.id)} from '${toImportPath(root, f.settings!)}';`)
+      .map(f => `import ${settingsBinding(f.id)} from '${toImportPath(root, settingsSource(f))}';`)
       .join('\n');
 
     const hooksImport = manifest.boot?.hooks
@@ -769,20 +836,11 @@ ${nodeEntity}`;
     const entries: string[] = [];
 
     // Imports are aliased so a service name can't shadow a generated binding (e.g. `services`)
-    function addService(key: string, manifestPath: string) {
-      const { style, exportName } = resolveServiceImport(key, manifestPath);
-      const importPath = toImportPath(root, manifestPath);
+    function addService(key: string, target: string) {
+      const { source, exportName } = serviceExport(key, target);
       const local = `__service_${key}`;
-      if (style === 'factory') {
-        imports.push(`import { ${exportName} as ${local} } from '${importPath}';`);
-        entries.push(`  ${key}: ${local}(),`);
-      } else if (style === 'named') {
-        imports.push(`import { ${exportName} as ${local} } from '${importPath}';`);
-        entries.push(`  ${key}: ${local},`);
-      } else {
-        imports.push(`import * as ${local} from '${importPath}';`);
-        entries.push(`  ${key}: ${local},`);
-      }
+      imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
+      entries.push(`  ${key}: ${local},`);
     }
 
     for (const f of features) {
@@ -831,13 +889,8 @@ export type EntityId = EARS.EntityId;
     return (manifest.features ?? []).flatMap(f => Object.entries(f.repositories ?? {}).map(([name, target]) => {
       if (seen.has(name)) throw new Error(`Repository "${name}" is declared by features "${seen.get(name)}" and "${f.id}"`);
       seen.set(name, f.id);
-      const [source, exportName] = target.split('#');
-      const normalized = source.split('\\').join('/');
-      const file = [normalized, `${normalized}.ts`, join(normalized, 'index.ts')].map(p => join(root, p)).find(p => /\.ts$/.test(p) && existsSync(p));
-      if (!file || !exportsName(readFileSync(file, 'utf-8'), exportName)) {
-        throw new Error(`Repository "${name}" (feature "${f.id}"): ${source} doesn't export "${exportName}"`);
-      }
-      return [name, toImportPath(root, normalized), exportName] as [string, string, string];
+      const { source, exportName } = valueExport(`Repository "${name}" (feature "${f.id}")`, target);
+      return [name, toImportPath(root, source), exportName] as [string, string, string];
     }));
   }
 
@@ -1035,13 +1088,8 @@ export type { ImportMode } from '@abuddy/sdk/utils';
   /** [entity, source module specifier, export name] of each seed hook the manifest declares */
   function seedHookEntries(): [string, string, string][] {
     return Object.entries(manifest.seedHooks ?? {}).map(([entity, target]) => {
-      const [source, exportName] = target.split('#');
-      const normalized = source.split('\\').join('/');
-      const file = [normalized, `${normalized}.ts`, join(normalized, 'index.ts')].map(p => join(root, p)).find(p => /\.ts$/.test(p) && existsSync(p));
-      if (!file || !exportsName(readFileSync(file, 'utf-8'), exportName)) {
-        throw new Error(`Seed hooks for "${entity}": ${source} doesn't export "${exportName}"`);
-      }
-      return [entity, toImportPath(root, normalized), exportName] as [string, string, string];
+      const { source, exportName } = valueExport(`Seed hooks for "${entity}"`, target);
+      return [entity, toImportPath(root, source), exportName] as [string, string, string];
     });
   }
 
@@ -1054,9 +1102,8 @@ export type { ImportMode } from '@abuddy/sdk/utils';
         throw new Error(`Entity shape "${entity}": the SDK declares this entity's shape; remove it from entityShapes`);
       }
       const normalized = source.split('\\').join('/');
-      const file = [normalized, `${normalized}.ts`, join(normalized, 'index.ts')]
-        .map((f) => join(root, f)).find((f) => existsSync(f) && !f.endsWith('/') && extname(f) !== '' && /\.(ts|tsx|mts|cts|d\.ts)$/.test(f));
-      if (!file || !exportsName(readFileSync(file, 'utf-8'), typeName)) {
+      const file = sourceFileOf(normalized);
+      if (!file || !exportOf(file, typeName)?.type) {
         throw new Error(`Entity shape "${entity}": ${source} doesn't export a type named "${typeName}"`);
       }
       const alias = `__shape_${entity.replace(/[^A-Za-z0-9_$]/g, '_')}`;
@@ -1241,7 +1288,10 @@ ${registrations.join('\n\n')}
     ['src/__generated__/repositories.ts', generateRepositories()],
     ['src/__generated__/pack-types.ts', generatePackTypes()],
     // Each dependency's facade types, from its snapshot
-    ...typedDeps.map((depId) => [`src/__generated__/deps/${depId}.d.ts`, `${HEADER}\n${depSnapshots.get(depId)!.defs[PACK_TYPES_DEF]}`]),
+    ...typedDeps.map((depId) => {
+      const snap = depSnapshots.get(depId)!;
+      return [depTypesFile(depId), `${HEADER}${depTypesHeader(depId, snap.manifest.version)}\n${snap.defs[PACK_TYPES_DEF]}`];
+    }),
     ['src/__generated__/contributions.ts', generateContributions()],
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],

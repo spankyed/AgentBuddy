@@ -1,32 +1,36 @@
 /**
  * Browser Automation Service
- * 
+ *
  * Simple wrapper service for Playwright browser automation providing
- * a clean interface for common browser automation tasks.
+ * a clean interface for common browser automation tasks. `services.browser`
+ * is typed by `BrowserService`: playwright's types stay in this module.
  */
 
-import { chromium, Browser, BrowserContext, Page, ElementHandle, BrowserType } from 'playwright';
+import { chromium, firefox, webkit, type Browser, type BrowserContext, type Page, type BrowserType } from 'playwright';
+import type {
+  BrowserCookie,
+  BrowserEngine,
+  BrowserLaunchOptions,
+  BrowserPageHandle,
+  BrowserService,
+  BrowserSession,
+} from '@/features/browser/be/types';
 
-export interface LaunchOptions {
-  headless?: boolean;
-  viewport?: {
-    width: number;
-    height: number;
-  };
-}
+const engines: Record<BrowserEngine, BrowserType> = { chromium, firefox, webkit };
 
-export class BrowserService {
+// A page handle is the playwright Page itself, opaque to callers
+const toHandle = (page: Page): BrowserPageHandle => page as unknown as BrowserPageHandle;
+const toPage = (handle: BrowserPageHandle): Page => handle as unknown as Page;
+
+class PlaywrightBrowserSession implements BrowserSession {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
-  private browserType: BrowserType = chromium;
 
-  constructor(browserType: BrowserType = chromium) {
-    this.browserType = browserType;
-  }
+  constructor(private readonly browserType: BrowserType) {}
 
   // Browser lifecycle
-  async launch(options: LaunchOptions = {}): Promise<void> {
+  async launch(options: BrowserLaunchOptions = {}): Promise<void> {
     this.browser = await this.browserType.launch({
       headless: options.headless ?? true,
     });
@@ -119,7 +123,7 @@ export class BrowserService {
   }
 
   // Waiting
-  async waitForSelector(selector: string, timeout?: number): Promise<ElementHandle | null> {
+  async waitForSelector(selector: string, timeout?: number): Promise<unknown> {
     const page = this.getPage();
     return await page.waitForSelector(selector, { timeout });
   }
@@ -152,25 +156,26 @@ export class BrowserService {
   }
 
   // Evaluate JavaScript
-  async evaluate<T = any>(fn: () => T): Promise<T> {
+  async evaluate<T>(fn: () => T): Promise<T> {
     const page = this.getPage();
     return await page.evaluate(fn);
   }
 
   // Tab management
-  async newPage(): Promise<Page> {
+  async newPage(): Promise<BrowserPageHandle> {
     if (!this.context) {
       throw new Error('Browser context not initialized. Call launch() first.');
     }
     const newPage = await this.context.newPage();
-    return newPage;
+    return toHandle(newPage);
   }
 
-  async switchToPage(targetPage: Page): Promise<void> {
-    this.page = targetPage;
+  async switchToPage(handle: BrowserPageHandle): Promise<void> {
+    this.page = toPage(handle);
   }
 
-  async closePage(targetPage: Page): Promise<void> {
+  async closePage(handle: BrowserPageHandle): Promise<void> {
+    const targetPage = toPage(handle);
     await targetPage.close();
     // If we closed the current page, switch to first available page
     if (this.page === targetPage && this.context) {
@@ -187,7 +192,7 @@ export class BrowserService {
     await this.context.addCookies(cookies);
   }
 
-  async getCookies(): Promise<Array<{ name: string; value: string; domain: string; path: string }>> {
+  async getCookies(): Promise<BrowserCookie[]> {
     if (!this.context) {
       throw new Error('Browser context not initialized. Call launch() first.');
     }
@@ -221,10 +226,7 @@ export class BrowserService {
   }
 }
 
-// Factory function for creating browser instances
-export function createBrowser(browserType?: BrowserType): BrowserService {
-  return new BrowserService(browserType);
-}
-
-// Re-export the browser launchers from playwright for convenience
-export { chromium, firefox, webkit } from 'playwright';
+/** `services.browser`: creates an automated browser session per call */
+export const browserService: BrowserService = {
+  createBrowser: (engine: BrowserEngine = 'chromium') => new PlaywrightBrowserSession(engines[engine]),
+};

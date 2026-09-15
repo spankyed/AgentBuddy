@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
+import { depTypesFile, depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -56,6 +56,8 @@ describe('generated events', () => {
     expect(events).toContain("import type { PackEvents as __dep_base_pack_PackEvents } from './deps/base-pack.js';");
     expect(events).toContain('export type PackEvents = OwnPackEvents & Omit<__dep_base_pack_PackEvents, keyof OwnPackEvents> & Omit<HostPluginEvents, keyof OwnPackEvents>;');
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('export type PackEvents = {};');
+    expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('// base-pack@1.0.0 facade types\n');
+    expect(depTypesVersion(files[depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
   });
 
   it('rejects a sendsTo target no pack or host provides', () => {
@@ -123,10 +125,19 @@ describe('generated entity shapes', () => {
 
 describe('generated feature settings', () => {
   it("passes each feature's settings module to its registration, which registers them as defaults", () => {
+    write('src/features/memos/settings.ts', 'export default { plugins: { memos: {} } };\n');
     const entry = generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] })['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("import __settings_Memos from '../features/memos/settings.js';");
     expect(entry).toMatch(/id: 'memos',[^}]*services: \[\],\n {4}settings: __settings_Memos,\n {2}\}/);
     expect(entry).toMatch(/id: 'todos',[^}]*services: \[\],\n {2}\}/);
+  });
+
+  it('fails on a settings module that is missing or has no default export', () => {
+    expect(() => generate({ features: [{ ...system('memos'), settings: 'src/settings.ts' }] }))
+      .toThrow('Feature "memos": no settings file found at src/settings.ts');
+    write('src/settings.ts', 'export const settings = {};\n');
+    expect(() => generate({ features: [{ ...system('memos'), settings: 'src/settings.ts' }] }))
+      .toThrow('Feature "memos": settings src/settings.ts has no default export');
   });
 });
 
@@ -138,6 +149,13 @@ describe('generated repositories', () => {
     expect(files['src/__generated__/repository.ts']).toContain('memoQueries: typeof __repo_memoQueries;');
     expect(files['src/__generated__/repositories.ts']).toContain("registerRepository('memoQueries', __repo_memoQueries);");
     expect(files['src/__generated__/pack-entry.ts']).toContain("import './repositories.js';");
+  });
+
+  it('accepts a repository exported through a barrel', () => {
+    write('src/memos/queries.ts', 'export const memoQueries = {};\n');
+    write('src/memos/index.ts', "export * from './queries';\n");
+    expect(generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/memos#memoQueries' } }] })['src/__generated__/repositories.ts'])
+      .toContain("import { memoQueries as __repo_memoQueries } from '../memos/index.js';");
   });
 
   it('fails on a repository export that does not exist', () => {
@@ -154,12 +172,55 @@ describe('generated repositories', () => {
 });
 
 describe('generated services', () => {
-  it('aliases service imports, so a service named "services" does not shadow the export', () => {
-    write('src/services.ts', 'export const value = 1;\n');
-    const services = generate({ features: [{ id: 'memos', services: { services: 'src/services.ts' } }] })['src/__generated__/services.ts'];
-    expect(services).toContain("import * as __service_services from '../services.js';");
+  const service = (target: string, key = 'memo') => generate({ features: [{ id: 'memos', services: { [key]: target } }] })['src/__generated__/services.ts'];
+
+  it('imports the named service object under an alias, so a service named "services" does not shadow the export', () => {
+    write('src/services.ts', 'export const servicesService = { value: 1 };\n');
+    const services = service('src/services.ts#servicesService', 'services');
+    expect(services).toContain("import { servicesService as __service_services } from '../services.js';");
     expect(services).toContain('  services: __service_services,');
     expect(services).toContain('export const services = sdkServices');
+  });
+
+  it('imports pack-level services the same way', () => {
+    write('src/cache/index.ts', 'export const cacheService = { get: (key: string) => key };\n');
+    const services = generate({ packServices: { cache: 'src/cache#cacheService' } })['src/__generated__/services.ts'];
+    expect(services).toContain("import { cacheService as __service_cache } from '../cache/index.js';");
+    expect(services).toContain('  cache: __service_cache,');
+  });
+
+  it('accepts a service object re-exported from another module, a barrel or a multi-line export list', () => {
+    write('src/impl.ts', 'class MemoStore { list(): string[] { return []; } }\n/* export const memoService = 1 */\nconst memoService = new MemoStore();\nexport {\n  MemoStore,\n  memoService,\n};\n');
+    write('src/reexport.ts', "export { memoService } from './impl';\n");
+    write('src/barrel.ts', "export * from './reexport';\n");
+    write('src/renamed.ts', "import { memoService as impl } from './impl';\nexport { impl as memoService };\n");
+    for (const source of ['src/impl.ts', 'src/reexport.ts', 'src/barrel.ts', 'src/renamed.ts']) {
+      expect(service(`${source}#memoService`)).toContain('  memo: __service_memo,');
+    }
+  });
+
+  it("fails on a target without an export, a missing file or export, and an export that isn't a service object", () => {
+    write('src/memo.ts', [
+      'export type MemoType = { list(): string[] };',
+      'export interface MemoInterface { list(): string[] }',
+      'export function createMemoService() { return {}; }',
+      'export const memoFactory = () => ({});',
+      'export class MemoService {}',
+      'const typeOnly = {};',
+      'export type { typeOnly };',
+      '// export const commented = {};',
+    ].join('\n'));
+    expect(() => service('src/memo.ts')).toThrow('Service "memo": "src/memo.ts" must name its export, as "path#exportName"');
+    expect(() => service('src/missing.ts#memoService')).toThrow('Service "memo": no file found at src/missing.ts');
+    expect(() => service('src/memo.ts#memoService')).toThrow('Service "memo": src/memo.ts doesn\'t export "memoService"');
+    expect(() => service('src/memo.ts#commented')).toThrow('Service "memo": src/memo.ts doesn\'t export "commented"');
+    for (const name of ['MemoType', 'MemoInterface', 'typeOnly']) {
+      expect(() => service(`src/memo.ts#${name}`)).toThrow(`Service "memo": src/memo.ts exports "${name}" only as a type, not a value`);
+    }
+    for (const name of ['createMemoService', 'memoFactory']) {
+      expect(() => service(`src/memo.ts#${name}`)).toThrow(`Service "memo": "${name}" in src/memo.ts is a function; export the service object itself`);
+    }
+    expect(() => service('src/memo.ts#MemoService')).toThrow('Service "memo": "MemoService" in src/memo.ts is a class; export an instance of it');
   });
 
   it("intersects dependencies' services and types repository with the pack's repositories", () => {

@@ -83,21 +83,39 @@ export async function action(
 
 ### Available services
 
-Actions receive a `services` object with access to:
+Actions receive a `services` object: default-setup's feature services (each is the object its `abuddy.json` entry names, `path#<key>Service`), the host's services, and the pack's repositories. A pack depending on default-setup gets the same object, typed by `Services` from its generated facade.
+
+**default-setup's services**
+
+| Service | Description |
+|---|---|
+| `services.chat` | Chat messages and blocks (`sendBlockMessage`, `sendSystemMessage`, `sendChoiceBlock`, `sendQuestionBlock`, `createThreadAndNotify`, …) |
+| `services.threads` | Thread chat state (`updateChatState`) |
+| `services.artifact` | Artifact creation and updates (`createAndNotify`, `updateAndNotify`, `findOrCreateByType`) |
+| `services.library` | Library documents and folders (`get`, `getByCode`, `getByName`, `getByPath`, `getText`, `list`, `create`, `update`, `createFolder`, `rename`, `move`, `remove`) |
+| `services.prompt` | Prompt templates (`usePrompt`, `getByLabel`, `executeTemplate`) |
+| `services.action` | Look up and run actions (`getById`, `getByLabel`, `getByCategory`, `executeAction`, `getAndExecute`) |
+| `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
+| `services.scheduler` | Cron schedules for flow triggers (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) |
+| `services.database` | Live-data schema and topology context for AI query generation (`buildQueryContext`) |
+| `services.settings` | Settings read and write (`getAll`, `getSettingValue`, `updateGeneralSetting`, `updatePluginSetting`, …) |
+| `services.cli` | CLI tools: `git`, `gh`, `claudeCode`, `codex`, plus `testCli` |
+| `services.codex` | The Codex app-server (threads, turns, approvals, sessions) |
+| `services.browser` | Browser automation sessions (`createBrowser`) |
+| `services.filesystem` | Files and folders (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |
+| `services.textStream` | Chunked text streaming for simulated typing (`streamText`, `streamTextByChars`) |
+
+**Host services**
 
 | Service | Description |
 |---|---|
 | `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
-| `services.prompt` | Prompt template resolution (`usePrompt`) |
-| `services.threads` | Thread and message operations |
-| `services.chat` | Chat interactions |
-| `services.artifact` | Artifact creation and management |
-| `services.brain` | Brain/memory operations |
-| `services.database` | Database queries |
-| `services.browser` | Browser integration |
-| `services.settings` | Settings read/write |
+| `services.repository` | The pack's declared repositories (queries and commands); actions read and write data through them |
 | `services.logger` | Structured logging |
-| `services.emitter` | Event emission to plugins |
+| `services.emitter` | Event emission to plugins and systems (`sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onIncoming`, `onOutgoing`) |
+| `services.appData` | Reset, back up and restore the app's data |
+| `services.traceStore` | Read flow execution records |
+| `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 
 ### Rules
 
