@@ -2,7 +2,7 @@
 # Goal: clean package boundaries — @abuddy/ears, a typed host port, and one owner per concern
 
 Implement docs/issues/goal-package-boundaries.md on a branch cut from AS/inference-service
-(2b14f142e or later): Background, Spike results, Decisions, Phases, Constraints. Read it first.
+(fb06e736a or later): Background, Spike results, Decisions, Phases, Constraints. Read it first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
 specified, pick the conventional option, note it in the final summary, and keep going. No
 backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -13,7 +13,9 @@ Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
 - `registerHostModule`, `getHostModule`, `hostFn` and `hostValue` no longer exist. The SDK
-  reaches the host only through the typed `HostRuntime` bound once per process.
+  reaches the host only through the typed `HostRuntime` bound once per process: the event bus,
+  the pack registry view, the app version and the three services packs call (`appData`,
+  `traceStore`, `inference`), each implemented in `@abuddy/host/services/`.
 - All EARS code (engine, types, persistence, LMDB) lives in `@abuddy/ears`; no EARS or
   persistence code remains in `@abuddy/sdk`, `@abuddy/host` or `packages/api`.
 - `packages/api/src` holds only transport (Fastify, WebSocket, tRPC), process boot and
@@ -106,6 +108,8 @@ Five packages share responsibilities that should each have one home, and the cod
 
 Throwaway worktree `spike/ears-package` (from `2b14f142e`, uncommitted, in the session scratchpad; discard with `git worktree remove`). The EARS engine was moved into a new `packages/abuddy-ears` workspace package, with the SDK rebuilt on top.
 
+**Don't reuse the spike's code; rewrite Phase 1 on the current branch.** Its patch (excluding generated files and API reports) applies without conflict to `fb06e736a`, checked with `git apply --check -3`. But it keeps every engine module re-exported from an SDK file of the same name, which Decision 4 removes, and it has no build or publish configuration. Reusing it would mean undoing half of it.
+
 - **Coupling.** The engine's imports outside `src/ears` were:
   - `types/entities.ts` (16 files)
   - `utils/random-id.ts` (1)
@@ -136,10 +140,10 @@ Final.
 1. **Layers, imports pointing down only.**
    ```
    @abuddy/ears     engine, EARS types, persistence port, in-memory store      (+ /lmdb: LMDB adapter)
-   @abuddy/sdk      pack contract + pack runtime: registries, services contracts, events, SDK entities
-                    and their repositories, HostRuntime port
-   @abuddy/host     app runtime: implements HostRuntime (bus + event routing, system errors, logger core,
-                    migrations runner, pack lifecycle, host services, app state)
+   @abuddy/sdk      pack contract + pack runtime: registries, services contracts, event sends, logging and
+                    error reports over the bound event bus, SDK entities and their repositories, HostRuntime port
+   @abuddy/host     app runtime: the three services (/services), app state, and the subsystems the app
+                    runs (/packs pack lifecycle, /bus, /migrations)
    packages/api     transport (Fastify, WebSocket, tRPC routers, log stream) + process boot + composition
    packages/renderer  FE composition: binds the FE port
    ```
@@ -162,20 +166,21 @@ Final.
    - `@abuddy/sdk/ears` exports only what the SDK adds: `EARS` with the SDK's entities and relation kinds, the SDK entity shapes, and the SDK entity repositories.
    - Generated `#generated/ears` imports `defineEars` and core types from `@abuddy/ears`, and SDK names and shapes from `@abuddy/sdk`.
    - The typed contract's behaviour (types, completions, typo errors) stays exactly as it is.
-5. **One typed port replaces the registry.**
+5. **One typed port replaces the registry, with only what the SDK can't do itself.**
    ```ts
    // @abuddy/sdk/runtime
    export interface HostRuntime {
-     transport: { rootEvents: RootEvents };                     // was trpc, bus-emitter, router-events
-     events: { sendToPlugin; sendToSystem; sendToBrainSystem; onOutgoing; onIncoming };   // was event-emitter
-     logger: { createLogger(source?: string): Logger };          // was logger
-     systemErrors: { report(input: ReportSystemErrorInput): void }; // was system-errors
-     app: { version: string; runMigrations(): void };            // was version, migrations
-     packs: PackRegistryView;                                    // was pack-registry
-     services: Pick<HostServices, 'appData' | 'traceStore' | 'inference'>;   // was app-data, trace-store, inference
+     transport: { rootEvents: RootEvents };   // the app's event bus; the api supplies it (was trpc, bus-emitter, router-events)
+     packs: PackRegistryView;                 // registered pack services, for `services` (was pack-registry)
+     appVersion: string;                      // (was version)
+     services: {                              // what packs call through `services` and the app implements
+       appData: AppDataService;               // (was app-data)
+       traceStore: TraceStore;                // (was trace-store)
+       inference: InferenceService;           // (was inference)
+     };
    }
    export function bindHost(runtime: HostRuntime): void;       // once per process; rebinding throws unless reset for tests
-   export function bindFeHost(runtime: { application: AnyActorRef }): void;  // renderer; was application
+   export function bindFeHost(runtime: { application: AnyActorRef }): void;  // renderer (was application)
    ```
    - An unbound use throws, naming `bindHost`.
    - **Bindings:**
@@ -183,15 +188,30 @@ Final.
      - `@abuddy/sdk/testing`'s `startTestRuntime` binds an in-memory `HostRuntime`;
      - the harness supplies `packs` (with `mockService` overlays) when it binds.
    - `runtime/host.ts` and its registry are deleted.
-6. **Implementations move from the api to host.**
-   - `@abuddy/host/events`: event routing and the bus emitter core over `transport`.
-   - `@abuddy/host/system-errors`.
-   - `@abuddy/host/logger`: the logger core with a log sink; the api's log capture streams it to the client.
-   - `@abuddy/host/migrations`: the runner and app migrations. `api/src/setup/migrations` and its CLAUDE.md move there.
-   - `@abuddy/host/packs`: loader, lifecycle, reload, seed, packs system and activation outcome.
-   - `@abuddy/host/backend`: the backend system composition (`systems.ts`).
-   - `createHostRuntime({ store, transport, appVersion, userDataDir })` assembles all of it.
-   - The api keeps `server.ts`, `setup/websocket.ts`, `setup/config.ts`, `core/router/{trpc,context,bus-router,index}.ts` (tRPC procedures delegating to host), log capture to the client, and `setup/backend.ts`, which shrinks to composition.
+6. **Plumbing moves into the SDK; "service" means only what packs call.**
+   - **Event sends, logging and error reports are SDK code over `transport`**, not host implementations. They're a few lines each over the event bus today (`api/src/core/router/event-emitter.ts`, `core/shared/debug/logger.ts`, `core/shared/system-errors.ts`) and move next to the functions the SDK already exports:
+     - `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onOutgoing`, `onIncoming` → `@abuddy/sdk/services`;
+     - `createLogger` → `@abuddy/sdk/logger`. It formats and emits log events. The api's log capture writes them to the console and streams them to the client, so nothing is logged twice.
+     - `reportSystemError` → `@abuddy/sdk/utils`.
+
+     Their registry keys (`event-emitter`, `logger`, `system-errors`) go away with no replacement.
+   - **The app version** is `HostRuntime.appVersion`; `getAppVersion()` reads it.
+   - **Migrations leave the SDK.** `runMigrations` is removed from `@abuddy/sdk/utils`. The only pack caller is default-setup's reset actor (`settings/be/system.ts`), which today runs the app's reset itself: `appData.reset()`, `createDefaultSettings()`, `seedData(...)`, `runMigrations()`. `services.appData.reset()` does all of it in host (wipe stores, run every pack's boot hooks and boot seed, run app migrations), and the actor only calls `reset()`.
+   - **Services** are exactly `HostRuntime.services`: `appData`, `traceStore`, `inference`.
+
+     | What | Where |
+     |---|---|
+     | Contract (types only) | `@abuddy/sdk/services/<name>.ts` (`app-data`, `trace-store`, `inference`) |
+     | Implementation | `@abuddy/host/services/<name>.ts`, same names |
+     | Test double | `@abuddy/sdk/testing`: the in-memory `HostRuntime` (`fakeInference` for inference) |
+
+     `@abuddy/host/services/index.ts` exports `createHostRuntime({ store, transport, appVersion, userDataDir })`, the only place the runtime is assembled. The SDK's contract files contain types only, and `@abuddy/sdk/services/index.ts` reads the services from the bound runtime.
+   - **Host-only code stays in host and isn't reachable from the SDK:**
+     - app state, `@abuddy/host/app-state` (Decision 7);
+     - `@abuddy/host/migrations`: app migrations and their runner, moved from `api/src/setup/migrations` with its CLAUDE.md. Host runs them at boot and in `appData.reset()`.
+     - `@abuddy/host/packs`: loader, lifecycle, reload, seed, packs system and activation outcome, moved from `api/src/packs`;
+     - `@abuddy/host/bus`, plus the backend system composition from `api/src/systems.ts`.
+   - **The api keeps** `server.ts`, `setup/websocket.ts`, `setup/config.ts`, `core/router/{trpc,context,bus-router,index}.ts` (tRPC procedures delegating to host), `core/router/bus-emitter.ts` (the `transport` it supplies), log capture to the console and client, and `setup/backend.ts`, which shrinks to composition.
 7. **Each entity's repository lives with the package that declares it.**
    - **Flow model** (the SDK's): `@abuddy/sdk` owns the flow, node, edge and TNode repositories and the action and prompt repositories:
      - flows: create, update, delete, the root flow role, `reindexHandles`, `importFromDSL`, `rootFlow`, `flowNodes`, `flowEdges`, `node`, `getNodeActionId`
@@ -200,7 +220,7 @@ Final.
 
      default-setup keeps its UI projections (`connectedData`, `extendedData`, action and prompt export) on top of them. `builtin-repositories.ts` is deleted.
    - **Secrets** (the SDK's `Secret`): the SDK owns a secrets repository. Selection moves onto the entity (`selected: boolean`; at most one selected per provider, enforced by the repository), replacing default-setup's `general.secrets` provider map. Host's inference key lookup uses it, and `HostSettingsRepositories` is deleted.
-   - **App state:** a new SDK entity `AppState` (one row) holds `hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, `seedHash` and `seedStatFingerprint`. `@abuddy/host/app-state` owns its reads and writes. Resetting settings no longer touches it.
+   - **App state:** a new entity `AppState` (one row) holds `hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, `seedHash` and `seedStatFingerprint`. Host declares it (registered with the engine next to the SDK's entities), and `@abuddy/host/app-state` owns its reads and writes. The SDK and packs never read it; `hasOnboarded` reaches the renderer in the `CLIENT_CONNECTED` event, as today. Resetting settings no longer touches it.
    - **Settings** (UI settings: general, plugins): it's default-setup's data. default-setup declares the `Settings` entity and owns the settings seed format and seeder; the SDK stops declaring and seeding it. `packSettingsRegistry` (pack feature defaults) stays in `@abuddy/sdk/framework`.
    - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. The override moves from `general.secrets.cliPaths` to that feature's plugin settings.
    - **Migrations:** an app migration targeting the next release moves stored data, following `migrations/CLAUDE.md`:
@@ -210,8 +230,8 @@ Final.
 
      It's idempotent and has a spec on a copy of old-shaped data.
 8. **Renames and naming.**
-   - Service contract files are one per service in `@abuddy/sdk/services` (`app-data.ts`, `trace-store.ts`, `inference.ts`), and implementations one per service in `@abuddy/host/services`, as already done.
-   - New host subpaths follow the concern names above.
+   - Services use the same file names in both packages (Decision 6).
+   - Host-only modules are named by concern (`app-state`, `migrations`, `packs`, `bus`).
    - `packages/api` keeps its name.
 
 ## Phases
@@ -242,43 +262,48 @@ Final.
 - Nothing under `@abuddy/host` or `packages/api` imports `lmdb`.
 - Mutation: skipping `setPersistence` in composition fails a restart-persistence spec.
 
-### Phase 3 — The `HostRuntime` port
+### Phase 3 — The `HostRuntime` port and SDK plumbing
 - Add `HostRuntime`, `bindHost` and `bindFeHost` (Decision 5).
-- Convert every SDK reader (`rpc`, `logger`, `utils` system errors/version/migrations, `services`, `fe/delegates`) to the bound runtime.
+- Move event sends, logging and error reports into the SDK over `transport` (Decision 6), with their specs. `getAppVersion()` reads `appVersion`.
+- Convert the remaining SDK readers (`rpc`, `services`, `fe/delegates`) to the bound runtime.
 - The api binds `createHostRuntime`, and the renderer binds the FE port.
-- `startTestRuntime` binds the in-memory runtime, and the harness binds with its `packs`.
-- Delete `runtime/host.ts` (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`) and `HOST_SERVICE_MODULES`/`registerHostServices`. Run `api:update`.
+- `startTestRuntime` binds the in-memory runtime (its test bus as `transport`), and the harness binds with its `packs`.
+- Delete `runtime/host.ts` (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`), `HOST_SERVICE_MODULES`/`registerHostServices`, and `api/src/core/router/event-emitter.ts`, `core/shared/system-errors.ts` and `core/shared/debug/logger.ts`. Run `api:update`.
 
 **Done when:**
 - No `registerHostModule`/`getHostModule` exists anywhere, and a guard test fails if one is added.
 - `bindHost` twice throws.
 - An unbound `services.inference` call throws naming `bindHost`.
 - `HostRuntime` compiles only when complete.
+- An SDK spec shows `sendToPlugin`, `reportSystemError` and `createLogger` reaching a bound test bus, and the api's log capture logging each log event once.
 - All unit suites, E2E, `test:external-pack` and `test:packaged-authoring` pass.
 - Mutations fail tests: a `HostRuntime` member left out of the api's binding; the harness binding without `packs`.
 
 ### Phase 4 — App runtime out of the api
-- Move event routing, system errors, the logger core, the migrations runner and app migrations, the pack lifecycle (`api/src/packs`) and the backend system composition into `@abuddy/host` (Decision 6), with `createHostRuntime`.
-- The api's tRPC procedures delegate to host.
+- Move the migrations runner and app migrations into `@abuddy/host/migrations`, the pack lifecycle (`api/src/packs`) into `@abuddy/host/packs`, and the backend system composition into `@abuddy/host/bus` (Decision 6).
+- `appData.reset()` runs the full reset (stores, pack boot hooks and boot seed, migrations). default-setup's reset actor only calls it, and `runMigrations` is removed from `@abuddy/sdk/utils`.
+- `createHostRuntime` assembles the runtime. The api's tRPC procedures delegate to host.
 - Move each moved module's specs with it.
 - `bridge-drift`: the api pack loader builds its bridge from `SHARED_INSTANCE_PACKAGES`.
 
 **Done when:**
-- `packages/api/src` contains only `server.ts`, `setup/{websocket,config,backend}.ts`, `core/router/{trpc,context,bus-router,index}.ts`, log capture and `types`, and a guard spec lists the allowed files.
+- `@abuddy/host/services` holds exactly `app-data`, `trace-store`, `inference` and `index`, and a guard spec compares the directory to `HostRuntime['services']`'s keys.
+- `packages/api/src` contains only `server.ts`, `setup/{websocket,config,backend}.ts`, `core/router/{trpc,context,bus-router,bus-emitter,index}.ts`, log capture and `types`, and a guard spec lists the allowed files.
 - A guard fails if `@abuddy/host` imports `fastify`, `@trpc/*` or `ws`.
+- A spec shows `appData.reset()` leaves an onboarded app with default settings, seeded flows and migrations applied.
 - The CLI's pack commands and the harness still run without a server.
 - The full check list passes.
 
 ### Phase 5 — Data ownership
 - SDK repositories for the flow model, actions, prompts and secrets (Decision 7). default-setup's projections move onto them, and `builtin-repositories.ts` is deleted.
-- `AppState` entity and `@abuddy/host/app-state`. Every `settings.internal` read and write moves there, including SDK boot seed's `seedHash`, which moves to host.
+- The `AppState` entity and `@abuddy/host/app-state`. Every `settings.internal` read and write moves there, including SDK boot seed's `seedHash`, which moves to host.
 - The `Settings` entity, settings seed format and seeder move to default-setup. Follow the TYPED-EARS checklist for `sdk-entities.ts`.
 - `resolve-cli` and the CLI path override move to default-setup's code feature.
 - App migration for stored data (Decision 7), with an idempotence spec on old-shaped data.
 
 **Done when:**
 - `repository as unknown as` appears nowhere in `packages/*/src`, and a guard fails if it's added.
-- A spec shows resetting settings leaves `AppState` untouched. It fails on today's code.
+- `packages/default-setup/tests/unit/settings-reset-app-state.spec.ts` is unskipped and rewritten against `AppState`. It's committed skipped today: it fails on the current code (resetting settings erases `hasOnboarded`, `packVersions` and `packSeedHashes`).
 - The migration spec moves old-shaped data and a second run changes nothing.
 - The app boots onboarded against a copy of pre-migration user data, with an isolated data dir.
 - The full check list passes.
@@ -289,8 +314,9 @@ Final.
 - `packages/default-setup/CLAUDE.md` and `packages/abuddy-testing/CLAUDE.md`.
 - `docs/public-facing` (services and data, testing, getting started: `@abuddy/ears` for packs).
 - A short amendment note in `goal-ears-engine-instance.md` on its superseded decisions.
+- Root `CLAUDE.md` states Decision 6 (the three services, SDK plumbing over the event bus, host-only modules) where the SDK packages section lists host services today.
 
-**Done when:** no doc, template or CLAUDE.md mentions `registerHostModule`, `getHostModule`, `@abuddy/sdk/ears/internals`, `api/src/core/persistence`, `BuiltinRepositories` or `settings.internal`.
+**Done when:** no doc, template or CLAUDE.md mentions `registerHostModule`, `getHostModule`, `runMigrations`, `@abuddy/sdk/ears/internals`, `api/src/core/persistence`, `BuiltinRepositories` or `settings.internal`.
 
 ## Deferred
 
