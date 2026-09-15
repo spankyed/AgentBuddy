@@ -1,7 +1,7 @@
 import { hostService } from './host-services.ts';
 
-/** A store a backup can hold: the primary database, the volatile trace store, or secrets */
-export type BackupDatabase = 'lmdb' | 'volatileLmdb' | 'secretsLmdb';
+/** A store a backup can hold: the primary database or the volatile trace store. API keys are never backed up. */
+export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
 export interface BackupInfo {
   timestamp: number;

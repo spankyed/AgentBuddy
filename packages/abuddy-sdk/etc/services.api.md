@@ -38,7 +38,7 @@ export interface AppDataService {
 }
 
 // @public
-export type BackupDatabase = 'lmdb' | 'volatileLmdb' | 'secretsLmdb';
+export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
 // @public (undocumented)
 export interface BackupInfo {
@@ -58,7 +58,7 @@ export function createInferenceService(resolveModel: ResolveModel): InferenceSer
 export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
 
 // @internal
-export type HostImplementedServices = Pick<HostServices, 'appData' | 'traceStore' | 'inference'>;
+export type HostImplementedServices = Pick<HostServices, 'appData' | 'traceStore' | 'inference' | 'secrets'>;
 
 // @public
 export type HostPluginEvents = {
@@ -90,6 +90,7 @@ export interface HostServices {
     logger: Logger;
     // (undocumented)
     repository: typeof repository;
+    secrets: SecretsService;
     traceStore: TraceStore;
 }
 
@@ -156,7 +157,7 @@ export type OutputSpec = {
 } & OutputNaming);
 
 // @public
-export type ProviderName = Exclude<SecretProvider, 'custom'>;
+export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
 // @public (undocumented)
 export function registerThreadTeardown(fn: (threadId: string) => void): void;
@@ -166,6 +167,58 @@ export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => I
 
 // @public (undocumented)
 export function runThreadTeardown(threadId: string): void;
+
+// @public
+export interface SecretInfo {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    id: string;
+    label: string;
+    // (undocumented)
+    provider: SecretProvider;
+    selected: boolean;
+    // (undocumented)
+    updatedAt?: number;
+}
+
+// @public
+export type SecretProvider = ProviderName | 'custom';
+
+// @internal
+export const secretProviderLabel: (provider: SecretProvider) => string;
+
+// @internal (undocumented)
+export const secretRules: {
+    add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, "selected" | "label"> & {
+        label: string;
+    }): T[];
+    select<T extends SecretInfo>(secrets: readonly T[], id: string, now: number): T[];
+    rename<T extends SecretInfo>(secrets: readonly T[], id: string, label: string, now: number): T[];
+    remove<T extends SecretInfo>(secrets: readonly T[], id: string): T[];
+    selectedFor<T extends SecretInfo>(secrets: readonly T[], provider: ProviderName): T;
+};
+
+// @public
+export type SecretsProtection = 'os-keystore' | 'unprotected' | 'unavailable';
+
+// @public
+export interface SecretsService {
+    delete(id: string): void;
+    list(): SecretInfo[];
+    // (undocumented)
+    rename(id: string, label: string): void;
+    select(id: string): void;
+    // (undocumented)
+    status(): SecretsStatus;
+}
+
+// @public (undocumented)
+export interface SecretsStatus {
+    backend: string;
+    // (undocumented)
+    protection: SecretsProtection;
+}
 
 // @public (undocumented)
 export function sendToBrainSystem(event: {
@@ -188,6 +241,9 @@ export function sendToSystem(systemId: string, event: {
 
 // @public
 export const services: HostServices & Record<string, unknown>;
+
+// @internal
+export const toSecretInfo: (input: SecretInfo) => SecretInfo;
 
 // @public
 export interface TraceEntityMeta {

@@ -102,7 +102,6 @@ export namespace EARS {
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Settings: "Settings";
-        readonly Secret: "Secret";
     };
     // (undocumented)
     export interface AttributePayloads {

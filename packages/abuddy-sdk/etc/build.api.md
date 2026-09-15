@@ -475,13 +475,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     relKinds: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
     partitionPolicy: z.ZodOptional<z.ZodObject<{
         excludedEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-        secretEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strict", z.ZodTypeAny, {
         excludedEntityTypes?: string[] | undefined;
-        secretEntityTypes?: string[] | undefined;
     }, {
         excludedEntityTypes?: string[] | undefined;
-        secretEntityTypes?: string[] | undefined;
     }>>;
     entityShapes: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         source: z.ZodString;
@@ -674,31 +671,31 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 defaultLabel: z.ZodOptional<z.ZodString>;
                 custom: z.ZodOptional<z.ZodLiteral<true>>;
             }, "strict", z.ZodTypeAny, {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             }, {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             type: string;
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }, {
             type: string;
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }>, "many">;
     }, "strict", z.ZodTypeAny, {
@@ -708,9 +705,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -721,9 +718,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -886,7 +883,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
-        secretEntityTypes?: string[] | undefined;
     } | undefined;
     entityShapes?: Record<string, {
         type: string;
@@ -940,9 +936,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -997,7 +993,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
-        secretEntityTypes?: string[] | undefined;
     } | undefined;
     entityShapes?: Record<string, {
         type: string;
@@ -1051,9 +1046,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1108,7 +1103,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
-        secretEntityTypes?: string[] | undefined;
     } | undefined;
     entityShapes?: Record<string, {
         type: string;
@@ -1162,9 +1156,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1219,7 +1213,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
-        secretEntityTypes?: string[] | undefined;
     } | undefined;
     entityShapes?: Record<string, {
         type: string;
@@ -1273,9 +1266,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1719,13 +1712,13 @@ export const StepDSLMetaSchema: z.ZodObject<{
     defaultLabel: z.ZodOptional<z.ZodString>;
     custom: z.ZodOptional<z.ZodLiteral<true>>;
 }, "strict", z.ZodTypeAny, {
-    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
+    custom?: true | undefined;
 }, {
-    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
+    custom?: true | undefined;
 }>;
 
 // @public (undocumented)
@@ -1741,31 +1734,31 @@ export const StepEntrySchema: z.ZodObject<{
         defaultLabel: z.ZodOptional<z.ZodString>;
         custom: z.ZodOptional<z.ZodLiteral<true>>;
     }, "strict", z.ZodTypeAny, {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     }, {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     type: string;
     path: string;
     kind?: "step" | "trigger" | undefined;
     dsl?: {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     } | undefined;
 }, {
     type: string;
     path: string;
     kind?: "step" | "trigger" | undefined;
     dsl?: {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     } | undefined;
 }>;
 

@@ -39,7 +39,6 @@ export interface PackEARS {
   relKinds: Record<string, string>;
   partitionPolicy?: {
     excludedEntityTypes?: string[];
-    secretEntityTypes?: string[];
   };
 }
 

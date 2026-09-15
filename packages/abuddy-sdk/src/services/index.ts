@@ -7,11 +7,14 @@ import type { ApplicationHotkeys } from '../types/index.ts';
 import { appData, type AppDataService } from './app-data.ts';
 import { traceStore, type TraceStore } from './trace-store.ts';
 import { inference, type InferenceService } from './inference.ts';
+import { secrets, type SecretsService } from './secrets.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { createInferenceService, type InferenceModels, type InferenceService, type OutputSpec, type ResolveModel } from './inference.ts';
 export type { HostImplementedServices } from './host-services.ts';
+export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsStatus } from './secrets.ts';
+export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
 function lazyHost(name: string) {
@@ -102,6 +105,8 @@ export interface HostServices {
   traceStore: TraceStore;
   /** Model calls (text, agents, embeddings, images, speech, transcription, reranking) with the user's provider keys */
   inference: InferenceService;
+  /** The user's API keys, without their values: list, select, rename, delete */
+  secrets: SecretsService;
 }
 
 function resolveServices(): HostServices & Record<string, unknown> {
@@ -112,6 +117,7 @@ function resolveServices(): HostServices & Record<string, unknown> {
     appData,
     traceStore,
     inference,
+    secrets,
     ...packRegistry().getRegisteredServices(),
   };
 }

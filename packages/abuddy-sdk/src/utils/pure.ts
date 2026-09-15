@@ -6,3 +6,4 @@ export * from './compare-versions.ts';
 export { randomId, type RandomIdOptions } from './random-id.ts';
 export * from './change-mapping.ts';
 export * from './change-detection.ts';
+export { redactSecrets, redactSecretText, REDACTED } from './redact.ts';

@@ -341,7 +341,7 @@ export function loadSingleExternalPack(
   if (pack.boot?.seedManifest) delete pack.boot.seedManifest;
   const policy = pack.ears?.partitionPolicy;
   if (policy) {
-    if ((policy.excludedEntityTypes?.length ?? 0) > 0 || (policy.secretEntityTypes?.length ?? 0) > 0) {
+    if ((policy.excludedEntityTypes?.length ?? 0) > 0) {
       logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
     }
     delete pack.ears!.partitionPolicy;

@@ -4,7 +4,7 @@ Settings migrations that run on app startup when the stored version is behind th
 
 ## How it works
 
-Each migration file exports a `Migration` with:
+Pack migrations live with their pack (default-setup's in `packages/default-setup/src/migrations/`, registered in its `abuddy.json` `migrations`). Each file exports a `PackMigration` with:
 - `target` — the version this migration applies to
 - `description` — short summary of changes
 - `up()` — the migration function (synchronous, uses `settingsQueries` / `settingsCommands`)
@@ -22,19 +22,17 @@ Each migration file exports a `Migration` with:
 ## Adding a migration
 
 ```ts
-// 0.X.Y.ts
-import { repository } from '@/repository';
-import type { Migration } from './index';
+// packages/default-setup/src/migrations/0.X.Y.ts
+import { repository } from '@/__generated__/repository';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
-const { settingsQueries, settingsCommands } = repository;
-
-export const migration: Migration = {
+export const migration: PackMigration = {
   target: '0.X.Y',
   description: 'Describe what this migration does',
   up: () => {
-    const data = settingsQueries.getSettings();
+    const data = repository.settingsQueries.getSettings();
     // Check and apply changes...
-  }
+  },
 };
 ```
 

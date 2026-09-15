@@ -339,7 +339,6 @@ export type AgentConnectedData = {
   recentThreads: Partial<ThreadEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
-  hasRequiredApiKeys: boolean;
   commands?: CommandItem[];
 };
 

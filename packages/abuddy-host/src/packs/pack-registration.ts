@@ -7,7 +7,7 @@
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
 import type { HostServices } from '@abuddy/sdk/services';
-import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, SDK_SECRET_ENTITY_TYPES } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS } from '@abuddy/sdk/types';
 import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
@@ -18,7 +18,7 @@ import { packSettingsRegistry } from '@abuddy/sdk/framework';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
 /** Services the host supplies itself; a pack service with one of these names would replace it */
-const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference'] as const satisfies readonly (keyof HostServices)[];
+const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets'] as const satisfies readonly (keyof HostServices)[];
 // Fails to compile when HostServices gains a service this list doesn't name
 const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
 void _allHostServicesNamed;
@@ -269,18 +269,12 @@ export function runRegisteredBootSeeds(
   }
 }
 
-export function getRegisteredEARSPolicy(): { excludedEntityTypes: string[]; secretEntityTypes: string[] } {
+export function getRegisteredEARSPolicy(): { excludedEntityTypes: string[] } {
   const excluded: string[] = [...SDK_EXCLUDED_ENTITY_TYPES];
-  const secret: string[] = [...SDK_SECRET_ENTITY_TYPES];
   for (const reg of registrations.values()) {
-    if (reg.ears?.partitionPolicy) {
-      if (reg.ears.partitionPolicy.excludedEntityTypes)
-        excluded.push(...reg.ears.partitionPolicy.excludedEntityTypes);
-      if (reg.ears.partitionPolicy.secretEntityTypes)
-        secret.push(...reg.ears.partitionPolicy.secretEntityTypes);
-    }
+    if (reg.ears?.partitionPolicy?.excludedEntityTypes) excluded.push(...reg.ears.partitionPolicy.excludedEntityTypes);
   }
-  return { excludedEntityTypes: excluded, secretEntityTypes: secret };
+  return { excludedEntityTypes: excluded };
 }
 
 export function getRegisteredMigrations(): PackMigration[] {

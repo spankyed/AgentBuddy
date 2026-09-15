@@ -61,7 +61,7 @@ describe('registerPack entities', () => {
   });
 
   it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {
-    expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'], secretEntityTypes: ['Secret'] });
+    expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'] });
   });
 });
 

@@ -7,9 +7,9 @@ import { registerRepository } from '../ears/repository.ts';
 import { seedHookRegistry, type SeedHooks } from '../seed/hooks.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
-import { registerTestHostModules } from './host.ts';
+import { registerTestHostModules, resetTestSecrets } from './host.ts';
 
-export { testRootEvents, takeSystemErrors, type TestRootEvents } from './host.ts';
+export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents } from './host.ts';
 export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
 
 /**
@@ -54,6 +54,7 @@ export function registerSeedRuntime(runtime: SeedRuntime): void {
 /** Empties the in-memory database (registrations stay) */
 export function resetTestData(): void {
   clearMemory();
+  resetTestSecrets();
 }
 
 /** Every entity id in the in-memory database, relation rows included */

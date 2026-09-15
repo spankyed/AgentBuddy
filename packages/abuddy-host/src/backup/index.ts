@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
+import { getLmdbPath, getVolatileLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
 import { closePersistence, reinitializeLmdb } from '../ears/index.ts';
 
 const logger = createLogger('database:backup');
@@ -10,7 +10,6 @@ const logger = createLogger('database:backup');
 const DATABASE_PATHS = {
   lmdb: getLmdbPath,
   volatileLmdb: getVolatileLmdbPath,
-  secretsLmdb: getSecretsLmdbPath,
 } as const;
 
 export async function exportDatabase(

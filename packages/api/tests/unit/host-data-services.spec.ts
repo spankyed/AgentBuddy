@@ -95,9 +95,9 @@ describe('services.appData', () => {
     dirs.push(dir);
     expect(await services.appData.backupInfo(dir)).toBeNull();
 
-    const backup = await services.appData.exportBackup(dir, 'probe', ['secretsLmdb']);
+    const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
     expect(backup).toBe(path.join(dir, 'probe'));
-    expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['secretsLmdb'], size: expect.any(Number), hasMedia: false });
+    expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false });
   });
 
   it('rejects an import of a directory that is not a backup', async () => {

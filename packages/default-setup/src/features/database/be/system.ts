@@ -25,7 +25,7 @@ type IncomingDatabaseEvents =
   | { type: 'GET_TRACE_FLOWS' }
   | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
   | { type: 'GET_NODE_DETAILS'; nodeId: string }
-  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb' | 'secretsLmdb')[] }
+  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb')[] }
   | { type: 'IMPORT_DATABASE'; path: string }
   | { type: 'GET_BACKUP_INFO'; path: string }
   | { type: 'RESET_DATABASE' };

@@ -1,5 +1,5 @@
 import { rootEvents } from '@/core/router/bus-emitter';
-import { randomId } from '@abuddy/sdk/utils';
+import { randomId, redactSecretText } from '@abuddy/sdk/utils';
 import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
 
 export type SystemErrorSeverity = 'error' | 'fatal';
@@ -32,23 +32,24 @@ type ReportSystemErrorInput = {
   userMessage?: string;
 };
 
+/** The error's name, message and stack, with key-shaped strings redacted (provider errors can quote the key) */
 function normalizeError(error: unknown): { message: string; stack?: string; name?: string } {
   if (error instanceof Error) {
     return {
       name: error.name,
-      message: error.message || error.toString(),
-      stack: error.stack,
+      message: redactSecretText(error.message || error.toString()),
+      stack: error.stack && redactSecretText(error.stack),
     };
   }
 
   if (typeof error === 'string') {
-    return { message: error };
+    return { message: redactSecretText(error) };
   }
 
   try {
-    return { message: JSON.stringify(error) };
+    return { message: redactSecretText(JSON.stringify(error)) };
   } catch {
-    return { message: String(error) };
+    return { message: redactSecretText(String(error)) };
   }
 }
 

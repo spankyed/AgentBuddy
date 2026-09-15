@@ -109,7 +109,7 @@ export const getLmdbPath: () => string;
 export const getMediaPath: () => string;
 
 // @internal
-export const getSecretsLmdbPath: () => string;
+export const getSecretsFilePath: () => string;
 
 // @public (undocumented)
 export const getUserDataPath: () => string;
@@ -183,6 +183,15 @@ export function readMediaBuffer(ref: MediaRef): {
     data: Buffer;
     mimeType: string;
 } | null;
+
+// @public (undocumented)
+export const REDACTED = "[redacted]";
+
+// @public
+export function redactSecrets<T>(value: T): T;
+
+// @public
+export function redactSecretText(text: string): string;
 
 // @public (undocumented)
 export function registerSeeder(seeder: Seeder): void;

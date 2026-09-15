@@ -528,15 +528,6 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
 }
 
 export const chatQueries = {
-  hasRequiredApiKeys: (): boolean => {
-    const secrets = repository.settingsQueries.getGeneralSettings().secrets;
-    const required = ['openai', 'anthropic'];
-    return required.some(provider => {
-      const secretId = secrets[provider as keyof typeof secrets];
-      return secretId !== null && secretId !== undefined && secretId !== '';
-    });
-  },
-
   threadArtifacts: (threadId: EARS.EntityId) => {
     return getThreadArtifacts(threadId);
   },
@@ -615,7 +606,6 @@ export const chatQueries = {
       recentThreads: getRecentThreads(),
       tabs,
       settings: chatSettings,
-      hasRequiredApiKeys: chatQueries.hasRequiredApiKeys(),
     };
   },
 

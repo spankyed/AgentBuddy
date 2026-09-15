@@ -61,7 +61,7 @@ There is no fixed interface — the shape is pack-specific. Services are typical
 
 1. Imports all feature and pack-level services
 2. Exports a `featureServices` object aggregating them
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, and `repository` typed with your repositories)
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, `secrets`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
@@ -82,10 +82,21 @@ The host implements operations on the app's stored data as a whole; packs call t
 |---|---|
 | `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
+| `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. |
+
+Backups never include API keys; `exportBackup` copies the primary database (`lmdb`, with media) and the trace store (`volatileLmdb`).
+
+### API keys
+
+The user adds keys in Settings → Secrets: several per provider (one per account, each with a label), with one selected per provider. `services.inference` uses the selected key.
+
+- **Where they're kept:** the host stores each key's metadata in plain text and its value encrypted (AES-256-GCM) in one file in the app's data directory. The data key that encrypts values is held by the OS credential store (macOS Keychain, Windows Credential Manager, or Secret Service on Linux) and is read the first time a value is used. Where the OS has none, keys are stored only after the user chooses to keep the data key in a file next to them, and Settings says they're unprotected.
+- **What never sees a value:** packs, the frontend, events, logs (the host redacts key-shaped strings and credential fields), error reports, backups and the database. `services.secrets` has no value-reading method.
+- **What this doesn't protect against:** code running inside the app. Packs run in the app's process with full Node.js access, so a pack could read the credential store or the file itself: installing a pack means trusting it with your keys. Other programs running as you can reach the OS credential store too, except where the OS ties an item to the app (macOS Keychain).
 
 ### Inference
 
-`services.inference` calls models with the keys the user stored in Settings → Secrets (or, in the app's environment, the variable each provider's AI SDK package reads: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`; those packages also read base URL variables like `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL`, which redirect their calls). Its calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
+`services.inference` calls models with the key the user selected for each provider in Settings → Secrets (see [API keys](#api-keys)); a call to a provider with no key, or none selected, fails naming what to do. Keys never come from the environment (the provider packages still read base URL variables like `OPENAI_BASE_URL`, which redirect their calls). Its calls are the AI SDK's own (`ai` 7), with `model` named by a `provider:model` id:
 
 | Call | Returns |
 |---|---|
@@ -386,9 +397,9 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
   - `Relation`: every link between entities is stored as one (`RelationEntity`).
   - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
   - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types, or as `NodeBase` when none define any.
-  - The data the SDK's settings seeder and its services write and read: `Settings` (`SettingsEntity`) and `Secret` (`SecretEntity`). Library documents and notes belong to default-setup (`Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities.
-  - `TNode` rows are execution records and are never persisted, and `Secret` rows are kept in the secrets store.
-- External packs cannot use `partitionPolicy` (entity routing to excluded/secrets stores is reserved for the built-in pack).
+  - The data the SDK's settings seeder and its services write and read: `Settings` (`SettingsEntity`). Library documents and notes belong to default-setup (`Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
+  - `TNode` rows are execution records and are never persisted.
+- External packs cannot use `partitionPolicy` (routing entity types to the volatile store is reserved for the built-in pack).
 
 ---
 

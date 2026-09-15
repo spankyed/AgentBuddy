@@ -193,11 +193,12 @@ export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceE
 // So is the flow model, without depending on default-setup
 const action = findAll('Action')[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
-// And the settings and secrets the SDK's services use
+// And the settings the SDK's services use
 const settings = findAll('Settings')[0]!;
 export type SettingsShape = Expect<Equal<typeof settings.data, unknown>>;
-const secret = findAll('Secret')[0]!;
-export type SecretShape = Expect<Equal<typeof secret.encryptedValue, string>>;
+// API keys aren't graph data: the host keeps them, packs see services.secrets
+// @ts-expect-error Secret isn't an entity
+findAll('Secret');
 // Library and notes entities belong to default-setup, not the SDK
 // @ts-expect-error Note isn't declared by either pack or the SDK
 findAll('Note');

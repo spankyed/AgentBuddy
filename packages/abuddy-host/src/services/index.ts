@@ -4,10 +4,11 @@ import { registerHostModule } from '@abuddy/sdk/runtime';
 import type { HostImplementedServices } from '@abuddy/sdk/services';
 import { appData } from './app-data.ts';
 import { inference } from './inference.ts';
+import { secrets } from './secrets.ts';
 import { traceStore } from './trace-store.ts';
 
 /** Each host-implemented service under its key in `services`, which is the host module key its delegate reads */
-export const HOST_SERVICES: HostImplementedServices = { appData, traceStore, inference };
+export const HOST_SERVICES: HostImplementedServices = { appData, traceStore, inference, secrets };
 
 /** Registers the host-implemented services where their SDK delegates read them */
 export function registerHostServices(): void {

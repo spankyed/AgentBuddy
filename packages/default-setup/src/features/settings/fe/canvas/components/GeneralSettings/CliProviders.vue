@@ -24,29 +24,14 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
 
 const actorSystem = useActorSystem()
 
-interface Props {
-  settings?: {
-    cliPaths?: Record<string, string>
-  }
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  settings: () => ({})
-})
-
-const emit = defineEmits<{
-  'update-setting': [{
-    path: string[]
-    value: any
-  }]
-}>()
+const { updateSettings } = useSettingsSaveStatus()
 
 const settingsActor = actorSystem.get('settings')
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
@@ -62,17 +47,18 @@ const testCliProvider = (provider: string) => {
   settingsActor.send({ type: 'CLI.TEST', provider })
 }
 
-// CLI path state
-const cliPathValues = ref<Record<string, string>>({ ...props.settings?.cliPaths })
+// CLI path overrides live in the code plugin's settings
+const storedCliPaths = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.cliPaths as Record<string, string> | undefined)
+const cliPathValues = ref<Record<string, string>>({})
 
-watch(() => props.settings?.cliPaths, (newPaths) => {
-  if (newPaths) {
-    cliPathValues.value = { ...newPaths }
-  }
+watch(storedCliPaths, (newPaths) => {
+  cliPathValues.value = { ...newPaths }
 }, { immediate: true })
 
 const { debounced: debouncedSaveCliPaths } = useDebounce(() => {
-  emit('update-setting', {
+  updateSettings({
+    entityType: 'plugin',
+    label: 'code',
     path: ['cliPaths'],
     value: { ...cliPathValues.value }
   })

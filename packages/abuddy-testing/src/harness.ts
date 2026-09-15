@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach } from 'vitest';
-import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
+import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import * as hostPacks from '@abuddy/host/packs';
@@ -26,7 +26,7 @@ import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDS
 import { repository, untypedQx } from '@abuddy/sdk/ears';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abuddy/sdk/utils';
 
-export { resetTestData, takeSystemErrors, type SeedRuntime };
+export { resetTestData, takeSystemErrors, addTestSecret, type SeedRuntime };
 export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();

@@ -22,6 +22,9 @@ import type { ToolSet } from 'ai';
 import type { transcribe } from 'ai';
 
 // @public
+export function addTestSecret(provider: SecretProvider, label: string): SecretInfo;
+
+// @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
 
 // @public

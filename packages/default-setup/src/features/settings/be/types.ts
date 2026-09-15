@@ -48,7 +48,6 @@ export interface FAQItem {
 
 export interface GeneralSettings {
   personal: PersonalInfo;
-  secrets: Secrets;
   application: AppSettings;
   projects: Project[];
 }
@@ -66,18 +65,6 @@ export interface PersonalInfo {
   name?: string;
   phoneNumber?: string;
   address?: string | Address; // Support both legacy string and new structured format
-}
-
-export interface Secrets {
-  google?: string | null; // Secret ID reference
-  anthropic?: string | null; // Secret ID reference
-  openai?: string | null; // Secret ID reference
-  groq?: string | null; // Secret ID reference
-  mistral?: string | null; // Secret ID reference
-  cohere?: string | null; // Secret ID reference
-  custom?: Record<string, string>; // Custom provider name -> Secret ID
-  required: string[]; // List of required providers, e.g., ['openai']
-  cliPaths?: Record<string, string>; // e.g., { 'claude-code': '/usr/local/bin/claude' }
 }
 
 import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
