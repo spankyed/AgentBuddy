@@ -14,8 +14,8 @@ Finished when:
   mutation-checked.
 - `registerHostModule`, `getHostModule`, `hostFn` and `hostValue` no longer exist. The SDK
   reaches the host only through the typed `HostRuntime` bound once per process: the event bus,
-  the pack registry view, the app version and the three services packs call (`appData`,
-  `traceStore`, `inference`), each implemented in `@abuddy/host/services/`.
+  the pack registry view, the app version and the four services packs call (`appData`,
+  `traceStore`, `inference`, `secrets`), each implemented in `@abuddy/host/services/`.
 - All EARS code (engine, types, persistence, LMDB) lives in `@abuddy/ears`; no EARS or
   persistence code remains in `@abuddy/sdk`, `@abuddy/host` or `packages/api`.
 - The engine is an instance: no EARS module holds data at module scope. The app, tests and
@@ -95,20 +95,20 @@ Five packages share responsibilities that should each have one home, and the cod
   - the pack lifecycle (`api/src/packs`: loader, lifecycle, reload, seed, packs system, about 1,470 lines), next to host's registry, installer and updater;
   - the backend system composition (`systems.ts`).
 - **Data is read by casting another package's repositories.**
-  - The SDK declares the flow model (Flow, Node, TNode, Action, Prompt), Settings and Secret (`sdk/src/types/sdk-entities.ts`), but default-setup implements their repositories (`features/flows/be/repository` 724 lines, `settings` 122, `secrets` 101, `prompts` 93, `actions` 103).
+  - The SDK declares the flow model (Flow, Node, TNode, Action, Prompt) and Settings (`sdk/src/types/sdk-entities.ts`), but default-setup implements their repositories (`features/flows/be/repository` 724 lines, `settings` 122, `prompts` 93, `actions` 103).
   - The SDK calls them through `sdk/src/ears/builtin-repositories.ts`, `repository as unknown as BuiltinRepositories`, from:
     - the flow seeder (`importFromDSL`, `deleteFlow`, `promptQueries.all`)
     - the settings seeder (`resetSettings`)
     - boot seed (`seedHash`)
-    - `utils/resolve-cli.ts` (`general.secrets.cliPaths`)
+    - `utils/resolve-cli.ts` (the code plugin's `cliPaths`)
     - `steps/runtime-errors.ts` (`brainCommands.updateTNodeResult`)
-  - Host reads them through `host/src/settings`, `repository as unknown as HostSettingsRepositories`. That covers the inference key lookup, and app state in `settings.internal`:
+  - Host reads them through `host/src/settings`, `repository as unknown as HostSettingsRepositories`. That covers app state in `settings.internal`:
     - `hasOnboarded` (`api/src/systems.ts`, `packs/pack-seed.ts`)
     - `version` and `packVersions` (`setup/migrations/index.ts`)
     - `packSeedHashes` (`setup/backend.ts`, `packs/pack-lifecycle.ts`, `packs/pack-reload.ts`)
     - `seedHash` and `seedStatFingerprint` (`packs/pack-seed.ts`, `sdk/src/seed/boot-seed.ts`)
   - **Consequence:** the app's own state lives inside default-setup's Settings row, and `settingsCommands.resetSettings()` (`settings/be/repository/index.ts:116-119`) writes `data: {}`. Resetting settings therefore also erases the onboarding flag, app version, pack versions and seed hashes.
-  - Secret selection is stored as a provider → secret id map in default-setup's `general.secrets`. CLI path overrides sit in the same object (`general.secrets.cliPaths`).
+  - *Done since:* API keys left EARS for the host's encrypted store (`@abuddy/host/secrets`, several labelled keys per provider with one selected, `services.secrets` for metadata), and CLI path overrides moved to the code plugin's settings (`plugins.code.cliPaths`, migration 0.3.15).
 - **One shared instance, listed in eight places.** Packs, dependency runtimes, the app and tests must share one SDK instance. Each of these knows separately which packages must not be duplicated:
   - `abuddy-cli/src/build/be-bundler.ts:35, 99, 146` (backend bundles) and `:193` (the seed runtime bundle);
   - `fe-bundler.ts` (SDK detection);
@@ -247,14 +247,13 @@ Final.
      - actions and prompts: `all`, `byId`, `byLabel`, and create, update, delete
 
      default-setup keeps its UI projections (`connectedData`, `extendedData`, action and prompt export) on top of them. `builtin-repositories.ts` is deleted.
-   - **Secrets** (the SDK's `Secret`): the SDK owns a secrets repository. Selection moves onto the entity (`selected: boolean`; at most one selected per provider, enforced by the repository), replacing default-setup's `general.secrets` provider map. Host's inference key lookup uses it, and `HostSettingsRepositories` is deleted.
+   - **Secrets** — *done:* API keys aren't an entity. The host owns them in an encrypted store (`@abuddy/host/secrets`), with several labelled keys per provider and one selected, and packs see metadata through `services.secrets`. The `Secret` entity, the secrets partition and `general.secrets` are gone.
    - **App state:** a new entity `AppState` (one row) holds `hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, `seedHash` and `seedStatFingerprint`. Host declares it (registered with the engine next to the SDK's entities), and `@abuddy/host/app-state` owns its reads and writes. The SDK and packs never read it; `hasOnboarded` reaches the renderer in the `CLIENT_CONNECTED` event, as today. Resetting settings no longer touches it.
    - **Settings** (UI settings: general, plugins): it's default-setup's data. default-setup declares the `Settings` entity and owns the settings seed format and seeder; the SDK stops declaring and seeding it. `packSettingsRegistry` (pack feature defaults) stays in `@abuddy/sdk/framework`.
-   - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. The override moves from `general.secrets.cliPaths` to that feature's plugin settings.
+   - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. *Done:* the override already lives in that feature's plugin settings (`plugins.code.cliPaths`).
    - **Migrations:** an app migration targeting the next release moves stored data, following `migrations/CLAUDE.md`:
      - `settings.internal` → `AppState`
-     - `general.secrets` selections → `Secret.selected`
-     - `general.secrets.cliPaths` → the code plugin's settings
+     - (*done in 0.3.15:* `general.secrets.cliPaths` → the code plugin's settings; `general.secrets` dropped, keys imported from the old secrets store at boot)
 
      It's idempotent and has a spec on a copy of old-shaped data.
 8. **Renames and naming.**
@@ -353,7 +352,7 @@ Final.
 - The full check list passes.
 
 ### Phase 5 — Data ownership
-- SDK repositories for the flow model, actions, prompts and secrets (Decision 7). default-setup's projections move onto them, and `builtin-repositories.ts` is deleted.
+- SDK repositories for the flow model, actions and prompts (Decision 7). default-setup's projections move onto them, and `builtin-repositories.ts` is deleted.
 - The `AppState` entity and `@abuddy/host/app-state`. Every `settings.internal` read and write moves there, including SDK boot seed's `seedHash`, which moves to host.
 - The `Settings` entity, settings seed format and seeder move to default-setup. Follow the TYPED-EARS checklist for `sdk-entities.ts`.
 - `resolve-cli` and the CLI path override move to default-setup's code feature.

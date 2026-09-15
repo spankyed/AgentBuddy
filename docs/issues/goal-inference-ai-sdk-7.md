@@ -153,6 +153,7 @@ Final.
    ```
    - It splits the id at the first `:` and builds the provider with the key found at call time: `general.secrets`, then the variable the provider package reads (`GOOGLE_GENERATIVE_AI_API_KEY` for Google, `<PROVIDER>_API_KEY` for the rest). It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
    - An unknown provider or a missing key throws, naming the provider (and, for a key, where to set it).
+   - *Amended after implementation:* keys come only from Settings → Secrets, where each provider holds several labelled keys with one selected, in the host's encrypted store (`@abuddy/host/secrets`, read with `secretsStore.keyFor(provider)`). The environment-variable fallback is removed.
    - `openai.responses` and `model-provider.ts` are removed.
 7. **Pure pieces come from `ai` directly.** Packs import `tool`, `Output`, `isStepCount`, `ModelMessage` and result types from `ai`. The SDK re-exports none of them, and `@abuddy/sdk/inference` is removed.
    - *Amended after implementation:* `output` also takes plain data (`OutputSpec`: `{ type: 'text' | 'json' | 'object' | 'array' | 'choice', … }`), translated to the matching `Output.*` by the SDK's `createInferenceService`, which the host's implementation and `fakeInference` share. Sandboxed actions can't import `ai`, and a data form can be stored. An `Output` instance still passes through unchanged, so nothing from `ai` is lost.
@@ -176,7 +177,7 @@ Final.
     - Out:
       - agents (`ToolLoopAgent`) — *done since*
       - embeddings and images — *done since*
-      - who owns secret selection (the app keeps reading default-setup's `general.secrets`)
+      - who owns secret selection — *done since*
       - refreshing the catalog's models and the `llm` step's default model content
 
 ## Phases
@@ -256,10 +257,9 @@ The contract, the app implementation and the callers depend on each other. They 
 
 ## Deferred
 
-- Who owns secret selection. Today the app reads default-setup's `general.secrets` through the SDK's `BuiltinRepositories` contract; the SDK owns the `Secret` entity.
 - Video generation (`generateVideo`): few of the providers give it.
 - The library's search index (`library/be/search-index`, behind `SEARCH_INDEX_FF`) names its API embedding models by `provider:model` id and embeds through `services.inference`, but stays dormant: its `fastembed` and `usearch` dependencies aren't installed. Its `README.md` lists the call sites and the steps to turn it on.
-- *Done since:* the model catalog and the `llm` step's default model were refreshed (`fb06e736a`); agents, embeddings, images, speech, transcription and reranking run through `services.inference` (`createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`).
+- *Done since:* the model catalog and the `llm` step's default model were refreshed (`fb06e736a`); agents, embeddings, images, speech, transcription and reranking run through `services.inference` (`createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`); secret selection belongs to the host, which keeps several keys per provider, encrypted, with one selected (`services.secrets`).
 
 ## Constraints
 

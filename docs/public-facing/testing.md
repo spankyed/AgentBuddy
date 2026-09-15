@@ -88,6 +88,8 @@ it('digests a note, with only the inference call it makes mocked', async () => {
 
 Give only the members the code under test uses. A mock lasts for the test it's made in: make it in the test or a `beforeEach` (`mockService` fails in `beforeAll` or at the top of a file). Code that imports a service module directly, instead of using `services`, isn't affected. Mock services that reach outside the process (CLIs, the network) in any test that runs code using them.
 
+`services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@abuddy/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
+
 ## Models
 
 Unit tests never reach a provider: `services.inference` (and so the `llm` step) fails until the test mocks it. `mockInference` does that for one test with a fake that runs the AI SDK's real calls on a scripted model (`fakeInference` from `@abuddy/sdk/testing`; `ai` comes with `@abuddy/sdk` as a peer dependency):
