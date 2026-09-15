@@ -17,6 +17,7 @@
     "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
     "./packs": "./src/packs/index.ts",
+    "./packs/dev-server": "./src/packs/dev-server.ts",
     "./persistence": "./src/persistence/index.ts",
     "./secrets": "./src/secrets/index.ts",
     "./services": "./src/services/index.ts",

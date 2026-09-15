@@ -8,9 +8,9 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
   define: {
     __ABUDDY_CHANNEL__: JSON.stringify(process.env.ABUDDY_ENV || ''),
   },
-  // Bundle SDK source into main: packaged builds strip .ts files, so it can't be imported at runtime
+  // Bundle SDK and host source into main: packaged builds strip .ts files, so they can't be imported at runtime
   ssr: {
-    noExternal: [/^@abuddy\/sdk/],
+    noExternal: [/^@abuddy\/(sdk|host)/],
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
     resolve: {conditions: ['@abuddy/source', ...defaultServerConditions]},
   },

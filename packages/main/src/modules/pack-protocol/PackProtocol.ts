@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.js';
 import type { ModuleContext } from '../../ModuleContext.js';
 import { getAppContext } from '../../app-context.js';
+import { devServerUrl } from '@abuddy/host/packs/dev-server';
 
 const MIME_TYPES: Record<string, string> = {
   '.js': 'application/javascript',
@@ -35,17 +36,16 @@ class PackProtocol implements AppModule {
         const packId = url.hostname;
         const filePath = decodeURIComponent(url.pathname);
 
-        const {packsDir} = getAppContext();
+        const {packsDir, userDataDir} = getAppContext();
 
-        const devSignalPath = path.join(packsDir, packId, '.dev');
-        if (fs.existsSync(devSignalPath)) {
+        let devUrl: string | null;
+        try {
+          devUrl = devServerUrl(userDataDir, packId, filePath);
+        } catch (err) {
+          return new Response((err as Error).message, { status: 502 });
+        }
+        if (devUrl) {
           try {
-            const signal = JSON.parse(fs.readFileSync(devSignalPath, 'utf-8'));
-            const port = Number(signal.port);
-            if (!Number.isInteger(port) || port < 1 || port > 65535) {
-              return new Response('Invalid dev signal port', { status: 502 });
-            }
-            const devUrl = `http://localhost:${port}${filePath}`;
             const res = await fetch(devUrl);
             if (res.ok) {
               const body = await res.arrayBuffer();

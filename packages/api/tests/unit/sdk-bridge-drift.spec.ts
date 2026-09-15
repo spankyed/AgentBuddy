@@ -60,6 +60,8 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/settings', 'host view of settings, read by the API and host services'],
   // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
   ['@abuddy/host/bus', 'host bus core, composed by the API and the test harness'],
+  // The abuddy dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  ['@abuddy/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // Metadata: tooling reads them, code never requires them.
   ['@abuddy/sdk/package.json', 'package metadata, not code'],
   ['@abuddy/sdk/abuddy.schema.json', 'manifest JSON schema, not code'],

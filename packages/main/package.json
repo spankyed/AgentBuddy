@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@abuddy/cli": "*",
+    "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "@app/api": "*",
     "@app/preload": "*",
