@@ -64,6 +64,7 @@ describe('runFlow', () => {
 
     expect(app.flowTrace('Inner').map((s) => s.label)).toEqual(['i1', 'i2'])
     expect(app.flowTrace('run inner')).toEqual([])
+    await expect(app.runFlow('Inner', { event: 'go' })).rejects.toThrow('Flow "Inner" isn\'t running: it ran and finished. Running: Outer')
   })
 
   it('waits for steps an action step starts after it completes, however long they take', async () => {
@@ -110,7 +111,9 @@ describe('runFlow', () => {
     const app = await startBrain()
 
     await expect(app.runFlow('Missing')).rejects.toThrow('No flow "Missing". Flows: Chain, Unhosted')
-    await expect(app.runFlow('Unhosted', { event: 'go' })).rejects.toThrow('Flow "Unhosted" isn\'t running. Running: Chain')
+    await expect(app.runFlow('Unhosted', { event: 'go' })).rejects.toThrow(
+      'Flow "Unhosted" isn\'t running: the brain runs the root flow (root: true) and the subflows running flows spawn: make it one of those, and import flows before startApp. Running: Chain',
+    )
     await expect(app.runFlow('Chain', { event: 'stop' })).rejects.toThrow('Flow "Chain" has no track for "stop"')
     const withoutBrain = await startApp({ systems: ['settings'] })
     await expect(withoutBrain.runFlow('Chain', { event: 'go' })).rejects.toThrow('start the app with the brain and settings systems')

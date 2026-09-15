@@ -279,9 +279,11 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const flowTNodeIds = runningFlowTNodes(label);
       if (flowTNodeIds.length === 0) {
         const runningLabels = [...new Set(runningFlowLabels())];
-        throw new Error(`Flow "${label}" isn't running. ${runningLabels.length > 0
-          ? `Running: ${runningLabels.join(', ')}`
-          : 'No flow is running: the brain runs the root flow (root: true) and the subflows it spawns'}`);
+        const ranAndFinished = reports.some((e) => isSpawn(e) && e.tNode.tNodeType === 'flow' && flowLabels.get(`flow:${e.tNode.id}`) === label);
+        const why = ranAndFinished
+          ? 'it ran and finished'
+          : 'the brain runs the root flow (root: true) and the subflows running flows spawn: make it one of those, and import flows before startApp';
+        throw new Error(`Flow "${label}" isn't running: ${why}. ${runningLabels.length > 0 ? `Running: ${runningLabels.join(', ')}` : 'No flow is running'}`);
       }
 
       const eventType = event ?? 'flow.entry';
