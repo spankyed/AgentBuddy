@@ -48,6 +48,12 @@ afterEach(() => {
   for (const open of servers.splice(0)) open.close();
 });
 
+/** Where a resolved AI SDK model sends its requests: a provider package holds either `config.baseURL` or `config.url({ path })` */
+function modelBaseURL(model: unknown): string | undefined {
+  const config = (model as { config: { baseURL?: string; url?: (options: { path: string; modelId: string }) => string } }).config;
+  return config.baseURL ?? config.url?.({ path: '', modelId: 'some-model' });
+}
+
 /** An OpenAI Responses API reply with `text` as the model's output */
 const openaiReply = (text: string) => ({
   id: 'resp_1', object: 'response', created_at: 0, status: 'completed', model: 'gpt-5',
@@ -145,6 +151,37 @@ describe("the app's inference service", () => {
     secretsStore.add('openai', 'Personal', 'sk-personal-0987654321');
     secretsStore.delete(work.id);
     await expect(languageModel('openai:gpt-5')).rejects.toThrow('No OpenAI key selected (Personal): choose one in Settings → Secrets');
+  });
+
+  it("builds every provider's model at the provider's own URL, whatever base URL the environment holds", async () => {
+    vi.stubEnv('ANTHROPIC_BASE_URL', 'http://127.0.0.1:1/redirected');
+    vi.stubEnv('OPENAI_BASE_URL', 'http://127.0.0.1:1/redirected');
+    for (const name of PROVIDERS) secrets.set(name, 'stored-key');
+
+    for (const name of PROVIDERS) {
+      expect(modelBaseURL(await languageModel(`${name}:some-model`)), name).toBe(PROVIDER_BASE_URLS[name]);
+    }
+  });
+
+  it('calls the provider it is pointed at, not the base URL the environment holds', async () => {
+    const decoy = await provider(openaiReply('Hello from the decoy'));
+    vi.stubEnv('ANTHROPIC_BASE_URL', decoy.baseURL);
+    vi.stubEnv('OPENAI_BASE_URL', decoy.baseURL);
+    const anthropic = await provider({
+      id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-sonnet-4-5',
+      content: [{ type: 'text', text: 'Hello from Anthropic' }], stop_reason: 'end_turn', stop_sequence: null,
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+    const openai = await provider(openaiReply('Hello from OpenAI'));
+    secrets.set('anthropic', 'stored-anthropic-key');
+    secrets.set('openai', 'stored-openai-key');
+
+    const fromAnthropic = await anthropic.inference.generateText({ model: 'anthropic:claude-sonnet-4-5', prompt: 'hi' });
+    const fromOpenai = await openai.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' });
+
+    expect([fromAnthropic.text, fromOpenai.text]).toEqual(['Hello from Anthropic', 'Hello from OpenAI']);
+    expect([anthropic.requests.length, openai.requests.length]).toEqual([1, 1]);
+    expect(decoy.requests).toEqual([]);
   });
 
   it('calls Anthropic with the key stored for it', async () => {
