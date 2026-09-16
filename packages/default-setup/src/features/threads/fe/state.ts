@@ -1875,6 +1875,8 @@ const threadsState = setup({
       actions: [
         'flashChatState',
         spawnChild('clearExpiredOverride', {
+          // Per thread: without an id two flashes at once share a key and the first is left untracked
+          id: ({ event }: any) => `clear-expired-override-${event.threadId}`,
           input: ({ event }: any) => ({
             threadId: event.threadId,
             durationMs: event.durationMs ?? 3000,

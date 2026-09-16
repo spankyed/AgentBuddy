@@ -106,6 +106,19 @@ export type ApplicationEvent =
 const typeOf = safeEvents<ApplicationEvent>();
 
 /**
+ * Spawns a plugin's state machine under its own id as well as its system id. The id is the key this actor
+ * tracks the child by: without one every plugin shares a key, this actor holds only the last one spawned,
+ * and stopping it stops that one alone while the rest keep running with their system ids taken.
+ *
+ * XState types `id` from the declared children, and plugins are registered at runtime (built-in and from
+ * packs), so the id goes through this one cast rather than at each call site.
+ */
+function spawnPluginActor(enqueue: unknown, plugin: Plugin): void {
+  const spawner = enqueue as { spawnChild(state: Plugin['state'], options: { id: string; systemId: string }): void };
+  spawner.spawnChild(plugin.state, { id: plugin.id, systemId: plugin.id });
+}
+
+/**
  * Asks a pack's systems for their startup data. A connection's CLIENT_CONNECTED skips the systems of
  * external packs with frontend code, which loads after it; each is asked for once its load finished,
  * whether it added plugins or not, so its systems without plugins get it too.
@@ -374,7 +387,7 @@ export const createApplicationState = () => setup({
           packPluginIds,
         });
         for (const plugin of newPlugins) {
-          enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+          spawnPluginActor(enqueue, plugin);
         }
       }
       // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this
@@ -635,7 +648,7 @@ export const createApplicationState = () => setup({
       // enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
 
       for (const plugin of context.plugins) {
-        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+        spawnPluginActor(enqueue, plugin);
       }
     }),
     resizePanel: assign(({ context, event }) => {
@@ -784,7 +797,7 @@ export const createApplicationState = () => setup({
     'trailActivePlugin',
     spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
     spawnChild('mouseListener', { id: 'mouseListener' }),
-    spawnChild('backendListener'),
+    spawnChild('backendListener', { id: 'backendListener' }),
   ],
   states: {
     'onboarding': {

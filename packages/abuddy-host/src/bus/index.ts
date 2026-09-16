@@ -64,14 +64,21 @@ function sendClientConnected(system: ActorSystemLike, systemIds: Iterable<string
   }
 }
 
-/** Spawns each of `systemIds` the bus runs; returns those it spawned */
+/**
+ * Spawns each of `systemIds` the bus runs; returns those it spawned. Each is spawned under its own id as
+ * well as its system id: the id is the key the bus tracks the child by, so without one every system (and
+ * the `listen` actor) shares a key, the bus holds only the last one spawned, and stopping the bus stops
+ * that one alone — the rest keep running.
+ */
 function spawnSystems(
-  enqueue: { spawnChild(machine: AnyStateMachine, options: { systemId: string }): void },
+  enqueue: unknown,
   machines: ReadonlyMap<string, AnyStateMachine>,
   systemIds: readonly string[],
 ): string[] {
+  // XState types `id` from the machine's declared children, and the bus's are whatever is registered
+  const spawner = enqueue as { spawnChild(machine: AnyStateMachine, options: { id: string; systemId: string }): void };
   const spawned = systemIds.filter((id) => machines.has(id));
-  for (const id of spawned) enqueue.spawnChild(machines.get(id)!, { systemId: id });
+  for (const id of spawned) spawner.spawnChild(machines.get(id)!, { id, systemId: id });
   return spawned;
 }
 
@@ -100,7 +107,8 @@ export function createBusMachine(options: BusOptions) {
       listen: fromCallback<BackendEvents>(({ sendBack }) => options.listen?.(sendBack) ?? (() => {})),
     },
     actions: {
-      listen: spawnChild('listen'),
+      // Its own id, so it doesn't share a key with the systems spawned beside it
+      listen: spawnChild('listen', { id: 'bus-listen' }),
       notify: ({ event }) => {
         if (event.type === 'OUTGOING') options.onOutgoing(event.event);
       },
@@ -128,7 +136,8 @@ export function createBusMachine(options: BusOptions) {
         if (event.type === 'SYSTEMS_SPAWNED') sendClientConnected(system, event.systemIds);
       },
       spawnActors: enqueueActions(({ enqueue }) => {
-        for (const [id, machine] of systems()) enqueue.spawnChild(machine, { systemId: id });
+        const machines = systems();
+        spawnSystems(enqueue, machines, [...machines.keys()]);
       }),
       reloadPack: enqueueActions(({ enqueue, event, system }) => {
         if (event.type !== 'RELOAD_PACK') return;
