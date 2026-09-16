@@ -18,10 +18,6 @@ describe('Services — augmented types', () => {
     expectTypeOf<Services>().toHaveProperty('settings');
   });
 
-  it('registry has browser service', () => {
-    expectTypeOf<Services>().toHaveProperty('browser');
-  });
-
   it('registry has threads service', () => {
     expectTypeOf<Services>().toHaveProperty('threads');
   });
@@ -44,7 +40,6 @@ describe('Services — augmented types', () => {
     expectTypeOf<'prompt'>().toMatchTypeOf<Keys>();
     expectTypeOf<'action'>().toMatchTypeOf<Keys>();
     expectTypeOf<'library'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'browser'>().toMatchTypeOf<Keys>();
     expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
     expectTypeOf<'chat'>().toMatchTypeOf<Keys>();
     expectTypeOf<'artifact'>().toMatchTypeOf<Keys>();
@@ -53,6 +48,5 @@ describe('Services — augmented types', () => {
     expectTypeOf<'filesystem'>().toMatchTypeOf<Keys>();
     expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
     expectTypeOf<'codex'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'textStream'>().toMatchTypeOf<Keys>();
   });
 });

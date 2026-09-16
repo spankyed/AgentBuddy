@@ -3,7 +3,6 @@ import type { SettingsData } from './types';
 import { getAppVersion } from '@abuddy/sdk/utils';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
-import type { SettingsScope } from '@abuddy/sdk';
 import { getPackSettingsDefaults, type PackSettingsDefaults } from '@abuddy/sdk/framework';
 
 let _base: SettingsData | null = null;
@@ -48,12 +47,3 @@ function getBaseSettings(): SettingsData {
   }
   return _base;
 }
-
-export const getDefaultsByLabel = (type: SettingsScope, label: string) => {
-  const ds = getDefaultSettings();
-  return {
-    internal: ds.internal,
-    general: ds.general[label as keyof typeof ds.general] ?? {},
-    plugin: ds.plugins[label as keyof typeof ds.plugins] ?? {},
-  }[type];
-};

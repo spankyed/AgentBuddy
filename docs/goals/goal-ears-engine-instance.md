@@ -1,7 +1,7 @@
 ```
 # Goal: EARS as an explicit engine instance
 
-Implement docs/issues/goal-ears-engine-instance.md on branch AS/pack-type-facades
+Implement docs/goals/goal-ears-engine-instance.md on branch AS/pack-type-facades
 (or a branch cut from it). Read it first: Background, Decisions, Phases, Constraints.
 Decisions are final. Where a detail isn't specified, pick the conventional option,
 note it in the final summary, and keep going.
@@ -136,7 +136,7 @@ Final.
 - Add a test that `qx`/`tx` throw a clear error when no engine is installed.
 - Update the host-only check: the packed SDK still ships no host-only module, and `@abuddy/sdk/ears/engine` resolves with types in node16 and bundler.
 - Run `npm run api:update`. Only `ears.engine.api.md` may be added; other pack-facing reports stay unchanged.
-- Docs: root `CLAUDE.md` (SDK packages section), `docs/issues/goal-sdk-types-architecture.md` (implementation notes) and the data-layer docs.
+- Docs: root `CLAUDE.md` (SDK packages section), `docs/archive/goals/goal-sdk-types-architecture.md` (implementation notes) and the data-layer docs.
 
 **Done when:** `@abuddy/host` builds against SDK exports only, needing no source-only entry. The benchmark is within tolerance. Everything in "Finished when" passes.
 

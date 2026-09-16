@@ -241,6 +241,34 @@ describe('logs and error reports', () => {
     expect(error.message).toBe('request failed');
   });
 
+  it('redact a prefix-less key the app has used this session, wherever it is printed, and leave other long tokens alone', async () => {
+    // Mistral and Cohere keys have no recognizable shape: the store registers a digest of each value it handles
+    const MISTRAL = 'not-a-real-key-with-no-prefix-01';
+    const OTHER = 'not-a-real-token-no-prefix-0003';
+    await caller.add({ provider: 'mistral', label: 'Work', value: MISTRAL });
+    expect(secretsStore.keyFor('mistral')).toBe(MISTRAL);
+
+    const logged: Array<Record<string, unknown>> = [];
+    const outgoing: Array<Record<string, unknown>> = [];
+    const stopLog = rootEvents.onLog((event) => { logged.push(event as never); });
+    const stopOutgoing = rootEvents.onOutgoing((event) => { outgoing.push(event); });
+    const printedError = vi.spyOn(originalConsole, 'error').mockImplementation(() => {});
+    createLogger('spec').error(`Provider said: Incorrect API key provided: ${MISTRAL} (job ${OTHER})`);
+    reportSystemError({ error: new Error(`401 for ${MISTRAL} (job ${OTHER})`), source: 'spec' });
+    stopLog();
+    stopOutgoing();
+    const printed = JSON.stringify(printedError.mock.calls);
+    printedError.mockRestore();
+
+    const captured = captureConsole('error', () => { console.error(`echo ${MISTRAL} (job ${OTHER})`); });
+    const file = fs.readFileSync(path.join(logDir, 'app-events.log'), 'utf-8');
+    for (const sink of [JSON.stringify(logged), printed, JSON.stringify(outgoing), JSON.stringify(captured), file]) {
+      expect(sink).not.toContain(MISTRAL);
+      expect(sink).toContain('[redacted]');
+      expect(sink).toContain(OTHER);
+    }
+  });
+
   it('redact keys from system error reports', () => {
     const outgoing: Array<Record<string, unknown>> = [];
     const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });

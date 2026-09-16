@@ -31,7 +31,7 @@ export function registerSchedule(key: string, cronExpression: string, callback: 
 /**
  * Stop and remove a single cron job by key.
  */
-export function unregisterSchedule(key: string): void {
+function unregisterSchedule(key: string): void {
   const job = activeJobs.get(key);
   if (job) {
     job.stop();

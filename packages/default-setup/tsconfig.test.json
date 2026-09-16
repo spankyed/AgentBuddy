@@ -3,7 +3,6 @@
   "compilerOptions": {
     "paths": {
       "@/__generated__/*": ["./src/__generated__/*"],
-      "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
       "@/extensions/*": ["./src/extensions/*"]
     }

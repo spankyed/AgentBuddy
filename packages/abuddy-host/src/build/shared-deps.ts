@@ -26,7 +26,7 @@ export const SHARED_DEPS: Record<string, SharedDep> = {
  * @abuddy/ui (fe.bundleUi) imports ProseMirror and tiptap's Vue menus through these; sharing them
  * keeps one ProseMirror in the app, the host's.
  */
-export const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
+const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
 
 /** Exported code subpaths of an installed package (`@tiptap/pm/state`, …) */
 function exportedSubpaths(name: string): string[] {

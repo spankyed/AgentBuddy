@@ -17,29 +17,10 @@ export {
 // --- Media (direct) ---
 export {
   extractMediaRefs, copyMediaByRef, rewriteMediaUrls, copyFlatMedia,
-  resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs,
+  resolveMedia, readMediaBuffer, extractAndResolveImages, extractImageParts, stripMediaRefs,
   restoreJsonMediaRefs, restoreMarkdownMediaRefs,
 } from './media.ts';
-export type { MediaRef, ResolvedMedia } from './media.ts';
-
-export interface ImagePart {
-  type: 'image'
-  image: Buffer
-  mimeType: string
-}
-
-import { extractMediaRefs as _extractMediaRefs, readMediaBuffer as _readMediaBuffer } from './media.ts';
-
-export function extractImageParts(markdown: string): ImagePart[] {
-  return _extractMediaRefs(markdown)
-    .map((ref) => _readMediaBuffer(ref))
-    .filter((img): img is NonNullable<typeof img> => img !== null)
-    .map((img) => ({
-      type: 'image' as const,
-      image: img.data,
-      mimeType: img.mimeType,
-    }));
-}
+export type { MediaRef, ResolvedMedia, ImagePart } from './media.ts';
 
 // --- Export utilities (direct) ---
 export {

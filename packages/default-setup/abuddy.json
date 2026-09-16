@@ -8,16 +8,12 @@
   "hostVersion": ">=0.3.0",
   "license": "MIT",
   "entities": {
-    "Agent": "Agent",
     "Thread": "Thread",
     "Message": "Message",
     "Artifact": "Artifact",
-    "Brain": "Brain",
     "SearchIndex": "SearchIndex",
     "IndexedDoc": "IndexedDoc",
     "Terminal": "Terminal",
-    "Directory": "Directory",
-    "FAQ": "FAQ",
     "BrowserTab": "BrowserTab",
     "BrowserBookmark": "BrowserBookmark",
     "Document": "Document",
@@ -26,13 +22,8 @@
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
-    "REPLIED_TO": "replied_to",
     "HAS": "has",
-    "BLOCKS": "blocks",
-    "DEPENDS_ON": "depends_on",
-    "RELATES_TO": "relates_to",
-    "DUPLICATES": "duplicates",
-    "EMITS": "emits"
+    "RELATES_TO": "relates_to"
   },
   "partitionPolicy": {
     "excludedEntityTypes": []
@@ -104,9 +95,6 @@
       },
       "plugin": {
         "entry": "src/features/browser/fe/plugin.ts"
-      },
-      "services": {
-        "browser": "src/features/browser/be/services/browser.ts#browserService"
       },
       "repositories": {
         "browserQueries": "src/features/browser/be/repository/index.ts#browserQueries",
@@ -254,9 +242,12 @@
     }
   ],
   "packServices": {
-    "textStream": "src/extensions/services/text-stream.ts#textStreamService",
     "filesystem": "src/extensions/services/filesystem.ts#filesystemService"
   },
+  "commands": [
+    { "name": "pr2md", "placeholder": "PR number or GitHub URL (optional)" },
+    { "name": "instructions", "placeholder": "Thread instructions text" }
+  ],
   "defaultPlugin": "threads",
   "boot": {
     "hooks": "src/features/hooks.ts",

@@ -1,8 +1,8 @@
 ```
 # Goal: clean package boundaries — @abuddy/ears, a typed host port, and one owner per concern
 
-Implement docs/issues/goal-package-boundaries.md on a branch cut after
-docs/issues/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
+Implement docs/goals/goal-package-boundaries.md on a branch cut after
+docs/goals/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
 specified, pick the conventional option, note it in the final summary, and keep going. No
 backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -10,7 +10,7 @@ test, fixture, template and doc in the same change, and fix forward. Stored user
 exception: it moves with app migrations.
 
 Finished when:
-- Phases 1–7 are implemented and each meets its "Done when"; every new guard, helper or test is
+- Phases 0–7 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
 - `registerHostModule`, `getHostModule`, `hostFn` and `hostValue` no longer exist. The SDK
   reaches the host only through the typed `HostRuntime` bound once per process: the event bus,
@@ -34,9 +34,9 @@ Finished when:
 - You give a final summary: phase → done/deferred, evidence, and the conventional choices you made.
 
 Never:
-- push or tag. Commit as you go in logical chunks (conventional messages, no Co-Authored-By or
-  session lines). Commit with `git commit -- <paths>` and check `git diff --cached` first:
-  something outside the session stages files.
+- commit, stage, push or tag unless the user asks in this session. When asked, commit in logical
+  chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
+  and check `git diff --cached` first: something outside the session stages files.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
   ABUDDY_USER_DATA_DIR.
@@ -176,7 +176,7 @@ Final.
    - Opening is explicit: `openLmdbStore({ paths, policy })` returns the store (sinks, hydrate, query, reset, close), and the composition root calls `setPersistence`. There's no import side effect.
    - The partition policy is an argument, built by host from the pack registry.
 4. **Packs may import `@abuddy/ears` directly; it's a shared-instance package.**
-   - `SHARED_INSTANCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears']` in `@abuddy/host/build/shared-deps` is the single source for every bundler external list, the api pack loader's bridge, the harness bridge and `bundle-package`.
+   - `SHARED_INSTANCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears']` in `@abuddy/host/build/shared-deps` is the single source for every bundler external list, the host pack loader's bridge (`@abuddy/host/packs/runtime`, Phase 0), the harness bridge and `bundle-package`.
    - Bridge maps are built from each package's exports, not written out by hand.
    - A guard test fails when any of those consumers names a shared package itself.
    - `@abuddy/sdk/ears` exports only what the SDK adds: `EARS` with the SDK's entities and relation kinds, the SDK entity shapes, and the SDK entity repositories.
@@ -237,9 +237,9 @@ Final.
    - **Host-only code stays in host and isn't reachable from the SDK:**
      - app state, `@abuddy/host/app-state` (Decision 7);
      - `@abuddy/host/migrations`: app migrations and their runner, moved from `api/src/setup/migrations` with its CLAUDE.md. Host runs them at boot and in `appData.reset()`.
-     - `@abuddy/host/packs`: loader, lifecycle, reload, seed, packs system and activation outcome, moved from `api/src/packs`;
-     - `@abuddy/host/bus`, plus the backend system composition from `api/src/systems.ts`.
-   - **The api keeps** `server.ts`, `setup/websocket.ts`, `setup/config.ts`, `core/router/{trpc,context,bus-router,index}.ts` (tRPC procedures delegating to host), `core/router/bus-emitter.ts` (the `transport` it supplies), log capture to the console and client, and `setup/backend.ts`, which shrinks to composition.
+     - `@abuddy/host/packs/runtime`: loader, lifecycle, reload, seed, packs system and activation outcome, moved from `api/src/packs` (Phase 0). The `@abuddy/host/packs` barrel, which the CLI imports, never imports it;
+     - `@abuddy/host/bus`, plus the backend system composition from `api/src/systems.ts` as `createAppBus()` (Phase 0).
+   - **The api keeps** `server.ts`, `setup/websocket.ts`, `setup/config.ts`, `core/router/{trpc,context,bus-router,packs-router,secrets-router,index}.ts` (tRPC procedures delegating to host), `core/router/bus-emitter.ts` (the `transport` it supplies), log capture to the console and client, and `setup/backend.ts`, which shrinks to composition.
 7. **Each entity's repository lives with the package that declares it.**
    - **Flow model** (the SDK's): `@abuddy/sdk` owns the flow, node, edge and TNode repositories and the action and prompt repositories:
      - flows: create, update, delete, the root flow role, `reindexHandles`, `importFromDSL`, `rootFlow`, `flowNodes`, `flowEdges`, `node`, `getNodeActionId`
@@ -277,6 +277,86 @@ Final.
    - Pack-facing signatures, the generated facades and the typed EARS contract's behaviour don't change.
 
 ## Phases
+
+### Phase 0 — The pack runtime moves into host
+Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what only the api has through the host module registry the rest of host already uses, so Phase 3 converts those reads along with every other.
+
+**Today.**
+- `packages/api/src/packs` holds `pack-loader.ts` (444 lines), `packs-system.ts` (381), `pack-seed.ts` (192), `pack-reload.ts` (168), `pack-lifecycle.ts` (113), `pack-api.ts` (67) and `activation-outcome.ts` (13). Only `pack-api.ts`'s `packsRouter` is transport.
+- **Imports only the api has:**
+  - `@/version` and `@/core/shared/debug/logger`, both already reachable as `getAppVersion()` (`@abuddy/sdk/utils`) and `createLogger` (`@abuddy/sdk/logger`);
+  - `@/core/ears/attribute-storage` (`invalidatePartitionPolicy`), which host reaches through `@abuddy/host/ears` (`src/ears/lmdb.ts`) for its neighbours;
+  - `@/systems`;
+  - `virtual:built-in-pack-loaders`, which the api's `tsup.config.ts` generates inside the api bundle only.
+- **A cycle:** `systems.ts` imports `getPacksWithClientLoadedFrontends` from `pack-api.ts`, while lifecycle and reload import `invalidateEventValidationMap` from `systems.ts`. The bus composition moves in this phase too.
+- **The bridge:** `SDK_BRIDGE` binds 22 specifiers to the loader's own module instances. The api bundle inlines `@abuddy/sdk` and `@abuddy/host`, so in host they are still the app's instances. `withHostResolution` resolves host-provided packages from `import.meta.url`, which inside the bundle is still the api's `dist/server.js`.
+
+**Steps.**
+- **Seams first, in the api:**
+  - `@abuddy/host/ears` gains `invalidatePartitionPolicy()`, delegating like its neighbours.
+  - Logging goes through `@abuddy/sdk/logger` and the version through `getAppVersion()`; log sources (`pack-loader`, `pack-reload`, `pack-seed`, `packs`) stay the same.
+- **The bundled loaders are a parameter:** `loadBuiltInPacks(dir, { runtimeEntry, bundledLoaders })`.
+  - `setup/backend.ts` passes `() => import('virtual:built-in-pack-loaders').then(m => m.default)`.
+  - `tsup.config.ts` resolves the generated module from `src/setup`, and `env.d.ts` keeps its declaration.
+  - `runtimeEntry: 'never'`, and `'prefer'` falling back, throw without it, naming the option. `'only'` (the db scripts) doesn't need it.
+- **The event validation map has one owner:**
+  - host pack registration keeps the cache (`getEventValidationMap()`, over `buildRegisteredEventValidationMap()`) and clears it in `registerPack`, `unregisterPack` and `registerHostSystem`;
+  - `invalidateEventValidationMap` and its calls are deleted;
+  - `bus-router.ts` reads the map from host.
+- **`pack-api.ts` splits:** its loaded-packs state (`setLoadedPacks`, `updateLoadedPack`, `removeLoadedPack`, `getPacksWithClientLoadedFrontends`, the registry entries) goes to host, and `packsRouter` becomes `core/router/packs-router.ts`, keeping its procedure name and `PackBundleEntry[]` output.
+- **Move the modules** with `git mv` to `packages/abuddy-host/src/packs/runtime/`, exported as `@abuddy/host/packs/runtime`:
+
+  | From `api/src/packs/` | To `abuddy-host/src/packs/runtime/` |
+  |---|---|
+  | `pack-loader.ts`: loading, `LoadedPack`, `registerExternalPacks`, `clearPackRequireCache` | `loader.ts` |
+  | `pack-loader.ts`: `SDK_BRIDGE`, `withHostResolution`, `getBridgedSdkSpecifiers` | `bridge.ts` (Phase 4 rebuilds its map from `SHARED_INSTANCE_PACKAGES`) |
+  | `pack-lifecycle.ts`, `pack-reload.ts`, `pack-seed.ts` | `lifecycle.ts`, `reload.ts`, `seed.ts` |
+  | `pack-api.ts` state | `loaded-packs.ts` |
+  | `packs-system.ts`, `activation-outcome.ts` | same names |
+  | `CLAUDE.md` | `CLAUDE.md`, rewritten for its new home |
+
+  Inside host, modules import each other by relative `.ts` path. `SDK_BRIDGE` keeps its `@abuddy/host/*` keys as the specifiers pack code requires.
+- **The bus composition:** `@abuddy/host/bus` gains `createAppBus()`. It is today's `backendSystem`:
+  - `createBusMachine` wired to `rootEvents` (`@abuddy/sdk/rpc`);
+  - `clientLoadedPacks` from `loaded-packs.ts`;
+  - the `CLIENT_CONNECTED` application event from `@abuddy/host/settings`, whose type moves next to it.
+
+  `@abuddy/host/bus` never imports `packs/runtime/loader`. `setup/backend.ts` calls `createAppBus()`; `systems.ts` is deleted, and its type exports move to `core/router/events.ts`.
+- **Shutdown hooks move with it:** `registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey` and `removeShutdownHooksForKey` leave `@abuddy/sdk/utils` for `@abuddy/host/packs/runtime`. Only the app calls them; packs declare `boot.onShutdown`.
+- **Callers:** `setup/backend.ts`, `setup/websocket.ts`, `setup/migrations/index.ts`, `core/router/index.ts`, `core/router/bus-router.ts`, `core/router/events.ts`, `scripts/db/database.ts` and `scripts/db/seed.ts` import from host. `scripts/check-import-specifiers.ts` drops `@/packs` from its api alias comment.
+- **Specs:**
+  - These move to `packages/abuddy-host/tests/packs/runtime/`, without their `virtual:built-in-pack-loaders` and `@/core/ears/attribute-storage` mocks (register a fake `attribute-storage` host module where the partition policy needs stubbing):
+    - `pack-loader.spec.ts`
+    - `pack-reload.spec.ts`
+    - `pack-bridge-leaves.spec.ts`
+    - `sdk-bridge-drift.spec.ts`
+    - `tests/integration/pack-e2e.spec.ts`
+    - `pack-lifecycle.spec.ts`, except its CLI case
+  - `pack-lifecycle.spec.ts`'s case that runs the CLI's `init` moves to `packages/abuddy-cli/tests/cli/`, since host tests don't depend on the CLI.
+  - `bus-client-connected.spec.ts` stays in the api: it tests the bus wired to the api's transport.
+- **Guards** (`packages/abuddy-host/tests/boundaries.spec.ts`), each mutation-checked:
+  - no host source imports `fastify`, `@trpc/*`, `ws` or `virtual:*` (the Phase 4 transport guard, added here);
+  - `src/packs/index.ts` and `src/bus/**` don't import `src/packs/runtime/**`, directly or through another module;
+  - no host source imports `@abuddy/host/*`;
+  - `packages/api/src/packs` doesn't exist.
+- **Docs:**
+  - `packages/abuddy-host/CLAUDE.md`, `packages/api/CLAUDE.md` and `packages/renderer/CLAUDE.md`;
+  - root `CLAUDE.md` (the `@abuddy/host/packs` bullet gains `/packs/runtime`);
+  - `docs/public-facing/architecture.md` (`withHostResolution`'s path, pack loading and reload).
+
+**Watch.**
+- **Module identity in the bridge:** if `sdk-bridge-drift`, `pack-bridge-leaves`, `test:external-pack` or `test:packaged-authoring` fails after the move, compare the bridged module objects with the api's before editing the list.
+- **The CLI bundle:** a `./runtime` import from the barrel pulls the loader and its 22 imports into `@abuddy/cli`. The guard catches it, and `packages:check` covers the packed result.
+- **Dev reload:** `tests/e2e/dev-reload.spec.ts` exercises the reload, the bundled loaders and the bus restart together. Run it after each step.
+
+**Done when:**
+- `packages/api/src/packs` and `packages/api/src/systems.ts` don't exist, and nothing imports `@/packs` or `@/systems`.
+- A spec shows registering and unregistering a pack changes the event validation map with no manual invalidation, and fails when `registerPack`'s invalidation is removed.
+- A host spec starts `createAppBus()` with the SDK test host bound and shows a connecting client reaching a registered system while a loaded pack with frontend code waits for `PACK_CLIENT_CONNECTED`. It fails when `clientLoadedPacks` returns nothing.
+- `loadBuiltInPacks` with `runtimeEntry: 'never'` and no `bundledLoaders` throws, naming the option.
+- The moved specs pass in `npm test -w @abuddy/host`, and the CLI's pack commands and the harness run without a server.
+- `npm run db:cli` runs against a temp `ABUDDY_USER_DATA_DIR`.
+- `npm run build`, the full E2E suite (including `dev-reload.spec.ts`), `npm run test:external-pack`, `npm run test:packaged-authoring` and the full check list pass.
 
 ### Phase 1 — `@abuddy/ears` and the shared-instance list
 - Create `packages/abuddy-ears` (Decision 2) with the engine, the core `EARS` namespace and the entity typing helpers.
@@ -337,16 +417,16 @@ Final.
 - Mutations fail tests: a `HostRuntime` member left out of the api's binding; the harness binding without `packs`; the test host not recording `SYSTEM_ERROR` events.
 
 ### Phase 4 — App runtime out of the api
-- Move the migrations runner and app migrations into `@abuddy/host/migrations`, the pack lifecycle (`api/src/packs`) into `@abuddy/host/packs`, and the backend system composition into `@abuddy/host/bus` (Decision 6).
+- Move the migrations runner and app migrations into `@abuddy/host/migrations` (Decision 6). The pack lifecycle and the backend system composition moved in Phase 0.
 - `appData.reset()` runs the full reset (stores, pack boot hooks and boot seed, migrations). default-setup's reset actor only calls it, and `runMigrations` is removed from `@abuddy/sdk/utils`.
 - `createHostRuntime` assembles the runtime. The api's tRPC procedures delegate to host.
 - Move each moved module's specs with it.
-- `bridge-drift`: the api pack loader builds its bridge from `SHARED_INSTANCE_PACKAGES`.
+- `bridge-drift`: the host pack loader (`packs/runtime/bridge.ts`) builds its bridge from `SHARED_INSTANCE_PACKAGES`.
 
 **Done when:**
 - `@abuddy/host/services` holds exactly `app-data`, `trace-store`, `inference` and `index`, and a guard spec compares the directory to `HostRuntime['services']`'s keys.
-- `packages/api/src` contains only `server.ts`, `setup/{websocket,config,backend}.ts`, `core/router/{trpc,context,bus-router,bus-emitter,index}.ts`, log capture and `types`, and a guard spec lists the allowed files.
-- A guard fails if `@abuddy/host` imports `fastify`, `@trpc/*` or `ws`.
+- `packages/api/src` contains only `server.ts`, `setup/{websocket,config,backend}.ts`, `core/router/{trpc,context,bus-router,bus-emitter,events,packs-router,secrets-router,index}.ts`, log capture and `types`, and a guard spec lists the allowed files.
+- Phase 0's transport guard on `@abuddy/host` still passes.
 - A spec shows `appData.reset()` leaves an onboarded app with default settings, seeded flows and migrations applied.
 - The CLI's pack commands and the harness still run without a server.
 - The full check list passes.
@@ -410,7 +490,7 @@ Final.
 
 ## Constraints
 
-- Commit as you go in logical chunks, with conventional messages and no Co-Authored-By or Claude-Session lines. Check `git diff --cached` before each commit and commit with `git commit -- <paths>`. Never push or tag.
+- Commit, stage, push or tag only when the user asks in the session. When asked, commit in logical chunks with conventional messages and no Co-Authored-By or Claude-Session lines; check `git diff --cached` first and commit with `git commit -- <paths>`.
 - Never publish externally: no `npm publish` (use `npm pack` and `--dry-run`), no real GitHub releases. CI workflows may be written, not triggered.
 - Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `abuddy-test` namespace.
 - Don't launch the app outside the test environment without isolating `ABUDDY_USER_DATA_DIR`. Manual boots use a copy of user data.

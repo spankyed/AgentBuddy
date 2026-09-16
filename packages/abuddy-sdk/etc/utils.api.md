@@ -84,7 +84,7 @@ export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyo
 // @public
 export function extractAndResolveImages(markdown: string): ResolvedMedia[];
 
-// @public (undocumented)
+// @public
 export function extractImageParts(markdown: string): ImagePart[];
 
 // @public
@@ -117,7 +117,7 @@ export const getUserDataPath: () => string;
 // @internal
 export const getVolatileLmdbPath: () => string;
 
-// @public (undocumented)
+// @public
 export interface ImagePart {
     // (undocumented)
     image: Buffer;
@@ -133,7 +133,7 @@ export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-re
 // @public (undocumented)
 export function isCliName(value: string): value is CliName;
 
-// @public (undocumented)
+// @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
 
 // @public (undocumented)

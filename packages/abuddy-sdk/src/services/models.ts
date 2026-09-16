@@ -18,6 +18,20 @@ export const providerCapabilities = {
   cohere: ['language', 'embedding', 'reranking'],
 } as const satisfies Record<ProviderName, readonly ModelKind[]>;
 
+/**
+ * The URL each provider is called at: its own package's default, written out so the app always calls the provider
+ * itself. `@ai-sdk/anthropic` and `@ai-sdk/openai` otherwise take `ANTHROPIC_BASE_URL`/`OPENAI_BASE_URL` from the
+ * environment, which would send the user's key somewhere else.
+ */
+export const PROVIDER_BASE_URLS = {
+  anthropic: 'https://api.anthropic.com/v1',
+  openai: 'https://api.openai.com/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+  groq: 'https://api.groq.com/openai/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  cohere: 'https://api.cohere.com/v2',
+} as const satisfies Record<ProviderName, string>;
+
 type ProvidersOf<K extends ModelKind> = { [P in ProviderName]: K extends (typeof providerCapabilities)[P][number] ? P : never }[ProviderName];
 
 /** A model of a kind, as `provider:model`, from a provider that gives that kind */
@@ -48,7 +62,6 @@ export interface ModelCatalogEntry {
   name: string;
   description?: string;
   contextWindow?: number;
-  maxOutput?: number;
   costPer1kInput?: number;
   costPer1kOutput?: number;
   capabilities?: string[];
@@ -62,8 +75,8 @@ const TEXT_TOOLS = ['text', 'function-calling'];
  * Context windows and prices appear only where verified.
  */
 export const availableModels: ModelCatalogEntry[] = [
-  { id: 'anthropic:claude-opus-5', name: 'Claude Opus 5', description: 'Most capable Claude for complex reasoning and agentic work', contextWindow: 1_000_000, maxOutput: 128_000, costPer1kInput: 0.005, costPer1kOutput: 0.025, capabilities: TEXT_VISION_TOOLS },
-  { id: 'anthropic:claude-sonnet-5', name: 'Claude Sonnet 5', description: 'Fast, capable Claude at a lower cost', contextWindow: 1_000_000, maxOutput: 128_000, costPer1kInput: 0.002, costPer1kOutput: 0.01, capabilities: TEXT_VISION_TOOLS },
+  { id: 'anthropic:claude-opus-5', name: 'Claude Opus 5', description: 'Most capable Claude for complex reasoning and agentic work', contextWindow: 1_000_000, costPer1kInput: 0.005, costPer1kOutput: 0.025, capabilities: TEXT_VISION_TOOLS },
+  { id: 'anthropic:claude-sonnet-5', name: 'Claude Sonnet 5', description: 'Fast, capable Claude at a lower cost', contextWindow: 1_000_000, costPer1kInput: 0.002, costPer1kOutput: 0.01, capabilities: TEXT_VISION_TOOLS },
   { id: 'anthropic:claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest, lowest-cost Claude', contextWindow: 200_000, costPer1kInput: 0.001, costPer1kOutput: 0.005, capabilities: TEXT_VISION_TOOLS },
   { id: 'openai:gpt-5.5', name: 'GPT-5.5', description: "OpenAI's flagship model", capabilities: TEXT_VISION_TOOLS },
   { id: 'openai:gpt-5.4-mini', name: 'GPT-5.4 mini', description: 'Smaller, faster GPT-5.4', capabilities: TEXT_VISION_TOOLS },

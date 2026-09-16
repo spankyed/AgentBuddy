@@ -9,9 +9,7 @@ import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from
 import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
-import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
-import { loadPackFrontend } from '@/packs/pack-loader';
 import 'virtual:host-deps';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 
@@ -158,13 +156,5 @@ app.mount('#app');
 
 window.electronAPI?.rendererReady?.();
 
-// Load external pack FE contributions after boot. Each pack with frontend code is reported once its load
-// finished, whatever it added, so its systems send their startup data.
-trpc.packs.registry.query().then(async (registry) => {
-  for (const pack of registry.filter(p => !p.builtIn)) {
-    const plugins = await loadPackFrontend(pack);
-    if (plugins) applicationState.send({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins });
-  }
-}).catch(err => {
-  console.warn('[pack-loader] Failed to load pack registry:', err);
-});
+// External pack FE contributions load from the application actor, each time this window's bus
+// subscription is established: a failed registry query is retried on the next connection.

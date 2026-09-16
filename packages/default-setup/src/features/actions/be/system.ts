@@ -321,6 +321,10 @@ export const actionsSystem = setup({
           CLIENT_CONNECTED: {
             actions: 'sendActionsStartupData',
           },
+          // A pack's seeds can add or change actions
+          PACK_CHANGED: {
+            actions: 'sendActionsStartupData',
+          },
         },
       },
     },

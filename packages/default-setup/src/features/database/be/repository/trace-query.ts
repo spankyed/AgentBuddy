@@ -259,28 +259,3 @@ export function getNodeDetails(nodeId: string): TNodeEntity | null {
     return null;
   }
 }
-
-/**
- * Get child TNodes for a given parent
- * Used for building the tree structure
- */
-export function getChildTNodes(parentId: string): string[] {
-  try {
-    const query = services.traceStore;
-    const children: string[] = [];
-    
-    // Find SPAWNED relations where this node is the source (event/step TNode -> child TNodes)
-    for (const { rel } of query.relations({ 
-      kind: EARS.RelKind.SPAWNED,
-      src: parentId as EARS.EntityId,
-      skipDeleted: true
-    })) {
-      children.push(rel.tgt);
-    }
-    
-    return children;
-  } catch (error) {
-    logger.error('Failed to get child TNodes:', { error: String(error) });
-    return [];
-  }
-}

@@ -9,6 +9,8 @@ import SlackArtifact from './viewers/slack-artifact.vue';
 import TodoArtifact from './viewers/todo-artifact.vue';
 import ProjectArtifact from './viewers/project-artifact.vue';
 import JsonArtifact from './viewers/json-artifact.vue';
+import GraphArtifact from './viewers/graph-artifact.vue';
+import TableArtifact from './viewers/table-artifact.vue';
 import ClaudeSessionArtifact from './viewers/claude-session-artifact.vue';
 import CodexSessionArtifact from './viewers/codex-session-artifact.vue';
 import DiffArtifact from './viewers/diff-artifact.vue';
@@ -25,6 +27,8 @@ const componentMap: Record<string, unknown> = {
   todo: TodoArtifact,
   project: ProjectArtifact,
   json: JsonArtifact,
+  graph: GraphArtifact,
+  table: TableArtifact,
   'claude-session': ClaudeSessionArtifact,
   'codex-session': CodexSessionArtifact,
   diff: DiffArtifact,

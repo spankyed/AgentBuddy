@@ -31,7 +31,7 @@ src/
   extensions/              # Cross-cutting concerns
     artifacts/             # Artifact viewer definitions + Vue components
     blocks/                # Message block definitions (display + input)
-    services/              # Pack-level services (textStream, filesystem), declared in abuddy.json packServices
+    services/              # Pack-level services (filesystem), declared in abuddy.json packServices
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
     Welcome.vue            # Welcome screen app extension
@@ -67,13 +67,13 @@ System IDs re-exported from `__generated__/system-ids.ts`. System specs (identit
 
 Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features[].services` and live in `src/features/<name>/be/services/`; pack-level services are declared in top-level `packServices` and live in `src/extensions/services/`. Systems and actions call them through `services.<key>`:
 
-`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `textStream`, `filesystem`
+`chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `filesystem`
 
 Each service entry names one value export, `"<key>": "<path>.ts#<key>Service"`, and the module exports it as `export const <key>Service = { ... }` (or a class instance). No factories and no whole-module services. `Services` is `typeof featureServices`, so that object is the contract dependent packs build against:
 
 - List only what callers use through `services.<key>` (actions, steps, systems, tests). Helpers used inside the pack stay plain exports and are imported directly (`hooks.ts` imports `clearAllSchedules`/`removeAllListeners`; the brain system imports `notify`)
 - Don't re-export `qx`/`tx`/`EARS` or other SDK modules: pack code imports those itself. Actions can import nothing but `@abuddy/sdk/actions`, so they read and write entities through `services.repository`
-- No third-party types in the contract: the published facade may import only `@abuddy/*` and the SDK's peers. Give the export an explicit type when inference would name one: `browserService` is typed `BrowserService` (`features/browser/be/types.ts`), so playwright stays inside `browser.ts` and raw handles are `unknown` or the opaque `BrowserPageHandle`
+- No third-party types in the contract: the published facade may import only `@abuddy/*` and the SDK's peers. Give the export an explicit type when inference would name one, so the third-party types stay inside the service module and raw handles surface as `unknown` or an opaque branded type
 
 Model calls go through the host's `services.inference` (AI SDK 7, `provider:model` ids): the `llm` step calls it with the node's `model`, and the pack has no model code or `ai` dependency of its own.
 
@@ -95,10 +95,10 @@ Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `seedFormats` 
 
 - `actions/`, `prompts/`, `flows/`, `default-settings.ts` — compiled by the SDK's own compilers (the manifest names only their paths)
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
-- `library/` — internal docs (`internal/commands/*.md`, the slash commands `services.library.commands()` reads), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
+- `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `abuddy.json` `commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
 - `faqs/` — markdown FAQ files, compiled with the `faqs` format (`_compilers/faqs.ts`), not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
 - `_compilers/` — the formats' compiler modules, bundled into `dist/build/seed-compilers.mjs` so dependents can use the formats
-- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`
+- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`. Collection is a `container`, so a dependent pack's documents nest in this pack's folders instead of forking them, and both `find`s match a name within its parent folder
 
 Rows go through those hooks, which call `noteCommands`/`libraryCommands`, whatever pack seeds them. A pack depending on default-setup seeds with its formats by naming them (`{ "path": "src/seeds/notes", "format": "default-setup:notes" }`) and gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
 
@@ -123,7 +123,7 @@ A new step goes in both barrels: `src/extensions/steps/register.ts` (the full de
 
 ## Artifacts
 
-Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, 14 with viewer components in `src/extensions/artifacts/viewers/` (graph and table have no viewer and show in the text viewer):
+Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, each with a viewer component in `src/extensions/artifacts/viewers/`:
 
 text, code, review, image, slack, todo, project, json, graph, table, markdown, claude-session, codex-session, diff, plan, note
 

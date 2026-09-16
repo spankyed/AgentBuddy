@@ -9,6 +9,50 @@ export interface BundleRuntimeOptions {
   release?: boolean;
 }
 
+/** The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons. */
+const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'];
+
+type EsbuildOptions = import('esbuild').BuildOptions;
+
+/**
+ * The esbuild setup every pack bundle shares: the pack's tsconfig, its tsconfig path aliases and
+ * package.json subpath imports, the host-import guard and frontend-asset stub, and node/esm defaults.
+ * `overrides` supplies the entry, output and per-bundle options.
+ */
+async function buildPackBundle<T extends EsbuildOptions>(
+  packDir: string,
+  options: BundleRuntimeOptions,
+  overrides: T,
+): Promise<import('esbuild').BuildResult<T>> {
+  const esbuild = await import('esbuild');
+  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const aliases = readTsconfigAliases(packDir);
+  const subpathImports = readSubpathImports(packDir);
+  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
+  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
+  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
+
+  const merged: EsbuildOptions = {
+    bundle: true,
+    format: 'esm',
+    platform: 'node',
+    target: 'node20',
+    external: HOST_EXTERNALS,
+    tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+    plugins,
+    minify: options.release ?? false,
+    logLevel: 'silent',
+    ...overrides,
+  };
+  // esbuild keys `outputFiles`/`metafile` off the literal options it was called with; merging hides
+  // the caller's `write: false` / `metafile: true` from it, so restate them on the result.
+  return await esbuild.build(merged) as unknown as import('esbuild').BuildResult<T>;
+}
+
+function bundleError(err: unknown): { success: false; error: string } {
+  return { success: false, error: err instanceof Error ? err.message : String(err) };
+}
+
 /**
  * Bundle the pack's generated backend entry (src/__generated__/pack-entry.ts) into
  * dist/runtime/index.cjs. It exports `registration` (systems, services, steps,
@@ -26,41 +70,19 @@ export async function bundlePackRuntime(
     return { success: false, error: 'No src/__generated__/pack-entry.ts. Run "abuddy generate-entries" first.' };
   }
 
-  const esbuild = await import('esbuild');
   const runtimeDir = path.join(outputDir, 'runtime');
   fs.mkdirSync(runtimeDir, { recursive: true });
 
-  const externals = [
-    ...Object.keys(SHARED_DEPS),
-    '@abuddy/sdk',
-    '@abuddy/sdk/*',
-  ];
-
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const aliases = readTsconfigAliases(packDir);
-  const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
-  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
-
   try {
-    await esbuild.build({
+    await buildPackBundle(packDir, options, {
       entryPoints: [entryPath],
-      bundle: true,
       format: 'cjs',
-      platform: 'node',
-      target: 'node20',
       outfile: path.join(runtimeDir, 'index.cjs'),
-      external: externals,
-      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
-      plugins,
-      minify: options.release ?? false,
       sourcemap: options.release ? false : true,
-      logLevel: 'silent',
     });
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return bundleError(err);
   }
 }
 
@@ -80,31 +102,14 @@ export async function bundlePackStepBuild(
   if (!fs.existsSync(entryPath)) {
     return { success: false, error: `steps.build entry not found: ${entry}` };
   }
-  const esbuild = await import('esbuild');
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const aliases = readTsconfigAliases(packDir);
-  const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
-  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
-
   try {
-    await esbuild.build({
+    await buildPackBundle(packDir, options, {
       entryPoints: [entryPath],
-      bundle: true,
-      format: 'esm',
-      platform: 'node',
-      target: 'node20',
       outfile: path.join(outputDir, 'build', 'steps.build.mjs'),
-      external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
-      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
-      plugins,
-      minify: options.release ?? false,
-      logLevel: 'silent',
     });
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return bundleError(err);
   }
 }
 
@@ -124,34 +129,18 @@ export async function bundlePackSeedCompilers(
       return { success: false, error: `seed format "${name}": compiler module not found: ${modulePath}` };
     }
   }
-  const esbuild = await import('esbuild');
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const aliases = readTsconfigAliases(packDir);
-  const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
-  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
   const contents = Object.entries(compilers)
     .map(([name, modulePath]) => `export { default as ${JSON.stringify(name)} } from ${JSON.stringify(path.resolve(packDir, modulePath))};`)
     .join('\n');
 
   try {
-    await esbuild.build({
+    await buildPackBundle(packDir, options, {
       stdin: { contents, resolveDir: packDir, sourcefile: 'seed-compilers.ts', loader: 'ts' },
-      bundle: true,
-      format: 'esm',
-      platform: 'node',
-      target: 'node20',
       outfile: path.join(outputDir, 'build', SEED_COMPILERS_FILE),
-      external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
-      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
-      plugins,
-      minify: options.release ?? false,
-      logLevel: 'silent',
     });
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return bundleError(err);
   }
 }
 
@@ -168,34 +157,17 @@ export async function bundlePackFlowHelpersModule(
   if (!fs.existsSync(entryPath)) {
     return { success: false, error: 'No src/__generated__/flow-helpers.ts. Run "abuddy generate-entries" first.' };
   }
-  const esbuild = await import('esbuild');
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const aliases = readTsconfigAliases(packDir);
-  const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
-  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
-
   try {
-    const result = await esbuild.build({
+    const result = await buildPackBundle(packDir, options, {
       entryPoints: [entryPath],
-      bundle: true,
-      format: 'esm',
-      platform: 'node',
-      target: 'node20',
       outfile: path.join(packDir, 'flow-helpers.mjs'),
       write: false,
       metafile: true,
-      external: [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'],
-      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
-      plugins,
-      minify: options.release ?? false,
-      logLevel: 'silent',
     });
     const [output] = Object.values(result.metafile.outputs);
     return { success: true, module: result.outputFiles[0].text, exports: [...output.exports].sort() };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return bundleError(err);
   }
 }
 
@@ -217,33 +189,17 @@ export async function bundlePackSeedRuntime(
   if (!fs.existsSync(entryPath)) {
     return { success: false, error: 'No src/__generated__/seed-runtime.ts. Run "abuddy generate-entries" first.' };
   }
-  const esbuild = await import('esbuild');
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
-  const aliases = readTsconfigAliases(packDir);
-  const subpathImports = readSubpathImports(packDir);
-  const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
-  if (Object.keys(aliases).length > 0) plugins.push(makeAliasPlugin(aliases));
-  if (Object.keys(subpathImports).length > 0) plugins.push(makeSubpathPlugin(subpathImports, packDir));
-
   const outfile = path.join(outputDir, 'build', SEED_RUNTIME_FILE);
   try {
-    await esbuild.build({
+    await buildPackBundle(packDir, options, {
       entryPoints: [entryPath],
-      bundle: true,
-      format: 'esm',
-      platform: 'node',
-      target: 'node20',
       outfile,
       external: ['@abuddy/sdk', '@abuddy/sdk/*'],
-      tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
-      plugins,
-      minify: options.release ?? false,
-      logLevel: 'silent',
       // Bundled CommonJS dependencies may call require(); give the ESM bundle one
       banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
     });
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return bundleError(err);
   }
   return checkSeedRuntimeLoads(packDir, outfile);
 }

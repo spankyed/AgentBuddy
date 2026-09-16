@@ -30,8 +30,6 @@ export interface ModelCatalogEntry {
     description?: string;
     id: ModelId;
     // (undocumented)
-    maxOutput?: number;
-    // (undocumented)
     name: string;
 }
 
@@ -49,6 +47,16 @@ export function parseModelId(id: string): {
     provider: ProviderName;
     model: string;
 } | undefined;
+
+// @public
+export const PROVIDER_BASE_URLS: {
+    readonly anthropic: "https://api.anthropic.com/v1";
+    readonly openai: "https://api.openai.com/v1";
+    readonly google: "https://generativelanguage.googleapis.com/v1beta";
+    readonly groq: "https://api.groq.com/openai/v1";
+    readonly mistral: "https://api.mistral.ai/v1";
+    readonly cohere: "https://api.cohere.com/v2";
+};
 
 // @public
 export const providerCapabilities: {

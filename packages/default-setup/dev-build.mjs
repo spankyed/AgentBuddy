@@ -40,7 +40,6 @@ const aliasPlugin = {
   setup(build) {
     const aliases = {
       '@/__generated__/': path.join(srcDir, '__generated__/'),
-      '@/registries/': path.join(srcDir, 'registries/'),
       '@/features/': path.join(srcDir, 'features/'),
       '@/extensions/': path.join(srcDir, 'extensions/'),
     };

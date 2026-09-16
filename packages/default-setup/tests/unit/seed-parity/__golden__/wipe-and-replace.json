@@ -76,8 +76,8 @@
       "Action:CC: Handle Directory Select": {
         "label": "CC: Handle Directory Select",
         "description": "Saves the user-selected project directory and retries the blocked chat query.",
-        "sourceHash": "30e44a32f3c7606e",
-        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+        "sourceHash": "adab67066920c314",
+        "rowSha256": "1235e09a7f65b5a3fc68e8eaf11670526b5c894206ae294061f891600e16902f"
       },
       "Action:CC: Handle Fork": {
         "label": "CC: Handle Fork",
@@ -562,8 +562,8 @@
       "Prompt:DB Transaction System": {
         "label": "DB Transaction System",
         "description": "Generate an EARS database transaction from a natural language request",
-        "sourceHash": "1ea5d3d6d4e7d656",
-        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+        "sourceHash": "63474e735068eddd",
+        "rowSha256": "2ab85efaafa1bdc0b69c6c696bfb767a1c110476f97dec02260cea9b4be1c36e"
       },
       "Prompt:Edit Phase Tips System": {
         "label": "Edit Phase Tips System",
@@ -690,8 +690,8 @@
       "Action:CC: Handle Directory Select": {
         "label": "CC: Handle Directory Select",
         "description": "Saves the user-selected project directory and retries the blocked chat query.",
-        "sourceHash": "30e44a32f3c7606e",
-        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+        "sourceHash": "adab67066920c314",
+        "rowSha256": "1235e09a7f65b5a3fc68e8eaf11670526b5c894206ae294061f891600e16902f"
       },
       "Action:CC: Handle Fork": {
         "label": "CC: Handle Fork",
@@ -1176,8 +1176,8 @@
       "Prompt:DB Transaction System": {
         "label": "DB Transaction System",
         "description": "Generate an EARS database transaction from a natural language request",
-        "sourceHash": "1ea5d3d6d4e7d656",
-        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+        "sourceHash": "63474e735068eddd",
+        "rowSha256": "2ab85efaafa1bdc0b69c6c696bfb767a1c110476f97dec02260cea9b4be1c36e"
       },
       "Prompt:Edit Phase Tips System": {
         "label": "Edit Phase Tips System",
@@ -1305,8 +1305,8 @@
       "Action:CC: Handle Directory Select": {
         "label": "CC: Handle Directory Select",
         "description": "Saves the user-selected project directory and retries the blocked chat query.",
-        "sourceHash": "30e44a32f3c7606e",
-        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+        "sourceHash": "adab67066920c314",
+        "rowSha256": "1235e09a7f65b5a3fc68e8eaf11670526b5c894206ae294061f891600e16902f"
       },
       "Action:CC: Handle Fork": {
         "label": "CC: Handle Fork",
@@ -1782,8 +1782,8 @@
       "Prompt:DB Transaction System": {
         "label": "DB Transaction System",
         "description": "Generate an EARS database transaction from a natural language request",
-        "sourceHash": "1ea5d3d6d4e7d656",
-        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+        "sourceHash": "63474e735068eddd",
+        "rowSha256": "2ab85efaafa1bdc0b69c6c696bfb767a1c110476f97dec02260cea9b4be1c36e"
       },
       "Prompt:Edit Phase Tips System": {
         "label": "Edit Phase Tips System",

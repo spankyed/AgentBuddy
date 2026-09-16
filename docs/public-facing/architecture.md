@@ -74,12 +74,12 @@ The source directory must be built first: installing a directory with neither a 
 
 Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
 
-1. After the app mounts, the renderer queries the pack registry (`trpc.packs.registry`), which lists each loaded external pack's `feEntry` and `feStyles` — the bundle's `runtime/fe.js` and `runtime/fe.css`, when it has them.
+1. Each time this window's bus subscription is established, the application actor queries the pack registry (`trpc.packs.registry`), which lists each loaded external pack's `feEntry` and `feStyles` — the bundle's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
 2. For each external pack, `loadPackFrontend(pack)`:
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
    - imports `pack://<id>/runtime/fe.js` and calls `registerPackFE()` with its default export, a `PackFERegistration`;
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
-3. When it returns plugins (even none), the renderer sends `PACK_FRONTEND_LOADED` to the application actor, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
+3. When it returns plugins (even none), the loader reports `PACK_FRONTEND_LOADED` to the application actor, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED`, so they send their startup data once the plugin actors exist.
 
 A connection's own `CLIENT_CONNECTED` skips the systems of external packs with frontend code (the bus asks `getPacksWithClientLoadedFrontends()`). When the renderer's bus subscription (re)connects, `BUS_SUBSCRIBED` calls `packClientReady` again for every pack whose frontend it loaded. Systems of packs without frontend code get the connection's `CLIENT_CONNECTED` directly.
@@ -88,9 +88,9 @@ A connection's own `CLIENT_CONNECTED` skips the systems of external packs with f
 
 The `packs` system handles install, uninstall, enable/disable and update from the Packs view:
 
-- **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, seeds (install and update only), then sends the bus `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and loads the pack's frontend as at boot. The bus sends `CLIENT_CONNECTED` right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to seed reports the seed error.
+- **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, seeds (install and update only), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus sends `CLIENT_CONNECTED` right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to seed reports the seed error.
 - **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it, clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE contributions, removes its stylesheets and unloads its plugins.
-- **Reload** (development, `POST /dev/reload` on the API from `abuddy dev` or a built-in pack's watch build): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs re-seed, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED`.
+- **Reload** (development, `POST /dev/reload` on the API from `abuddy dev` or a built-in pack's watch build): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs re-seed, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED`; `PACK_CHANGED` follows for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 Migrations run only at boot, not on activation or reload.
 

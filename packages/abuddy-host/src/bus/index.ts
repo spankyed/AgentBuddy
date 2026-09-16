@@ -20,6 +20,12 @@ export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[] };
 export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; packId: string; systemIds: string[] };
 /** A client loaded a pack's frontend after connecting: its systems send their startup data */
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
+/**
+ * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+ * registers (its slash commands) and the data it seeded may differ, so every running system can refresh
+ * what it reads. Raised once the change is complete. Boot raises nothing: the systems start after it.
+ */
+export type PackChangedEvent = { type: 'PACK_CHANGED'; packId: string };
 /** Raised after restarting a pack's systems, once they're in the actor system and can receive events */
 export type SystemsSpawnedEvent = { type: 'SYSTEMS_SPAWNED'; systemIds: string[] };
 
@@ -30,6 +36,7 @@ export type BackendEvents =
   | TeardownPackEvent
   | ActivatePackEvent
   | PackClientConnectedEvent
+  | PackChangedEvent
   | SystemsSpawnedEvent;
 
 /** The events a bus source can feed it */
@@ -41,7 +48,7 @@ export interface BusOptions {
   /** Delivers an event a system sent to a frontend plugin */
   onOutgoing(event: OutgoingSystemEvents): void;
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED); returns the unsubscribe */
-  listen?(send: (event: BusSourceEvent) => void): () => void;
+  listen(send: (event: BusSourceEvent) => void): () => void;
   /**
    * Packs whose frontend code a client loads after connecting. A connection's CLIENT_CONNECTED, and a
    * pack's activation, skip their systems: the client sends PACK_CLIENT_CONNECTED for each once it has
@@ -54,6 +61,11 @@ export interface BusOptions {
 }
 
 type ActorSystemLike = { get(id: string): { send(event: { type: string }): void } | undefined };
+
+/** Sends an event to each of `systemIds` that is running; a system that isn't started just doesn't get it */
+function sendToRunning(system: ActorSystemLike, systemIds: Iterable<string>, event: { type: string; [key: string]: unknown }): void {
+  for (const id of systemIds) system.get(id)?.send(event);
+}
 
 /** Sends CLIENT_CONNECTED to each system, so it sends its startup data */
 function sendClientConnected(system: ActorSystemLike, systemIds: Iterable<string>): void {
@@ -104,7 +116,7 @@ export function createBusMachine(options: BusOptions) {
       events: {} as BackendEvents,
     },
     actors: {
-      listen: fromCallback<BackendEvents>(({ sendBack }) => options.listen?.(sendBack) ?? (() => {})),
+      listen: fromCallback<BackendEvents>(({ sendBack }) => options.listen(sendBack)),
     },
     actions: {
       // Its own id, so it doesn't share a key with the systems spawned beside it
@@ -131,6 +143,12 @@ export function createBusMachine(options: BusOptions) {
         if (event.type !== 'PACK_CLIENT_CONNECTED') return;
         const running = systems();
         sendClientConnected(system, getRegisteredPackSystemIds(event.packId).filter((id) => running.has(id)));
+      },
+      // Every system, not just the changed pack's: what a pack registers and seeds is read by others
+      // (its slash commands by the chat, say)
+      sendPackChanged: ({ event, system }) => {
+        if (event.type !== 'PACK_CHANGED') return;
+        sendToRunning(system, systems().keys(), { type: 'PACK_CHANGED', packId: event.packId });
       },
       sendSpawnedConnected: ({ event, system }) => {
         if (event.type === 'SYSTEMS_SPAWNED') sendClientConnected(system, event.systemIds);
@@ -174,6 +192,7 @@ export function createBusMachine(options: BusOptions) {
       TEARDOWN_PACK: { actions: 'teardownPack' },
       ACTIVATE_PACK: { actions: 'activatePack' },
       PACK_CLIENT_CONNECTED: { actions: 'sendPackConnected' },
+      PACK_CHANGED: { actions: 'sendPackChanged' },
     },
     states: {
       disconnected: {

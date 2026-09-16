@@ -28,6 +28,7 @@ export interface PackSeedPreviewItem {
 export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
+    packId: string;
     // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
 }
@@ -79,6 +80,7 @@ export const seedHookRegistry: SeedHookRegistry;
 
 // @public
 export interface SeedHooks<R extends SeedRecord = SeedRecord> {
+    container?: boolean;
     // (undocumented)
     create?(record: R, context: SeedHookContext): EARS.EntityId;
     find?(record: R, context: SeedHookContext): SeedHookMatch | undefined;

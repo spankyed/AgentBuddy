@@ -13,7 +13,7 @@ import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
-import { packSettingsRegistry } from '@abuddy/sdk/framework';
+import { packCommandsRegistry, packSettingsRegistry } from '@abuddy/sdk/framework';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -51,6 +51,19 @@ function ownEARS(ears: PackEARS): PackEARS {
   return { ...ears, entities: own(ears.entities, sdkEntityTypes), relKinds: own(ears.relKinds, sdkRelKinds) };
 }
 
+/**
+ * Role → id of the system that plays it (`<packId>.<featureId>` for an external pack). A designated
+ * feature with no registered system (the early system) resolves to its feature id.
+ */
+function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
+  const systemId = (featureId: string) =>
+    systems.find((s) => s.id === featureId || s.id === `${id}.${featureId}`)?.id ?? featureId;
+  return Object.fromEntries([
+    ...systems.filter((s) => s.designation).map((s) => [s.designation!, s.id]),
+    ...features.filter((f) => f.designation).map((f) => [f.designation!, systemId(f.id)]),
+  ]);
+}
+
 export function registerPack(pack: PackRegistration): void {
   const registration = pack.ears ? { ...pack, ears: ownEARS(pack.ears) } : pack;
   if (registrations.has(registration.id)) {
@@ -73,6 +86,13 @@ export function registerPack(pack: PackRegistration): void {
         }
       }
     }
+  }
+
+  const designations = designationsOf(registration);
+  for (const [existingId, existing] of registrations) {
+    const held = designationsOf(existing);
+    const role = Object.keys(designations).find((r) => r in held);
+    if (role) throw new Error(`Designation collision: role "${role}" — pack "${registration.id}" vs "${existingId}"`);
   }
 
   if (registration.services) {
@@ -121,8 +141,10 @@ export function registerPack(pack: PackRegistration): void {
       seedHookRegistry.register(entity, hooks, registration.id);
     }
 
+    packCommandsRegistry.register(registration.id, registration.commands ?? []);
     packSettingsRegistry.register(registration.id, registration.features ?? []);
   } catch (err) {
+    packCommandsRegistry.unregister(registration.id);
     packSettingsRegistry.unregister(registration.id);
     seedHookRegistry.unregisterAll(registration.id);
     for (const type of registeredSteps) stepRegistry.unregister(type);
@@ -131,12 +153,7 @@ export function registerPack(pack: PackRegistration): void {
     throw err;
   }
 
-  const systemDesignations = registration.systems.filter(s => s.designation).map(s => s.designation!);
-  const featureDesignations = (registration.features ?? []).filter(f => f.designation).map(f => f.designation!);
-  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
-  if (allDesignations.length) {
-    registerDesignations(allDesignations);
-  }
+  registerDesignations(designations);
 
   registrations.set(registration.id, registration);
 
@@ -159,13 +176,9 @@ export function unregisterPack(packId: string): void {
   }
   seedHookRegistry.unregisterAll(packId);
   packSettingsRegistry.unregister(packId);
+  packCommandsRegistry.unregister(packId);
 
-  const systemDesignations = reg.systems.filter(s => s.designation).map(s => s.designation!);
-  const featureDesignations = (reg.features ?? []).filter(f => f.designation).map(f => f.designation!);
-  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
-  if (allDesignations.length) {
-    unregisterDesignations(allDesignations);
-  }
+  unregisterDesignations(designationsOf(reg));
 
   registrations.delete(packId);
   _entityTypeCache = null;

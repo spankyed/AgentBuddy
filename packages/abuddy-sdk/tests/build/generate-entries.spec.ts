@@ -90,6 +90,28 @@ describe('generated backend entry', () => {
     expect(entry).toContain("id: 'brain',\n    hasSystem: true,\n    hasPlugin: false,");
     expect(entry).not.toMatch(/label|icon|isPinned/);
   });
+
+  it("carries the pack's declared slash commands, so registering it registers them", () => {
+    const withCommands = generate({ commands: [{ name: 'note', placeholder: 'Text' }], features: [system('brain')] });
+    expect(withCommands['src/__generated__/pack-entry.ts']).toContain('commands: [{"name":"note","placeholder":"Text"}],');
+
+    // A pack that declares none says nothing
+    expect(generate({ features: [system('brain')] })['src/__generated__/pack-entry.ts']).not.toContain('commands:');
+  });
+
+  it('fails for a command a dependency declares, which the app would refuse to register', () => {
+    const base = { 'base-pack': dependency({ commands: [{ name: 'instructions', placeholder: 'Theirs' }] }) };
+    expect(() => generate({ commands: [{ name: 'instructions', placeholder: 'Mine' }], features: [system('brain')] }, base))
+      .toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
+    expect(generate({ commands: [{ name: 'memo', placeholder: 'Mine' }], features: [system('brain')] }, base)['src/__generated__/pack-entry.ts'])
+      .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
+  });
+
+  it("fails for a command a dependency's own dependency declares, from the snapshot's dependencyCommands", () => {
+    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), dependencyCommands: [{ name: 'pr2md', packId: 'default-setup' }] } };
+    expect(() => generate({ commands: [{ name: 'pr2md', placeholder: 'Mine' }], features: [system('brain')] }, mid))
+      .toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
+  });
 });
 
 describe('dependency types in .abuddy/generated/types.ts', () => {

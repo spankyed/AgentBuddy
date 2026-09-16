@@ -190,6 +190,21 @@ describe('dependency resolution from an installed app', () => {
     expect((await resolveDepArtifacts(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('3.0.0');
   });
 
+  it("resolves a dependency from the checkout a pack sits in at any depth, before an installed app's copy", async () => {
+    publishInstalled('1.0.0');
+    const checkout = path.join(tmp, 'AgentBuddy');
+    fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
+    fs.renameSync(
+      builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '4.0.0' } } as any),
+      path.join(checkout, 'packages', 'base-pack'),
+    );
+    // Three levels down, like tests/fixtures/external-pack
+    const fixture = path.join(checkout, 'tests', 'fixtures', 'author-pack');
+    fs.mkdirSync(fixture, { recursive: true });
+
+    expect((await resolveDepArtifacts(fixture, 'base-pack', '*'))?.snapshot.manifest.version).toBe('4.0.0');
+  });
+
   it("refuses a GitHub release without the dependency's own archive checksum", async () => {
     const requested: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {

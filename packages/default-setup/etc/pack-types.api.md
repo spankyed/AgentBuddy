@@ -4,7 +4,7 @@
 
 ```ts
 import * as _abuddy_sdk from '@abuddy/sdk';
-import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, SettingsScope } from '@abuddy/sdk';
+import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { CompiledRows } from '@abuddy/sdk/build';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
@@ -29,9 +29,7 @@ interface ActionNode extends NodeBase {
 }
 
 declare class ActionService {
-    getById(id: EARS.EntityId): ActionEntity | undefined;
     getByLabel(label: string): ActionEntity | undefined;
-    getByCategory(category: string): ActionEntity[];
     executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
     getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
 }
@@ -341,74 +339,6 @@ interface BrowserBookmarkEntity {
     displayOrder: number;
     createdAt: number;
     updatedAt: number;
-}
-
-interface BrowserCookie {
-    name: string;
-    value: string;
-    domain: string;
-    path: string;
-}
-
-type BrowserEngine = 'chromium' | 'firefox' | 'webkit';
-
-interface BrowserLaunchOptions {
-    headless?: boolean;
-    viewport?: {
-        width: number;
-        height: number;
-    };
-}
-
-/** A page opened by `newPage()`, passed back to `switchToPage`/`closePage` */
-interface BrowserPageHandle {
-    readonly [browserPageBrand]: true;
-}
-
-interface BrowserService {
-    createBrowser(engine?: BrowserEngine): BrowserSession;
-}
-
-/** One automated browser: launch it, drive its current page, close it */
-interface BrowserSession {
-    launch(options?: BrowserLaunchOptions): Promise<void>;
-    close(): Promise<void>;
-    goto(url: string): Promise<void>;
-    reload(): Promise<void>;
-    goBack(): Promise<void>;
-    goForward(): Promise<void>;
-    click(selector: string): Promise<void>;
-    type(selector: string, text: string): Promise<void>;
-    press(key: string): Promise<void>;
-    selectOption(selector: string, value: string | string[]): Promise<void>;
-    getText(selector: string): Promise<string | null>;
-    getAttribute(selector: string, attribute: string): Promise<string | null>;
-    isVisible(selector: string): Promise<boolean>;
-    isEnabled(selector: string): Promise<boolean>;
-    /** Resolves the raw playwright `ElementHandle`, or null */
-    waitForSelector(selector: string, timeout?: number): Promise<unknown>;
-    waitForTimeout(timeout: number): Promise<void>;
-    waitForLoadState(state?: 'domcontentloaded' | 'load' | 'networkidle'): Promise<void>;
-    screenshot(path?: string): Promise<Buffer>;
-    title(): Promise<string>;
-    url(): Promise<string>;
-    evaluate<T>(fn: () => T): Promise<T>;
-    newPage(): Promise<BrowserPageHandle>;
-    switchToPage(page: BrowserPageHandle): Promise<void>;
-    closePage(page: BrowserPageHandle): Promise<void>;
-    setCookies(cookies: Array<{
-        name: string;
-        value: string;
-        domain?: string;
-        path?: string;
-    }>): Promise<void>;
-    getCookies(): Promise<BrowserCookie[]>;
-    clearCookies(): Promise<void>;
-    setViewport(width: number, height: number): Promise<void>;
-    /** The raw playwright `Browser`, `BrowserContext` and current `Page`, for advanced use */
-    getBrowser(): unknown;
-    getContext(): unknown;
-    getCurrentPage(): unknown;
 }
 
 interface BrowserTabEntity {
@@ -923,26 +853,18 @@ type DocumentShortCode = `DOC-${number}`;
 
 declare namespace EARS {
     namespace Entity {
-        const Agent = "Agent";
-        type Agent = typeof Agent;
         const Thread = "Thread";
         type Thread = typeof Thread;
         const Message = "Message";
         type Message = typeof Message;
         const Artifact = "Artifact";
         type Artifact = typeof Artifact;
-        const Brain = "Brain";
-        type Brain = typeof Brain;
         const SearchIndex = "SearchIndex";
         type SearchIndex = typeof SearchIndex;
         const IndexedDoc = "IndexedDoc";
         type IndexedDoc = typeof IndexedDoc;
         const Terminal = "Terminal";
         type Terminal = typeof Terminal;
-        const Directory = "Directory";
-        type Directory = typeof Directory;
-        const FAQ = "FAQ";
-        type FAQ = typeof FAQ;
         const BrowserTab = "BrowserTab";
         type BrowserTab = typeof BrowserTab;
         const BrowserBookmark = "BrowserBookmark";
@@ -968,25 +890,15 @@ declare namespace EARS {
         const Settings = "Settings";
         type Settings = typeof Settings;
     }
-    type Entity = Entity.Agent | Entity.Thread | Entity.Message | Entity.Artifact | Entity.Brain | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.Directory | Entity.FAQ | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt | Entity.Settings;
+    type Entity = Entity.Thread | Entity.Message | Entity.Artifact | Entity.SearchIndex | Entity.IndexedDoc | Entity.Terminal | Entity.BrowserTab | Entity.BrowserBookmark | Entity.Document | Entity.Collection | Entity.Note | Entity.Relation | Entity.Flow | Entity.Node | Entity.TNode | Entity.Action | Entity.Prompt | Entity.Settings;
     type EntityId<E extends string = string> = _abuddy_sdk.EARS.EntityId<E>;
     namespace RelKind {
         const PARENT_OF = "parent_of";
         type PARENT_OF = typeof PARENT_OF;
-        const REPLIED_TO = "replied_to";
-        type REPLIED_TO = typeof REPLIED_TO;
         const HAS = "has";
         type HAS = typeof HAS;
-        const BLOCKS = "blocks";
-        type BLOCKS = typeof BLOCKS;
-        const DEPENDS_ON = "depends_on";
-        type DEPENDS_ON = typeof DEPENDS_ON;
         const RELATES_TO = "relates_to";
         type RELATES_TO = typeof RELATES_TO;
-        const DUPLICATES = "duplicates";
-        type DUPLICATES = typeof DUPLICATES;
-        const EMITS = "emits";
-        type EMITS = typeof EMITS;
         const CONTAINS = "contains";
         type CONTAINS = typeof CONTAINS;
         const TRANSITIONS_TO = "transitions_to";
@@ -999,7 +911,7 @@ declare namespace EARS {
         type TRACKED = typeof TRACKED;
         const Custom: <T extends string>(k: T) => T & RelKind;
     }
-    type RelKind = RelKind.PARENT_OF | RelKind.REPLIED_TO | RelKind.HAS | RelKind.BLOCKS | RelKind.DEPENDS_ON | RelKind.RELATES_TO | RelKind.DUPLICATES | RelKind.EMITS | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | (string & {});
+    type RelKind = RelKind.PARENT_OF | RelKind.HAS | RelKind.RELATES_TO | RelKind.CONTAINS | RelKind.TRANSITIONS_TO | RelKind.INSTANCE_OF | RelKind.SPAWNED | RelKind.TRACKED | (string & {});
     namespace RoleKind {
         const Custom: <T extends string>(k: T) => T & RoleKind;
     }
@@ -1415,8 +1327,9 @@ declare class LibraryService {
     getByName(name: string): Promise<DocumentDTO | undefined>;
     getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
     /**
-     * The chat's slash commands: the field sections of every document in the commands folder, in document order
-     * (then name). A command defined in two documents keeps the first.
+     * The chat's slash commands: the ones registered packs declare (abuddy.json `commands`, in
+     * registration order), then the field sections of every document in the commands folder, in document
+     * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
      */
     commands(): CommandItem[];
     getText(id: EARS.EntityId): Promise<string | undefined>;
@@ -2799,7 +2712,7 @@ declare class PromptService {
      * @param templateFn - The template function body
      * @param templateParams - Parameters to pass to the template
      */
-    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
+    private executeTemplate;
     /**
      * Get and execute a prompt by label
      * @param label - The prompt label
@@ -3216,34 +3129,11 @@ declare class SettingsService {
      */
     updatePluginSetting(pluginId: string, path: string[], value: any): void;
     /**
-     * Update a general setting
-     * @param category - The general settings category (e.g., 'hotkeys', 'secrets')
-     * @param path - Path to the setting property
-     * @param value - The new value
-     */
-    updateGeneralSetting(category: string, path: string[], value: any): void;
-    /**
      * Update an internal setting
      * @param path - Path to the setting property
      * @param value - The new value
      */
     updateInternalSetting(path: string[], value: any): void;
-    /**
-     * Reset all settings to their defaults
-     */
-    resetToDefaults(): void;
-    /**
-     * Check if a specific plugin has settings
-     * @param pluginId - The plugin identifier
-     */
-    hasPluginSettings(pluginId: string): boolean;
-    /**
-     * Get a specific setting value by path
-     * @param type - The setting type ('general', 'plugin', 'internal')
-     * @param label - The setting label/category
-     * @param path - Path to the specific value
-     */
-    getSettingValue(type: SettingsScope, label: string, path: string[]): any;
 }
 
 type Simplify<T> = {
@@ -3389,16 +3279,6 @@ interface TerminalScript {
 interface TextContent {
     type: 'text';
     text: string;
-}
-
-interface TextStreamOptions {
-    chunkSize?: number;
-    delayMs?: number;
-}
-
-declare class TextStreamService {
-    streamText(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
-    streamTextByChars(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
 }
 
 type Thinking = z.infer<typeof ThinkingSchema>;
@@ -3858,7 +3738,6 @@ declare const brainQueries: {
             readonly __entity?: "TNode" | undefined;
         };
     }, "blueprint" | "completedAt" | "createdAt" | "cronExpression" | "entityType" | "eventType" | "id" | "label" | "nodeAttributes" | "startedAt" | "status" | "stepNodeType" | "tNodeType" | "triggerType">) | null;
-    readonly eventFirstStep: (eventNodeId: EARS.EntityId) => NodeEntity | undefined;
     readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
     readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
     readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;
@@ -3880,8 +3759,6 @@ declare const browserCommands: {
     readonly syncTabs: (tabs: SavedTab[]) => void;
     readonly syncBookmarks: (bookmarks: SavedBookmark[]) => void;
 };
-
-declare const browserPageBrand: unique symbol;
 
 declare const browserQueries: {
     readonly allTabs: () => SavedTab[];
@@ -4105,7 +3982,6 @@ declare const featureServices: {
     codex: {
         start: () => Promise<void>;
         stop: () => Promise<void>;
-        restart: () => Promise<void>;
         readonly status: ServerStatus;
         startThread: (params: ThreadStartParams) => Promise<{
             threadId: string;
@@ -4166,7 +4042,6 @@ declare const featureServices: {
         listAllSessions: typeof listAll;
         viewSessionByFile: typeof viewByFile;
     };
-    browser: BrowserService;
     library: LibraryService;
     action: ActionService;
     prompt: PromptService;
@@ -4183,7 +4058,6 @@ declare const featureServices: {
         buildQueryContext: typeof buildQueryContext;
     };
     settings: SettingsService;
-    textStream: TextStreamService;
     filesystem: FilesystemServiceType;
 };
 
@@ -4280,7 +4154,6 @@ declare const libraryQueries: {
     readonly getFolderContents: (folderId: EARS.EntityId | null) => Promise<FolderContents>;
     readonly getFolderPath: (folderId: EARS.EntityId | null) => BreadcrumbItem[];
     readonly getParentFolderId: (folderId: EARS.EntityId) => EARS.EntityId | null;
-    readonly getCollectionByName: (name: string) => CollectionDTO | null;
     readonly getDocumentsInCollection: (collectionId: EARS.EntityId) => DocumentDTO[];
     readonly getText: (id: EARS.EntityId) => string | undefined;
     readonly resolveSymlinkPath: (id: string) => {
@@ -4586,7 +4459,6 @@ declare const threadQueries: {
     readonly allUnfiltered: () => ThreadEntity[];
     /** The first thread holding the role, e.g. the onboarding birth thread */
     readonly idByRole: (role: EARS.RoleKind) => EARS.EntityId | null;
-    readonly allByRecency: () => ThreadEntity[];
     readonly messages: (threadId: EARS.EntityId) => ({
         id: `${string}-${string}` & {
             readonly __entity?: "Message" | undefined;
@@ -4608,25 +4480,6 @@ declare const threadQueries: {
     }, "shortCode" | "status" | "timestamp" | "topic">)[];
     readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
     readonly archivedThreads: () => Partial<ThreadEntity>[];
-    readonly kanbanItems: () => {
-        content: {
-            workItems: {
-                id: `${string}-${string}` & {
-                    readonly __entity?: "Thread" | undefined;
-                };
-                name: string;
-                time: string;
-                date: string;
-                priority: number;
-                tags: never[];
-                status: string;
-                type: "work-item";
-            }[];
-        };
-        metadata: {
-            createdAt: number;
-        };
-    };
     readonly connectedData: () => ThreadConnectedData;
     /**
      * Compatibility alias for persisted action code compiled before artifact

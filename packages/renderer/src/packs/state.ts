@@ -1,10 +1,9 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { unregisterPackFE } from '@abuddy/host/fe';
 import { trpc } from '@/core/trpc';
 import type { PackInfo } from '@abuddy/host/packs';
 import { application } from '@/core/actors/application';
-import { loadPackFrontend } from './pack-loader';
+import { unloadPackFrontend } from './pack-loader';
 
 export type { PackInfo };
 
@@ -86,26 +85,14 @@ const packsState = setup({
 
     onPackDeactivated: ({ system, event }) => {
       const ev = typeOf('PACK_DEACTIVATED', event);
-      unregisterPackFE(ev.packId);
-
-      // Remove pack stylesheets
-      document.querySelectorAll(`link[data-pack-id="${ev.packId}"]`).forEach(el => el.remove());
-
+      unloadPackFrontend(ev.packId);
       system.get(application).send({ type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
     },
 
-    onPackActivated: ({ system, event }) => {
-      const ev = typeOf('PACK_ACTIVATED', event);
-      const appActor = system.get(application);
-
-      trpc.packs.registry.query().then(async (registry) => {
-        const pack = registry.find(p => p.id === ev.packId);
-        if (!pack) return;
-        const plugins = await loadPackFrontend(pack);
-        if (plugins) appActor.send({ type: 'PACK_FRONTEND_LOADED', packId: ev.packId, plugins });
-      }).catch((err: unknown) => {
-        console.error(`[packs] Failed to load FE for pack ${ev.packId}:`, err);
-      });
+    // The application actor owns pack frontend loading — it loads the packs it hasn't yet, this one
+    // included, and reports a failure the same way wherever the load was asked for
+    onPackActivated: ({ system }) => {
+      system.get(application).send({ type: 'LOAD_PACK_FRONTENDS' });
     },
 
     sendInstall: ({ event }) => {

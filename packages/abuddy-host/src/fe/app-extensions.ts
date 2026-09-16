@@ -14,6 +14,3 @@ export function getAppExtension(slot: string): Component | undefined {
   return extensions.get(slot);
 }
 
-export function hasAppExtension(slot: string): boolean {
-  return extensions.has(slot);
-}

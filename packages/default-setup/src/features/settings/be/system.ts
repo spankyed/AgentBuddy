@@ -271,10 +271,12 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('IMPORT_PACK_SEEDS', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
+        // Read first: a directory that can't name its pack fails before anything is imported
+        const { packId } = previewPackSeeds(ev.directory);
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result }));
-        // Seeds can add, change or remove slash command documents
-        system.get(threads)?.send({ type: 'COMMANDS_CHANGED' });
+        // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
+        system.get(bus).send({ type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
           system.get('brain').send({ type: 'RESTART_BRAIN' });
         }

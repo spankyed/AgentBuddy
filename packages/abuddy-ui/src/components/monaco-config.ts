@@ -597,7 +597,7 @@ export function setupMonacoForFile(
 /**
  * Setup function body mode for DSL files
  */
-export function setupFunctionBodyMode(
+function setupFunctionBodyMode(
   monaco: Monaco,
   language: 'typescript' | 'javascript' = 'typescript',
   dslType: DslType

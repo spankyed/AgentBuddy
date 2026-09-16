@@ -70,9 +70,6 @@ export function defineSystem<Id extends string>(id: Id): <TEvents extends {
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
 
 // @public (undocumented)
-export type Designations = readonly string[] | Record<string, string>;
-
-// @public (undocumented)
 export namespace EARS {
     const // (undocumented)
     Entity: {
@@ -243,9 +240,6 @@ export interface PromptEntity extends BaseEntity {
     updatedAt: number;
 }
 
-// @internal
-export function registerDesignations(designations: Designations): void;
-
 // @public (undocumented)
 export interface RelationEntity extends BaseEntity {
     // (undocumented)
@@ -290,6 +284,14 @@ export type Simplify<T> = {
 // @public
 export type SystemEvents = {
     type: 'CLIENT_CONNECTED';
+}
+/**
+* A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+* registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+*/
+| {
+    type: 'PACK_CHANGED';
+    packId: string;
 };
 
 // @public
@@ -313,8 +315,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 
 // @public (undocumented)
 export interface TemplateInput {
-    // (undocumented)
-    commonSources?: string[];
     // (undocumented)
     defaultValue?: unknown;
     // (undocumented)

@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { extname, join } from 'path';
-import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, StepEntry } from './manifest.ts';
+import { dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { formatEntities } from './seeds/records.ts';
 import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
@@ -158,7 +158,7 @@ export type AllEntities = EARS.Entity;
 // Names the generated facades provide: re-exporting a dependency's would shadow them
 const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities', 'PackEntityShapes', 'PackEvents', 'Repositories']);
 
-export function parseExportedTypeNames(content: string): string[] {
+function parseExportedTypeNames(content: string): string[] {
   const names: string[] = [];
   // `export type { Local as Exported }` exports the name after `as`
   for (const m of content.matchAll(/^export\s+type\s+\{([^}]+)\}/gm))
@@ -288,7 +288,7 @@ function depFlowHelpersFile(depId: string, extension: '.js' | '.d.ts'): string {
 }
 
 /** The line naming the dependency version a facade types file was generated from */
-export function depTypesHeader(depId: string, version: string): string {
+function depTypesHeader(depId: string, version: string): string {
   return `// ${depId}@${version} facade types\n`;
 }
 
@@ -352,6 +352,23 @@ export function generatePackFiles(
       aliases: typedDeps.map((depId) => depAlias(depId, name)),
     };
   }
+
+  /**
+   * The slash commands the pack declares. A name a dependency declares too fails the build: the app would
+   * refuse to register the pack.
+   */
+  function declaredCommands(): NonNullable<PackManifest['commands']> {
+    const commands = manifest.commands ?? [];
+    const taken = dependencyCommands([...depSnapshots]);
+    for (const { name } of commands) {
+      const owner = taken.find((command) => command.name === name)?.packId;
+      if (owner) {
+        throw new Error(`Command "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
+      }
+    }
+    return commands;
+  }
+  const commands = declaredCommands();
 
   // ── Manifest export targets ────────────────────────────────────
 
@@ -522,6 +539,7 @@ ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },` : ''}
+${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},

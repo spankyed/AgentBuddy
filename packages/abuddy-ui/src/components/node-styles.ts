@@ -62,18 +62,6 @@ const NODE_STYLE_CLASSES = {
     red: 'bg-red-500/5',
     yellow: 'bg-yellow-500/5'
   },
-  badge: {
-    purple: 'bg-neutral-700/40 text-purple-300/80 font-medium',
-    blue: 'bg-neutral-700/40 text-blue-300/80 font-medium',
-    amber: 'bg-neutral-700/40 text-amber-300/80 font-medium',
-    cyan: 'bg-neutral-700/40 text-cyan-300/80 font-medium',
-    orange: 'bg-neutral-700/40 text-orange-300/80 font-medium',
-    emerald: 'bg-neutral-700/40 text-emerald-300/80 font-medium',
-    indigo: 'bg-neutral-700/40 text-indigo-300/80 font-medium',
-    neutral: 'bg-neutral-700/40 text-neutral-400 font-medium',
-    red: 'bg-neutral-700/40 text-red-300/80 font-medium',
-    yellow: 'bg-neutral-700/40 text-yellow-300/80 font-medium'
-  },
   ring: {
     purple: 'ring-purple-500/20',
     blue: 'ring-blue-500/20',
@@ -85,18 +73,6 @@ const NODE_STYLE_CLASSES = {
     neutral: 'ring-neutral-600/30',
     red: 'ring-red-500/20',
     yellow: 'ring-yellow-500/20'
-  },
-  canvas: {
-    purple: 'bg-purple-500/20 border-purple-500/50 text-purple-200',
-    blue: 'bg-blue-500/20 border-blue-500/50 text-blue-200',
-    amber: 'bg-amber-500/20 border-amber-500/50 text-amber-200',
-    cyan: 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200',
-    orange: 'bg-orange-500/20 border-orange-500/50 text-orange-200',
-    emerald: 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200',
-    indigo: 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200',
-    neutral: 'bg-neutral-700 border-neutral-600 text-neutral-300',
-    red: 'bg-red-500/20 border-red-500/50 text-red-200',
-    yellow: 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
   }
 } as const
 
@@ -216,38 +192,6 @@ export const getNodeClasses = (nodeType: string, options?: NodeStyleOptions): st
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
-export const getNodeGlowClasses = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const colorKey = getNodeColorKey(effectiveType)
-  return NODE_STYLE_CLASSES.glow[colorKey]
-}
-
-export const getNodeAccentBarClasses = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const colorKey = getNodeColorKey(effectiveType)
-
-  const accentMap: Record<string, string> = {
-    purple: 'bg-purple-400/40',
-    blue: 'bg-blue-400/40',
-    amber: 'bg-amber-400/40',
-    cyan: 'bg-cyan-400/40',
-    orange: 'bg-orange-400/40',
-    emerald: 'bg-emerald-400/40',
-    indigo: 'bg-indigo-400/40',
-    neutral: 'bg-neutral-400/40',
-    red: 'bg-red-400/40',
-    yellow: 'bg-yellow-400/40'
-  }
-
-  return accentMap[colorKey] || accentMap.neutral
-}
-
-export const getNodeBadgeClasses = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const colorKey = getNodeColorKey(effectiveType)
-  return NODE_STYLE_CLASSES.badge[colorKey]
-}
-
 export const getNodeDividerClass = (nodeType: string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
@@ -268,19 +212,6 @@ export const getNodeDividerClass = (nodeType: string, options?: NodeStyleOptions
   return dividerMap[colorKey] || dividerMap.neutral
 }
 
-export const getNodeIconDotClasses = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const colorKey = getNodeColorKey(effectiveType)
-  const baseClass = NODE_STYLE_CLASSES.solid[colorKey]
-
-  if (options?.includeRing) {
-    const ringClass = NODE_STYLE_CLASSES.ring[colorKey]
-    return `${baseClass} ${ringClass}`
-  }
-
-  return baseClass
-}
-
 export const getNodeIconTextColor = (nodeType: string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const config = getNodeConfig(effectiveType)
@@ -290,17 +221,6 @@ export const getNodeIconTextColor = (nodeType: string, options?: NodeStyleOption
   }
 
   return config?.color || 'text-neutral-400'
-}
-
-export const getNodeIconBgColor = (nodeType: string, options?: NodeStyleOptions): string => {
-  const effectiveType = resolveNodeType(nodeType, options)
-  const config = getNodeConfig(effectiveType)
-
-  if (effectiveType === 'event') {
-    return 'bg-blue-500/10'
-  }
-
-  return config?.bgColor || 'bg-neutral-500/10'
 }
 
 export const getNodeStatusClasses = (
@@ -324,10 +244,6 @@ export const isTriggerNode = (nodeType: string | undefined): boolean => {
   if (!nodeType) return false
   const config = getNodeConfig(nodeType)
   return config?.connectionRules.inputs === 0 && config?.connectionRules.outputs === -1
-}
-
-export const getAllNodeTypes = (): string[] => {
-  return Object.keys(getConfigs())
 }
 
 export const getPaletteItems = () => {

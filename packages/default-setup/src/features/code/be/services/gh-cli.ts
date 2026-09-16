@@ -47,8 +47,8 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
 
 // --- Token detection ---
 
-export type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown'
-export type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown'
+type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown'
+type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown'
 
 export interface ActiveTokenInfo {
   source: TokenSource
@@ -63,7 +63,7 @@ function detectTokenKind(prefix: string): TokenKind {
   return 'unknown'
 }
 
-export function parseActiveToken(output: string): ActiveTokenInfo | null {
+function parseActiveToken(output: string): ActiveTokenInfo | null {
   const blocks = output.split(/\n\n+/)
   const activeBlock = blocks.find(b => b.includes('Active account: true'))
   if (!activeBlock) return null

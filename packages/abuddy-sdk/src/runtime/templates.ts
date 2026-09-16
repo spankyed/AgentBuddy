@@ -41,21 +41,6 @@ export function executeTemplate(
 }
 
 /**
- * Validate that a template function body is syntactically correct.
- */
-export function validateTemplate(fnBody: string): { valid: boolean; error?: string } {
-  try {
-    new Function('params', fnBody);
-    return { valid: true };
-  } catch (error) {
-    return {
-      valid: false,
-      error: error instanceof Error ? error.message : 'Invalid template syntax'
-    };
-  }
-}
-
-/**
  * Create a resolver that looks up templates by name and executes them,
  * with depth-limited recursion to catch circular references.
  */

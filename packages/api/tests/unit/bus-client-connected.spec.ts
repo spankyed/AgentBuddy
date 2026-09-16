@@ -21,10 +21,13 @@ type LoadedPack = import('@/packs/pack-loader').LoadedPack;
 
 const received: string[] = [];
 
-/** A system that records each CLIENT_CONNECTED it receives */
+/** A system that records each CLIENT_CONNECTED it receives, and each pack seed it's told about */
 function recorder(label: string) {
   return setup({}).createMachine({
-    on: { CLIENT_CONNECTED: { actions: () => received.push(label) } },
+    on: {
+      CLIENT_CONNECTED: { actions: () => received.push(label) },
+      PACK_CHANGED: { actions: ({ event }) => received.push(`${label}: changed ${(event as { packId: string }).packId}`) },
+    },
   });
 }
 
@@ -244,6 +247,35 @@ describe('a bus given a subset of the registered systems', () => {
     await flush();
     expect(subsetBus.system.get('second-pack.feature')).toBeDefined();
     expect(subsetBus.system.get('second-pack.outside')).toBeUndefined();
+  });
+});
+
+// A pack installed, updated or rebuilt while the app runs seeds its data then; systems already running
+// read what it seeded (the chat's slash commands, say), so the bus tells them all
+describe('PACK_CHANGED on the bus', () => {
+  it('reaches every running system, whichever pack changed', async () => {
+    registerPack(pack('second-pack'));
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
+    rootEvents.emitConnected();
+    await flush();
+    received.length = 0;
+
+    bus.send({ type: 'PACK_CHANGED', packId: 'second-pack' });
+    await flush();
+
+    expect(received).toEqual(['first-pack: changed second-pack', 'second-pack: changed second-pack']);
+  });
+
+  it("reaches the systems of a pack changed before any client connected, without a warning for one that isn't running", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    registerPack(pack('second-pack'));
+
+    bus.send({ type: 'PACK_CHANGED', packId: 'second-pack' });
+    await flush();
+
+    expect(received).toEqual(['first-pack: changed second-pack']);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
 

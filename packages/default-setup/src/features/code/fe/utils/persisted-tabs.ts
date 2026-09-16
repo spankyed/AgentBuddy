@@ -165,14 +165,6 @@ export function loadPersistedTabs(): PersistedTabState {
   }
 }
 
-export function clearPersistedTabs(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch (error) {
-    console.error('Failed to clear persisted tabs:', error)
-  }
-}
-
 export function prunePersistedTabsToOpenPaths(
   state: PersistedTabState,
   openPaths: Set<string>

@@ -52,7 +52,6 @@ export interface TemplateInput {
   description?: string;
   required?: boolean;
   defaultValue?: unknown;
-  commonSources?: string[];
   example?: unknown;
 }
 

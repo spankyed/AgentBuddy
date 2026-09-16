@@ -1,6 +1,9 @@
 import { rootEvents } from '@/core/router/bus-emitter';
 import { randomId, redactSecretText } from '@abuddy/sdk/utils';
 import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { createLogger } from '@/core/shared/debug/logger';
+
+const logger = createLogger('system-errors');
 
 export type SystemErrorSeverity = 'error' | 'fatal';
 
@@ -94,4 +97,26 @@ export function reportSystemError(input: ReportSystemErrorInput): SystemErrorEve
 
   rootEvents.emitOutgoing(event);
   return event;
+}
+
+export function logErrors(actor: string) {
+  return {
+    error: (error: unknown) => {
+      logger.error(`${actor} State Error:`, { error });
+      reportSystemError({
+        error,
+        title: 'Something went wrong',
+        source: actor,
+        severity: 'fatal',
+      });
+      // Write structured JSON for the main process to parse (JSON lines pattern)
+      const err = error instanceof Error ? error : new Error(String(error));
+      process.stderr.write(JSON.stringify({
+        __fatal: true,
+        message: err.message,
+        stack: err.stack,
+        source: actor,
+      }) + '\n');
+    }
+  }
 }

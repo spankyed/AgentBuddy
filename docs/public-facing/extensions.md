@@ -449,6 +449,88 @@ services.chat.sendBlockMessage({
 });
 ```
 
+#### Pairing a prompt with an input
+
+A message's `blocks` array is rendered in order, so the convention for asking a question is two blocks: a `prompt` display block carrying the question text, followed by the input block that collects the answer. The message's own `text` is what shows in thread summaries; the `prompt` block is what the user reads above the control.
+
+```typescript
+services.chat.sendBlockMessage({
+  threadId,
+  text: 'Choose a project directory',
+  blocks: [
+    { type: 'prompt', props: { content: 'Which directory should I work in?' } },
+    { type: 'file-picker', props: { fileType: 'directory', allowMultiple: false, displayText: 'Selected project:' } },
+  ],
+});
+```
+
+The same shape covers the other input types. Each row below is one `blocks` array:
+
+| Asking for | Blocks |
+|---|---|
+| A file or directory | `prompt`, then `file-picker` with `{ fileType: 'file' \| 'directory' \| 'both', allowMultiple, displayText }` |
+| Free text | `prompt`, then `text` with `{ placeholder, multiline, required, displayText, suggestions }` |
+| One of several options | `prompt`, then `choice` |
+| Confirmation | `prompt`, then `approval` |
+| An action to run | `prompt` (optional), then `button-group` with `{ buttons, keepInteractive, displayText }` |
+
+A `link` block needs no input block — it is a display block listing navigation targets, and the leading `prompt` is optional:
+
+```typescript
+services.chat.sendBlockMessage({
+  threadId,
+  text: 'Opening settings',
+  blocks: [{ type: 'link', props: { links } }],
+});
+```
+
+#### Button groups
+
+`button-group` is the one input block the backend drives after the first response, so it has two modes. Both follow the same path: frontend → backend → database → `UPDATE_MESSAGE_STATE` → frontend.
+
+- **`toggleStates`** — an on/off pair. The backend flips `state` between the two itself.
+- **`states`** — a map of named states, where a flow decides which one comes next.
+
+Each `ButtonConfig` (`@abuddy/sdk/blocks`) is `{ id, label, state }` plus one of those two maps; every state entry carries its own `label`, optional `variant` and optional `disabled`. Pass `keepInteractive: true` to leave the buttons live after a response instead of disabling them.
+
+```typescript
+services.chat.sendBlockMessage({
+  threadId,
+  text: 'Quick toggles:',
+  blocks: [{
+    type: 'button-group',
+    props: {
+      buttons: [
+        // Auto-cycling: the backend flips between on and off
+        {
+          id: 'watch',
+          label: 'Watch',
+          state: 'off',
+          toggleStates: {
+            on: { label: 'Watching', variant: 'primary' },
+            off: { label: 'Watch' },
+          },
+        },
+        // Manual control: a flow sets the next state
+        {
+          id: 'deploy',
+          label: 'Deploy',
+          state: 'idle',
+          states: {
+            idle: { label: 'Deploy' },
+            deploying: { label: 'Deploying…', disabled: true },
+            deployed: { label: 'Deployed' },
+          },
+        },
+      ],
+      keepInteractive: true,
+    },
+  }],
+});
+```
+
+The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Responses reach flows as `interactive.message.response` with `{ messageId, threadId, response }`.
+
 ### default-setup's block types
 
 | Kind | Types |

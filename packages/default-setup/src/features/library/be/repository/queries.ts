@@ -308,38 +308,6 @@ export const libraryQueries = {
     return findParentCollection(folderId)
   },
 
-  getCollectionByName(name: string): CollectionDTO | null {
-    const collections = qx(EARS.Entity.Collection)
-      .where('name', name)
-      .pickAll()
-    
-    if (collections.length === 0) {
-      return null
-    }
-    
-    const collection = collections[0]
-    const documentCount = qx(collection.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .ids().length
-    
-    const childCollections = qx(collection.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pickAll()
-    
-    const path = getCollectionPath(collection.id as EARS.EntityId)
-    
-    return {
-      id: collection.id as EARS.EntityId,
-      name: collection.name as string,
-      description: collection.description as string | undefined,
-      path,
-      documentCount,
-      childCollections: childCollections as unknown as CollectionDTO[],
-      displayOrder: getDisplayOrder(collection),
-      createdAt: new Date(collection.createdAt as number).toISOString(),
-      updatedAt: new Date(collection.updatedAt as number || collection.createdAt as number).toISOString(),
-    }
-  },
 
   getDocumentsInCollection(collectionId: EARS.EntityId): DocumentDTO[] {
     const documentIds = qx(collectionId)

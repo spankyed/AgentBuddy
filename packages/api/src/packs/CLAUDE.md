@@ -112,7 +112,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` registers them via `registerDesignations()`. A designation must equal its feature id (`abuddy validate` checks it).
+Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>.<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation must equal its feature id (`abuddy validate` checks it).
 
 ## Collision detection
 
@@ -123,13 +123,14 @@ Designations come from the manifest's `features[].designation`: generate-entries
 | Pack id | Registered packs | Throws |
 | EARS entity type values | All registered packs' entity values (SDK-owned names are dropped from the pack's first) | Throws (blocks registration) |
 | EARS relation kind values | All registered packs' relation values (same) | Throws (blocks registration) |
+| Designation roles | All registered packs' roles | Throws (blocks registration) |
 | Service keys | Host service names (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) and all registered packs' keys | Throws (blocks registration) |
 | Step types | SDK `stepRegistry` | Throws — **with rollback** of what this call registered |
 | Artifact types | SDK `artifactRegistry` | Same rollback behavior |
 | Block types | SDK `blockRegistry` | Same rollback behavior |
 | Seed hooks, feature settings | `seedHookRegistry`, `packSettingsRegistry` | Same rollback behavior |
 
-EARS and service collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure — if the third step type collides, the first two are unregistered.
+EARS, designation and service collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure — if the third step type collides, the first two are unregistered.
 
 ## Host resolution for pack runtime code
 
@@ -149,11 +150,11 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`pack-lifecycle.ts`)
 
-`activatePack(packId, bus, { seed? })` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, runs `onInit`, seeds when `seed` is set (install and update), `updateLoadedPack()`, then sends the bus `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(packId, bus, { seed? })` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, runs `onInit`, seeds when `seed` is set (install and update), `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
-`teardownPack(packId, bus)` — runs the pack's shutdown hooks, `unregisterPack()`, invalidates the event validation map and partition policy, clears the pack's require cache, `removeLoadedPack()`, and sends the bus `TEARDOWN_PACK` to stop its systems. The packs system emits `PACK_DEACTIVATED`.
+`teardownPack(packId, bus, { replacing? })` — runs the pack's shutdown hooks, `unregisterPack()`, invalidates the event validation map and partition policy, clears the pack's require cache, `removeLoadedPack()`, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 
-Update tears down, installs the release the update check found, and activates with seeding; if the install fails it reactivates the previous copy.
+Update tears down with `replacing`, installs the release the update check found, and activates with seeding; if the install fails it reactivates the previous copy. The activation sends `PACK_CHANGED`; when neither activation succeeds, the update sends it itself, since the pack is then gone.
 
 ### Reload (`pack-reload.ts`)
 
@@ -163,6 +164,9 @@ Update tears down, installs the release the update check found, and activates wi
 3. invalidate the event validation map and partition policy
 4. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs re-seed and `updateLoadedPack()`
 5. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`
+6. send the bus `PACK_CHANGED`
+
+`PACK_CHANGED { packId }` goes to every running system once a change is complete, so systems that read what a pack registers or seeds (the chat's slash commands, the library's documents) send their data again. It's never sent between unregistering a pack and registering it again: a system reading another pack's services then would find them gone. Settings → Import pack seeds sends it too.
 
 Migrations don't run on activation or reload.
 

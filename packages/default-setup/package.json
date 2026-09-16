@@ -17,7 +17,6 @@
     "facade:update": "tsx ../../scripts/facade-report.ts . --local"
   },
   "dependencies": {
-    "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "@abuddy/ui": "*",
     "@antv/g6": "^5.0.48",
@@ -37,15 +36,12 @@
     "croner": "^10.0.1",
     "elkjs": "^0.9.0",
     "node-pty": "^1.0.0",
-    "playwright": "^1.54.1",
     "vue-arrange": "^1.5.0"
   },
   "devDependencies": {
     "@abuddy/testing": "*",
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
-    "rollup": "^4.34.0",
-    "rollup-plugin-dts": "^6.2.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",

@@ -6,8 +6,8 @@ import { getSecretsFilePath } from '@abuddy/sdk/utils';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { fileKeyVault, osKeyVault } from './vault.ts';
 
-export { createSecretsStore, type SecretsStore, type SecretsStoreOptions } from './store.ts';
-export { fileKeyVault, memoryKeyVault, osKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
+export { createSecretsStore } from './store.ts';
+export { fileKeyVault, memoryKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 let store: SecretsStore | undefined;
 

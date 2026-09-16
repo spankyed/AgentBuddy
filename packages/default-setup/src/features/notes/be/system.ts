@@ -642,6 +642,10 @@ export const notesSystem = setup({
         CLIENT_CONNECTED: {
           actions: 'sendNotesConnectedData',
         },
+        // A pack's seeds can add or change notes
+        PACK_CHANGED: {
+          actions: 'sendNotesConnectedData',
+        },
       },
     },
   },

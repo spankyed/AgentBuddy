@@ -47,6 +47,8 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/sdk/testing', 'unit-test runtime only'],
   // The engine's host hook; built-in packs reach it through @abuddy/host/ears, which is bridged.
   ['@abuddy/sdk/ears/internals', 're-exported by the bridged @abuddy/host/ears'],
+  // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
+  ['@abuddy/sdk/utils/internals', 'host-only — a pack could otherwise replace what redaction treats as a secret'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],
