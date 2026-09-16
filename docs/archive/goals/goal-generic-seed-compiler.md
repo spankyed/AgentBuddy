@@ -238,26 +238,28 @@ Recorded after the PR #175 review (the stack collapse onto `AS/generic-seed-comp
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — Spike and parity gate | Done, with fixture gaps | `default-setup/tests/unit/seed-parity/` (goldens first recorded in `7ea8bb8cf`). The review found the v1/v2 fixtures don't cover a change two folder levels deep or a meaningful `REFERENCES` case; `title: 2024` is covered by the SDK's `seed-compiler.spec.ts`. The v1/v2 scenarios now seed pinned action and prompt fixtures (`tests/fixtures/seed-parity/{v1,v2}/{actions,prompts}`), so the goldens move only when seeding changes; `default-setup.json` still follows the pack's own sources. |
-| 2 — Object entries end to end | Done, with gaps | `de7a41228`, `477f34ca3`. The review found `abuddy validate` doesn't report three errors that only `build`/`generate-entries` catch: a format entity no pack declares, a missing dependency format, a missing `seedHooks` export. Seed keys are now validated with the `seedFormats` name pattern. |
+| 1 — Spike and parity gate | Done | `default-setup/tests/unit/seed-parity/` (goldens first recorded in `7ea8bb8cf`). After the review the v1/v2 fixtures gained an unquoted `title: 2024`, a change two folder levels deep (notes and library) and a `REFERENCES` change, which `notes-change-tracking.spec.ts` checks. The v1/v2 scenarios now seed pinned action and prompt fixtures (`tests/fixtures/seed-parity/{v1,v2}/{actions,prompts}`), so the goldens move only when seeding changes; `default-setup.json` still follows the pack's own sources. |
+| 2 — Object entries end to end | Done | `de7a41228`, `477f34ca3`. After the review `abuddy validate` runs codegen in memory, so it reports a format entity no pack declares, a missing dependency format and a missing `seedHooks` export (`add-feature-validate.spec.ts`; one error at a time, as `build`). Seed keys are validated with the `seedFormats` name pattern, `format.media` must be a relative path inside the pack, and `markdown-tree` with an entity list is rejected. |
 | 3 — Migrate notes, then library | Done | Parity gate and `dependent-pack.spec.ts` pass. |
 | 4 — Delete the SDK specifics | Done | `no-pack-seed-specifics.spec.ts` passes (and flagged a stray library module name in a comment during the review fixes). A deliberate mutation check of it isn't recorded. |
-| 5 — FAQs and docs | Done, FAQ compiler untested | `docs/public-facing/seeds.md`; the YAML-based FAQ compiler had no tests at review time. |
-| 6 — Named formats | Done, with a gap | `5e78ab687`, `51e675d68`, `17488865a`. The review found `test:packaged-authoring` uses only `default-setup:notes` (never loads a dependency's bundled `seed-compilers.mjs`) and doesn't assert seeded rows. |
+| 5 — FAQs and docs | Done | `docs/public-facing/seeds.md`; the FAQ compiler is covered by `faqs-compiler.spec.ts` (added after the review, which also fixed one FAQ's broken frontmatter). |
+| 6 — Named formats | Done | `5e78ab687`, `51e675d68`, `17488865a`. After the review `test:packaged-authoring` also seeds a `default-setup:library` entry, which loads the dependency's bundled `seed-compilers.mjs`, and asserts the seeded rows; a missing `seed-compilers.mjs` fails with "build <dependency> first", and compiler-module output is shape-checked. |
 
 Spike answer (Phase 1): notes are expressible with `markdown-tree` plus seed hooks; library needs a default-setup compiler module (sections, Collection vs Document) plus hooks, with Collection as a container.
 
 Conventional choices visible in the code:
 - Frontmatter is parsed with the `yaml` package.
 - A field's `default` applies when the value is missing, `null` or `""` (as the old `title || filename`); `0` and `false` are kept.
-- The markdown walker skips a folder named `media` whatever the format's `media` setting says (a review finding).
-- `wipe-and-replace` removes every row of the entry's entity types present in its records, including other packs' and users' rows (a review finding).
+- The markdown walker skips only the format's configured `media` folder, and nothing when none is set. Frontmatter may use CRLF line endings and a UTF-8 BOM.
+- `wipe-and-replace` removes every row of the entry's configured entity types (`createSeeder`'s `entities`), including other packs' and users' rows, as the import dialog states. Media links are rewritten in every text field.
+- The import dialog lists only keys the pack registered seeders for, and refuses a pack that isn't installed.
+- `abuddy build` fails before writing the snapshot when the seed-compiler bundle fails.
 - Seeders are registered per pack (`registerSeeders(packId, …)`); `seedData` runs only the seeders of the pack the directory's `seeds.json` names, and `teardownPack` unregisters them.
 - Seed-hook imports in generated code are named by position.
 - The boot seed hash covers every seeded key's compiled file, `settings` included; `seedPolicy.skipAtBoot` keeps boot seeding from resetting settings.
 - Seeding errors are collected per record in `counts.errors`; boot seeding reports them, and Settings → Import pack seeds shows them.
 
-Checks run at the collapsed branch head (after the review fixes): `npm run typecheck`, `api:check`, `schema:check`, the sdk, default-setup, api, host and cli unit suites, and `npm run test:external-pack` pass. Not run then: the renderer unit suite, the smoke and import-pack-seeds E2E, `test:packaged-authoring`, and the example pack's `abuddy test --app-root`.
+Checks run at the collapsed branch head (after the review fixes): `npm run typecheck`, `api:check`, `schema:check`, the sdk, default-setup, api, host and cli unit suites, and `npm run test:external-pack` and `npm run test:packaged-authoring` pass. Not run then: the renderer unit suite, the smoke and import-pack-seeds E2E, and the example pack's `abuddy test --app-root`.
 
 ### Mutation checks
 
@@ -274,8 +276,18 @@ Run during the review fixes; each check failed the named test and was restored:
 | Per-pack seeders | Run every pack's seeders; append instead of replace; drop `unregisterSeeders` from teardown | `seed-registry.spec.ts` (2, then 1), `pack-lifecycle.spec.ts` |
 | Import errors reach the dialog | Stub the reported errors to `[]` | `library-commands.spec.ts` import-errors test |
 | Stale `isolatedDataDir` cleanup | Skip the cleanup | `abuddy-cli/tests/harness/isolated-data-dir.spec.ts` |
+| Import preview lists only importable keys | Drop the registered-key filter; drop the not-installed error | `preview.spec.ts` |
+| Configured media folder, CRLF/BOM, entity-list rule, media path rule, empty icon | Revert each | `seed-compiler.spec.ts`, `manifest-schema.spec.ts`, `notes-format.spec.ts` |
+| `abuddy validate` Phase 2 errors | Remove the in-memory codegen check | `add-feature-validate.spec.ts` |
+| Missing dependency compiler module, bad compiler output | Remove each check | `seed-compiler.spec.ts` |
+| Build stops on a failed compiler bundle | Restore the old order | `clear-build-output.spec.ts` |
+| Wipe types from configuration | Derive them from the records again | `seeder.spec.ts` wipe tests |
+| Stale references removed on re-seed | Stop `syncReferences` removing links | `notes-change-tracking.spec.ts` |
+| Seed-hook ownership and rollback | Remove the ownership check, the hook rollback, the artifact rollback | `abuddy-host/tests/packs/registration.spec.ts` |
+| FAQ ordering, heading skip, category string | Remove each | `faqs-compiler.spec.ts` |
+| Bundled compiler loading (Phase 6) | Move `seed-compilers.mjs` aside | `test:packaged-authoring` build fails with "build default-setup first" |
 
-Not recorded: the Constraints' parity-gate mutations for a broken field mapping, manifest-key routing and the seed-hook lookup; the Phase 4 guard; and Phase 6's resolution, bundled-compiler loading and per-validation-error mutations. Run them before treating those guards as verified.
+Not recorded: the Constraints' parity-gate mutations for a broken field mapping, manifest-key routing and the seed-hook lookup; the Phase 4 guard; and Phase 6's format resolution and per-validation-error mutations. Run them before treating those guards as verified.
 
 ## Deferred
 
