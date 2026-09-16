@@ -93,7 +93,7 @@ export type Event =
   | { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
   | { type: 'explorer.FILE_SAVED'; data: { path: string } }
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
-  | { type: 'explorer.CODE_ERROR'; data: { message: string } }
+  | { type: 'explorer.CODE_ERROR'; data: { message: string; code?: string; path?: string } }
   // Quick open events
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
@@ -227,7 +227,20 @@ export const explorerState = setup({
     },
 
     handleCodeError: ({ event, self }) => {
-      const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string } }
+      const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string; code?: string; path?: string } }
+
+      // A tab restored from localStorage whose file has since gone: drop the tab rather
+      // than leave one that can never load. Pinned tabs are kept by removeTabs.
+      if (ev.data.code === 'NOT_FOUND' && ev.data.path) {
+        const parentContext = getParentContext(self)
+        const openFiles = parentContext?.openFiles ?? []
+        if (openFiles.some((f: any) => f.path === ev.data.path)) {
+          const result = removeTabs(openFiles, ev.data.path, parentContext.activeFilePath)
+          updateParentState(self, { ...result, error: null, isLoading: false })
+          return
+        }
+      }
+
       updateParentState(self, { error: ev.data.message, isLoading: false })
     },
 
