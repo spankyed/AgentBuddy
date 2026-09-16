@@ -253,6 +253,8 @@ export interface LoadedPack {
   boot?: import('@abuddy/sdk/framework').PackBootHooks;
   migrations?: import('@abuddy/sdk/framework').PackMigration[];
   seedHooks?: import('@abuddy/sdk/framework').PackRegistration['seedHooks'];
+  /** The slash commands the pack declares (abuddy.json `commands`) */
+  commands?: import('@abuddy/sdk/framework').PackRegistration['commands'];
   /** Feature definitions, with each feature's default settings */
   features?: import('@abuddy/sdk/framework').PackFeatureDef[];
 }
@@ -376,6 +378,7 @@ function loadBundledRuntime(
     boot: registration.boot ? { ...registration.boot } : undefined,
     migrations: registration.migrations,
     seedHooks: registration.seedHooks,
+    commands: registration.commands,
     features: registration.features,
   };
 }
@@ -432,6 +435,7 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
         boot: pack.boot,
         migrations: pack.migrations,
         seedHooks: pack.seedHooks,
+        commands: pack.commands,
         features: pack.features,
       });
       registered.push(pack);

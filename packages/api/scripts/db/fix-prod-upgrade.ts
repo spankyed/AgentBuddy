@@ -34,7 +34,9 @@
  * 2. Moves the CLI path overrides from general.secrets.cliPaths to plugins.code.cliPaths, and removes
  *    general.secrets.
  * 3. Deletes the seeded library document internal/commands: slash commands now come from the documents of an
- *    internal/commands folder, which the next launch seeds.
+ *    internal/commands folder, which the next launch seeds. Also deletes the document default-setup seeded as
+ *    internal/commands/General commands, if a development build put it there: its commands (pr2md, instructions)
+ *    are now declared in default-setup's abuddy.json, and the document would list them to no effect.
  * 4. Removes temperature from llm flow nodes whose stored value is exactly 0.7: the llm step's form saved that
  *    default on every node and never offered the field, so a stored 0.7 is the old default and not a choice.
  *    Those nodes take the model's own temperature again. Seeded flows are replaced by the next launch anyway
@@ -238,14 +240,18 @@ function removeOldCommandsDocument(): void {
   console.log('\n3. Old commands document');
   const inInternal = new Set(findWhere<{ id: EARS.EntityId }>('Collection' as EARS.Entity, 'name', 'internal')
     .flatMap((collection) => findRelations({ sourceEntity: collection.id, relationType: 'contains' as EARS.RelKind }).map((r) => r.targetEntity as string)));
-  const old = findWhere<{ id: EARS.EntityId }>('Document' as EARS.Entity, 'name', 'commands').find((document) => inInternal.has(document.id));
-  if (!old) {
-    console.log('  internal/commands: not there');
-    return;
-  }
   const remove = seedHookRegistry.get('Document')?.remove;
   if (!remove) throw new Error('The Document seed hook is not registered: is default-setup built?');
-  write('delete the document internal/commands (its commands now come from the internal/commands folder)', () => remove(old.id));
+
+  const old = findWhere<{ id: EARS.EntityId }>('Document' as EARS.Entity, 'name', 'commands').find((document) => inInternal.has(document.id));
+  if (old) write('delete the document internal/commands (its commands now come from the internal/commands folder)', () => remove(old.id));
+  else console.log('  internal/commands: not there');
+
+  // Only default-setup's own seeded copy: a document the user made with that name stays
+  const general = findWhere<{ id: EARS.EntityId; seedKey?: string }>('Document' as EARS.Entity, 'name', 'General commands')
+    .find((document) => document.seedKey?.startsWith('default-setup:'));
+  if (general) write('delete the document internal/commands/General commands (default-setup\'s abuddy.json declares its commands now)', () => remove(general.id));
+  else console.log('  internal/commands/General commands: not there');
 }
 
 // ── 4. The llm temperature default ──────────────────────────────────────────

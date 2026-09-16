@@ -8,6 +8,7 @@ import { dropAttribute, resetTestData, startTestRuntime } from '../../src/testin
 import { createSeeder, markSeededRowUnedited } from '../../src/seed/seeder.ts';
 import { seedHookRegistry } from '../../src/seed/hooks.ts';
 import { findWhere } from '../../src/ears/query-helpers.ts';
+import { qx } from '../../src/ears/query.ts';
 import { getMediaPath } from '../../src/utils/index.ts';
 import { createEntityWithDefaults, updateEntity } from '../../src/ears/transaction-helpers.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
@@ -24,7 +25,7 @@ beforeAll(() => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'seeder-data-'));
   process.env.ABUDDY_ENV ??= 'test';
   process.env.ABUDDY_USER_DATA_DIR ??= dataDir;
-  startTestRuntime({ entityTypes: ['Memo'] });
+  startTestRuntime({ entityTypes: ['Memo', 'Folder'] });
 });
 beforeEach(() => resetTestData());
 afterEach(() => seedHookRegistry.unregisterAll('memo-hooks'));
@@ -96,6 +97,101 @@ describe("two packs' records with the same entry key and identity", () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }));
     expect(() => seed(dir)).toThrow(/doesn't name the pack that compiled these seeds: rebuild the pack/);
+  });
+});
+
+describe("a folder another pack seeded", () => {
+  type Folder = { id: EARS.EntityId; name: string; label?: string; seedKey?: string };
+  const folders = () => findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
+  const contents = (folder: Folder) => qx(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
+
+  /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
+  function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seeder-tree-'));
+    dirs.push(dir);
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    const records: SeedRecord[] = [{
+      entity: 'Folder',
+      name: 'internal',
+      label: packId,
+      sourceHash: `internal-${packId}`,
+      children: memoNames.map((name) => ({ entity: 'Memo', name, body: `from ${packId}`, sourceHash: `${name}-v1` })),
+    }];
+    fs.writeFileSync(path.join(dir, `${entryKey}.seed.json`), JSON.stringify({ records }));
+    return dir;
+  }
+
+  it('is seeded into, not copied, when its hooks mark it a container', () => {
+    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+
+    expect(seed(tree('pack-a', ['welcome.md']))).toEqual({ created: 2, updated: 0, skipped: 0 });
+    // The folder is pack-a's; only pack-b's own memo is new
+    expect(seed(tree('pack-b', ['theirs.md']))).toEqual({ created: 1, updated: 0, skipped: 1 });
+
+    expect(folders()).toHaveLength(1);
+    const [folder] = folders();
+    expect(contents(folder)).toEqual(['theirs.md', 'welcome.md']);
+    // Left as pack-a seeded it: not updated, not re-keyed
+    expect(folder.label).toBe('pack-a');
+    expect(folder.seedKey).toMatch(/^pack-a:/);
+  });
+
+  it('is found again by the pack seeding into it: seeding it twice adds nothing', () => {
+    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    seed(tree('pack-a', ['welcome.md']));
+    seed(tree('pack-b', ['theirs.md']));
+
+    expect(seed(tree('pack-b', ['theirs.md']))).toEqual({ created: 0, updated: 0, skipped: 2 });
+    expect(folders()).toHaveLength(1);
+    expect(contents(folders()[0])).toEqual(['theirs.md', 'welcome.md']);
+  });
+
+  it("takes the other pack's new records in keep-existing mode, which skips only rows that exist", () => {
+    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    seed(tree('pack-a', ['welcome.md']));
+
+    const counts = seeder.seed({ compiledDir: tree('pack-b', ['theirs.md']), mode: 'keep-existing', log: () => {} });
+
+    expect(counts).toEqual({ created: 1, updated: 0, skipped: 1 });
+    expect(contents(folders()[0])).toEqual(['theirs.md', 'welcome.md']);
+  });
+
+  it("is shared by two entries of the pack that seeded it, like another pack's", () => {
+    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    const docs = createSeeder({ key: 'docs', identity: ['name'] });
+    seed(tree('pack-a', ['welcome.md']));
+
+    expect(docs.seed({ compiledDir: tree('pack-a', ['guide.md'], 'docs'), mode: 'replace-on-collision', log: () => {} }))
+      .toEqual({ created: 1, updated: 0, skipped: 1 });
+
+    expect(folders()).toHaveLength(1);
+    expect(contents(folders()[0])).toEqual(['guide.md', 'welcome.md']);
+  });
+
+  it("is copied when its hooks don't, so a pack never writes into another's rows", () => {
+    seedHookRegistry.register('Folder', {}, 'memo-hooks');
+
+    seed(tree('pack-a', ['welcome.md']));
+    seed(tree('pack-b', ['theirs.md']));
+
+    expect(folders().map((folder) => folder.label)).toEqual(['pack-a', 'pack-b']);
+    expect(folders().map(contents)).toEqual([['welcome.md'], ['theirs.md']]);
+  });
+
+  it('is updated as usual by the pack that seeded it', () => {
+    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    seed(tree('pack-a', ['welcome.md']));
+
+    const dir = tree('pack-a', ['welcome.md']);
+    const file = path.join(dir, 'memos.seed.json');
+    const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: SeedRecord[] };
+    data.records[0].label = 'renamed';
+    data.records[0].sourceHash = 'internal-pack-a-v2';
+    fs.writeFileSync(file, JSON.stringify(data));
+
+    expect(seed(dir)).toMatchObject({ updated: 1 });
+    expect(folders()).toHaveLength(1);
+    expect(folders()[0].label).toBe('renamed');
   });
 });
 

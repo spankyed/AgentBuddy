@@ -31,6 +31,12 @@
       }
     }
   ],
+  "commands": [
+    {
+      "name": "memo-note",
+      "placeholder": "Memo text"
+    }
+  ],
   "dependencies": {
     "default-setup": "*"
   },
@@ -73,6 +79,10 @@
       "quick-memos": {
         "path": "src/seeds/quick-memos.txt",
         "format": "quick-memos"
+      },
+      "library": {
+        "path": "src/seeds/library",
+        "format": "default-setup:library"
       }
     }
   }

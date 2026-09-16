@@ -179,6 +179,17 @@ describe('reloading a built-in pack', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: ['widget'] });
   });
 
+  // Only the reloaded pack's own systems restart; other packs' systems read what it registers and seeds
+  it('tells the running systems the pack changed, after restarting its own', async () => {
+    const packagesDir = writeBuiltIn();
+    await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
+
+    await reloadBuiltInPack(BUILT_IN_ID, bus as never);
+
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['RELOAD_PACK', 'PACK_CHANGED']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: BUILT_IN_ID });
+  });
+
   it('seeds the compiled data a rebuild changed, and leaves unchanged data alone', async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
@@ -311,5 +322,22 @@ describe('reloading a pack', () => {
     expect(getPackRegistration(PACK_ID)?.systems).not.toBe(running.systems);
     expect(shutdown).toHaveBeenCalledTimes(1);
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: PACK_ID, systemIds: [`${PACK_ID}.widget`] });
+  });
+
+  // Other packs' systems read what the pack registers and seeds (the chat's slash commands, say). A system
+  // reading it between unregistering the running pack and registering the rebuild would find nothing
+  it('tells the running systems the pack changed once the rebuild is registered and its systems restarted', async () => {
+    writeRebuild(runtime());
+    const registrationWhenSent: unknown[] = [];
+    bus.send.mockImplementation((event: { type: string }) => {
+      if (event.type === 'PACK_CHANGED') registrationWhenSent.push(getPackRegistration(PACK_ID)?.systems);
+    });
+    await reloadExternalPack(PACK_ID, bus as never);
+
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['RELOAD_PACK', 'PACK_CHANGED']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+    expect(registrationWhenSent).toHaveLength(1);
+    expect(registrationWhenSent[0]).toBeDefined();
+    expect(registrationWhenSent[0]).not.toBe(running.systems);
   });
 });

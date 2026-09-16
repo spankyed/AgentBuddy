@@ -30,7 +30,7 @@ describe('the library index', () => {
     expect(tagged.tags).toEqual(['note', 'draft'])
     expect(tagged.shortCode).toMatch(/^DOC-\d+$/)
     expect(index.documents.map((document) => document.name)).toEqual(
-      expect.arrayContaining(['Tagged', 'General commands']),
+      expect.arrayContaining(['Tagged', 'Codex commands']),
     )
     expect(index.folders.map((folder) => folder.name)).toEqual(expect.arrayContaining(['internal', 'commands']))
   })

@@ -4,6 +4,12 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 vi.mock('virtual:built-in-pack-loaders', () => ({ default: {} }));
+vi.mock('@abuddy/host/settings', () => ({
+  settingsRepository: {
+    settingsQueries: { getInternalSettings: () => ({ packSeedHashes: {} }) },
+    settingsCommands: { updateSettings: () => {} },
+  },
+}));
 
 import { registerHostModule } from '../../../abuddy-sdk/src/runtime/host';
 
@@ -157,6 +163,84 @@ describe('pack full lifecycle: init → install → discover', () => {
     const packs = loadExternalPacks();
     const ids = packs.map(p => p.manifest.id).sort();
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);
+  });
+});
+
+// A pack installed, enabled, disabled or uninstalled while the app runs changes what the running systems
+// read (the chat's slash commands, say), so they have to be told
+describe('activating and tearing down a pack at runtime', () => {
+  const PACK_ID = 'activate-pack';
+  const bus = { send: vi.fn() };
+
+  /** Installs a pack with one system that declares a slash command in its manifest */
+  async function install() {
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
+    const sourceDir = path.join(tmpDir, PACK_ID);
+    writeManifest(sourceDir, {
+      id: PACK_ID,
+      name: 'Activate Pack',
+      version: '1.0.0',
+      features: [{ id: 'main', system: { entry: 'src/features/main/be/system.ts' } }],
+      commands: [{ name: 'activate-memo', placeholder: 'Text' }],
+    });
+    // The runtime carries what generate-entries writes from the manifest, commands included
+    writeBuild(sourceDir, PACK_ID, "[{ id: 'main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }]");
+    await installPackFromLocal(sourceDir, packsDir());
+  }
+
+  afterEach(async () => {
+    const { unregisterPack, getPackContributions } = await import('../../../abuddy-host/src/packs/pack-registration');
+    if (getPackContributions(PACK_ID)) unregisterPack(PACK_ID);
+    bus.send.mockReset();
+  });
+
+  it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
+    await install();
+    const { activatePack } = await import('@/packs/pack-lifecycle');
+    const { getPackCommands } = await import('@abuddy/sdk/framework');
+
+    expect(activatePack(PACK_ID, bus as never, { seed: true })).toBe(true);
+
+    expect(getPackCommands()).toEqual([{ name: 'activate-memo', placeholder: 'Text' }]);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['PACK_CHANGED', 'ACTIVATE_PACK']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+  });
+
+  it('tells the running systems when enabling an installed pack, which seeds nothing', async () => {
+    await install();
+    const { activatePack } = await import('@/packs/pack-lifecycle');
+
+    expect(activatePack(PACK_ID, bus as never)).toBe(true);
+
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+  });
+
+  it('drops its commands when torn down, and tells the systems still running after stopping its own', async () => {
+    await install();
+    const { activatePack, teardownPack } = await import('@/packs/pack-lifecycle');
+    const { getPackCommands } = await import('@abuddy/sdk/framework');
+    activatePack(PACK_ID, bus as never);
+    bus.send.mockReset();
+
+    teardownPack(PACK_ID, bus as never);
+
+    expect(getPackCommands()).toEqual([]);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+  });
+
+  it("says nothing when torn down to be replaced, so the systems never see the updating pack missing", async () => {
+    await install();
+    const { activatePack, teardownPack } = await import('@/packs/pack-lifecycle');
+    activatePack(PACK_ID, bus as never);
+    bus.send.mockReset();
+
+    teardownPack(PACK_ID, bus as never, { replacing: true });
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK']);
+
+    // The activation that replaces it announces the change once
+    activatePack(PACK_ID, bus as never);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED', 'ACTIVATE_PACK']);
   });
 });
 

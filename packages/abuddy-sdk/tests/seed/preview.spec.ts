@@ -32,6 +32,7 @@ describe('previewPackSeeds', () => {
 
     expect(previewPackSeeds(out)).toEqual({
       directory: out,
+      packId: 'demo',
       seeds: { glossary: [{ key: 'Pack', description: 'A bundle' }, { key: 'Seed', childCount: 1 }] },
     });
   });

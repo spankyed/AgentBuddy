@@ -129,6 +129,13 @@ const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be
 
 const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
 
+/** A slash command a pack declares: the chat lists it, and a `user.command` event carries its name */
+export const CommandEntrySchema = z.object({
+  name: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens')
+    .describe('The command as typed after the "/", without it.'),
+  placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
+}).strict();
+
 export const FeatureEntrySchema = z.object({
   id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
     .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code.'),
@@ -200,6 +207,8 @@ export const ManifestSchema = z.object({
   defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
   packServices: ServicesSchema
     .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  commands: z.array(CommandEntrySchema)
+    .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
   steps: StepsSchema.describe('Flow step definitions.').optional(),
   artifacts: z.string().describe('Path to artifact type registration module.').optional(),
@@ -230,6 +239,15 @@ export const ManifestSchema = z.object({
       ctx.addIssue({ code: 'custom', path: ['boot', 'seed', key, 'format'], message: `Seed "${key}": format "${entry.format}" names "${pack}", which isn't a dependency` });
     }
   }
+  // The chat lists each name once, so a pack declares it once
+  const commandNames = new Set<string>();
+  manifest.commands?.forEach((command, index) => {
+    if (commandNames.has(command.name)) {
+      ctx.addIssue({ code: 'custom', path: ['commands', index, 'name'], message: `Command "${command.name}" is declared twice` });
+      return;
+    }
+    commandNames.add(command.name);
+  });
   const declared = new Set(Object.values(manifest.entities ?? {}));
   for (const entity of Object.keys(manifest.seedHooks ?? {})) {
     if (!declared.has(entity)) {

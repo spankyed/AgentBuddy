@@ -218,6 +218,29 @@ export function deepMerge(target: Record<string, unknown>, source: Record<string
 // @public
 export function defaultSourceHash(record: SeedRecord): string;
 
+// @public
+export interface DependencyCommand {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    packId: string;
+}
+
+// @internal
+export function dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[];
+
+// @public
+export interface DependencyCommandSource {
+    // (undocumented)
+    dependencyCommands?: ReadonlyArray<DependencyCommand>;
+    // (undocumented)
+    manifest: {
+        commands?: ReadonlyArray<{
+            name: string;
+        }>;
+    };
+}
+
 // @internal
 export function depTypesFile(depId: string): string;
 
@@ -549,6 +572,16 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }>, "many">>;
     defaultPlugin: z.ZodOptional<z.ZodString>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    commands: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        placeholder: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        name: string;
+        placeholder: string;
+    }, {
+        name: string;
+        placeholder: string;
+    }>, "many">>;
     boot: z.ZodOptional<z.ZodObject<{
         hooks: z.ZodOptional<z.ZodString>;
         seed: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodObject<{
@@ -855,6 +888,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
+    commands?: {
+        name: string;
+        placeholder: string;
+    }[] | undefined;
     boot?: {
         hooks?: string | undefined;
         seed?: Record<string, string | {
@@ -958,6 +995,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
+    commands?: {
+        name: string;
+        placeholder: string;
+    }[] | undefined;
     boot?: {
         hooks?: string | undefined;
         seed?: Record<string, string | {
@@ -1061,6 +1102,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
+    commands?: {
+        name: string;
+        placeholder: string;
+    }[] | undefined;
     boot?: {
         hooks?: string | undefined;
         seed?: Record<string, string | {
@@ -1164,6 +1209,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
+    commands?: {
+        name: string;
+        placeholder: string;
+    }[] | undefined;
     boot?: {
         hooks?: string | undefined;
         seed?: Record<string, string | {
@@ -1306,6 +1355,7 @@ export interface PackSeedPreviewItem {
 export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
+    packId: string;
     // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
 }
@@ -1314,6 +1364,7 @@ export interface PackSeedsPreview {
 export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
+    dependencyCommands?: DependencyCommand[];
     flowHelpers?: PackFlowHelpers;
     // (undocumented)
     manifest: PackManifest;

@@ -63,5 +63,7 @@ export interface PackRegistration {
   blocks?: import('../blocks/types.ts').BlockDefinition[];
   /** Seed hooks for the entity types this pack owns (abuddy.json `seedHooks`) */
   seedHooks?: Record<string, import('../seed/hooks.ts').SeedHooks>;
+  /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
+  commands?: import('./pack-commands.ts').PackCommand[];
   features?: PackFeatureDef[];
 }

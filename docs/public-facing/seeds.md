@@ -594,10 +594,13 @@ export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string
 
 | `SeedHooks<R>` member | Called | Returns |
 |---|---|---|
+| `container?: boolean` | Not called: it marks the entity a holder of other records (a folder) | — |
 | `find?(record, context)` | To match a record that no row's `seedKey` matches; replaces `identity` | `{ id, sourceHash? }` or `undefined` |
 | `create?(record, context)` | For a record with no row | The new row's id |
 | `update?(id, record, context)` | For a changed record whose row isn't edited | — |
 | `remove?(id)` | By `wipe-and-replace`, and to undo a create whose media copy or stamping failed | — |
+
+`container` is how two packs share a folder. A row another record's seed claimed (another pack's, or another entry's of your pack) is normally not yours, whatever its name, so your record seeds a row of its own beside it. When the entity's hooks set `container: true`, your record's `find` match is reused as the parent instead: its children are seeded under it in every mode (`keep-existing` skips only the children that exist), and the row itself is never updated, stamped or re-keyed — it stays the record that seeded it. The seed counts it as skipped. Whichever seed creates the row first owns it: the fields another seed's record sets on it (a folder's description) are dropped. The row is found by `find` on every seed, so if the user renames or moves it, the next seed creates the folder again where your records expect it. default-setup sets it on `Collection`, so a pack seeding `internal/commands/mine.md` with its `library` format puts its document in default-setup's folders rather than forking them. Its `find` hooks match a name within `parentId`, so a folder of the same name elsewhere is a different row.
 
 `SeedHookContext`: `parentId?` (the tree parent's row), `index` (the record's position among its siblings), `clearedFields: string[]` (on `update`, the fields the previous seed set that the record no longer sets; empty for `find` and `create`). A missing hook falls back to the generic seeder's behavior. A hook that throws fails that record (reported in the seed's errors) and seeding moves on.
 
@@ -629,12 +632,19 @@ Rows without a stored `sourceHash` (rows users created) stay user-owned. A seede
 
 ## Slash commands
 
-A slash command is a `/name` the chat composer recognizes. The composer lists the commands of every document in the library's `internal/commands` folder: each document has a field section with one `**name**: placeholder` line per command, and a name two documents define keeps the first. default-setup seeds three (`General commands`, `Claude Code commands`, `Codex commands`) from `src/seeds/library/internal/commands/`. The threads system sends the list when a client connects, and again whenever a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted), so users can add, edit or hide commands from the Library.
+A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:
 
-Sending `/name args` fires a `user.command` event (`$.event.data.payload.command` is the name). To add a command:
+1. **The manifest**: `commands: [{ "name": "standup", "placeholder": "Topic" }]` at the top level of `abuddy.json`. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `abuddy build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
+2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack seeds there what it wants them to change; default-setup seeds `Claude Code commands` and `Codex commands` from `src/seeds/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
+
+Declared commands come first, in the order their packs were first registered (a pack rebuilt or updated keeps its place); a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system sends the list when a client connects, and again when it has changed after a pack changes while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its seeds imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
+
+Uninstalling a pack removes its declared commands but not the documents it seeded: they're the user's library now, so their commands stay listed, with no flow handling them, until the user deletes them.
+
+Sending `/name args` fires a `user.command` event (`$.event.data.payload.command` is the name); there's no routing from a name to an action. To add a command:
 
 1. Write the action that does the work (its `category` only groups it in the Actions UI).
 2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
-3. List it: add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/seeds/library/internal/commands/`).
+3. List it: add it to `commands` in `abuddy.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/seeds/library/internal/commands/`).
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.

@@ -149,11 +149,11 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`pack-lifecycle.ts`)
 
-`activatePack(packId, bus, { seed? })` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, runs `onInit`, seeds when `seed` is set (install and update), `updateLoadedPack()`, then sends the bus `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(packId, bus, { seed? })` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, runs `onInit`, seeds when `seed` is set (install and update), `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
-`teardownPack(packId, bus)` — runs the pack's shutdown hooks, `unregisterPack()`, invalidates the event validation map and partition policy, clears the pack's require cache, `removeLoadedPack()`, and sends the bus `TEARDOWN_PACK` to stop its systems. The packs system emits `PACK_DEACTIVATED`.
+`teardownPack(packId, bus, { replacing? })` — runs the pack's shutdown hooks, `unregisterPack()`, invalidates the event validation map and partition policy, clears the pack's require cache, `removeLoadedPack()`, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 
-Update tears down, installs the release the update check found, and activates with seeding; if the install fails it reactivates the previous copy.
+Update tears down with `replacing`, installs the release the update check found, and activates with seeding; if the install fails it reactivates the previous copy. The activation sends `PACK_CHANGED`; when neither activation succeeds, the update sends it itself, since the pack is then gone.
 
 ### Reload (`pack-reload.ts`)
 
@@ -163,6 +163,9 @@ Update tears down, installs the release the update check found, and activates wi
 3. invalidate the event validation map and partition policy
 4. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs re-seed and `updateLoadedPack()`
 5. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`
+6. send the bus `PACK_CHANGED`
+
+`PACK_CHANGED { packId }` goes to every running system once a change is complete, so systems that read what a pack registers or seeds (the chat's slash commands, the library's documents) send their data again. It's never sent between unregistering a pack and registering it again: a system reading another pack's services then would find them gone. Settings → Import pack seeds sends it too.
 
 Migrations don't run on activation or reload.
 

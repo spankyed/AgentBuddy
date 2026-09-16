@@ -59,9 +59,14 @@ function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
  * packs' records with the same entry key and identity seed a row each.
  */
 export function seedingPackId(compiledDir: string): string {
-  const index = loadJSON<Partial<SeedIndex>>(path.join(compiledDir, SEED_INDEX_FILE));
+  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
+  return indexPackId(loadJSON<Partial<SeedIndex>>(indexFile), indexFile);
+}
+
+/** The pack a parsed seeds index names; an index from before packs were recorded names none */
+export function indexPackId(index: Partial<SeedIndex> | null, indexFile: string): string {
   if (!index?.packId) {
-    throw new Error(`${path.join(compiledDir, SEED_INDEX_FILE)} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
+    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
   }
   return index.packId;
 }
@@ -110,6 +115,9 @@ export function markSeededRowUnedited(id: EARS.EntityId): void {
  *   what the seeder wrote, and left alone when they don't, or weren't recorded (edited). Children are
  *   still visited.
  * - `wipe-and-replace` removes every row of the entry's entity types first.
+ * - A row another record's seed claimed (another pack's, or another entry's of this pack) isn't this
+ *   record's, unless the entity's hooks set `container`: then it's reused as the record's parent, counted
+ *   as skipped and left as its seed wrote it, in every mode but `wipe-and-replace`.
  */
 export function createSeeder(options: SeederOptions): Seeder {
   const { key, identity = [], relKind = DEFAULT_REL_KIND } = options;
@@ -140,14 +148,20 @@ export function createSeeder(options: SeederOptions): Seeder {
       /**
        * The row seeded from this record, however it's been renamed since; otherwise a row without a seed
        * key that matches by identity (a user's row with its name), so a seed never adds a copy beside it.
+       * A container another record seeded (another pack's, or another entry's) is reused as a parent
+       * (`reused`): its children are seeded under it and the row itself is left alone.
        */
-      const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): SeedHookMatch | undefined => {
+      const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): { match?: SeedHookMatch; reused?: boolean } => {
         const keyed = record.entity ? findWhere<{ id: EARS.EntityId; sourceHash?: string }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
-        if (keyed) return { id: keyed.id, sourceHash: keyed.sourceHash };
+        if (keyed) return { match: { id: keyed.id, sourceHash: keyed.sourceHash } };
         const match = findByIdentity(record, context, hooks);
-        if (!match) return undefined;
+        if (!match) return {};
+        const owner = getAttr(match.id, SEED_KEY) as string | null;
+        if (owner === null) return { match };
+        // The keyed lookup missed, so the row is another record's: a container holds this record's children too
+        if (hooks?.container) return { match, reused: true };
         // A row carrying another record's seed key (or another pack's) isn't this record's, whatever its name
-        return getAttr(match.id, SEED_KEY) === null ? match : undefined;
+        return {};
       };
 
       const findByIdentity = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): SeedHookMatch | undefined => {
@@ -230,8 +244,16 @@ export function createSeeder(options: SeederOptions): Seeder {
           const label = recordLabel(record, identity);
           const seedKey = childSeedKey(parentKey, record, identity);
           try {
-            const existing = find(record, seedKey, context, hooks);
+            const { match: existing, reused } = find(record, seedKey, context, hooks);
             if (existing) {
+              // A container another record seeded stays that record's: it isn't updated, stamped or re-keyed,
+              // and its children are seeded in every mode (keep-existing skips only the ones that exist)
+              if (reused) {
+                counts.skipped++;
+                ctx.log(`  ${key} skipped (another seed's container): ${label}`);
+                if (record.children) visit(record.children, existing.id, seedKey);
+                return;
+              }
               if (ctx.mode === 'keep-existing') {
                 counts.skipped++;
                 ctx.log(`  ${key} skipped (existing): ${label}`);

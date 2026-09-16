@@ -91,7 +91,10 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
   | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 
-export interface ThreadsContext {}
+export interface ThreadsContext {
+  /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
+  sentCommands?: string
+}
 
 export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsSpec.id;
@@ -465,9 +468,14 @@ export const threadsSystem = setup({
         payload: {},
       });
     },
-    sendCommands: ({ system }) => {
-      system.get(bus).send(emit(threads, { type: 'COMMANDS_UPDATED', commands: services.library.commands() }));
-    },
+    // Sends the chat the commands when they differ from what it was last sent
+    sendCommands: assign(({ context, system }) => {
+      const commands = services.library.commands();
+      const sent = JSON.stringify(commands);
+      if (sent === context.sentCommands) return {};
+      system.get(bus).send(emit(threads, { type: 'COMMANDS_UPDATED', commands }));
+      return { sentCommands: sent };
+    }),
     sendChatConnectedData: ({ system }) => {
       const data = repository.chatQueries.connectedData();
       system.get(bus).send(emit(threads, {
@@ -475,6 +483,7 @@ export const threadsSystem = setup({
         data: { ...data, commands: services.library.commands() },
       }));
     },
+    rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
     sendThreadChatData: ({ system, event }) => {
       const { threadId, restore } = threadsSpec.typeOf('OPEN_THREAD_CHAT', event);
       try {
@@ -952,7 +961,7 @@ export const threadsSystem = setup({
     context: ({ input }) => ({}),
     on: {
       CLIENT_CONNECTED: {
-        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'checkOnboarding'],
+        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'rememberSentCommands', 'checkOnboarding'],
       },
       THREADS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
@@ -971,6 +980,9 @@ export const threadsSystem = setup({
         actions: 'startBirthFlow',
       },
       COMMANDS_CHANGED: {
+        actions: 'sendCommands',
+      },
+      PACK_CHANGED: {
         actions: 'sendCommands',
       },
       THREAD_DELETED: {

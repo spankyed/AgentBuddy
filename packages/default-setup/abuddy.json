@@ -244,6 +244,10 @@
   "packServices": {
     "filesystem": "src/extensions/services/filesystem.ts#filesystemService"
   },
+  "commands": [
+    { "name": "pr2md", "placeholder": "PR number or GitHub URL (optional)" },
+    { "name": "instructions", "placeholder": "Thread instructions text" }
+  ],
   "defaultPlugin": "threads",
   "boot": {
     "hooks": "src/features/hooks.ts",

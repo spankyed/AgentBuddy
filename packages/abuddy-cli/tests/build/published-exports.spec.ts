@@ -13,20 +13,31 @@ afterAll(() => {
   if (consumer) fs.rmSync(consumer, { recursive: true, force: true });
 });
 
-/** Export subpaths a consumer imports as code: not metadata, and not the source-only host hook. */
-function codeExports(name: string): string[] {
+/** The packed package's exports, and whether each is code a consumer imports */
+function exportsOf(name: string): Array<{ key: string; code: boolean }> {
   const manifest = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8'));
-  return Object.entries(manifest.exports as Record<string, unknown>)
-    .filter(([key, target]) => !key.endsWith('.json') && typeof target === 'object' && target !== null && 'types' in target)
-    .map(([key]) => `@abuddy/${name}${key.slice(1)}`);
+  return Object.entries(manifest.exports as Record<string, unknown>).map(([key, target]) => ({
+    key,
+    code: !key.endsWith('.json') && typeof target === 'object' && target !== null && 'types' in target,
+  }));
+}
+
+/** Export subpaths a consumer imports as code: not metadata, and not a source-only host hook. */
+function codeExports(name: string): string[] {
+  return exportsOf(name).filter((entry) => entry.code).map(({ key }) => `@abuddy/${name}${key.slice(1)}`);
+}
+
+function nonCodeExports(name: string): string[] {
+  return exportsOf(name).filter((entry) => !entry.code).map(({ key }) => key);
 }
 
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
   it.each(CONSUMER_MATRIX)('all resolve to declarations under TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {
     const specifiers = [...codeExports('sdk'), ...codeExports('ui')];
-    // Every UI export and every SDK export but its source-only host hook, package.json and the schema
-    const exportCount = (name: string) => Object.keys(JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'), 'utf-8')).exports).length;
-    expect(specifiers).toHaveLength(exportCount('sdk') - 3 + exportCount('ui') - 1);
+    // Every export is code but these: the manifests, the schema and the SDK's source-only host hooks. A new
+    // export without declarations lands in this list and fails here
+    expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json', './ears/internals', './utils/internals']);
+    expect(nonCodeExports('ui')).toEqual(['./package.json']);
     expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/sdk/ears', '@abuddy/ui/components/tiptap/TiptapEditor']));
     fs.writeFileSync(path.join(consumer!, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
     fs.writeFileSync(path.join(consumer!, 'tsconfig.json'), JSON.stringify({
