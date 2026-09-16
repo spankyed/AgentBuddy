@@ -1,6 +1,6 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
-import { logErrors } from '@/core/shared/actor-helpers';
+import { logErrors } from '@/core/shared/system-errors';
 import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem, publishHostPackArtifacts, prepareHostDataDirs } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
