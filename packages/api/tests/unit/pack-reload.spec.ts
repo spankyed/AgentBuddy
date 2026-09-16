@@ -134,6 +134,8 @@ describe('reloading a built-in pack', () => {
 
   /** Records a seeder reports for the next seed instead of importing them (an invalid flow, say) */
   let recordsThatFail: string[] = [];
+  /** Makes the boot seed itself throw, as a rebuild removing its files mid-reload would */
+  let seedFailure: Error | undefined;
   /** What the code under test logged at error level */
   const loggedErrors: string[] = [];
   let stopLogging: (() => void) | undefined;
@@ -142,6 +144,7 @@ describe('reloading a built-in pack', () => {
     seeded.length = 0;
     loggedErrors.length = 0;
     recordsThatFail = [];
+    seedFailure = undefined;
     stopLogging = rootEvents.onLog((event) => { if (event.level === 'error') loggedErrors.push(event.message); });
     internalSettings = {};
     registerSeeder({
@@ -152,7 +155,12 @@ describe('reloading a built-in pack', () => {
         return { created: 1, updated: 0, skipped: recordsThatFail.length, ...(recordsThatFail.length > 0 && { errors: recordsThatFail }) };
       },
     });
-    registerRepository('settingsQueries', { getInternalSettings: () => internalSettings });
+    registerRepository('settingsQueries', {
+      getInternalSettings: () => {
+        if (seedFailure) throw seedFailure;
+        return internalSettings;
+      },
+    });
     registerRepository('settingsCommands', {
       updateSettings: (_scope: string, _label: string | null, path: string[], value: unknown) => { internalSettings[path[0]] = value; },
     });
@@ -214,6 +222,23 @@ describe('reloading a built-in pack', () => {
     orchestrateDeclarativeSeed(seedManifest!);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
     expect(loggedErrors).toEqual([]);
+  });
+
+  it('still restarts the systems when the seed after registering throws, and says why', async () => {
+    const packagesDir = writeBuiltIn();
+    await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
+    bus.send.mockClear();
+
+    // A rebuild running again mid-reload takes the compiled seeds out from under it
+    seedFailure = new Error("ENOENT: no such file or directory, open 'actions.seed.json'");
+    await reloadBuiltInPack(BUILT_IN_ID, bus as never);
+
+    // The swap already happened, so the systems have to be restarted whatever the seed did
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: ['widget'] });
+    expect(loggedErrors.join('\n')).toContain('ENOENT');
+    // ...and the artifacts are still published, which the seed used to skip on its way out
+    const { hostPacksDir } = resolveAppContext();
+    expect(fs.existsSync(path.join(hostPacksDir, BUILT_IN_ID, 'types', 'snapshot.json'))).toBe(true);
   });
 
   it("republishes the pack's build artifacts and re-reads its manifest", async () => {

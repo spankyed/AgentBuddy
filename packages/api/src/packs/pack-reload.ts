@@ -30,6 +30,8 @@ import type { PackManifest } from '@abuddy/host/packs';
 
 const logger = createLogger('pack-reload');
 
+const describe = (err: unknown) => err instanceof Error ? err.message : String(err);
+
 /** A pack's freshly loaded runtime, not yet registered */
 interface FreshPack {
   newSystemIds: string[];
@@ -77,7 +79,16 @@ async function reloadPack(
     registerShutdownHook(fresh.onShutdown, packId);
   }
   fresh.onInit?.();
-  fresh.afterRegister?.();
+  // Side work once the swap is done (seeding, publishing artifacts, the loaded-pack list). By here the old
+  // registration is gone and its shutdown hooks have run, so the systems must be restarted whatever this
+  // does: a throw that escaped would leave the fresh registration live, the old actors running but already
+  // torn down, and nothing ever stopped or respawned.
+  try {
+    fresh.afterRegister?.();
+  } catch (err) {
+    // In the message, not as meta: the logger serializes an Error to {} and its own message is lost
+    logger.error(`Pack ${packId} reloaded, but the work after registering it failed: ${describe(err)}`);
+  }
 
   // The bus stops each of these and starts those still registered: a feature the pack dropped only stops
   const systemIds = [...new Set([...oldSystemIds, ...fresh.newSystemIds])];
@@ -152,9 +163,14 @@ export async function reloadBuiltInPack(
       onInit: registration.boot?.onInit,
       afterRegister: () => {
         refreshBuiltInPackInfo(packId);
-        // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported
+        // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported.
+        // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
         const seedManifest = getPackBootHooks(packId)?.seedManifest;
-        if (seedManifest) orchestrateDeclarativeSeed(seedManifest);
+        try {
+          if (seedManifest) orchestrateDeclarativeSeed(seedManifest);
+        } catch (err) {
+          logger.error(`Could not seed ${packId}'s compiled data on reload: ${describe(err)}`);
+        }
         // Pack authors resolve this pack's types, build code and seeds from the app's copy
         const { hostPacksDir } = resolveAppContext();
         try {
