@@ -4,6 +4,11 @@ import type { Simplify } from '../helpers/type-helpers.ts';
 /** Common system events sent by the bus to all systems. */
 export type SystemEvents =
   | { type: 'CLIENT_CONNECTED' }
+  /**
+   * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+   * registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+   */
+  | { type: 'PACK_CHANGED'; packId: string }
 
 /** Add `systemId` literal to every member of an incoming event union. */
 type WithSystemId<Id extends string, E extends { type: string }> =

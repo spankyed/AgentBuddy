@@ -418,12 +418,12 @@
       "Collection:commands": {
         "displayOrder": 1000,
         "name": "commands",
-        "sourceHash": "fee1f09e36116c43"
+        "sourceHash": "ae90c6c91270080d"
       },
       "Collection:internal": {
         "displayOrder": 1000,
         "name": "internal",
-        "sourceHash": "cb4fe037084b49c6"
+        "sourceHash": "d3f36b087ed6c5e1"
       },
       "Document:Claude Code commands": {
         "content": [
@@ -597,30 +597,6 @@
           "default"
         ]
       },
-      "Document:General commands": {
-        "content": [
-          {
-            "type": "field",
-            "fields": [
-              {
-                "key": "pr2md",
-                "value": "PR number or GitHub URL (optional)"
-              },
-              {
-                "key": "instructions",
-                "value": "Thread instructions text"
-              }
-            ]
-          }
-        ],
-        "displayOrder": 3000,
-        "name": "General commands",
-        "shortCode": "DOC-3",
-        "sourceHash": "5ae0b6666b9bd288",
-        "tags": [
-          "default"
-        ]
-      },
       "Note:welcome": {
         "completed": false,
         "content": "# Welcome to AgentBuddy\n\nAgentBuddy is an AI-development environment and work platform. It features persistent conversations — with rich artifacts, interactive permissions, and automation you can see and customize.\n\n---\n\n## ⚡ What You Can Do\n\n- **Chat with Claude Code** in threaded conversations that persist across sessions\n  - **Import existing sessions** from your Claude Code CLI history\n  - **Approve or deny** file edits, bash commands, and other tool requests inline\n  - **Fork, revert, and rewind** conversations — branch from any message or roll back changes\n  - **View diffs, plans, and session stats** as artifacts alongside your conversation\n- **Organize work** with threads, tags, statuses, and a kanban board\n- **Build automation flows** — write arbitrary javascript and orchestrate logic visually with a node-based editor\n- **Edit code** with a built-in code editor — including source control, a file explorer, and a terminal\n\n---\n\n## 🧭 How It Works\n\nThe interface has four areas:\n\n- **Toolbar** (left) — switch between plugins: Threads, Notes, Code, Library, Flows, and more\n- **Canvas** (top) — the main content area, changes based on the active plugin\n- **Chat** (bottom) — where you send messages and respond to permission requests\n- **Inspection panel** (right, toggleable) — contextual details for the active plugin\n- **Recent bar** (bottom edge) — quick-switch between recent threads\n\n---\n\n## 🚀 Getting Started\n\n1. **Send your first message** — click `+ New thread` at the bottom of the chat, type a request, and hit Send\n2. **Set a project directory** — you'll be prompted to select a working directory\n3. **Handle permissions** — when an agent wants to edit files, you'll see an approve/deny prompt inline\n4. **Review artifacts** — diffs, plans, and session details appear as artifacts in the thread dashboard\n5. **Import past sessions** — use `/cc-import` to bring in existing Claude Code CLI sessions\n\n---\n\n## 🧠 Key Concepts\n\n- **Thread** — a conversation container. Each thread carries its own artifacts, tags, and status.\n- **Artifact** — rich content attached to a thread: code diffs, plans, session stats, notes, and more.\n- **Flow** — a visual, node-based automation. Flows define how the system reacts to events — routing messages, handling permissions, running actions.\n- **Action** — a reusable function invoked by flows. The actual logic behind each step.\n- **Mode** — threads operate in modes that determine how messages are routed and processed.\n\n---\n\n## 💡 Tips\n\n- **Resize the chat** by dragging the divider between canvas and chat. Right-click the divider to maximize chat.\n- **Use commands** like `/cc-resume`, `/cc-fork`, `/cc-compact`, and `/cc-context` directly in chat.\n- **Fork a conversation** from any message to explore a different approach without losing your original thread.\n- **Check the Brain plugin** to see how flows execute in real time — useful for understanding and debugging automation.\n",
@@ -673,8 +649,7 @@
     "relations": [
       "Collection:internal --parent_of--> Collection:commands",
       "Collection:commands --contains--> Document:Claude Code commands",
-      "Collection:commands --contains--> Document:Codex commands",
-      "Collection:commands --contains--> Document:General commands"
+      "Collection:commands --contains--> Document:Codex commands"
     ],
     "media": [],
     "counts": {
@@ -689,7 +664,7 @@
         "skipped": 0
       },
       "library": {
-        "created": 5,
+        "created": 4,
         "updated": 0,
         "skipped": 0
       }

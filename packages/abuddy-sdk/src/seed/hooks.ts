@@ -24,6 +24,13 @@ export interface SeedHookMatch {
  * through its repository. Without hooks, the generic seeder writes rows directly.
  */
 export interface SeedHooks<R extends SeedRecord = SeedRecord> {
+  /**
+   * The entity holds other records rather than being one of them (a folder), so a row another pack
+   * seeded is reused as a parent: the record's children are seeded under it and the row itself is
+   * left as its own pack seeded it. Without this a row another pack's seed claimed is never matched,
+   * and the record seeds a second row beside it.
+   */
+  container?: boolean;
   /** Replaces the entry's `identity` matching */
   find?(record: R, context: SeedHookContext): SeedHookMatch | undefined;
   create?(record: R, context: SeedHookContext): EARS.EntityId;

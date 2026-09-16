@@ -353,6 +353,22 @@ export function generatePackFiles(
     };
   }
 
+  /**
+   * The slash commands the pack declares. A name a dependency declares too fails the build: the app would
+   * refuse to register the pack.
+   */
+  function declaredCommands(): NonNullable<PackManifest['commands']> {
+    const commands = manifest.commands ?? [];
+    for (const { name } of commands) {
+      for (const [depId, snap] of depSnapshots) {
+        if (snap.manifest.commands?.some((command) => command.name === name)) {
+          throw new Error(`Command "${name}" is declared by dependency "${depId}" too: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
+        }
+      }
+    }
+    return commands;
+  }
+
   // ── Manifest export targets ────────────────────────────────────
 
   /** The pack source file a manifest path names: the file itself, `<path>.ts` or `<path>/index.ts` */
@@ -522,6 +538,7 @@ ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },` : ''}
+${declaredCommands().length ? `  commands: ${JSON.stringify(declaredCommands())},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},

@@ -135,6 +135,7 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 ### Key patterns
 
 - Every backend system must handle `CLIENT_CONNECTED` to send its plugin's startup data. The bus sends it to every system when a client connects, except systems of external packs with frontend code: those get it once the renderer has loaded the pack's frontend (`bus.packClientReady`), and again when its subscription reconnects
+- The bus sends every running system `PACK_CHANGED { packId }` once a pack is activated, reloaded or torn down, or its seeds are imported; systems listing what packs register or seed send their data again
 - Use `safeEvents<ReceivableEvents>()` for typed event handling
 - Use `breadcrumb()` / `breadcrumbWithParams()` for plugin navigation
 - Frontend components should be "dumb" — emit events up to root components which forward to the plugin state machine

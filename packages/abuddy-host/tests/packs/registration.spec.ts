@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPackSettingsDefaults, type PackRegistration } from '@abuddy/sdk/framework';
+import { getPackCommands, getPackSettingsDefaults, type PackRegistration } from '@abuddy/sdk/framework';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, runRegisteredBootSeeds, unregisterPack } from '../../src/packs/pack-registration.ts';
@@ -82,6 +82,37 @@ describe('registerPack feature settings', () => {
       .toThrow('Feature "memos" settings set "plugins.threads"');
     expect(getPackContributions('bad-pack')).toBeNull();
     expect(seedHookRegistry.get('Memo')).toBeUndefined();
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+  });
+});
+
+describe('registerPack commands', () => {
+  const commands = [{ name: 'standup', placeholder: 'Topic' }];
+
+  it("registers a pack's declared commands and drops them when it unregisters", () => {
+    registerPack({ id: 'memo-pack', systems: [], commands } as unknown as PackRegistration);
+    expect(getPackCommands()).toEqual(commands);
+    unregisterPack('memo-pack');
+    expect(getPackCommands()).toEqual([]);
+  });
+
+  it('rejects a command another pack declares, registering none of the pack', () => {
+    registerPack({ id: 'memo-pack', systems: [], commands } as unknown as PackRegistration);
+    registered.push('memo-pack');
+
+    expect(() => registerPack({ id: 'other-pack', systems: [], steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+      .toThrow('Command collision: "standup" — pack "other-pack" vs "memo-pack"');
+
+    expect(getPackContributions('other-pack')).toBeNull();
+    expect(getPackCommands()).toEqual(commands);
+  });
+
+  it("rolls its commands back when a later part of the registration is refused", () => {
+    const invalid = { id: 'memos', hasSystem: false, services: [], settings: { plugins: { threads: { hidden: true } } } };
+
+    expect(() => registerPack({ id: 'bad-pack', systems: [], commands, features: [invalid] } as unknown as PackRegistration)).toThrow();
+
+    expect(getPackCommands()).toEqual([]);
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
   });
 });

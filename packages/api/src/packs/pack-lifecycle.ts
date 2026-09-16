@@ -44,6 +44,8 @@ export function teardownPack(
   if (systemIds.length > 0) {
     busActor.send({ type: 'TEARDOWN_PACK', systemIds });
   }
+  // The systems still running read what the pack registered (its slash commands, say)
+  busActor.send({ type: 'PACK_CHANGED', packId });
 
   logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
 }
@@ -102,6 +104,9 @@ export function activatePack(
   }
 
   updateLoadedPack(pack);
+  // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent
+  // before its own systems start: they send their startup data when they do
+  busActor.send({ type: 'PACK_CHANGED', packId });
 
   const systemIds = Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`);
   if (systemIds.length > 0) {

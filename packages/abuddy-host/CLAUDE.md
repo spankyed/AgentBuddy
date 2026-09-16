@@ -105,7 +105,8 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 
 - On entry, the bus spawns every system with `id` and `systemId` equal to the system id. The `listen` actor is spawned as `bus-listen`. Distinct ids matter: with shared keys, stopping the bus stops only the last child.
 - The bus starts in `disconnected`, where it drops `INCOMING`, `OUTGOING` and `SYSTEMS_SPAWNED`. The first `CLIENT_CONNECTED` moves it to `connected`, and entering that state sends `CLIENT_CONNECTED` to every system except the systems of `clientLoadedPacks`. The same happens on each later connection.
-- `RELOAD_PACK`, `TEARDOWN_PACK`, `ACTIVATE_PACK` and `PACK_CLIENT_CONNECTED` are handled in both states.
+- `RELOAD_PACK`, `TEARDOWN_PACK`, `ACTIVATE_PACK`, `PACK_CLIENT_CONNECTED` and `PACK_CHANGED` are handled in both states.
+  - `PACK_CHANGED` goes to every running system (a system that isn't running doesn't get it, without a warning).
   - Reload stops the listed systems, then respawns the ones still registered and raises `SYSTEMS_SPAWNED`, which sends them `CLIENT_CONNECTED` only while connected.
   - Activate raises `SYSTEMS_SPAWNED` only for packs that aren't client-loaded.
 - Systems are stopped by reference, through `system.get(id)`.

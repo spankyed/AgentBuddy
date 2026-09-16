@@ -240,6 +240,30 @@
       },
       "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
     },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "The command as typed after the \"/\", without it."
+          },
+          "placeholder": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the chat shows after the command: the argument it takes, or what it does."
+          }
+        },
+        "required": [
+          "name",
+          "placeholder"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack's flows handle; a name must be unique across the app."
+    },
     "boot": {
       "type": "object",
       "properties": {

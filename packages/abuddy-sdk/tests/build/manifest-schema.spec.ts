@@ -176,3 +176,31 @@ describe('services', () => {
     expect(parseManifest({ ...pack, packServices: { 'my-cache': 'src/cache.ts#cacheService' } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
   });
 });
+
+describe('commands', () => {
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+  const withCommands = (commands: Array<Record<string, unknown>>) => ({ ...pack, commands });
+
+  it('accepts lowercase names with hyphens, each with its placeholder', () => {
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'Topic' }, { name: 'team-digest', placeholder: 'Week (optional)' }])).errors).toEqual([]);
+  });
+
+  it('rejects a name that is not a command: uppercase, a leading slash, digit or hyphen, a space', () => {
+    for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
+      expect(parseManifest(withCommands([{ name, placeholder: 'x' }])).errors)
+        .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
+    }
+  });
+
+  it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
+    expect(parseManifest(withCommands([{ name: 'standup' }])).errors.length).toBeGreaterThan(0);
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: '' }])).errors[0]).toContain('placeholder');
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'x', action: 'Standup' }])).errors[0]).toContain('action');
+  });
+
+  it("rejects a name the pack declares twice, and one on a feature: they're the pack's", () => {
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'a' }, { name: 'standup', placeholder: 'b' }])).errors)
+      .toEqual([expect.stringContaining('Command "standup" is declared twice')]);
+    expect(parseManifest({ ...pack, features: [{ id: 'memos', commands: [{ name: 'standup', placeholder: 'a' }] }] }).errors[0]).toContain('commands');
+  });
+});

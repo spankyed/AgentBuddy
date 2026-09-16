@@ -2,3 +2,4 @@ export { defineSystem, type SystemSpec, type SystemEvents } from './define-syste
 export { toPackSystemDefs, type SystemEntry } from './system-utils.ts';
 export type { PackRegistration, PackSystemDef, PackBootHooks, PackSeedManifest, PackEARS, PackMigration, PackFeatureDef } from './pack-registration.ts';
 export { checkFeatureSettings, getPackSettingsDefaults, onPackSettingsDefaultsChanged, packSettingsRegistry, type FeatureSettings, type PackSettingsDefaults } from './pack-settings.ts';
+export { getPackCommands, packCommandsRegistry, type PackCommand } from './pack-commands.ts';

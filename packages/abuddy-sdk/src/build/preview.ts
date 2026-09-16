@@ -10,5 +10,7 @@ export interface PackSeedPreviewItem {
 /** The seeded keys of a compiled seeds directory and their items, from its seeds.json */
 export interface PackSeedsPreview {
   directory: string;
+  /** The pack that compiled the seeds */
+  packId: string;
   seeds: Record<string, PackSeedPreviewItem[]>;
 }
