@@ -1,11 +1,16 @@
 import type { Plugin } from '@/core/types';
-import { registerPackFE, type PackFERegistration } from '@abuddy/host/fe';
+import { registerPackFE, unregisterPackFE, type PackFERegistration } from '@abuddy/host/fe';
 
 export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: string): Promise<void> {
+  const href = `${packBaseUrl}/${stylesPath}`;
+  // A pack whose frontend is only styles reports no plugins, so a later load reaches it again; its
+  // stylesheet is already here, and deactivating the pack removes it
+  if (document.querySelector(`link[data-pack-id="${packId}"][href="${href}"]`)) return Promise.resolve();
+
   return new Promise((resolve) => {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = `${packBaseUrl}/${stylesPath}`;
+    link.href = href;
     link.dataset.packId = packId;
     link.onload = () => resolve();
     link.onerror = () => {
@@ -47,6 +52,15 @@ export async function loadPackFEEntry(
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
     return null;
   }
+}
+
+/**
+ * Undoes a pack's frontend load: its registered contributions and its stylesheets. Used when the pack is
+ * deactivated, and when a load that was already running finished for a pack deactivated meanwhile.
+ */
+export function unloadPackFrontend(packId: string): void {
+  unregisterPackFE(packId);
+  document.querySelectorAll(`link[data-pack-id="${packId}"]`).forEach(el => el.remove());
 }
 
 /** An external pack's frontend, as the pack registry lists it: the bundle's runtime/fe.js and runtime/fe.css when it has them */
