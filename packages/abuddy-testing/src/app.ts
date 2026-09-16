@@ -1,7 +1,7 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine } from '@abuddy/host/bus';
-import { getBootHooks, getRegisteredSystems } from '@abuddy/host/packs';
+import { getBootHooks, getRegisteredSystems, resolveSystemAddress } from '@abuddy/host/packs';
 import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { untypedQx } from '@abuddy/sdk/ears';
@@ -13,8 +13,8 @@ export type { OutgoingSystemEvents };
 
 export interface StartAppOptions {
   /**
-   * Registered systems to run: bare feature ids (the pack's own map to `<packId>.<featureId>`) or full
-   * bus ids, or `'*'` for all.
+   * Registered systems to run, named as `sendToSystem` names them: the pack's own by feature id, a
+   * dependency's as `<packId>/<featureId>` (full bus ids work too), or `'*'` for all.
    */
   systems: readonly string[] | '*';
 }
@@ -50,7 +50,7 @@ export interface FlowRun {
 export interface TestApp {
   /** Sends CLIENT_CONNECTED, as a client connecting does; systems send their startup data */
   connect(): Promise<void>;
-  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own systems by feature id) */
+  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`) */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
   /** Events sent to frontend plugins (by `emit` or `sendToPlugin`), in order; optionally one plugin's. Readable after `stop` */
   emitted(pluginId?: string): OutgoingSystemEvents[];
@@ -143,14 +143,14 @@ function shutDownPacks(): void {
 }
 
 /**
- * The registered system an id names: the pack's own system with that feature id (`<packId>.<id>`) first, as
- * `sendToSystem` maps it, then a system running under the id itself (a built-in pack's, or a full bus id).
+ * The registered system a name addresses, as `sendToSystem` names it: a dependency's (or any pack's) system as
+ * `<packId>/<featureId>`, the pack's own by feature id. A full bus id is accepted too.
  */
 function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  const prefixed = packId && `${packId}.${id}`;
-  if (prefixed && registered.has(prefixed)) return prefixed;
+  const addressed = id.includes('/') ? resolveSystemAddress(id) : packId && `${packId}.${id}`;
+  if (addressed && registered.has(addressed)) return addressed;
   if (registered.has(id)) return id;
-  throw new Error(`No registered system "${id}"${prefixed ? ` or "${prefixed}"` : ''}. Registered: ${[...registered.keys()].join(', ') || 'none'} (pass the pack's registration to setupPackTests)`);
+  throw new Error(`No registered system is named "${id}". Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
 }
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */

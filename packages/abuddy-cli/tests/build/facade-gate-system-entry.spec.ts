@@ -68,10 +68,10 @@ describe('facade gate: system entries', () => {
     expect(await gate('satisfies')).toEqual([]);
   }, 60_000);
 
-  it('fails an annotated system entry, naming the system by the id it runs under', async () => {
+  it('fails an annotated system entry, naming the system as <pack>/<feature>', async () => {
     const problems = await gate('annotation');
     expect(problems).toEqual([
-      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS\d+: .*entry-pack\.tags.*\(in .*reached from: .*Services/),
+      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS\d+: .*entry-pack\/tags.*\(in .*reached from: .*Services/),
     ]);
   }, 60_000);
 });

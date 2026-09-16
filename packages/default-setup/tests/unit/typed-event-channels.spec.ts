@@ -95,7 +95,7 @@ describe('services.emitter in actions', () => {
   it('accepts an event the plugin or system receives', () => {
     expectTypeOf(() => {
       services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
-      services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+      services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE', id: 'Note-1' });
       services.emitter.sendToBrainSystem({ eventType: 'user.message' });
     }).toBeFunction();
   });
@@ -107,7 +107,9 @@ describe('services.emitter in actions', () => {
       // @ts-expect-error unknown plugin
       services.emitter.sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
       // @ts-expect-error DELETE_NOTE needs an id
-      services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE' });
+      services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE' });
+      // @ts-expect-error actions name every system <pack>/<feature>
+      services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
     }).toBeFunction();
   });
 });

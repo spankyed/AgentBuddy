@@ -2931,11 +2931,11 @@ type OwnSystemEvents = {
 
 /**
  * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system is
- * addressed by the id it runs under (`busId` for this pack's own).
+ * named `<pack>/<feature>`, this pack's own too.
  */
 type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
     sendToPlugin: TypedSendToPlugin<PackEvents>;
-    sendToSystem: TypedSendToSystem<RunningSystemEvents>;
+    sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
 /**
@@ -2955,10 +2955,8 @@ type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes, 'Node'> & {
     Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;
 };
 
-/** This pack's systems by the id they run under, and the events each receives: what dependents send to. */
-type PackSystemEvents = {
-    [K in keyof OwnSystemEvents as (typeof busId)[K]]: OwnSystemEvents[K];
-};
+/** This pack's systems by feature id, and the events each receives: what dependents send to as `default-setup/<feature>`. */
+type PackSystemEvents = OwnSystemEvents;
 
 /**
  * Every line type we explicitly recognise. Each variant has a literal
@@ -3095,6 +3093,11 @@ interface PromptsConnectedData {
     totalCount: number;
     categories?: Category[];
 }
+
+/** Every system this pack's actions can send to, named `<pack>/<feature>`: how `services.emitter.sendToSystem` addresses them. */
+type QualifiedSystemEvents = {
+    [K in keyof OwnSystemEvents & string as `default-setup/${K}`]: OwnSystemEvents[K];
+};
 
 /**
  * High-level streaming conversation API.
@@ -3352,9 +3355,6 @@ declare const ResultLineSchema: z.ZodObject<{
     structured_output: z.ZodOptional<z.ZodUnknown>;
     errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, z.ZodTypeAny, "passthrough">>;
-
-/** Every system this pack's code can send to, by the id it runs under: how actions address systems through `services.emitter`. */
-type RunningSystemEvents = PackSystemEvents;
 
 interface SavedBookmark {
     url: string;
@@ -4162,21 +4162,6 @@ declare function buildQueryContext(): {
     topology: string;
 };
 
-declare const busId: {
-    readonly threads: "threads";
-    readonly code: "code";
-    readonly notes: "notes";
-    readonly browser: "browser";
-    readonly library: "library";
-    readonly flows: "flows";
-    readonly actions: "actions";
-    readonly prompts: "prompts";
-    readonly brain: "brain";
-    readonly database: "database";
-    readonly logs: "logs";
-    readonly settings: "settings";
-};
-
 declare const chatCommands: {
     readonly addMessage: (params: {
         threadId: EARS.EntityId;
@@ -4423,7 +4408,13 @@ declare const featureServices: {
         listMcpServers: (params?: {
             cursor?: string | null;
             limit?: number | null;
-            detail?: "full" | "toolsAndAuthOnly" | null;
+            detail
+            /**
+             * What an action actually receives: this pack's feature services, its dependencies' services
+             * and the ambient ones the host injects (logger, emitter, repository).
+             * The featureServices value itself stays feature-only.
+             */
+            ?: "full" | "toolsAndAuthOnly" | null;
         }) => Promise<any>;
         startTurn: (params: TurnStartParams) => Promise<{
             turnId: string;

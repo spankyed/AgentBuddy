@@ -119,6 +119,7 @@ Final.
      - `emit`, `sendToPlugin` and `sendToSystem` from `defineEvents<PackEvents, PackSystemEvents>(busId)`
    - Systems declare entries with `satisfies SystemEntry`, and the `abuddy add feature` template and docs follow.
    - `sendToSystem(systemId, event)` narrows the event by its `type` before checking its fields, so a missing field names the chosen event's type.
+   - Systems are named by pack and feature (revised after review): the pack's own by feature id, a dependency's as `<dependency>/<feature>`, and in actions, which run outside any pack, every system as `<pack>/<feature>`, resolved by the host. The generated `sendToSystem` maps each name to the id the system runs under, so an own feature may share a dependency system's name.
    - The block is generated only for packs with systems.
    - `pack-types.ts` includes `PackSystemEvents`, so dependents compose it.
 3. **One way per direction in pack code.**

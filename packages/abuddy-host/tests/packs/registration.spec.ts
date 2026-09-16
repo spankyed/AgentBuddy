@@ -4,7 +4,7 @@ import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
-import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, runRegisteredBootSeeds, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack } from '../../src/packs/pack-registration.ts';
 
 const registered: string[] = [];
 afterEach(() => {
@@ -64,6 +64,28 @@ describe('registerPack designations', () => {
     registerDesignated('ext', [system('ext.journal', 'journal')]);
     unregisterPack(registered.pop()!);
     expect(hasDesignation('journal')).toBe(false);
+  });
+});
+
+describe('resolveSystemAddress', () => {
+  const systemDef = (id: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
+  const registerSystems = (id: string, systemIds: string[]) => {
+    registerPack({ id, systems: systemIds.map(systemDef) } as unknown as PackRegistration);
+    registered.push(id);
+  };
+
+  it("resolves <packId>/<featureId> to the id the pack's system runs under", () => {
+    registerSystems('default-setup', ['notes']);
+    registerSystems('ext', ['ext.notes']);
+    expect(resolveSystemAddress('default-setup/notes')).toBe('notes');
+    expect(resolveSystemAddress('ext/notes')).toBe('ext.notes');
+  });
+
+  it('resolves nothing for an unregistered pack or feature, or a name without a pack', () => {
+    registerSystems('ext', ['ext.notes']);
+    for (const address of ['ext/tasks', 'other/notes', 'notes', 'ext.notes', '/notes']) {
+      expect(resolveSystemAddress(address)).toBeUndefined();
+    }
   });
 });
 

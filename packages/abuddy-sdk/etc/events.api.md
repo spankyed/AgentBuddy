@@ -8,7 +8,7 @@
 export function defineEvents<P extends PluginEvents>(): TypedEvents<P>;
 
 // @public (undocumented)
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(busIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S>;
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S>;
 
 // @public
 export function emit<P extends string, E extends {

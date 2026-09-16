@@ -88,7 +88,7 @@ For full fixture lifecycle, API reference, and ad-hoc testing pattern, see `test
 Every backend **system** and frontend **plugin** is an XState state machine. They communicate via a central event bus:
 
 - **Backend → Frontend**: `system.get(bus).send(emit(pluginId, event))` inside a system's actions, `sendToPlugin(pluginId, event)` elsewhere; actions use `services.emitter.sendToPlugin`
-- **Frontend or backend → System**: `sendToSystem(systemId, event)`, typed with the events each system declares (own systems by feature id, dependencies' by the id they run under)
+- **Frontend or backend → System**: `sendToSystem(systemId, event)`, typed with the events each system declares (own systems by feature id, a dependency's as `<dependency>/<feature>`; actions name every system `<pack>/<feature>`)
 - **System → System**: `system.get(otherSystemId).send({ type })`
 - Pack code takes `emit`/`sendToPlugin`/`sendToSystem` from `#generated/events`; `onConnected`/`onIncoming` come from `@abuddy/sdk/events`. `check:specifiers` rejects the host's raw event paths (its root event bus and API client) and the untyped sends in pack sources
 - **⚠️ `sendToPlugin` wraps events with `pluginId`** — never use `pluginId` as a field name inside event payloads sent via `sendToPlugin()`, it gets overwritten by the transport layer. Use `targetId` or similar instead.

@@ -10,7 +10,7 @@ process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
 type Plugins = PluginEvents & { memos: { type: 'MEMO_ADDED' } };
-type Systems = SystemEventMap & { memos: { type: 'ADD_MEMO'; text: string }; settings: { type: 'GET_SETTINGS' } };
+type Systems = SystemEventMap & { memos: { type: 'ADD_MEMO'; text: string }; 'default-setup/settings': { type: 'GET_SETTINGS' } };
 
 function incoming(send: () => void): unknown[] {
   const received: unknown[] = [];
@@ -24,24 +24,23 @@ function incoming(send: () => void): unknown[] {
 }
 
 describe('defineEvents', () => {
-  const events = defineEvents<Plugins, Systems>({ memos: 'memo-pack.memos' });
+  const events = defineEvents<Plugins, Systems>({ memos: 'memo-pack.memos', 'default-setup/settings': 'settings' });
 
   it("sends to the pack's own system under the id it runs under", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
       .toEqual([{ type: 'ADD_MEMO', text: 'x', systemId: 'memo-pack.memos' }]);
   });
 
-  it("sends to another pack's system as named", () => {
-    expect(incoming(() => events.sendToSystem('settings', { type: 'GET_SETTINGS' })))
+  it("sends to a dependency's system, named <dependency>/<feature>, under the id it runs under", () => {
+    expect(incoming(() => events.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
       .toEqual([{ type: 'GET_SETTINGS', systemId: 'settings' }]);
   });
 
-  it("sends to a system named like an Object.prototype member as named, not the bus-id map's prototype", () => {
-    const withProtoIds = defineEvents<Plugins, SystemEventMap & { toString: { type: 'PING' }; constructor: { type: 'PING' } }>({ memos: 'memo-pack.memos' });
-    expect(incoming(() => {
-      withProtoIds.sendToSystem('toString', { type: 'PING' });
-      withProtoIds.sendToSystem('constructor', { type: 'PING' });
-    })).toEqual([{ type: 'PING', systemId: 'toString' }, { type: 'PING', systemId: 'constructor' }]);
+  it("throws for a name the pack's map doesn't have, including Object.prototype members", () => {
+    const untyped = events.sendToSystem as unknown as (name: string, event: { type: string }) => void;
+    for (const name of ['settings', 'toString', 'constructor']) {
+      expect(() => untyped(name, { type: 'PING' })).toThrow(`No system is named "${name}"`);
+    }
   });
 
   it('sends to a plugin', () => {

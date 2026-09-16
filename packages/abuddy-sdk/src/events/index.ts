@@ -165,14 +165,20 @@ export interface TypedSystemEvents<P extends PluginEvents, S extends SystemEvent
 
 /**
  * The sends of a pack, typed against its plugin and system event maps. `abuddy generate-entries` writes
- * `#generated/events` with it; the functions are the SDK's. `busIds` maps the pack's own feature ids to the
- * ids its systems run under (an external pack's are `<packId>.<featureId>`); other ids are sent as given.
+ * `#generated/events` with it; the functions are the SDK's. `systemIds` maps each system name the pack sends
+ * to (its own feature ids, and `<dependency>/<feature>`) to the id that system runs under (an external
+ * pack's are `<packId>.<featureId>`).
  */
 export function defineEvents<P extends PluginEvents>(): TypedEvents<P>;
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(busIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S>;
-export function defineEvents(busIds?: Readonly<Record<string, string>>): TypedEvents<PluginEvents> | TypedSystemEvents<PluginEvents, SystemEventMap> {
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S>;
+export function defineEvents(systemIds?: Readonly<Record<string, string>>): TypedEvents<PluginEvents> | TypedSystemEvents<PluginEvents, SystemEventMap> {
   const events = { emit, sendToPlugin } as unknown as TypedEvents<PluginEvents>;
-  if (!busIds) return events;
-  const send = (systemId: string, event: { type: string }) => sendToSystem(Object.prototype.hasOwnProperty.call(busIds, systemId) ? busIds[systemId] : systemId, event);
+  if (!systemIds) return events;
+  const send = (name: string, event: { type: string }) => {
+    if (!Object.prototype.hasOwnProperty.call(systemIds, name)) {
+      throw new Error(`No system is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
+    }
+    sendToSystem(systemIds[name], event);
+  };
   return { ...events, sendToSystem: send as unknown as TypedSendToSystem<SystemEventMap> };
 }

@@ -271,7 +271,8 @@ describe('notes summary flow', () => {
   });
 });
 TS
-node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
+# Uncoloured, so the summary line below matches whatever FORCE_COLOR the caller set
+NO_COLOR=1 FORCE_COLOR=0 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
 # The scaffold's seed test (2), the feature's system test, default-setup notes and library, the service and the flow
 grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints a seed-file count even with no flows; check the compiled flow itself

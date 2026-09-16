@@ -110,7 +110,7 @@ export default bookmarksEntry;
 
 ### Key rules
 
-- **Default-export the `SystemEntry`, declared with `satisfies SystemEntry`** — an annotated entry (`const entry: SystemEntry = …`) loses the system's events. `abuddy build` then fails on the pack's types, with a type error that names the system by the id it runs under (`my-pack.bookmarks`). The fix is `satisfies SystemEntry`. Every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`) default-exports its single contribution. Named exports alongside it are fine; the default is what gets loaded.
+- **Default-export the `SystemEntry`, declared with `satisfies SystemEntry`** — an annotated entry (`const entry: SystemEntry = …`) loses the system's events. `abuddy build` then fails on the pack's types, with a type error that names the system (`my-pack/bookmarks`). The fix is `satisfies SystemEntry`. Every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`) default-exports its single contribution. Named exports alongside it are fine; the default is what gets loaded.
 - **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects. An installed pack with frontend code (an FE entry or plugins) gets it instead once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added plugins or failed; every system of the pack gets it, those without a plugin too. A pack without frontend code gets it on activation as well. A reloaded pack's systems get it too. Every open window receives the data sent in reply, not only the one that asked. Send the full initial state back to the plugin via the bus each time; the plugin doesn't need to ask for it.
 - **Handle `PACK_CHANGED` when you list what packs register or seed** — every running system gets it once a pack is installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, or its seeds are imported from Settings. default-setup's library, notes, flows, actions and prompts systems send their startup data again, and threads sends the slash commands when they changed.
 - **Use `emit()` or `sendToPlugin()` to send to the frontend** — inside a system's actions, `system.get(bus).send(emit(pluginId, event))` routes the event through the bus to the matching frontend plugin; elsewhere (services, callbacks), `sendToPlugin(pluginId, event)` sends it directly. Both come from `#generated/events` and accept only the events that plugin receives. Don't import them from `@abuddy/sdk/events`, whose untyped versions accept any event. To send to another plugin (another feature's, a dependency's, or the app's `application`), list it in the system's `sendsTo` in `abuddy.json`; its type then accepts this system's events.
@@ -118,7 +118,7 @@ export default bookmarksEntry;
 
 ### Communication patterns
 
-A system's bus id is the feature id in a built-in pack, and `<packId>.<featureId>` in an external pack (`my-pack.bookmarks`). Plugin ids stay the feature id. Don't write bus ids by hand: `busId` from `#generated/bus-ids` maps each of your features that has a system to its bus id. The module has no imports, so frontend code can use it. Actions can't import it, so they write the id as a string (see [`services.emitter`](services-and-data.md#host-services)).
+A system's bus id is the feature id in a built-in pack, and `<packId>.<featureId>` in an external pack (`my-pack.bookmarks`). Plugin ids stay the feature id. Don't write bus ids by hand: `busId` from `#generated/bus-ids` maps each of your features that has a system to its bus id. The module has no imports, so frontend code can use it. Actions don't need it: they name a system `<packId>/<featureId>` (see [`services.emitter`](services-and-data.md#host-services)).
 
 ```typescript
 import { busId } from '#generated/bus-ids';
@@ -135,12 +135,12 @@ Frontend code (and backend code) sends events to systems with `sendToSystem` fro
 ```typescript
 import { sendToSystem } from '#generated/events';
 
-// Plugin -> System: this pack's systems by feature id, a dependency's by the id it runs under
+// Plugin -> System: this pack's systems by feature id, a dependency's as <dependency>/<feature>
 sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
-sendToSystem('settings', { type: 'GET_SETTINGS' });
+sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 ```
 
-`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. It maps your own feature ids to their bus ids, so pass `'bookmarks'`, not `busId.bookmarks`. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
+`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. It maps each name to the id that system runs under (`my-pack.bookmarks` for your own, `settings` for default-setup's), so pass `'bookmarks'`, not `busId.bookmarks`. A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
 
 Backend code that needs the connection or every incoming event subscribes with `onConnected(callback)` and `onIncoming(callback)` from `@abuddy/sdk/events`; each returns an unsubscribe function. Log entries arrive through `onLog(callback)` from `@abuddy/sdk/logger`.
 

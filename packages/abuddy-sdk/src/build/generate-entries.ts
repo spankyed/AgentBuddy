@@ -383,24 +383,10 @@ export function generatePackFiles(
   }
   const commands = declaredCommands();
 
-  /**
-   * A pack sends to its own systems by feature id, and to its dependencies' by the id they run under. A feature
-   * id equal to a dependency's running system id would take that id over, leaving the dependency's system
-   * unreachable, so it fails the build.
-   */
+  /** #generated/system-ids exports `busId`, the map of the ids systems run under, so no system feature may take the name */
   function checkOwnSystemIds(): void {
-    const ownSystems = new Set((manifest.features ?? []).filter((f) => f.system).map((f) => f.id));
-    if (ownSystems.has('busId')) {
+    if ((manifest.features ?? []).some((f) => f.system && f.id === 'busId')) {
       throw new Error('Feature "busId" has a system, and #generated/system-ids exports `busId` as the map of the ids systems run under: rename the feature in abuddy.json `features`');
-    }
-    for (const [depId, snap] of depSnapshots) {
-      for (const feature of snap.manifest.features ?? []) {
-        if (!feature.system) continue;
-        const running = runningSystemId(depId, snap, feature.id);
-        if (ownSystems.has(running)) {
-          throw new Error(`Feature "${running}" has a system, and "${depId}", which this pack depends on, runs a system as "${running}": sendToSystem('${running}') couldn't reach the dependency's system, so rename the feature in abuddy.json \`features\``);
-        }
-      }
     }
   }
   checkOwnSystemIds();
@@ -833,12 +819,23 @@ ${busIdEntries},
     const depSystems = depTypeImports('PackSystemEvents');
     const hasSystems = systemFeatures.length > 0;
 
-    // A pack's own systems are sent to by feature id; dependents address them by the id they run under
-    const packSystemEvents = hasSystems
-      ? `{ [K in keyof OwnSystemEvents as (typeof busId)[K]]: OwnSystemEvents[K] }`
-      : `{}`;
+    // Systems are named by pack and feature: a dependency's as `<dependency>/<feature>`, this pack's own by
+    // feature id (and `<packId>/<feature>` where no pack is implied, in actions)
+    const qualified = (packId: string, events: string) =>
+      `{ [K in keyof ${events} & string as \`${packId}/\${K}\`]: ${events}[K] }`;
+    const depQualified = typedDeps.map((depId) => qualified(depId, depAlias(depId, 'PackSystemEvents')));
+    // What each name sendToSystem takes runs under: this pack's own (busId), and every dependency system
+    const depSystemIds = [...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? [])
+      .filter((f) => f.system)
+      .map((f) => `  ${JSON.stringify(`${depId}/${f.id}`)}: ${JSON.stringify(runningSystemId(depId, snap, f.id))},`));
     const sends = hasSystems
-      ? `export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(busId);`
+      ? `/** Each system name \`sendToSystem\` takes → the id that system runs under */
+const systemIds = {
+  ...busId,
+${depSystemIds.join('\n')}
+};
+
+export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds);`
       : `export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();`;
 
     return `${HEADER}
@@ -862,14 +859,14 @@ export type OwnSystemEvents = {
 ${systemEntries}
 };
 
-/** This pack's systems by the id they run under, and the events each receives: what dependents send to. */
-export type PackSystemEvents = ${packSystemEvents};
+/** This pack's systems by feature id, and the events each receives: what dependents send to as \`${manifest.id}/<feature>\`. */
+export type PackSystemEvents = OwnSystemEvents;
 
-/** Every system this pack's code can send to: its own by feature id, and its dependencies'. */
-export type SendableSystemEvents = OwnSystemEvents${depSystems.aliases.map(a => ` & Omit<${a}, keyof OwnSystemEvents>`).join('')};
+/** Every system this pack's code can send to: its own by feature id, and each dependency's as \`<dependency>/<feature>\`. */
+export type SendableSystemEvents = OwnSystemEvents${depQualified.map(q => ` & ${q}`).join('')};
 
-/** Every system this pack's code can send to, by the id it runs under: how actions address systems through \`services.emitter\`. */
-export type RunningSystemEvents = PackSystemEvents${depSystems.aliases.map(a => ` & Omit<${a}, keyof PackSystemEvents>`).join('')};
+/** Every system this pack's actions can send to, named \`<pack>/<feature>\`: how \`services.emitter.sendToSystem\` addresses them. */
+export type QualifiedSystemEvents = ${[qualified(manifest.id, 'OwnSystemEvents'), ...depQualified].join(' & ')};
 
 ${sends}
 `;
@@ -971,7 +968,7 @@ import type { EARS } from '@abuddy/sdk';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
 import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import type { Repositories } from './repository.js';
-import type { PackEvents, RunningSystemEvents } from './events.js';
+import type { PackEvents, QualifiedSystemEvents } from './events.js';
 ${imports.join('\n')}
 ${deps.imports.join('\n')}
 
@@ -981,11 +978,11 @@ ${entries.join('\n')}
 
 /**
  * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system is
- * addressed by the id it runs under (\`busId\` for this pack's own).
+ * named \`<pack>/<feature>\`, this pack's own too.
  */
 export type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
   sendToPlugin: TypedSendToPlugin<PackEvents>;
-  sendToSystem: TypedSendToSystem<RunningSystemEvents>;
+  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
 /**

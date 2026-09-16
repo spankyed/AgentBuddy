@@ -126,9 +126,11 @@ sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActiv
 // @ts-expect-error the threads plugin doesn't receive this event
 emit('threads', { type: 'MEMO_ADDED', text: 'x' });
 
-// Systems: this pack's by feature id, the dependency's by the id it runs under
+// Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
 sendToSystem('memos', { type: 'CLEAR_MEMOS' });
+sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
+// @ts-expect-error the dependency's system isn't named by the id it runs under
 sendToSystem('base-pack.threads', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error not a system of this pack or its dependency
 sendToSystem('nope', { type: 'CLEAR_MEMOS' });
@@ -145,18 +147,20 @@ declare const memoEventType: 'ADD_MEMO' | 'PIN_MEMO';
 sendToSystem('memos', { type: memoEventType, text: 'x', id: 'm1' });
 // @ts-expect-error as a PIN_MEMO it would have no id
 sendToSystem('memos', { type: memoEventType, text: 'x' });
-declare const systemId: 'memos' | 'base-pack.threads';
+declare const systemId: 'memos' | 'base-pack/threads';
 // @ts-expect-error a union of system ids would accept either system's events
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
-// Actions get services.emitter, which sends to every system by the id it runs under
-services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO', text: 'x' });
-services.emitter.sendToSystem('base-pack.threads', { type: 'ADD_TAG', name: 'x' });
+// Actions get services.emitter, which names every system <pack>/<feature>, this pack's own too
+services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
+services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
 services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
-// @ts-expect-error the emitter doesn't map feature ids: this pack's systems run as app-pack.<feature>
+// @ts-expect-error actions run outside any pack, so this pack's systems are named too
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
+// @ts-expect-error not the id the system runs under
+services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO', text: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
-services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO' });
+services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 // @ts-expect-error the threads plugin doesn't receive this event
 services.emitter.sendToPlugin('threads', { type: 'MEMO_ADDED', text: 'x' });
 
@@ -412,7 +416,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
   it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack.threads']));
+    expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack/threads']));
     expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS', 'PIN_MEMO', 'UNPIN_MEMO']));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   }, 120_000);

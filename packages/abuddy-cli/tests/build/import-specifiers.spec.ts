@@ -74,7 +74,8 @@ describe('findJsSpecifiers', () => {
     fs.symlinkSync(path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), link);
     const output = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
     expect(output).toMatch(/Relative import specifiers name \.ts sources/);
-  });
+    // It checks the whole repo, parsing every file
+  }, 60_000);
 });
 
 describe('findRawPackHelpers', () => {

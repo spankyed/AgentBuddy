@@ -35,7 +35,10 @@ function logger() { return _logger ??= getHostModule<{ createLogger(source: stri
  */
 export interface HostServices {
   logger: Logger;
-  /** Sends to plugins, systems and running flows, from `@abuddy/sdk/events`. A pack's `Services` types it with its own event maps. */
+  /**
+   * Sends to plugins, systems and running flows. Actions run outside any pack, so `sendToSystem` names a
+   * system `<packId>/<featureId>`. A pack's `Services` types it with its own and its dependencies' events.
+   */
   emitter: {
     sendToPlugin: typeof sendToPlugin;
     sendToSystem: typeof sendToSystem;
@@ -52,10 +55,21 @@ export interface HostServices {
   secrets: SecretsService;
 }
 
+/** Sends to the system a `<packId>/<featureId>` name addresses, whatever id it runs under */
+function sendToAddressedSystem(address: string, event: { type: string; [key: string]: unknown }): void {
+  const systemId = packRegistry().resolveSystemAddress(address) as string | undefined;
+  if (!systemId) {
+    throw new Error(`No running system is named "${address}": services.emitter.sendToSystem takes "<packId>/<featureId>"`);
+  }
+  sendToSystem(systemId, event);
+}
+
+const emitter: HostServices['emitter'] = { sendToPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
+
 function resolveServices(): HostServices & Record<string, unknown> {
   return {
     logger: logger(),
-    emitter: { sendToPlugin, sendToSystem, sendToBrainSystem },
+    emitter,
     repository,
     appData,
     traceStore,
